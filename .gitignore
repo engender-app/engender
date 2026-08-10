@@ -1,0 +1,11 @@
+node_modules/
+.svelte-kit/
+build/
+src/lib/paraglide/
+vite.config.ts.timestamp-*
+
+# AI/agent-local files - session state, trackers and agent config stay out of the repo
+.scratch/
+.claude/
+CLAUDE.md
+docs/agents/

@@ -1,0 +1,76 @@
+/* ============================================================
+   Base design tokens — type, spacing, shape, elevation, motion.
+   These are the binding Phase 0 tokens; the app lifts them into
+   src/lib/theme verbatim. Colour lives in palettes.css.
+   ============================================================ */
+
+:root {
+  /* --- Type --- */
+  --font-body: 'Nunito', system-ui, sans-serif;
+  --font-display: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+
+  --text-xs: 0.75rem;    /* 12px — timestamps, legends */
+  --text-sm: 0.875rem;   /* 14px — secondary text, chips */
+  --text-md: 1rem;       /* 16px — body */
+  --text-lg: 1.125rem;   /* 18px — emphasised body, list titles */
+  --text-xl: 1.3125rem;  /* 21px — section headings */
+  --text-2xl: 1.625rem;  /* 26px — screen titles (display face) */
+  --text-3xl: 2rem;      /* 32px — greeting, big numbers */
+
+  --leading-body: 1.5;
+  --leading-display: 1.2;
+
+  --weight-regular: 450;
+  --weight-medium: 600;
+  --weight-bold: 750;
+
+  /* --- Spacing (4px base) --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+
+  /* --- Shape: soft, rounded, never sharp (warm, not clinical) --- */
+  --radius-xs: 6px;      /* heat-map cells, small chips */
+  --radius-sm: 10px;     /* inputs, small controls */
+  --radius-md: 14px;     /* buttons, list rows */
+  --radius-lg: 18px;     /* cards */
+  --radius-xl: 26px;     /* sheets, hero surfaces */
+  --radius-pill: 999px;  /* tags, mood ring, segmented controls */
+
+  /* --- Elevation: soft ambient, never harsh --- */
+  --shadow-1: 0 1px 2px rgb(15 30 40 / 0.05), 0 2px 8px rgb(15 30 40 / 0.05);
+  --shadow-2: 0 2px 4px rgb(15 30 40 / 0.06), 0 8px 24px rgb(15 30 40 / 0.09);
+  --shadow-3: 0 4px 8px rgb(15 30 40 / 0.08), 0 16px 48px rgb(15 30 40 / 0.14);
+
+  /* --- Motion --- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur-med: 240ms;
+  --dur-slow: 380ms;
+
+  /* --- Layout --- */
+  --touch-target: 44px;
+  --content-max: 640px;      /* centred column at desktop width */
+  --rail-width: 220px;       /* desktop navigation rail */
+  --bottom-nav-height: 64px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-med: 1ms;
+    --dur-slow: 1ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

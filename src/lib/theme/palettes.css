@@ -1,0 +1,199 @@
+/* ============================================================
+   Colour tokens — 8 queer-flag palettes × light/dark.
+   Selected via [data-palette] + [data-theme] on <html>.
+
+   Model (binding for the app):
+   - Each palette×theme block sets the SEMANTIC tokens:
+     bg, surface, surface-2, text, text-2, border, accent,
+     accent-2, and the flag's motif stripes.
+   - Everything else (containers, heat-map ramp, mood intensity,
+     charts, focus ring) is DERIVED from those via color-mix, so
+     switching palette recolours the whole app for free.
+   - Colour never judges: mood and the heat-map use a single-hue
+     intensity ramp of the palette accent, never red→green.
+   ============================================================ */
+
+/* ---------- Transgender (default) ---------- */
+[data-palette="trans"] {
+  --motif-stripes: #5BCEFA, #F5A9B8, #FFFFFF, #F5A9B8, #5BCEFA;
+}
+[data-palette="trans"][data-theme="light"] {
+  --bg: #F4F8FB; --surface: #FFFFFF; --surface-2: #E9F1F7;
+  --text: #1B2B36; --text-2: #55707F; --border: #D9E5EE;
+  --accent: #0F7DAE; --accent-2: #C25B79;
+}
+[data-palette="trans"][data-theme="dark"] {
+  --bg: #0D141A; --surface: #151F27; --surface-2: #1D2A34;
+  --text: #E8F1F7; --text-2: #9DB4C3; --border: #2B3C49;
+  --accent: #63C4EE; --accent-2: #F0A3B6;
+}
+
+/* ---------- Nonbinary ---------- */
+[data-palette="nonbinary"] {
+  --motif-stripes: #FCF434, #FFFFFF, #9C59D1, #2C2C2C;
+}
+[data-palette="nonbinary"][data-theme="light"] {
+  --bg: #F8F6FB; --surface: #FFFFFF; --surface-2: #EFEAF6;
+  --text: #241B2F; --text-2: #635C70; --border: #E0D8EA;
+  --accent: #7A3EB1; --accent-2: #8A7500;
+}
+[data-palette="nonbinary"][data-theme="dark"] {
+  --bg: #131019; --surface: #1C1725; --surface-2: #251F30;
+  --text: #EFEAF6; --text-2: #ABA1BC; --border: #383046;
+  --accent: #C69DEB; --accent-2: #F5EC6E;
+}
+
+/* ---------- Genderfluid ---------- */
+[data-palette="genderfluid"] {
+  --motif-stripes: #FF76A4, #FFFFFF, #C011D7, #2F2F2F, #2F3CBE;
+}
+[data-palette="genderfluid"][data-theme="light"] {
+  --bg: #FBF6FA; --surface: #FFFFFF; --surface-2: #F3E9F2;
+  --text: #2A1B29; --text-2: #6D5C6C; --border: #E7D9E5;
+  --accent: #A31DB6; --accent-2: #3946C4;
+}
+[data-palette="genderfluid"][data-theme="dark"] {
+  --bg: #171019; --surface: #211826; --surface-2: #2B2032;
+  --text: #F5EBF4; --text-2: #B5A3B4; --border: #443349;
+  --accent: #E289F2; --accent-2: #93A0F2;
+}
+
+/* ---------- Bisexual ---------- */
+[data-palette="bisexual"] {
+  --motif-stripes: #D60270, #D60270, #9B4F96, #0038A8, #0038A8;
+}
+[data-palette="bisexual"][data-theme="light"] {
+  --bg: #FAF6F9; --surface: #FFFFFF; --surface-2: #F2E9F0;
+  --text: #291B27; --text-2: #6C5B69; --border: #E5D8E2;
+  --accent: #B7025F; --accent-2: #2447B0;
+}
+[data-palette="bisexual"][data-theme="dark"] {
+  --bg: #160F17; --surface: #201723; --surface-2: #2A1F2E;
+  --text: #F4EAF2; --text-2: #B3A2B1; --border: #443347;
+  --accent: #F272AE; --accent-2: #8FA4F0;
+}
+
+/* ---------- Lesbian ---------- */
+[data-palette="lesbian"] {
+  --motif-stripes: #D52D00, #FF9A56, #FFFFFF, #D362A4, #A30262;
+}
+[data-palette="lesbian"][data-theme="light"] {
+  --bg: #FBF7F4; --surface: #FFFFFF; --surface-2: #F4EBE4;
+  --text: #2D1F16; --text-2: #705E52; --border: #E8DACD;
+  --accent: #BC3907; --accent-2: #A30262;
+}
+[data-palette="lesbian"][data-theme="dark"] {
+  --bg: #191210; --surface: #231A16; --surface-2: #2E221D;
+  --text: #F6EDE7; --text-2: #BCA79A; --border: #4A382F;
+  --accent: #FF9A56; --accent-2: #E98BC0;
+}
+
+/* ---------- Pansexual ---------- */
+[data-palette="pansexual"] {
+  --motif-stripes: #FF218C, #FFD800, #21B1FF;
+}
+[data-palette="pansexual"][data-theme="light"] {
+  --bg: #FAF6F8; --surface: #FFFFFF; --surface-2: #F2EAEF;
+  --text: #291B23; --text-2: #6C5B65; --border: #E5D8E0;
+  --accent: #D00A72; --accent-2: #0A6FB4;
+}
+[data-palette="pansexual"][data-theme="dark"] {
+  --bg: #170F14; --surface: #21171D; --surface-2: #2B1F27;
+  --text: #F4EAF0; --text-2: #B4A2AD; --border: #453342;
+  --accent: #FF74B8; --accent-2: #67C6FF;
+}
+
+/* ---------- Rainbow ---------- */
+[data-palette="rainbow"] {
+  --motif-stripes: #E40303, #FF8C00, #FFED00, #008026, #004CFF, #732982;
+}
+[data-palette="rainbow"][data-theme="light"] {
+  --bg: #F8F7FB; --surface: #FFFFFF; --surface-2: #EEEDF6;
+  --text: #211E30; --text-2: #605C72; --border: #DDDAEA;
+  --accent: #63348F; --accent-2: #0A7A3C;
+}
+[data-palette="rainbow"][data-theme="dark"] {
+  --bg: #121017; --surface: #1B1822; --surface-2: #24202D;
+  --text: #EDEBF5; --text-2: #A9A4BA; --border: #3B3648;
+  --accent: #C09EE8; --accent-2: #74D99B;
+}
+
+/* ---------- Agender ---------- */
+[data-palette="agender"] {
+  --motif-stripes: #1A1A1A, #B9B9B9, #FFFFFF, #B9F484, #FFFFFF, #B9B9B9, #1A1A1A;
+}
+[data-palette="agender"][data-theme="light"] {
+  --bg: #F7F9F5; --surface: #FFFFFF; --surface-2: #ECF0E8;
+  --text: #1E241A; --text-2: #5E6858; --border: #DBE2D5;
+  --accent: #4A7A22; --accent-2: #57616B;
+}
+[data-palette="agender"][data-theme="dark"] {
+  --bg: #11150E; --surface: #1A1F17; --surface-2: #232920;
+  --text: #EDF3E8; --text-2: #A7B3A0; --border: #37402F;
+  --accent: #AEEB76; --accent-2: #A6B1BC;
+}
+
+/* ============================================================
+   Derived tokens — identical formulas for every palette.
+   ============================================================ */
+
+[data-theme="light"] {
+  --on-accent: #FFFFFF;
+  --accent-soft: color-mix(in oklab, var(--accent) 11%, var(--surface));
+  --on-accent-soft: color-mix(in oklab, var(--accent) 78%, var(--text));
+  --accent-2-soft: color-mix(in oklab, var(--accent-2) 13%, var(--surface));
+  --on-accent-2-soft: color-mix(in oklab, var(--accent-2) 78%, var(--text));
+  --accent-border: color-mix(in oklab, var(--accent) 30%, var(--border));
+  --scrim: rgb(15 20 26 / 0.45);
+  --danger: #A8503C;         /* muted terracotta: destructive ACTIONS only, never data */
+  --danger-soft: #F6E7E2;
+  --warn-soft: #F7EEDA;
+  --on-warn-soft: #6B542A;
+}
+[data-theme="dark"] {
+  --on-accent: #101820;
+  --accent-soft: color-mix(in oklab, var(--accent) 17%, var(--surface));
+  --on-accent-soft: color-mix(in oklab, var(--accent) 82%, var(--text));
+  --accent-2-soft: color-mix(in oklab, var(--accent-2) 19%, var(--surface));
+  --on-accent-2-soft: color-mix(in oklab, var(--accent-2) 82%, var(--text));
+  --accent-border: color-mix(in oklab, var(--accent) 32%, var(--border));
+  --scrim: rgb(0 0 0 / 0.6);
+  --danger: #DE9583;
+  --danger-soft: #3A2521;
+  --warn-soft: #38301D;
+  --on-warn-soft: #E4C98A;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 8px rgb(0 0 0 / 0.25);
+  --shadow-2: 0 2px 4px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.35);
+  --shadow-3: 0 4px 8px rgb(0 0 0 / 0.4), 0 16px 48px rgb(0 0 0 / 0.5);
+}
+
+:root {
+  /* Heat-map ramp: single-hue intensity from "no entry" to strongest.
+     heat-0 is neutral (no entries that day). */
+  --heat-0: var(--surface-2);
+  --heat-1: color-mix(in oklab, var(--accent) 22%, var(--surface-2));
+  --heat-2: color-mix(in oklab, var(--accent) 45%, var(--surface-2));
+  --heat-3: color-mix(in oklab, var(--accent) 70%, var(--surface-2));
+  --heat-4: var(--accent);
+
+  /* Mood 1–5 (awful → great): a blend between the flag's two accents.
+     Both ends are flag colours at full warmth — colour never judges,
+     it just travels across the flag. */
+  --mood-1: color-mix(in oklab, var(--accent-2) 85%, var(--surface-2));
+  --mood-2: color-mix(in oklab, var(--accent) 28%, var(--accent-2));
+  --mood-3: color-mix(in oklab, var(--accent) 52%, var(--accent-2));
+  --mood-4: color-mix(in oklab, var(--accent) 76%, var(--accent-2));
+  --mood-5: var(--accent);
+
+  /* Charts */
+  --chart-line: var(--accent);
+  --chart-line-2: var(--accent-2);
+  --chart-fill: color-mix(in oklab, var(--accent) 16%, transparent);
+  --chart-fill-2: color-mix(in oklab, var(--accent-2) 16%, transparent);
+  --chart-grid: var(--border);
+
+  /* The two-accent gradient: FAB, primary buttons, hero underline. */
+  --grad-accent: linear-gradient(120deg, var(--accent-2), var(--accent) 65%);
+
+  --focus-ring: color-mix(in oklab, var(--accent) 70%, var(--text));
+}
