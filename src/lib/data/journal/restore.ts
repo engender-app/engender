@@ -7,14 +7,16 @@
 
    The order of operations is the whole ticket:
 
-     1. Reconcile the built-in vocabulary, unconditionally and first. Key
-        identity makes that idempotent, and a Replace must not be able to
-        leave the journal short of a built-in the archive's own rows
-        reference.
-     2. Write every photo file the archive carries. Names are uuid-based
+     1. Write every photo file the archive carries. Names are uuid-based
         (ADR-0008), so a file being written cannot collide with one already
         there, which is what makes writing before deciding anything safe.
-     3. Swap the database, in one transaction.
+     2. In one transaction: reconcile the built-in vocabulary,
+        unconditionally and first, then swap the journal. Key identity makes
+        the reconcile idempotent, and it runs before either mode applies
+        because a Replace must not be able to leave the journal short of a
+        built-in the archive's own rows reference. It is inside the same
+        transaction so that a failure leaves the database exactly as it was,
+        rather than as the next boot would have made it.
 
    Nothing here deletes a file, ever (ADR-0011). Every failure before the
    commit is therefore a no-op: the old journal is completely intact and the
@@ -49,8 +51,8 @@ import type { ArchiveJournal, ArchivePhoto } from '../archive/payload';
 import { foldText } from '../fold';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
-import { reconcileBuiltIns } from './reconcile';
-import { assertChanged, now, rowidByUuid } from './support';
+import { reconcileBuiltInsWithin } from './reconcile';
+import { assertChanged, now, rowidByUuid, rowidWhere } from './support';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -83,16 +85,13 @@ export async function restoreArchive(
 ): Promise<void> {
   assertRestorable(contents.journal);
 
-  /* Its own transaction, and deliberately outside the swap below: what it
-     adds is what every boot adds anyway (stores/boot.svelte.ts), so an import
-     that rolls back after it has run leaves nothing behind that the next
-     start would not have created itself. */
-  await reconcileBuiltIns(driver);
-
   for await (const file of contents.files) await files.write(file.name, file.bytes);
 
   await driver.transaction(async () => {
     const restoring: Restoring = { driver, mode, journal: contents.journal, ts: now() };
+    // Seeding first, unconditionally, and inside this transaction with
+    // everything else (reconcile.ts explains the second entry point).
+    await reconcileBuiltInsWithin(driver);
     if (mode === 'replace') await discardJournalRows(driver);
     // Reference data first: the entries below resolve their dimensions and
     // tags against it, and an archive's row must find the archive's own.
@@ -119,7 +118,7 @@ const COLLECTIONS = [
 function assertRestorable(journal: ArchiveJournal): void {
   for (const collection of COLLECTIONS) {
     if (!Array.isArray(journal?.[collection])) {
-      throw new CorruptArchiveError(`the backup's ${collection} are not readable`);
+      throw new CorruptArchiveError(`the archive's ${collection} are not readable`);
     }
   }
 }
@@ -143,7 +142,11 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM milestone',
     'DELETE FROM lab_result',
     'DELETE FROM reminder',
-    'DELETE FROM preset_dimension',
+    /* Only the custom presets' links. A built-in preset the archive does not
+       carry keeps the dimensions reconciling gave it: emptying the table
+       wholesale left one with none at all, permanently, because reconciling
+       writes a preset's links only when it writes the preset row. */
+    'DELETE FROM preset_dimension WHERE preset_id IN (SELECT id FROM gender_preset WHERE key IS NULL)',
     'DELETE FROM gender_preset WHERE key IS NULL',
     'DELETE FROM tag WHERE key IS NULL',
     // A custom tag group carries a uuid and a built-in one does not; its key
@@ -159,12 +162,6 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
 async function presentIds(driver: SqliteDriver, sql: string): Promise<Set<string>> {
   const rows = await driver.query<{ id: string }>(sql);
   return new Set(rows.map((row) => row.id));
-}
-
-async function rowidOf(driver: SqliteDriver, table: string, where: string, params: unknown[]): Promise<number> {
-  const rows = await driver.query<{ id: number }>(`SELECT id FROM ${table} WHERE ${where}`, params);
-  if (rows.length === 0) throw new Error(`restored ${table} row not found`);
-  return rows[0].id;
 }
 
 async function applyDimensions({ driver, mode, journal, ts }: Restoring): Promise<void> {
@@ -225,6 +222,13 @@ async function applyPresets({ driver, mode, journal, ts }: Restoring): Promise<v
         ts,
         preset.id
       ]);
+      // The archive's dimensions replace this preset's, so its own links go
+      // first - the ones a Replace keeps belong to presets not in the archive.
+      await driver.run(
+        `DELETE FROM preset_dimension
+         WHERE preset_id = (SELECT id FROM gender_preset WHERE COALESCE(key, uuid) = ?)`,
+        [preset.id]
+      );
     } else {
       await driver.run('INSERT INTO gender_preset (uuid, key, name, is_built_in, updated_at) VALUES (?, ?, ?, ?, ?)', [
         preset.builtIn ? null : preset.id,
@@ -235,9 +239,7 @@ async function applyPresets({ driver, mode, journal, ts }: Restoring): Promise<v
       ]);
     }
 
-    // Nothing to clear first: a Replace emptied preset_dimension whole, and a
-    // Merge only ever reaches this for a preset it has just inserted.
-    const presetId = await rowidOf(driver, 'gender_preset', 'COALESCE(key, uuid) = ?', [preset.id]);
+    const presetId = await rowidWhere(driver, 'gender_preset', 'COALESCE(key, uuid) = ?', [preset.id], 'preset id');
     for (const [orderIndex, key] of (preset.dims ?? []).entries()) {
       const result = await driver.run(
         `INSERT INTO preset_dimension (preset_id, dimension_id, order_index)
@@ -249,9 +251,21 @@ async function applyPresets({ driver, mode, journal, ts }: Restoring): Promise<v
   }
 }
 
+const nextTagOrderIndex = async (driver: SqliteDriver, groupId: number): Promise<number> => {
+  const rows = await driver.query<{ next: number }>(
+    'SELECT COALESCE(MAX(order_index), -1) + 1 AS next FROM tag WHERE group_id = ?',
+    [groupId]
+  );
+  return rows[0].next;
+};
+
 /* Order travels as position rather than as a column: the snapshot reads
-   groups and tags in order_index order (archive.ts), so an array index is
-   the order the user arranged them in. */
+   groups and tags in order_index order (archive.ts), so an array index is the
+   order the user arranged them in. A Replace installs those positions. A
+   Merge cannot: the tags already in a group hold positions of their own, so
+   an added one goes after them, which is where addTag puts a new tag anyway.
+   Groups are not reorderable at all (F17 offers a drag for tags only), so a
+   group a Merge adds keeps the archive's position. */
 async function applyTagGroups({ driver, mode, journal, ts }: Restoring): Promise<void> {
   const groups = await presentIds(driver, 'SELECT key AS id FROM tag_group');
   const tags = await presentIds(driver, 'SELECT COALESCE(key, uuid) AS id FROM tag');
@@ -275,7 +289,7 @@ async function applyTagGroups({ driver, mode, journal, ts }: Restoring): Promise
     /* A group that is already here still has its tags walked, in both modes:
        a tag is its own row with its own identity, so one the archive carries
        and this device does not is exactly what Merge is for. */
-    const groupId = await rowidOf(driver, 'tag_group', 'key = ?', [group.key]);
+    const groupId = await rowidWhere(driver, 'tag_group', 'key = ?', [group.key], 'group key');
     for (const [tagIndex, tag] of (group.tags ?? []).entries()) {
       if (tags.has(tag.id)) {
         if (mode === 'merge') continue;
@@ -286,9 +300,10 @@ async function applyTagGroups({ driver, mode, journal, ts }: Restoring): Promise
         );
         continue;
       }
+      const orderIndex = mode === 'replace' ? tagIndex : await nextTagOrderIndex(driver, groupId);
       await driver.run(
         'INSERT INTO tag (uuid, key, group_id, label, hidden, order_index, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [tag.builtIn ? null : tag.id, tag.builtIn ? tag.id : null, groupId, tag.label, flag(tag.hidden), tagIndex, ts]
+        [tag.builtIn ? null : tag.id, tag.builtIn ? tag.id : null, groupId, tag.label, flag(tag.hidden), orderIndex, ts]
       );
     }
   }
@@ -337,7 +352,7 @@ async function applyEntries({ driver, journal, ts }: Restoring): Promise<void> {
       assertChanged(result, `tag ${id} on entry ${entry.uuid}`);
     }
 
-    await insertPhotos(driver, entry.photos ?? [], { entryId }, ts);
+    await insertPhotos(driver, entry.photos ?? [], { entryRowid: entryId }, ts);
   }
 }
 
@@ -351,25 +366,35 @@ async function applyMilestones({ driver, journal, ts }: Restoring): Promise<void
       [milestone.id, milestone.name, milestone.epochDay, milestone.templateKey, ts]
     );
     const milestoneId = await rowidByUuid(driver, 'milestone', milestone.id);
-    await insertPhotos(driver, milestone.photo ? [milestone.photo] : [], { milestoneId }, ts);
+    await insertPhotos(driver, milestone.photo ? [milestone.photo] : [], { milestoneRowid: milestoneId }, ts);
   }
 }
 
+/** Which column a photo row hangs off, by rowid. Not photos.ts's PhotoOwner,
+    which addresses a milestone by uuid because that is what the milestones
+    area speaks: here both owners have just been inserted and their rowids are
+    already in hand. */
+type PhotoOwnerRowid =
+  | { entryRowid: number; milestoneRowid?: never }
+  | { milestoneRowid: number; entryRowid?: never };
+
 /** The rows, in the order they arrived, against whichever owner they hang
-    off - the one photo table both owners share (ADR-0008). The bytes are
-    already on disk: files land before the rows that name them, which for an
-    import means before the transaction opened at all. */
+    off - the one photo table both owners share (ADR-0008). The bytes landed
+    before the transaction opened, or were never in the archive: a row whose
+    file was already gone on the exporting device travels anyway
+    (archive.ts), and dropping it here would be the one deletion an import is
+    not allowed to make. */
 async function insertPhotos(
   driver: SqliteDriver,
   photos: ArchivePhoto[],
-  owner: { entryId: number; milestoneId?: never } | { milestoneId: number; entryId?: never },
+  owner: PhotoOwnerRowid,
   ts: number
 ): Promise<void> {
   for (const [orderIndex, photo] of photos.entries()) {
     await driver.run(
       `INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [photo.id, owner.entryId ?? null, owner.milestoneId ?? null, photo.fileName, orderIndex, ts]
+      [photo.id, owner.entryRowid ?? null, owner.milestoneRowid ?? null, photo.fileName, orderIndex, ts]
     );
   }
 }

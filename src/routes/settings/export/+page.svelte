@@ -1,13 +1,12 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
-  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { applyPortablePreferences, prefs } from '$lib/data/prefs/store.svelte';
   import { archiveFileName, deliverArchive } from '$lib/data/archive/deliver';
   import { openArchive, packArchive } from '$lib/data/archive/pack';
   import { CorruptArchiveError, UnsupportedArchiveError } from '$lib/data/archive/container';
-  import { fileArchivePicker, type PickedArchive } from '$lib/data/archive/pick';
+  import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
   import { portablePreferences } from '$lib/data/archive/payload';
-  import { PORTABLE_KEYS } from '$lib/data/prefs/catalogue';
   import { DecryptionFailedError } from '$lib/crypto/aesGcm';
   import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -83,11 +82,9 @@
     }
   }
 
-  const archivePicker = fileArchivePicker();
-
-  async function pickArchive() {
+  async function choose() {
     try {
-      const chosen = await archivePicker.pick();
+      const chosen = await pickArchive();
       if (!chosen) return; // backed out
       picked = chosen;
       impError = '';
@@ -122,14 +119,11 @@
            the ones that describe this installation - the PIN, the lock flags,
            the disguise - are not in the archive at all, so restoring cannot
            lock anybody out of an app with no recovery path. */
-        for (const key of PORTABLE_KEYS) {
-          const value = payload.preferences?.[key];
-          if (value !== undefined) prefs[key] = value as never;
-        }
+        applyPortablePreferences(payload.preferences);
         toast('Restored. This journal is the backup now.');
       } else {
-        // Settings are left alone on a merge, the same rule its rows follow:
-        // what is already on this device wins.
+        // A merge writes no settings, for the same reason it leaves rows
+        // alone: what is already on this device wins.
         await journal.archive.merge(contents);
         toast('Merged in. Nothing you already had was touched.');
       }
@@ -143,11 +137,11 @@
 
   function importFailure(error: unknown): string {
     if (error instanceof DecryptionFailedError) {
-      return 'That password doesn’t unlock this file. Passwords are case-sensitive — check and try again. Nothing was imported.';
+      return 'That password doesn’t unlock this file. Passwords are case-sensitive, so check and try again. Nothing was imported.';
     }
     if (error instanceof UnsupportedArchiveError) return `${error.message} Nothing was imported.`;
     if (error instanceof CorruptArchiveError) {
-      return 'This file is damaged and can’t be read to the end. Nothing was imported — your journal is exactly as it was.';
+      return 'This file is damaged and can’t be read to the end. Nothing was imported; your journal is exactly as it was.';
     }
     return 'The import couldn’t be finished. Your journal is exactly as it was.';
   }
@@ -236,7 +230,7 @@
   <div class="card editor-section">
     <div class="field">
       <span class="field-label">Backup file</span>
-      <button class="input" style="text-align:left;color:var(--text-2)" data-pick-file onclick={pickArchive}>
+      <button class="input" style="text-align:left;color:var(--text-2)" data-pick-file onclick={choose}>
         <Icon name="upload" size={18} />
         <span id="picked-file" style={picked ? 'color:var(--text)' : ''}>
           {picked ? picked.name : 'Choose a .ttbackup file…'}
