@@ -87,7 +87,11 @@ export interface StatsArea {
    is a column on the entry and a dimension value is a row in a join table,
    so the two cannot be parameterised into one statement - but everything
    downstream only wants (entry, day, value), which is what this hands
-   back. A dimension key that matches nothing simply selects no rows. */
+   back. A dimension key that matches nothing simply selects no rows.
+
+   The fragment's own parameter comes first in every statement that embeds
+   it, because the fragment opens the statement: callers pass
+   `[...params, ...their own]` and must keep it that way round. */
 function metricValues(metric: string): { sql: string; params: (string | number)[] } {
   if (metric === 'mood') {
     return {
@@ -122,15 +126,18 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
   return {
     async dayAverages(metric, fromEpochDay, toEpochDay) {
-      const v = metricValues(metric);
-      const rows = await driver.query<{ day: number; value: number; count: number }>(
-        `WITH v AS (${v.sql})
-         SELECT epoch_day AS day, AVG(value) AS value, COUNT(*) AS count FROM v
+      const values = metricValues(metric);
+      const rows = await driver.query<{ day: number; value: number; entries: number }>(
+        `WITH metric_value AS (${values.sql})
+         SELECT epoch_day AS day, AVG(value) AS value, COUNT(*) AS entries FROM metric_value
          WHERE epoch_day BETWEEN ? AND ?
          GROUP BY epoch_day ORDER BY epoch_day`,
-        [...v.params, fromEpochDay, toEpochDay]
+        [...values.params, fromEpochDay, toEpochDay]
       );
-      return rows.map((r) => ({ day: r.day, value: r.value, count: r.count }));
+      // Rebuilt rather than returned: a driver row is not a plain object
+      // (node:sqlite hands back null-prototype ones), and nothing past this
+      // seam should have to know that.
+      return rows.map((r) => ({ day: r.day, value: r.value, count: r.entries }));
     },
 
     async tagInsights(metric, fromEpochDay, toEpochDay) {
@@ -142,34 +149,37 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
          The three-entry floor counts entries carrying the metric, not
          entries carrying the tag: an average over two numbers says nothing,
          and a tagged entry with no mood on it contributes neither. */
-      const v = metricValues(metric);
+      const values = metricValues(metric);
       const rows = await driver.query<{
         id: string;
-        count: number;
+        with_count: number;
         with_avg: number;
         without_avg: number;
       }>(
-        `WITH v AS (${v.sql}),
-              r AS (SELECT entry_id, value FROM v WHERE epoch_day BETWEEN ? AND ?)
+        // COALESCE(key, uuid) is a tag's domain id: a built-in has the key,
+        // a custom row has the uuid (ADR-0002), the same rule domainIdOf()
+        // applies reading one back out.
+        `WITH metric_value AS (${values.sql}),
+              in_range AS (SELECT entry_id, value FROM metric_value WHERE epoch_day BETWEEN ? AND ?)
          SELECT COALESCE(t.key, t.uuid) AS id,
-                COUNT(*) AS count,
-                AVG(r.value) AS with_avg,
-                (SELECT AVG(o.value) FROM r o
-                  WHERE o.entry_id NOT IN (SELECT entry_id FROM entry_tag WHERE tag_id = t.id)) AS without_avg,
-                (SELECT COUNT(*) FROM r o
-                  WHERE o.entry_id NOT IN (SELECT entry_id FROM entry_tag WHERE tag_id = t.id)) AS without_count
-         FROM r
-         JOIN entry_tag et ON et.entry_id = r.entry_id
+                COUNT(*) AS with_count,
+                AVG(in_range.value) AS with_avg,
+                (SELECT AVG(other.value) FROM in_range other
+                  WHERE other.entry_id NOT IN (SELECT entry_id FROM entry_tag WHERE tag_id = t.id)) AS without_avg,
+                (SELECT COUNT(*) FROM in_range other
+                  WHERE other.entry_id NOT IN (SELECT entry_id FROM entry_tag WHERE tag_id = t.id)) AS without_count
+         FROM in_range
+         JOIN entry_tag et ON et.entry_id = in_range.entry_id
          JOIN tag t ON t.id = et.tag_id
          WHERE t.hidden = 0
          GROUP BY t.id
-         HAVING count >= 3 AND without_count > 0
+         HAVING with_count >= 3 AND without_count > 0
          ORDER BY ABS(with_avg - without_avg) DESC, id`,
-        [...v.params, fromEpochDay, toEpochDay]
+        [...values.params, fromEpochDay, toEpochDay]
       );
       return rows.map((r) => ({
         id: r.id,
-        count: r.count,
+        count: r.with_count,
         withAvg: r.with_avg,
         withoutAvg: r.without_avg
       }));
@@ -209,13 +219,13 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       /* Hidden tags are counted here, unlike in the insights: a recap reads
          back what the month held, and hiding a tag removes it from the
          places a user picks things, not from the past (CONTEXT: Hidden). */
-      const topTagRows = await driver.query<{ id: string; count: number }>(
-        `SELECT COALESCE(t.key, t.uuid) AS id, COUNT(*) AS count
+      const topTagRows = await driver.query<{ id: string; entries: number }>(
+        `SELECT COALESCE(t.key, t.uuid) AS id, COUNT(*) AS entries
          FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
          JOIN tag t ON t.id = et.tag_id
          WHERE e.epoch_day BETWEEN ? AND ?
-         GROUP BY t.id ORDER BY count DESC, id LIMIT 3`,
+         GROUP BY t.id ORDER BY entries DESC, id LIMIT 3`,
         range
       );
 
@@ -276,7 +286,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         entryCount: totals[0].entry_count,
         averageMood: totals[0].average_mood,
         bestStreak: await bestStreakIn(fromEpochDay, toEpochDay),
-        topTags: topTagRows.map((t) => ({ id: t.id, count: t.count })),
+        topTags: topTagRows.map((t) => ({ id: t.id, count: t.entries })),
         milestones: milestoneRows.map((r) => ({ id: r.id, name: r.name, epochDay: r.epoch_day })),
         biggestDimensionChange
       };

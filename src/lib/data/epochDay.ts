@@ -109,7 +109,7 @@ export function nextAnniversaryEpochDay(milestoneEpochDay: number, onOrAfterEpoc
     `onEpochDay`: the year difference, less one while this year's is still
     ahead. Not `calendarDuration().years`, which measures the gap and is
     therefore a day short on a 29 February milestone's 28 February
-    anniversary — the one day the two disagree, and the day a milestone
+    anniversary - the one day the two disagree, and the day a milestone
     would otherwise announce "0 years" while flagging itself as an
     anniversary. Only meaningful for a milestone in the past. */
 export function anniversaryYears(milestoneEpochDay: number, onEpochDay: number): number {
