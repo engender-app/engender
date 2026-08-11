@@ -1,7 +1,7 @@
 # The journal is one handle bound to a driver
 
 A factory takes a `SqliteDriver` and a photo file store and returns the journal:
-six area modules (entries, tags, dimensions, milestones, labs, reminders) composed
+seven area modules (entries, tags, dimensions, milestones, photos, labs, reminders) composed
 behind one handle. The interface is uniformly async and free of Svelte runes. It
 mints every row's identity itself. One thin app-level module constructs the instance
 at boot and exports it for the UI; tests construct their own.
@@ -90,3 +90,16 @@ diverges from `SCHEMA_V1` on ids, `uuid`, `updated_at`, three join tables and fo
 column names. One divergence is not a mapping detail but a hard failure: the demo
 store and seed produce `'EVERY_3_DAYS'` and `'EVERY_7_DAYS'`, and the schema's
 `CHECK (recurrence IN ('DAILY','WEEKLY','EVERY_N_DAYS'))` rejects both on contact.
+
+## Amended by ticket 11: a seventh area
+
+Photos became the seventh area, `journal.photos`. An entry's photos and a
+milestone's photo are the same rows in the same table, differing only in which
+column the row hangs off, so splitting the write path across the entries and
+milestones areas would have meant two implementations of an ordering rule that has
+to hold identically in both. One area is what makes "the same table and the same
+code path" true rather than aspirational.
+
+The photo file store also stopped being optional. It was a defaulted parameter while
+nothing wrote files, and defaulting it now would mean a journal that accepts a photo
+and quietly has nowhere to put it.

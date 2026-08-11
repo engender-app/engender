@@ -20,12 +20,19 @@ metadata-free guarantee with no separate handling.
 
 One segment does survive, and it is not one of the ones this decision is about.
 Chromium's canvas writes a 470-byte APP2 ICC colour profile into everything it
-encodes, describing the colour space of the bytes it just produced. It is not
-carried over from the photo: the browser tier normalizes two unrelated photos, one
-of them carrying EXIF going in, and asserts the profile bytes are identical, which
-they would not be if the source's own profile were surviving. Left in place because
-dropping it means post-processing the JPEG to delete a segment, and colour would
-shift on any viewer that assumes sRGB when no profile is present.
+encodes, describing the colour space of the bytes it just produced.
+
+An ICC profile is one of the places a camera can put a device name, so the browser
+tier establishes where this one comes from rather than assuming. Two fixtures, both
+checked to be what they claim before they are used: a source with its profile
+stripped out comes back with one, so the encoder is what adds it; and a source
+carrying a forged, recognisable profile comes back without it, so nothing is carried
+over from the photo. Comparing two canvas-made photos would have proved neither,
+since both already carry the same profile going in.
+
+Left in place because dropping it means post-processing the JPEG to delete a
+segment, and colour would shift on any viewer that assumes sRGB when no profile is
+present.
 
 So the guarantee is exact rather than absolute: no EXIF (APP1), no XMP (also APP1),
 no IPTC or Photoshop blocks (APP13), no comments (COM). An ICC profile can name a

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
-  import { readThumbnail } from '$lib/stores/photoFiles.svelte';
+  import type { Photo } from '$lib/data/types';
+  import { readThumbnail } from '$lib/stores/photoFiles';
 
   /* Renders a stored photo's thumbnail, never the full file: the Progress
      grid draws dozens of these at 104px, and decoding a 2048px JPEG for
@@ -9,21 +10,18 @@
 
      The gradient underneath is what shows while the bytes load, and what
      stays if there are none - a photo with no stored file (the demo
-     persona's), or one whose file the sweep reclaimed. `read` is a prop so
-     the browser tier can drive it without app state. */
+     persona's), or one whose file the sweep reclaimed. */
   let {
     photo,
     size = 72,
-    label = '',
-    read = readThumbnail
+    label = ''
   }: {
     /** `id` is optional because a draft the editor has not saved has none
         (types.ts: identity is minted on write, never in a screen). It only
         feeds the placeholder colour. */
-    photo: { id?: string; fileName: string | null };
+    photo: Pick<Photo, 'fileName'> & { id?: string };
     size?: number;
     label?: string;
-    read?: (fileName: string) => Promise<Uint8Array | null>;
   } = $props();
 
   let url = $state<string | null>(null);
@@ -40,7 +38,7 @@
     let objectUrl: string | null = null;
     let stale = false;
 
-    read(fileName).then((bytes) => {
+    readThumbnail(fileName).then((bytes) => {
       if (stale || !bytes) return;
       objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
       url = objectUrl;
@@ -52,10 +50,11 @@
     };
   });
 
-  /* A stable colour per photo, so the placeholder does not flicker through
-     a different shade on every render, and two photos side by side do not
-     land on the same one. Derived from the id rather than stored: it is a
-     property of the pixels only in the sense that it stands in for them. */
+  /* A stable colour per photo, so the placeholder does not change shade
+     between renders. Derived from the id rather than stored - it stands in
+     for pixels nobody has loaded yet. Drafts have no id and all land on
+     the same shade, which is what the editor showed before this and is
+     only visible until ticket 08 gives them real files. */
   const hue = $derived(
     [...(photo.id ?? '')].reduce((h, character) => (h * 31 + character.charCodeAt(0)) % 360, 7)
   );

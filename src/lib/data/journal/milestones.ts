@@ -8,8 +8,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Milestone } from '../types';
 import type { PhotoFileStore } from './journal';
-import { photosByMilestone } from './photos';
-import { filesOf } from '../photos/names';
+import { photosByMilestone, removeFilesOf } from './photos';
 import { assertChanged, mintUuid, now } from './support';
 
 export interface MilestoneInput {
@@ -77,7 +76,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       });
       // After the commit, like deleteEntry: rows never come back because a
       // file removal failed; the boot sweep reclaims orphaned files.
-      for (const p of photos) for (const name of filesOf(p.file_path)) await files.remove(name);
+      await removeFilesOf(files, photos);
     }
   };
 }

@@ -30,7 +30,7 @@ test('attaching a photo writes both files and one row, and reads back', async ()
   const id = await journal.photos.attach({ entryId }, shot('full', 'thumb'));
 
   assert.match(id, UUID_PATTERN);
-  const photos = await journal.photos.listFor({ entryId });
+  const photos = (await journal.entries.getEntry(entryId))!.photos;
   assert.equal(photos.length, 1);
   assert.equal(photos[0].id, id);
   // The stored name is the opaque uuid.jpg of ticket 11, not a label and
@@ -48,7 +48,7 @@ test('an entry carries several photos, oldest first', async () => {
   const first = await journal.photos.attach({ entryId }, shot('a', 'A'));
   const second = await journal.photos.attach({ entryId }, shot('b', 'B'));
 
-  const photos = await journal.photos.listFor({ entryId });
+  const photos = (await journal.entries.getEntry(entryId))!.photos;
   assert.deepEqual(
     photos.map((p) => p.id),
     [first, second]
@@ -61,11 +61,8 @@ test('a milestone photo goes through the same table and the same call', async ()
 
   const id = await journal.photos.attach({ milestoneId }, shot('m', 'M'));
 
-  const photos = await journal.photos.listFor({ milestoneId });
-  assert.deepEqual(
-    photos.map((p) => p.fileName),
-    [`${id}.jpg`]
-  );
+  const [milestone] = await journal.milestones.getMilestones();
+  assert.equal(milestone.photo?.fileName, `${id}.jpg`);
   assert.deepEqual(files.names(), [`${id}-thumb.jpg`, `${id}.jpg`]);
 });
 

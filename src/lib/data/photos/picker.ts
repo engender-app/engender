@@ -10,22 +10,24 @@
    URI is an Android one, and normalize() takes neither. */
 
 export interface PhotoPicker {
-  /** The bytes of what the user chose, or an empty array if they backed
-      out. Cancelling is an ordinary outcome, not an error. */
-  pick(options?: { multiple?: boolean }): Promise<Uint8Array[]>;
+  /** The bytes of everything the user chose, or an empty array if they
+      backed out. Cancelling is an ordinary outcome, not an error. */
+  pick(): Promise<Uint8Array[]>;
 }
 
 export function filePhotoPicker(): PhotoPicker {
   return {
-    pick(options = {}) {
+    pick() {
       return new Promise((resolve, reject) => {
         const input = document.createElement('input');
         input.type = 'file';
-        // A hint to the file dialog, not a guarantee: the bytes are still
-        // sniffed by normalize(), because this accepts whatever the OS
+        // A hint to the file dialog, not a guarantee: the bytes still go
+        // through normalize(), because this accepts whatever the OS
         // decides matches, HEIC included.
         input.accept = 'image/*';
-        input.multiple = options.multiple ?? false;
+        // An entry holds several photos, so one trip through the picker
+        // can bring back several.
+        input.multiple = true;
 
         const done = (result: Uint8Array[] | Error) => {
           input.remove();

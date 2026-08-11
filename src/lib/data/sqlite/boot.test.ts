@@ -125,3 +125,18 @@ test('does not load reference data or sweep photos after a failed migration', as
 
   assert.equal(touchedAfterFailure, false);
 });
+
+test('a failing photo sweep still boots: housekeeping must not cost the app its screens', async () => {
+  // Ticket 11 made this reachable - the sweep hits OPFS, which can fail on
+  // quota or in a browser without it. Reference data is different: a screen
+  // cannot render without it, so that failure is still the caller's.
+  const result = await boot({
+    createDriver: makeFakeDriver,
+    fileOps: noopFileOps(),
+    sweepOrphanPhotos: async () => {
+      throw new Error('OPFS unavailable');
+    }
+  });
+
+  assert.equal(result.phase, 'ready');
+});

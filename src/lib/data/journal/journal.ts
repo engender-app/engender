@@ -1,7 +1,7 @@
 /* The journal (ADR-0017, CONTEXT: "Journal"): everything this device holds
    about the user's transition, reached through one handle bound to a
    database driver. A factory takes a SqliteDriver and a photo file store
-   and composes six area modules behind that handle. The interface is
+   and composes seven area modules behind that handle. The interface is
    uniformly async and free of Svelte runes, so the whole thing runs under
    the Node tier's real SQLite; it mints every row's identity itself
    (ADR-0002), so no screen ever needs a Date.now() scheme again.
@@ -50,20 +50,7 @@ export interface Journal {
   reconcileBuiltIns(): Promise<void>;
 }
 
-/* The default for callers with no file store: reads find nothing and
-   writes are refused rather than silently dropped, so a photo can never
-   look stored when nothing holds its bytes. Deleting still succeeds -
-   removing a file that was never written is the state the caller wanted. */
-const noFiles: PhotoFileStore = {
-  write: async () => {
-    throw new Error('no photo file store: openJournal() was called without one');
-  },
-  read: async () => null,
-  remove: async () => {},
-  list: async () => []
-};
-
-export function openJournal(driver: SqliteDriver, files: PhotoFileStore = noFiles): Journal {
+export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journal {
   return {
     entries: makeEntriesArea(driver, files),
     tags: makeTagsArea(driver),

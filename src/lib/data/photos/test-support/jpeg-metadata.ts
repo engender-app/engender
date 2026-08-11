@@ -81,6 +81,44 @@ export function jpegWith(segments: { marker: number; body: Uint8Array }[]): Uint
 export const ascii = (text: string): Uint8Array =>
   new Uint8Array([...text].map((c) => c.charCodeAt(0)));
 
+/** The same JPEG with every APP2 ICC_PROFILE segment taken out.
+
+    Needed because a canvas writes its own colour profile into everything
+    it encodes, so a fixture built by a canvas cannot be used to ask where
+    an output's profile came from - both sides would already match. Strip
+    it and the question has an answer. */
+export function withoutIccProfile(jpeg: Uint8Array): Uint8Array {
+  const out: number[] = [0xff, 0xd8];
+  let i = 2;
+  while (i + 3 < jpeg.length) {
+    if (jpeg[i] !== 0xff) break;
+    const marker = jpeg[i + 1];
+    if (marker === 0xda || marker === 0xd9) break;
+    const length = (jpeg[i + 2] << 8) | jpeg[i + 3];
+    if (length < 2) break;
+    const end = i + 2 + length;
+    const isIcc = marker === 0xe2 && identifierAt(jpeg, i + 4, end) === '/ICC_PROFILE';
+    if (!isIcc) out.push(...jpeg.slice(i, end));
+    i = end;
+  }
+  return new Uint8Array([...out, ...jpeg.slice(i)]);
+}
+
+/** The same JPEG with an APP2 segment claiming to be an ICC profile, whose
+    bytes are recognisable nonsense. If this ever comes back out of
+    normalize(), the encoder is carrying the source's profile through. */
+export function withFakeIccProfile(jpeg: Uint8Array): Uint8Array {
+  const body = new Uint8Array([...ascii('ICC_PROFILE'), 0x00, ...ascii('NOT-A-REAL-PROFILE')]);
+  const length = body.length + 2;
+  const stripped = withoutIccProfile(jpeg);
+  return new Uint8Array([
+    0xff, 0xd8,
+    0xff, 0xe2, (length >> 8) & 0xff, length & 0xff,
+    ...body,
+    ...stripped.slice(2)
+  ]);
+}
+
 /** The same JPEG with an EXIF Orientation tag spliced in after the SOI.
 
     A camera writes this instead of rotating the pixels, and it is the tag
