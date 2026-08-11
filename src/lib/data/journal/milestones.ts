@@ -8,14 +8,29 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Milestone } from '../types';
 import type { PhotoFileStore } from './journal';
-import { photosByMilestone, removeFilesOf } from './photos';
-import { assertChanged, mintUuid, now } from './support';
+import {
+  insertStagedPhoto,
+  photosByMilestone,
+  removeFilesAfterCommit,
+  removeFilesOf,
+  stagePhoto,
+  type NormalizedPhoto
+} from './photos';
+import { assertChanged, mintUuid, now, rowidByUuid } from './support';
+
+export type MilestonePhotoChange =
+  | { action: 'preserve' }
+  | { action: 'remove' }
+  | { action: 'replace'; photo: NormalizedPhoto };
 
 export interface MilestoneInput {
   id?: string;
   name: string;
   epochDay: number;
   templateKey?: string | null;
+  /** The final photo intent for this save. Omitted means preserve, which
+      keeps existing callers and non-photo edits from touching photo rows. */
+  photo?: MilestonePhotoChange;
 }
 
 export interface MilestonesArea {
@@ -49,19 +64,63 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
     },
 
     async upsertMilestone(input) {
+      const photoChange = input.photo ?? { action: 'preserve' };
+      let milestoneRowid: number | null = null;
       if (input.id) {
-        const result = await driver.run(
-          'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, updated_at = ? WHERE uuid = ?',
-          [input.name, input.epochDay, input.templateKey ?? null, now(), input.id]
-        );
-        assertChanged(result, `milestone: ${input.id}`);
+        const rows = await driver.query<{ id: number }>('SELECT id FROM milestone WHERE uuid = ?', [input.id]);
+        if (!rows[0]) throw new Error(`unknown milestone: ${input.id}`);
+        milestoneRowid = rows[0].id;
+      }
+
+      const oldPhotos =
+        milestoneRowid != null && photoChange.action !== 'preserve'
+          ? await driver.query<{ file_path: string }>('SELECT file_path FROM photo WHERE milestone_id = ?', [
+              milestoneRowid
+            ])
+          : [];
+      const staged = photoChange.action === 'replace' ? await stagePhoto(files, photoChange.photo) : null;
+
+      if (input.id) {
+        if (photoChange.action === 'preserve') {
+          const result = await driver.run(
+            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, updated_at = ? WHERE uuid = ?',
+            [input.name, input.epochDay, input.templateKey ?? null, now(), input.id]
+          );
+          assertChanged(result, `milestone: ${input.id}`);
+          return input.id;
+        }
+        await driver.transaction(async () => {
+          const result = await driver.run(
+            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, updated_at = ? WHERE uuid = ?',
+            [input.name, input.epochDay, input.templateKey ?? null, now(), input.id]
+          );
+          assertChanged(result, `milestone: ${input.id}`);
+          await driver.run('DELETE FROM photo WHERE milestone_id = ?', [milestoneRowid]);
+          if (staged) {
+            await insertStagedPhoto(driver, { entryId: null, milestoneId: milestoneRowid }, staged);
+          }
+        });
+        await removeFilesAfterCommit(files, oldPhotos);
         return input.id;
       }
       const uuid = mintUuid();
-      await driver.run(
-        'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [uuid, input.name, input.epochDay, input.templateKey ?? null, now()]
-      );
+      if (!staged) {
+        await driver.run(
+          'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
+          [uuid, input.name, input.epochDay, input.templateKey ?? null, now()]
+        );
+        return uuid;
+      }
+      await driver.transaction(async () => {
+        await driver.run(
+          'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
+          [uuid, input.name, input.epochDay, input.templateKey ?? null, now()]
+        );
+        if (staged) {
+          const rowid = await rowidByUuid(driver, 'milestone', uuid);
+          await insertStagedPhoto(driver, { entryId: null, milestoneId: rowid }, staged);
+        }
+      });
       return uuid;
     },
 

@@ -62,6 +62,9 @@ export interface PhotosArea {
 
 type PhotoRow = { uuid: string; file_path: string };
 
+export type StagedPhoto = { id: string; fileName: string };
+export type PhotoColumns = { entryId: number | null; milestoneId: number | null };
+
 const toPhoto = (row: PhotoRow): Photo => ({ id: row.uuid, fileName: row.file_path });
 
 /** Deletes every file the given photo rows owned, thumbnails included.
@@ -73,6 +76,20 @@ export async function removeFilesOf(
   rows: { file_path: string }[]
 ): Promise<void> {
   for (const row of rows) for (const name of filesOf(row.file_path)) await files.remove(name);
+}
+
+/** Best-effort cleanup after an owner save has committed. The rows are
+    already gone, so reporting a file-store failure would make a completed
+    save look unsuccessful. The boot orphan sweep will retry the leftovers. */
+export async function removeFilesAfterCommit(
+  files: PhotoFileStore,
+  rows: { file_path: string }[]
+): Promise<void> {
+  try {
+    await removeFilesOf(files, rows);
+  } catch {
+    // A committed save stays successful; sweepOrphanPhotos() owns retries.
+  }
 }
 
 /** The owner's photo rows, oldest first. Shared with the entries and
@@ -132,7 +149,7 @@ export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileSt
 async function columnsFor(
   driver: SqliteDriver,
   owner: PhotoOwner
-): Promise<{ entryId: number | null; milestoneId: number | null }> {
+): Promise<PhotoColumns> {
   if (owner.entryId != null) {
     const rows = await driver.query<{ id: number }>('SELECT id FROM entry WHERE id = ?', [owner.entryId]);
     if (rows.length === 0) throw new Error(`unknown entry: ${owner.entryId}`);
@@ -145,7 +162,7 @@ async function columnsFor(
 
 async function nextOrderIndex(
   driver: SqliteDriver,
-  columns: { entryId: number | null; milestoneId: number | null }
+  columns: PhotoColumns
 ): Promise<number> {
   const rows = await driver.query<{ next: number }>(
     `SELECT COALESCE(MAX(order_index) + 1, 0) AS next FROM photo
@@ -159,13 +176,10 @@ async function nextOrderIndex(
     rather than only a method on the area, because saving an entry attaches
     the photos picked in the same edit (entries.ts) and there must not be a
     second implementation of the file-before-row order for it to drift from. */
-export async function attachPhoto(
-  driver: SqliteDriver,
+export async function stagePhoto(
   files: PhotoFileStore,
-  owner: PhotoOwner,
   photo: NormalizedPhoto
-): Promise<string> {
-  const columns = await columnsFor(driver, owner);
+): Promise<StagedPhoto> {
   const uuid = mintUuid();
   const fileName = photoFileName(uuid);
   const [full, thumb] = filesOf(fileName);
@@ -175,13 +189,32 @@ export async function attachPhoto(
   await files.write(full, photo.full);
   await files.write(thumb, photo.thumb);
 
+  return { id: uuid, fileName };
+}
+
+export async function insertStagedPhoto(
+  driver: SqliteDriver,
+  columns: PhotoColumns,
+  photo: StagedPhoto
+): Promise<string> {
   const orderIndex = await nextOrderIndex(driver, columns);
   await driver.run(
     `INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [uuid, columns.entryId, columns.milestoneId, fileName, orderIndex, now()]
+    [photo.id, columns.entryId, columns.milestoneId, photo.fileName, orderIndex, now()]
   );
-  return uuid;
+  return photo.id;
+}
+
+export async function attachPhoto(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  owner: PhotoOwner,
+  photo: NormalizedPhoto
+): Promise<string> {
+  const columns = await columnsFor(driver, owner);
+  const staged = await stagePhoto(files, photo);
+  return insertStagedPhoto(driver, columns, staged);
 }
 
 export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): PhotosArea {

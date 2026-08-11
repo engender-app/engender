@@ -16,9 +16,9 @@
   let shown = $state(vocabulary.randomTemplates(3));
   /* A milestone shows one photo, so `photo` is whatever it will end up with -
      the stored row, a picked replacement, or none - and `storedPhotoId`
-     remembers what was there when the editor opened, so that row can still be
-     deleted after `photo` has been cleared. Nothing is committed until Save
-     (F1), so closing the sheet undoes both. */
+      remembers what was there when the editor opened, so Save can describe
+      preserve, remove or replace. Nothing is committed until Save (F1), so
+      closing the sheet undoes both. */
   let editor = $state<{
     id?: string;
     name: string;
@@ -63,20 +63,22 @@
 
   async function saveMilestone() {
     if (!editor) return;
-    // Read out before the sheet closes: `editor` is null from the next line on.
     const draft = { ...editor };
-    editor = null;
+    const photo =
+      draft.photo?.kind === 'picked'
+        ? { action: 'replace' as const, photo: draft.photo.photo }
+        : draft.storedPhotoId && !draft.photo
+          ? { action: 'remove' as const }
+          : { action: 'preserve' as const };
 
-    const id = await journal.milestones.upsertMilestone({
+    await journal.milestones.upsertMilestone({
       id: draft.id,
       name: draft.name.trim() || 'Milestone',
       epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
-      templateKey: draft.templateKey
+      templateKey: draft.templateKey,
+      photo
     });
-    const picked = draft.photo?.kind === 'picked' ? draft.photo.photo : null;
-    // The stored row goes if it was taken off, or if a picked photo replaces it.
-    if (draft.storedPhotoId && (picked || !draft.photo)) await journal.photos.remove(draft.storedPhotoId);
-    if (picked) await journal.photos.attach({ milestoneId: id }, picked);
+    editor = null;
   }
 </script>
 
