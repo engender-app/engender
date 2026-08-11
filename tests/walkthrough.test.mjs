@@ -288,6 +288,9 @@ try {
   await page.locator('[data-plain="csv"]').focus();
   await page.keyboard.press('Enter');
   await page.waitForSelector('.sheet .notice-danger');
+  if (await page.evaluate(() => document.activeElement?.hasAttribute('data-confirm-plain'))) {
+    throw new Error('the sheet opened with the confirm button under the cursor');
+  }
   await page.keyboard.press('Enter');
   if (await page.waitForEvent('download', { timeout: 1500 }).catch(() => null)) {
     throw new Error('a second Enter wrote the file without the confirm');

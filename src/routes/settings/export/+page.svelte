@@ -1,8 +1,8 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { backupAgeDays, backupIsStale, runExport, type ExportPath } from '$lib/data/archive/backup';
+  import { runExport, type ExportPath } from '$lib/data/archive/backup';
+  import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { applyPortablePreferences, prefs } from '$lib/data/prefs/store.svelte';
-  import { deliverFile } from '$lib/data/archive/deliver';
   import { openArchive } from '$lib/data/archive/pack';
   import { CorruptArchiveError, UnsupportedArchiveError } from '$lib/data/archive/container';
   import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
@@ -73,7 +73,6 @@
           naming: { dimensionName, tagLabel }
         },
         {
-          deliver: deliverFile,
           recordBackup: (at) => {
             prefs.lastBackupAt = at;
             // The journal is freshly backed up, so the Home notice starts
@@ -325,10 +324,7 @@
 
   <Sheet open={plainSheet !== null} title="Plain export" onClose={() => (plainSheet = null)}>
     {#if plainSheet}
-      <!-- The heading takes the focus the sheet hands out, so a keyboard
-           lands on the warning rather than on the button that writes an
-           unencrypted copy of the journal (F22). -->
-      <h3 tabindex="-1">Export unencrypted {plainSheet.toUpperCase()}?</h3>
+      <h3>Export unencrypted {plainSheet.toUpperCase()}?</h3>
       <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
         <Icon name="alert" size={20} />
         <div class="notice-body">

@@ -122,3 +122,37 @@ test('the JSON carries the whole journal and the settings that travel with it', 
   // and a file anyone can read is no place to start.
   assert.equal(parsed.preferences.pinHash, undefined);
 });
+
+/* The text, not the parse: what someone opens is a file, so the file is
+   what this pins - the key order, the indentation and the version at the
+   top of it, which a parsed comparison would let change silently. */
+test('the JSON reads as a file, indented, version first', () => {
+  const empty: ArchiveJournal = {
+    dimensions: [],
+    presets: [],
+    tagGroups: [],
+    entries: [],
+    milestones: [],
+    labResults: [],
+    reminders: []
+  };
+  const written = journalJson(empty, portablePreferences({ ...PREFERENCE_DEFAULTS, name: 'Ola', palette: 'lesbian' }));
+
+  assert.equal(
+    written.split('\n').slice(0, 12).join('\n'),
+    `{
+  "formatVersion": 1,
+  "journal": {
+    "dimensions": [],
+    "presets": [],
+    "tagGroups": [],
+    "entries": [],
+    "milestones": [],
+    "labResults": [],
+    "reminders": []
+  },
+  "preferences": {`
+  );
+  assert.match(written, /\n {4}"name": "Ola",\n {4}"activePreset": "p-btw",/);
+  assert.match(written, /\n {4}"palette": "lesbian",/);
+});

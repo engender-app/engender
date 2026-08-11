@@ -25,10 +25,13 @@ export interface PlainNaming {
   tagLabel(id: string): string;
 }
 
-/** RFC 4180: a field is quoted when it holds a delimiter, a quote or a line
-    break, and a quote inside it is doubled. A note is free text with all
-    three in it sooner or later, which is the one thing a hand-rolled CSV
-    always gets wrong. */
+/** RFC 4180 quoting: a field is quoted when it holds a delimiter, a quote
+    or a line break, and a quote inside it is doubled. A note is free text
+    with all three in it sooner or later, which is the one thing a
+    hand-rolled CSV always gets wrong. Rows are separated by a bare LF
+    rather than the RFC's CRLF - every spreadsheet reads both, and a note's
+    own newlines are LF, so one file with two conventions in it would be
+    stranger than one that consistently uses the shorter. */
 function csvField(value: string): string {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
@@ -49,11 +52,11 @@ function localTime(timestamp: number): string {
     and changes nothing about the entries that already carry it (CONTEXT:
     Hidden). A dimension nobody has used is left out rather than exported as
     a column of blanks. */
-function dimensionColumns(journal: ArchiveJournal) {
+function dimensionColumns(journal: ArchiveJournal, naming: PlainNaming) {
   const used = new Set(journal.entries.flatMap((e) => Object.keys(e.dims)));
   return journal.dimensions
     .filter((d) => used.has(d.key))
-    .map((d) => ({ key: d.key, header: d.builtIn ? '' : d.name }));
+    .map((d) => ({ key: d.key, header: d.builtIn ? naming.dimensionName(d.key) : d.name }));
 }
 
 const entryRow = (entry: ArchiveEntry, columns: { key: string }[], tags: Map<string, string>) => [
@@ -68,10 +71,7 @@ const entryRow = (entry: ArchiveEntry, columns: { key: string }[], tags: Map<str
 ];
 
 export function journalCsv(journal: ArchiveJournal, naming: PlainNaming): string {
-  const columns = dimensionColumns(journal).map((c) => ({
-    ...c,
-    header: c.header || naming.dimensionName(c.key)
-  }));
+  const columns = dimensionColumns(journal, naming);
   const tags = new Map(
     journal.tagGroups.flatMap((g) => g.tags.map((t) => [t.id, t.builtIn ? naming.tagLabel(t.id) : t.label] as const))
   );
