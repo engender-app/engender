@@ -9,7 +9,7 @@ import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 2);
+  assert.equal(db.getUserVersion(), 3);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -44,6 +44,45 @@ test('entry_fts is a contentless FTS5 table', async () => {
   ).sql;
   assert.match(def, /USING fts5/);
   assert.match(def, /content=''/);
+});
+
+test('v3 lets the index delete a row without being handed its old text', async () => {
+  // Why this option, rather than the 'delete' command a plain contentless
+  // table forces, is in migrations.ts on SCHEMA_V3.
+  const db = await migratedDb();
+  const def = (
+    db.raw
+      .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'entry_fts'")
+      .get() as { sql: string }
+  ).sql;
+  assert.match(def, /contentless_delete=1/);
+
+  db.raw.exec(
+    "INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('u1', 100, 1000, 'x', 1000)"
+  );
+  const id = (db.raw.prepare("SELECT id FROM entry WHERE uuid = 'u1'").get() as { id: number }).id;
+  db.raw.prepare('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)').run(id, 'lozko');
+  db.raw.prepare('DELETE FROM entry_fts WHERE rowid = ?').run(id);
+
+  const hits = db.raw.prepare(`SELECT rowid FROM entry_fts WHERE entry_fts MATCH '"lozko"*'`).all();
+  assert.deepEqual(hits, []);
+});
+
+test('v3 drops an entry out of the index when the entry row goes', async () => {
+  // The trigger is what makes this hold for every delete path, including
+  // ones written later that know nothing about the index - ticket 14's
+  // Replace import deletes entry rows wholesale.
+  const db = await migratedDb();
+  db.raw.exec(
+    "INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('u1', 100, 1000, 'x', 1000)"
+  );
+  const id = (db.raw.prepare("SELECT id FROM entry WHERE uuid = 'u1'").get() as { id: number }).id;
+  db.raw.prepare('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)').run(id, 'lozko');
+
+  db.raw.prepare('DELETE FROM entry WHERE id = ?').run(id);
+
+  const hits = db.raw.prepare(`SELECT rowid FROM entry_fts WHERE entry_fts MATCH '"lozko"*'`).all();
+  assert.deepEqual(hits, []);
 });
 
 test('v2 adds gender_dimension.hidden, defaulting to visible', async () => {
