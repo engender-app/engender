@@ -23,3 +23,16 @@ same problem: a restored folder URI may not exist on the importing device.
 The split is an allowlist, not an "everything except" filter, so a preference added
 later defaults to device-local and cannot leak into archives by accident. A REPLACE
 import discards journal data but leaves the device's own security state intact.
+
+## Amended by ticket 14: which import writes preferences at all
+
+A Replace installs the archive's portable preferences over this device's; a Merge
+writes none of them. Merge's rule for rows is that what is already here wins, and a
+preference is the one thing on this screen the user can see is already set - having
+an import silently change the palette and the display name while explicitly leaving
+every row alone would make "merge into current" mean two different things at once.
+
+Preferences are not a journal area, so neither operation touches the `pref` table:
+the journal restores rows, and the screen that drove it writes the preferences
+afterwards. That is also what makes "Replace leaves the PIN alone" true by
+construction rather than by a filter someone has to remember to apply.

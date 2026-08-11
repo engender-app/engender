@@ -33,6 +33,19 @@ import type { Journal } from '../journal/journal';
     the entry it belongs to. */
 export type TableName = 'entry' | 'tag' | 'dimension' | 'preset' | 'milestone' | 'photo' | 'lab' | 'reminder';
 
+/** Every table there is, in one place: what an import rewrites, and what
+    journal.svelte.ts keeps a version per. */
+export const TABLE_NAMES: TableName[] = [
+  'entry',
+  'tag',
+  'dimension',
+  'preset',
+  'milestone',
+  'photo',
+  'lab',
+  'reminder'
+];
+
 /** Every operation each area offers, split by whether it changes anything.
     `writes` maps to the tables the operation writes; `reads` is a plain list
     so that adding either kind is a deliberate act.
@@ -102,14 +115,19 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },
     reads: ['getReminders']
   },
-  // The two areas that never write: stats (ADR-0017's ticket-10 amendment) and
-  // archive, which reads the whole journal out for ticket 13's export. Reading
-  // one back in is an import, and that writes through the areas above.
+  // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {
     writes: {},
     reads: ['dayAverages', 'entryCountsByDay', 'tagInsights', 'streak', 'recap']
   },
-  archive: { writes: {}, reads: ['snapshot'] }
+  /* An import rewrites the journal (ticket 14), so it invalidates all of it -
+     every query and every mirrored slice. Naming the tables one at a time
+     would be a list to keep in step with what a restore happens to touch,
+     and a Replace touches everything by definition. */
+  archive: {
+    writes: { replace: TABLE_NAMES, merge: TABLE_NAMES },
+    reads: ['snapshot']
+  }
 };
 
 /** Reconciling adds whatever built-in vocabulary is missing, by key. It
