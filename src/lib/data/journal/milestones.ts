@@ -8,6 +8,8 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Milestone } from '../types';
 import type { PhotoFileStore } from './journal';
+import { photosByMilestone } from './photos';
+import { filesOf } from '../photos/names';
 import { assertChanged, mintUuid, now } from './support';
 
 export interface MilestoneInput {
@@ -28,15 +30,22 @@ export interface MilestonesArea {
 export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore): MilestonesArea {
   return {
     async getMilestones() {
-      const rows = await driver.query<{ uuid: string; name: string; epoch_day: number; template_key: string | null }>(
-        'SELECT uuid, name, epoch_day, template_key FROM milestone ORDER BY epoch_day, id'
-      );
+      const rows = await driver.query<{
+        id: number;
+        uuid: string;
+        name: string;
+        epoch_day: number;
+        template_key: string | null;
+      }>('SELECT id, uuid, name, epoch_day, template_key FROM milestone ORDER BY epoch_day, id');
+      // One query for every milestone's photo rather than one per row: the
+      // milestones screen renders the whole list at once.
+      const photos = await photosByMilestone(driver);
       return rows.map((r) => ({
         id: r.uuid,
         name: r.name,
         epochDay: r.epoch_day,
         templateKey: r.template_key,
-        photo: null // rows exist from ticket 11 on; nothing renders them yet
+        photo: photos.get(r.id) ?? null
       }));
     },
 
@@ -68,7 +77,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       });
       // After the commit, like deleteEntry: rows never come back because a
       // file removal failed; the boot sweep reclaims orphaned files.
-      for (const p of photos) await files.remove(p.file_path);
+      for (const p of photos) for (const name of filesOf(p.file_path)) await files.remove(name);
     }
   };
 }

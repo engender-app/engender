@@ -144,6 +144,109 @@ try {
   fail('ticket 12 browser tier', e.message ?? String(e));
 }
 
+// --- Ticket 11: normalize() against a real canvas, and the OPFS store -----
+try {
+  const r = await load('/photos.html', 'data-photos-probe-ready', '__photosProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  const size = (s) => `${s.width}x${s.height}`;
+
+  if (size(r.bigFull) === '2048x1536') ok('a 4000x3000 photo normalizes to 2048px on the long edge (ADR-0008)');
+  else fail('a 4000x3000 photo normalizes to 2048px on the long edge (ADR-0008)', `got ${size(r.bigFull)}`);
+
+  if (size(r.smallFull) === '300x200') ok('a photo smaller than the cap is not upscaled');
+  else fail('a photo smaller than the cap is not upscaled', `got ${size(r.smallFull)}`);
+
+  if (size(r.bigThumb) === '320x240' && r.thumbIsSmallerFile)
+    ok('a thumbnail is generated alongside, small enough that the grid never decodes a full photo');
+  else fail('a thumbnail is generated alongside', `${size(r.bigThumb)}, smaller file: ${r.thumbIsSmallerFile}`);
+
+  // The fixture has to carry EXIF in, or "no EXIF out" proves nothing.
+  if (r.inputMarkers.includes('APP1/Exif')) ok('the orientation fixture really does carry EXIF going in');
+  else fail('the orientation fixture really does carry EXIF going in', JSON.stringify(r.inputMarkers));
+
+  // ADR-0015's claim, segment by segment: EXIF and XMP ride in APP1,
+  // Photoshop/IPTC in APP13, free text in COM. None may survive.
+  const carried = [...r.outputMarkers, ...r.thumbMarkers].filter((name) => !name.startsWith('APP2/ICC_PROFILE'));
+  if (carried.length === 0)
+    ok('normalize() leaves no EXIF, GPS, IPTC or comment metadata in the photo or its thumbnail (ADR-0015)');
+  else
+    fail(
+      'normalize() leaves no EXIF, GPS, IPTC or comment metadata in the photo or its thumbnail (ADR-0015)',
+      JSON.stringify(carried)
+    );
+
+  // The one segment that does survive, and why it is allowed to.
+  if (r.iccProfilesMatch)
+    ok(
+      `the only surviving segment is the canvas's own ${r.iccProfileLength}-byte ICC profile, byte-identical across two unrelated photos`
+    );
+  else
+    fail(
+      "the only surviving segment is the canvas's own ICC profile",
+      'the ICC profiles of two unrelated photos differ, so one is being carried over from the source'
+    );
+
+  if (size(r.rotatedSize) === '50x100')
+    ok('EXIF orientation 6 is baked into the pixels: a 100x50 landscape stores as a 50x100 portrait');
+  else
+    fail(
+      'EXIF orientation 6 is baked into the pixels: a 100x50 landscape stores as a 50x100 portrait',
+      `got ${size(r.rotatedSize)} - if it is 100x50 the tag was dropped without applying it`
+    );
+
+  if (r.heic?.name === 'UnsupportedImageError' && /HEIC/.test(r.heic.message))
+    ok('HEIC is refused by name with a message that says what to do, not silently dropped');
+  else fail('HEIC is refused by name with a message that says what to do', JSON.stringify(r.heic));
+
+  if (r.junk?.name === 'UnsupportedImageError') ok('a file that is not an image is refused the same way');
+  else fail('a file that is not an image is refused the same way', JSON.stringify(r.junk));
+
+  if (JSON.stringify(r.readBack) === '[1,2,3,4,5]' && r.listed.includes('probe.jpg'))
+    ok('the OPFS store writes, lists and reads a photo back byte for byte');
+  else fail('the OPFS store writes, lists and reads a photo back byte for byte', JSON.stringify(r.readBack));
+
+  if (r.readMissing === null) ok('reading a file that is not there answers null rather than throwing');
+  else fail('reading a file that is not there answers null rather than throwing', JSON.stringify(r.readMissing));
+
+  if (!r.listedAfterRemove.includes('probe.jpg') && r.removeMissingWasQuiet)
+    ok('remove takes the file, and removing what is not there stays quiet');
+  else fail('remove takes the file, and removing what is not there stays quiet', JSON.stringify(r.listedAfterRemove));
+
+  // The safety property: the sweep deletes everything the store lists, so
+  // the store must not be able to list the database.
+  const database = r.rootNames.filter((n) => n.endsWith('.sqlite3'));
+  if (r.rootNames.includes(r.photoDirectory) && database.length > 0 && !r.listed.some((n) => n.endsWith('.sqlite3')))
+    ok(`photos live in ${r.photoDirectory}/, so the sweep can never see the database in the OPFS root`);
+  else
+    fail(
+      'photos live in their own directory, so the sweep can never see the database in the OPFS root',
+      `root: ${JSON.stringify(r.rootNames)}, store listed: ${JSON.stringify(r.listed)}`
+    );
+
+  // The whole path, end to end, on the real driver and real OPFS.
+  const rt = r.roundTrip;
+  if (rt.photoCount === 1 && rt.fileName === rt.expectedFileName)
+    ok('a normalized photo attaches to an entry and reads back under its opaque uuid name');
+  else fail('a normalized photo attaches to an entry and reads back', JSON.stringify(rt));
+
+  if (r.thumbFromStore && `${r.thumbFromStore.width}x${r.thumbFromStore.height}` === '320x213' && r.fullIsStoredToo)
+    ok('the thumbnail loads from the store at 320px, so the Progress grid never decodes the full photo');
+  else
+    fail(
+      'the thumbnail loads from the store at 320px',
+      `${JSON.stringify(r.thumbFromStore)}, full stored: ${r.fullIsStoredToo}`
+    );
+
+  if (r.filesAfterDelete.length === 0) ok('deleting the entry takes the photo and its thumbnail off real storage');
+  else fail('deleting the entry takes the photo and its thumbnail off real storage', JSON.stringify(r.filesAfterDelete));
+
+  if (r.filesAfterSweep.length === 0) ok('the boot sweep reclaims a file no row references, against real OPFS');
+  else fail('the boot sweep reclaims a file no row references, against real OPFS', JSON.stringify(r.filesAfterSweep));
+} catch (e) {
+  fail('ticket 11 browser tier', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 

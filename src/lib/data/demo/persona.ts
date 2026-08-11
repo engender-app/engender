@@ -88,7 +88,9 @@ function buildEntries(): DB['entries'] {
       const hour = k === 0 ? 8 + Math.floor(r() * 5) : 17 + Math.floor(r() * 4);
       const minute = Math.floor(r() * 60);
       const note = NOTES[Math.floor(r() * NOTES.length)];
-      const photos = r() < 0.1 ? [{ id: 'ph' + id, hue: Math.floor(r() * 360), label: 'Photo' }] : [];
+      // No fileName: the persona ships no image files, so these render as
+      // PhotoThumb's placeholder. Real photos arrive through the journal.
+      const photos = r() < 0.1 ? [{ id: 'ph' + id, fileName: null }] : [];
       // Today's sample entry sits a few hours back so anything logged "now" sorts above it.
       const ts = back === 0 ? Date.now() - 3 * 3600000 : day * DAY + hour * 3600000 + minute * 60000;
       entries.push({ id: id++, epochDay: day, timestamp: ts, mood, note, dims: { euphoria_dysphoria: eu, femininity: fem }, tags: [...new Set(tags)], photos });
@@ -125,9 +127,9 @@ export function personaDb(): DB {
     tagGroups,
     entries: buildEntries(),
     milestones: [
-      { id: 'm1', name: 'HRT start', epochDay: today - 745, templateKey: 'hrt_start', photo: { id: 'mp1', hue: 205, label: 'Photo' } },
+      { id: 'm1', name: 'HRT start', epochDay: today - 745, templateKey: 'hrt_start', photo: { id: 'mp1', fileName: null } },
       { id: 'm2', name: 'Coming out to my parents', epochDay: today - 940, templateKey: 'coming_out', photo: null },
-      { id: 'm3', name: 'First time presenting publicly', epochDay: today - 512, templateKey: 'first_public', photo: { id: 'mp3', hue: 330, label: 'Photo' } },
+      { id: 'm3', name: 'First time presenting publicly', epochDay: today - 512, templateKey: 'first_public', photo: { id: 'mp3', fileName: null } },
       { id: 'm4', name: 'Name-change hearing', epochDay: today + 16, templateKey: 'name_change', photo: null },
       { id: 'm5', name: 'Voice workshop weekend', epochDay: today + 42, templateKey: null, photo: null },
     ],

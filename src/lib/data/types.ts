@@ -9,9 +9,11 @@
 
 export interface Photo {
   id: string;
-  /** Demo stand-in: a hue for the placeholder gradient. The real app stores file paths. */
-  hue: number;
-  label: string;
+  /** The opaque `<uuid>.jpg` the file store holds, resolved against a root
+      the platform picks (photos/names.ts). Null means no stored file: the
+      demo persona's placeholders, which render as the gradient PhotoThumb
+      otherwise uses while loading. A photo row always has one. */
+  fileName: string | null;
 }
 
 /** A photo the editor drafted but nothing has saved yet: identity is
