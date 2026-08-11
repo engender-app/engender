@@ -10,6 +10,7 @@
 
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { hashPin, verifyPin } from '$lib/lock/pin';
+  import { localStorageAttempts } from '$lib/lock/attempt-store';
   import { createAttemptThrottle } from '$lib/lock/throttle';
   import { markUnlocked } from '$lib/stores/lock.svelte';
   import { resetApp } from '$lib/stores/boot.svelte';
@@ -18,7 +19,15 @@
   import PrideAurora from './PrideAurora.svelte';
   import Sheet from './Sheet.svelte';
 
-  let { mode = 'unlock', onDone }: { mode?: 'unlock' | 'setup'; onDone?: () => void } = $props();
+  /* onCancel is what makes setup optional: without it, a toggle flipped by
+     mistake ends on a chromeless screen whose only other button deletes
+     everything. The gate itself passes neither prop - there is nothing to
+     cancel back to. */
+  let {
+    mode = 'unlock',
+    onDone,
+    onCancel
+  }: { mode?: 'unlock' | 'setup'; onDone?: () => void; onCancel?: () => void } = $props();
 
   const PIN_LENGTH = 4;
 
@@ -30,22 +39,39 @@
   let resetting = $state(false);
   let waitMs = $state(0);
 
-  const throttle = createAttemptThrottle();
+  const throttle = createAttemptThrottle(localStorageAttempts());
   let countdown: ReturnType<typeof setInterval> | null = null;
 
   let confirming = $derived(mode === 'setup' && chosen !== '');
   let android = $derived(isAndroid());
 
-  function tickWait() {
-    waitMs = throttle.remainingMs(Date.now());
-    if (waitMs === 0 && countdown) {
-      clearInterval(countdown);
-      countdown = null;
-    }
+  /* These write `waitMs` and never read it. An effect that reads it would
+     re-run on every tick of the interval it started, tear that interval
+     down and, holding a handle it no longer owns, decline to start
+     another - which is how the countdown froze at the first second. */
+  function stopCountdown() {
+    if (countdown) clearInterval(countdown);
+    countdown = null;
   }
 
-  $effect(() => () => {
-    if (countdown) clearInterval(countdown);
+  function tickWait() {
+    const remaining = throttle.remainingMs(Date.now());
+    waitMs = remaining;
+    if (remaining === 0) stopCountdown();
+  }
+
+  function startCountdown() {
+    const remaining = throttle.remainingMs(Date.now());
+    waitMs = remaining;
+    if (remaining > 0 && !countdown) countdown = setInterval(tickWait, 250);
+  }
+
+  /* A wait the last page load earned is still owed - reloading is the
+     cheapest thing a guesser can do. Setup never asks: nothing there is
+     being guessed at. */
+  $effect(() => {
+    if (mode === 'unlock') startCountdown();
+    return stopCountdown;
   });
 
   function press(key: string) {
@@ -99,8 +125,7 @@
     throttle.recordWrong(Date.now());
     pin = '';
     error = 'That PIN is not right.';
-    tickWait();
-    if (waitMs > 0 && !countdown) countdown = setInterval(tickWait, 250);
+    startCountdown();
   }
 
   async function confirmReset() {
@@ -108,9 +133,13 @@
     try {
       await resetApp();
     } catch (e) {
+      // The reason belongs in the console, not on a lock screen: "could
+      // not remove entry" tells the person holding the phone nothing they
+      // can act on.
+      console.error('the app reset failed', e);
       resetting = false;
       resetOpen = false;
-      error = `Could not reset: ${(e as Error).message}`;
+      error = 'Could not reset the app. Try again, or close and reopen it first.';
     }
   }
 
@@ -177,6 +206,14 @@
       </button>
     </div>
 
+    {#if mode === 'setup' && onCancel}
+      <div style="text-align:center;margin-top:var(--space-6)">
+        <button class="btn btn-ghost" data-cancel-setup onclick={onCancel}>
+          <span>Not now</span>
+        </button>
+      </div>
+    {/if}
+
     {#if mode === 'unlock'}
       <div style="text-align:center;margin-top:var(--space-6)">
         <button class="btn btn-ghost" data-forgot onclick={() => (resetOpen = true)}>
@@ -204,7 +241,7 @@
   </div>
   <p class="ob-text">
     You can start over instead. That deletes every entry, photo and setting on this device and takes you back
-    to the welcome screen. If you have an export file, you can restore from it afterwards.
+    to the welcome screen. If you have an archive from an earlier export, you can restore from it afterwards.
   </p>
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-reset disabled={resetting} onclick={confirmReset}>

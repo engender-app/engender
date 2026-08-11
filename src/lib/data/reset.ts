@@ -14,8 +14,10 @@ export interface LocalDataTargets {
   /** Lets go of the database file; OPFS will not delete a file whose sync
       access handle is still open. */
   closeDatabase: () => Promise<void>;
-  /** The directory the database, its pre-migration copy and the photo
-      directory all live in. */
+  /** Everything this installation stores lives under here - the database,
+      its pre-migration copy, the photo directory - and everything under it
+      goes. Emptied rather than deleted by name, so a reset does not have
+      to be kept in step with whatever writes there next. */
   storageRoot: () => Promise<ListableDirectory>;
   clearBootCache: () => void;
 }

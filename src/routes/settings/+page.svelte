@@ -336,7 +336,11 @@
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
         <span class="row-text">
           <span class="row-title">Quick exit</span>
-          <span class="row-subtitle">two-finger swipe down locks instantly{isAndroid() ? '' : ' and swaps the tab to a blank page'}</span>
+          <span class="row-subtitle">
+            two-finger swipe down{isAndroid() ? '' : ' blanks the tab and'} locks instantly{prefs.appLock
+              ? ''
+              : ' · without app lock it only blanks the screen'}
+          </span>
         </span>
         <Switch
           checked={prefs.quickExit}

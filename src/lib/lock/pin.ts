@@ -19,15 +19,15 @@ const RECORD_VERSION = 'v1';
 
 /** `v1$memory$iterations$parallelism$length$salt$hash`, the last two
     base64. One string, because a preference is one value. */
-export async function hashPin(pin: string, params: Argon2Params = PIN_ARGON2_PARAMS): Promise<string> {
+export async function hashPin(pin: string): Promise<string> {
   const salt = randomSalt();
-  const hash = await deriveKey(pin, salt, params);
+  const hash = await deriveKey(pin, salt, PIN_ARGON2_PARAMS);
   return [
     RECORD_VERSION,
-    params.memorySize,
-    params.iterations,
-    params.parallelism,
-    params.hashLength,
+    PIN_ARGON2_PARAMS.memorySize,
+    PIN_ARGON2_PARAMS.iterations,
+    PIN_ARGON2_PARAMS.parallelism,
+    PIN_ARGON2_PARAMS.hashLength,
     base64(salt),
     base64(hash)
   ].join('$');
