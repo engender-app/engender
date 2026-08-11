@@ -2,7 +2,8 @@
    All reads are plain functions over the reactive db, so components wrap
    them in $derived and stay live. */
 
-import { db, save, newId, todayEpochDay } from '../db.svelte';
+import { db, save, newId } from '../db.svelte';
+import { todayEpochDay } from '../epochDay';
 import type { Entry } from '../types';
 import { tagById } from './tags';
 

@@ -2,7 +2,8 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db, save, todayEpochDay } from '$lib/data/db.svelte';
+  import { db, save } from '$lib/data/db.svelte';
+  import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { entriesNewestFirst, quickLog, streakDays } from '$lib/data/repositories/entries';
   import { upcomingMilestones } from '$lib/data/repositories/milestones';
@@ -27,7 +28,7 @@
   let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
 
   let backupAgeDays = $derived(
-    db.prefs.lastBackupAt ? Math.floor((Date.now() - db.prefs.lastBackupAt) / 86400000) : null
+    db.prefs.lastBackupAt ? today - epochDayFromTimestamp(db.prefs.lastBackupAt) : null
   );
   let showBackupNotice = $derived(
     backupAgeDays != null && backupAgeDays > 30 && !db.prefs.backupNoticeDismissed
@@ -62,7 +63,7 @@
   <PrideAurora />
   <header class="home-header">
     <h1 class="home-hero" translate="no">{m.app_name()}</h1>
-    <p class="home-hello">{db.prefs.name ? `${m.hello()} ${db.prefs.name} · ` : ''}{fmtDay(today)}</p>
+    <p class="home-hello">{db.prefs.name ? `${m.hello()} ${db.prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     {#if streak > 1}
       <p class="home-streak"><Icon name="sparkle" size={14} /> {streak} {m.streak_row()}</p>
     {/if}

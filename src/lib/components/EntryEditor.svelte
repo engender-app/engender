@@ -1,7 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db, todayEpochDay } from '$lib/data/db.svelte';
+  import { db } from '$lib/data/db.svelte';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { getEntry, upsertEntry, deleteEntry } from '$lib/data/repositories/entries';
   import { activeDimensions, activePreset } from '$lib/data/repositories/dimensions';
@@ -71,7 +72,7 @@
     </div>
   </header>
   <p class="editor-date">
-    {isToday ? `${m.today()} · ` : ''}{fmtDay(day)}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
+    {isToday ? `${m.today()} · ` : ''}{fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
   </p>
 
   <section class="card editor-section">

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
-  import { fmtDay, intlLocale } from '$lib/data/dates';
+  import { fmtDay, fmtMonthName } from '$lib/data/dates';
+  import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
   import { seriesForRange, tagInsights, streakDays } from '$lib/data/repositories/entries';
   import { activeDimensions } from '$lib/data/repositories/dimensions';
   import Icon from '$lib/components/Icon.svelte';
@@ -20,10 +21,8 @@
   let streak = $derived(streakDays());
   let insights = $derived(tagInsights(range, db.prefs.colorMetric));
   let lastMonthName = $derived.by(() => {
-    const now = new Date();
-    return new Intl.DateTimeFormat(intlLocale(), { month: 'long' }).format(
-      new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    );
+    const { year, month } = previousCalendarMonthRange(todayEpochDay());
+    return fmtMonthName(year, month);
   });
 
   let valueSheet = $state<{ name: string; key: string; series: ReturnType<typeof seriesForRange> } | null>(null);

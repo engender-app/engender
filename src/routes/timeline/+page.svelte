@@ -1,8 +1,9 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db, todayEpochDay } from '$lib/data/db.svelte';
+  import { db } from '$lib/data/db.svelte';
+  import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
   import { milestoneStatus } from '$lib/data/repositories/milestones';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtDuration } from '$lib/data/dates';
   import type { Milestone } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
@@ -25,8 +26,7 @@
         todayInserted = true;
       }
       if (prevDay != null && mi.epochDay - prevDay > 420) {
-        const years = (mi.epochDay - prevDay) / 365.25;
-        const label = years >= 1.5 ? `${Math.round(years)} years` : `${Math.round((mi.epochDay - prevDay) / 30)} months`;
+        const label = fmtDuration(calendarDuration(prevDay, mi.epochDay));
         out.push({ kind: 'gap', label, id: 'gap-' + mi.id });
       }
       const s = milestoneStatus(mi);

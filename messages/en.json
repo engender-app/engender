@@ -121,5 +121,36 @@
   "continue": "Continue",
   "skip": "Skip",
   "not_now": "Not now",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "n_years": [
+    {
+      "declarations": ["input n", "local nPlural = n: plural"],
+      "selectors": ["nPlural"],
+      "match": {
+        "nPlural=one": "{n} year",
+        "nPlural=other": "{n} years"
+      }
+    }
+  ],
+  "n_months": [
+    {
+      "declarations": ["input n", "local nPlural = n: plural"],
+      "selectors": ["nPlural"],
+      "match": {
+        "nPlural=one": "{n} month",
+        "nPlural=other": "{n} months"
+      }
+    }
+  ],
+  "n_days": [
+    {
+      "declarations": ["input n", "local nPlural = n: plural"],
+      "selectors": ["nPlural"],
+      "match": {
+        "nPlural=one": "{n} day",
+        "nPlural=other": "{n} days"
+      }
+    }
+  ],
+  "apart_suffix": "apart"
 }
