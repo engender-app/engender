@@ -13,6 +13,8 @@
   import { epochDayFromLocalDate, localDateFromEpochDay } from '$lib/data/dates';
   import { dateInputValue, dateFromInputValue } from '$lib/data/dateInput';
   import { ui } from '$lib/stores/ui.svelte';
+  import { bootState, startBoot } from '$lib/stores/boot.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
@@ -63,6 +65,19 @@
     if (!db.prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
   });
 
+  /* SQLite boot (ticket 04): opens the real database and runs migrations
+     in the background. Nothing reads from it yet (repositories move onto
+     it in ticket 07), so this can't affect what's on screen today except
+     to report a failure or a denied persistent-storage request. */
+  $effect(() => {
+    startBoot();
+  });
+  $effect(() => {
+    if (bootState.status === 'ready' && bootState.persistDenied) {
+      toast("This browser didn't grant persistent storage — export backups regularly so nothing is lost to storage pressure.");
+    }
+  });
+
   /* Dev demo bar frame emulation via body classes. */
   $effect(() => {
     document.body.classList.toggle('has-demo-bar', DEMO);
@@ -88,6 +103,15 @@
 
 <div class="app-viewport">
   <div class="app" class:disguised={db.prefs.disguise}>
+    {#if bootState.status === 'error'}
+      <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
+        <Icon name="alert" size={20} />
+        <div class="notice-body">
+          <span class="notice-title">Couldn't open the database</span>
+          {bootState.error}
+        </div>
+      </div>
+    {/if}
     {#if !chromeless}
       <nav class="app-rail" aria-label="Main">
         <div class="rail-brand">
