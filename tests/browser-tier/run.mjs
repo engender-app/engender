@@ -62,13 +62,23 @@ try {
   const first = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
   if (first.error) throw new Error(first.error);
 
-  if (first.userVersion === 1) ok('boot() opens the database and migrates it to the current schema');
+  if (first.userVersion === 2) ok('boot() opens the database and migrates it to the current schema');
   else fail('boot() opens the database and migrates it to the current schema', `user_version is ${first.userVersion}`);
 
   if (first.markerExisted === false) ok('boot() runs against a fresh database on first load');
   else fail('boot() runs against a fresh database on first load', 'marker entry already existed');
 
   ok(`navigator.storage.persist() resolved (denied: ${first.persistDenied})`);
+
+  // Ticket 07: run()'s changes/lastInsertRowid contract, which the
+  // journal's throw-on-unknown-id behaviour sits on (ADR-0002/0017).
+  const rc = first.runContract;
+  if (rc.insertChanges === 1 && rc.updateChanges === 1 && rc.missChanges === 0)
+    ok('run() reports changes truthfully for an insert, a hit and a miss');
+  else fail('run() reports changes truthfully for an insert, a hit and a miss', JSON.stringify(rc));
+  if (rc.lastInsertRowid === rc.rowidByUuid && typeof rc.lastInsertRowid === 'number')
+    ok('run() reports lastInsertRowid as the row just inserted (checked against its uuid)');
+  else fail('run() reports lastInsertRowid as the row just inserted (checked against its uuid)', JSON.stringify(rc));
 
   await reload();
   const second = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');

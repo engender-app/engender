@@ -26,6 +26,24 @@ export interface ReminderRule {
   epochDay: number | null;
 }
 
+/** The same three-way shape the schema's CHECK enforces: a one-off day, an
+    anchored EVERY_N_DAYS, or a bare DAILY/WEEKLY - nothing in between.
+    Validated before the row is written so a bad rule fails as one clear
+    error rather than as a constraint violation from inside the driver. */
+export function assertValidRule(r: ReminderRule) {
+  const oneOff = r.recurrence === null && r.epochDay != null && r.interval == null && r.anchorEpochDay == null;
+  const everyN =
+    r.recurrence === 'EVERY_N_DAYS' && r.interval != null && r.anchorEpochDay != null && r.epochDay == null;
+  const plain =
+    (r.recurrence === 'DAILY' || r.recurrence === 'WEEKLY') &&
+    r.interval == null &&
+    r.anchorEpochDay == null &&
+    r.epochDay == null;
+  if (!oneOff && !everyN && !plain) {
+    throw new Error(`invalid reminder rule: ${r.recurrence ?? 'one-off'}`);
+  }
+}
+
 /** The rule's occurrence on a given epoch day, as a local Date. */
 function occurrenceOn(epochDay: number, time: string): Date {
   const [h, mi] = time.split(':').map(Number);
