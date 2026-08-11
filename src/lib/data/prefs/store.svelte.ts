@@ -20,7 +20,9 @@
      2. attachPreferences() lands the real values from SQLite.
      3. Writes go straight through. */
 
+import type { PortablePreferences } from '../archive/payload';
 import {
+  PORTABLE_KEYS,
   PREFERENCE_DEFAULTS,
   isPreferenceKey,
   type PreferenceKey,
@@ -70,6 +72,22 @@ export function selectMetric(dimensionKey: string | null) {
 export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
   for (const [key, value] of Object.entries(cached)) {
     if (isPreferenceKey(key)) values[key] = value as never;
+  }
+}
+
+/** The portable preferences a Replace import restores (ADR-0003), written
+    through the proxy above so each one lands in SQLite like any other change.
+    Walked over PORTABLE_KEYS rather than over what the file happens to hold,
+    which is the same allowlist that decided what could travel in the first
+    place - and a key the archive is missing keeps this device's value rather
+    than becoming undefined. A Merge calls none of this: what is already here
+    wins, for its rows and for its settings alike. */
+export function applyPortablePreferences(portable: Partial<PortablePreferences>) {
+  for (const key of PORTABLE_KEYS) {
+    const value = portable?.[key];
+    // Both sides index at the same key, which the compiler can't follow
+    // across a loop over a union of key types.
+    if (value !== undefined) prefs[key] = value as never;
   }
 }
 

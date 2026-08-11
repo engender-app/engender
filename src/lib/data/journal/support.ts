@@ -10,15 +10,25 @@ export const now = (): number => Date.now();
 /** SQLite stores booleans as 0/1. */
 export const bool = (n: unknown): boolean => n === 1;
 
-/** The rowid of a row just inserted under a freshly minted uuid. Reading
-    it back by uuid instead of trusting run()'s lastInsertRowid keeps the
-    journal off that second round-trip, which is only safe while a driver
+/** The rowid of the row matching `where`, named by what it was matched on.
+    Reading a rowid back instead of trusting run()'s lastInsertRowid keeps
+    the journal off that second round-trip, which is only safe while a driver
     serializes every statement on one connection (ADR-0017). */
-export async function rowidByUuid(driver: SqliteDriver, table: string, uuid: string): Promise<number> {
-  const rows = await driver.query<{ id: number }>(`SELECT id FROM ${table} WHERE uuid = ?`, [uuid]);
-  if (rows.length === 0) throw new Error(`inserted ${table} row not found by uuid`);
+export async function rowidWhere(
+  driver: SqliteDriver,
+  table: string,
+  where: string,
+  params: unknown[],
+  matchedOn: string
+): Promise<number> {
+  const rows = await driver.query<{ id: number }>(`SELECT id FROM ${table} WHERE ${where}`, params);
+  if (rows.length === 0) throw new Error(`${table} row not found by ${matchedOn}`);
   return rows[0].id;
 }
+
+/** The rowid of a row just inserted under a freshly minted uuid. */
+export const rowidByUuid = (driver: SqliteDriver, table: string, uuid: string): Promise<number> =>
+  rowidWhere(driver, table, 'uuid = ?', [uuid], 'uuid');
 
 /** A reference row's travelling identity (ADR-0002): the seeded key for a
     built-in, the minted uuid for a custom. A row with neither can only

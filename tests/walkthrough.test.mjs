@@ -10,6 +10,7 @@
    port literal to keep in sync by hand. Run with `npm run test:walkthrough`
    - it builds first, with the demo bar compiled in (flow 13 drives its
    #demo-jump control), then serves that build. */
+import { readFile } from 'node:fs/promises';
 import { preview } from 'vite';
 import { createReporter, launchChromium } from './browser-harness.mjs';
 
@@ -158,10 +159,21 @@ try {
   ok('custom dimension live preview');
 } catch (e) { fail('custom dimension', e); }
 
-/* 11. export: wrong password, plain export confirm */
+/* 11. import: a file that is not an archive, plus the plain export confirm */
 try {
   await fresh('/settings/export');
+  /* A real file through a real dialog. It is not an archive, so the
+     plaintext header refuses it before the password is put anywhere near a
+     key derivation (ADR-0007) - and the screen says so instead of throwing. */
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: 'not-a-backup.ttbackup',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from('this is not an archive')
+    })
+  );
   await page.locator('[data-pick-file]').click();
+  await page.waitForFunction(() => document.querySelector('#picked-file')?.textContent.includes('not-a-backup'));
   await page.locator('#imp-pass').fill('wrongpass');
   await page.locator('[data-import]').click();
   await page.waitForSelector('[role="alert"]');
@@ -169,8 +181,53 @@ try {
   await page.waitForSelector('.sheet .notice-danger');
   await page.locator('[data-confirm-plain]').click();
   await page.waitForSelector('.toast');
-  ok('wrong password + plain export warn/confirm');
+  ok('a file that is not a backup is refused + plain export warn/confirm');
 } catch (e) { fail('export/import', e); }
+
+/* 11b. the whole of F14 through the screen: export the demo journal, then
+   import the file that came out of it. Merging your own backup is the one
+   import whose outcome is knowable in advance - every row matches by
+   identity, so a second copy of anything would be a bug (ticket 14). */
+try {
+  /* Home's own list of the last few days, counted off the DOM: if a merge
+     inserted a second copy of anything, every one of those days would show
+     twice the entries it did before. */
+  const homeCards = async () => {
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await booted();
+    await page.waitForSelector('.entry-card');
+    return page.locator('.entry-card').count();
+  };
+
+  await fresh('/');
+  const before = await homeCards();
+
+  await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('#exp-pass').fill('walkthrough');
+  await page.locator('[data-export]').click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 120000 }),
+    page.locator('[data-confirm-export]').click()
+  ]);
+  const buffer = await readFile(await download.path());
+
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({ name: download.suggestedFilename(), mimeType: 'application/octet-stream', buffer })
+  );
+  await page.locator('[data-pick-file]').click();
+  await page.locator('#imp-pass').fill('walkthrough');
+  await page.locator('[data-import]').click();
+  await page.waitForFunction(
+    () => [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('Merged')),
+    null,
+    { timeout: 120000 }
+  );
+
+  const after = await homeCards();
+  if (after !== before) throw new Error(`Home went from ${before} entries to ${after} on merging its own backup`);
+  ok(`export → import round trip through the screen, ${before} recent entries unchanged`);
+} catch (e) { fail('archive round trip', e); }
 
 /* 12. app lock: the gate, the throttle, and the PIN that opens it (ticket 17) */
 try {
