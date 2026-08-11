@@ -1,5 +1,6 @@
-/* Backup health (ticket 15, PRD F21): every way a copy of the journal can
-   leave the device, and the timestamp that says one did.
+/* Every way a copy of the journal can leave the device (ticket 15, PRD
+   F21), and the timestamp that says one did. How old that timestamp is
+   allowed to get is backupHealth.ts.
 
    The paths are a list rather than three call sites, because the promise
    F21 makes is about all of them at once - Home tells someone their
@@ -19,11 +20,10 @@
    projection, and the seam is honest anyway - what a delivered export
    means for the journal's settings is the screen's business. */
 
-import { epochDayFromTimestamp, todayEpochDay } from '../epochDay';
 import type { PreferenceValues } from '../prefs/catalogue';
 import type { ArchiveSnapshot } from '../journal/archive';
 import { ARCHIVE_FILE_EXTENSION } from './container';
-import { exportFileName, type Delivery } from './deliver';
+import { deliverFile, exportFileName, type Delivery } from './deliver';
 import { packArchive } from './pack';
 import { journalCsv, journalJson, type PlainNaming } from './plain';
 import { portablePreferences } from './payload';
@@ -49,7 +49,7 @@ export interface ExportSource {
 
 /** A file on its way off the device. The body is a stream so the encrypted
     path stays bounded (ADR-0007); the plain paths are one piece. */
-export interface ExportFile {
+export interface OutgoingFile {
   fileName: string;
   type: string;
   body: AsyncIterable<Uint8Array>;
@@ -59,7 +59,7 @@ async function* onePiece(text: string): AsyncGenerator<Uint8Array> {
   yield new TextEncoder().encode(text);
 }
 
-const PRODUCERS: Record<ExportPath, (source: ExportSource) => ExportFile> = {
+const PRODUCERS: Record<ExportPath, (source: ExportSource) => OutgoingFile> = {
   encrypted: (source) => ({
     fileName: exportFileName(source.preferences.name, ARCHIVE_FILE_EXTENSION),
     type: 'application/octet-stream',
@@ -89,30 +89,19 @@ const PRODUCERS: Record<ExportPath, (source: ExportSource) => ExportFile> = {
 };
 
 export interface ExportDeps {
-  deliver(file: ExportFile): Promise<Delivery>;
   /** Called with epoch millis once a file has actually left. */
   recordBackup(at: number): void;
+  /** The share sheet and the download (deliver.ts), which is what this
+      swaps out under test. Not a screen's to pass: a caller that supplied
+      its own way of handing a file over would be an export path that
+      never came through here. */
+  deliver?(file: OutgoingFile): Promise<Delivery>;
 }
 
 export async function runExport(path: ExportPath, source: ExportSource, deps: ExportDeps): Promise<Delivery> {
-  const delivery = await deps.deliver(PRODUCERS[path](source));
+  const delivery = await (deps.deliver ?? deliverFile)(PRODUCERS[path](source));
   // A cancelled share sheet is not a backup. Stamping it would tell
   // someone they have a copy of their journal that does not exist.
   if (delivery !== 'cancelled') deps.recordBackup(Date.now());
   return delivery;
-}
-
-/** Older than this and Home says so (F21). */
-export const BACKUP_STALE_DAYS = 30;
-
-/** How many local days ago the last export was, or null if there has never
-    been one. `lastBackupAt` is epoch millis and this is a count of calendar
-    days (ADR-0001), so the two are never the same number. */
-export function backupAgeDays(lastBackupAt: number | null, today: number = todayEpochDay()): number | null {
-  return lastBackupAt === null ? null : today - epochDayFromTimestamp(lastBackupAt);
-}
-
-export function backupIsStale(lastBackupAt: number | null, today: number = todayEpochDay()): boolean {
-  const age = backupAgeDays(lastBackupAt, today);
-  return age !== null && age > BACKUP_STALE_DAYS;
 }

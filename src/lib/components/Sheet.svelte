@@ -14,10 +14,15 @@
     onClose?.();
   }
 
+  /* Focus the field a sheet exists to fill; otherwise the sheet itself,
+     which is where a dialog's focus belongs anyway - the label is read out
+     and Tab walks in from the top. Never the first button: on the sheets
+     that ask something irreversible that button is "yes", and a sheet that
+     opens with "yes" under the cursor is one stray Enter from doing the
+     thing it opened to warn about (ticket 15, F22). */
   function scrim(node: HTMLElement) {
-    // Focus the first focusable control when the sheet opens.
-    const el = node.querySelector<HTMLElement>('input, button, select, textarea, [tabindex]');
-    el?.focus();
+    const field = node.querySelector<HTMLElement>('input, select, textarea');
+    (field ?? node).focus();
   }
 </script>
 
@@ -41,6 +46,7 @@
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      tabindex="-1"
       transition:fly={{ y: 24, duration: 240 }}
       {@attach scrim}
     >

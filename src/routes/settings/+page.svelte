@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
-  import { backupAgeDays } from '$lib/data/archive/backup';
+  import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { reference } from '$lib/data/live/reference.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
