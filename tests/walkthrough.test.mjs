@@ -42,6 +42,10 @@ async function fresh(path = '/') {
   await booted();
 }
 
+async function typePin(digits) {
+  for (const digit of digits) await page.locator(`[data-key="${digit}"]`).click();
+}
+
 /* 1. quick log */
 try {
   await fresh('/');
@@ -168,12 +172,43 @@ try {
   ok('wrong password + plain export warn/confirm');
 } catch (e) { fail('export/import', e); }
 
-/* 12. app lock */
+/* 12. app lock: the gate, the throttle, and the PIN that opens it (ticket 17) */
 try {
-  await fresh('/settings/lock');
-  for (const k of ['1', '2', '3', '4']) await page.locator(`[data-key="${k}"]`).click();
-  await page.waitForFunction(() => location.pathname === '/', null, { timeout: 4000 });
-  ok('app lock PIN unlocks to Home');
+  await fresh('/settings');
+  await page.getByRole('switch', { name: 'App lock' }).click();
+  await page.waitForSelector('.pin-pad');
+  await typePin('1234');
+  await typePin('1234');
+  await page.waitForSelector('.list-group');
+
+  /* A cold start, not a navigation: the gate has to be what renders, and
+     it has to render from the mirror rather than after SQLite opens. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  if (!(await page.locator('.applock').count())) throw new Error('no gate after a reload');
+  if (await page.locator('.home-hello').count()) throw new Error('Home rendered behind the gate');
+
+  await typePin('9999');
+  await page.waitForSelector('[data-pin-status]:has-text("not right")');
+  await typePin('9999');
+  await page.waitForSelector('[data-pin-status]:has-text("Try again in")');
+  if (await page.locator('.pin-key[data-key="1"]:not([disabled])').count()) {
+    throw new Error('pad still accepting attempts during the wait');
+  }
+
+  await page.waitForSelector('.pin-key[data-key="1"]:not([disabled])', { timeout: 8000 });
+  await typePin('1234');
+  await page.waitForSelector('.home-hello');
+
+  /* Off again, or every flow after this one meets the gate. In-app, not
+     page.goto: a fresh load is a cold start, and a cold start locks. */
+  await page.locator('.nav-item[href="/settings"]').click();
+  await page.getByRole('switch', { name: 'App lock' }).click();
+  await page.waitForFunction(() => {
+    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    return boot.pinHash === null;
+  });
+  ok('app lock gates a cold start, throttles wrong PINs, opens on the right one');
 } catch (e) { fail('app lock', e); }
 
 /* 13. onboarding end-to-end via demo jump */
@@ -272,6 +307,51 @@ try {
   }
   ok('built-in tags follow the language, so they were seeded as keys');
 } catch (e) { fail('vocabulary localization', e); }
+
+/* 18. lock on leave, quick exit, then the forgotten-PIN reset (ticket 17).
+   Last, because the reset is the one flow that destroys the journal. */
+try {
+  await fresh('/settings/lock?setup=1');
+  await typePin('1234');
+  await typePin('1234');
+  await page.waitForSelector('.list-group');
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Lock on leave' }).click();
+  await page.getByRole('switch', { name: 'Quick exit' }).click();
+
+  /* A dispatched blur rather than a real one: headless Chromium has no
+     second window to hand focus to, and what is under test is that the
+     event the listener waits for locks the app. */
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.waitForSelector('.applock');
+  await typePin('1234');
+  await page.waitForSelector('.list-group');
+
+  /* Two fingers, dispatched rather than driven: page.touchscreen only has
+     one. What is under test is the gesture the listeners are looking for,
+     not the browser's touch pipeline. */
+  await page.evaluate(() => {
+    const at = (y) => [1, 2].map((id) => new Touch({ identifier: id, target: document.body, clientX: 100 + id * 20, clientY: y }));
+    window.dispatchEvent(new TouchEvent('touchstart', { touches: at(100) }));
+    window.dispatchEvent(new TouchEvent('touchmove', { touches: at(320) }));
+  });
+  await page.waitForSelector('[data-blank]');
+  if ((await page.title()) !== 'New tab') throw new Error('tab title after quick exit: ' + (await page.title()));
+
+  await page.locator('[data-blank]').click();
+  await page.waitForSelector('.applock');
+
+  await page.locator('[data-forgot]').click();
+  await page.locator('[data-confirm-reset]').click();
+  /* The reset ends in a page load, and this page is already `ready` - so
+     wait for the lock screen to go away with it, not for a boot state that
+     is true before the wipe has even started. */
+  await page.waitForSelector('.applock', { state: 'detached', timeout: 60000 });
+  await booted();
+  if (await page.locator('.applock').count()) throw new Error('still locked after the reset');
+  await page.waitForSelector('.home-hello');
+  ok('lock on leave, quick exit blanks and locks, forgotten-PIN reset clears the lock');
+} catch (e) { fail('lock on leave, quick exit and reset', e); }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
