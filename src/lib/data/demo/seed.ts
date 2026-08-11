@@ -3,10 +3,7 @@
    never looks stale and Reset restores exactly this state. */
 
 import type { DB, GenderDimension, GenderPreset, MilestoneTemplate, TagGroup } from '../types';
-
-const DAY = 86400000;
-export const todayEpochDay = () =>
-  Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / DAY);
+import { DAY, todayEpochDay } from '../dates';
 
 function rng(seed: number) {
   return function () {

@@ -2,7 +2,8 @@
    localStorage. Phase 1 replaces this module's internals with the SQLite
    drivers; the repository modules keep their signatures. */
 
-import { seed, todayEpochDay } from './demo/seed';
+import { seed } from './demo/seed';
+import { todayEpochDay } from './dates';
 import type { DB } from './types';
 
 const KEY = 'gender-diary-demo-v1';

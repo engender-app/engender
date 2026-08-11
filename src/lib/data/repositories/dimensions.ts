@@ -37,3 +37,5 @@ export function addCustomDimension(dim: Omit<GenderDimension, 'builtIn'>) {
   db.prefs.activePreset = custom.id;
   save();
 }
+
+export { builtInPresets };
