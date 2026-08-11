@@ -30,7 +30,10 @@
   let valueSheet = $state<{ name: string; key: string; series: ReturnType<typeof seriesForRange> } | null>(null);
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
-  const fmtMetric = (v: number) => (prefs.metricKind === 'mood' ? (v / 20).toFixed(1) : String(Math.round(v)));
+  // Native units both ways (ADR-0012): mood arrives on 1 to 5 and only
+  // needs a decimal place, a dimension arrives in its own range. The /20
+  // that used to be here undid a x20 that no longer happens.
+  const fmtMetric = (v: number) => (prefs.metricKind === 'mood' ? v.toFixed(1) : String(Math.round(v)));
 
   let insightEntries = $derived.by(() => {
     const sheet = insightSheet;
@@ -88,7 +91,7 @@
   {/each}
 
   <SectionTitle text={m.tag_insights()}>
-    {#snippet aside()}{m.insights_sub({ metric: prefs.metricKind === 'mood' ? m.mood() : 'metric' })}{/snippet}
+    {#snippet aside()}{m.insights_sub({ metric: vocabulary.metricName })}{/snippet}
   </SectionTitle>
   {#if insights.length}
     <div class="list-group">

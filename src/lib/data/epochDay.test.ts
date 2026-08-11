@@ -17,6 +17,7 @@ import {
   epochDayFromDateInputValue,
   dateInputValueFromEpochDay,
   calendarDuration,
+  anniversaryYears,
   nextAnniversaryEpochDay,
   previousCalendarMonthRange
 } from './epochDay.ts';
@@ -137,6 +138,43 @@ test(`nextAnniversaryEpochDay finds this year's date when it is still ahead, und
   const milestone = epochDayFromLocalDate(new Date(2023, 2, 1));
   const today = epochDayFromLocalDate(new Date(2024, 1, 15));
   expect(nextAnniversaryEpochDay(milestone, today)).toBe(epochDayFromLocalDate(new Date(2024, 2, 1)));
+});
+
+test(`a 29 February milestone keeps its anniversary on the 28th in a common year, under TZ=${tz}`, () => {
+  // Rolling the date forward would put it on 1 March, which is a different
+  // day of a different month and belongs to whatever was logged then. The
+  // rule is that an anniversary is never skipped and never moves month.
+  const milestone = epochDayFromLocalDate(new Date(2024, 1, 29));
+  const feb28 = epochDayFromLocalDate(new Date(2025, 1, 28));
+
+  expect(nextAnniversaryEpochDay(milestone, epochDayFromLocalDate(new Date(2025, 0, 1)))).toBe(feb28);
+  expect(nextAnniversaryEpochDay(milestone, feb28)).toBe(feb28);
+  // The day after, this year's anniversary is behind us rather than ahead.
+  expect(nextAnniversaryEpochDay(milestone, feb28 + 1)).toBe(epochDayFromLocalDate(new Date(2026, 1, 28)));
+  // And in the next leap year it is back on the 29th.
+  expect(nextAnniversaryEpochDay(milestone, epochDayFromLocalDate(new Date(2028, 0, 1)))).toBe(
+    epochDayFromLocalDate(new Date(2028, 1, 29))
+  );
+});
+
+test(`anniversaryYears counts the anniversaries that have arrived, under TZ=${tz}`, () => {
+  const milestone = epochDayFromLocalDate(new Date(2023, 2, 1));
+
+  expect(anniversaryYears(milestone, epochDayFromLocalDate(new Date(2024, 1, 29)))).toBe(0);
+  expect(anniversaryYears(milestone, epochDayFromLocalDate(new Date(2024, 2, 1)))).toBe(1);
+  expect(anniversaryYears(milestone, epochDayFromLocalDate(new Date(2026, 2, 1)))).toBe(3);
+});
+
+test(`a 29 February milestone reads as a whole year old on its 28 February anniversary, under TZ=${tz}`, () => {
+  // calendarDuration is a day short here - 2025-02-28 is 365 days after
+  // 2024-02-29, one short of the calendar year - so the years shown beside
+  // an anniversary have to come from the anniversary, not from the gap.
+  const milestone = epochDayFromLocalDate(new Date(2024, 1, 29));
+  const feb28 = epochDayFromLocalDate(new Date(2025, 1, 28));
+
+  expect(calendarDuration(milestone, feb28).years).toBe(0);
+  expect(anniversaryYears(milestone, feb28)).toBe(1);
+  expect(anniversaryYears(milestone, feb28 - 1)).toBe(0);
 });
 
 test(`previousCalendarMonthRange covers a leap February under TZ=${tz}`, () => {

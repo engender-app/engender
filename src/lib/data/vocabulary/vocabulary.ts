@@ -12,6 +12,7 @@
 
 import { db } from '../db.svelte';
 import { m } from '$lib/paraglide/messages';
+import { MOOD_SCALE, type MetricScale } from '../metricScale';
 import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { activeDimensions, activePreset, getPresets } from '../repositories/dimensions';
@@ -23,6 +24,7 @@ import {
   dimensionLow,
   dimensionName,
   milestoneTemplateName,
+  moodName,
   presetName,
   tagGroupName,
   tagLabel
@@ -71,11 +73,34 @@ export const vocabulary = {
   get milestoneTemplates(): MilestoneTemplate[] {
     return milestoneTemplates.map(localizeTemplate);
   },
+  /** The gender dimension a metric key names, or null when the metric is
+      mood. Also null for a key no dimension carries, which is how the name,
+      the range and the legend below stay in agreement: a preference left
+      pointing at a dimension this install does not have reads as mood in
+      all three places rather than as a dimension in one and mood in the
+      others. */
+  metricDimension(metric: string): GenderDimension | null {
+    return this.dimensions.find((d) => d.key === metric) ?? null;
+  },
   /** What the metric is called on screen: mood, or the chosen gender
       dimension. Four screens derived this identically before. */
   get metricName(): string {
-    if (prefs.metricKind === 'mood') return m.mood();
-    return this.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood();
+    return this.metricDimension(metricKey(prefs))?.name ?? m.mood();
+  },
+  /** A metric's own range, for turning a native value into colour
+      intensity (metricScale.ts). Mood's range is not a stored row. */
+  scaleOf(metric: string): MetricScale {
+    const d = this.metricDimension(metric);
+    return d ? { min: d.min, max: d.max } : MOOD_SCALE;
+  },
+  /** What the two ends of the heat-map scale are called. A gender
+      dimension reads its own endpoint labels, because neither end of
+      binary↔nonbinary or agender↔gendered is the better one and colour
+      must not say otherwise (ADR-0012, F15). Mood is the one metric with a
+      worst-to-best legend, and it uses the mood names rather than 1 and 5. */
+  get metricLegend(): { low: string; high: string } {
+    const d = this.metricDimension(metricKey(prefs));
+    return d ? { low: d.low, high: d.high } : { low: moodName(1), high: moodName(5) };
   },
   tag(id: string): Tag | null {
     const found = tagById(id);
