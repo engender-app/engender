@@ -5,7 +5,7 @@
   import { archiveFileName, deliverArchive } from '$lib/data/archive/deliver';
   import { packArchive } from '$lib/data/archive/pack';
   import { portablePreferences } from '$lib/data/archive/payload';
-  import { bootState } from '$lib/stores/boot.svelte';
+  import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -42,12 +42,8 @@
      in the app that has to say it is working. */
   async function confirmExport() {
     exportWarningOpen = false;
-    const journal = bootState.journal;
-    if (!journal) {
-      toast('The journal is still opening. Try again in a moment.');
-      return;
-    }
-
+    // No "still opening" branch: a call through data/live's handle queues until
+    // the database is open (ticket 08), and every screen reaches it that way.
     exporting = true;
     try {
       const snapshot = await journal.archive.snapshot();

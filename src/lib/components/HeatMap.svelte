@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { db } from '$lib/data/db.svelte';
-  import { dayMetricValue } from '$lib/data/repositories/entries';
+  import { liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -12,14 +11,28 @@
 
   const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
+  /* The month, as two epoch days. Both queries below read them before their
+     first await, so stepping to another month re-runs them. */
+  let bounds = $derived({
+    first: epochDayFromLocalDate(new Date(year, month, 1)),
+    last: epochDayFromLocalDate(new Date(year, month + 1, 0))
+  });
+
+  /* Two queries for the whole month rather than two per day. They ask
+     different questions: the swatch comes from the metric's average, while
+     whether a day is a link comes from whether anything was logged at all -
+     a day of entries carrying no mood is still a day with entries. */
+  let averages = liveQuery(['entry'], (j) => j.stats.dayAverages(metricKey(prefs), bounds.first, bounds.last));
+  let counts = liveQuery(['entry'], (j) => j.stats.entryCountsByDay(bounds.first, bounds.last));
+
   let cells = $derived.by(() => {
-    const metric = metricKey(prefs);
     // The day's value stays native; only the swatch it picks is normalized,
     // so a 0-10 dimension and mood shade comparably (ADR-0012).
-    const range = vocabulary.rangeOf(metric);
-    const first = new Date(Date.UTC(year, month, 1));
+    const range = vocabulary.rangeOf(metricKey(prefs));
+    const valueByDay = new Map((averages.value ?? []).map((point) => [point.day, point.value]));
+    const countByDay = new Map((counts.value ?? []).map((point) => [point.day, point.count]));
     const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-    const startDow = (first.getUTCDay() + 6) % 7; // Monday-first
+    const startDow = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7; // Monday-first
     const today = todayEpochDay();
     const out: {
       day: number;
@@ -30,13 +43,12 @@
       label: string;
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
-      const epochDay = epochDayFromLocalDate(new Date(year, month, d));
-      const level = heatLevel(dayMetricValue(epochDay, metric), range);
-      const count = db.entries.filter((e) => e.epochDay === epochDay).length;
+      const epochDay = bounds.first + d - 1;
+      const count = countByDay.get(epochDay) ?? 0;
       out.push({
         day: d,
         epochDay,
-        level,
+        level: heatLevel(valueByDay.get(epochDay) ?? null, range),
         count,
         isToday: epochDay === today,
         label: `${fmtDay(epochDay, { day: 'numeric', month: 'long' })}${count ? `, ${count} entr${count === 1 ? 'y' : 'ies'}` : ', no entries'}`,

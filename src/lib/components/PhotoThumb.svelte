@@ -14,7 +14,8 @@
   let {
     photo,
     size = 72,
-    label = ''
+    label = '',
+    bytes
   }: {
     /** `id` is optional because a draft the editor has not saved has none
         (types.ts: identity is minted on write, never in a screen). It only
@@ -22,6 +23,10 @@
     photo: Pick<Photo, 'fileName'> & { id?: string };
     size?: number;
     label?: string;
+    /** Thumbnail bytes to draw instead of loading any: what the editors pass
+        for a photo just picked, which has been normalized but has no stored
+        file until the entry it belongs to is saved. */
+    bytes?: Uint8Array;
   } = $props();
 
   let url = $state<string | null>(null);
@@ -31,16 +36,18 @@
      unmounts or the photo changes, or a scrolling list leaks one blob per
      tile. */
   $effect(() => {
+    const given = bytes;
     const fileName = photo.fileName;
     url = null;
-    if (!fileName) return;
+    if (!given && !fileName) return;
 
     let objectUrl: string | null = null;
     let stale = false;
 
-    readThumbnail(fileName).then((bytes) => {
-      if (stale || !bytes) return;
-      objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
+    const thumbnail = given ? Promise.resolve(given) : readThumbnail(fileName!);
+    thumbnail.then((loaded) => {
+      if (stale || !loaded) return;
+      objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], { type: 'image/jpeg' }));
       url = objectUrl;
     });
 

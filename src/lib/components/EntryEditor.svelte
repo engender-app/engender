@@ -3,41 +3,68 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { getEntry, upsertEntry, deleteEntry } from '$lib/data/repositories/entries';
+  import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { entryIsEmpty } from '$lib/data/entryContent';
+  import { pickPhotos, type EditorPhoto } from '$lib/stores/photoPicking';
   import { toast } from '$lib/stores/toasts.svelte';
-  import type { DraftPhoto, Entry, GenderDimension, Photo } from '$lib/data/types';
+  import type { Entry, GenderDimension } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let { epochDay, entryId }: { epochDay?: number; entryId?: number } = $props();
 
-  // Captured once on purpose: the route wraps this component in {#key}, so a
-  // different entry/day mounts a fresh editor with a fresh draft.
-  // svelte-ignore state_referenced_locally
-  const existing = entryId != null ? getEntry(entryId) : undefined;
-  // svelte-ignore state_referenced_locally
-  const day = existing?.epochDay ?? epochDay ?? todayEpochDay();
+  /* An entry to edit is a round trip away now, so the draft cannot be built
+     during initialisation the way it was over the synchronous store. The
+     route wraps this component in {#key}, so a different entry or day mounts
+     a fresh editor and this loads once.
 
-  /* Local draft; committed as one action on Save (F1). Photos carry no id
-     until saved - the repository mints identity, never a screen. */
-  let draft = $state<Omit<Entry, 'id' | 'photos'> & { id?: number; photos: (Photo | DraftPhoto)[] }>(
-    existing
-      ? {
-          ...existing,
-          dims: { ...existing.dims },
-          tags: [...existing.tags],
-          photos: existing.photos.map((p) => ({ ...p })),
-        }
-      : { epochDay: day, timestamp: 0, mood: null, note: '', dims: {}, tags: [], photos: [] }
-  );
+     `['entry']` is not in the table list on purpose: this query fills a draft,
+     and re-running it because something else wrote an entry would throw away
+     what the user has typed. */
+  let loaded = liveQuery([], (j) => (entryId != null ? j.entries.getEntry(entryId) : Promise.resolve(undefined)));
+  let existing = $derived(loaded.value);
+  let day = $derived(existing?.epochDay ?? epochDay ?? todayEpochDay());
+
+  /* Local draft; committed as one action on Save (F1), and filled from the
+     stored entry the moment it arrives. */
+  // Captured once on purpose: the route wraps this component in {#key}, so a
+  // different entry or day mounts a fresh editor with a fresh draft.
+  // svelte-ignore state_referenced_locally
+  let draft = $state<Omit<Entry, 'id' | 'photos'>>({
+    epochDay: epochDay ?? todayEpochDay(),
+    timestamp: 0,
+    mood: null,
+    note: '',
+    dims: {},
+    tags: []
+  });
+  let photos = $state<EditorPhoto[]>([]);
+  /** Stored photo ids the user took off, removed on save rather than on the
+      tap: nothing is committed until Save (F1), so a removal the user backs
+      out of by leaving the screen has to be recoverable. */
+  let removedPhotoIds: string[] = [];
+
+  onFirstResult(loaded, (entry) => {
+    if (!entry) return;
+    draft = {
+      epochDay: entry.epochDay,
+      timestamp: entry.timestamp,
+      mood: entry.mood,
+      note: entry.note,
+      dims: { ...entry.dims },
+      tags: [...entry.tags]
+    };
+    photos = entry.photos.map((photo) => ({ kind: 'stored' as const, photo }));
+  });
 
   let deleteOpen = $state(false);
+  let saving = $state(false);
   /* The union of the active preset's dimensions and the entry's own: an
      old entry logged under a wider preset keeps its extra dimensions on screen
      (marked below), instead of silently dropping their history on save. */
@@ -52,40 +79,58 @@
   let preset = $derived(vocabulary.activePreset);
   let isToday = $derived(day === todayEpochDay());
 
-  /* Still a placeholder, deliberately. The real path - pick, normalize,
-     journal.photos.attach - is built and tested (ticket 11), but this
-     editor saves through the demo store, which has no journal row for a
-     file to hang off and would strand the bytes in localStorage. Ticket 08
-     moves this screen onto the journal; the picker is wired in there. */
-  function addPhoto() {
-    draft.photos.push({ fileName: null });
+  // An entry holds several photos, so one trip through the picker can bring
+  // back several (photoPicking.ts).
+  async function addPhoto() {
+    for (const photo of await pickPhotos()) photos.push({ kind: 'picked', photo });
   }
 
-  /* The repository rejects an empty entry outright; this guard only turns
-     that rejection into a toast instead of an unhandled throw. */
+  function removePhoto(index: number) {
+    const [gone] = photos.splice(index, 1);
+    if (gone.kind === 'stored') removedPhotoIds.push(gone.photo.id);
+  }
+
+  /* The journal rejects an empty entry outright; this guard only turns that
+     rejection into a toast instead of an unhandled throw. */
   let draftEmpty = $derived(
     entryIsEmpty({
       mood: draft.mood,
       note: draft.note,
       dimCount: Object.keys(draft.dims).length,
       tagCount: draft.tags.length,
-      photoCount: draft.photos.length
+      photoCount: photos.length
     })
   );
 
-  function saveEntry() {
+  async function saveEntry() {
     if (draftEmpty) {
       toast(m.empty_entry());
       return;
     }
-    upsertEntry({ ...draft, timestamp: draft.timestamp || undefined });
-    goto('/');
-    toast(m.saved());
+    if (saving) return; // a second tap while the worker is writing
+    saving = true;
+    try {
+      await journal.entries.upsertEntry({
+        id: existing?.id,
+        ...draft,
+        timestamp: draft.timestamp || undefined,
+        attachPhotos: photos.filter((p) => p.kind === 'picked').map((p) => p.photo)
+      });
+      for (const photoId of removedPhotoIds) await journal.photos.remove(photoId);
+      removedPhotoIds = [];
+      goto('/');
+      toast(m.saved());
+    } catch (error) {
+      console.error('could not save the entry', error);
+      toast("Couldn't save this entry.");
+    } finally {
+      saving = false;
+    }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     deleteOpen = false;
-    if (existing) deleteEntry(existing.id);
+    if (existing) await journal.entries.deleteEntry(existing.id);
     goto('/');
   }
 </script>
@@ -106,6 +151,12 @@
     {isToday ? `${m.today()} · ` : ''}{fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
   </p>
 
+  <!-- An existing entry has to arrive before the draft can hold it, so the
+       editor waits rather than showing an empty form that fills itself in
+       under the user's hands. A new entry has nothing to wait for. -->
+  {#if loaded.loading}
+    <Skeleton variant="block" count={3} />
+  {:else}
   <section class="card editor-section">
     <h2 class="editor-heading">{m.mood()}</h2>
     <MoodPicker value={draft.mood} onPick={(v) => (draft.mood = v)} />
@@ -146,10 +197,14 @@
   <section class="card editor-section">
     <h2 class="editor-heading">{m.photos_label()}</h2>
     <div class="photo-row">
-      {#each draft.photos as p, i (p)}
+      {#each photos as p, i (p)}
         <div class="photo-wrap">
-          <PhotoThumb photo={p} size={72} />
-          <button class="photo-remove" aria-label="Remove photo" onclick={() => draft.photos.splice(i, 1)}>
+          {#if p.kind === 'stored'}
+            <PhotoThumb photo={p.photo} size={72} />
+          {:else}
+            <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
+          {/if}
+          <button class="photo-remove" aria-label="Remove photo" onclick={() => removePhoto(i)}>
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -161,10 +216,11 @@
   </section>
 
   <div class="editor-savebar">
-    <button class="btn btn-primary" data-save onclick={saveEntry}>
+    <button class="btn btn-primary" data-save disabled={saving} onclick={saveEntry}>
       <Icon name="check" size={20} /><span>{m.save_entry()}</span>
     </button>
   </div>
+  {/if}
 
   <Sheet bind:open={deleteOpen} title={m.delete_entry_q()}>
     <h3>{m.delete_entry_q()}</h3>

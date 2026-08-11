@@ -113,6 +113,16 @@ test('analytes are the presets plus whatever is in use; results order by day', a
   assert.deepEqual(results[0], { id, epochDay: 100, analyte: 'shbg', value: 55, unit: 'nmol/L', note: '' });
 });
 
+test('the analytes in use are only the ones with a result, because a trend needs data', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.deepEqual(await journal.labs.getUsedAnalytes(), []);
+
+  await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 120 });
+  await journal.labs.upsertResult({ epochDay: 101, analyte: 'shbg', value: 60 });
+
+  assert.deepEqual(await journal.labs.getUsedAnalytes(), ['estradiol', 'shbg']);
+});
+
 test('lab results update by id, throw on unknown ids and delete idempotently', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 120 });

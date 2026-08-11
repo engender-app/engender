@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { upsertMilestone } from '$lib/data/repositories/milestones';
+  import { journal } from '$lib/data/live/journal.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { todayEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -18,7 +18,7 @@
   let milestoneDate = $state('');
   let appLock = $state(false);
 
-  function finish() {
+  async function finish() {
     prefs.name = name.trim();
     prefs.activePreset = preset;
     prefs.appLock = appLock;
@@ -26,7 +26,9 @@
     if (milestoneTemplate) {
       const tpl = vocabulary.milestoneTemplates.find((t) => t.key === milestoneTemplate)!;
       const epochDay = epochDayFromDateInputValue(milestoneDate) ?? todayEpochDay() - 1;
-      upsertMilestone({ name: tpl.name, epochDay, templateKey: tpl.key, photo: null });
+      // Awaited before leaving: Home reads milestones off the mirror, which
+      // refreshes from the write, and navigating first would race it.
+      await journal.milestones.upsertMilestone({ name: tpl.name, epochDay, templateKey: tpl.key });
     }
     goto('/');
   }

@@ -1,7 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
-  import { getAnalytes, labAnalytes, resultsFor, upsertLabResult } from '$lib/data/repositories/labs';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import Icon from '$lib/components/Icon.svelte';
@@ -9,14 +8,23 @@
   import LineChart from '$lib/components/LineChart.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
 
   let analyte = $state('estradiol');
-  let analytes = $derived(labAnalytes());
+
+  /* Two lists, two questions: the picker offers analytes with results behind
+     them, because a trend needs data, while the editor offers those plus the
+     presets. Both are queries now; neither is mirrored, since a lab result is
+     entry-shaped data (ADR-0004). */
+  let usedQuery = liveQuery(['lab'], (j) => j.labs.getUsedAnalytes());
+  let analytes = $derived(usedQuery.value ?? []);
+  let offeredQuery = liveQuery(['lab'], (j) => j.labs.getAnalytes());
   $effect(() => {
     if (analytes.length && !analytes.includes(analyte)) analyte = analytes[0];
   });
 
-  let results = $derived(resultsFor(analyte));
+  let resultsQuery = liveQuery(['lab'], (j) => j.labs.getResults(analyte));
+  let results = $derived(resultsQuery.value ?? []);
   let chart = $derived.by(() => {
     if (results.length < 2) return null;
     const values = results.map((r) => r.value);
@@ -33,7 +41,7 @@
     const val = parseFloat(draft.value);
     editorOpen = false;
     if (isNaN(val)) return;
-    upsertLabResult({
+    journal.labs.upsertResult({
       epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
       analyte: draft.analyte === 'custom' ? 'other' : draft.analyte,
       value: val,
@@ -54,7 +62,9 @@
     </div>
   </header>
 
-  {#if db.labResults.length}
+  {#if usedQuery.loading}
+    <Skeleton variant="block" count={1} />
+  {:else if analytes.length}
     <p class="muted small" style="margin-bottom:var(--space-3)">
       Your numbers, your trend. The app never interprets them and gives no medical advice.
     </p>
@@ -105,7 +115,7 @@
     <div class="field">
       <label class="field-label" for="lab-analyte">Analyte</label>
       <select class="input" id="lab-analyte" bind:value={draft.analyte}>
-        {#each getAnalytes() as a (a)}
+        {#each offeredQuery.value ?? [] as a (a)}
           <option value={a}>{a}</option>
         {/each}
         <option value="custom">custom…</option>

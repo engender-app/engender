@@ -1,23 +1,34 @@
 <script lang="ts">
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { dayMetricValue } from '$lib/data/repositories/entries';
+  import { liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { heatLevel } from '$lib/data/metricRange';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let { metric }: { metric: string } = $props();
 
+  /* Read on every recompute rather than captured once, so a session left open
+     across midnight moves the strip on with the next write instead of holding
+     yesterday's week. */
+  let week = $derived({ first: todayEpochDay() - 6, last: todayEpochDay() });
+
+  /* One query for the week rather than one per day: seven round trips
+     through the worker to draw seven squares is the shape of read the port
+     exists to avoid. Empty until it lands, so the strip draws at its full
+     size with every day at level 0 and never reflows. */
+  let averages = liveQuery(['entry'], (j) => j.stats.dayAverages(metric, week.first, week.last));
+
   let days = $derived.by(() => {
-    const today = todayEpochDay();
     // Native value in, swatch out: the strip and the calendar shade the
     // same day the same way whatever the metric's range is (ADR-0012).
     const range = vocabulary.rangeOf(metric);
+    const byDay = new Map((averages.value ?? []).map((point) => [point.day, point.value]));
     return Array.from({ length: 7 }, (_, idx) => {
-      const day = today - (6 - idx);
+      const day = week.first + idx;
       return {
         day,
-        level: heatLevel(dayMetricValue(day, metric), range),
-        isToday: day === today,
+        level: heatLevel(byDay.get(day) ?? null, range),
+        isToday: day === week.last,
       };
     });
   });

@@ -70,6 +70,11 @@ export interface StatsArea {
       dimension since hidden, an archive from a build that knew a key this
       one does not - yields no points rather than an error. */
   dayAverages(metric: string, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
+  /** How many entries each day in the range holds, oldest first, days with
+      none left out. Not the same question as `dayAverages`: the calendar
+      shades a day by the metric but links it by whether anything was logged
+      at all, so a day of entries that carry no mood still has entries. */
+  entryCountsByDay(fromEpochDay: number, toEpochDay: number): Promise<{ day: number; count: number }[]>;
   /** Tags carrying at least three valued entries in the range, with the
       metric's average across the entries that carry them and across the
       entries that do not, sorted by the size of the difference. Hidden tags
@@ -138,6 +143,16 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       // (node:sqlite hands back null-prototype ones), and nothing past this
       // seam should have to know that.
       return rows.map((r) => ({ day: r.day, value: r.value, count: r.entries }));
+    },
+
+    async entryCountsByDay(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ day: number; entries: number }>(
+        `SELECT epoch_day AS day, COUNT(*) AS entries FROM entry
+         WHERE epoch_day BETWEEN ? AND ?
+         GROUP BY epoch_day ORDER BY epoch_day`,
+        [fromEpochDay, toEpochDay]
+      );
+      return rows.map((r) => ({ day: r.day, count: r.entries }));
     },
 
     async tagInsights(metric, fromEpochDay, toEpochDay) {
