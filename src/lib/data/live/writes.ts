@@ -102,11 +102,14 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },
     reads: ['getReminders']
   },
-  // The one area that never writes (ADR-0017's ticket-10 amendment).
+  // The two areas that never write: stats (ADR-0017's ticket-10 amendment) and
+  // archive, which reads the whole journal out for ticket 13's export. Reading
+  // one back in is an import, and that writes through the areas above.
   stats: {
     writes: {},
     reads: ['dayAverages', 'entryCountsByDay', 'tagInsights', 'streak', 'recap']
-  }
+  },
+  archive: { writes: {}, reads: ['snapshot'] }
 };
 
 /** Reconciling adds whatever built-in vocabulary is missing, by key. It
