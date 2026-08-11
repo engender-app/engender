@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
-  import { labAnalytes, resultsFor, upsertLabResult } from '$lib/data/repositories/labs';
+  import { getAnalytes, labAnalytes, resultsFor, upsertLabResult } from '$lib/data/repositories/labs';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import Icon from '$lib/components/Icon.svelte';
@@ -105,9 +105,9 @@
     <div class="field">
       <label class="field-label" for="lab-analyte">Analyte</label>
       <select class="input" id="lab-analyte" bind:value={draft.analyte}>
-        <option value="estradiol">estradiol</option>
-        <option value="testosterone">testosterone</option>
-        <option value="prolactin">prolactin</option>
+        {#each getAnalytes() as a (a)}
+          <option value={a}>{a}</option>
+        {/each}
         <option value="custom">custom…</option>
       </select>
     </div>

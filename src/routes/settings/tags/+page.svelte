@@ -1,12 +1,21 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { addTag, renameTag, moveTagUp, setTagHidden, deleteTag, addGroup } from '$lib/data/repositories/tags';
+  import { addTag, renameTag, reorder, setTagHidden, deleteTag, addGroup } from '$lib/data/repositories/tags';
   import Icon from '$lib/components/Icon.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import type { TagGroup } from '$lib/data/types';
 
-  let renameTarget = $state<{ groupKey: string; index: number; label: string } | null>(null);
-  let deleteTarget = $state<{ groupKey: string; index: number; label: string } | null>(null);
+  let renameTarget = $state<{ id: string; label: string } | null>(null);
+  let deleteTarget = $state<{ id: string; label: string } | null>(null);
+
+  /* The repository speaks whole orders (a drag), so the up-button builds
+     the order it wants and hands it over. */
+  function moveUp(g: TagGroup, index: number) {
+    const ids = g.tags.map((t) => t.id);
+    [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
+    reorder(g.key, ids);
+  }
   let addTarget = $state<string | null>(null);
   let newLabel = $state('');
   let groupSheet = $state(false);
@@ -39,21 +48,21 @@
             {#if tg.hidden}<span class="muted small">hidden</span>{/if}
             <span class="managed-actions">
               <button class="icon-btn" data-up aria-label="Move {tg.label} up" disabled={i === 0}
-                style={i === 0 ? 'opacity:.3' : ''} onclick={() => moveTagUp(g.key, i)}>
+                style={i === 0 ? 'opacity:.3' : ''} onclick={() => moveUp(g, i)}>
                 <Icon name="chevronLeft" size={16} />
               </button>
               <button class="icon-btn" aria-label="Rename {tg.label}"
-                onclick={() => (renameTarget = { groupKey: g.key, index: i, label: tg.label })}>
+                onclick={() => (renameTarget = { id: tg.id, label: tg.label })}>
                 <Icon name="pencil" size={16} />
               </button>
               {#if tg.builtIn}
                 <button class="icon-btn" aria-label="{tg.hidden ? 'Show' : 'Hide'} {tg.label}"
-                  onclick={() => setTagHidden(g.key, i, !tg.hidden)}>
+                  onclick={() => setTagHidden(tg.id, !tg.hidden)}>
                   <Icon name={tg.hidden ? 'eye' : 'eyeOff'} size={16} />
                 </button>
               {:else}
                 <button class="icon-btn" data-del aria-label="Delete {tg.label}"
-                  onclick={() => (deleteTarget = { groupKey: g.key, index: i, label: tg.label })}>
+                  onclick={() => (deleteTarget = { id: tg.id, label: tg.label })}>
                   <Icon name="trash" size={16} />
                 </button>
               {/if}
@@ -77,7 +86,7 @@
       <button
         class="btn btn-primary"
         onclick={() => {
-          if (renameTarget!.label.trim()) renameTag(renameTarget!.groupKey, renameTarget!.index, renameTarget!.label.trim());
+          if (renameTarget!.label.trim()) renameTag(renameTarget!.id, renameTarget!.label.trim());
           renameTarget = null;
         }}><span>Save</span></button
       >
@@ -95,7 +104,7 @@
           class="btn btn-danger"
           data-confirm
           onclick={() => {
-            deleteTag(deleteTarget!.groupKey, deleteTarget!.index);
+            deleteTag(deleteTarget!.id);
             deleteTarget = null;
           }}><span>Delete tag</span></button
         >

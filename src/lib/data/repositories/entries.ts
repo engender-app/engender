@@ -5,7 +5,7 @@
 import { db, save, newId } from '../db.svelte';
 import { todayEpochDay } from '../epochDay';
 import { foldText as fold } from '../fold';
-import type { Entry } from '../types';
+import type { DraftPhoto, Entry, Photo } from '../types';
 import { tagById } from './tags';
 
 export function entriesNewestFirst(): Entry[] {
@@ -19,17 +19,61 @@ export function entriesForDay(epochDay: number): Entry[] {
 export const getEntry = (id: number | string): Entry | undefined =>
   db.entries.find((e) => e.id === Number(id));
 
-export function upsertEntry(entry: Partial<Entry> & { epochDay: number }): number {
+export interface EntryInput extends Partial<Omit<Entry, 'photos'>> {
+  epochDay: number;
+  photos?: (Photo | DraftPhoto)[];
+}
+
+/** An entry holds at least one of these five, or it does not exist
+    (CONTEXT: "Entry"). Enforced here, not in the editor, so no path
+    bypasses it. */
+function assertHasContent(e: Entry) {
+  const empty =
+    e.mood == null &&
+    Object.keys(e.dims).length === 0 &&
+    e.tags.length === 0 &&
+    !e.note.trim() &&
+    e.photos.length === 0;
+  if (empty) throw new Error('an entry needs a mood, a dimension value, a tag, a note or a photo');
+}
+
+function withPhotoIds(photos: (Photo | DraftPhoto)[]): Photo[] {
+  return photos.map((p) => ('id' in p ? p : { ...p, id: crypto.randomUUID() }));
+}
+
+export function upsertEntry(entry: EntryInput): number {
+  const photos = entry.photos && withPhotoIds(entry.photos);
   if (entry.id) {
     const i = db.entries.findIndex((e) => e.id === entry.id);
-    if (i >= 0) db.entries[i] = { ...db.entries[i], ...entry } as Entry;
-  } else {
-    entry.id = newId();
-    entry.timestamp = entry.timestamp ?? Date.now();
-    db.entries.push(entry as Entry);
+    if (i < 0) throw new Error(`unknown entry: ${entry.id}`);
+    // Dimension values merge per dimension, never as a whole object:
+    // replacing `dims` wholesale is how editing an old entry under a
+    // narrower preset silently dropped the axes the preset lacks.
+    const next: Entry = {
+      ...db.entries[i],
+      ...entry,
+      dims: { ...db.entries[i].dims, ...entry.dims },
+      photos: photos ?? db.entries[i].photos
+    };
+    assertHasContent(next);
+    db.entries[i] = next;
+    save();
+    return next.id;
   }
+  const created: Entry = {
+    mood: null,
+    note: '',
+    tags: [],
+    ...entry,
+    dims: { ...entry.dims },
+    photos: photos ?? [],
+    id: newId(),
+    timestamp: entry.timestamp ?? Date.now()
+  };
+  assertHasContent(created);
+  db.entries.push(created);
   save();
-  return entry.id!;
+  return created.id;
 }
 
 export function deleteEntry(id: number) {

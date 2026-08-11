@@ -4,7 +4,7 @@
   import { milestoneStatus, upsertMilestone, deleteMilestone } from '$lib/data/repositories/milestones';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import type { Milestone, MilestoneTemplate } from '$lib/data/types';
+  import type { DraftPhoto, Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -12,7 +12,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let shown = $state(vocabulary.randomTemplates(3));
-  let editor = $state<{ id?: string; name: string; date: string; photo: Milestone['photo']; templateKey: string | null } | null>(null);
+  let editor = $state<{ id?: string; name: string; date: string; photo: Photo | DraftPhoto | null; templateKey: string | null } | null>(null);
   let deleteTarget = $state<Milestone | null>(null);
 
   let sorted = $derived([...db.milestones].sort((a, b) => a.epochDay - b.epochDay));
@@ -30,12 +30,10 @@
 
   function saveMilestone() {
     if (!editor) return;
-    const epochDay = epochDayFromDateInputValue(editor.date) ?? todayEpochDay();
     upsertMilestone({
       id: editor.id,
       name: editor.name.trim() || 'Milestone',
-      epochDay,
-      kind: epochDay > todayEpochDay() ? 'countdown' : 'anniversary',
+      epochDay: epochDayFromDateInputValue(editor.date) ?? todayEpochDay(),
       templateKey: editor.templateKey,
       photo: editor.photo,
     });
@@ -124,7 +122,7 @@
             </div>
           {:else}
             <button class="photo-add" aria-label={m.add_photo()}
-              onclick={() => (editor!.photo = { id: 'mp' + Date.now(), hue: Math.floor(Math.random() * 360), label: 'Photo' })}>
+              onclick={() => (editor!.photo = { hue: Math.floor(Math.random() * 360), label: 'Photo' })}>
               <Icon name="camera" size={20} /><span>{m.add_photo()}</span>
             </button>
           {/if}

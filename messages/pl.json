@@ -221,5 +221,12 @@
   "tpl_name_change": "Zmiana imienia",
   "tpl_marker_change": "Sądowa zmiana oznaczenia płci",
   "tpl_surgery": "Operacja",
-  "tpl_first_public": "Pierwsze publiczne wyjście"
+  "tpl_first_public": "Pierwsze publiczne wyjście",
+  "recurrence_daily": "Codziennie",
+  "recurrence_weekly": "Co tydzień",
+  "recurrence_every_n_days": "Co {n} dni",
+  "reminder_once": "Jednorazowo",
+  "reminder_in_days": "za {days} dni",
+  "not_in_preset": "Spoza bieżącego zestawu — zachowane z tego wpisu",
+  "empty_entry": "Dodaj najpierw nastrój, wartość, tag, notatkę lub zdjęcie"
 }

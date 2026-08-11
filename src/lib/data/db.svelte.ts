@@ -27,7 +27,10 @@ function load(): DB {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const s = JSON.parse(raw) as DB;
-        if (s.version === 1) return seedVocabulary(s);
+        // Bumped to 2 in ticket 07: milestones lost `kind` and reminders
+        // became rule-shaped, so a stored v1 demo journal is reseeded
+        // rather than loaded into shapes it no longer matches.
+        if (s.version === 2) return seedVocabulary(s);
       }
     } catch {
       /* corrupted → reseed */
