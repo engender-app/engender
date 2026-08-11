@@ -3,6 +3,7 @@
    them in $derived and stay live. */
 
 import { db, save, newId } from '../db.svelte';
+import { EMPTY_ENTRY_ERROR, entryIsEmpty } from '../entryContent';
 import { todayEpochDay } from '../epochDay';
 import { foldText as fold } from '../fold';
 import type { DraftPhoto, Entry, Photo } from '../types';
@@ -24,17 +25,17 @@ export interface EntryInput extends Partial<Omit<Entry, 'photos'>> {
   photos?: (Photo | DraftPhoto)[];
 }
 
-/** An entry holds at least one of these five, or it does not exist
-    (CONTEXT: "Entry"). Enforced here, not in the editor, so no path
-    bypasses it. */
+/** The entry invariant (entryContent.ts), enforced here rather than in
+    the editor, so no path bypasses it. */
 function assertHasContent(e: Entry) {
-  const empty =
-    e.mood == null &&
-    Object.keys(e.dims).length === 0 &&
-    e.tags.length === 0 &&
-    !e.note.trim() &&
-    e.photos.length === 0;
-  if (empty) throw new Error('an entry needs a mood, a dimension value, a tag, a note or a photo');
+  const empty = entryIsEmpty({
+    mood: e.mood,
+    note: e.note,
+    dimCount: Object.keys(e.dims).length,
+    tagCount: e.tags.length,
+    photoCount: e.photos.length
+  });
+  if (empty) throw new Error(EMPTY_ENTRY_ERROR);
 }
 
 function withPhotoIds(photos: (Photo | DraftPhoto)[]): Photo[] {

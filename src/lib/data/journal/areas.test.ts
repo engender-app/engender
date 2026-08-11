@@ -4,14 +4,8 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import { openJournal, type Journal } from './journal.ts';
-
-async function journalWithBuiltIns(): Promise<{ journal: Journal; db: Awaited<ReturnType<typeof migratedDb>> }> {
-  const db = await migratedDb();
-  const journal = openJournal(db);
-  await journal.reconcileBuiltIns();
-  return { journal, db };
-}
+import { openJournal } from './journal.ts';
+import { journalWithBuiltIns } from './test-support.ts';
 
 /* dimensions */
 

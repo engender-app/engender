@@ -4,20 +4,12 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import { openJournal, type Journal } from './journal.ts';
-
-async function journalWithBuiltIns(): Promise<{ journal: Journal; db: Awaited<ReturnType<typeof migratedDb>> }> {
-  const db = await migratedDb();
-  const journal = openJournal(db);
-  await journal.reconcileBuiltIns();
-  return { journal, db };
-}
+import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 
 test('a custom tag gets a minted uuid id, never a Date-based one', async () => {
   const { journal } = await journalWithBuiltIns();
   const tag = await journal.tags.addTag('emotions', 'proud');
-  assert.match(tag.id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  assert.match(tag.id, UUID_PATTERN);
 
   const groups = await journal.tags.getTagGroups();
   const emotions = groups.find((g) => g.key === 'emotions')!;

@@ -5,7 +5,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Tag, TagGroup } from '../types';
-import { assertChanged, bool, mintUuid, now } from './support';
+import { assertChanged, bool, domainIdOf, mintUuid, now } from './support';
 
 export interface TagsArea {
   getTagGroups(): Promise<TagGroup[]>;
@@ -33,20 +33,17 @@ type TagRow = {
   group_id: number;
 };
 
-/** A tag's domain id: seeded key for built-ins, minted uuid for customs. */
-const domainId = (row: { key: string | null; uuid: string | null }): string => row.key ?? row.uuid ?? '';
-
 const toTag = (row: TagRow): Tag => ({
-  id: domainId(row),
+  id: domainIdOf(row, 'tag'),
   label: row.label,
   builtIn: row.key !== null,
   hidden: bool(row.hidden)
 });
 
 export function makeTagsArea(driver: SqliteDriver): TagsArea {
-  /* `id IS ?` twice: a built-in row has uuid NULL and a custom row has key
-     NULL, so matching the one string against both columns finds exactly
-     the addressed row either way. */
+  /* The one id string is matched against both columns (`key = ? OR
+     uuid = ?`): a built-in row has uuid NULL and a custom row has key
+     NULL, so exactly the addressed row matches either way. */
   const byDomainId = async (id: string): Promise<TagRow | undefined> => {
     const rows = await driver.query<TagRow>(
       'SELECT id, uuid, key, label, hidden, group_id FROM tag WHERE key = ? OR uuid = ?',
@@ -148,7 +145,7 @@ export function makeTagsArea(driver: SqliteDriver): TagsArea {
         'SELECT id, uuid, key, label, hidden, group_id FROM tag WHERE group_id = ?',
         [groupId]
       );
-      const current = new Set(rows.map(domainId));
+      const current = new Set(rows.map((r) => domainIdOf(r, 'tag')));
       if (orderedIds.length !== rows.length || !orderedIds.every((id) => current.has(id))) {
         throw new Error(`reorder of ${groupKey} does not permute its tags`);
       }

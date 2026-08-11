@@ -10,7 +10,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { GenderDimension, GenderPreset } from '../types';
-import { assertChanged, bool, mintUuid, now } from './support';
+import { assertChanged, bool, domainIdOf, mintUuid, now } from './support';
 
 export interface DimensionsArea {
   getDimensions(): Promise<GenderDimension[]>;
@@ -55,7 +55,7 @@ export function makeDimensionsArea(driver: SqliteDriver): DimensionsArea {
          ORDER BY pd.order_index, gd.id`
       );
       return presets.map((p) => ({
-        id: p.key ?? p.uuid ?? '',
+        id: domainIdOf(p, 'preset'),
         name: p.name,
         builtIn: bool(p.is_built_in),
         dims: links.filter((l) => l.preset_id === p.id).map((l) => l.key)

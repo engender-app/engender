@@ -6,14 +6,8 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import { openJournal, type Journal } from './journal.ts';
-
-async function journalWithBuiltIns(): Promise<{ journal: Journal; db: Awaited<ReturnType<typeof migratedDb>> }> {
-  const db = await migratedDb();
-  const journal = openJournal(db);
-  await journal.reconcileBuiltIns();
-  return { journal, db };
-}
+import { openJournal } from './journal.ts';
+import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 
 test('an entry round-trips with mood, note, dimension values and tags', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -58,7 +52,7 @@ test('rows carry a minted uuid and inserts never read lastInsertRowid blind', as
     .map((r) => (r as { uuid: string }).uuid);
   assert.equal(new Set(uuids).size, 2);
   for (const uuid of uuids) {
-    assert.match(uuid, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    assert.match(uuid, UUID_PATTERN);
   }
 });
 
