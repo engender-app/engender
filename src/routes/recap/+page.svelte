@@ -4,7 +4,7 @@
   import { db } from '$lib/data/db.svelte';
   import { fmtMonthName } from '$lib/data/dates';
   import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
-  import { streakDays } from '$lib/data/repositories/entries';
+  import { normalize } from '$lib/data/metricScale';
   import Icon from '$lib/components/Icon.svelte';
   import PrideAurora from '$lib/components/PrideAurora.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
@@ -25,19 +25,45 @@
       .slice(0, 3)
       .map(([id, n]) => ({ label: vocabulary.tag(id)?.label ?? id, n }));
     const milestonesReached = db.milestones.filter((mi) => mi.epochDay >= start && mi.epochDay <= end);
-    const dimVals = entries.map((e) => e.dims?.euphoria_dysphoria).filter((v): v is number => v != null);
-    const dimChange = dimVals.length > 1 ? Math.round(dimVals[dimVals.length - 1] - dimVals[0]) : null;
-    return { monthName, entries, avgMood, topTags, milestonesReached, dimChange };
+
+    // The longest run of consecutive days inside the month, which is not
+    // the same question as "the streak ending today" - the old code showed
+    // min(current streak, 28) and could report days outside the month.
+    const days = [...new Set(entries.map((e) => e.epochDay))].sort((a, b) => a - b);
+    let bestStreak = 0;
+    let run = 0;
+    days.forEach((d, i) => {
+      run = i > 0 && d === days[i - 1] + 1 ? run + 1 : 1;
+      bestStreak = Math.max(bestStreak, run);
+    });
+
+    /* Every active scale, not a hardcoded one, ranked by how far it moved
+       through its own range and reported in native units (ADR-0012): a
+       20-point move on a 0-100 axis and a 3-point move on a 0-10 one are
+       not comparable as numbers. */
+    const inOrder = [...entries].sort((a, b) => a.epochDay - b.epochDay || a.timestamp - b.timestamp);
+    const dimChange = vocabulary.activeDimensions
+      .map((d) => {
+        const vals = inOrder.map((e) => e.dims?.[d.key]).filter((v): v is number => v != null);
+        if (vals.length < 2) return null;
+        const [from, to] = [vals[0], vals[vals.length - 1]];
+        const scale = { min: d.min, max: d.max };
+        return { name: d.name, change: to - from, span: Math.abs(normalize(to, scale) - normalize(from, scale)) };
+      })
+      .filter((c) => c != null)
+      .sort((a, b) => b.span - a.span)[0];
+
+    return { monthName, entries, avgMood, topTags, milestonesReached, bestStreak, dimChange };
   });
 
   let steps = $derived([
     { title: m.recap_your({ month: recap.monthName }), body: 'One month, held in your own words.', rive: 'Recap opener: calendar pages turning', confetti: false },
     { title: `${recap.entries.length} entries`, body: recap.entries.length ? 'You showed up, again and again. Some days were two-entry days — gender moves, and you caught it moving.' : 'A quiet month. Quiet counts too.', rive: null, confetti: false },
     { title: recap.avgMood ? `Mood: ${recap.avgMood.toFixed(1)} of 5` : 'Mood', body: recap.avgMood ? 'Averaged across the month. Not a grade — just where you were.' : 'No moods logged this month.', rive: null, confetti: false },
-    { title: `Best streak: ${Math.min(streakDays(), 28)} days`, body: 'Consecutive days with an entry. Consistency is a kindness to your future self.', rive: null, confetti: false },
+    { title: `Best streak: ${recap.bestStreak} days`, body: 'The longest run of days in a row you wrote something down. Consistency is a kindness to your future self.', rive: null, confetti: false },
     { title: 'Top tags', body: recap.topTags.length ? recap.topTags.map((t) => `${t.label} (${t.n})`).join(' · ') : 'No tags this month.', rive: null, confetti: false },
     { title: recap.milestonesReached.length ? `${recap.milestonesReached.length} milestone${recap.milestonesReached.length === 1 ? '' : 's'}` : 'Milestones', body: recap.milestonesReached.length ? recap.milestonesReached.map((mi) => mi.name).join(' · ') : 'No milestones landed this month — some are on their way.', rive: null, confetti: false },
-    { title: recap.dimChange != null ? `Gender feeling: ${recap.dimChange >= 0 ? '+' : ''}${recap.dimChange}` : 'Gender feeling', body: 'The biggest shift across your scales this month. Whatever direction — it is yours.', rive: null, confetti: false },
+    { title: recap.dimChange ? `${recap.dimChange.name}: ${recap.dimChange.change >= 0 ? '+' : ''}${Math.round(recap.dimChange.change)}` : 'Your scales', body: recap.dimChange ? 'The scale that moved furthest this month, first entry to last. Whichever direction it went, it is yours.' : 'Not enough logged on any one scale this month to show a shift.', rive: null, confetti: false },
     { title: `That was ${recap.monthName}`, body: 'Thank you for keeping your own record. See you tomorrow.', rive: 'Recap finale: celebration in flag colours', confetti: true },
   ]);
 

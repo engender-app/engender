@@ -12,6 +12,7 @@
 
 import { db } from '../db.svelte';
 import { m } from '$lib/paraglide/messages';
+import { MOOD_SCALE, type MetricScale } from '../metricScale';
 import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { activeDimensions, activePreset, getPresets } from '../repositories/dimensions';
@@ -23,6 +24,7 @@ import {
   dimensionLow,
   dimensionName,
   milestoneTemplateName,
+  moodName,
   presetName,
   tagGroupName,
   tagLabel
@@ -76,6 +78,22 @@ export const vocabulary = {
   get metricName(): string {
     if (prefs.metricKind === 'mood') return m.mood();
     return this.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood();
+  },
+  /** A metric's own range, for turning a native value into colour
+      intensity (metricScale.ts). Mood's range is not a stored row. */
+  scaleOf(metric: string): MetricScale {
+    const d = this.dimensions.find((x) => x.key === metric);
+    return d ? { min: d.min, max: d.max } : MOOD_SCALE;
+  },
+  /** What the two ends of the heat-map scale are called. A gender
+      dimension reads its own endpoint labels, because neither end of
+      binary↔nonbinary or agender↔gendered is the better one and colour
+      must not say otherwise (ADR-0012, F15). Mood is the one metric with a
+      worst-to-best legend, and it uses the mood names rather than 1 and 5. */
+  get metricLegend(): { low: string; high: string } {
+    if (prefs.metricKind === 'mood') return { low: moodName(1), high: moodName(5) };
+    const d = this.dimensions.find((x) => x.key === metricKey(prefs));
+    return d ? { low: d.low, high: d.high } : { low: moodName(1), high: moodName(5) };
   },
   tag(id: string): Tag | null {
     const found = tagById(id);

@@ -81,6 +81,18 @@ export function calendarDuration(fromEpochDay: number, toEpochDay: number): Cale
   return { years, months, days };
 }
 
+/** A milestone's calendar month/day in a given year, with 29 February
+    falling back to the 28th in a common year rather than rolling into
+    March. `new Date(2025, 1, 29)` is 1 March, which is a different day of
+    a different month; clamping keeps the anniversary in February, where
+    the milestone happened, and means it is never skipped. */
+function anniversaryInYear(milestoneDate: Date, year: number): number {
+  const daysInMonth = new Date(year, milestoneDate.getMonth() + 1, 0).getDate();
+  return epochDayFromLocalDate(
+    new Date(year, milestoneDate.getMonth(), Math.min(milestoneDate.getDate(), daysInMonth))
+  );
+}
+
 /** The next occurrence of a milestone's calendar month/day that falls on
     or after `onOrAfterEpochDay` — the recurring-yearly anniversary
     (CONTEXT.md), not `milestoneEpochDay + n * 365`, which drifts across
@@ -88,11 +100,22 @@ export function calendarDuration(fromEpochDay: number, toEpochDay: number): Cale
     the anniversary. */
 export function nextAnniversaryEpochDay(milestoneEpochDay: number, onOrAfterEpochDay: number): number {
   const m = localDateFromEpochDay(milestoneEpochDay);
-  const ref = localDateFromEpochDay(onOrAfterEpochDay);
-  const thisYear = epochDayFromLocalDate(new Date(ref.getFullYear(), m.getMonth(), m.getDate()));
-  return thisYear >= onOrAfterEpochDay
-    ? thisYear
-    : epochDayFromLocalDate(new Date(ref.getFullYear() + 1, m.getMonth(), m.getDate()));
+  const refYear = localDateFromEpochDay(onOrAfterEpochDay).getFullYear();
+  const thisYear = anniversaryInYear(m, refYear);
+  return thisYear >= onOrAfterEpochDay ? thisYear : anniversaryInYear(m, refYear + 1);
+}
+
+/** How many of a past milestone's anniversaries have arrived by
+    `onEpochDay`: the year difference, less one while this year's is still
+    ahead. Not `calendarDuration().years`, which measures the gap and is
+    therefore a day short on a 29 February milestone's 28 February
+    anniversary — the one day the two disagree, and the day a milestone
+    would otherwise announce "0 years" while flagging itself as an
+    anniversary. Only meaningful for a milestone in the past. */
+export function anniversaryYears(milestoneEpochDay: number, onEpochDay: number): number {
+  const m = localDateFromEpochDay(milestoneEpochDay);
+  const refYear = localDateFromEpochDay(onEpochDay).getFullYear();
+  return refYear - m.getFullYear() - (anniversaryInYear(m, refYear) > onEpochDay ? 1 : 0);
 }
 
 export interface CalendarMonthRange {

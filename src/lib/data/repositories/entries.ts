@@ -86,10 +86,14 @@ export function quickLog(mood: number): number {
   return upsertEntry({ epochDay: todayEpochDay(), mood, note: '', dims: {}, tags: [], photos: [] });
 }
 
-/** Metric value for a day, 0–100 scale, averaged over its entries. */
+/** A day's metric, averaged over its entries, in native units: mood on 1
+    to 5, a dimension within its own range (ADR-0012). It used to return
+    mood x 20 while seriesForRange returned raw mood, so "the metric" meant
+    two different numbers depending on which function was asked. Turning
+    this into colour is metricScale.ts's job, not this one's. */
 export function dayMetricValue(epochDay: number, metric: string): number | null {
   const vals = entriesForDay(epochDay)
-    .map((e) => (metric === 'mood' ? (e.mood != null ? e.mood * 20 : null) : (e.dims?.[metric] ?? null)))
+    .map((e) => (metric === 'mood' ? e.mood : (e.dims?.[metric] ?? null)))
     .filter((v): v is number => v != null);
   if (!vals.length) return null;
   return vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -155,8 +159,7 @@ export interface TagInsight {
 export function tagInsights(rangeDays: number, metric: string): TagInsight[] {
   const today = todayEpochDay();
   const inRange = db.entries.filter((e) => e.epochDay >= today - rangeDays + 1);
-  const val = (e: Entry) =>
-    metric === 'mood' ? (e.mood != null ? e.mood * 20 : null) : (e.dims?.[metric] ?? null);
+  const val = (e: Entry) => (metric === 'mood' ? e.mood : (e.dims?.[metric] ?? null));
   const allTagIds = new Set(inRange.flatMap((e) => e.tags));
   const rows: TagInsight[] = [];
   for (const id of allTagIds) {

@@ -31,7 +31,9 @@
   {#if entries.length}
     <div class="card day-avg">
       <div>
-        <span class="chip-value">{avg == null ? '—' : Math.round((metric === 'mood' ? avg / 20 : avg) * 10) / 10}</span>
+        <!-- The day average arrives in native units (ADR-0012); the /20
+             that used to be here undid a x20 that no longer happens. -->
+        <span class="chip-value">{avg == null ? '—' : Math.round(avg * 10) / 10}</span>
         <span class="muted small">{m.day_avg({ metric: metricName })}{metric === 'mood' ? ' (1–5)' : ''}</span>
       </div>
       <span class="muted small">{m.entries_this_day({ count: String(entries.length) })}</span>

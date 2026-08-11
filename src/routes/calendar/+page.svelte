@@ -10,6 +10,7 @@
   let month = $state(now.getMonth());
 
   let metricName = $derived(vocabulary.metricName);
+  let legend = $derived(vocabulary.metricLegend);
   let monthLabel = $derived(fmtMonthYear(year, month));
 
   function step(delta: number) {
@@ -45,10 +46,13 @@
 
   <div class="card">
     <HeatMap {year} {month} />
-    <div class="heat-legend" aria-label="Colour scale from lowest to highest">
-      <span class="legend-end">{m.legend_low()}</span>
+    <!-- The ends are the metric's own words, never "worst" and "best":
+         neither end of binary↔nonbinary is the better one, and colour that
+         judges is the one thing this app cannot do (ADR-0012, F15). -->
+    <div class="heat-legend" aria-label="{metricName}: {legend.low} to {legend.high}">
+      <span class="legend-end">{legend.low}</span>
       {#each [1, 2, 3, 4] as i (i)}<span class="legend-swatch" style="background:var(--heat-{i})"></span>{/each}
-      <span class="legend-end">{m.legend_high()}</span>
+      <span class="legend-end">{legend.high}</span>
       <span class="legend-none"><span class="legend-swatch" style="background:var(--heat-0)"></span> {m.legend_none()}</span>
     </div>
   </div>

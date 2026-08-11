@@ -46,6 +46,16 @@ const DIMENSION_HIGH: Record<BuiltInDimensionKey, Message> = {
   agender_gendered: m.dim_agender_gendered_high
 };
 
+/* Mood is not a built-in row - it is a column on the entry - but its five
+   names are vocabulary all the same, and three places needed them: the
+   picker, the entry card's label, and the heat-map legend, which is the
+   one metric whose legend does read worst to best (ADR-0012). They were
+   hardcoded English in two of those before. */
+const MOOD_NAME: Message[] = [m.mood_1, m.mood_2, m.mood_3, m.mood_4, m.mood_5];
+
+/** The name of a mood, 1 to 5. */
+export const moodName = (value: number): string => MOOD_NAME[value - 1]?.() ?? String(value);
+
 const PRESET_NAME: Record<BuiltInPresetKey, Message> = {
   'p-btw': m.preset_p_btw,
   'p-nb': m.preset_p_nb

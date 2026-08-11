@@ -2,17 +2,21 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { dayMetricValue } from '$lib/data/repositories/entries';
   import { fmtDay } from '$lib/data/dates';
+  import { heatLevel } from '$lib/data/metricScale';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let { metric }: { metric: string } = $props();
 
   let days = $derived.by(() => {
     const today = todayEpochDay();
+    // Native value in, swatch out: the strip and the calendar shade the
+    // same day the same way whatever the metric's range is (ADR-0012).
+    const scale = vocabulary.scaleOf(metric);
     return Array.from({ length: 7 }, (_, idx) => {
       const day = today - (6 - idx);
-      const v = dayMetricValue(day, metric);
       return {
         day,
-        level: v == null ? 0 : Math.min(4, Math.max(1, Math.ceil((v / 100) * 4))),
+        level: heatLevel(dayMetricValue(day, metric), scale),
         isToday: day === today,
       };
     });
