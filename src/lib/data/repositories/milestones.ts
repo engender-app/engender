@@ -3,7 +3,7 @@
    the ids back on the stored rows, never a Date.now() of its own. */
 
 import { db, save } from '../db.svelte';
-import { todayEpochDay, calendarDuration, nextAnniversaryEpochDay } from '../epochDay';
+import { todayEpochDay, anniversaryYears, nextAnniversaryEpochDay } from '../epochDay';
 import { milestoneTemplateRows } from '../vocabulary/builtins';
 import type { DraftPhoto, Milestone, MilestoneTemplate, Photo } from '../types';
 
@@ -19,7 +19,9 @@ export function milestoneStatus(m: Milestone): MilestoneStatus {
   const today = todayEpochDay();
   if (m.epochDay > today) return { type: 'countdown', days: m.epochDay - today };
   if (m.epochDay === today) return { type: 'today', days: 0 };
-  const { years } = calendarDuration(m.epochDay, today);
+  // Years from the anniversary rather than from the gap, so a 29 February
+  // milestone does not read "0 years" on the day it flags as its first.
+  const years = anniversaryYears(m.epochDay, today);
   const nextAnniv = nextAnniversaryEpochDay(m.epochDay, today);
   return { type: 'anniversary', years, inDays: nextAnniv - today, isAnnivToday: nextAnniv === today };
 }
