@@ -14,6 +14,8 @@
    on delete here, files included, via the injected store. */
 
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
+import { foldText } from '../fold';
+import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Entry } from '../types';
 import type { PhotoFileStore } from './journal';
@@ -32,6 +34,13 @@ export interface EntryInput {
 export interface EntriesArea {
   getEntry(id: number): Promise<Entry | undefined>;
   entriesForDay(epochDay: number): Promise<Entry[]>;
+  /** Notes matching the query, unioned with the entries carrying any of
+      `matchingTagIds`, newest first (ADR-0005, PRD F19).
+
+      Matching labels to ids is the caller's half, for the reason
+      searchQuery.ts sets out: pass `tagIdsMatching(query, tags)` over the
+      mirrored vocabulary, or `[]` to mean "notes alone". */
+  searchEntries(query: string, matchingTagIds: string[]): Promise<Entry[]>;
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
@@ -100,6 +109,24 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     if (entryIsEmpty(e)) throw new Error(EMPTY_ENTRY_ERROR);
   }
 
+  /* The index is contentless, so it holds folded text against the entry's
+     rowid and nothing else (ADR-0005). Every write goes through here, which
+     is what keeps the fold on the index and the fold on the query the same
+     function rather than the same intention.
+
+     Clearing first makes this the same two statements for a new entry and
+     for an edit. On an insert the delete matches nothing, which costs one
+     statement inside a transaction and means neither caller has to know
+     which case it is in.
+
+     Deletes are not here: migration v3's trigger drops the index row with
+     the entry row, so paths that delete entries without knowing about the
+     index - ticket 14's Replace import - stay correct. */
+  const indexEntry = async (entryId: number, note: string) => {
+    await driver.run('DELETE FROM entry_fts WHERE rowid = ?', [entryId]);
+    await driver.run('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)', [entryId, foldText(note)]);
+  };
+
   return {
     async getEntry(id) {
       const rows = await driver.query<EntryRow>(
@@ -113,6 +140,52 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const rows = await driver.query<EntryRow>(
         'SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE epoch_day = ? ORDER BY timestamp, id',
         [epochDay]
+      );
+      return Promise.all(rows.map(toEntry));
+    },
+
+    async searchEntries(query, matchingTagIds) {
+      /* One statement rather than two lookups unioned in JS, so ordering and
+         de-duplication are the database's job: an entry whose note and tag
+         both match has to appear once.
+
+         Either half can be absent - a query of pure punctuation yields no
+         match expression, a query matching no label yields no tag ids - so
+         the halves are assembled rather than parameterised away. An unused
+         half cannot be left in the SQL and disarmed with a parameter: an
+         empty FTS5 expression is a syntax error, not an empty result, and
+         whether SQLite evaluates a guard before the MATCH beside it is not
+         something to depend on across three different SQLite builds. */
+      const clauses: string[] = [];
+      const params: string[] = [];
+
+      const match = ftsMatchExpression(query);
+      if (match) {
+        clauses.push('e.id IN (SELECT rowid FROM entry_fts WHERE entry_fts MATCH ?)');
+        params.push(match);
+      }
+
+      if (matchingTagIds.length > 0) {
+        // COALESCE(key, uuid) is the domain id of a tag: a built-in has the
+        // key, a custom row has the uuid (ADR-0002), which is the same rule
+        // domainIdOf() applies when reading one back out.
+        const placeholders = matchingTagIds.map(() => '?').join(', ');
+        clauses.push(
+          `e.id IN (
+             SELECT et.entry_id FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+             WHERE COALESCE(t.key, t.uuid) IN (${placeholders})
+           )`
+        );
+        params.push(...matchingTagIds);
+      }
+
+      if (clauses.length === 0) return [];
+
+      const rows = await driver.query<EntryRow>(
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note FROM entry e
+         WHERE ${clauses.join(' OR ')}
+         ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC`,
+        params
       );
       return Promise.all(rows.map(toEntry));
     },
@@ -142,6 +215,10 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           Object.entries(input.dims ?? {}).map(async ([key, value]) => [await dimensionIdByKey(key), value] as const)
         );
         const tagIds = input.tags && (await Promise.all(input.tags.map(tagRowidByDomainId)));
+        // The note that will be stored, whether this edit supplied one or
+        // not - reindexing on input.note alone would blank the index for an
+        // edit that only touched the mood.
+        const note = input.note ?? current.note ?? '';
 
         await driver.transaction(async () => {
           await driver.run(
@@ -150,11 +227,12 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
               input.epochDay ?? current.epoch_day,
               input.timestamp ?? current.timestamp,
               input.mood !== undefined ? input.mood : current.mood,
-              input.note ?? current.note ?? '',
+              note,
               now(),
               current.id
             ]
           );
+          await indexEntry(current.id, note);
           for (const [dimensionId, value] of dimIds) {
             await driver.run(
               `INSERT INTO entry_dimension_value (entry_id, dimension_id, value) VALUES (?, ?, ?)
@@ -194,6 +272,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           [uuid, input.epochDay, input.timestamp ?? now(), input.mood ?? null, input.note ?? '', now()]
         );
         const entryId = await rowidByUuid(driver, 'entry', uuid);
+        await indexEntry(entryId, input.note ?? '');
         for (const [dimensionId, value] of dimIds) {
           await driver.run('INSERT INTO entry_dimension_value (entry_id, dimension_id, value) VALUES (?, ?, ?)', [
             entryId,

@@ -62,7 +62,7 @@ try {
   const first = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
   if (first.error) throw new Error(first.error);
 
-  if (first.userVersion === 2) ok('boot() opens the database and migrates it to the current schema');
+  if (first.userVersion === 3) ok('boot() opens the database and migrates it to the current schema');
   else fail('boot() opens the database and migrates it to the current schema', `user_version is ${first.userVersion}`);
 
   if (first.markerExisted === false) ok('boot() runs against a fresh database on first load');
@@ -87,6 +87,38 @@ try {
   else fail('data written before a reload is still there after boot() re-runs', 'marker entry was gone after reload');
 } catch (e) {
   fail('ticket 04 browser tier', e.message ?? String(e));
+}
+
+// --- Ticket 09: folded search against the WASM SQLite, via the journal ----
+try {
+  const r = await load('/search.html', 'data-search-probe-ready', '__searchProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  const eq = (label, actual, expected) => {
+    if (JSON.stringify(actual) === JSON.stringify(expected)) ok(label);
+    else fail(label, `got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
+  };
+
+  // The case FTS5 cannot do on its own: ticket 03's probe proves plain FTS5
+  // returns nothing for 'zazolc' and for ł. Through the fold, both land.
+  eq("'lozko' finds 'łóżko' in the WASM build", r.folded.lozko, [r.ids.bed]);
+  eq("'zazolc' finds 'zażółć' in the WASM build", r.folded.zazolc, [r.ids.gesla]);
+  eq("'cwiczenia' finds 'ćwiczenia' in the WASM build", r.folded.cwiczenia, [r.ids.cwiczenia]);
+  eq('prefix matching works in the WASM build', r.folded.prefix, [r.ids.cwiczenia]);
+  eq('typing the accented form folds the same way', r.folded.accentedInput, [r.ids.bed]);
+  eq('a matched tag finds the entry carrying it', r.tagOnly, [r.ids.tagged]);
+
+  // A letter foldText does not cover has to stay one token, or the word it
+  // sits in stops matching itself.
+  eq("'Müller' finds the note it was typed from", r.unfolded.asTyped, [r.ids.muller]);
+  eq("'muller' finds it too, unicode61 folding ü on both sides", r.unfolded.asAscii, [r.ids.muller]);
+  eq('the fold still reaches ł in that same note', r.unfolded.polishInSameNote, [r.ids.muller]);
+
+  eq('editing a note leaves none of the old text in the index', r.afterEdit.old, []);
+  eq('editing a note indexes the new text', r.afterEdit.new, [r.ids.bed]);
+  eq('a deleted entry leaves the index', r.afterDelete, []);
+} catch (e) {
+  fail('ticket 09 browser tier', e.message ?? String(e));
 }
 
 // --- Ticket 12: crypto primitives, and hash-wasm's no-network-fetch claim -
