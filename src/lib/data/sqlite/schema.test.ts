@@ -1,23 +1,11 @@
 /* Verifies the schema DDL itself (ticket 02's acceptance criteria): it
    applies cleanly through the migration runner, the deltas from the PRD
    schema landed, and the cascades the PRD relies on actually cascade.
-   Run with `node --test`. */
+   Part of the Node tier (ticket 03); run with `npm test`. */
 
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { runMigrations } from './migration-runner.ts';
-import { migrations } from './migrations.ts';
-import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
-
-function noopFileOps() {
-  return { copyDatabaseFile() {}, cleanupPreMigrationCopy() {} };
-}
-
-async function migratedDb() {
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations);
-  return db;
-}
+import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
