@@ -10,7 +10,8 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { db, todayEpochDay } from '$lib/data/db.svelte';
-  import { epochDayFromISO, isoFromEpochDay } from '$lib/data/dates';
+  import { epochDayFromLocalDate, localDateFromEpochDay } from '$lib/data/dates';
+  import { dateInputValue, dateFromInputValue } from '$lib/data/dateInput';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -69,7 +70,7 @@
   });
 
   /* New-entry chooser (F1). */
-  let backdate = $state(isoFromEpochDay(todayEpochDay() - 1));
+  let backdate = $state(dateInputValue(localDateFromEpochDay(todayEpochDay() - 1)));
   function chooseToday() {
     ui.chooserOpen = false;
     goto(`/entry/new/${todayEpochDay()}`);
@@ -77,7 +78,7 @@
   function chooseDate() {
     if (!backdate) return;
     ui.chooserOpen = false;
-    goto(`/entry/new/${epochDayFromISO(backdate)}`);
+    goto(`/entry/new/${epochDayFromLocalDate(dateFromInputValue(backdate))}`);
   }
 </script>
 
@@ -159,7 +160,7 @@
               type="date"
               id="backdate"
               name="backdate"
-              max={isoFromEpochDay(todayEpochDay())}
+              max={dateInputValue(localDateFromEpochDay(todayEpochDay()))}
               bind:value={backdate}
             />
             <button class="btn btn-soft" data-choose="date" onclick={chooseDate}>{m.go()}</button>
