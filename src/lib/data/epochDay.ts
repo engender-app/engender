@@ -138,3 +138,20 @@ export function previousCalendarMonthRange(epochDay: number): CalendarMonthRange
     month
   };
 }
+
+export interface CalendarYearRange {
+  start: number;
+  end: number;
+  year: number;
+}
+
+/** The calendar year before the one `epochDay` falls in. January offers
+    this range as the completed year recap (PRD F29). */
+export function previousCalendarYearRange(epochDay: number): CalendarYearRange {
+  const year = localDateFromEpochDay(epochDay).getFullYear() - 1;
+  return {
+    start: epochDayFromLocalDate(new Date(year, 0, 1)),
+    end: epochDayFromLocalDate(new Date(year, 11, 31)),
+    year
+  };
+}

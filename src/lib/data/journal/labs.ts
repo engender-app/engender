@@ -65,7 +65,7 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
       if (input.id) {
         const result = await driver.run(
           'UPDATE lab_result SET epoch_day = ?, analyte = ?, value = ?, unit = ?, note = ?, updated_at = ? WHERE uuid = ?',
-          [input.epochDay, input.analyte, input.value, input.unit ?? '—', input.note ?? '', now(), input.id]
+          [input.epochDay, input.analyte, input.value, input.unit ?? '', input.note ?? '', now(), input.id]
         );
         assertChanged(result, `lab result: ${input.id}`);
         return input.id;
@@ -73,7 +73,7 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
       const uuid = mintUuid();
       await driver.run(
         'INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [uuid, input.epochDay, input.analyte, input.value, input.unit ?? '—', input.note ?? '', now()]
+        [uuid, input.epochDay, input.analyte, input.value, input.unit ?? '', input.note ?? '', now()]
       );
       return uuid;
     },
