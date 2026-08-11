@@ -114,9 +114,9 @@
         id: existing?.id,
         ...draft,
         timestamp: draft.timestamp || undefined,
-        attachPhotos: photos.filter((p) => p.kind === 'picked').map((p) => p.photo)
+        attachPhotos: photos.filter((p) => p.kind === 'picked').map((p) => p.photo),
+        removePhotoIds: removedPhotoIds
       });
-      for (const photoId of removedPhotoIds) await journal.photos.remove(photoId);
       removedPhotoIds = [];
       goto('/');
       toast(m.saved());
