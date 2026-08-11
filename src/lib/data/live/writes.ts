@@ -125,8 +125,8 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
      would be a list to keep in step with what a restore happens to touch,
      and a Replace touches everything by definition. */
   archive: {
-    writes: { replace: TABLE_NAMES, merge: TABLE_NAMES },
-    reads: ['snapshot']
+    writes: { replace: TABLE_NAMES, merge: TABLE_NAMES, commitDaylioImport: TABLE_NAMES },
+    reads: ['snapshot', 'previewDaylioImport']
   }
 };
 
