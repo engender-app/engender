@@ -19,7 +19,8 @@ import {
   calendarDuration,
   anniversaryYears,
   nextAnniversaryEpochDay,
-  previousCalendarMonthRange
+  previousCalendarMonthRange,
+  previousCalendarYearRange
 } from './epochDay.ts';
 
 const tz = process.env.TZ ?? '(system default)';
@@ -191,4 +192,11 @@ test(`previousCalendarMonthRange crosses the year boundary in January under TZ=$
   expect(range.month).toBe(11);
   expect(range.start).toBe(epochDayFromLocalDate(new Date(2023, 11, 1)));
   expect(range.end).toBe(epochDayFromLocalDate(new Date(2023, 11, 31)));
+});
+
+test(`previousCalendarYearRange covers the leap year offered by a January recap under TZ=${tz}`, () => {
+  const range = previousCalendarYearRange(epochDayFromLocalDate(new Date(2025, 0, 10)));
+  expect(range.year).toBe(2024);
+  expect(range.start).toBe(epochDayFromLocalDate(new Date(2024, 0, 1)));
+  expect(range.end).toBe(epochDayFromLocalDate(new Date(2024, 11, 31)));
 });

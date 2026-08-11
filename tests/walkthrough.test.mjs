@@ -145,6 +145,85 @@ try {
   ok('stats range, value list and named tag insights');
 } catch (e) { fail('stats', e); }
 
+/* 6b. ticket 18's three view-only screens: chronological milestones with
+   a compressed gap, thumbnail-backed photo comparison with both sides
+   step-able, and the on-demand recap sequence with its Rive fallback. */
+try {
+  await fresh('/timeline');
+  const milestoneNames = await page.locator('.tl-item:not(.tl-today) .tl-name').allTextContents();
+  const expectedMilestones = [
+    'Coming out to my parents',
+    'HRT start',
+    'First time presenting publicly',
+    'Name-change hearing',
+    'Voice workshop weekend'
+  ];
+  if (JSON.stringify(milestoneNames) !== JSON.stringify(expectedMilestones)) {
+    throw new Error('milestones out of order: ' + JSON.stringify(milestoneNames));
+  }
+  if (!(await page.locator('.tl-gap').count())) throw new Error('the long milestone gap was not compressed');
+
+  await fresh('/settings/photos');
+  await page.waitForSelector('.photo-cell img');
+  const thumbnailSrc = await page.locator('.photo-cell img').first().getAttribute('src');
+  if (!thumbnailSrc?.startsWith('blob:')) throw new Error('the photo grid did not load stored thumbnails');
+  const photoCells = page.locator('.photo-cell');
+  if ((await photoCells.count()) < 4) throw new Error('not enough photos to exercise both compare controls');
+  await photoCells.nth(0).click();
+  await photoCells.nth(2).click();
+  await page.locator('[data-compare]').click();
+  const sides = page.locator('.compare-side');
+  const gap = await page.locator('.compare-gap').textContent();
+  if ((await sides.count()) !== 2 || !gap?.includes('apart')) throw new Error('compare dates or gap missing');
+  const leftDate = sides.nth(0).locator('.compare-nav .small');
+  const rightDate = sides.nth(1).locator('.compare-nav .small');
+  const leftBefore = await leftDate.textContent();
+  await sides.nth(0).getByRole('button', { name: 'Later photo' }).click();
+  if ((await leftDate.textContent()) === leftBefore) throw new Error('the left photo did not move through time');
+  const rightBefore = await rightDate.textContent();
+  await sides.nth(1).getByRole('button', { name: 'Later photo' }).click();
+  if ((await rightDate.textContent()) === rightBefore) throw new Error('the right photo did not move through time');
+
+  await fresh('/recap');
+  for (let i = 0; i < 7; i++) await page.locator('[data-next]').click();
+  await page.waitForSelector('.rive-stage .confetti');
+  if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('recap is not view-only');
+  await fresh('/recap?period=year');
+  const yearTitle = await page.locator('.recap-title').textContent();
+  const previousYear = await page.evaluate(() => new Date().getFullYear() - 1);
+  if (yearTitle?.trim() !== `Your ${previousYear}`) throw new Error('year recap title: ' + yearTitle);
+  ok('timeline, progress-photo compare and on-demand recap');
+} catch (e) { fail('ticket 18 view-only screens', e); }
+
+/* 6c. lab result CRUD and per-analyte chart */
+try {
+  await fresh('/settings/labs');
+  if (!(await page.locator('.line-chart').count())) throw new Error('the selected analyte has no trend chart');
+
+  await page.locator('[data-add]').click();
+  await page.locator('#lab-analyte').selectOption('custom');
+  await page.locator('#lab-custom-analyte').fill('SHBG');
+  await page.locator('#lab-value').fill('61');
+  await page.locator('#lab-unit').fill('nmol/L');
+  await page.locator('#lab-note').fill('first result');
+  await page.locator('[data-save-lab]').click();
+  await page.waitForSelector('.segment:has-text("SHBG")');
+  await page.locator('.segment:has-text("SHBG")').click();
+  await page.waitForSelector('[data-lab-result]:has-text("61")');
+
+  await page.locator('[data-lab-result]').first().click();
+  await page.locator('#lab-value').fill('62');
+  await page.locator('#lab-note').fill('corrected');
+  await page.locator('[data-save-lab]').click();
+  await page.waitForSelector('[data-lab-result]:has-text("62")');
+
+  await page.locator('[data-lab-result]').first().click();
+  await page.locator('[data-delete-lab]').click();
+  await page.locator('[data-confirm-delete-lab]').click();
+  await page.waitForSelector('.segment:has-text("SHBG")', { state: 'detached' });
+  ok('lab result custom create, edit, delete and per-analyte chart');
+} catch (e) { fail('lab results', e); }
+
 /* 7. palette switch */
 try {
   await fresh('/settings');
