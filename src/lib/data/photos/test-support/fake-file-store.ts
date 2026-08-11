@@ -16,12 +16,17 @@ export interface FakeFileStore extends PhotoFileStore {
       because the uuid a photo is stored under is minted inside the
       journal, where a test cannot predict it. */
   failNthWrite(n: number): void;
+  /** Makes the nth removal from now throw, standing in for cleanup failing
+      after an owner save has committed. */
+  failNthRemove(n: number): void;
 }
 
 export function fakeFileStore(initial: string[] = []): FakeFileStore {
   const files = new Map<string, Uint8Array>(initial.map((name) => [name, new Uint8Array([1])]));
   let writes = 0;
   let failAt = 0;
+  let removes = 0;
+  let failRemoveAt = 0;
 
   return {
     async write(name, bytes) {
@@ -36,6 +41,8 @@ export function fakeFileStore(initial: string[] = []): FakeFileStore {
       return files.get(name)?.length ?? null;
     },
     async remove(name) {
+      removes += 1;
+      if (removes === failRemoveAt) throw new Error('file remove failed');
       files.delete(name);
     },
     async list() {
@@ -46,6 +53,9 @@ export function fakeFileStore(initial: string[] = []): FakeFileStore {
     },
     failNthWrite(n) {
       failAt = writes + n;
+    },
+    failNthRemove(n) {
+      failRemoveAt = removes + n;
     }
   };
 }

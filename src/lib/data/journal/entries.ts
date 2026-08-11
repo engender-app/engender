@@ -19,7 +19,15 @@ import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Entry } from '../types';
 import type { PhotoFileStore } from './journal';
-import { attachPhoto, photosOfEntry, removeFilesOf, type NormalizedPhoto } from './photos';
+import {
+  insertStagedPhoto,
+  photosOfEntry,
+  removeFilesAfterCommit,
+  removeFilesOf,
+  stagePhoto,
+  type NormalizedPhoto,
+  type StagedPhoto
+} from './photos';
 import { domainIdOf, mintUuid, now, rowidByUuid } from './support';
 
 export interface EntryInput {
@@ -37,9 +45,11 @@ export interface EntryInput {
       a photo-only entry is rejected as empty on the way to getting its photo.
 
       Additive, unlike `tags`: the photos an entry already has stay, because
-      the editor has their rows but not their bytes. Removing one is
-      `photos.remove`. */
+      the editor has their rows but not their bytes. */
   attachPhotos?: NormalizedPhoto[];
+  /** Stored photos removed in this edit. They travel with the rest of the
+      entry save so its fields and photos commit as one action. */
+  removePhotoIds?: string[];
 }
 
 export interface EntriesArea {
@@ -86,6 +96,8 @@ type EntryRow = {
   note: string | null;
 };
 
+type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: string };
+
 export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): EntriesArea {
   const dimensionIdByKey = async (key: string): Promise<number> => {
     const rows = await driver.query<{ id: number }>('SELECT id FROM gender_dimension WHERE key = ?', [key]);
@@ -120,6 +132,20 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     const rows = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM photo WHERE entry_id = ?', [entryId]);
     return rows[0].n;
   };
+
+  const photosToRemove = async (entryId: number | null, ids: string[]): Promise<RemovedPhotoRow[]> =>
+    Promise.all(
+      [...new Set(ids)].map(async (id) => {
+        const rows = await driver.query<RemovedPhotoRow>(
+          'SELECT uuid, entry_id, file_path FROM photo WHERE uuid = ?',
+          [id]
+        );
+        if (!rows[0]) throw new Error(`unknown photo: ${id}`);
+        if (entryId == null) throw new Error(`photo ${id} does not belong to a new entry`);
+        if (rows[0].entry_id !== entryId) throw new Error(`photo ${id} does not belong to entry: ${entryId}`);
+        return rows[0];
+      })
+    );
 
   const toEntry = async (row: EntryRow): Promise<Entry> => ({
     id: row.id,
@@ -282,12 +308,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const mergedDims = { ...currentDims, ...input.dims };
         const tags = input.tags ?? (await tagsOf(current.id));
         const attaching = input.attachPhotos ?? [];
+        const removedPhotos = await photosToRemove(current.id, input.removePhotoIds ?? []);
         assertHasContent({
           mood: input.mood !== undefined ? input.mood : current.mood,
           note: input.note ?? current.note ?? '',
           dimCount: Object.keys(mergedDims).length,
           tagCount: tags.length,
-          photoCount: (await photoCountOf(current.id)) + attaching.length
+          photoCount: (await photoCountOf(current.id)) - removedPhotos.length + attaching.length
         });
 
         // Resolved before the transaction so an unknown key aborts cleanly.
@@ -299,6 +326,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         // not - reindexing on input.note alone would blank the index for an
         // edit that only touched the mood.
         const note = input.note ?? current.note ?? '';
+        const stagedPhotos: StagedPhoto[] = [];
+        for (const photo of attaching) stagedPhotos.push(await stagePhoto(files, photo));
 
         await driver.transaction(async () => {
           await driver.run(
@@ -326,8 +355,14 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
               await driver.run('INSERT INTO entry_tag (entry_id, tag_id) VALUES (?, ?)', [current.id, tagId]);
             }
           }
-          for (const photo of attaching) await attachPhoto(driver, files, { entryId: current.id }, photo);
+          for (const photo of removedPhotos) {
+            await driver.run('DELETE FROM photo WHERE uuid = ? AND entry_id = ?', [photo.uuid, current.id]);
+          }
+          for (const photo of stagedPhotos) {
+            await insertStagedPhoto(driver, { entryId: current.id, milestoneId: null }, photo);
+          }
         });
+        await removeFilesAfterCommit(files, removedPhotos);
         return current.id;
       }
 
@@ -335,6 +370,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const dims = input.dims ?? {};
       const tags = input.tags ?? [];
       const attachingNew = input.attachPhotos ?? [];
+      await photosToRemove(null, input.removePhotoIds ?? []);
       assertHasContent({
         mood: input.mood ?? null,
         note: input.note ?? '',
@@ -346,6 +382,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         Object.entries(dims).map(async ([key, value]) => [await dimensionIdByKey(key), value] as const)
       );
       const tagIds = await Promise.all(tags.map(tagRowidByDomainId));
+      const stagedPhotos: StagedPhoto[] = [];
+      for (const photo of attachingNew) stagedPhotos.push(await stagePhoto(files, photo));
 
       const uuid = mintUuid();
       return driver.transaction(async () => {
@@ -365,7 +403,9 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         for (const tagId of tagIds) {
           await driver.run('INSERT INTO entry_tag (entry_id, tag_id) VALUES (?, ?)', [entryId, tagId]);
         }
-        for (const photo of attachingNew) await attachPhoto(driver, files, { entryId }, photo);
+        for (const photo of stagedPhotos) {
+          await insertStagedPhoto(driver, { entryId, milestoneId: null }, photo);
+        }
         return entryId;
       });
     },
