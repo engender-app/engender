@@ -3,7 +3,7 @@
   import { db } from '$lib/data/db.svelte';
   import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
   import { milestoneStatus } from '$lib/data/repositories/milestones';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtDuration } from '$lib/data/dates';
   import type { Milestone } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
@@ -26,13 +26,7 @@
         todayInserted = true;
       }
       if (prevDay != null && mi.epochDay - prevDay > 420) {
-        const { years, months } = calendarDuration(prevDay, mi.epochDay);
-        const label =
-          years > 0
-            ? months > 0
-              ? `${m.n_years({ n: years })} ${m.n_months({ n: months })}`
-              : m.n_years({ n: years })
-            : m.n_months({ n: months });
+        const label = fmtDuration(calendarDuration(prevDay, mi.epochDay));
         out.push({ kind: 'gap', label, id: 'gap-' + mi.id });
       }
       const s = milestoneStatus(mi);
