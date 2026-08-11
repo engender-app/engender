@@ -117,3 +117,19 @@ Unlike the seven areas before it, this one never writes. It also never reads the
 clock: a range arrives as two epoch days and the streak takes today as an argument,
 because "today" is a local calendar day (ADR-0001) and the journal has no business
 deciding which one it is.
+
+## Amended by ticket 13: a ninth area
+
+The archive became the ninth area, `journal.archive`. An export reads every table
+at once, by travelling identity rather than by rowid (ADR-0002), which is not a
+shape any of the eight areas above it speaks: the entries area addresses an entry
+by the rowid that means nothing on another device, and a screen's getter can afford
+a query per entry for its dimensions, tags and photos where an export over years of
+them cannot. Ticket 14's Replace and Merge land in the same module, because the
+inverse of a snapshot belongs beside it and both are single journal operations.
+
+`PhotoFileStore` grew `size()` with it. An archive's chunk count has to be settled
+before its first chunk is encrypted (ADR-0007), so packing needs every photo's
+length up front, and the alternative - reading each photo once to measure it and
+again to write it - is the cost the chunked format exists to avoid. OPFS answers it
+from file metadata without touching the bytes.

@@ -53,6 +53,18 @@ export function opfsPhotoFiles(directory = PHOTO_DIRECTORY): PhotoFileStore {
       }
     },
 
+    async size(name) {
+      try {
+        const handle = await (await dir()).getFileHandle(name);
+        // File.size is metadata: this never reads the bytes, which is the
+        // whole reason packing asks for it instead of reading.
+        return (await handle.getFile()).size;
+      } catch (error) {
+        if (isNotFound(error)) return null;
+        throw error;
+      }
+    },
+
     async remove(name) {
       try {
         await (await dir()).removeEntry(name);
