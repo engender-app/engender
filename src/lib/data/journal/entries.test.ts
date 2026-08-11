@@ -5,6 +5,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
@@ -100,8 +101,8 @@ test('unknown write ids throw: entry id, dimension key, tag id', async () => {
 
 test('deleting an entry takes its dimension values, tag links, photo rows and files; twice is success', async () => {
   const db = await migratedDb();
-  const removed: string[] = [];
-  const journal = openJournal(db, { remove: async (path) => void removed.push(path) });
+  const files = fakeFileStore(['p1.jpg', 'p1-thumb.jpg']);
+  const journal = openJournal(db, files);
   await journal.reconcileBuiltIns();
 
   const id = await journal.entries.upsertEntry({
@@ -110,9 +111,7 @@ test('deleting an entry takes its dimension values, tag links, photo rows and fi
     dims: { femininity: 60 },
     tags: ['e-happy']
   });
-  db.raw
-    .prepare("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', ?, 'photos/p1.jpg', 0)")
-    .run(id);
+  db.raw.prepare("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', ?, 'p1.jpg', 0)").run(id);
 
   await journal.entries.deleteEntry(id);
 
@@ -120,7 +119,7 @@ test('deleting an entry takes its dimension values, tag links, photo rows and fi
   for (const table of ['entry_dimension_value', 'entry_tag', 'photo']) {
     assert.equal((db.raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n, 0, table);
   }
-  assert.deepEqual(removed, ['photos/p1.jpg']);
+  assert.deepEqual(files.names(), [], 'the thumbnail goes with the photo');
 
   await journal.entries.deleteEntry(id); // idempotent
 });
