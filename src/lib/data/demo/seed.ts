@@ -3,7 +3,8 @@
    never looks stale and Reset restores exactly this state. */
 
 import type { DB, GenderDimension, GenderPreset, MilestoneTemplate, TagGroup } from '../types';
-import { todayEpochDay } from '../epochDay';
+import type { PreferenceValues } from '../prefs/catalogue';
+import { startOfDayTimestamp, todayEpochDay } from '../epochDay';
 
 // DAY is private to epochDay.ts (ticket 19); this is the one hand-multiplying
 // caller left, and ticket 05 deletes it along with the rest of this persona.
@@ -142,27 +143,26 @@ function buildEntries(): DB['entries'] {
   return entries;
 }
 
+/* The persona's preferences. They live in SQLite now (ticket 06), not in
+   the demo store, so they are seeded separately from the rest of the
+   persona - only where the table is empty, and only in a demo build.
+   Anything left out here stays at the catalogue's default, which is what a
+   real first run gets. */
+export function demoPreferences(): Partial<PreferenceValues> {
+  return {
+    onboarded: true,
+    name: 'Alice',
+    activePreset: 'p-btw',
+    metricKind: 'mood',
+    checkInEnabled: true,
+    lastBackupAt: startOfDayTimestamp(todayEpochDay() - 34),
+  };
+}
+
 export function seed(): DB {
   const today = todayEpochDay();
   return {
     version: 1,
-    prefs: {
-      onboarded: true,
-      name: 'Alice',
-      activePreset: 'p-btw',
-      colorMetric: 'mood',
-      theme: 'light',
-      palette: 'trans',
-      language: 'en',
-      appLock: false,
-      lockOnLeave: false,
-      disguise: false,
-      quickExit: false,
-      checkIn: { enabled: true, time: '21:00' },
-      autoExport: { enabled: false, schedule: 'weekly' },
-      lastBackupAt: (today - 34) * DAY,
-      backupNoticeDismissed: false,
-    },
     dimensions: builtInDimensions.map((d) => ({ ...d })),
     customPresets: [],
     tagGroups: JSON.parse(JSON.stringify(seedTagGroups)),

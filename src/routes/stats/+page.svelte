@@ -5,6 +5,8 @@
   import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
   import { seriesForRange, tagInsights, streakDays } from '$lib/data/repositories/entries';
   import { activeDimensions } from '$lib/data/repositories/dimensions';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { metricKey } from '$lib/data/prefs/catalogue';
   import Icon from '$lib/components/Icon.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -19,7 +21,7 @@
     ...activeDimensions().map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max })),
   ]);
   let streak = $derived(streakDays());
-  let insights = $derived(tagInsights(range, db.prefs.colorMetric));
+  let insights = $derived(tagInsights(range, metricKey(prefs)));
   let lastMonthName = $derived.by(() => {
     const { year, month } = previousCalendarMonthRange(todayEpochDay());
     return fmtMonthName(year, month);
@@ -28,7 +30,7 @@
   let valueSheet = $state<{ name: string; key: string; series: ReturnType<typeof seriesForRange> } | null>(null);
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
-  const fmtMetric = (v: number) => (db.prefs.colorMetric === 'mood' ? (v / 20).toFixed(1) : String(Math.round(v)));
+  const fmtMetric = (v: number) => (prefs.metricKind === 'mood' ? (v / 20).toFixed(1) : String(Math.round(v)));
 
   let insightEntries = $derived.by(() => {
     const sheet = insightSheet;
@@ -86,7 +88,7 @@
   {/each}
 
   <SectionTitle text={m.tag_insights()}>
-    {#snippet aside()}{m.insights_sub({ metric: db.prefs.colorMetric === 'mood' ? m.mood() : 'metric' })}{/snippet}
+    {#snippet aside()}{m.insights_sub({ metric: prefs.metricKind === 'mood' ? m.mood() : 'metric' })}{/snippet}
   </SectionTitle>
   {#if insights.length}
     <div class="list-group">

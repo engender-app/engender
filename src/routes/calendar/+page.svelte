@@ -2,6 +2,8 @@
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
   import { fmtMonthYear } from '$lib/data/dates';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { metricKey } from '$lib/data/prefs/catalogue';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
 
@@ -10,9 +12,9 @@
   let month = $state(now.getMonth());
 
   let metricName = $derived(
-    db.prefs.colorMetric === 'mood'
+    prefs.metricKind === 'mood'
       ? m.mood()
-      : (db.dimensions.find((d) => d.key === db.prefs.colorMetric)?.name ?? m.mood())
+      : (db.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
   );
   let monthLabel = $derived(fmtMonthYear(year, month));
 

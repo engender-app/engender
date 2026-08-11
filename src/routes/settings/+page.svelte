@@ -2,10 +2,12 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
-  import { db, save } from '$lib/data/db.svelte';
+  import { db } from '$lib/data/db.svelte';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { getPresets, activePreset } from '$lib/data/repositories/dimensions';
   import { setGroupEnabled } from '$lib/data/repositories/tags';
+  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { metricKey } from '$lib/data/prefs/catalogue';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -22,12 +24,12 @@
   let isWeb = $derived(ui.frame !== 'phone');
   let preset = $derived(activePreset());
   let metricName = $derived(
-    db.prefs.colorMetric === 'mood'
+    prefs.metricKind === 'mood'
       ? m.mood()
-      : (db.dimensions.find((d) => d.key === db.prefs.colorMetric)?.name ?? m.mood())
+      : (db.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
   );
   let backupAge = $derived(
-    db.prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(db.prefs.lastBackupAt) : null
+    prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(prefs.lastBackupAt) : null
   );
 
   let presetSheet = $state(false);
@@ -36,15 +38,13 @@
   let aboutSheet = $state(false);
 
   function setLanguage(v: string) {
-    db.prefs.language = v as typeof db.prefs.language;
-    save();
+    prefs.language = v as typeof prefs.language;
     const target = v === 'system' ? ((navigator.language || 'en').startsWith('pl') ? 'pl' : 'en') : (v as 'en' | 'pl');
     if (target !== getLocale()) setLocale(target); // reloads; all state is persisted
   }
 
   function pickPalette(key: string) {
-    db.prefs.palette = key;
-    save();
+    prefs.palette = key;
   }
 </script>
 
@@ -58,9 +58,9 @@
       {#each PALETTES as [key, label] (key)}
         <button
           class="palette-swatch"
-          class:is-active={db.prefs.palette === key}
+          class:is-active={prefs.palette === key}
           role="radio"
-          aria-checked={db.prefs.palette === key}
+          aria-checked={prefs.palette === key}
           data-palette-pick={key}
           onclick={() => pickPalette(key)}
         >
@@ -79,10 +79,9 @@
           { value: 'light', label: m.theme_light() },
           { value: 'dark', label: m.theme_dark() },
         ]}
-        value={db.prefs.theme}
+        value={prefs.theme}
         onChange={(v) => {
-          db.prefs.theme = v as typeof db.prefs.theme;
-          save();
+          prefs.theme = v as typeof prefs.theme;
         }}
       />
     </div>
@@ -95,7 +94,7 @@
           { value: 'en', label: 'English' },
           { value: 'pl', label: 'Polski' },
         ]}
-        value={db.prefs.language}
+        value={prefs.language}
         onChange={setLanguage}
       />
     </div>
@@ -154,7 +153,7 @@
         <span class="row-subtitle">
           {isWeb
             ? m.reminders_web_sub()
-            : `${db.reminders.filter((r) => r.enabled).length} active · daily check-in ${db.prefs.checkIn.enabled ? m.on() : m.off()}`}
+            : `${db.reminders.filter((r) => r.enabled).length} active · daily check-in ${prefs.checkInEnabled ? m.on() : m.off()}`}
         </span>
       </span>
       <span class="row-trailing">{#if isWeb}<Icon name="info" size={18} />{:else}<Icon name="chevronRight" size={20} />{/if}</span>
@@ -192,18 +191,17 @@
       <span class="row-text">
         <span class="row-title">{m.app_lock()}</span>
         <span class="row-subtitle">
-          {#if db.prefs.appLock}
+          {#if prefs.appLock}
             {m.on()} · PIN{ui.frame === 'phone' ? ' + biometrics' : ''} ·
             <a href="/settings/lock" style="color:var(--accent)">{m.try_it()}</a>
           {:else}{m.off()}{/if}
         </span>
       </span>
       <Switch
-        checked={db.prefs.appLock}
+        checked={prefs.appLock}
         label={m.app_lock()}
         onChange={(v) => {
-          db.prefs.appLock = v;
-          save();
+          prefs.appLock = v;
           if (v) goto('/settings/lock?setup=1');
         }}
       />
@@ -212,7 +210,7 @@
       <span class="row-icon"><Icon name="shield" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.disguise_row()}</span>
-        <span class="row-subtitle">{db.prefs.disguise ? 'disguised as “Notes”' : m.off()}</span>
+        <span class="row-subtitle">{prefs.disguise ? 'disguised as “Notes”' : m.off()}</span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </button>
@@ -246,8 +244,7 @@
           class="list-row"
           data-pick-preset={p.id}
           onclick={() => {
-            db.prefs.activePreset = p.id;
-            save();
+            prefs.activePreset = p.id;
             presetSheet = false;
           }}
         >
@@ -255,7 +252,7 @@
             <span class="row-title">{p.name}</span>
             <span class="row-subtitle">{m.scales_count({ count: String(p.dims.length) })}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
           </span>
-          {#if db.prefs.activePreset === p.id}<Icon name="check" size={20} />{/if}
+          {#if prefs.activePreset === p.id}<Icon name="check" size={20} />{/if}
         </button>
       {/each}
       <a class="list-row" href="/settings/dimension" onclick={() => (presetSheet = false)}>
@@ -272,17 +269,16 @@
     <h3>{m.home_cal_colour()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.metric_note()}</p>
     <div class="list-group" style="box-shadow:none">
-      {#each [{ key: 'mood', name: m.mood() }, ...db.dimensions] as d (d.key)}
+      {#each [{ key: null, name: m.mood() }, ...db.dimensions] as d (d.key ?? 'mood')}
         <button
           class="list-row"
           onclick={() => {
-            db.prefs.colorMetric = d.key;
-            save();
+            selectMetric(d.key);
             metricSheet = false;
           }}
         >
           <span class="row-text"><span class="row-title">{d.name}</span></span>
-          {#if db.prefs.colorMetric === d.key}<Icon name="check" size={20} />{/if}
+          {#if prefs.metricDimension === d.key}<Icon name="check" size={20} />{/if}
         </button>
       {/each}
     </div>
@@ -301,15 +297,14 @@
           </span>
         </span>
         <Switch
-          checked={db.prefs.disguise}
+          checked={prefs.disguise}
           label="Disguise app"
           onChange={(v) => {
-            db.prefs.disguise = v;
-            save();
+            prefs.disguise = v;
           }}
         />
       </div>
-      <div class="disguise-preview" class:is-on={db.prefs.disguise}>
+      <div class="disguise-preview" class:is-on={prefs.disguise}>
         <span class="disguise-icon"><Icon name="book" size={22} /></span>
         <span>
           <strong>Notes</strong><br />
@@ -319,14 +314,13 @@
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
         <span class="row-text">
           <span class="row-title">Lock on leave</span>
-          <span class="row-subtitle">locks the moment the app goes to background{db.prefs.appLock ? '' : ' · needs app lock on'}</span>
+          <span class="row-subtitle">locks the moment the app goes to background{prefs.appLock ? '' : ' · needs app lock on'}</span>
         </span>
         <Switch
-          checked={db.prefs.lockOnLeave}
+          checked={prefs.lockOnLeave}
           label="Lock on leave"
           onChange={(v) => {
-            db.prefs.lockOnLeave = v;
-            save();
+            prefs.lockOnLeave = v;
           }}
         />
       </div>
@@ -336,11 +330,10 @@
           <span class="row-subtitle">two-finger swipe down locks instantly{ui.frame === 'phone' ? '' : ' and swaps the tab to a blank page'}</span>
         </span>
         <Switch
-          checked={db.prefs.quickExit}
+          checked={prefs.quickExit}
           label="Quick exit"
           onChange={(v) => {
-            db.prefs.quickExit = v;
-            save();
+            prefs.quickExit = v;
           }}
         />
       </div>

@@ -1,8 +1,14 @@
 /* The demo data store: a deeply reactive $state object persisted to
    localStorage. Phase 1 replaces this module's internals with the SQLite
-   drivers; the repository modules keep their signatures. */
+   drivers; the repository modules keep their signatures.
 
-import { seed } from './demo/seed';
+   Preferences left here in ticket 06 - they are in SQLite now, reached
+   through prefs/store.svelte.ts. Everything below is entry data, which
+   ticket 07 takes. */
+
+import { demoPreferences, seed } from './demo/seed';
+import { prefs } from './prefs/store.svelte';
+import { PREFERENCE_DEFAULTS } from './prefs/catalogue';
 import type { DB } from './types';
 
 const KEY = 'gender-diary-demo-v1';
@@ -37,7 +43,6 @@ export function save() {
 
 function replace(next: DB) {
   db.version = next.version;
-  db.prefs = next.prefs;
   db.dimensions = next.dimensions;
   db.customPresets = next.customPresets;
   db.tagGroups = next.tagGroups;
@@ -50,18 +55,24 @@ function replace(next: DB) {
 
 export function resetDemo() {
   if (browser) localStorage.removeItem(KEY);
+  // Defaults first, then the persona: without the defaults a palette or a
+  // disguise toggle a reviewer flipped would survive "Reset demo state",
+  // which is not what reset means.
+  Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
   replace(seed());
 }
 
-/** True first-run state, used by the demo bar's "Onboarding (first run)". */
+/** True first-run state, used by the demo bar's "Onboarding (first run)".
+    Only the preferences onboarding itself decides are reset, so a reviewer
+    who picked a theme or palette keeps it across the jump. */
 export function markFirstRun() {
   const s = seed();
-  s.prefs.onboarded = false;
-  s.prefs.name = '';
   s.entries = [];
   s.milestones = [];
   s.labResults = [];
-  s.prefs.lastBackupAt = null;
+  prefs.onboarded = PREFERENCE_DEFAULTS.onboarded;
+  prefs.name = PREFERENCE_DEFAULTS.name;
+  prefs.lastBackupAt = PREFERENCE_DEFAULTS.lastBackupAt;
   replace(s);
 }
 
