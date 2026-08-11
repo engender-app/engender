@@ -3,8 +3,12 @@
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { archiveFileName, deliverArchive } from '$lib/data/archive/deliver';
-  import { packArchive } from '$lib/data/archive/pack';
+  import { openArchive, packArchive } from '$lib/data/archive/pack';
+  import { CorruptArchiveError, UnsupportedArchiveError } from '$lib/data/archive/container';
+  import { fileArchivePicker, type PickedArchive } from '$lib/data/archive/pick';
   import { portablePreferences } from '$lib/data/archive/payload';
+  import { PORTABLE_KEYS } from '$lib/data/prefs/catalogue';
+  import { DecryptionFailedError } from '$lib/crypto/aesGcm';
   import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -22,7 +26,8 @@
   let expPass = $state('');
   let impPass = $state('');
   let impMode = $state('merge');
-  let filePicked = $state(false);
+  let picked = $state<PickedArchive | null>(null);
+  let importing = $state(false);
   let impError = $state('');
   let plainSheet = $state<string | null>(null);
   let daylioSheet = $state(false);
@@ -78,17 +83,73 @@
     }
   }
 
-  function doImport() {
-    if (!filePicked) {
+  const archivePicker = fileArchivePicker();
+
+  async function pickArchive() {
+    try {
+      const chosen = await archivePicker.pick();
+      if (!chosen) return; // backed out
+      picked = chosen;
+      impError = '';
+    } catch (error) {
+      console.error('the archive picker failed', error);
+      toast("Couldn't open the file picker.");
+    }
+  }
+
+  /* The import. Every step before the last one is reversible, and the last
+     one is a single journal operation that either lands whole or leaves the
+     journal exactly as it was (ADR-0011) - which is why this screen does no
+     sequencing of its own beyond picking a mode. */
+  async function doImport() {
+    if (!picked) {
       impError = 'Pick a backup file first.';
       return;
     }
-    if (impPass !== 'demo') {
-      impError = "That password doesn’t unlock this file. Passwords are case-sensitive — check and try again. Nothing was imported.";
+    if (!impPass) {
+      impError = 'Type the password this backup was made with.';
       return;
     }
     impError = '';
-    toast('Backup restored.');
+    importing = true;
+    try {
+      const { payload, files } = await openArchive(picked.bytes(), impPass);
+      const contents = { journal: payload.journal, files };
+
+      if (impMode === 'replace') {
+        await journal.archive.replace(contents);
+        /* The settings that describe the journal travel with it (ADR-0003);
+           the ones that describe this installation - the PIN, the lock flags,
+           the disguise - are not in the archive at all, so restoring cannot
+           lock anybody out of an app with no recovery path. */
+        for (const key of PORTABLE_KEYS) {
+          const value = payload.preferences?.[key];
+          if (value !== undefined) prefs[key] = value as never;
+        }
+        toast('Restored. This journal is the backup now.');
+      } else {
+        // Settings are left alone on a merge, the same rule its rows follow:
+        // what is already on this device wins.
+        await journal.archive.merge(contents);
+        toast('Merged in. Nothing you already had was touched.');
+      }
+    } catch (error) {
+      console.error('the import failed', error);
+      impError = importFailure(error);
+    } finally {
+      importing = false;
+    }
+  }
+
+  function importFailure(error: unknown): string {
+    if (error instanceof DecryptionFailedError) {
+      return 'That password doesn’t unlock this file. Passwords are case-sensitive — check and try again. Nothing was imported.';
+    }
+    if (error instanceof UnsupportedArchiveError) return `${error.message} Nothing was imported.`;
+    if (error instanceof CorruptArchiveError) {
+      return 'This file is damaged and can’t be read to the end. Nothing was imported — your journal is exactly as it was.';
+    }
+    return 'The import couldn’t be finished. Your journal is exactly as it was.';
   }
 
   function confirmPlain() {
@@ -175,11 +236,10 @@
   <div class="card editor-section">
     <div class="field">
       <span class="field-label">Backup file</span>
-      <button class="input" style="text-align:left;color:var(--text-2)" data-pick-file
-        onclick={() => (filePicked = true)}>
+      <button class="input" style="text-align:left;color:var(--text-2)" data-pick-file onclick={pickArchive}>
         <Icon name="upload" size={18} />
-        <span id="picked-file" style={filePicked ? 'color:var(--text)' : ''}>
-          {filePicked ? 'alice-journal-2026-08-02.ttbackup' : 'Choose a .ttbackup file…'}
+        <span id="picked-file" style={picked ? 'color:var(--text)' : ''}>
+          {picked ? picked.name : 'Choose a .ttbackup file…'}
         </span>
       </button>
     </div>
@@ -200,7 +260,14 @@
         <div class="notice-body">{impError}</div>
       </div>
     {/if}
-    <button class="btn btn-soft" data-import onclick={doImport}><span>Import backup</span></button>
+    <p class="muted small" style="margin-bottom:var(--space-3)">
+      {impMode === 'replace'
+        ? 'Everything in this journal is discarded and the backup takes its place. Your PIN, app lock and disguise settings stay as they are.'
+        : 'Anything the backup has and this device doesn’t is added. Nothing you already logged is changed.'}
+    </p>
+    <button class="btn btn-soft" data-import onclick={doImport} disabled={importing}>
+      <span>{importing ? 'Importing…' : 'Import backup'}</span>
+    </button>
     <div class="hr"></div>
     <button class="list-row" data-daylio style="border-radius:var(--radius-md);background:var(--surface-2)"
       onclick={() => (daylioSheet = true)}>
