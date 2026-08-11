@@ -56,7 +56,9 @@ export interface Journal {
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
   /** Everything above at once, in the shape an export carries it
-      (ADR-0007). Ticket 14's import is the other half. */
+      (ADR-0007), and one archive read back in - Replace or Merge, each a
+      single operation whose order of writes is nobody else's business
+      (ADR-0011). */
   archive: ArchiveArea;
   /** Adds whatever built-in vocabulary is missing, by key, and touches
       nothing else - safe on every boot and again before ticket 14's

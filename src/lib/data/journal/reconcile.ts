@@ -19,53 +19,61 @@ async function presentKeys(driver: SqliteDriver, table: string): Promise<Set<str
 }
 
 export async function reconcileBuiltIns(driver: SqliteDriver): Promise<void> {
-  await driver.transaction(async () => {
-    const ts = now();
+  await driver.transaction(() => reconcileBuiltInsWithin(driver));
+}
 
-    const dimensionKeys = await presentKeys(driver, 'gender_dimension');
-    for (const d of BUILT_IN_DIMENSIONS) {
-      if (dimensionKeys.has(d.key)) continue;
+/** The same work without a transaction of its own, for the one caller that
+    is already inside one: an import seeds and then swaps the journal as a
+    single transaction, so that a failure leaves the database exactly as it
+    was rather than as the next boot would have made it (ticket 14). SQLite
+    has no nested transactions, which is why this is a second entry point and
+    not a second implementation. */
+export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<void> {
+  const ts = now();
+
+  const dimensionKeys = await presentKeys(driver, 'gender_dimension');
+  for (const d of BUILT_IN_DIMENSIONS) {
+    if (dimensionKeys.has(d.key)) continue;
+    await driver.run(
+      `INSERT INTO gender_dimension (key, name, low_label, high_label, min_value, max_value, is_built_in, updated_at)
+       VALUES (?, '', '', '', ?, ?, 1, ?)`,
+      [d.key, d.min, d.max, ts]
+    );
+  }
+
+  const presetKeys = await presentKeys(driver, 'gender_preset');
+  for (const p of BUILT_IN_PRESETS) {
+    if (presetKeys.has(p.key)) continue;
+    await driver.run(`INSERT INTO gender_preset (key, name, is_built_in, updated_at) VALUES (?, '', 1, ?)`, [
+      p.key,
+      ts
+    ]);
+    for (const [orderIndex, dimKey] of p.dims.entries()) {
       await driver.run(
-        `INSERT INTO gender_dimension (key, name, low_label, high_label, min_value, max_value, is_built_in, updated_at)
-         VALUES (?, '', '', '', ?, ?, 1, ?)`,
-        [d.key, d.min, d.max, ts]
+        `INSERT INTO preset_dimension (preset_id, dimension_id, order_index)
+         SELECT gp.id, gd.id, ? FROM gender_preset gp, gender_dimension gd WHERE gp.key = ? AND gd.key = ?`,
+        [orderIndex, p.key, dimKey]
       );
     }
+  }
 
-    const presetKeys = await presentKeys(driver, 'gender_preset');
-    for (const p of BUILT_IN_PRESETS) {
-      if (presetKeys.has(p.key)) continue;
-      await driver.run(`INSERT INTO gender_preset (key, name, is_built_in, updated_at) VALUES (?, '', 1, ?)`, [
-        p.key,
+  const groupKeys = await presentKeys(driver, 'tag_group');
+  const tagKeys = await presentKeys(driver, 'tag');
+  for (const [orderIndex, g] of BUILT_IN_TAG_GROUPS.entries()) {
+    if (!groupKeys.has(g.key)) {
+      await driver.run(`INSERT INTO tag_group (key, name, order_index, updated_at) VALUES (?, '', ?, ?)`, [
+        g.key,
+        orderIndex,
         ts
       ]);
-      for (const [orderIndex, dimKey] of p.dims.entries()) {
-        await driver.run(
-          `INSERT INTO preset_dimension (preset_id, dimension_id, order_index)
-           SELECT gp.id, gd.id, ? FROM gender_preset gp, gender_dimension gd WHERE gp.key = ? AND gd.key = ?`,
-          [orderIndex, p.key, dimKey]
-        );
-      }
     }
-
-    const groupKeys = await presentKeys(driver, 'tag_group');
-    const tagKeys = await presentKeys(driver, 'tag');
-    for (const [orderIndex, g] of BUILT_IN_TAG_GROUPS.entries()) {
-      if (!groupKeys.has(g.key)) {
-        await driver.run(`INSERT INTO tag_group (key, name, order_index, updated_at) VALUES (?, '', ?, ?)`, [
-          g.key,
-          orderIndex,
-          ts
-        ]);
-      }
-      for (const [tagIndex, tagKey] of g.tags.entries()) {
-        if (tagKeys.has(tagKey)) continue;
-        await driver.run(
-          `INSERT INTO tag (key, group_id, label, order_index, updated_at)
-           SELECT ?, id, '', ?, ? FROM tag_group WHERE key = ?`,
-          [tagKey, tagIndex, ts, g.key]
-        );
-      }
+    for (const [tagIndex, tagKey] of g.tags.entries()) {
+      if (tagKeys.has(tagKey)) continue;
+      await driver.run(
+        `INSERT INTO tag (key, group_id, label, order_index, updated_at)
+         SELECT ?, id, '', ?, ? FROM tag_group WHERE key = ?`,
+        [tagKey, tagIndex, ts, g.key]
+      );
     }
-  });
+  }
 }

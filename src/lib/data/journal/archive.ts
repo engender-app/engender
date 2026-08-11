@@ -14,10 +14,13 @@
    anything is encrypted (ADR-0007) - and hands back a reader for one file
    at a time, so nothing ever holds the photo set at once.
 
-   Ticket 14's Replace and Merge join this module: the inverse of a
-   snapshot belongs beside it, as one journal operation each. */
+   Ticket 14's Replace and Merge are the other half of this area, one
+   journal operation each. They live in restore.ts: the two halves share
+   nothing but the wire format, and the ordering rule an import turns on
+   (ADR-0011) is long enough to be worth reading on its own. */
 
 import { filesOf } from '../photos/names';
+import { restoreArchive, type RestoreContents } from './restore';
 import type {
   ArchiveDimension,
   ArchiveEntry,
@@ -46,6 +49,13 @@ export interface ArchiveSnapshot {
 
 export interface ArchiveArea {
   snapshot(): Promise<ArchiveSnapshot>;
+  /** Discards this device's journal and installs the archive's, keeping the
+      built-in vocabulary by key and leaving preferences alone (ADR-0011).
+      One operation: the order it happens in is not a caller's to compose. */
+  replace(contents: RestoreContents): Promise<void>;
+  /** Adds what this device does not have and leaves matched rows alone, so
+      importing the same archive twice is a no-op the second time. */
+  merge(contents: RestoreContents): Promise<void>;
 }
 
 type PhotoRow = { uuid: string; file_path: string; entry_id: number | null; milestone_id: number | null };
@@ -249,6 +259,9 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
   };
 
   return {
+    replace: (contents) => restoreArchive(driver, files, 'replace', contents),
+    merge: (contents) => restoreArchive(driver, files, 'merge', contents),
+
     async snapshot() {
       // One read of the photo table for the rows, their owners and the
       // manifest: three passes over the same list, never three queries.

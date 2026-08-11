@@ -106,6 +106,53 @@ async function run() {
     for await (const _file of wrong.files);
   });
 
+  /* Ticket 14: the same archive read back into a different journal, here
+     rather than only in the Node tier. A Replace runs a dozen deletes and
+     every insert inside one manual BEGIN/COMMIT through SQLocal's worker
+     (sqlocal-driver.ts), and the photo files land in real OPFS - and this is
+     the path where getting either wrong destroys a journal that by design
+     has no other copy. */
+  const restoreFiles = opfsPhotoFiles('archive-restore-photos');
+  const restoreSqlite = createWebSqlite('archive-restore.sqlite3');
+  const restoreBoot = await boot({
+    createDriver: () => restoreSqlite.driver,
+    fileOps: restoreSqlite.fileOps
+  });
+  if (restoreBoot.phase === 'error') throw restoreBoot.error;
+  const restored = openJournal(restoreBoot.driver, restoreFiles);
+
+  const contentsOf = async () => {
+    const reopened = await openArchive(oneShot(archive), PASSWORD);
+    return { journal: reopened.payload.journal, files: reopened.files };
+  };
+
+  await restored.archive.replace(await contentsOf());
+  const [restoredEntry] = await restored.entries.entriesForDay(20000);
+  const restoredPhoto = await restoreFiles.read(restoredEntry.photos[0].fileName!);
+  result.restored = {
+    entries: (await restored.entries.recentDays(400)).length,
+    photos: (await restored.photos.inJournal()).length,
+    tagRows: (await restored.tags.getTagGroups()).flatMap((g) => g.tags).length,
+    dims: restoredEntry.dims,
+    tags: restoredEntry.tags,
+    note: restoredEntry.note,
+    // Folded on both sides (ADR-0005), so the index was written by the
+    // import rather than carried in the archive.
+    searchHits: (await restored.entries.searchEntries('zazolc', [])).length,
+    milestones: (await restored.milestones.getMilestones()).length,
+    builtInDimensions: (await restored.dimensions.getDimensions()).filter((d) => d.builtIn).length,
+    photoBytesMatch: restoredPhoto?.length === full.length && restoredPhoto.every((byte, i) => byte === full[i])
+  };
+
+  // And again as a Merge, which has to find every row already there.
+  await restored.archive.merge(await contentsOf());
+  result.afterSecondImport = {
+    entries: (await restored.entries.recentDays(400)).length,
+    photos: (await restored.photos.inJournal()).length,
+    tagRows: (await restored.tags.getTagGroups()).flatMap((g) => g.tags).length,
+    milestones: (await restored.milestones.getMilestones()).length
+  };
+
   /* The download, driven from a click because that is the only way a
      browser hands a file to a person. run.mjs attaches its own download
      handler before clicking. */

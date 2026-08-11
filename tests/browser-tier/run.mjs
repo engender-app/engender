@@ -321,6 +321,37 @@ try {
     ok('a wrong password fails with nothing but "wrong password"');
   else fail('a wrong password fails with nothing but "wrong password"', JSON.stringify(r.wrongPassword));
 
+  /* Ticket 14: the same archive restored into another journal on the real
+     platform, where a Replace is a dozen deletes and every insert inside one
+     BEGIN/COMMIT through SQLocal's worker. */
+  const restored = r.restored ?? {};
+  if (
+    restored.entries === 1 &&
+    restored.note === 'zażółć gęślą jaźń' &&
+    restored.dims?.femininity === 60 &&
+    restored.tags?.includes('e-happy') &&
+    restored.milestones === 1 &&
+    restored.photos === 2 &&
+    restored.builtInDimensions === 5 &&
+    restored.photoBytesMatch
+  )
+    ok('a Replace installs the archive over SQLocal and OPFS: rows, photo bytes and the built-ins it kept by key');
+  else fail('a Replace installs the archive over SQLocal and OPFS', JSON.stringify(restored));
+
+  if (restored.searchHits === 1)
+    ok("a restored note is in the search index, folded by the import rather than carried in the file");
+  else fail('a restored note is in the search index', JSON.stringify(restored.searchHits));
+
+  const second = r.afterSecondImport ?? {};
+  if (
+    second.entries === restored.entries &&
+    second.photos === restored.photos &&
+    second.tagRows === restored.tagRows &&
+    second.milestones === restored.milestones
+  )
+    ok('merging the same archive again on the real platform changes nothing');
+  else fail('merging the same archive again changes nothing', `${JSON.stringify(restored)} then ${JSON.stringify(second)}`);
+
   // The archive really becomes a file: a click, a download, and bytes on
   // disk that plain Node - which knows nothing about this app - can read
   // the header of, which is the whole point of the header being plaintext.
