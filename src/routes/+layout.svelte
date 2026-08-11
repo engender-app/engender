@@ -96,7 +96,11 @@
 {/if}
 
 <div class="app-viewport">
-  <div class="app" class:disguised={prefs.disguise}>
+  <!-- data-boot is what the error notice below already branches on, published
+       so it can be waited for: the walkthrough suite has to let a cold start
+       finish before it clears storage, or it interrupts the very writes it
+       then asserts against (tests/walkthrough.test.mjs). -->
+  <div class="app" class:disguised={prefs.disguise} data-boot={bootState.status}>
     {#if bootState.status === 'error'}
       <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
         <Icon name="alert" size={20} />

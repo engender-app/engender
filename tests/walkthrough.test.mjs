@@ -24,10 +24,22 @@ const page = await (await browser.newContext({ viewport: { width: 440, height: 9
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 
+/* Waits for the boot sequence, not just for the network to go quiet (ticket
+   08). Opening OPFS, running migrations and - on a cold demo start - writing
+   the persona all happen after the last request has landed, so `networkidle`
+   returns mid-write. Reloading there interrupted the seed part-way through the
+   persona's 150 days, and because those are written oldest-first, what went
+   missing was the recent data the stats and calendar flows assert on. */
+async function booted() {
+  await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+}
+
 async function fresh(path = '/') {
   await page.goto(BASE + path, { waitUntil: 'networkidle' });
+  await booted();
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'networkidle' });
+  await booted();
 }
 
 /* 1. quick log */

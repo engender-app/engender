@@ -19,7 +19,7 @@ import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Entry } from '../types';
 import type { PhotoFileStore } from './journal';
-import { photosOfEntry, removeFilesOf } from './photos';
+import { attachPhoto, photosOfEntry, removeFilesOf, type NormalizedPhoto } from './photos';
 import { domainIdOf, mintUuid, now, rowidByUuid } from './support';
 
 export interface EntryInput {
@@ -30,18 +30,38 @@ export interface EntryInput {
   note?: string;
   dims?: Record<string, number>;
   tags?: string[];
+  /** Photos picked in this edit, normalized and ready to store (ADR-0008).
+      They arrive with the save rather than in a call after it, for two
+      reasons: an entry is committed as one action (PRD F1), and a photo on
+      its own is enough content for an entry - attaching afterwards would mean
+      a photo-only entry is rejected as empty on the way to getting its photo.
+
+      Additive, unlike `tags`: the photos an entry already has stay, because
+      the editor has their rows but not their bytes. Removing one is
+      `photos.remove`. */
+  attachPhotos?: NormalizedPhoto[];
 }
 
 export interface EntriesArea {
   getEntry(id: number): Promise<Entry | undefined>;
   entriesForDay(epochDay: number): Promise<Entry[]>;
+  /** Every entry on the most recent `dayCount` days that carry one, newest
+      first. Days rather than rows, because Home groups by day and heads a
+      group with how many entries it holds - a row limit would cut a group
+      in half and make the count a lie (PRD F1). */
+  recentDays(dayCount: number): Promise<Entry[]>;
+  /** The entries carrying a tag, newest first, at most `limit` of them. The
+      id is a tag's domain id: a built-in's key or a custom's uuid
+      (ADR-0002). An unknown id yields nothing rather than throwing - this
+      is a read. */
+  entriesWithTag(tagId: string, limit: number): Promise<Entry[]>;
   /** Notes matching the query, unioned with the entries carrying any of
       `matchingTagIds`, newest first (ADR-0005, PRD F19).
 
       Matching labels to ids is the caller's half, for the reason
       searchQuery.ts sets out: pass `tagIdsMatching(query, tags)` over the
       mirrored vocabulary, or `[]` to mean "notes alone". */
-  searchEntries(query: string, matchingTagIds: string[]): Promise<Entry[]>;
+  searchEntries(query: string, matchingTagIds: string[], limit?: number): Promise<Entry[]>;
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
@@ -145,7 +165,35 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       return Promise.all(rows.map(toEntry));
     },
 
-    async searchEntries(query, matchingTagIds) {
+    async recentDays(dayCount) {
+      /* The inner select picks the days, the outer one takes their entries
+         whole. Filtering on a day list rather than on `LIMIT` is what keeps
+         a two-entry day from arriving as one entry. */
+      const rows = await driver.query<EntryRow>(
+        `SELECT id, epoch_day, timestamp, mood, note FROM entry
+         WHERE epoch_day IN (SELECT DISTINCT epoch_day FROM entry ORDER BY epoch_day DESC LIMIT ?)
+         ORDER BY epoch_day DESC, timestamp DESC, id DESC`,
+        [dayCount]
+      );
+      return Promise.all(rows.map(toEntry));
+    },
+
+    async entriesWithTag(tagId, limit) {
+      // COALESCE(key, uuid) is a tag's domain id (ADR-0002), the same rule
+      // searchEntries and the tag insights match on.
+      const rows = await driver.query<EntryRow>(
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note FROM entry e
+         JOIN entry_tag et ON et.entry_id = e.id
+         JOIN tag t ON t.id = et.tag_id
+         WHERE COALESCE(t.key, t.uuid) = ?
+         ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
+         LIMIT ?`,
+        [tagId, limit]
+      );
+      return Promise.all(rows.map(toEntry));
+    },
+
+    async searchEntries(query, matchingTagIds, limit) {
       /* One statement rather than two lookups unioned in JS, so ordering and
          de-duplication are the database's job: an entry whose note and tag
          both match has to appear once.
@@ -158,7 +206,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
          whether SQLite evaluates a guard before the MATCH beside it is not
          something to depend on across three different SQLite builds. */
       const clauses: string[] = [];
-      const params: string[] = [];
+      const params: (string | number)[] = [];
 
       const match = ftsMatchExpression(query);
       if (match) {
@@ -185,8 +233,9 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note FROM entry e
          WHERE ${clauses.join(' OR ')}
-         ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC`,
-        params
+         ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
+         ${limit == null ? '' : 'LIMIT ?'}`,
+        limit == null ? params : [...params, limit]
       );
       return Promise.all(rows.map(toEntry));
     },
@@ -203,12 +252,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const currentDims = await dimsOf(current.id);
         const mergedDims = { ...currentDims, ...input.dims };
         const tags = input.tags ?? (await tagsOf(current.id));
+        const attaching = input.attachPhotos ?? [];
         assertHasContent({
           mood: input.mood !== undefined ? input.mood : current.mood,
           note: input.note ?? current.note ?? '',
           dimCount: Object.keys(mergedDims).length,
           tagCount: tags.length,
-          photoCount: await photoCountOf(current.id)
+          photoCount: (await photoCountOf(current.id)) + attaching.length
         });
 
         // Resolved before the transaction so an unknown key aborts cleanly.
@@ -247,6 +297,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
               await driver.run('INSERT INTO entry_tag (entry_id, tag_id) VALUES (?, ?)', [current.id, tagId]);
             }
           }
+          for (const photo of attaching) await attachPhoto(driver, files, { entryId: current.id }, photo);
         });
         return current.id;
       }
@@ -254,12 +305,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       if (input.epochDay == null) throw new Error('a new entry needs an epochDay');
       const dims = input.dims ?? {};
       const tags = input.tags ?? [];
+      const attachingNew = input.attachPhotos ?? [];
       assertHasContent({
         mood: input.mood ?? null,
         note: input.note ?? '',
         dimCount: Object.keys(dims).length,
         tagCount: tags.length,
-        photoCount: 0
+        photoCount: attachingNew.length
       });
       const dimIds = await Promise.all(
         Object.entries(dims).map(async ([key, value]) => [await dimensionIdByKey(key), value] as const)
@@ -284,6 +336,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         for (const tagId of tagIds) {
           await driver.run('INSERT INTO entry_tag (entry_id, tag_id) VALUES (?, ?)', [entryId, tagId]);
         }
+        for (const photo of attachingNew) await attachPhoto(driver, files, { entryId }, photo);
         return entryId;
       });
     },

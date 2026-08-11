@@ -637,3 +637,54 @@ button.switch { border: none; background: none; padding: 0; cursor: pointer; dis
 .switch[aria-checked="true"] .switch-track { background: var(--accent); border-color: var(--accent); }
 .switch[aria-checked="true"] .switch-thumb { transform: translateX(16px); }
 .switch:focus-visible .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ---------- loading placeholders ---------- */
+/* Entry lists, stats, search and recap read through a worker and cannot
+   answer synchronously (ADR-0004), so they show the shape of what is coming.
+   Same surfaces, radii and 50 ms cascade as the content that replaces them,
+   so the arrival is a fill rather than a relayout. */
+.skeleton-stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.skeleton {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  position: relative;
+  overflow: hidden;
+}
+.skeleton::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--surface) 65%, transparent), transparent);
+  animation: skeleton-sweep 1.4s linear infinite;
+}
+@keyframes skeleton-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+/* The global reduce rule clamps every animation to 1ms, which would turn an
+   infinite sweep into a strobe. It is decoration, so it goes entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { display: none; }
+}
+
+.skeleton-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-4);
+  display: flex; align-items: flex-start; gap: var(--space-3);
+}
+.skeleton-dot { width: 26px; height: 26px; border-radius: var(--radius-pill); flex-shrink: 0; }
+.skeleton-lines { display: flex; flex-direction: column; gap: var(--space-2); flex: 1; }
+.skeleton-line { height: 12px; border-radius: var(--radius-xs); display: block; }
+.skeleton-line.is-short { width: 40%; }
+
+.skeleton-chart {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+.skeleton-plot { height: 96px; border-radius: var(--radius-md); display: block; }
+
+.skeleton-line:only-child { margin: var(--space-2) 0; }

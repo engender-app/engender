@@ -3,19 +3,24 @@
    instead of a blank screen if opening the database or running migrations
    fails. This only runs in the browser (ssr = false).
 
-   It is also the thin app-level module ADR-0017 asks for: the one place
-   that constructs a module over the driver and hands it to the UI. Today
-   that is preferences; the journal joins it in ticket 07.
+   It is also the thin app-level module ADR-0017 asks for: the one place that
+   constructs the journal over the driver and hands it to the UI. The driver
+   stops here - screens reach the journal through data/live/, which is the
+   only thing above this file that knows a database is involved at all.
 
-   Preferences arrive in two steps, matching boot()'s own sequence. Step 1
-   reads the mirrored boot set synchronously, before anything renders, so
-   theme and palette match what the pre-paint script in app.html already
-   stamped on <html>. Step 2 replaces the lot with what SQLite holds. */
+   Two things arrive in two steps each, matching boot()'s own sequence.
+   Preferences: the mirrored boot set is read synchronously before anything
+   renders, so theme and palette match what the pre-paint script in app.html
+   already stamped on <html>, then SQLite replaces the lot. Reference data:
+   the built-ins are reconciled and the mirror filled at step 3, so the first
+   screen to render already has a vocabulary. */
 
 import { boot } from '../data/sqlite/boot';
 import { createWebSqlite } from '../data/sqlite/sqlocal-driver';
 import { openJournal, type Journal } from '../data/journal/journal';
 import { sweepOrphanPhotos } from '../data/journal/photos';
+import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
+import { hydrateReference } from '../data/live/reference.svelte';
 import { opfsPhotoFiles } from '../data/photos/opfs-file-store';
 import { setPhotoFiles } from './photoFiles';
 import { localStorageCache } from '../data/prefs/boot-cache';
@@ -24,22 +29,18 @@ import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/sto
 import { toast } from './toasts.svelte';
 import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
-import type { SqliteDriver } from '../data/sqlite/driver';
 
 export const bootState = $state<{
   status: 'booting' | 'ready' | 'error';
   error: string | null;
   persistDenied: boolean;
-  driver: SqliteDriver | null;
-  /** The one journal instance the UI reads (ADR-0017). Ticket 08's query
-      layer takes over as the only consumer; the driver stops being
-      exposed then. */
+  /** The one journal instance the UI reads (ADR-0017), for anything that
+      needs the handle itself rather than the reactive layer over it. */
   journal: Journal | null;
 }>({
   status: 'booting',
   error: null,
   persistDenied: false,
-  driver: null,
   journal: null
 });
 
@@ -52,11 +53,9 @@ export function startBoot() {
   const cache = localStorageCache();
 
   // The PRD asks for navigator.storage.persist() on first save, not on
-  // boot - but there is no save path yet (repositories move onto this
-  // driver in ticket 07), and persist() is safe to call more than once,
-  // so this asks once here as a stand-in. Move this call to the real
-  // first-save moment once ticket 07 adds one, rather than adding a
-  // second call there.
+  // boot - but persist() is safe to call more than once and asking here
+  // covers every save path at once. Worth revisiting when the PWA ticket
+  // lands, not by adding a second call.
   const { driver, fileOps, requestPersistentStorage } = createWebSqlite('gender-diary.sqlite3');
 
   // Set before boot() rather than after, so the first screen to render a
@@ -64,13 +63,26 @@ export function startBoot() {
   const photoFiles = opfsPhotoFiles();
   setPhotoFiles(photoFiles);
 
+  /* Attached before the migrations run, so the writes step 3 makes below -
+     reconciling built-ins - announce themselves like any other. Queries stay
+     parked until journalIsOpen(). */
+  const journal = attachJournal(openJournal(driver, photoFiles));
+
   boot({
     createDriver: () => driver,
     fileOps,
     requestPersistentStorage,
     applyBootPreferences: () => applyCachedBootPreferences(cache.read()),
-    // Step 4 of the sequence: after the database is open and migrated, so
-    // the rows it compares against are the current ones (ADR-0008).
+    // Step 3: built-ins reconcile on every boot, by key - not seed-if-empty,
+    // so a journal can never end up short of one (ADR-0002; ticket 14's
+    // Replace calls the same operation before an import applies). Then the
+    // mirror is filled from what that left behind (ADR-0004).
+    loadReferenceData: async () => {
+      await journal.reconcileBuiltIns();
+      await hydrateReference(journal);
+    },
+    // Step 4: after the database is open and migrated, so the rows it
+    // compares against are the current ones (ADR-0008).
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles)
   }).then(async (result) => {
     if (result.phase === 'error') {
@@ -79,27 +91,38 @@ export function startBoot() {
       return;
     }
 
-    // Built-ins reconcile on every boot, by key - not seed-if-empty, so a
-    // journal can never end up short of one (ADR-0002; ticket 14's Replace
-    // calls the same operation before an import applies).
-    const journal = openJournal(result.driver, photoFiles);
-    await journal.reconcileBuiltIns();
-
     const preferences = await openPreferences(result.driver, cache);
-    // The demo persona's preferences (Alice, onboarded, her active preset)
-    // are what make the demo build land on a populated Home rather than on
-    // onboarding. Ticket 05 moves this behind the dev-only persona module
-    // along with the rest of the persona.
+    /* The demo persona (Alice, onboarded, her active preset, 150 days of
+       entries) is what makes the demo build land on a populated Home rather
+       than on onboarding. Gated on the preference table being empty rather
+       than on the journal being empty, so the demo bar's "first run" jump -
+       which empties the journal on purpose - is not undone by the next
+       reload. Dropped whole from a production build (ticket 05). */
     if (__DEMO__ && preferences.openedEmpty()) {
+      const { clearJournal, seedPersonaJournal } = await import('../data/demo/journal-seed');
+      /* Cleared first, and the preferences written last, so an interrupted
+         seed heals itself. Writing the persona is a few thousand statements
+         through a worker, and a tab closed part-way through would otherwise
+         leave a demo that is permanently half-seeded: the preferences would
+         say it had been done, while the journal held only the oldest entries -
+         the persona writes 150 days oldest-first, so what goes missing is
+         exactly the recent data every screen shows. */
+      await clearJournal(journal);
+      await seedPersonaJournal(journal);
       for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
         await preferences.set(key, value);
       }
     }
     await attachPreferences(preferences);
 
+    /* Last, so no query runs against a half-written journal. Each of the
+       persona's entries bumps the entry version, and announcing that to
+       screens that are already mounted would re-run Home's list once per
+       seeded entry. */
+    journalIsOpen();
+
     bootState.status = 'ready';
     bootState.persistDenied = result.persistDenied;
-    bootState.driver = result.driver;
     bootState.journal = journal;
 
     // Raised here rather than from an $effect in +layout.svelte, where it

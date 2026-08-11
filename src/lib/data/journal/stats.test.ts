@@ -289,3 +289,28 @@ test('a hidden dimension is not the one a recap volunteers', async () => {
     change: 10
   });
 });
+
+/* Entries per day, which is not the same question as the metric's day
+   average: the calendar shades a day by the metric but links it by whether
+   anything was logged at all, so a day with entries that carry no mood is
+   still a day with entries (ticket 08). */
+
+test('entryCountsByDay counts every entry on a day, metric or no metric', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 99, mood: 3 }); // before the range
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 5 });
+  await journal.entries.upsertEntry({ epochDay: 101, note: 'no mood on this one' });
+  await journal.entries.upsertEntry({ epochDay: 131, mood: 1 }); // after it
+
+  assert.deepEqual(await journal.stats.entryCountsByDay(100, 130), [
+    { day: 100, count: 2 },
+    { day: 101, count: 1 }
+  ]);
+});
+
+test('entryCountsByDay over a range with nothing in it is empty', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
+  assert.deepEqual(await journal.stats.entryCountsByDay(200, 230), []);
+});

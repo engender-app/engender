@@ -1,13 +1,30 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { searchEntries } from '$lib/data/repositories/entries';
+  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { tagIdsMatching } from '$lib/data/searchQuery';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
+
+  /* One page of hits. The screen showed thirty before and paginates no
+     further, so thirty is what it asks for rather than what it discards
+     (ADR-0004: no unbounded read to render a screen). */
+  const PAGE = 30;
 
   let query = $state('');
-  let hits = $derived(searchEntries(query, (id) => vocabulary.tag(id)?.label ?? ''));
+
+  /* Tag labels are matched here and note text in FTS5, which is ADR-0005's
+     split: a built-in tag stores a key, so the words it was shown under only
+     exist above the journal, over the mirrored vocabulary. Both halves and
+     the query itself are read before the first await, so typing re-runs it. */
+  let search = liveQuery(['entry', 'tag'], (j) => {
+    const typed = query.trim();
+    if (!typed) return Promise.resolve([]);
+    return j.entries.searchEntries(typed, tagIdsMatching(typed, vocabulary.tags), PAGE);
+  });
+  let hits = $derived(search.value ?? []);
 </script>
 
 <div class="screen">
@@ -37,9 +54,11 @@
   <div aria-live="polite">
     {#if !query.trim()}
       <p class="muted small" style="text-align:center;padding:var(--space-7) 0">{m.search_try()}</p>
+    {:else if search.loading}
+      <Skeleton variant="card" count={3} />
     {:else if hits.length}
       <p class="muted small" style="margin-bottom:var(--space-3)">{m.results_count({ count: String(hits.length) })}</p>
-      {#each hits.slice(0, 30) as e (e.id)}
+      {#each hits as e (e.id)}
         <EntryCard entry={e} />
       {/each}
     {:else}

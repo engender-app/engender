@@ -123,3 +123,70 @@ test('deleting an entry takes its dimension values, tag links, photo rows and fi
 
   await journal.entries.deleteEntry(id); // idempotent
 });
+
+/* The bounded reads the screens use (ticket 08). A screen renders a
+   handful of days or a page of hits, and none of them may pull the whole
+   entry table across the worker boundary to do it. */
+
+test('recentDays returns whole days, newest day first, and stops at the day count', async () => {
+  const { journal } = await journalWithBuiltIns();
+  // Day 100 has two entries, so the boundary counts days rather than rows.
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 10, mood: 1 });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 20, mood: 2 });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 3 });
+  await journal.entries.upsertEntry({ epochDay: 105, mood: 4 });
+
+  const recent = await journal.entries.recentDays(2);
+  assert.deepEqual(
+    recent.map((e) => [e.epochDay, e.mood]),
+    [
+      [105, 4],
+      [102, 3]
+    ]
+  );
+
+  // Both of day 100's entries arrive together, newest within the day first.
+  const three = await journal.entries.recentDays(3);
+  assert.deepEqual(
+    three.map((e) => [e.epochDay, e.mood]),
+    [
+      [105, 4],
+      [102, 3],
+      [100, 2],
+      [100, 1]
+    ]
+  );
+});
+
+test('recentDays on an empty journal is empty rather than an error', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.deepEqual(await journal.entries.recentDays(5), []);
+});
+
+test('entriesWithTag reads newest first, up to the limit, by key or by uuid', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const custom = await journal.tags.addTag('gender', 'voice practice');
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 1, tags: ['e-happy'] });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 2, tags: ['e-happy', custom.id] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['e-sad'] });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 4, tags: ['e-happy'] });
+
+  const happy = await journal.entries.entriesWithTag('e-happy', 10);
+  assert.deepEqual(happy.map((e) => e.epochDay), [103, 101, 100]);
+
+  assert.deepEqual((await journal.entries.entriesWithTag('e-happy', 2)).map((e) => e.epochDay), [103, 101]);
+  assert.deepEqual((await journal.entries.entriesWithTag(custom.id, 10)).map((e) => e.epochDay), [101]);
+  assert.deepEqual(await journal.entries.entriesWithTag('no-such-tag', 10), []);
+});
+
+test('searchEntries stops at the limit it is given, keeping the newest hits', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const day of [100, 101, 102, 103]) {
+    await journal.entries.upsertEntry({ epochDay: day, note: 'coffee with Marta' });
+  }
+
+  assert.deepEqual(
+    (await journal.entries.searchEntries('coffee', [], 2)).map((e) => e.epochDay),
+    [103, 102]
+  );
+});

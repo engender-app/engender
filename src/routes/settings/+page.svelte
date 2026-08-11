@@ -2,9 +2,9 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
-  import { db } from '$lib/data/db.svelte';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
-  import { setGroupEnabled } from '$lib/data/repositories/tags';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { reference } from '$lib/data/live/reference.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -26,6 +26,12 @@
   let backupAge = $derived(
     prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(prefs.lastBackupAt) : null
   );
+
+  /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
+     count of the enabled ones - which only the Android build displays at all.
+     Milestones are mirrored, so their count needs no query. */
+  let reminders = liveQuery(['reminder'], (j) => j.reminders.getReminders());
+  let activeReminders = $derived((reminders.value ?? []).filter((r) => r.enabled).length);
 
   let presetSheet = $state(false);
   let metricSheet = $state(false);
@@ -124,7 +130,7 @@
       {#each vocabulary.tagGroups as g (g.key)}
         <div class="spread taggroup-row">
           <span>{g.name}</span>
-          <Switch checked={g.enabled} label="{g.name} group" onChange={(v) => setGroupEnabled(g.key, v)} />
+          <Switch checked={g.enabled} label="{g.name} group" onChange={(v) => journal.tags.setGroupEnabled(g.key, v)} />
         </div>
       {/each}
       <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
@@ -148,7 +154,7 @@
         <span class="row-subtitle">
           {isWeb
             ? m.reminders_web_sub()
-            : `${db.reminders.filter((r) => r.enabled).length} active · daily check-in ${prefs.checkInEnabled ? m.on() : m.off()}`}
+            : `${activeReminders} active · daily check-in ${prefs.checkInEnabled ? m.on() : m.off()}`}
         </span>
       </span>
       <span class="row-trailing">{#if isWeb}<Icon name="info" size={18} />{:else}<Icon name="chevronRight" size={20} />{/if}</span>
@@ -157,7 +163,7 @@
       <span class="row-icon"><Icon name="flag" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.milestones()}</span>
-        <span class="row-subtitle">{db.milestones.length} significant days</span>
+        <span class="row-subtitle">{reference.milestones.length} significant days</span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
