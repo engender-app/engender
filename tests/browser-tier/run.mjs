@@ -1,8 +1,11 @@
-/* Browser tier (ticket 03): the Node tier (vitest.config.ts) cannot exercise
-   SQLocal, which needs a real browser's OPFS. This script serves probe.ts
-   over the standalone dev server in this directory, drives a real Chromium
-   through it with Playwright, and prints PASS/FAIL lines like
-   tests/walkthrough.test.mjs. Run with `npm run test:browser`. */
+/* Browser tier (ticket 03): the Node tier (vitest.config.ts) cannot
+   exercise SQLocal, which needs a real browser's OPFS. This script serves
+   the probe pages in this directory over a standalone dev server, drives
+   a real Chromium through them with Playwright, and prints PASS/FAIL
+   lines like tests/walkthrough.test.mjs. Run with `npm run test:browser`.
+
+   One dev server and one browser for the whole file; each ticket adds its
+   own probe page + a `run(...)` block below rather than its own script. */
 import { createServer } from 'vite';
 import { chromium } from 'playwright-core';
 import { fileURLToPath } from 'node:url';
@@ -23,14 +26,18 @@ const port = server.config.server.port;
 const browser = await chromium.launch({ executablePath: '/usr/bin/chromium-browser', headless: true });
 const page = await (await browser.newContext()).newPage();
 
-async function probe() {
-  await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('body[data-probe-ready]', { state: 'attached' });
-  return page.evaluate(() => window.__probeResult);
+/** Loads `path`, waits for `[data-...-ready]` to appear, and reads `resultGlobal`
+    off `window`. Reload the same page and call again to check persistence. */
+async function load(path, readyAttr, resultGlobal) {
+  await page.goto(`http://localhost:${port}${path}`, { waitUntil: 'networkidle' });
+  await page.waitForSelector(`body[${readyAttr}]`, { state: 'attached' });
+  return page.evaluate((key) => window[key], resultGlobal);
 }
+const reload = () => page.reload({ waitUntil: 'networkidle' });
 
+// --- Ticket 03: FTS5 + OPFS mechanics, against a synthetic table -----------
 try {
-  const first = await probe();
+  const first = await load('/', 'data-probe-ready', '__probeResult');
   if (first.error) throw new Error(first.error);
 
   if (first.markerExisted === false) ok('SQLocal opens a fresh database backed by OPFS');
@@ -46,12 +53,35 @@ try {
   if (fts5.zazolc === 0) ok("'zazolc' finds nothing without app-level folding, confirming ADR-0005's premise");
   else fail("'zazolc' finds nothing without app-level folding, confirming ADR-0005's premise", `got ${fts5.zazolc} match(es)`);
 
-  const second = await probe();
+  await reload();
+  const second = await load('/', 'data-probe-ready', '__probeResult');
   if (second.error) throw new Error(second.error);
   if (second.markerExisted === true) ok('OPFS survives a full page reload');
   else fail('OPFS survives a full page reload', 'marker row was gone after reload');
 } catch (e) {
-  fail('browser tier', e.message ?? String(e));
+  fail('ticket 03 browser tier', e.message ?? String(e));
+}
+
+// --- Ticket 04: the real driver + boot() against the real schema -----------
+try {
+  const first = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
+  if (first.error) throw new Error(first.error);
+
+  if (first.userVersion === 1) ok('boot() opens the database and migrates it to the current schema');
+  else fail('boot() opens the database and migrates it to the current schema', `user_version is ${first.userVersion}`);
+
+  if (first.markerExisted === false) ok('boot() runs against a fresh database on first load');
+  else fail('boot() runs against a fresh database on first load', 'marker entry already existed');
+
+  ok(`navigator.storage.persist() resolved (denied: ${first.persistDenied})`);
+
+  await reload();
+  const second = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
+  if (second.error) throw new Error(second.error);
+  if (second.markerExisted === true) ok('data written before a reload is still there after boot() re-runs');
+  else fail('data written before a reload is still there after boot() re-runs', 'marker entry was gone after reload');
+} catch (e) {
+  fail('ticket 04 browser tier', e.message ?? String(e));
 }
 
 await browser.close();
