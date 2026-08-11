@@ -47,6 +47,29 @@ async function typePin(digits) {
   for (const digit of digits) await page.locator(`[data-key="${digit}"]`).click();
 }
 
+/* RFC 4180, enough of it to read back what the plain export writes (ticket
+   15): a quoted field can hold commas, newlines and doubled quotes, and
+   splitting on commas would call every one of those a new column. */
+function parseCsv(text) {
+  const rows = [[]];
+  let field = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c !== '"') field += c;
+      else if (text[i + 1] === '"') (field += '"'), i++;
+      else quoted = false;
+    } else if (c === '"') quoted = true;
+    else if (c === ',') (rows.at(-1).push(field), (field = ''));
+    else if (c === '\n') (rows.at(-1).push(field), (field = ''), rows.push([]));
+    else if (c !== '\r') field += c;
+  }
+  if (field || rows.at(-1).length) rows.at(-1).push(field);
+  if (!rows.at(-1).length) rows.pop();
+  return rows;
+}
+
 /* 1. quick log */
 try {
   await fresh('/');
@@ -159,7 +182,24 @@ try {
   ok('custom dimension live preview');
 } catch (e) { fail('custom dimension', e); }
 
-/* 11. import: a file that is not an archive, plus the plain export confirm */
+/* 10b. Home's stale-backup notice (ticket 15, F21). Before the export
+   flows below, because they are what stops the journal being stale: the
+   demo persona's last backup is 34 days old, and the number in the notice
+   is what proves the age was read as epoch millis rather than as an epoch
+   day - the mix the demo store shipped, which would have read as decades. */
+try {
+  await fresh('/');
+  const notice = page.locator('.notice-warn');
+  await notice.waitFor();
+  const said = await notice.textContent();
+  if (!said.includes('34')) throw new Error(`the notice says: ${said.replace(/\s+/g, ' ').trim()}`);
+
+  await notice.locator('.icon-btn').click();
+  await notice.waitFor({ state: 'detached' });
+  ok('the stale-backup notice reads 34 days and dismisses');
+} catch (e) { fail('backup notice', e); }
+
+/* 11. import: a file that is not an archive */
 try {
   await fresh('/settings/export');
   /* A real file through a real dialog. It is not an archive, so the
@@ -177,11 +217,7 @@ try {
   await page.locator('#imp-pass').fill('wrongpass');
   await page.locator('[data-import]').click();
   await page.waitForSelector('[role="alert"]');
-  await page.locator('[data-plain="csv"]').click();
-  await page.waitForSelector('.sheet .notice-danger');
-  await page.locator('[data-confirm-plain]').click();
-  await page.waitForSelector('.toast');
-  ok('a file that is not a backup is refused + plain export warn/confirm');
+  ok('a file that is not a backup is refused');
 } catch (e) { fail('export/import', e); }
 
 /* 11b. the whole of F14 through the screen: export the demo journal, then
@@ -228,6 +264,66 @@ try {
   if (after !== before) throw new Error(`Home went from ${before} entries to ${after} on merging its own backup`);
   ok(`export → import round trip through the screen, ${before} recent entries unchanged`);
 } catch (e) { fail('archive round trip', e); }
+
+/* 11c. the plain CSV export (ticket 15, F22): the warning it has to go
+   through, and whether the file that comes out survives a note with a
+   comma, a quote and a newline in it. Written through the editor rather
+   than assumed of the demo persona, so the nastiest field in the file is
+   one this test knows the exact text of. */
+try {
+  const NOTE = 'Told them my name, out loud.\nShe said "finally".';
+
+  await fresh('/entry/new/today');
+  await page.locator('#ed-note').fill(NOTE);
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('.entry-card');
+
+  await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
+  await booted();
+
+  /* Keyboard only, all the way. The warning is what stands between someone
+     and an unencrypted copy of their journal, so the confirm must not be
+     what the sheet hands the focus to: opening it and pressing Enter again
+     has to produce nothing. */
+  await page.locator('[data-plain="csv"]').focus();
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.sheet .notice-danger');
+  await page.keyboard.press('Enter');
+  if (await page.waitForEvent('download', { timeout: 1500 }).catch(() => null)) {
+    throw new Error('a second Enter wrote the file without the confirm');
+  }
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.sheet', { state: 'detached' });
+
+  await page.locator('[data-plain="csv"]').focus();
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.sheet .notice-danger');
+  await page.keyboard.press('Tab');
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.keyboard.press('Enter')
+  ]);
+  if (!download.suggestedFilename().endsWith('.csv')) {
+    throw new Error(`plain export downloaded ${download.suggestedFilename()}`);
+  }
+
+  const rows = parseCsv(await readFile(await download.path(), 'utf8'));
+  const [header, ...entries] = rows;
+  if (header[0] !== 'date' || header[1] !== 'time' || header[2] !== 'mood') throw new Error(`header is ${header}`);
+  if (header.at(-2) !== 'tags' || header.at(-1) !== 'note') throw new Error(`header is ${header}`);
+  // Every row the same width is what proves the quoting: an unescaped
+  // comma or newline in a note shows up here as a row of the wrong shape.
+  const ragged = entries.find((row) => row.length !== header.length);
+  if (ragged) throw new Error(`a row has ${ragged.length} fields, not ${header.length}: ${ragged}`);
+  if (!entries.some((row) => row.at(-1) === NOTE)) throw new Error('the note did not survive the round trip');
+
+  // Backup health (F21): the plain path counts, so the screen it was
+  // started from says so without a reload.
+  await page.waitForFunction(() =>
+    document.querySelector('.card.spread .row-subtitle')?.textContent.trim() === 'today'
+  );
+  ok(`plain CSV export behind the warning, ${entries.length} rows, notes intact`);
+} catch (e) { fail('plain export', e); }
 
 /* 12. app lock: the gate, the throttle, and the PIN that opens it (ticket 17) */
 try {
