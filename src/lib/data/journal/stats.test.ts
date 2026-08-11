@@ -1,14 +1,14 @@
 /* The stats area (ticket 10, ADR-0012). The case this module exists to
    settle is the first one: the demo store answered "what is this metric's
    average" with three different numbers depending on which function was
-   asked, because two of them multiplied mood by 20 to fake a 0-100 scale
+   asked, because two of them multiplied mood by 20 to fake a 0-100 range
    and one did not. Everything here is in native units. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './test-support.ts';
 
-test('one metric, one number: every aggregate reports mood on the 1-to-5 scale it was logged on', async () => {
+test('one metric, one number: every aggregate reports mood on the 1-to-5 range it was logged on', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 100, mood: 2, tags: ['e-tired'] });
   await journal.entries.upsertEntry({ epochDay: 101, mood: 4, tags: ['e-tired'] });
@@ -229,7 +229,7 @@ test('a recap of an empty month says so rather than dividing by zero', async () 
   });
 });
 
-test('the biggest dimension change is picked across scales but reported in native units', async () => {
+test('the biggest dimension change is picked across ranges but reported in native units', async () => {
   const { journal } = await journalWithBuiltIns();
   const voice = await journal.dimensions.addCustomDimension({
     name: 'Voice comfort',
@@ -275,7 +275,7 @@ test('the change runs first to last within the range, by day and then by time of
   });
 });
 
-test('a hidden dimension is not the axis a recap volunteers', async () => {
+test('a hidden dimension is not the one a recap volunteers', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 100, dims: { masculinity: 10, femininity: 40 } });
   await journal.entries.upsertEntry({ epochDay: 110, dims: { masculinity: 90, femininity: 50 } });

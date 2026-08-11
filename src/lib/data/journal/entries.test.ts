@@ -57,15 +57,15 @@ test('rows carry a minted uuid and inserts never read lastInsertRowid blind', as
   }
 });
 
-test('switching the active preset and re-saving preserves values for axes not in the preset', async () => {
+test('switching the active preset and re-saving preserves values for dimensions not in the preset', async () => {
   const { journal } = await journalWithBuiltIns();
-  // Logged under the wide preset: five axes... well, three are enough.
+  // Logged under the wide preset: five dimensions... well, three are enough.
   const id = await journal.entries.upsertEntry({
     epochDay: 100,
     dims: { euphoria_dysphoria: 70, masculinity: 20, binary_nonbinary: 80 }
   });
 
-  // Re-saved under the narrow preset: the editor sends only its axes.
+  // Re-saved under the narrow preset: the editor sends only its dimensions.
   await journal.entries.upsertEntry({ id, dims: { euphoria_dysphoria: 40 }, note: 'edited' });
 
   const entry = await journal.entries.getEntry(id);

@@ -12,7 +12,7 @@
 
 import { db } from '../db.svelte';
 import { m } from '$lib/paraglide/messages';
-import { MOOD_SCALE, type MetricScale } from '../metricScale';
+import { MOOD_RANGE, type MetricRange } from '../metricRange';
 import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { activeDimensions, activePreset, getPresets } from '../repositories/dimensions';
@@ -88,12 +88,12 @@ export const vocabulary = {
     return this.metricDimension(metricKey(prefs))?.name ?? m.mood();
   },
   /** A metric's own range, for turning a native value into colour
-      intensity (metricScale.ts). Mood's range is not a stored row. */
-  scaleOf(metric: string): MetricScale {
+      intensity (metricRange.ts). Mood's range is not a stored row. */
+  rangeOf(metric: string): MetricRange {
     const d = this.metricDimension(metric);
-    return d ? { min: d.min, max: d.max } : MOOD_SCALE;
+    return d ? { min: d.min, max: d.max } : MOOD_RANGE;
   },
-  /** What the two ends of the heat-map scale are called. A gender
+  /** What the two ends of the heat map are called. A gender
       dimension reads its own endpoint labels, because neither end of
       binary↔nonbinary or agender↔gendered is the better one and colour
       must not say otherwise (ADR-0012, F15). Mood is the one metric with a

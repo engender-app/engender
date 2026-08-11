@@ -39,7 +39,7 @@
 
   let deleteOpen = $state(false);
   /* The union of the active preset's dimensions and the entry's own: an
-     old entry logged under a wider preset keeps its extra axes on screen
+     old entry logged under a wider preset keeps its extra dimensions on screen
      (marked below), instead of silently dropping their history on save. */
   let dims = $derived.by(() => {
     const active = vocabulary.activeDimensions;
