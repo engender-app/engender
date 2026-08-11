@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support.ts';
 import type { Journal } from '../journal/journal.ts';
-import { observeWrites, type TableName } from './writes.ts';
+import { observeWrites, TABLE_NAMES, type TableName } from './writes.ts';
 
 async function observed() {
   const { journal, db } = await journalWithBuiltIns();
@@ -105,6 +105,15 @@ test('reconciling built-ins announces the reference tables it may have filled', 
   await journal.reconcileBuiltIns();
 
   assert.deepEqual(announced, [['tag', 'dimension', 'preset']]);
+});
+
+test('an import announces every table, because a restore rewrites the journal', async () => {
+  const { journal, announced } = await observed();
+  const snapshot = await journal.archive.snapshot();
+
+  await journal.archive.merge({ journal: snapshot.journal, files: (async function* () {})() });
+
+  assert.deepEqual(announced, [TABLE_NAMES]);
 });
 
 test('an operation classified as neither read nor write is rejected on sight', async () => {

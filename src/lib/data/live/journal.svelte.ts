@@ -27,13 +27,11 @@
    it. What this file adds beyond that is covered by
    `tests/walkthrough.test.mjs` driving the real screens. */
 
-import { observeWrites, type TableName } from './writes';
+import { observeWrites, TABLE_NAMES, type TableName } from './writes';
 import type { Journal } from '../journal/journal';
 
-const TABLES: TableName[] = ['entry', 'tag', 'dimension', 'preset', 'milestone', 'photo', 'lab', 'reminder'];
-
 const versions = $state<Record<TableName, number>>(
-  Object.fromEntries(TABLES.map((table) => [table, 0])) as Record<TableName, number>
+  Object.fromEntries(TABLE_NAMES.map((table) => [table, 0])) as Record<TableName, number>
 );
 
 /* Held in an object rather than as a bare `let`: a module-level `$state`
