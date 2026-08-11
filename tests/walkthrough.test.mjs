@@ -233,6 +233,25 @@ try {
   ok('theme and palette persist and apply before first paint');
 } catch (e) { fail('boot preferences', e); }
 
+/* 17. built-in vocabulary is localized by key, not stored in English (ticket 05) */
+try {
+  await fresh('/entry/new/today');
+  await page.waitForSelector('.tag-chip:has-text("social euphoria")');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('.segment:has-text("Polski")').click();
+  await page.waitForFunction(() => document.querySelector('.nav-item span')?.textContent === 'Start', null, { timeout: 8000 });
+
+  /* Same seeded tag, same row, different language - which only works if
+     what was stored was the key and not the word. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.tag-chip:has-text("euforia społeczna")', { timeout: 8000 });
+  if (await page.locator('.tag-chip:has-text("social euphoria")').count()) {
+    throw new Error('English label survived the language switch');
+  }
+  ok('built-in tags follow the language, so they were seeded as keys');
+} catch (e) { fail('vocabulary localization', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');

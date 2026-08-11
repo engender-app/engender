@@ -124,8 +124,13 @@
   "cancel": "Anuluj",
   "n_years": [
     {
-      "declarations": ["input n", "local nPlural = n: plural"],
-      "selectors": ["nPlural"],
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
       "match": {
         "nPlural=one": "{n} rok",
         "nPlural=few": "{n} lata",
@@ -136,8 +141,13 @@
   ],
   "n_months": [
     {
-      "declarations": ["input n", "local nPlural = n: plural"],
-      "selectors": ["nPlural"],
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
       "match": {
         "nPlural=one": "{n} miesiąc",
         "nPlural=few": "{n} miesiące",
@@ -148,8 +158,13 @@
   ],
   "n_days": [
     {
-      "declarations": ["input n", "local nPlural = n: plural"],
-      "selectors": ["nPlural"],
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
       "match": {
         "nPlural=one": "{n} dzień",
         "nPlural=few": "{n} dni",
@@ -158,5 +173,53 @@
       }
     }
   ],
-  "apart_suffix": "różnicy"
+  "apart_suffix": "różnicy",
+  "dim_euphoria_dysphoria": "Odczucie płci",
+  "dim_euphoria_dysphoria_low": "dysforia",
+  "dim_euphoria_dysphoria_high": "euforia",
+  "dim_femininity": "Kobiecość",
+  "dim_femininity_low": "wcale",
+  "dim_femininity_high": "bardzo",
+  "dim_masculinity": "Męskość",
+  "dim_masculinity_low": "wcale",
+  "dim_masculinity_high": "bardzo",
+  "dim_binary_nonbinary": "Binarność ↔ niebinarność",
+  "dim_binary_nonbinary_low": "binarnie",
+  "dim_binary_nonbinary_high": "niebinarnie",
+  "dim_agender_gendered": "Agender ↔ z płcią",
+  "dim_agender_gendered_low": "agender",
+  "dim_agender_gendered_high": "z płcią",
+  "preset_p_btw": "Binarna kobieta trans",
+  "preset_p_nb": "Osoba niebinarna / bigender",
+  "taggroup_gender": "Płeć",
+  "taggroup_emotions": "Emocje",
+  "taggroup_activities": "Aktywności",
+  "tag_g_soc_dys": "dysforia społeczna",
+  "tag_g_body_dys": "dysforia cielesna",
+  "tag_g_soc_eu": "euforia społeczna",
+  "tag_g_body_eu": "euforia cielesna",
+  "tag_g_transphobia": "transfobia",
+  "tag_g_gendered_ok": "właściwe formy",
+  "tag_g_misgendered": "niewłaściwe formy",
+  "tag_e_happy": "radość",
+  "tag_e_calm": "spokój",
+  "tag_e_anxious": "lęk",
+  "tag_e_sad": "smutek",
+  "tag_e_hopeful": "nadzieja",
+  "tag_e_tired": "zmęczenie",
+  "tag_a_work": "praca",
+  "tag_a_friends": "znajomi",
+  "tag_a_family": "rodzina",
+  "tag_a_exercise": "ruch",
+  "tag_a_therapy": "terapia",
+  "tag_a_shopping": "zakupy",
+  "tag_a_selfcare": "dbanie o siebie",
+  "tpl_hrt_start": "Początek HTZ",
+  "tpl_transition_start": "Początek tranzycji",
+  "tpl_coming_out": "Coming out",
+  "tpl_first_appointment": "Pierwsza wizyta",
+  "tpl_name_change": "Zmiana imienia",
+  "tpl_marker_change": "Zmiana oznaczenia płci",
+  "tpl_surgery": "Operacja",
+  "tpl_first_public": "Pierwsze publiczne wyjście"
 }

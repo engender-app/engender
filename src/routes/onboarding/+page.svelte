@@ -1,8 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { builtInPresets } from '$lib/data/repositories/dimensions';
-  import { milestoneTemplates, upsertMilestone } from '$lib/data/repositories/milestones';
+  import { upsertMilestone } from '$lib/data/repositories/milestones';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { todayEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -24,7 +24,7 @@
     prefs.appLock = appLock;
     prefs.onboarded = true;
     if (milestoneTemplate) {
-      const tpl = milestoneTemplates.find((t) => t.key === milestoneTemplate)!;
+      const tpl = vocabulary.milestoneTemplates.find((t) => t.key === milestoneTemplate)!;
       const epochDay = epochDayFromDateInputValue(milestoneDate) ?? todayEpochDay() - 1;
       upsertMilestone({ name: tpl.name, epochDay, templateKey: tpl.key, photo: null });
     }
@@ -69,7 +69,7 @@
         <h1 class="ob-title">How do you want to track gender?</h1>
         <p class="ob-text">A preset chooses which scales appear when you log. You can change or customise this any time in Settings.</p>
         <div class="list-group">
-          {#each builtInPresets as p (p.id)}
+          {#each vocabulary.presets as p (p.id)}
             <button class="list-row" data-preset={p.id} onclick={() => (preset = p.id)}>
               <span class="row-text">
                 <span class="row-title">{p.name}</span>
@@ -86,7 +86,7 @@
         <h1 class="ob-title">Mark a milestone?</h1>
         <p class="ob-text">A day that matters — past or future. Anniversaries come back to celebrate with you; future dates count down.</p>
         <div class="tag-row" style="margin-bottom:var(--space-4)">
-          {#each milestoneTemplates.slice(0, 4) as tp (tp.key)}
+          {#each vocabulary.milestoneTemplates.slice(0, 4) as tp (tp.key)}
             <button
               class="tag-chip"
               class:is-selected={milestoneTemplate === tp.key}

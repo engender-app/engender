@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import Icon from './Icon.svelte';
-  import { resetDemo, markFirstRun } from '$lib/data/db.svelte';
+  import { resetDemo, markFirstRun } from '$lib/data/demo/controls';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { ui } from '$lib/stores/ui.svelte';
+  import { frame } from '$lib/data/demo/frame.svelte';
 
   /* Review-only controls (dev/demo builds): theme, phone frame, reset, jump.
      The palette picker is NOT here — it lives in Settings, as in the real app. */
@@ -46,6 +46,18 @@
       goto(v);
     }
   }
+
+  /* Both classes exist for this component: one makes room for the bar, the
+     other constrains the app to a phone frame. They were toggled from
+     +layout.svelte, which is the last thing outside the demo module that
+     read the frame state. */
+  $effect(() => {
+    document.body.classList.add('has-demo-bar');
+    return () => document.body.classList.remove('has-demo-bar');
+  });
+  $effect(() => {
+    document.body.classList.toggle('demo-phone-frame', frame.mode === 'phone');
+  });
 </script>
 
 <div class="demo-bar">
@@ -59,8 +71,8 @@
     </button>
   </div>
   <div class="demo-group" role="group" aria-label="Viewport">
-    <button class="demo-btn" class:is-active={ui.frame === 'phone'} onclick={() => (ui.frame = 'phone')}>Phone</button>
-    <button class="demo-btn" class:is-active={ui.frame === 'responsive'} onclick={() => (ui.frame = 'responsive')}>Web</button>
+    <button class="demo-btn" class:is-active={frame.mode === 'phone'} onclick={() => (frame.mode = 'phone')}>Phone</button>
+    <button class="demo-btn" class:is-active={frame.mode === 'responsive'} onclick={() => (frame.mode = 'responsive')}>Web</button>
   </div>
   <button
     class="demo-btn"

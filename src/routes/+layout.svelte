@@ -9,7 +9,6 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
@@ -20,8 +19,6 @@
   import DemoBar from '$lib/components/DemoBar.svelte';
 
   let { children } = $props();
-
-  const DEMO = import.meta.env.DEV || import.meta.env.VITE_DEMO === '1';
 
   /* Started here rather than from an $effect so that boot's first step -
      reading the mirrored theme and palette (ticket 06) - has run before the
@@ -74,12 +71,6 @@
     if (bootState.status !== 'ready') return;
     if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
   });
-  /* Dev demo bar frame emulation via body classes. */
-  $effect(() => {
-    document.body.classList.toggle('has-demo-bar', DEMO);
-    document.body.classList.toggle('demo-phone-frame', DEMO && ui.frame === 'phone');
-  });
-
   /* New-entry chooser (F1). */
   let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
   function chooseToday() {
@@ -94,7 +85,7 @@
   }
 </script>
 
-{#if DEMO}
+{#if __DEMO__}
   <DemoBar />
 {/if}
 

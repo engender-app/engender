@@ -4,7 +4,6 @@
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { db } from '$lib/data/db.svelte';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
-  import { getPresets, activePreset } from '$lib/data/repositories/dimensions';
   import { setGroupEnabled } from '$lib/data/repositories/tags';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
@@ -14,6 +13,8 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { isAndroid } from '$lib/platform';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const PALETTES: [string, string][] = [
     ['trans', 'Transgender'], ['nonbinary', 'Nonbinary'], ['genderfluid', 'Genderfluid'],
@@ -21,12 +22,12 @@
     ['rainbow', 'Rainbow'], ['agender', 'Agender'],
   ];
 
-  let isWeb = $derived(ui.frame !== 'phone');
-  let preset = $derived(activePreset());
+  let isWeb = $derived(!isAndroid());
+  let preset = $derived(vocabulary.activePreset);
   let metricName = $derived(
     prefs.metricKind === 'mood'
       ? m.mood()
-      : (db.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
+      : (vocabulary.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
   );
   let backupAge = $derived(
     prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(prefs.lastBackupAt) : null
@@ -126,7 +127,7 @@
       </span>
     </div>
     <div class="taggroup-toggles">
-      {#each db.tagGroups as g (g.key)}
+      {#each vocabulary.tagGroups as g (g.key)}
         <div class="spread taggroup-row">
           <span>{g.name}</span>
           <Switch checked={g.enabled} label="{g.name} group" onChange={(v) => setGroupEnabled(g.key, v)} />
@@ -192,7 +193,7 @@
         <span class="row-title">{m.app_lock()}</span>
         <span class="row-subtitle">
           {#if prefs.appLock}
-            {m.on()} · PIN{ui.frame === 'phone' ? ' + biometrics' : ''} ·
+            {m.on()} · PIN{isAndroid() ? ' + biometrics' : ''} ·
             <a href="/settings/lock" style="color:var(--accent)">{m.try_it()}</a>
           {:else}{m.off()}{/if}
         </span>
@@ -239,7 +240,7 @@
     <h3>{m.gender_preset()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.preset_note()}</p>
     <div class="list-group" style="box-shadow:none">
-      {#each getPresets() as p (p.id)}
+      {#each vocabulary.presets as p (p.id)}
         <button
           class="list-row"
           data-pick-preset={p.id}
@@ -269,7 +270,7 @@
     <h3>{m.home_cal_colour()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.metric_note()}</p>
     <div class="list-group" style="box-shadow:none">
-      {#each [{ key: null, name: m.mood() }, ...db.dimensions] as d (d.key ?? 'mood')}
+      {#each [{ key: null, name: m.mood() }, ...vocabulary.dimensions] as d (d.key ?? 'mood')}
         <button
           class="list-row"
           onclick={() => {
@@ -291,7 +292,7 @@
         <span class="row-text">
           <span class="row-title">Disguise app</span>
           <span class="row-subtitle">
-            {ui.frame === 'phone'
+            {isAndroid()
               ? 'launcher icon and name become a neutral “Notes” — the app closes briefly to switch'
               : 'browser tab shows a neutral “Notes” title and icon'}
           </span>
@@ -308,7 +309,7 @@
         <span class="disguise-icon"><Icon name="book" size={22} /></span>
         <span>
           <strong>Notes</strong><br />
-          <span class="muted small">{ui.frame === 'phone' ? 'how the app appears in your launcher' : 'how the tab appears'}</span>
+          <span class="muted small">{isAndroid() ? 'how the app appears in your launcher' : 'how the tab appears'}</span>
         </span>
       </div>
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
@@ -327,7 +328,7 @@
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
         <span class="row-text">
           <span class="row-title">Quick exit</span>
-          <span class="row-subtitle">two-finger swipe down locks instantly{ui.frame === 'phone' ? '' : ' and swaps the tab to a blank page'}</span>
+          <span class="row-subtitle">two-finger swipe down locks instantly{isAndroid() ? '' : ' and swaps the tab to a blank page'}</span>
         </span>
         <Switch
           checked={prefs.quickExit}

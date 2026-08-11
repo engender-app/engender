@@ -3,10 +3,31 @@
    makes zero requests off its own origin - the SQLocal .wasm/worker in
    particular, which Rive's canvas package already gets wrong by
    defaulting to a CDN. Serves build/ with `vite preview` and drives a
-   real Chromium through it with Playwright. Run with
-   `npm run verify:build` after `npm run build`. */
+   real Chromium through it with Playwright.
+
+   It also reads the emitted JavaScript from disk (ticket 05): the Alice
+   persona and the demo bar have to be absent from a production build, and
+   the only way to know is to look at what was written, not at the source
+   that was supposed to guard them. Run with `npm run verify:build` after
+   `npm run build`. */
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { preview } from 'vite';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
+
+function emittedJavaScript() {
+  const dir = 'build/_app/immutable';
+  const files = [];
+  const walk = (path) => {
+    for (const entry of readdirSync(path, { withFileTypes: true })) {
+      const full = join(path, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.js')) files.push(full);
+    }
+  };
+  walk(dir);
+  return files.map((f) => readFileSync(f, 'utf8')).join('\n');
+}
 
 const server = await preview({ preview: { port: 0 } });
 const address = server.httpServer.address();
@@ -44,6 +65,29 @@ try {
 
   if (externalRequests.length === 0) ok('production build makes zero requests off its own origin');
   else fail('production build makes zero requests off its own origin', externalRequests.join(', '));
+
+  /* Greps the bundle rather than trusting the guard: someone's diary
+     persona shipping inside the app people keep their own diary in is the
+     failure this exists to catch, and "it's behind a flag" is not the same
+     as "it isn't there".
+
+     Each needle is text only the demo module has. Note what is not here:
+     "Estradiol patch" is the reminder editor's placeholder as well as one
+     of Alice's reminders, so it would fail against a bundle that is
+     perfectly clean. */
+  const bundle = emittedJavaScript();
+  const persona = ['Alice', 'Coffee with Marta', 'Voice workshop weekend'].filter((s) => bundle.includes(s));
+  if (persona.length === 0) ok('production build contains no demo persona');
+  else fail('production build contains no demo persona', `found ${persona.join(', ')}`);
+
+  const demoBar = ['Demo controls', 'Jump to screen', 'Reset demo state'].filter((s) => bundle.includes(s));
+  if (demoBar.length === 0) ok('production build contains no demo bar');
+  else fail('production build contains no demo bar', `found ${demoBar.join(', ')}`);
+
+  /* The counterpart: the vocabulary every real user needs does ship, so a
+     "nothing found" pass above can't be the bundle simply not being read. */
+  if (bundle.includes('euphoria_dysphoria')) ok('production build does contain the built-in vocabulary');
+  else fail('production build does contain the built-in vocabulary', 'no dimension key found in the bundle');
 } catch (e) {
   fail('verify-build', e.message ?? String(e));
 }

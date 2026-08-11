@@ -2,11 +2,11 @@
 
 import { db, save } from '../db.svelte';
 import { prefs } from '../prefs/store.svelte';
-import { builtInPresets } from '../demo/seed';
+import { builtInPresetRows } from '../vocabulary/builtins';
 import type { GenderDimension, GenderPreset } from '../types';
 
 export function getPresets(): GenderPreset[] {
-  return [...builtInPresets, ...db.customPresets];
+  return [...builtInPresetRows(), ...db.customPresets];
 }
 
 export function activePreset(): GenderPreset {
@@ -38,5 +38,3 @@ export function addCustomDimension(dim: Omit<GenderDimension, 'builtIn'>) {
   prefs.activePreset = custom.id;
   save();
 }
-
-export { builtInPresets };
