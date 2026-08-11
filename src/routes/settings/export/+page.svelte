@@ -1,6 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-    import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { toast } from '$lib/stores/toasts.svelte';

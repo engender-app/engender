@@ -55,7 +55,10 @@ function replace(next: DB) {
 
 export function resetDemo() {
   if (browser) localStorage.removeItem(KEY);
-  Object.assign(prefs, demoPreferences());
+  // Defaults first, then the persona: without the defaults a palette or a
+  // disguise toggle a reviewer flipped would survive "Reset demo state",
+  // which is not what reset means.
+  Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
   replace(seed());
 }
 

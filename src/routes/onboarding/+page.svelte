@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-    import { builtInPresets } from '$lib/data/repositories/dimensions';
+  import { builtInPresets } from '$lib/data/repositories/dimensions';
   import { milestoneTemplates, upsertMilestone } from '$lib/data/repositories/milestones';
   import { todayEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';

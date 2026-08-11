@@ -63,9 +63,14 @@ export function selectMetric(dimensionKey: string | null) {
 
 /** Boot step 1: the boot set, read from the mirror before the database is
     open, so first paint uses the user's theme and palette instead of the
-    defaults compiled into app.html. */
+    defaults compiled into app.html. Filtered on the way in for the same
+    reason boot-cache.ts guards its parse - localStorage is editable by
+    hand and survives a downgrade, so it is not trusted to name only
+    preferences this build has. */
 export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
-  Object.assign(values, cached);
+  for (const [key, value] of Object.entries(cached)) {
+    if (isPreferenceKey(key)) values[key] = value as never;
+  }
 }
 
 /** Boot step 2: SQLite is open and authoritative from here. Anything

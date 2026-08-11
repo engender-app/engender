@@ -208,19 +208,27 @@ try {
     return boot.theme === 'dark' && boot.palette === 'lesbian';
   });
 
-  /* Sampled at DOMContentLoaded: the body has been parsed by then, so
-     anything already stamped on <html> was stamped before the first paint
-     could show the wrong theme. Hydration is still several ticks away. */
+  /* Records the first time anything writes data-theme, and whether <body>
+     existed yet. The pre-paint script sits in <head>, so it runs with no
+     body at all; hydration cannot, which is what stops this passing if the
+     stamping quietly moved back into the layout's $effect. */
   await page.addInitScript(() => {
-    document.addEventListener('DOMContentLoaded', () => {
-      window.__themeAtDomReady = { ...document.documentElement.dataset };
+    // Observes `document`, not `document.documentElement`: an init script
+    // runs before the parser has created <html>, so there is no element to
+    // hand the observer yet.
+    new MutationObserver(() => {
+      window.__firstStamp ??= { ...document.documentElement.dataset, hadBody: !!document.body };
+    }).observe(document, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ['data-theme', 'data-palette']
     });
   });
   await page.reload({ waitUntil: 'networkidle' });
 
-  const early = await page.evaluate(() => window.__themeAtDomReady);
-  if (early?.theme !== 'dark' || early?.palette !== 'lesbian') {
-    throw new Error('before first paint: ' + JSON.stringify(early));
+  const first = await page.evaluate(() => window.__firstStamp);
+  if (first?.theme !== 'dark' || first?.palette !== 'lesbian' || first.hadBody) {
+    throw new Error('first stamp on <html>: ' + JSON.stringify(first));
   }
   ok('theme and palette persist and apply before first paint');
 } catch (e) { fail('boot preferences', e); }
