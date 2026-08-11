@@ -1,7 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import Icon from './Icon.svelte';
-  import { db, save, resetDemo, markFirstRun } from '$lib/data/db.svelte';
+  import { resetDemo, markFirstRun } from '$lib/data/db.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
 
   /* Review-only controls (dev/demo builds): theme, phone frame, reset, jump.
@@ -31,8 +32,7 @@
   ];
 
   function setTheme(t: 'light' | 'dark') {
-    db.prefs.theme = t;
-    save();
+    prefs.theme = t;
   }
 
   function jump(e: Event) {
@@ -51,10 +51,10 @@
 <div class="demo-bar">
   <span class="demo-title">Demo controls</span>
   <div class="demo-group" role="group" aria-label="Theme">
-    <button class="demo-btn" class:is-active={db.prefs.theme === 'light'} onclick={() => setTheme('light')}>
+    <button class="demo-btn" class:is-active={prefs.theme === 'light'} onclick={() => setTheme('light')}>
       <Icon name="sun" size={15} /> Light
     </button>
-    <button class="demo-btn" class:is-active={db.prefs.theme === 'dark'} onclick={() => setTheme('dark')}>
+    <button class="demo-btn" class:is-active={prefs.theme === 'dark'} onclick={() => setTheme('dark')}>
       <Icon name="moon" size={15} /> Dark
     </button>
   </div>

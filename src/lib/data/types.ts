@@ -79,27 +79,10 @@ export interface LabResult {
   note: string;
 }
 
-export interface Prefs {
-  onboarded: boolean;
-  name: string;
-  activePreset: string;
-  colorMetric: string; // 'mood' | dimension key
-  theme: 'system' | 'light' | 'dark';
-  palette: string;
-  language: 'system' | 'en' | 'pl';
-  appLock: boolean;
-  lockOnLeave: boolean;
-  disguise: boolean;
-  quickExit: boolean;
-  checkIn: { enabled: boolean; time: string };
-  autoExport: { enabled: boolean; schedule: 'weekly' | 'monthly' };
-  lastBackupAt: number | null;
-  backupNoticeDismissed: boolean;
-}
-
+/* Preferences are not here: they live in SQLite's `pref` table and are
+   described by prefs/catalogue.ts (ticket 06). */
 export interface DB {
   version: number;
-  prefs: Prefs;
   dimensions: GenderDimension[];
   customPresets: GenderPreset[];
   tagGroups: TagGroup[];

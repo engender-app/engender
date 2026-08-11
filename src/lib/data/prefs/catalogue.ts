@@ -1,0 +1,122 @@
+/* Every preference the app has, with its default and its two memberships.
+   Kept free of imports so both tiers and the pre-database boot path can
+   read it.
+
+   Two lists, and they deliberately do not line up:
+
+   - Portable vs device-local (ADR-0003) decides whether a preference
+     travels inside an export archive. It is an allowlist: a preference
+     added later is device-local until someone puts it in PORTABLE_KEYS on
+     purpose, so nothing leaks into an archive by accident.
+   - The boot set (ADR-0009) decides whether a preference is mirrored
+     outside SQLite, and its one question is different: is this needed
+     before the database is open? Theme, palette and language must apply on
+     first paint; the PIN hash and lock flags must be readable before the
+     lock screen renders.
+
+   catalogue.test.ts fails if a preference lands in neither of the first
+   two lists. */
+
+export interface PreferenceValues {
+  onboarded: boolean;
+  name: string;
+  activePreset: string;
+  /** Which quantity colours the Home strip and the calendar (CONTEXT: Metric). */
+  metricKind: 'mood' | 'dimension';
+  /** The gender dimension's key when metricKind is 'dimension', otherwise null. */
+  metricDimension: string | null;
+  theme: 'system' | 'light' | 'dark';
+  palette: string;
+  language: 'system' | 'en' | 'pl';
+  appLock: boolean;
+  /** Argon2id-derived, from ticket 17. Null until a PIN is set. */
+  pinHash: string | null;
+  lockOnLeave: boolean;
+  disguise: boolean;
+  quickExit: boolean;
+  checkInEnabled: boolean;
+  /** Wall-clock "HH:MM" in the device's timezone. */
+  checkInTime: string;
+  autoExportEnabled: boolean;
+  autoExportSchedule: 'weekly' | 'monthly';
+  /** Epoch milliseconds, not an epoch day. */
+  lastBackupAt: number | null;
+  backupNoticeDismissed: boolean;
+}
+
+export type PreferenceKey = keyof PreferenceValues;
+
+export const PREFERENCE_DEFAULTS: PreferenceValues = {
+  onboarded: false,
+  name: '',
+  activePreset: 'p-btw',
+  metricKind: 'mood',
+  metricDimension: null,
+  theme: 'system',
+  palette: 'trans',
+  language: 'system',
+  appLock: false,
+  pinHash: null,
+  lockOnLeave: false,
+  disguise: false,
+  quickExit: false,
+  checkInEnabled: false,
+  checkInTime: '21:00',
+  autoExportEnabled: false,
+  autoExportSchedule: 'weekly',
+  lastBackupAt: null,
+  backupNoticeDismissed: false
+};
+
+/** Describes the journal, so it travels in an archive (ADR-0003). */
+export const PORTABLE_KEYS = [
+  'name',
+  'activePreset',
+  'metricKind',
+  'metricDimension',
+  'palette',
+  'theme',
+  'language',
+  'checkInEnabled',
+  'checkInTime'
+] as const satisfies readonly PreferenceKey[];
+
+/** Describes this installation, so it never leaves it (ADR-0003). */
+export const DEVICE_LOCAL_KEYS = [
+  'onboarded',
+  'appLock',
+  'pinHash',
+  'lockOnLeave',
+  'disguise',
+  'quickExit',
+  'autoExportEnabled',
+  'autoExportSchedule',
+  'lastBackupAt',
+  'backupNoticeDismissed'
+] as const satisfies readonly PreferenceKey[];
+
+/** Mirrored outside SQLite because it is needed before the database opens
+    (ADR-0009). Ordered theme-first: that is the order the pre-paint script
+    in app.html applies them in. */
+export const BOOT_KEYS = [
+  'theme',
+  'palette',
+  'language',
+  'pinHash',
+  'lockOnLeave',
+  'disguise'
+] as const satisfies readonly PreferenceKey[];
+
+export type BootKey = (typeof BOOT_KEYS)[number];
+
+export function isPreferenceKey(key: string): key is PreferenceKey {
+  return Object.hasOwn(PREFERENCE_DEFAULTS, key);
+}
+
+/** The metric in the form the entry repositories still take it: 'mood', or
+    a gender dimension's key. The preference is a kind plus a key so that
+    "mood" is a case rather than a reserved dimension name, and this is the
+    one place the two forms meet - ticket 07 owns those signatures. */
+export function metricKey(values: Pick<PreferenceValues, 'metricKind' | 'metricDimension'>): string {
+  return values.metricKind === 'dimension' && values.metricDimension ? values.metricDimension : 'mood';
+}
