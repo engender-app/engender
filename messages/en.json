@@ -221,6 +221,6 @@
   "recurrence_every_n_days": "Every {n} days",
   "reminder_once": "Once",
   "reminder_in_days": "in {days} days",
-  "not_in_preset": "Not in the current preset — kept from this entry",
+  "not_in_preset": "Not in the current preset, kept from this entry",
   "empty_entry": "Add a mood, a value, a tag, a note or a photo first"
 }

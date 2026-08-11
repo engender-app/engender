@@ -1,8 +1,11 @@
 /* Domain types (ticket 07): the shape the journal speaks, not the demo
    store's and not the schema's. Storage details stay behind the journal
-   seam - rowids on reference rows, uuid columns, updated_at, the join
-   tables. Built-ins are addressed by their seeded key and user rows by a
-   minted uuid (ADR-0002); both arrive here as the string `id`/`key`. */
+   seam - uuid columns, updated_at, the join tables. Built-ins are
+   addressed by their seeded key and user rows by a minted uuid
+   (ADR-0002), arriving here as the string `id`/`key` - except entries,
+   which keep their integer rowid as the id: they are addressed locally
+   only, and ADR-0002 keeps the FTS link and the join-heavy queries on
+   integer rowids. An entry's uuid travels in archives, not here. */
 
 export interface Photo {
   id: string;

@@ -4,6 +4,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { getEntry, upsertEntry, deleteEntry } from '$lib/data/repositories/entries';
+  import { entryIsEmpty } from '$lib/data/entryContent';
   import { toast } from '$lib/stores/toasts.svelte';
   import type { DraftPhoto, Entry, GenderDimension, Photo } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -58,11 +59,13 @@
   /* The repository rejects an empty entry outright; this guard only turns
      that rejection into a toast instead of an unhandled throw. */
   let draftEmpty = $derived(
-    draft.mood == null &&
-      Object.keys(draft.dims).length === 0 &&
-      draft.tags.length === 0 &&
-      !draft.note.trim() &&
-      draft.photos.length === 0
+    entryIsEmpty({
+      mood: draft.mood,
+      note: draft.note,
+      dimCount: Object.keys(draft.dims).length,
+      tagCount: draft.tags.length,
+      photoCount: draft.photos.length
+    })
   );
 
   function saveEntry() {

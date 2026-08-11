@@ -15,6 +15,7 @@ function recurrenceLabel(r: Reminder): string {
 
 export function reminderScheduleLabel(r: Reminder): string {
   if (r.recurrence) return `${recurrenceLabel(r)} · ${r.time}`;
-  const days = (r.epochDay ?? todayEpochDay()) - todayEpochDay();
+  // Clamped: an elapsed one-off reads "in 0 days", not "in -3 days".
+  const days = Math.max(0, (r.epochDay ?? todayEpochDay()) - todayEpochDay());
   return `${m.reminder_once()} · ${m.reminder_in_days({ days })} · ${r.time}`;
 }

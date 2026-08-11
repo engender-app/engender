@@ -227,6 +227,6 @@
   "recurrence_every_n_days": "Co {n} dni",
   "reminder_once": "Jednorazowo",
   "reminder_in_days": "za {days} dni",
-  "not_in_preset": "Spoza bieżącego zestawu — zachowane z tego wpisu",
+  "not_in_preset": "Spoza bieżącego zestawu, zachowane z tego wpisu",
   "empty_entry": "Dodaj najpierw nastrój, wartość, tag, notatkę lub zdjęcie"
 }

@@ -13,10 +13,11 @@
    Photos become writable in ticket 11; their rows are already cleaned up
    on delete here, files included, via the injected store. */
 
+import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Entry } from '../types';
 import type { PhotoFileStore } from './journal';
-import { mintUuid, now, rowidByUuid } from './support';
+import { domainIdOf, mintUuid, now, rowidByUuid } from './support';
 
 export interface EntryInput {
   id?: number;
@@ -76,7 +77,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       `SELECT t.key, t.uuid FROM entry_tag et JOIN tag t ON t.id = et.tag_id WHERE et.entry_id = ? ORDER BY t.id`,
       [entryId]
     );
-    return rows.map((r) => r.key ?? r.uuid ?? '');
+    return rows.map((r) => domainIdOf(r, 'tag'));
   };
 
   const photoCountOf = async (entryId: number): Promise<number> => {
@@ -95,9 +96,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     photos: [] // rows exist from ticket 11 on; nothing renders them yet
   });
 
-  function assertHasContent(e: { mood: number | null; note: string; dimCount: number; tagCount: number; photoCount: number }) {
-    const empty = e.mood == null && !e.note.trim() && e.dimCount === 0 && e.tagCount === 0 && e.photoCount === 0;
-    if (empty) throw new Error('an entry needs a mood, a dimension value, a tag, a note or a photo');
+  function assertHasContent(e: EntryContent) {
+    if (entryIsEmpty(e)) throw new Error(EMPTY_ENTRY_ERROR);
   }
 
   return {

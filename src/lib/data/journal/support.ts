@@ -20,6 +20,15 @@ export async function rowidByUuid(driver: SqliteDriver, table: string, uuid: str
   return rows[0].id;
 }
 
+/** A reference row's travelling identity (ADR-0002): the seeded key for a
+    built-in, the minted uuid for a custom. A row with neither can only
+    come from writes that bypassed the journal, and failures are loud. */
+export function domainIdOf(row: { key: string | null; uuid: string | null }, what: string): string {
+  const id = row.key ?? row.uuid;
+  if (id == null) throw new Error(`${what} row has neither key nor uuid`);
+  return id;
+}
+
 /** Fails loudly when a write addressed a row that is not there: a typo'd
     key and a successful write must not look alike to the caller. */
 export function assertChanged(result: { changes: number }, what: string): void {

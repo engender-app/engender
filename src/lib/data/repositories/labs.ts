@@ -30,8 +30,3 @@ export function upsertLabResult(l: Partial<LabResult> & { analyte: string; value
   }
   save();
 }
-
-export function deleteResult(id: string) {
-  db.labResults = db.labResults.filter((l) => l.id !== id);
-  save();
-}

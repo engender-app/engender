@@ -14,10 +14,6 @@ import type { Reminder } from '../types';
 
 export type ReminderInput = Omit<Reminder, 'id'> & { id?: string };
 
-export function getReminders(): Reminder[] {
-  return db.reminders;
-}
-
 export function upsertReminder(r: ReminderInput) {
   assertValidRule(r);
   if (r.id) {
@@ -27,11 +23,6 @@ export function upsertReminder(r: ReminderInput) {
   } else {
     db.reminders.push({ ...r, id: crypto.randomUUID() });
   }
-  save();
-}
-
-export function deleteReminder(id: string) {
-  db.reminders = db.reminders.filter((r) => r.id !== id);
   save();
 }
 

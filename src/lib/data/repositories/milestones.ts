@@ -48,12 +48,14 @@ function withPhotoId(photo: Photo | DraftPhoto | null): Photo | null {
 }
 
 export function upsertMilestone(m: MilestoneInput) {
-  const photo = withPhotoId(m.photo ?? null);
   if (m.id) {
     const i = db.milestones.findIndex((x) => x.id === m.id);
     if (i < 0) throw new Error(`unknown milestone: ${m.id}`);
+    // `photo` omitted keeps the stored photo; explicit null removes it.
+    const photo = m.photo === undefined ? db.milestones[i].photo : withPhotoId(m.photo);
     db.milestones[i] = { ...db.milestones[i], ...m, id: m.id, photo };
   } else {
+    const photo = withPhotoId(m.photo ?? null);
     db.milestones.push({
       id: crypto.randomUUID(),
       name: m.name,
