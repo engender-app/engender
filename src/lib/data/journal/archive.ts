@@ -21,6 +21,12 @@
 
 import { filesOf } from '../photos/names';
 import { restoreArchive, type RestoreContents } from './restore';
+import {
+  daylioPreview,
+  type DaylioCommitResult,
+  type DaylioNaming,
+  type DaylioPreview
+} from '../archive/daylio';
 import type {
   ArchiveDimension,
   ArchiveEntry,
@@ -49,6 +55,11 @@ export interface ArchiveSnapshot {
 
 export interface ArchiveArea {
   snapshot(): Promise<ArchiveSnapshot>;
+  /** Parses and resolves a Daylio CSV without writing. Counts are net
+      additions, so they are the counts commit reports (PRD F28). */
+  previewDaylioImport(csv: string, naming: DaylioNaming): Promise<DaylioPreview>;
+  /** Always Merge. An unmapped mood is refused before restore sees a row. */
+  commitDaylioImport(preview: DaylioPreview): Promise<DaylioCommitResult>;
   /** Discards this device's journal and installs the archive's, keeping the
       built-in vocabulary by key and leaving preferences alone (ADR-0011).
       One operation: the order it happens in is not a caller's to compose. */
@@ -258,9 +269,31 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     return manifested;
   };
 
-  return {
+  const area: ArchiveArea = {
     replace: (contents) => restoreArchive(driver, files, 'replace', contents),
     merge: (contents) => restoreArchive(driver, files, 'merge', contents),
+
+    async previewDaylioImport(csv, naming) {
+      return daylioPreview(csv, (await area.snapshot()).journal, naming);
+    },
+
+    async commitDaylioImport(preview) {
+      if (preview.unmappedMoodLabels.length > 0) {
+        throw new Error(`Daylio mood ${preview.unmappedMoodLabels.join(', ')} is not mapped; nothing was imported`);
+      }
+      const before = await area.snapshot();
+      await restoreArchive(driver, files, 'merge', {
+        journal: preview.journal,
+        files: (async function* () {})()
+      });
+      const after = await area.snapshot();
+      return {
+        entriesAdded: after.journal.entries.length - before.journal.entries.length,
+        tagsAdded:
+          after.journal.tagGroups.flatMap((group) => group.tags).length -
+          before.journal.tagGroups.flatMap((group) => group.tags).length
+      };
+    },
 
     async snapshot() {
       // One read of the photo table for the rows, their owners and the
@@ -292,4 +325,5 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       };
     }
   };
+  return area;
 }
