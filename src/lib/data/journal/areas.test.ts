@@ -3,6 +3,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { journalWithBuiltIns } from './test-support.ts';
@@ -79,20 +80,20 @@ test('a milestone round-trips without a kind column and updates by id', async ()
 
 test('deleting a milestone takes its photo rows and files; twice is success', async () => {
   const db = await migratedDb();
-  const removed: string[] = [];
-  const journal = openJournal(db, { remove: async (path) => void removed.push(path) });
+  const files = fakeFileStore(['p1.jpg', 'p1-thumb.jpg']);
+  const journal = openJournal(db, files);
 
   const id = await journal.milestones.upsertMilestone({ epochDay: 20000, name: 'HRT start' });
   db.raw.exec(
     `INSERT INTO photo (uuid, milestone_id, file_path, updated_at)
-     SELECT 'p1', id, 'photos/p1.jpg', 0 FROM milestone WHERE uuid = '${id}'`
+     SELECT 'p1', id, 'p1.jpg', 0 FROM milestone WHERE uuid = '${id}'`
   );
 
   await journal.milestones.deleteMilestone(id);
 
   assert.deepEqual(await journal.milestones.getMilestones(), []);
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0);
-  assert.deepEqual(removed, ['photos/p1.jpg']);
+  assert.deepEqual(files.names(), [], 'the thumbnail goes with the photo');
 
   await journal.milestones.deleteMilestone(id); // idempotent
 });

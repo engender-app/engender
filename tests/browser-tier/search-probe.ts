@@ -11,6 +11,7 @@
 import { createWebSqlite } from '../../src/lib/data/sqlite/sqlocal-driver.ts';
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
+import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 
 const publish = (value: unknown) => {
   (window as unknown as { __searchProbeResult: unknown }).__searchProbeResult = value;
@@ -28,7 +29,9 @@ async function run() {
     return;
   }
 
-  const journal = openJournal(result.driver);
+  // Search never touches photos; the store is only here because the
+  // journal takes one. It creates no directory until something writes.
+  const journal = openJournal(result.driver, opfsPhotoFiles());
   await journal.reconcileBuiltIns();
 
   const bed = await journal.entries.upsertEntry({ epochDay: 100, note: 'spałem w łóżko' });

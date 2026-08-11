@@ -3,6 +3,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_DIMENSIONS, BUILT_IN_PRESETS, BUILT_IN_TAG_GROUPS } from '../vocabulary/builtins.ts';
 import { openJournal } from './journal.ts';
@@ -12,7 +13,7 @@ const count = (db: Awaited<ReturnType<typeof migratedDb>>, table: string): numbe
 
 test('seeds every built-in dimension, preset, group and tag into an empty journal', async () => {
   const db = await migratedDb();
-  await openJournal(db).reconcileBuiltIns();
+  await openJournal(db, fakeFileStore()).reconcileBuiltIns();
 
   assert.equal(count(db, 'gender_dimension'), BUILT_IN_DIMENSIONS.length);
   assert.equal(count(db, 'gender_preset'), BUILT_IN_PRESETS.length);
@@ -34,7 +35,7 @@ test('seeds every built-in dimension, preset, group and tag into an empty journa
 
 test('running twice changes nothing', async () => {
   const db = await migratedDb();
-  const journal = openJournal(db);
+  const journal = openJournal(db, fakeFileStore());
   await journal.reconcileBuiltIns();
   const before = ['gender_dimension', 'gender_preset', 'tag_group', 'tag', 'preset_dimension'].map((t) =>
     count(db, t)
@@ -49,7 +50,7 @@ test('running twice changes nothing', async () => {
 
 test('restores a missing built-in without touching custom rows', async () => {
   const db = await migratedDb();
-  const journal = openJournal(db);
+  const journal = openJournal(db, fakeFileStore());
   await journal.reconcileBuiltIns();
   await journal.tags.addTag('emotions', 'proud');
 

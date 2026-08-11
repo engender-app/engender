@@ -2,6 +2,7 @@
    migrated node:sqlite database, built-ins reconciled - the state boot
    leaves behind. */
 
+import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal, type Journal } from './journal.ts';
 
@@ -12,7 +13,7 @@ export async function journalWithBuiltIns(): Promise<{
   db: Awaited<ReturnType<typeof migratedDb>>;
 }> {
   const db = await migratedDb();
-  const journal = openJournal(db);
+  const journal = openJournal(db, fakeFileStore());
   await journal.reconcileBuiltIns();
   return { journal, db };
 }

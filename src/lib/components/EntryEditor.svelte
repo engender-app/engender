@@ -52,8 +52,13 @@
   let preset = $derived(vocabulary.activePreset);
   let isToday = $derived(day === todayEpochDay());
 
+  /* Still a placeholder, deliberately. The real path - pick, normalize,
+     journal.photos.attach - is built and tested (ticket 11), but this
+     editor saves through the demo store, which has no journal row for a
+     file to hang off and would strand the bytes in localStorage. Ticket 08
+     moves this screen onto the journal; the picker is wired in there. */
   function addPhoto() {
-    draft.photos.push({ hue: Math.floor(Math.random() * 360), label: 'Photo' });
+    draft.photos.push({ fileName: null });
   }
 
   /* The repository rejects an empty entry outright; this guard only turns
