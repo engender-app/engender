@@ -230,3 +230,63 @@ test('a photo alone is enough content for an entry to exist', async () => {
   assert.equal(entry?.mood, null);
   assert.equal(entry?.photos.length, 1);
 });
+
+/* One query for the Progress screen (ticket 08, ADR-0008): entry photos and
+   milestone photos are rows in the same table, so the screen that shows
+   every photo in the journal chronologically is a query, not a union
+   assembled in JavaScript. */
+
+test('every photo in the journal comes back dated, oldest first, naming its milestone', async () => {
+  const { journal } = await journalWithFiles();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
+  const milestoneId = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 20000 });
+
+  const second = await journal.photos.attach({ entryId }, shot('e2', 't2'));
+  const first = await journal.photos.attach({ milestoneId }, shot('m1', 't1'));
+
+  assert.deepEqual(await journal.photos.inJournal(), [
+    { id: first, fileName: `${first}.jpg`, epochDay: 20000, milestoneName: 'HRT start' },
+    { id: second, fileName: `${second}.jpg`, epochDay: 20100, milestoneName: null }
+  ]);
+});
+
+test('a journal with no photos yields an empty list, not a broken join', async () => {
+  const { journal } = await journalWithFiles();
+  await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
+  assert.deepEqual(await journal.photos.inJournal(), []);
+});
+
+/* Saving an entry is one action (PRD F1), and a photo on its own is enough
+   content for one (CONTEXT: "Entry"). So the photos picked in the editor
+   arrive with the save rather than in a second call after it - otherwise a
+   photo-only entry is rejected as empty on the way to being given its
+   photo. */
+
+test('an entry whose only content is a photo saves, and the photo lands on it', async () => {
+  const { journal } = await journalWithFiles();
+
+  const id = await journal.entries.upsertEntry({ epochDay: 20100, attachPhotos: [shot('one', 't1')] });
+
+  const entry = (await journal.entries.getEntry(id))!;
+  assert.equal(entry.mood, null);
+  assert.equal(entry.note, '');
+  assert.equal(entry.photos.length, 1);
+});
+
+test('an entry with nothing at all is still rejected, photos included in the count', async () => {
+  const { journal, files } = await journalWithFiles();
+  await assert.rejects(journal.entries.upsertEntry({ epochDay: 20100, attachPhotos: [] }), /needs a mood/);
+  assert.deepEqual(files.names(), [], 'a rejected save writes no files');
+});
+
+test('editing an entry adds the photos it brings without disturbing the ones it has', async () => {
+  const { journal } = await journalWithFiles();
+  const id = await journal.entries.upsertEntry({ epochDay: 20100, attachPhotos: [shot('first', 't1')] });
+  const first = (await journal.entries.getEntry(id))!.photos[0];
+
+  await journal.entries.upsertEntry({ id, note: 'and another', attachPhotos: [shot('second', 't2')] });
+
+  const photos = (await journal.entries.getEntry(id))!.photos;
+  assert.deepEqual(photos.map((p) => p.id), [first.id, photos[1].id]);
+  assert.equal(photos.length, 2);
+});

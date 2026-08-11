@@ -1,6 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { addTag, renameTag, reorder, setTagHidden, deleteTag, addGroup } from '$lib/data/repositories/tags';
+  import { journal } from '$lib/data/live/journal.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -9,12 +9,12 @@
   let renameTarget = $state<{ id: string; label: string } | null>(null);
   let deleteTarget = $state<{ id: string; label: string } | null>(null);
 
-  /* The repository speaks whole orders (a drag), so the up-button builds
+  /* The journal speaks whole orders (a drag), so the up-button builds
      the order it wants and hands it over. */
   function moveUp(g: TagGroup, index: number) {
     const ids = g.tags.map((t) => t.id);
     [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
-    reorder(g.key, ids);
+    journal.tags.reorder(g.key, ids);
   }
   let addTarget = $state<string | null>(null);
   let newLabel = $state('');
@@ -57,7 +57,7 @@
               </button>
               {#if tg.builtIn}
                 <button class="icon-btn" aria-label="{tg.hidden ? 'Show' : 'Hide'} {tg.label}"
-                  onclick={() => setTagHidden(tg.id, !tg.hidden)}>
+                  onclick={() => journal.tags.setTagHidden(tg.id, !tg.hidden)}>
                   <Icon name={tg.hidden ? 'eye' : 'eyeOff'} size={16} />
                 </button>
               {:else}
@@ -86,7 +86,7 @@
       <button
         class="btn btn-primary"
         onclick={() => {
-          if (renameTarget!.label.trim()) renameTag(renameTarget!.id, renameTarget!.label.trim());
+          if (renameTarget!.label.trim()) journal.tags.renameTag(renameTarget!.id, renameTarget!.label.trim());
           renameTarget = null;
         }}><span>Save</span></button
       >
@@ -104,7 +104,7 @@
           class="btn btn-danger"
           data-confirm
           onclick={() => {
-            deleteTag(deleteTarget!.id);
+            journal.tags.deleteTag(deleteTarget!.id);
             deleteTarget = null;
           }}><span>Delete tag</span></button
         >
@@ -122,7 +122,7 @@
       <button
         class="btn btn-primary"
         onclick={() => {
-          if (newLabel.trim()) addTag(addTarget!, newLabel.trim());
+          if (newLabel.trim()) journal.tags.addTag(addTarget!, newLabel.trim());
           addTarget = null;
         }}><span>Add tag</span></button
       >
@@ -137,7 +137,7 @@
     <button
       class="btn btn-primary"
       onclick={() => {
-        if (newGroupName.trim()) addGroup(newGroupName.trim());
+        if (newGroupName.trim()) journal.tags.addGroup(newGroupName.trim());
         groupSheet = false;
       }}><span>Add group</span></button
     >

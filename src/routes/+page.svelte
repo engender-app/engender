@@ -4,8 +4,10 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
-  import { entriesNewestFirst, quickLog, streakDays } from '$lib/data/repositories/entries';
-  import { upcomingMilestones } from '$lib/data/repositories/milestones';
+  import type { Entry } from '$lib/data/types';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { reference } from '$lib/data/live/reference.svelte';
+  import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -20,11 +22,15 @@
   import EmptyState from '$lib/components/EmptyState.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
 
-  let upcoming = $derived(upcomingMilestones());
+  /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
+     read; the entry-shaped reads below are the ones that had to become
+     queries. */
+  let upcoming = $derived(upcomingMilestones(reference.milestones, today));
   let landing = $derived(upcoming.find((x) => x.s.type === 'today' || x.s.isAnnivToday));
   let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
 
@@ -37,21 +43,26 @@
 
   let metricName = $derived(vocabulary.metricName);
 
+  /* Five days, not five entries: the section heads each day with how many
+     entries it holds, and a row limit would cut a two-entry day in half. */
+  const RECENT_DAYS = 5;
+  let recent = liveQuery(['entry'], (j) => j.entries.recentDays(RECENT_DAYS));
   let dayGroups = $derived.by(() => {
-    const byDay = new Map<number, ReturnType<typeof entriesNewestFirst>>();
-    for (const e of entriesNewestFirst()) {
+    const byDay = new Map<number, Entry[]>();
+    for (const e of recent.value ?? []) {
       if (!byDay.has(e.epochDay)) byDay.set(e.epochDay, []);
       byDay.get(e.epochDay)!.push(e);
     }
-    return [...byDay.entries()].sort((a, b) => b[0] - a[0]).slice(0, 5);
+    return [...byDay.entries()];
   });
 
-  let streak = $derived(streakDays());
+  let streakQuery = liveQuery(['entry'], (j) => j.stats.streak(today));
+  let streak = $derived(streakQuery.value ?? 0);
   let metricSheetOpen = $state(false);
 
-  function onQuickLog(v: number | null) {
+  async function onQuickLog(v: number | null) {
     if (v == null) return;
-    const id = quickLog(v);
+    const id = await journal.entries.upsertEntry({ epochDay: today, mood: v });
     toast(m.quick_saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`) });
   }
 </script>
@@ -122,7 +133,9 @@
   <SectionTitle text={m.recent_entries()}>
     {#snippet aside()}<a href="/calendar">{m.nav_calendar()} <Icon name="chevronRight" size={14} /></a>{/snippet}
   </SectionTitle>
-  {#if dayGroups.length}
+  {#if recent.loading}
+    <Skeleton variant="card" count={3} />
+  {:else if dayGroups.length}
     {#each dayGroups as [day, list] (day)}
       {#each list as e (e.id)}
         <EntryCard entry={e} dayCount={list.length} />

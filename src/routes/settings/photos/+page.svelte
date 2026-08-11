@@ -1,26 +1,19 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
+  import { liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import { calendarDuration } from '$lib/data/epochDay';
-  import type { Photo } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
 
-  interface DatedPhoto extends Photo {
-    epochDay: number;
-    source: string;
-  }
-
-  let photos = $derived.by(() => {
-    const out: DatedPhoto[] = [];
-    db.entries.forEach((e) => (e.photos || []).forEach((p) => out.push({ ...p, epochDay: e.epochDay, source: 'entry' })));
-    db.milestones.forEach((mi) => {
-      if (mi.photo) out.push({ ...mi.photo, epochDay: mi.epochDay, source: mi.name });
-    });
-    return out.sort((a, b) => a.epochDay - b.epochDay);
-  });
+  /* One query, not a union of a table and a column: entry photos and
+     milestone photos are rows in the same table (ADR-0008), already dated and
+     ordered oldest first by the journal. Thumbnails only - PhotoThumb never
+     decodes a full photo to draw a 104px tile. */
+  let photosQuery = liveQuery(['photo', 'entry', 'milestone'], (j) => j.photos.inJournal());
+  let photos = $derived(photosQuery.value ?? []);
 
   let selected = $state<number[]>([]);
   let comparing = $state(false);
@@ -66,7 +59,7 @@
             <button class="icon-btn" disabled={!side.canNext} style={side.canNext ? '' : 'opacity:.3'}
               aria-label="Later photo" onclick={() => step(side.which, 1)}><Icon name="chevronRight" size={18} /></button>
           </div>
-          <span class="muted small">{photos[side.i].source === 'entry' ? 'journal entry' : photos[side.i].source}</span>
+          <span class="muted small">{photos[side.i].milestoneName ?? 'journal entry'}</span>
         </div>
       {/each}
     </div>
@@ -81,7 +74,9 @@
       <h1 class="screen-title">{m.progress_photos()}</h1>
       <div class="header-action"></div>
     </header>
-    {#if photos.length}
+    {#if photosQuery.loading}
+      <Skeleton variant="card" count={2} />
+    {:else if photos.length}
       <p class="muted small" style="margin-bottom:var(--space-4)">
         {selected.length === 0
           ? 'Every photo in your journal, oldest first. Select two to compare.'

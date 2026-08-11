@@ -4,20 +4,17 @@
    in the message catalogue (labels.ts); this joins the two on the way out,
    leaving custom rows - which carry the user's own words - untouched.
 
-   It sits above the repositories rather than inside them because the
-   repositories have to stay free of paraglide: ADR-0016 keeps the Node
-   tier away from it, and ticket 07 puts all six areas under Node-tier
-   tests. So a repository answers "which rows", and this answers "called
-   what". */
+   It sits above the mirror rather than inside it because the layer below
+   has to stay free of paraglide: ADR-0016 keeps the Node tier away from it,
+   and every journal area is under Node-tier tests. So the mirror answers
+   "which rows", and this answers "called what". */
 
-import { db } from '../db.svelte';
 import { m } from '$lib/paraglide/messages';
 import { MOOD_RANGE, type MetricRange } from '../metricRange';
 import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
-import { activeDimensions, activePreset, getPresets } from '../repositories/dimensions';
-import { randomTemplates, milestoneTemplates } from '../repositories/milestones';
-import { tagById, visibleTagGroups } from '../repositories/tags';
+import { reference } from '../live/reference.svelte';
+import { milestoneTemplateRows } from './builtins';
 import type { GenderDimension, GenderPreset, MilestoneTemplate, Tag, TagGroup } from '../types';
 import {
   dimensionHigh,
@@ -51,24 +48,33 @@ function localizeTemplate(t: MilestoneTemplate): MilestoneTemplate {
   return { ...t, name: milestoneTemplateName(t.key) };
 }
 
+/** Keys only; the names come from the message catalogue below. Not stored
+    rows at all - a template is a suggestion the app ships (ticket 05). */
+const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
+
 export const vocabulary = {
   get dimensions(): GenderDimension[] {
-    return db.dimensions.map(localizeDimension);
+    return reference.dimensions.map(localizeDimension);
   },
   get activeDimensions(): GenderDimension[] {
-    return activeDimensions().map(localizeDimension);
+    return reference.activeDimensions.map(localizeDimension);
   },
   get presets(): GenderPreset[] {
-    return getPresets().map(localizePreset);
+    return reference.presets.map(localizePreset);
   },
   get activePreset(): GenderPreset {
-    return localizePreset(activePreset());
+    return localizePreset(reference.activePreset);
   },
   get tagGroups(): TagGroup[] {
-    return db.tagGroups.map(localizeGroup);
+    return reference.tagGroups.map(localizeGroup);
   },
   get visibleTagGroups(): TagGroup[] {
-    return visibleTagGroups().map(localizeGroup);
+    return reference.visibleTagGroups.map(localizeGroup);
+  },
+  /** Every tag the app knows, hidden ones included, in the wording the user
+      sees - which is what search matches typed text against (ADR-0005). */
+  get tags(): Tag[] {
+    return reference.tags.map(localizeTag);
   },
   get milestoneTemplates(): MilestoneTemplate[] {
     return milestoneTemplates.map(localizeTemplate);
@@ -103,10 +109,17 @@ export const vocabulary = {
     return d ? { low: d.low, high: d.high } : { low: moodName(1), high: moodName(5) };
   },
   tag(id: string): Tag | null {
-    const found = tagById(id);
+    const found = reference.tag(id);
     return found && localizeTag(found);
   },
-  randomTemplates(n?: number): MilestoneTemplate[] {
-    return randomTemplates(n).map(localizeTemplate);
+  /** A few templates to offer, picked at random so the suggestions differ
+      between visits and the shuffle button has something to do (PRD F6). */
+  randomTemplates(n = 3): MilestoneTemplate[] {
+    const pool = [...milestoneTemplates];
+    const picked: MilestoneTemplate[] = [];
+    while (picked.length < n && pool.length) {
+      picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+    return picked.map(localizeTemplate);
   }
 };

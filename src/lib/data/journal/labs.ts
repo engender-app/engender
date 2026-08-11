@@ -22,6 +22,10 @@ export interface LabsArea {
   /** Presets plus in-use: a preset is offerable with no data yet, and a
       custom analyte someone logged once stays offerable. */
   getAnalytes(): Promise<string[]>;
+  /** In-use analytes only, which is what the trend picker offers: a trend
+      needs data, so a preset with no result behind it is not a trend to
+      switch to. */
+  getUsedAnalytes(): Promise<string[]>;
   getResults(analyte: string): Promise<LabResult[]>;
   /** Returns the result's id. Updating an unknown id throws. */
   upsertResult(input: LabResultInput): Promise<string>;
@@ -30,11 +34,17 @@ export interface LabsArea {
 }
 
 export function makeLabsArea(driver: SqliteDriver): LabsArea {
+  const usedAnalytes = async (): Promise<string[]> => {
+    const rows = await driver.query<{ analyte: string }>('SELECT DISTINCT analyte FROM lab_result ORDER BY analyte');
+    return rows.map((r) => r.analyte);
+  };
+
   return {
     async getAnalytes() {
-      const rows = await driver.query<{ analyte: string }>('SELECT DISTINCT analyte FROM lab_result ORDER BY analyte');
-      return [...new Set([...ANALYTE_PRESETS, ...rows.map((r) => r.analyte)])];
+      return [...new Set([...ANALYTE_PRESETS, ...(await usedAnalytes())])];
     },
+
+    getUsedAnalytes: usedAnalytes,
 
     async getResults(analyte) {
       const rows = await driver.query<{ uuid: string; epoch_day: number; analyte: string; value: number; unit: string; note: string | null }>(

@@ -106,17 +106,9 @@ export interface LabResult {
 }
 
 /* Preferences are not here: they live in SQLite's `pref` table and are
-   described by prefs/catalogue.ts (ticket 06). */
-export interface DB {
-  version: number;
-  dimensions: GenderDimension[];
-  customPresets: GenderPreset[];
-  tagGroups: TagGroup[];
-  entries: Entry[];
-  milestones: Milestone[];
-  reminders: Reminder[];
-  labResults: LabResult[];
-}
+   described by prefs/catalogue.ts (ticket 06). Neither is a whole-journal
+   type: the `DB` object the demo store held went with it in ticket 08, and
+   what an archive carries is the archive module's own shape. */
 
 export interface MilestoneTemplate {
   key: string;

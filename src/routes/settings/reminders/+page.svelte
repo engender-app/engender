@@ -1,7 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
-  import { setReminderEnabled } from '$lib/data/repositories/reminders';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { reminderScheduleLabel } from '$lib/data/vocabulary/reminderLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -11,6 +10,8 @@
 
   const TYPE_ICON: Record<string, string> = { med: 'heart', injection: 'zap', appointment: 'calendar', other: 'bell' };
   let isWeb = $derived(!isAndroid());
+
+  let reminders = liveQuery(['reminder'], (j) => j.reminders.getReminders());
 </script>
 
 <div class="screen">
@@ -64,14 +65,14 @@
     </div>
 
     <div class="list-group" style="margin-top:var(--space-4)">
-      {#each db.reminders as r (r.id)}
+      {#each reminders.value ?? [] as r (r.id)}
         <div class="list-row">
           <span class="row-icon"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
           <a class="row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
             <span class="row-title">{r.title}</span>
             <span class="row-subtitle">{r.type} · {reminderScheduleLabel(r)}</span>
           </a>
-          <Switch checked={r.enabled} label="Enable {r.title}" onChange={(v) => setReminderEnabled(r.id, v)} />
+          <Switch checked={r.enabled} label="Enable {r.title}" onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
         </div>
       {/each}
     </div>
