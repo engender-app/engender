@@ -4,7 +4,6 @@
   import { fmtDay, fmtMonthName } from '$lib/data/dates';
   import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
   import { seriesForRange, tagInsights, streakDays } from '$lib/data/repositories/entries';
-  import { activeDimensions } from '$lib/data/repositories/dimensions';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import Icon from '$lib/components/Icon.svelte';
@@ -12,13 +11,14 @@
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
   let range = $state(30);
 
   let metrics = $derived([
     { key: 'mood', name: m.mood(), min: 1, max: 5 },
-    ...activeDimensions().map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max })),
+    ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max })),
   ]);
   let streak = $derived(streakDays());
   let insights = $derived(tagInsights(range, metricKey(prefs)));
@@ -93,9 +93,10 @@
   {#if insights.length}
     <div class="list-group">
       {#each insights.slice(0, 6) as i (i.id)}
-        <button class="list-row" onclick={() => (insightSheet = { label: i.label, id: i.id })}>
+        {@const label = vocabulary.tag(i.id)?.label ?? i.id}
+        <button class="list-row" onclick={() => (insightSheet = { label, id: i.id })}>
           <span class="row-text">
-            <span class="row-title">{i.label}</span>
+            <span class="row-title">{label}</span>
             <span class="row-subtitle">
               {i.count} entries · avg {fmtMetric(i.withAvg)} with · {fmtMetric(i.withoutAvg)} without
             </span>

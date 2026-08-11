@@ -124,8 +124,13 @@
   "cancel": "Cancel",
   "n_years": [
     {
-      "declarations": ["input n", "local nPlural = n: plural"],
-      "selectors": ["nPlural"],
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
       "match": {
         "nPlural=one": "{n} year",
         "nPlural=other": "{n} years"
@@ -134,8 +139,13 @@
   ],
   "n_months": [
     {
-      "declarations": ["input n", "local nPlural = n: plural"],
-      "selectors": ["nPlural"],
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
       "match": {
         "nPlural=one": "{n} month",
         "nPlural=other": "{n} months"
@@ -144,13 +154,66 @@
   ],
   "n_days": [
     {
-      "declarations": ["input n", "local nPlural = n: plural"],
-      "selectors": ["nPlural"],
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
       "match": {
         "nPlural=one": "{n} day",
         "nPlural=other": "{n} days"
       }
     }
   ],
-  "apart_suffix": "apart"
+  "apart_suffix": "apart",
+  "dim_euphoria_dysphoria": "Gender feeling",
+  "dim_euphoria_dysphoria_low": "dysphoria",
+  "dim_euphoria_dysphoria_high": "euphoria",
+  "dim_femininity": "Femininity",
+  "dim_femininity_low": "not at all",
+  "dim_femininity_high": "very",
+  "dim_masculinity": "Masculinity",
+  "dim_masculinity_low": "not at all",
+  "dim_masculinity_high": "very",
+  "dim_binary_nonbinary": "Binary ↔ nonbinary",
+  "dim_binary_nonbinary_low": "binary",
+  "dim_binary_nonbinary_high": "nonbinary",
+  "dim_agender_gendered": "Agender ↔ gendered",
+  "dim_agender_gendered_low": "agender",
+  "dim_agender_gendered_high": "gendered",
+  "preset_p_btw": "Binary trans woman",
+  "preset_p_nb": "Nonbinary / bigender",
+  "taggroup_gender": "Gender",
+  "taggroup_emotions": "Emotions",
+  "taggroup_activities": "Activities",
+  "tag_g_soc_dys": "social dysphoria",
+  "tag_g_body_dys": "body dysphoria",
+  "tag_g_soc_eu": "social euphoria",
+  "tag_g_body_eu": "body euphoria",
+  "tag_g_transphobia": "experienced transphobia",
+  "tag_g_gendered_ok": "gendered correctly",
+  "tag_g_misgendered": "misgendered",
+  "tag_e_happy": "happy",
+  "tag_e_calm": "calm",
+  "tag_e_anxious": "anxious",
+  "tag_e_sad": "sad",
+  "tag_e_hopeful": "hopeful",
+  "tag_e_tired": "tired",
+  "tag_a_work": "work",
+  "tag_a_friends": "friends",
+  "tag_a_family": "family",
+  "tag_a_exercise": "exercise",
+  "tag_a_therapy": "therapy",
+  "tag_a_shopping": "shopping",
+  "tag_a_selfcare": "self-care",
+  "tpl_hrt_start": "HRT start",
+  "tpl_transition_start": "Transition start",
+  "tpl_coming_out": "Coming out",
+  "tpl_first_appointment": "First appointment",
+  "tpl_name_change": "Name change",
+  "tpl_marker_change": "Legal gender-marker change",
+  "tpl_surgery": "Surgery",
+  "tpl_first_public": "First time presenting publicly"
 }

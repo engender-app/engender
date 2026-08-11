@@ -2,12 +2,10 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { entriesNewestFirst, quickLog, streakDays } from '$lib/data/repositories/entries';
   import { upcomingMilestones } from '$lib/data/repositories/milestones';
-  import { activeDimensions } from '$lib/data/repositories/dimensions';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -22,6 +20,7 @@
   import EmptyState from '$lib/components/EmptyState.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
 
@@ -36,11 +35,7 @@
     backupAgeDays != null && backupAgeDays > 30 && !prefs.backupNoticeDismissed
   );
 
-  let metricName = $derived(
-    prefs.metricKind === 'mood'
-      ? m.mood()
-      : (db.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
-  );
+  let metricName = $derived(vocabulary.metricName);
 
   let dayGroups = $derived.by(() => {
     const byDay = new Map<number, ReturnType<typeof entriesNewestFirst>>();
@@ -148,7 +143,7 @@
   <Sheet bind:open={metricSheetOpen} title={m.colour_days_by()}>
     <h3>{m.colour_days_by()}</h3>
     <div class="list-group" style="box-shadow:none">
-      {#each [{ key: null, name: m.mood() }, ...activeDimensions()] as d (d.key ?? 'mood')}
+      {#each [{ key: null, name: m.mood() }, ...vocabulary.activeDimensions] as d (d.key ?? 'mood')}
         <button
           class="list-row"
           onclick={() => {

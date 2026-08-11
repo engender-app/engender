@@ -1,14 +1,31 @@
-/* Demo seed — one coherent persona: Alice, ~2.5 years into transition.
-   Deterministic (seeded PRNG) and generated relative to "today", so the demo
-   never looks stale and Reset restores exactly this state. */
+/* One coherent persona: Alice, ~2.5 years into transition. Deterministic
+   (seeded PRNG) and generated relative to "today", so the demo never looks
+   stale and Reset restores exactly this state.
 
-import type { DB, GenderDimension, GenderPreset, MilestoneTemplate, TagGroup } from '../types';
+   Nothing here ships. Every import of this module sits behind `__DEMO__`,
+   which vite.config.ts injects as a literal `false` in a production build,
+   so Rollup folds the branch and drops this file rather than hiding it in
+   the bundle. tests/browser-tier/verify-build.mjs greps the built bundle
+   for "Alice" to prove it.
+
+   Its counterpart is vocabulary/builtins.ts, which does ship: the built-in
+   vocabulary every real user needs used to live in this same file, which
+   is what made the persona impossible to leave out. */
+
+import type { DB, Tag } from '../types';
 import type { PreferenceValues } from '../prefs/catalogue';
+import { emptyDb, seedVocabulary } from '../firstRun';
 import { startOfDayTimestamp, todayEpochDay } from '../epochDay';
 
 // DAY is private to epochDay.ts (ticket 19); this is the one hand-multiplying
-// caller left, and ticket 05 deletes it along with the rest of this persona.
+// caller left, and it goes when the persona's entries move onto real rows.
 const DAY = 86400000;
+
+/* The one custom tag in the demo, so the tag manager has something to show
+   that behaves like a user's own. It used to sit inside the built-in gender
+   group carrying `builtIn: false`, which made the shipping vocabulary
+   depend on a demo detail. */
+const VOICE_PRACTICE: Tag = { id: 'g-voice', label: 'voice practice', builtIn: false, hidden: false };
 
 function rng(seed: number) {
   return function () {
@@ -19,69 +36,6 @@ function rng(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-
-export const builtInDimensions: GenderDimension[] = [
-  { key: 'euphoria_dysphoria', name: 'Gender feeling', low: 'dysphoria', high: 'euphoria', min: 0, max: 100, builtIn: true },
-  { key: 'femininity', name: 'Femininity', low: 'not at all', high: 'very', min: 0, max: 100, builtIn: true },
-  { key: 'masculinity', name: 'Masculinity', low: 'not at all', high: 'very', min: 0, max: 100, builtIn: true },
-  { key: 'binary_nonbinary', name: 'Binary ↔ nonbinary', low: 'binary', high: 'nonbinary', min: 0, max: 100, builtIn: true },
-  { key: 'agender_gendered', name: 'Agender ↔ gendered', low: 'agender', high: 'gendered', min: 0, max: 100, builtIn: true },
-];
-
-export const builtInPresets: GenderPreset[] = [
-  { id: 'p-btw', name: 'Binary trans woman', builtIn: true, dims: ['euphoria_dysphoria', 'femininity'] },
-  { id: 'p-nb', name: 'Nonbinary — bigender', builtIn: true, dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary', 'agender_gendered'] },
-];
-
-export const milestoneTemplates: MilestoneTemplate[] = [
-  { key: 'hrt_start', name: 'HRT start' },
-  { key: 'transition_start', name: 'Transition start' },
-  { key: 'coming_out', name: 'Coming out' },
-  { key: 'first_appointment', name: 'First appointment' },
-  { key: 'name_change', name: 'Name change' },
-  { key: 'marker_change', name: 'Legal gender-marker change' },
-  { key: 'surgery', name: 'Surgery' },
-  { key: 'first_public', name: 'First time presenting publicly' },
-];
-
-const seedTagGroups: TagGroup[] = [
-  {
-    key: 'gender', name: 'Gender', enabled: true, builtIn: true,
-    tags: [
-      { id: 'g-soc-dys', label: 'social dysphoria', builtIn: true, hidden: false },
-      { id: 'g-body-dys', label: 'body dysphoria', builtIn: true, hidden: false },
-      { id: 'g-soc-eu', label: 'social euphoria', builtIn: true, hidden: false },
-      { id: 'g-body-eu', label: 'body euphoria', builtIn: true, hidden: false },
-      { id: 'g-transphobia', label: 'experienced transphobia', builtIn: true, hidden: false },
-      { id: 'g-gendered-ok', label: 'gendered correctly', builtIn: true, hidden: false },
-      { id: 'g-misgendered', label: 'misgendered', builtIn: true, hidden: false },
-      { id: 'g-voice', label: 'voice practice', builtIn: false, hidden: false },
-    ],
-  },
-  {
-    key: 'emotions', name: 'Emotions', enabled: true, builtIn: true,
-    tags: [
-      { id: 'e-happy', label: 'happy', builtIn: true, hidden: false },
-      { id: 'e-calm', label: 'calm', builtIn: true, hidden: false },
-      { id: 'e-anxious', label: 'anxious', builtIn: true, hidden: false },
-      { id: 'e-sad', label: 'sad', builtIn: true, hidden: false },
-      { id: 'e-hopeful', label: 'hopeful', builtIn: true, hidden: false },
-      { id: 'e-tired', label: 'tired', builtIn: true, hidden: false },
-    ],
-  },
-  {
-    key: 'activities', name: 'Activities', enabled: true, builtIn: true,
-    tags: [
-      { id: 'a-work', label: 'work', builtIn: true, hidden: false },
-      { id: 'a-friends', label: 'friends', builtIn: true, hidden: false },
-      { id: 'a-family', label: 'family', builtIn: true, hidden: false },
-      { id: 'a-exercise', label: 'exercise', builtIn: true, hidden: false },
-      { id: 'a-therapy', label: 'therapy', builtIn: true, hidden: false },
-      { id: 'a-shopping', label: 'shopping', builtIn: true, hidden: false },
-      { id: 'a-selfcare', label: 'self-care', builtIn: true, hidden: false },
-    ],
-  },
-];
 
 const NOTES = [
   'Coffee with Marta. She used my name the whole time without a single stumble. I keep replaying it.',
@@ -159,13 +113,16 @@ export function demoPreferences(): Partial<PreferenceValues> {
   };
 }
 
-export function seed(): DB {
+export function personaDb(): DB {
   const today = todayEpochDay();
+  const base = seedVocabulary(emptyDb());
+  const tagGroups = base.tagGroups.map((g) =>
+    g.key === 'gender' ? { ...g, tags: [...g.tags, VOICE_PRACTICE] } : g
+  );
+
   return {
-    version: 1,
-    dimensions: builtInDimensions.map((d) => ({ ...d })),
-    customPresets: [],
-    tagGroups: JSON.parse(JSON.stringify(seedTagGroups)),
+    ...base,
+    tagGroups,
     entries: buildEntries(),
     milestones: [
       { id: 'm1', name: 'HRT start', epochDay: today - 745, kind: 'anniversary', templateKey: 'hrt_start', photo: { id: 'mp1', hue: 205, label: 'Photo' } },

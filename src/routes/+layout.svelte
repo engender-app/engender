@@ -9,7 +9,6 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
@@ -17,11 +16,8 @@
   import Icon from '$lib/components/Icon.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
-  import DemoBar from '$lib/components/DemoBar.svelte';
 
   let { children } = $props();
-
-  const DEMO = import.meta.env.DEV || import.meta.env.VITE_DEMO === '1';
 
   /* Started here rather than from an $effect so that boot's first step -
      reading the mirrored theme and palette (ticket 06) - has run before the
@@ -74,12 +70,6 @@
     if (bootState.status !== 'ready') return;
     if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
   });
-  /* Dev demo bar frame emulation via body classes. */
-  $effect(() => {
-    document.body.classList.toggle('has-demo-bar', DEMO);
-    document.body.classList.toggle('demo-phone-frame', DEMO && ui.frame === 'phone');
-  });
-
   /* New-entry chooser (F1). */
   let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
   function chooseToday() {
@@ -94,8 +84,15 @@
   }
 </script>
 
-{#if DEMO}
-  <DemoBar />
+{#if __DEMO__}
+  <!-- Imported dynamically, not at the top of the script. A static import
+       binds the component's <style> to this route node's stylesheet, so
+       dropping its JavaScript still left the demo bar's CSS in the
+       production build. Inside a branch Rollup folds away, the import
+       expression goes too, and with it the chunk and its CSS. -->
+  {#await import('$lib/components/DemoBar.svelte') then { default: DemoBar }}
+    <DemoBar />
+  {/await}
 {/if}
 
 <div class="app-viewport">

@@ -3,13 +3,13 @@
   import { db } from '$lib/data/db.svelte';
   import { setReminderEnabled, scheduleLabel } from '$lib/data/repositories/reminders';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import { isAndroid } from '$lib/platform';
 
   const TYPE_ICON: Record<string, string> = { med: 'heart', injection: 'zap', appointment: 'calendar', other: 'bell' };
-  let isWeb = $derived(ui.frame !== 'phone');
+  let isWeb = $derived(!isAndroid());
 </script>
 
 <div class="screen">

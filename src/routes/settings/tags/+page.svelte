@@ -1,9 +1,9 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
   import { addTag, renameTag, moveTagUp, setTagHidden, deleteTag, addGroup } from '$lib/data/repositories/tags';
   import Icon from '$lib/components/Icon.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let renameTarget = $state<{ groupKey: string; index: number; label: string } | null>(null);
   let deleteTarget = $state<{ groupKey: string; index: number; label: string } | null>(null);
@@ -23,7 +23,7 @@
     Built-in tags can be hidden — their history stays. Your own tags can be renamed or deleted.
   </p>
 
-  {#each db.tagGroups as g (g.key)}
+  {#each vocabulary.tagGroups as g (g.key)}
     <section class="card" style="margin-bottom:var(--space-4)">
       <div class="spread" style="margin-bottom:var(--space-3)">
         <h2 class="editor-heading">{g.name} {#if !g.builtIn}<span class="muted small">· {m.custom_suffix()}</span>{/if}</h2>

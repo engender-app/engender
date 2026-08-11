@@ -1,8 +1,8 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { tagById } from '$lib/data/repositories/tags';
   import type { Entry } from '$lib/data/types';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let {
     entry,
@@ -11,7 +11,7 @@
   }: { entry: Entry; showDay?: boolean; dayCount?: number } = $props();
 
   const MOOD_LABELS = ['awful', 'bad', 'meh', 'good', 'great'];
-  let tags = $derived(entry.tags.map((id) => tagById(id)).filter((t) => t != null).slice(0, 4));
+  let tags = $derived(entry.tags.map((id) => vocabulary.tag(id)).filter((t) => t != null).slice(0, 4));
   let more = $derived(entry.tags.length - tags.length);
 </script>
 

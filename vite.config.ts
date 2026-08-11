@@ -3,7 +3,16 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig } from 'vite';
 import sqlocal from 'sqlocal/vite';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // A literal, not an exported const, so Rollup can fold `if (__DEMO__)`
+  // and drop the Alice persona and the demo bar from a production bundle
+  // rather than shipping them behind a runtime flag (ticket 05). True
+  // while developing, and in a build only when VITE_DEMO=1 asks for it -
+  // which is what `npm run test:walkthrough` does, since the walkthrough
+  // drives the persona and the demo bar's jump control.
+  define: {
+    __DEMO__: JSON.stringify(command === 'serve' || process.env.VITE_DEMO === '1')
+  },
   plugins: [
     paraglideVitePlugin({
       project: './project.inlang',
@@ -35,4 +44,4 @@ export default defineConfig({
       }
     },
   ],
-});
+}));

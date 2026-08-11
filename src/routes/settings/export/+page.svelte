@@ -2,15 +2,15 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { ui } from '$lib/stores/ui.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { isAndroid } from '$lib/platform';
 
-  let android = $derived(ui.frame === 'phone');
+  let android = $derived(isAndroid());
   let backupAge = $derived(
     prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(prefs.lastBackupAt) : null
   );
