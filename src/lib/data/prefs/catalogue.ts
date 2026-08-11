@@ -96,8 +96,11 @@ export const DEVICE_LOCAL_KEYS = [
 ] as const satisfies readonly PreferenceKey[];
 
 /** Mirrored outside SQLite because it is needed before the database opens
-    (ADR-0009). Ordered theme-first: that is the order the pre-paint script
-    in app.html applies them in. */
+    (ADR-0009). `language` has no pre-paint reader of its own: paraglide
+    resolves the locale from its own localStorage strategy (vite.config.ts)
+    before any of this runs, and setLocale() reloads the page. This is the
+    app's own record of the choice, which is what makes it portable in an
+    archive - paraglide's copy is not. */
 export const BOOT_KEYS = [
   'theme',
   'palette',

@@ -87,7 +87,7 @@ export function startBoot() {
     // database was failing outright, which is how it stayed hidden.
     if (result.persistDenied) {
       toast(
-        "This browser didn't grant persistent storage — export backups regularly so nothing is lost to storage pressure."
+        "This browser didn't grant persistent storage. Export backups regularly so nothing is lost to storage pressure."
       );
     }
   });
