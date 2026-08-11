@@ -30,6 +30,10 @@ export interface PreferenceCache {
   /** Whatever the last write left behind, or nothing on a first-ever boot. */
   read(): Partial<BootPreferences>;
   write(boot: BootPreferences): void;
+  /** Back to a first-ever boot. Only the app reset uses this (ticket 17):
+      the mirror is what tells a cold start there is a PIN, so it has to go
+      when the database it mirrors does. */
+  clear(): void;
 }
 
 export interface Preferences {

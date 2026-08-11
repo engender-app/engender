@@ -16,14 +16,16 @@
    screen to render already has a vocabulary. */
 
 import { boot } from '../data/sqlite/boot';
+import type { SqliteDriver } from '../data/sqlite/driver';
 import { createWebSqlite } from '../data/sqlite/sqlocal-driver';
 import { openJournal, type Journal } from '../data/journal/journal';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { hydrateReference } from '../data/live/reference.svelte';
-import { opfsPhotoFiles } from '../data/photos/opfs-file-store';
+import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file-store';
 import { setPhotoFiles } from './photoFiles';
 import { localStorageCache } from '../data/prefs/boot-cache';
+import { wipeLocalData } from '../data/reset';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
 import { toast } from './toasts.svelte';
@@ -45,18 +47,40 @@ export const bootState = $state<{
 });
 
 let started = false;
+/* Kept for the reset below, which has to close the database before OPFS
+   will let go of the file. Nothing else reaches for it: screens go through
+   data/live/, and bootState.journal is the handle for everything else. */
+let openDriver: SqliteDriver | null = null;
+const bootCache = localStorageCache();
+
+/** The forgotten-PIN escape hatch (ADR-0014): wipes what this device holds
+    and comes back up at onboarding. Reloads rather than resetting the
+    modules in place - boot() has already run, the journal is attached, and
+    unwinding all of that in the browser is a far bigger surface than
+    starting the page again. */
+export async function resetApp(): Promise<void> {
+  await wipeLocalData({
+    closeDatabase: async () => {
+      await openDriver?.close();
+    },
+    storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
+    clearBootCache: () => bootCache.clear()
+  });
+  // replace(), so back doesn't return to the lock screen of a journal that
+  // is no longer there.
+  location.replace('/');
+}
 
 export function startBoot() {
   if (started) return;
   started = true;
-
-  const cache = localStorageCache();
 
   // The PRD asks for navigator.storage.persist() on first save, not on
   // boot - but persist() is safe to call more than once and asking here
   // covers every save path at once. Worth revisiting when the PWA ticket
   // lands, not by adding a second call.
   const { driver, fileOps, requestPersistentStorage } = createWebSqlite('gender-diary.sqlite3');
+  openDriver = driver;
 
   // Set before boot() rather than after, so the first screen to render a
   // photo already has somewhere to read it from.
@@ -72,7 +96,7 @@ export function startBoot() {
     createDriver: () => driver,
     fileOps,
     requestPersistentStorage,
-    applyBootPreferences: () => applyCachedBootPreferences(cache.read()),
+    applyBootPreferences: () => applyCachedBootPreferences(bootCache.read()),
     // Step 3: built-ins reconcile on every boot, by key - not seed-if-empty,
     // so a journal can never end up short of one (ADR-0002; ticket 14's
     // Replace calls the same operation before an import applies). Then the
@@ -91,7 +115,7 @@ export function startBoot() {
       return;
     }
 
-    const preferences = await openPreferences(result.driver, cache);
+    const preferences = await openPreferences(result.driver, bootCache);
     /* The demo persona (Alice, onboarded, her active preset, 150 days of
        entries) is what makes the demo build land on a populated Home rather
        than on onboarding. Gated on the preference table being empty rather
