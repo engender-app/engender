@@ -9,7 +9,7 @@ import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 1);
+  assert.equal(db.getUserVersion(), 2);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -44,6 +44,17 @@ test('entry_fts is a contentless FTS5 table', async () => {
   ).sql;
   assert.match(def, /USING fts5/);
   assert.match(def, /content=''/);
+});
+
+test('v2 adds gender_dimension.hidden, defaulting to visible', async () => {
+  const db = await migratedDb();
+  db.raw.exec(
+    "INSERT INTO gender_dimension (key, name, low_label, high_label, updated_at) VALUES ('voice', 'Voice', 'low', 'high', 1000)"
+  );
+  const row = db.raw.prepare("SELECT hidden FROM gender_dimension WHERE key = 'voice'").get() as {
+    hidden: number;
+  };
+  assert.equal(row.hidden, 0);
 });
 
 test('milestone drops kind, order_index and photo_path; reminder drops trigger_time', async () => {

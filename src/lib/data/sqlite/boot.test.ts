@@ -51,7 +51,7 @@ test('opens the database, runs migrations, and reports ready', async () => {
 
   assert.equal(result.phase, 'ready');
   if (result.phase === 'ready') {
-    assert.equal(await result.driver.getUserVersion(), 1);
+    assert.equal(await result.driver.getUserVersion(), 2);
   }
 });
 
