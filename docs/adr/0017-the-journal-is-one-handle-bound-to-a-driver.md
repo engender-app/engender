@@ -103,3 +103,17 @@ code path" true rather than aspirational.
 The photo file store also stopped being optional. It was a defaulted parameter while
 nothing wrote files, and defaulting it now would mean a journal that accepts a photo
 and quietly has nowhere to put it.
+
+## Amended by ticket 10: an eighth area
+
+Stats became the eighth area, `journal.stats`. Aggregates read across entries,
+dimension values, tags and milestones at once, so they belong to no single area,
+and putting a day average on the entries area and a tag insight on the tags area
+would have split one rule - what "the metric's value" is - across two modules. That
+is the split that produced the mood x 20 disagreement the aggregates were rewritten
+to end (ADR-0012).
+
+Unlike the seven areas before it, this one never writes. It also never reads the
+clock: a range arrives as two epoch days and the streak takes today as an argument,
+because "today" is a local calendar day (ADR-0001) and the journal has no business
+deciding which one it is.
