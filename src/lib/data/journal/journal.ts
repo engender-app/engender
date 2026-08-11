@@ -1,7 +1,7 @@
 /* The journal (ADR-0017, CONTEXT: "Journal"): everything this device holds
    about the user's transition, reached through one handle bound to a
    database driver. A factory takes a SqliteDriver and a photo file store
-   and composes eight area modules behind that handle. The interface is
+   and composes nine area modules behind that handle. The interface is
    uniformly async and free of Svelte runes, so the whole thing runs under
    the Node tier's real SQLite; it mints every row's identity itself
    (ADR-0002), so no screen ever needs a Date.now() scheme again.
@@ -11,6 +11,7 @@
    test-support's node:sqlite driver. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeLabsArea, type LabsArea } from './labs';
@@ -32,6 +33,12 @@ import { reconcileBuiltIns } from './reconcile';
 export interface PhotoFileStore {
   write(name: string, bytes: Uint8Array): Promise<void>;
   read(name: string): Promise<Uint8Array | null>;
+  /** How many bytes the file holds, or null if it is not there. An
+      archive's chunk count has to be settled before its first chunk is
+      encrypted (ADR-0007), so packing needs every photo's length up front
+      - and reading each photo twice to find out is the thing the format
+      exists to avoid. */
+  size(name: string): Promise<number | null>;
   remove(name: string): Promise<void>;
   /** Every file in the store, for the orphan sweep. */
   list(): Promise<string[]>;
@@ -48,6 +55,9 @@ export interface Journal {
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
+  /** Everything above at once, in the shape an export carries it
+      (ADR-0007). Ticket 14's import is the other half. */
+  archive: ArchiveArea;
   /** Adds whatever built-in vocabulary is missing, by key, and touches
       nothing else - safe on every boot and again before ticket 14's
       Replace import applies. */
@@ -64,6 +74,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     labs: makeLabsArea(driver),
     reminders: makeRemindersArea(driver),
     stats: makeStatsArea(driver),
+    archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)
   };
 }

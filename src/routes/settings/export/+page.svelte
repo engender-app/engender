@@ -2,6 +2,10 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { archiveFileName, deliverArchive } from '$lib/data/archive/deliver';
+  import { packArchive } from '$lib/data/archive/pack';
+  import { portablePreferences } from '$lib/data/archive/payload';
+  import { bootState } from '$lib/stores/boot.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -23,6 +27,7 @@
   let plainSheet = $state<string | null>(null);
   let daylioSheet = $state(false);
   let exportWarningOpen = $state(false);
+  let exporting = $state(false);
 
   function openExportWarning() {
     if (!expPass) {
@@ -32,11 +37,49 @@
     exportWarningOpen = true;
   }
 
-  function confirmExport() {
+  /* Deriving the archive key takes about a second by design (ADR-0013) and
+     the photos are read one at a time after it, so this is the one button
+     in the app that has to say it is working. */
+  async function confirmExport() {
     exportWarningOpen = false;
-    prefs.lastBackupAt = Date.now();
-    prefs.backupNoticeDismissed = false;
-    toast(android ? 'Encrypted. Opening share sheet…' : 'Encrypted. Downloading…');
+    const journal = bootState.journal;
+    if (!journal) {
+      toast('The journal is still opening. Try again in a moment.');
+      return;
+    }
+
+    exporting = true;
+    try {
+      const snapshot = await journal.archive.snapshot();
+      const delivery = await deliverArchive(
+        archiveFileName(prefs.name),
+        packArchive(
+          {
+            journal: snapshot.journal,
+            // Portable preferences only (ADR-0003): restoring a year-old
+            // PIN hash over the current one would lock someone out of an
+            // app with no recovery path.
+            preferences: portablePreferences(prefs),
+            files: snapshot.files,
+            readFile: snapshot.readFile
+          },
+          expPass
+        )
+      );
+
+      if (delivery === 'cancelled') {
+        toast('Export cancelled. Nothing left the app.');
+        return;
+      }
+      prefs.lastBackupAt = Date.now();
+      prefs.backupNoticeDismissed = false;
+      toast(delivery === 'shared' ? 'Encrypted and shared.' : 'Encrypted. Check your downloads.');
+    } catch (error) {
+      console.error('the encrypted export failed', error);
+      toast('The export could not be finished. Nothing was saved.');
+    } finally {
+      exporting = false;
+    }
   }
 
   function doImport() {
@@ -92,8 +135,9 @@
       <input class="input" type="password" id="exp-pass" name="exp-pass" placeholder="Choose a strong password"
         autocomplete="new-password" bind:value={expPass} />
     </div>
-    <button class="btn btn-primary" data-export onclick={openExportWarning}>
-      <Icon name={android ? 'share' : 'download'} size={20} /><span>{android ? 'Encrypt & share' : 'Encrypt & download'}</span>
+    <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={exporting}>
+      <Icon name={android ? 'share' : 'download'} size={20} />
+      <span>{exporting ? 'Encrypting…' : android ? 'Encrypt & share' : 'Encrypt & download'}</span>
     </button>
     <p class="muted small" style="margin-top:var(--space-3)">
       <Icon name="key" size={13} /> AES-256-GCM, key derived with Argon2id. Without the password the file is
