@@ -2,9 +2,10 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { db, save, todayEpochDay } from '$lib/data/db.svelte';
-  import { builtInPresets, milestoneTemplates } from '$lib/data/demo/seed';
-  import { upsertMilestone } from '$lib/data/repositories/milestones';
-  import { epochDayFromISO } from '$lib/data/dates';
+  import { builtInPresets } from '$lib/data/repositories/dimensions';
+  import { milestoneTemplates, upsertMilestone } from '$lib/data/repositories/milestones';
+  import { epochDayFromLocalDate } from '$lib/data/dates';
+  import { dateFromInputValue } from '$lib/data/dateInput';
   import Icon from '$lib/components/Icon.svelte';
   import PrideAurora from '$lib/components/PrideAurora.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
@@ -26,7 +27,7 @@
     save();
     if (milestoneTemplate) {
       const tpl = milestoneTemplates.find((t) => t.key === milestoneTemplate)!;
-      const epochDay = milestoneDate ? epochDayFromISO(milestoneDate) : todayEpochDay() - 1;
+      const epochDay = milestoneDate ? epochDayFromLocalDate(dateFromInputValue(milestoneDate)) : todayEpochDay() - 1;
       upsertMilestone({ name: tpl.name, epochDay, templateKey: tpl.key, photo: null });
     }
     goto('/');

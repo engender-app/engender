@@ -2,7 +2,8 @@
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
   import { labAnalytes, resultsFor, upsertLabResult } from '$lib/data/repositories/labs';
-  import { fmtDay, epochDayFromISO } from '$lib/data/dates';
+  import { fmtDay, epochDayFromLocalDate, localDateFromEpochDay } from '$lib/data/dates';
+  import { dateInputValue, dateFromInputValue } from '$lib/data/dateInput';
   import { todayEpochDay } from '$lib/data/db.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -27,14 +28,14 @@
   });
 
   let editorOpen = $state(false);
-  let draft = $state({ date: new Date().toISOString().slice(0, 10), analyte: 'estradiol', value: '', unit: '', note: '' });
+  let draft = $state({ date: dateInputValue(localDateFromEpochDay(todayEpochDay())), analyte: 'estradiol', value: '', unit: '', note: '' });
 
   function saveResult() {
     const val = parseFloat(draft.value);
     editorOpen = false;
     if (isNaN(val)) return;
     upsertLabResult({
-      epochDay: draft.date ? epochDayFromISO(draft.date) : todayEpochDay(),
+      epochDay: draft.date ? epochDayFromLocalDate(dateFromInputValue(draft.date)) : todayEpochDay(),
       analyte: draft.analyte === 'custom' ? 'other' : draft.analyte,
       value: val,
       unit: draft.unit || '—',

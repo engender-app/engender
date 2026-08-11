@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { db } from '$lib/data/db.svelte';
-  import { todayEpochDay } from '$lib/data/demo/seed';
+  import { db, todayEpochDay } from '$lib/data/db.svelte';
   import { dayMetricValue } from '$lib/data/repositories/entries';
-  import { fmtDay, DAY } from '$lib/data/dates';
+  import { fmtDay, epochDayFromLocalDate } from '$lib/data/dates';
 
   let { year, month }: { year: number; month: number /* 0-based */ } = $props();
 
@@ -23,7 +22,7 @@
       label: string;
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
-      const epochDay = Math.floor(Date.UTC(year, month, d) / DAY);
+      const epochDay = epochDayFromLocalDate(new Date(year, month, d));
       const v = dayMetricValue(epochDay, metric);
       const level = v == null ? 0 : Math.min(4, Math.max(1, Math.ceil((v / 100) * 4)));
       const count = db.entries.filter((e) => e.epochDay === epochDay).length;
