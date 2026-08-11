@@ -9,25 +9,10 @@
    paraglide so the same rules run in the Node tier (ADR-0016). */
 
 import { db, save } from '../db.svelte';
+import { assertValidRule } from '../reminderRule';
 import type { Reminder } from '../types';
 
 export type ReminderInput = Omit<Reminder, 'id'> & { id?: string };
-
-/** The same three-way shape the schema CHECK enforces: a one-off day, an
-    anchored EVERY_N_DAYS, or a bare DAILY/WEEKLY - nothing in between. */
-export function assertValidRule(r: ReminderInput) {
-  const oneOff = r.recurrence === null && r.epochDay != null && r.interval == null && r.anchorEpochDay == null;
-  const everyN =
-    r.recurrence === 'EVERY_N_DAYS' && r.interval != null && r.anchorEpochDay != null && r.epochDay == null;
-  const plain =
-    (r.recurrence === 'DAILY' || r.recurrence === 'WEEKLY') &&
-    r.interval == null &&
-    r.anchorEpochDay == null &&
-    r.epochDay == null;
-  if (!oneOff && !everyN && !plain) {
-    throw new Error(`invalid reminder rule: ${r.recurrence ?? 'one-off'}`);
-  }
-}
 
 export function getReminders(): Reminder[] {
   return db.reminders;

@@ -1,12 +1,8 @@
 /* LabRepository (PRD F30). */
 
 import { db, save } from '../db.svelte';
+import { ANALYTE_PRESETS } from '../journal/labs';
 import type { LabResult } from '../types';
-
-/** The analytes offered before any result exists. Lowercase scientific
-    names shown as-is, like every stored analyte (CONTEXT: "Analyte" -
-    free-text, never interpreted). */
-export const ANALYTE_PRESETS = ['estradiol', 'testosterone', 'prolactin'];
 
 /** In-use analytes only - what the trend picker offers, since a trend
     needs data. */
