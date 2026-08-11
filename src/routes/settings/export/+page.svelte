@@ -1,6 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { db, save } from '$lib/data/db.svelte';
+  import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { ui } from '$lib/stores/ui.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -11,7 +12,7 @@
 
   let android = $derived(ui.frame === 'phone');
   let backupAge = $derived(
-    db.prefs.lastBackupAt ? Math.floor((Date.now() - db.prefs.lastBackupAt) / 86400000) : null
+    db.prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(db.prefs.lastBackupAt) : null
   );
 
   let expPass = $state('');

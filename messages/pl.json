@@ -121,5 +121,42 @@
   "continue": "Dalej",
   "skip": "Pomiń",
   "not_now": "Nie teraz",
-  "cancel": "Anuluj"
+  "cancel": "Anuluj",
+  "n_years": [
+    {
+      "declarations": ["input n", "local nPlural = n: plural"],
+      "selectors": ["nPlural"],
+      "match": {
+        "nPlural=one": "{n} rok",
+        "nPlural=few": "{n} lata",
+        "nPlural=many": "{n} lat",
+        "nPlural=other": "{n} lat"
+      }
+    }
+  ],
+  "n_months": [
+    {
+      "declarations": ["input n", "local nPlural = n: plural"],
+      "selectors": ["nPlural"],
+      "match": {
+        "nPlural=one": "{n} miesiąc",
+        "nPlural=few": "{n} miesiące",
+        "nPlural=many": "{n} miesięcy",
+        "nPlural=other": "{n} miesięcy"
+      }
+    }
+  ],
+  "n_days": [
+    {
+      "declarations": ["input n", "local nPlural = n: plural"],
+      "selectors": ["nPlural"],
+      "match": {
+        "nPlural=one": "{n} dzień",
+        "nPlural=few": "{n} dni",
+        "nPlural=many": "{n} dni",
+        "nPlural=other": "{n} dni"
+      }
+    }
+  ],
+  "apart_suffix": "różnicy"
 }

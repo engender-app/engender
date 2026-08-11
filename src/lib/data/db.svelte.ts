@@ -3,7 +3,6 @@
    drivers; the repository modules keep their signatures. */
 
 import { seed } from './demo/seed';
-import { todayEpochDay } from './dates';
 import type { DB } from './types';
 
 const KEY = 'gender-diary-demo-v1';
@@ -68,5 +67,3 @@ export function markFirstRun() {
 
 let nextId = 100000;
 export const newId = () => nextId++;
-
-export { todayEpochDay };

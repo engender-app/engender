@@ -2,7 +2,8 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
-  import { intlLocale, epochDayFromLocalDate } from '$lib/data/dates';
+  import { fmtMonthName } from '$lib/data/dates';
+  import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
   import { streakDays } from '$lib/data/repositories/entries';
   import { tagById } from '$lib/data/repositories/tags';
   import Icon from '$lib/components/Icon.svelte';
@@ -12,13 +13,8 @@
   let step = $state(0);
 
   let recap = $derived.by(() => {
-    const now = new Date();
-    const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const monthName = new Intl.DateTimeFormat(intlLocale(), { month: 'long' }).format(first);
-    const y = first.getFullYear();
-    const mo = first.getMonth();
-    const start = epochDayFromLocalDate(first);
-    const end = epochDayFromLocalDate(new Date(y, mo + 1, 0));
+    const { start, end, year, month } = previousCalendarMonthRange(todayEpochDay());
+    const monthName = fmtMonthName(year, month);
     const entries = db.entries.filter((e) => e.epochDay >= start && e.epochDay <= end);
     const moods = entries.filter((e) => e.mood != null).map((e) => e.mood!);
     const avgMood = moods.length ? moods.reduce((a, b) => a + b, 0) / moods.length : null;

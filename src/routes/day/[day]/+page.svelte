@@ -2,7 +2,8 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db, todayEpochDay } from '$lib/data/db.svelte';
+  import { db } from '$lib/data/db.svelte';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { entriesForDay, dayMetricValue } from '$lib/data/repositories/entries';
   import Icon from '$lib/components/Icon.svelte';
