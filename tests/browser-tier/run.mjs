@@ -84,6 +84,29 @@ try {
   fail('ticket 04 browser tier', e.message ?? String(e));
 }
 
+// --- Ticket 12: crypto primitives, and hash-wasm's no-network-fetch claim -
+try {
+  const requestUrls = [];
+  const onRequest = (req) => requestUrls.push(req.url());
+  page.on('request', onRequest);
+
+  const result = await load('/crypto.html', 'data-crypto-probe-ready', '__cryptoProbeResult');
+  page.off('request', onRequest);
+  if (result.error) throw new Error(result.error);
+
+  if (result.archiveKeyLength === 32 && result.pinKeyLength === 32) ok('Argon2id derives a 32-byte key for both the archive and PIN parameter sets');
+  else fail('Argon2id derives a 32-byte key for both the archive and PIN parameter sets', `got archive=${result.archiveKeyLength} pin=${result.pinKeyLength}`);
+
+  if (result.roundTripOk) ok('AES-256-GCM round-trips a real derived key through encrypt/decrypt');
+  else fail('AES-256-GCM round-trips a real derived key through encrypt/decrypt', 'decrypted text did not match');
+
+  const wasmRequests = requestUrls.filter((u) => u.includes('.wasm'));
+  if (wasmRequests.length === 0) ok('hash-wasm makes no separate request for its WASM - it is bundled as base64, not fetched');
+  else fail('hash-wasm makes no separate request for its WASM - it is bundled as base64, not fetched', wasmRequests.join(', '));
+} catch (e) {
+  fail('ticket 12 browser tier', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 
