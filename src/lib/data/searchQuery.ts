@@ -20,12 +20,19 @@
    of labels, they are short, and it keeps the one search case the
    walkthrough pins behaving as it does today. */
 
-import { foldText } from './fold.ts';
+import type { Tag } from './types';
+import { foldText } from './fold';
 
-/** Every run of characters FTS5's default tokenizer would treat as a token.
-    Folded text is lowercase and unaccented, so this is the whole alphabet
-    it can produce. */
-const TOKENS = /[a-z0-9]+/g;
+/** Runs of letters and digits, which is what FTS5's unicode61 tokenizer also
+    treats as token characters.
+
+    Deliberately not `[a-z0-9]+`, even though folded text is lowercase: the
+    fold covers Polish and the Western European forms it inherited, not every
+    letter a person can type. Splitting on whatever it happens not to cover
+    tears words apart - "Müller" becomes "m" AND "ller" and stops matching
+    the note it was typed to find. Left whole, FTS5 folds ü the same way on
+    both sides and the match lands. */
+const TOKENS = /[\p{L}\p{N}]+/gu;
 
 /** The MATCH expression for a note search, or null when the query holds
     nothing searchable - punctuation only, or nothing at all. Null means
@@ -44,7 +51,7 @@ export function ftsMatchExpression(raw: string): string | null {
 /** The ids of tags whose label contains the query, folded on both sides.
     Callers hand in the labels they showed the user; ADR-0004 mirrors the
     vocabulary, so this runs over tens of rows already in memory. */
-export function tagIdsMatching(raw: string, tags: readonly { id: string; label: string }[]): string[] {
+export function tagIdsMatching(raw: string, tags: Pick<Tag, 'id' | 'label'>[]): string[] {
   const q = foldText(raw).trim();
   if (!q) return [];
   return tags.filter((t) => foldText(t.label).includes(q)).map((t) => t.id);

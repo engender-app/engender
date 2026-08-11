@@ -35,6 +35,7 @@ async function run() {
   const gesla = await journal.entries.upsertEntry({ epochDay: 101, note: 'zażółć gęślą jaźń' });
   const cwiczenia = await journal.entries.upsertEntry({ epochDay: 102, note: 'ćwiczenia rano' });
   const tagged = await journal.entries.upsertEntry({ epochDay: 103, tags: ['e-happy'] });
+  const muller = await journal.entries.upsertEntry({ epochDay: 104, note: 'Müller kupił bilet' });
 
   const ids = async (q: string, tagIds: string[] = []) =>
     (await journal.entries.searchEntries(q, tagIds)).map((e) => e.id);
@@ -45,6 +46,16 @@ async function run() {
     cwiczenia: await ids('cwiczenia'),
     prefix: await ids('cwicz'),
     accentedInput: await ids('ŁÓŻKO')
+  };
+
+  /* The other half of the folding story, and the half that is a claim about
+     this build specifically: ü is not in foldText, so whether "Müller" finds
+     it rests on unicode61 folding the letter identically when indexing and
+     when parsing the query. Node agrees; this is the WASM build saying so. */
+  const unfolded = {
+    asTyped: await ids('Müller'),
+    asAscii: await ids('muller'),
+    polishInSameNote: await ids('kupil')
   };
 
   const tagOnly = await ids('happy', ['e-happy']);
@@ -58,8 +69,9 @@ async function run() {
   const afterDelete = await ids('happy', ['e-happy']);
 
   publish({
-    ids: { bed, gesla, cwiczenia, tagged },
+    ids: { bed, gesla, cwiczenia, tagged, muller },
     folded,
+    unfolded,
     tagOnly,
     afterEdit,
     afterDelete,

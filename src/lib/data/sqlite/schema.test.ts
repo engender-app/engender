@@ -47,10 +47,8 @@ test('entry_fts is a contentless FTS5 table', async () => {
 });
 
 test('v3 lets the index delete a row without being handed its old text', async () => {
-  // A plain contentless table can only forget a row if the caller re-supplies
-  // the exact folded text it was indexed under; getting that wrong corrupts
-  // the index silently. contentless_delete=1 is what makes an edit or a
-  // delete a plain DELETE instead (ticket 09, ADR-0005).
+  // Why this option, rather than the 'delete' command a plain contentless
+  // table forces, is in migrations.ts on SCHEMA_V3.
   const db = await migratedDb();
   const def = (
     db.raw
