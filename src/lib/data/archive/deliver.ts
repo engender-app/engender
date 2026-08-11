@@ -1,4 +1,5 @@
-/* Getting a packed archive off the device (ticket 13, PRD F14).
+/* Getting an exported file off the device (ticket 13, PRD F14; ticket 15
+   for the plain formats).
 
    The share sheet first, which is what Android's WebView answers with and
    what makes "send it to my own cloud drive" one tap, then a plain
@@ -17,9 +18,8 @@
 
 import { foldText } from '../fold';
 import { dateInputValueFromEpochDay, todayEpochDay } from '../epochDay';
-import { ARCHIVE_FILE_EXTENSION } from './container';
 
-/** Whether the archive left, and how - so the caller can tell a cancelled
+/** Whether the file left, and how - so the caller can tell a cancelled
     share sheet from a delivered file. */
 export type Delivery = 'shared' | 'downloaded' | 'cancelled';
 
@@ -33,24 +33,29 @@ type Sharing = {
 /** `alicja-journal-2026-08-11.ttbackup`, or `journal-...` when the journal
     has no display name. Folded and stripped rather than percent-escaped: it
     passes through a share sheet, a file picker, and whatever filesystem is
-    on the other side. */
-export function archiveFileName(name: string, epochDay: number = todayEpochDay()): string {
+    on the other side. The extension is the caller's, because the plain
+    export writes the same name with `.csv` and `.json` (F22). */
+export function exportFileName(name: string, extension: string, epochDay: number = todayEpochDay()): string {
   const slug = foldText(name)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-  return `${slug ? `${slug}-` : ''}journal-${dateInputValueFromEpochDay(epochDay)}${ARCHIVE_FILE_EXTENSION}`;
+  return `${slug ? `${slug}-` : ''}journal-${dateInputValueFromEpochDay(epochDay)}${extension}`;
 }
 
-export async function deliverArchive(fileName: string, archive: AsyncIterable<Uint8Array>): Promise<Delivery> {
+export async function deliverFile(file: {
+  fileName: string;
+  type: string;
+  body: AsyncIterable<Uint8Array>;
+}): Promise<Delivery> {
   const parts: BlobPart[] = [];
-  for await (const piece of archive) parts.push(piece as BlobPart);
-  const blob = new Blob(parts, { type: 'application/octet-stream' });
+  for await (const piece of file.body) parts.push(piece as BlobPart);
+  const blob = new Blob(parts, { type: file.type });
 
   const sharing = navigator as Navigator & Sharing;
-  const file = new File([blob], fileName, { type: blob.type });
-  if (sharing.canShare?.({ files: [file] }) && sharing.share) {
+  const shared = new File([blob], file.fileName, { type: blob.type });
+  if (sharing.canShare?.({ files: [shared] }) && sharing.share) {
     try {
-      await sharing.share({ files: [file], title: fileName });
+      await sharing.share({ files: [shared], title: file.fileName });
       return 'shared';
     } catch (error) {
       // The one error worth reading: the user closed the sheet. Anything
@@ -63,7 +68,7 @@ export async function deliverArchive(fileName: string, archive: AsyncIterable<Ui
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = fileName;
+  link.download = file.fileName;
   link.click();
   URL.revokeObjectURL(url);
   return 'downloaded';

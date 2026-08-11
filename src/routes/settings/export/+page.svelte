@@ -1,12 +1,12 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
+  import { backupAgeDays, backupIsStale, runExport, type ExportPath } from '$lib/data/archive/backup';
   import { applyPortablePreferences, prefs } from '$lib/data/prefs/store.svelte';
-  import { archiveFileName, deliverArchive } from '$lib/data/archive/deliver';
-  import { openArchive, packArchive } from '$lib/data/archive/pack';
+  import { deliverFile } from '$lib/data/archive/deliver';
+  import { openArchive } from '$lib/data/archive/pack';
   import { CorruptArchiveError, UnsupportedArchiveError } from '$lib/data/archive/container';
   import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
-  import { portablePreferences } from '$lib/data/archive/payload';
+  import { dimensionName, tagLabel } from '$lib/data/vocabulary/labels';
   import { DecryptionFailedError } from '$lib/crypto/aesGcm';
   import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -18,9 +18,8 @@
   import { isAndroid } from '$lib/platform';
 
   let android = $derived(isAndroid());
-  let backupAge = $derived(
-    prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(prefs.lastBackupAt) : null
-  );
+  let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
+  let stale = $derived(backupIsStale(prefs.lastBackupAt));
 
   let expPass = $state('');
   let impPass = $state('');
@@ -28,10 +27,19 @@
   let picked = $state<PickedArchive | null>(null);
   let importing = $state(false);
   let impError = $state('');
-  let plainSheet = $state<string | null>(null);
+  let plainSheet = $state<'csv' | 'json' | null>(null);
   let daylioSheet = $state(false);
   let exportWarningOpen = $state(false);
-  let exporting = $state(false);
+  /* Which export is under way, or null. Not a boolean: the encrypted
+     button says what it is doing, and it is not encrypting when the CSV
+     is what someone asked for. */
+  let running = $state<ExportPath | null>(null);
+
+  const DONE: Record<ExportPath, string> = {
+    encrypted: 'Encrypted',
+    csv: 'CSV exported',
+    json: 'JSON exported'
+  };
 
   function openExportWarning() {
     if (!expPass) {
@@ -41,45 +49,65 @@
     exportWarningOpen = true;
   }
 
-  /* Deriving the archive key takes about a second by design (ADR-0013) and
+  /* One function behind all three exports, so the backup timestamp is
+     stamped once for every path there is (F21) rather than at three call
+     sites where the next one added would forget.
+
+     Deriving the archive key takes about a second by design (ADR-0013) and
      the photos are read one at a time after it, so this is the one button
      in the app that has to say it is working. */
-  async function confirmExport() {
-    exportWarningOpen = false;
-    // No "still opening" branch: a call through data/live's handle queues until
-    // the database is open (ticket 08), and every screen reaches it that way.
-    exporting = true;
+  async function exportNow(path: ExportPath) {
+    if (running) return;
+    running = path;
     try {
-      const snapshot = await journal.archive.snapshot();
-      const delivery = await deliverArchive(
-        archiveFileName(prefs.name),
-        packArchive(
-          {
-            journal: snapshot.journal,
-            // Portable preferences only (ADR-0003): restoring a year-old
-            // PIN hash over the current one would lock someone out of an
-            // app with no recovery path.
-            preferences: portablePreferences(prefs),
-            files: snapshot.files,
-            readFile: snapshot.readFile
-          },
-          expPass
-        )
+      // No "still opening" branch: a call through data/live's handle queues until
+      // the database is open (ticket 08), and every screen reaches it that way.
+      const delivery = await runExport(
+        path,
+        {
+          snapshot: await journal.archive.snapshot(),
+          preferences: prefs,
+          password: expPass,
+          // Built-ins are stored as keys and worded at display time
+          // (labels.ts), and a CSV is read by a person.
+          naming: { dimensionName, tagLabel }
+        },
+        {
+          deliver: deliverFile,
+          recordBackup: (at) => {
+            prefs.lastBackupAt = at;
+            // The journal is freshly backed up, so the Home notice starts
+            // over: dismissing it once does not silence it forever.
+            prefs.backupNoticeDismissed = false;
+          }
+        }
       );
 
       if (delivery === 'cancelled') {
         toast('Export cancelled. Nothing left the app.');
         return;
       }
-      prefs.lastBackupAt = Date.now();
-      prefs.backupNoticeDismissed = false;
-      toast(delivery === 'shared' ? 'Encrypted and shared.' : 'Encrypted. Check your downloads.');
+      toast(delivery === 'shared' ? `${DONE[path]} and shared.` : `${DONE[path]}. Check your downloads.`);
     } catch (error) {
-      console.error('the encrypted export failed', error);
+      console.error(`the ${path} export failed`, error);
       toast('The export could not be finished. Nothing was saved.');
     } finally {
-      exporting = false;
+      running = null;
     }
+  }
+
+  function confirmExport() {
+    exportWarningOpen = false;
+    exportNow('encrypted');
+  }
+
+  /* The plain export happens here and nowhere else: the two buttons on the
+     screen only open the warning, so there is no path to an unencrypted
+     copy of someone's journal that has not been through it (F22). */
+  function confirmPlain() {
+    const path = plainSheet;
+    plainSheet = null;
+    if (path) exportNow(path);
   }
 
   async function choose() {
@@ -146,12 +174,6 @@
     return 'The import couldn’t be finished. Your journal is exactly as it was.';
   }
 
-  function confirmPlain() {
-    const fmt = plainSheet;
-    plainSheet = null;
-    prefs.lastBackupAt = Date.now();
-    toast(`${fmt} exported.`);
-  }
 </script>
 
 <div class="screen">
@@ -168,7 +190,7 @@
         {backupAge == null ? 'never — your journal exists only on this device' : backupAge === 0 ? 'today' : `${backupAge} days ago`}
       </span>
     </span>
-    {#if backupAge != null && backupAge > 30}
+    {#if stale}
       <span class="notice-warn" style="padding:4px 10px;border-radius:var(--radius-pill);font-size:var(--text-xs);font-weight:700">stale</span>
     {:else}
       <Icon name="check" size={20} />
@@ -186,9 +208,9 @@
       <input class="input" type="password" id="exp-pass" name="exp-pass" placeholder="Choose a strong password"
         autocomplete="new-password" bind:value={expPass} />
     </div>
-    <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={exporting}>
+    <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={running !== null}>
       <Icon name={android ? 'share' : 'download'} size={20} />
-      <span>{exporting ? 'Encrypting…' : android ? 'Encrypt & share' : 'Encrypt & download'}</span>
+      <span>{running === 'encrypted' ? 'Encrypting…' : android ? 'Encrypt & share' : 'Encrypt & download'}</span>
     </button>
     <p class="muted small" style="margin-top:var(--space-3)">
       <Icon name="key" size={13} /> AES-256-GCM, key derived with Argon2id. Without the password the file is
@@ -278,8 +300,8 @@
   <div class="card editor-section">
     <p class="small" style="margin-bottom:var(--space-3)">For spreadsheets and portability: CSV (flat) or JSON (full structure).</p>
     <div class="spread">
-      <button class="btn btn-soft" data-plain="csv" onclick={() => (plainSheet = 'CSV')}><span>CSV</span></button>
-      <button class="btn btn-soft" data-plain="json" onclick={() => (plainSheet = 'JSON')}><span>JSON</span></button>
+      <button class="btn btn-soft" data-plain="csv" disabled={running !== null} onclick={() => (plainSheet = 'csv')}><span>CSV</span></button>
+      <button class="btn btn-soft" data-plain="json" disabled={running !== null} onclick={() => (plainSheet = 'json')}><span>JSON</span></button>
     </div>
   </div>
 
@@ -303,7 +325,10 @@
 
   <Sheet open={plainSheet !== null} title="Plain export" onClose={() => (plainSheet = null)}>
     {#if plainSheet}
-      <h3>Export unencrypted {plainSheet}?</h3>
+      <!-- The heading takes the focus the sheet hands out, so a keyboard
+           lands on the warning rather than on the button that writes an
+           unencrypted copy of the journal (F22). -->
+      <h3 tabindex="-1">Export unencrypted {plainSheet.toUpperCase()}?</h3>
       <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
         <Icon name="alert" size={20} />
         <div class="notice-body">
@@ -313,7 +338,9 @@
         </div>
       </div>
       <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-plain onclick={confirmPlain}><span>Export plain {plainSheet}</span></button>
+        <button class="btn btn-danger" data-confirm-plain onclick={confirmPlain}>
+          <span>Export plain {plainSheet.toUpperCase()}</span>
+        </button>
         <button class="btn btn-ghost" onclick={() => (plainSheet = null)}><span>{m.cancel()}</span></button>
       </div>
     {/if}

@@ -2,7 +2,8 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
+  import { todayEpochDay } from '$lib/data/epochDay';
+  import { backupAgeDays, backupIsStale } from '$lib/data/archive/backup';
   import { fmtDay } from '$lib/data/dates';
   import type { Entry } from '$lib/data/types';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
@@ -34,12 +35,8 @@
   let landing = $derived(upcoming.find((x) => x.s.type === 'today' || x.s.isAnnivToday));
   let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
 
-  let backupAgeDays = $derived(
-    prefs.lastBackupAt ? today - epochDayFromTimestamp(prefs.lastBackupAt) : null
-  );
-  let showBackupNotice = $derived(
-    backupAgeDays != null && backupAgeDays > 30 && !prefs.backupNoticeDismissed
-  );
+  let staleDays = $derived(backupAgeDays(prefs.lastBackupAt, today));
+  let showBackupNotice = $derived(backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed);
 
   let metricName = $derived(vocabulary.metricName);
 
@@ -92,7 +89,7 @@
     <div class="notice notice-warn" role="status">
       <Icon name="download" size={20} />
       <div class="notice-body">
-        <span class="notice-title">{m.backup_stale_title({ days: String(backupAgeDays) })}</span>
+        <span class="notice-title">{m.backup_stale_title({ days: String(staleDays) })}</span>
         {m.backup_stale_body()} <a href="/settings/export">{m.backup_now()}</a>
       </div>
       <button
