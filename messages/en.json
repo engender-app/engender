@@ -215,5 +215,12 @@
   "tpl_name_change": "Name change",
   "tpl_marker_change": "Legal gender-marker change",
   "tpl_surgery": "Surgery",
-  "tpl_first_public": "First time presenting publicly"
+  "tpl_first_public": "First time presenting publicly",
+  "recurrence_daily": "Every day",
+  "recurrence_weekly": "Weekly",
+  "recurrence_every_n_days": "Every {n} days",
+  "reminder_once": "Once",
+  "reminder_in_days": "in {days} days",
+  "not_in_preset": "Not in the current preset, kept from this entry",
+  "empty_entry": "Add a mood, a value, a tag, a note or a photo first"
 }

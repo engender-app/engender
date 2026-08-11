@@ -3,8 +3,10 @@
    them in $derived and stay live. */
 
 import { db, save, newId } from '../db.svelte';
+import { EMPTY_ENTRY_ERROR, entryIsEmpty } from '../entryContent';
 import { todayEpochDay } from '../epochDay';
-import type { Entry } from '../types';
+import { foldText as fold } from '../fold';
+import type { DraftPhoto, Entry, Photo } from '../types';
 import { tagById } from './tags';
 
 export function entriesNewestFirst(): Entry[] {
@@ -18,17 +20,61 @@ export function entriesForDay(epochDay: number): Entry[] {
 export const getEntry = (id: number | string): Entry | undefined =>
   db.entries.find((e) => e.id === Number(id));
 
-export function upsertEntry(entry: Partial<Entry> & { epochDay: number }): number {
+export interface EntryInput extends Partial<Omit<Entry, 'photos'>> {
+  epochDay: number;
+  photos?: (Photo | DraftPhoto)[];
+}
+
+/** The entry invariant (entryContent.ts), enforced here rather than in
+    the editor, so no path bypasses it. */
+function assertHasContent(e: Entry) {
+  const empty = entryIsEmpty({
+    mood: e.mood,
+    note: e.note,
+    dimCount: Object.keys(e.dims).length,
+    tagCount: e.tags.length,
+    photoCount: e.photos.length
+  });
+  if (empty) throw new Error(EMPTY_ENTRY_ERROR);
+}
+
+function withPhotoIds(photos: (Photo | DraftPhoto)[]): Photo[] {
+  return photos.map((p) => ('id' in p ? p : { ...p, id: crypto.randomUUID() }));
+}
+
+export function upsertEntry(entry: EntryInput): number {
+  const photos = entry.photos && withPhotoIds(entry.photos);
   if (entry.id) {
     const i = db.entries.findIndex((e) => e.id === entry.id);
-    if (i >= 0) db.entries[i] = { ...db.entries[i], ...entry } as Entry;
-  } else {
-    entry.id = newId();
-    entry.timestamp = entry.timestamp ?? Date.now();
-    db.entries.push(entry as Entry);
+    if (i < 0) throw new Error(`unknown entry: ${entry.id}`);
+    // Dimension values merge per dimension, never as a whole object:
+    // replacing `dims` wholesale is how editing an old entry under a
+    // narrower preset silently dropped the axes the preset lacks.
+    const next: Entry = {
+      ...db.entries[i],
+      ...entry,
+      dims: { ...db.entries[i].dims, ...entry.dims },
+      photos: photos ?? db.entries[i].photos
+    };
+    assertHasContent(next);
+    db.entries[i] = next;
+    save();
+    return next.id;
   }
+  const created: Entry = {
+    mood: null,
+    note: '',
+    tags: [],
+    ...entry,
+    dims: { ...entry.dims },
+    photos: photos ?? [],
+    id: newId(),
+    timestamp: entry.timestamp ?? Date.now()
+  };
+  assertHasContent(created);
+  db.entries.push(created);
   save();
-  return entry.id!;
+  return created.id;
 }
 
 export function deleteEntry(id: number) {
@@ -60,12 +106,6 @@ export function streakDays(): number {
   }
   return n;
 }
-
-const fold = (s: string) =>
-  s.toLowerCase()
-    .replace(/[ąàáâä]/g, 'a').replace(/[ćç]/g, 'c').replace(/[ęèéêë]/g, 'e')
-    .replace(/[łl]/g, 'l').replace(/[ńñ]/g, 'n').replace(/[óòôö]/g, 'o')
-    .replace(/[śš]/g, 's').replace(/[żźž]/g, 'z');
 
 /** FTS5 stand-in: prefix-friendly, diacritics-insensitive note + tag match.
 

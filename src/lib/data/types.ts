@@ -1,5 +1,11 @@
-/* Domain types — mirror the PRD's SQLite schema so the demo store can be
-   swapped for the SQLocal / Capacitor drivers without touching the UI. */
+/* Domain types (ticket 07): the shape the journal speaks, not the demo
+   store's and not the schema's. Storage details stay behind the journal
+   seam - uuid columns, updated_at, the join tables. Built-ins are
+   addressed by their seeded key and user rows by a minted uuid
+   (ADR-0002), arriving here as the string `id`/`key` - except entries,
+   which keep their integer rowid as the id: they are addressed locally
+   only, and ADR-0002 keeps the FTS link and the join-heavy queries on
+   integer rowids. An entry's uuid travels in archives, not here. */
 
 export interface Photo {
   id: string;
@@ -7,6 +13,10 @@ export interface Photo {
   hue: number;
   label: string;
 }
+
+/** A photo the editor drafted but nothing has saved yet: identity is
+    minted on write, by the repository, never in a screen. */
+export type DraftPhoto = Omit<Photo, 'id'>;
 
 export interface Entry {
   id: number;
@@ -27,6 +37,10 @@ export interface GenderDimension {
   min: number;
   max: number;
   builtIn: boolean;
+  /** Hidden dimensions leave presets, the editor and the charts; their
+      logged values survive (CONTEXT: "Hidden"). Dimensions hide, never
+      delete - a delete would take every value ever logged on the axis. */
+  hidden: boolean;
 }
 
 export interface GenderPreset {
@@ -51,22 +65,32 @@ export interface TagGroup {
   tags: Tag[];
 }
 
+/* No `kind`: whether a milestone reads as a countdown or an anniversary
+   follows from its date and today (ADR-0010), so milestoneStatus()
+   computes it and nothing stores it. */
 export interface Milestone {
   id: string;
   name: string;
   epochDay: number;
-  kind: 'countdown' | 'anniversary';
   templateKey: string | null;
   photo: Photo | null;
 }
 
+/* Carries the rule from reminderRule.ts, never a next-fire instant
+   (ADR-0010). The old demo vocabulary ('EVERY_3_DAYS', onceInDays) does
+   not survive contact with the schema's recurrence CHECK. */
 export interface Reminder {
   id: string;
   title: string;
   type: 'med' | 'injection' | 'appointment' | 'other';
   time: string;
-  recurrence: string | null;
-  onceInDays?: number;
+  recurrence: 'DAILY' | 'WEEKLY' | 'EVERY_N_DAYS' | null;
+  /** EVERY_N_DAYS only. */
+  interval: number | null;
+  /** EVERY_N_DAYS only: a day the reminder fires on, fixing the progression. */
+  anchorEpochDay: number | null;
+  /** One-off only (recurrence null): the concrete day. */
+  epochDay: number | null;
   enabled: boolean;
 }
 

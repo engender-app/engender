@@ -10,7 +10,7 @@ import type { DB } from './types';
 
 export function emptyDb(): DB {
   return {
-    version: 1,
+    version: 2,
     dimensions: [],
     customPresets: [],
     tagGroups: [],

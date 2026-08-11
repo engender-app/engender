@@ -20,11 +20,11 @@
     min: 0,
     max,
     builtIn: false,
+    hidden: false,
   });
 
   function saveDimension() {
     addCustomDimension({
-      key: 'custom_' + Date.now(),
       name: name.trim() || 'My dimension',
       low: low.trim() || 'low',
       high: high.trim() || 'high',

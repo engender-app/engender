@@ -1,4 +1,8 @@
-/* TagRepository (PRD F4/F17). */
+/* TagRepository (PRD F4/F17). Re-cut around ids in ticket 07: a row is
+   addressed by its tag id (seeded key for built-ins, minted uuid for
+   customs - ADR-0002), never by its index in a JS array, which has no
+   meaning in SQL. Updates on an unknown id throw; deletes are idempotent
+   (removing an already-gone row is success). */
 
 import { db, save } from '../db.svelte';
 import type { Tag, TagGroup } from '../types';
@@ -18,58 +22,69 @@ export function tagById(id: string): Tag | null {
   return null;
 }
 
-export function setGroupEnabled(key: string, enabled: boolean) {
+function mustFindTag(id: string): Tag {
+  const t = tagById(id);
+  if (!t) throw new Error(`unknown tag: ${id}`);
+  return t;
+}
+
+function mustFindGroup(key: string): TagGroup {
   const g = db.tagGroups.find((g) => g.key === key);
-  if (g) {
-    g.enabled = enabled;
-    save();
-  }
+  if (!g) throw new Error(`unknown tag group: ${key}`);
+  return g;
+}
+
+export function setGroupEnabled(key: string, enabled: boolean) {
+  mustFindGroup(key).enabled = enabled;
+  save();
 }
 
 export function addTag(groupKey: string, label: string) {
-  db.tagGroups.find((g) => g.key === groupKey)?.tags.push({
-    id: 'custom-' + Date.now(),
+  mustFindGroup(groupKey).tags.push({
+    id: crypto.randomUUID(),
     label,
     builtIn: false,
-    hidden: false,
+    hidden: false
   });
   save();
 }
 
-export function renameTag(groupKey: string, index: number, label: string) {
-  const t = db.tagGroups.find((g) => g.key === groupKey)?.tags[index];
-  if (t) {
-    t.label = label;
-    save();
-  }
+export function renameTag(id: string, label: string) {
+  mustFindTag(id).label = label;
+  save();
 }
 
-export function moveTagUp(groupKey: string, index: number) {
-  const tags = db.tagGroups.find((g) => g.key === groupKey)?.tags;
-  if (tags && index > 0) {
-    [tags[index - 1], tags[index]] = [tags[index], tags[index - 1]];
-    save();
+/** F17 wants drag reordering; a per-click "move up" mutation cannot
+    express a drag, so the operation is the whole order at once. */
+export function reorder(groupKey: string, orderedIds: string[]) {
+  const g = mustFindGroup(groupKey);
+  if (
+    orderedIds.length !== g.tags.length ||
+    !g.tags.every((t) => orderedIds.includes(t.id))
+  ) {
+    throw new Error(`reorder of ${groupKey} does not permute its tags`);
   }
+  g.tags.sort((a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+  save();
 }
 
-export function setTagHidden(groupKey: string, index: number, hidden: boolean) {
-  const t = db.tagGroups.find((g) => g.key === groupKey)?.tags[index];
-  if (t) {
-    t.hidden = hidden;
-    save();
-  }
+export function setTagHidden(id: string, hidden: boolean) {
+  mustFindTag(id).hidden = hidden;
+  save();
 }
 
-/** Deleting a custom tag also removes its entry links (PRD F17). */
-export function deleteTag(groupKey: string, index: number) {
-  const g = db.tagGroups.find((g) => g.key === groupKey);
-  if (!g) return;
-  const [removed] = g.tags.splice(index, 1);
-  if (removed) for (const e of db.entries) e.tags = e.tags.filter((id) => id !== removed.id);
+/** Deleting removes the tag's entry links too (PRD F17). Customs only:
+    built-ins hide, so their history keeps its wording on every device. */
+export function deleteTag(id: string) {
+  const t = tagById(id);
+  if (!t) return; // already gone
+  if (t.builtIn) throw new Error(`built-in tags hide, not delete: ${id}`);
+  for (const g of db.tagGroups) g.tags = g.tags.filter((x) => x.id !== id);
+  for (const e of db.entries) e.tags = e.tags.filter((x) => x !== id);
   save();
 }
 
 export function addGroup(name: string) {
-  db.tagGroups.push({ key: 'custom-' + Date.now(), name, enabled: true, builtIn: false, tags: [] });
+  db.tagGroups.push({ key: crypto.randomUUID(), name, enabled: true, builtIn: false, tags: [] });
   save();
 }
