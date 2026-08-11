@@ -1,12 +1,25 @@
-/* Walkable-flow tests against the SvelteKit dev server. */
-import { chromium } from 'playwright-core';
+/* Walkable-flow tests (ticket 20's acceptance for tickets 01/07/08) against
+   the real app, not a probe page - so this serves the app's own production
+   build rather than sharing browser-tier/run.mjs's probe-page dev server.
+   It's `vite preview`, like verify-build.mjs, not `vite dev`: the dev
+   server's dependency re-optimization forces a full-page reload the first
+   time it discovers a new dependency deep in boot() (SQLocal's worker,
+   hash-wasm, ...), which raced every flow here and hung page.evaluate calls
+   indefinitely. A built, static bundle has no such reload. Vite picks the
+   port (falling back off its 5173 default if that's taken), so there's no
+   port literal to keep in sync by hand. Run with `npm run test:walkthrough`
+   - it builds first, with the demo bar compiled in (flow 13 drives its
+   #demo-jump control), then serves that build. */
+import { preview } from 'vite';
+import { createReporter, launchChromium } from './browser-harness.mjs';
 
-const BASE = 'http://localhost:5199';
-let failures = 0;
-const ok = (n) => console.log('PASS', n);
-const fail = (n, e) => { failures++; console.log('FAIL', n, '—', (e.message ?? String(e)).split('\n')[0]); };
+const { ok, fail, finish } = createReporter();
 
-const browser = await chromium.launch({ executablePath: '/usr/bin/chromium-browser', headless: true });
+const server = await preview({ preview: { port: 0 } });
+const address = server.httpServer.address();
+const BASE = `http://localhost:${address.port}`;
+
+const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 440, height: 940 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
@@ -181,7 +194,9 @@ try {
   ok('web reminders note');
 } catch (e) { fail('reminders web', e); }
 
-if (errors.length) { console.log('PAGE ERRORS:', errors.slice(0, 6)); failures++; }
-console.log(failures ? `\n${failures} FAILURES` : '\nALL FLOWS PASS');
+if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
+
+const failures = finish('ALL FLOWS PASS');
 await browser.close();
+await server.close();
 process.exit(failures ? 1 : 0);

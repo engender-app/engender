@@ -27,7 +27,15 @@ npm run dev        # dev server with the demo control bar
 npm run build      # static SPA bundle in build/ (adapter-static, no SSR)
 npm run preview
 npm run check      # svelte-check
+npm run test:walkthrough  # the 15 walkable flows, in a real Chromium
 ```
+
+`test:walkthrough` builds first (with the demo bar compiled in, since one
+flow drives its jump-to-screen control) and serves that build, the same way
+`verify:build` does - the dev server's dependency re-optimization forces a
+mid-boot page reload that a static build doesn't have. It shares Chromium
+launch and CHROMIUM_PATH override with `test:browser` and `verify:build`
+via `tests/browser-harness.mjs`.
 
 The dev/demo build shows a **demo bar** (theme toggle, phone-frame emulation,
 reset demo state, jump-to-screen). It is compiled out of production builds

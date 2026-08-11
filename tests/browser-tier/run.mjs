@@ -7,23 +7,18 @@
    One dev server and one browser for the whole file; each ticket adds its
    own probe page + a `run(...)` block below rather than its own script. */
 import { createServer } from 'vite';
-import { chromium } from 'playwright-core';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
+import { createReporter, launchChromium } from '../browser-harness.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-let failures = 0;
-const ok = (n) => console.log('PASS', n);
-const fail = (n, detail) => {
-  failures++;
-  console.log('FAIL', n, '—', detail);
-};
+const { ok, fail, finish } = createReporter();
 
 const server = await createServer({ configFile: `${here}/browser-tier.vite.config.ts`, server: { port: 0 } });
 await server.listen();
 const port = server.config.server.port;
 
-const browser = await chromium.launch({ executablePath: '/usr/bin/chromium-browser', headless: true });
+const browser = await launchChromium();
 const page = await (await browser.newContext()).newPage();
 
 /** Loads `path`, waits for `[data-...-ready]` to appear, and reads `resultGlobal`
@@ -110,5 +105,5 @@ try {
 await browser.close();
 await server.close();
 
-console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL BROWSER-TIER CHECKS PASS');
+const failures = finish('ALL BROWSER-TIER CHECKS PASS');
 process.exit(failures ? 1 : 0);
