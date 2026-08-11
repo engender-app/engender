@@ -1,7 +1,7 @@
-/* Pure epoch-day arithmetic — no imports, so it can run under plain Node for
-   the TZ round-trip check (tests/epoch-day.test.mjs); there is no unit test
-   harness yet. dates.ts re-exports everything here; nothing else should
-   import this file directly.
+/* Pure epoch-day arithmetic — no imports, so the TZ round-trip check
+   (epochDay.test.ts) can run under plain Node with no build step. dates.ts
+   re-exports everything here; nothing else should import this file
+   directly.
 
    An epoch day is the local calendar day (ADR-0001): days since 1970-01-01
    counted from a Date's local year/month/day, never from its UTC clock
