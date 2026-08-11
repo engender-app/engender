@@ -1,12 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { getEntry, upsertEntry, deleteEntry } from '$lib/data/repositories/entries';
-  import { activeDimensions, activePreset } from '$lib/data/repositories/dimensions';
-  import { visibleTagGroups } from '$lib/data/repositories/tags';
   import { toast } from '$lib/stores/toasts.svelte';
   import type { Entry, Photo } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -15,6 +12,7 @@
   import TagPicker from '$lib/components/TagPicker.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let { epochDay, entryId }: { epochDay?: number; entryId?: number } = $props();
 
@@ -38,8 +36,8 @@
   );
 
   let deleteOpen = $state(false);
-  let dims = $derived(activeDimensions());
-  let preset = $derived(activePreset());
+  let dims = $derived(vocabulary.activeDimensions);
+  let preset = $derived(vocabulary.activePreset);
   let isToday = $derived(day === todayEpochDay());
 
   function addPhoto() {
@@ -94,7 +92,7 @@
   <section class="card editor-section">
     <h2 class="editor-heading">{m.tags_label()}</h2>
     <TagPicker
-      groups={visibleTagGroups()}
+      groups={vocabulary.visibleTagGroups}
       selected={draft.tags}
       onToggle={(id) =>
         (draft.tags = draft.tags.includes(id) ? draft.tags.filter((x) => x !== id) : [...draft.tags, id])}

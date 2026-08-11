@@ -82,7 +82,12 @@ try {
   await fresh('/search');
   await page.locator('#q').fill('coffee');
   await page.waitForSelector('.entry-card');
-  ok('search live results');
+  /* A word that is only ever a built-in tag's label, never note text.
+     Built-in tags are stored as keys now, so search has to match against
+     the resolved wording or this finds nothing. */
+  await page.locator('#q').fill('hopeful');
+  await page.waitForSelector('.entry-card');
+  ok('search matches note text and built-in tag labels');
 } catch (e) { fail('search', e); }
 
 /* 6. stats range + value list */
@@ -93,7 +98,11 @@ try {
   if (!title.includes('90')) throw new Error('title: ' + title);
   await page.locator('.chart-card').first().click();
   await page.waitForSelector('.value-row');
-  ok('stats range + value list');
+  /* Tag insights name a built-in tag, so a blank title means the key never
+     got resolved. */
+  const insight = await page.locator('.list-group .row-title').first().textContent();
+  if (!insight?.trim()) throw new Error('tag insight has no label');
+  ok('stats range, value list and named tag insights');
 } catch (e) { fail('stats', e); }
 
 /* 7. palette switch */
@@ -232,6 +241,25 @@ try {
   }
   ok('theme and palette persist and apply before first paint');
 } catch (e) { fail('boot preferences', e); }
+
+/* 17. built-in vocabulary is localized by key, not stored in English (ticket 05) */
+try {
+  await fresh('/entry/new/today');
+  await page.waitForSelector('.tag-chip:has-text("social euphoria")');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('.segment:has-text("Polski")').click();
+  await page.waitForFunction(() => document.querySelector('.nav-item span')?.textContent === 'Start', null, { timeout: 8000 });
+
+  /* Same seeded tag, same row, different language - which only works if
+     what was stored was the key and not the word. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.tag-chip:has-text("euforia społeczna")', { timeout: 8000 });
+  if (await page.locator('.tag-chip:has-text("social euphoria")').count()) {
+    throw new Error('English label survived the language switch');
+  }
+  ok('built-in tags follow the language, so they were seeded as keys');
+} catch (e) { fail('vocabulary localization', e); }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
