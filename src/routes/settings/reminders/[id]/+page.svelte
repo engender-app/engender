@@ -2,7 +2,7 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { nextOccurrence, type ReminderRule } from '$lib/data/reminderRule';
   import { epochDayFromLocalDate, todayEpochDay } from '$lib/data/epochDay';
   import { intlLocale } from '$lib/data/dates';
@@ -41,15 +41,11 @@
   let stored = liveQuery([], (j) => (isNew ? Promise.resolve([]) : j.reminders.getReminders()));
   let existing = $derived(stored.value?.find((r) => r.id === page.params.id));
 
-  let ready = $state(isNew);
   let draft = $state({ title: '', type: 'med' as Reminder['type'], time: '20:00', choice: 'DAILY' });
 
-  $effect(() => {
-    if (ready || stored.loading) return;
-    if (existing) {
-      draft = { title: existing.title, type: existing.type, time: existing.time, choice: choiceFromRule(existing) };
-    }
-    ready = true;
+  onFirstResult(stored, (reminders) => {
+    const found = reminders?.find((r) => r.id === page.params.id);
+    if (found) draft = { title: found.title, type: found.type, time: found.time, choice: choiceFromRule(found) };
   });
 
   function ruleFromDraft(): ReminderRule {

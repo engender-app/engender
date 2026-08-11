@@ -12,8 +12,8 @@
 
   let step = $state(0);
 
-  const month = previousCalendarMonthRange(todayEpochDay());
-  const monthName = fmtMonthName(month.year, month.month);
+  let month = $derived(previousCalendarMonthRange(todayEpochDay()));
+  let monthName = $derived(fmtMonthName(month.year, month.month));
 
   /* Every number below comes from journal.stats (ticket 10) and nothing is
      stored (ADR-0010): a recap is recomputed from entries, tags, milestones
@@ -67,7 +67,7 @@
        past the first states a figure, and "0 entries" that turns into 31 a
        moment later reads as a wrong answer rather than a pending one. -->
   {#if recapQuery.loading}
-    <Skeleton variant="chart" count={1} />
+    <Skeleton variant="block" count={1} />
   {:else}
     <div class="recap-stage">
       {#if s.rive}

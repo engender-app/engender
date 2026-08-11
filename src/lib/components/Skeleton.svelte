@@ -13,9 +13,10 @@
     variant = 'card',
     count = 3
   }: {
-    /** `card` for entry lists, `chart` for a stats card, `line` for a row of
-        text in a list. */
-    variant?: 'card' | 'chart' | 'line';
+    /** Shapes, not screens: `card` is an entry card, `block` is a card around
+        one large area (a chart, a form section), `line` is a row of text in a
+        list. */
+    variant?: 'card' | 'block' | 'line';
     count?: number;
   } = $props();
 </script>
@@ -29,9 +30,9 @@
           <span class="skeleton skeleton-line is-short"></span>
           <span class="skeleton skeleton-line"></span>
         </span>
-      {:else if variant === 'chart'}
+      {:else if variant === 'block'}
         <span class="skeleton skeleton-line is-short"></span>
-        <span class="skeleton skeleton-plot"></span>
+        <span class="skeleton skeleton-fill"></span>
       {:else}
         <span class="skeleton skeleton-line"></span>
       {/if}

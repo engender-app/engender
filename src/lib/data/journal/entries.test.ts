@@ -190,3 +190,29 @@ test('searchEntries stops at the limit it is given, keeping the newest hits', as
     [103, 102]
   );
 });
+
+test('the match count counts every match, not just the page that was asked for', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const day of [100, 101, 102, 103]) {
+    await journal.entries.upsertEntry({ epochDay: day, note: 'coffee with Marta' });
+  }
+  await journal.entries.upsertEntry({ epochDay: 104, note: 'tea instead' });
+
+  assert.equal((await journal.entries.searchEntries('coffee', [], 2)).length, 2);
+  assert.equal(await journal.entries.countSearchMatches('coffee', []), 4);
+});
+
+test('the count matches on tags as well as notes, and counts an entry matching both once', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, note: 'felt hopeful', tags: ['e-hopeful'] });
+  await journal.entries.upsertEntry({ epochDay: 101, tags: ['e-hopeful'] });
+
+  assert.equal(await journal.entries.countSearchMatches('hopeful', ['e-hopeful']), 2);
+});
+
+test('a query with nothing searchable in it counts zero rather than everything', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, note: 'coffee' });
+
+  assert.equal(await journal.entries.countSearchMatches('...', []), 0);
+});

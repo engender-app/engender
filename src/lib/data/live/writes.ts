@@ -16,7 +16,7 @@
 
    Rune-free on purpose, like the journal below it (ADR-0017): the mapping is
    the part with a rule in it, and the Node tier can only test what has no
-   `$state` in it. The reactive half is query.svelte.ts, which supplies
+   `$state` in it. The reactive half is journal.svelte.ts, which supplies
    `onWrite`.
 
    Unclassified operations are rejected outright rather than assumed to be
@@ -44,11 +44,13 @@ export type TableName = 'entry' | 'tag' | 'dimension' | 'preset' | 'milestone' |
 const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>; reads: string[] }> = {
   entries: {
     writes: {
-      upsertEntry: ['entry'],
+      // Photos as well as the entry: a save carries the photos picked in the
+      // same edit (EntryInput.attachPhotos).
+      upsertEntry: ['entry', 'photo'],
       // Takes the entry's photo rows and files with it (entries.ts).
       deleteEntry: ['entry', 'photo']
     },
-    reads: ['getEntry', 'entriesForDay', 'recentDays', 'entriesWithTag', 'searchEntries']
+    reads: ['getEntry', 'entriesForDay', 'recentDays', 'entriesWithTag', 'searchEntries', 'countSearchMatches']
   },
   tags: {
     writes: {
@@ -80,7 +82,16 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     reads: ['getMilestones']
   },
   photos: {
-    writes: { attach: ['photo'], remove: ['photo'] },
+    /* An entry and a milestone both carry their photos on the shape they are
+       read back as, so a photo row changing changes what an entry list and the
+       mirrored milestones should show. Which of the two owns this photo is a
+       property of the call, not of the method, so both are announced: naming
+       only `photo` left the entry list showing a photo indicator for a photo
+       that had been deleted. */
+    writes: {
+      attach: ['photo', 'entry', 'milestone'],
+      remove: ['photo', 'entry', 'milestone']
+    },
     reads: ['inJournal']
   },
   labs: {
