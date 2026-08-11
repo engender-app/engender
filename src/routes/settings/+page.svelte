@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
-  import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
+  import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { reference } from '$lib/data/live/reference.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
@@ -23,9 +23,7 @@
   let isWeb = $derived(!isAndroid());
   let preset = $derived(vocabulary.activePreset);
   let metricName = $derived(vocabulary.metricName);
-  let backupAge = $derived(
-    prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(prefs.lastBackupAt) : null
-  );
+  let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
 
   /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
      count of the enabled ones - which only the Android build displays at all.

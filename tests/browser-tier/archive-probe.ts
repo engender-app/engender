@@ -18,10 +18,10 @@ import { createWebSqlite } from '../../src/lib/data/sqlite/sqlocal-driver.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import { PREFERENCE_DEFAULTS } from '../../src/lib/data/prefs/catalogue.ts';
-import { byteReader, collect, readArchiveHeader } from '../../src/lib/data/archive/container.ts';
+import { ARCHIVE_FILE_EXTENSION, byteReader, collect, readArchiveHeader } from '../../src/lib/data/archive/container.ts';
 import { openArchive, packArchive } from '../../src/lib/data/archive/pack.ts';
 import { portablePreferences } from '../../src/lib/data/archive/payload.ts';
-import { archiveFileName, deliverArchive } from '../../src/lib/data/archive/deliver.ts';
+import { deliverFile, exportFileName } from '../../src/lib/data/archive/deliver.ts';
 import { DecryptionFailedError } from '../../src/lib/crypto/aesGcm.ts';
 
 const PASSWORD = 'demo';
@@ -157,7 +157,11 @@ async function run() {
      browser hands a file to a person. run.mjs attaches its own download
      handler before clicking. */
   document.getElementById('deliver')!.addEventListener('click', () => {
-    deliverArchive(archiveFileName('Alicja'), oneShot(archive)).then((delivery) => {
+    deliverFile({
+      fileName: exportFileName('Alicja', ARCHIVE_FILE_EXTENSION),
+      type: 'application/octet-stream',
+      body: oneShot(archive)
+    }).then((delivery) => {
       (window as unknown as { __deliveryResult: unknown }).__deliveryResult = { delivery };
     });
   });
