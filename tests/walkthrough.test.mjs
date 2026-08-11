@@ -194,6 +194,45 @@ try {
   ok('web reminders note');
 } catch (e) { fail('reminders web', e); }
 
+/* 16. preferences survive a reload and land before first paint (ticket 06) */
+try {
+  await page.setViewportSize({ width: 440, height: 940 });
+  await fresh('/settings');
+  await page.locator('[data-palette-pick="lesbian"]').click();
+  await page.locator('.segment:has-text("Dark")').click();
+  /* Waits on the mirror, not on the screen: the screen updates from the
+     in-memory projection immediately, while the write to SQLite and the
+     cache refresh behind it are a round-trip away. */
+  await page.waitForFunction(() => {
+    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    return boot.theme === 'dark' && boot.palette === 'lesbian';
+  });
+
+  /* Records the first time anything writes data-theme, and whether <body>
+     existed yet. The pre-paint script sits in <head>, so it runs with no
+     body at all; hydration cannot, which is what stops this passing if the
+     stamping quietly moved back into the layout's $effect. */
+  await page.addInitScript(() => {
+    // Observes `document`, not `document.documentElement`: an init script
+    // runs before the parser has created <html>, so there is no element to
+    // hand the observer yet.
+    new MutationObserver(() => {
+      window.__firstStamp ??= { ...document.documentElement.dataset, hadBody: !!document.body };
+    }).observe(document, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ['data-theme', 'data-palette']
+    });
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+
+  const first = await page.evaluate(() => window.__firstStamp);
+  if (first?.theme !== 'dark' || first?.palette !== 'lesbian' || first.hadBody) {
+    throw new Error('first stamp on <html>: ' + JSON.stringify(first));
+  }
+  ok('theme and palette persist and apply before first paint');
+} catch (e) { fail('boot preferences', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');

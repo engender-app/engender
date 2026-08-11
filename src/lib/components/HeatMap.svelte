@@ -3,13 +3,15 @@
   import { dayMetricValue } from '$lib/data/repositories/entries';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { metricKey } from '$lib/data/prefs/catalogue';
 
   let { year, month }: { year: number; month: number /* 0-based */ } = $props();
 
   const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   let cells = $derived.by(() => {
-    const metric = db.prefs.colorMetric;
+    const metric = metricKey(prefs);
     const first = new Date(Date.UTC(year, month, 1));
     const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
     const startDow = (first.getUTCDay() + 6) % 7; // Monday-first

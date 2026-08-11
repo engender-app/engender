@@ -11,9 +11,9 @@
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, startBoot } from '$lib/stores/boot.svelte';
-  import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
@@ -22,6 +22,12 @@
   let { children } = $props();
 
   const DEMO = import.meta.env.DEV || import.meta.env.VITE_DEMO === '1';
+
+  /* Started here rather than from an $effect so that boot's first step -
+     reading the mirrored theme and palette (ticket 06) - has run before the
+     effect below stamps them on <html>. From an effect it would land one
+     step too late and briefly undo what app.html's pre-paint script did. */
+  startBoot();
 
   const NAV = [
     { href: '/', key: 'home', icon: 'home', label: () => m.nav_home() },
@@ -51,32 +57,23 @@
   });
   $effect(() => {
     const root = document.documentElement;
-    root.dataset.palette = db.prefs.palette;
-    root.dataset.theme = db.prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : db.prefs.theme;
-    document.title = db.prefs.disguise ? 'Notes' : 'Gender Diary';
+    root.dataset.palette = prefs.palette;
+    root.dataset.theme = prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : prefs.theme;
+    document.title = prefs.disguise ? 'Notes' : 'Gender Diary';
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);
   });
 
-  /* First-run gate: onboarding is the entire first-run experience (F16). */
+  /* First-run gate: onboarding is the entire first-run experience (F16).
+     Held until boot is ready, because `onboarded` lives in SQLite (ticket
+     06) and is not in the small set mirrored outside it - before the
+     database opens it reads as its default, which would send every
+     returning user through onboarding again. */
   $effect(() => {
-    if (!db.prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
+    if (bootState.status !== 'ready') return;
+    if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
   });
-
-  /* SQLite boot (ticket 04): opens the real database and runs migrations
-     in the background. Nothing reads from it yet (repositories move onto
-     it in ticket 07), so this can't affect what's on screen today except
-     to report a failure or a denied persistent-storage request. */
-  $effect(() => {
-    startBoot();
-  });
-  $effect(() => {
-    if (bootState.status === 'ready' && bootState.persistDenied) {
-      toast("This browser didn't grant persistent storage — export backups regularly so nothing is lost to storage pressure.");
-    }
-  });
-
   /* Dev demo bar frame emulation via body classes. */
   $effect(() => {
     document.body.classList.toggle('has-demo-bar', DEMO);
@@ -102,7 +99,7 @@
 {/if}
 
 <div class="app-viewport">
-  <div class="app" class:disguised={db.prefs.disguise}>
+  <div class="app" class:disguised={prefs.disguise}>
     {#if bootState.status === 'error'}
       <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
         <Icon name="alert" size={20} />
@@ -115,7 +112,7 @@
     {#if !chromeless}
       <nav class="app-rail" aria-label="Main">
         <div class="rail-brand">
-          <span class="brand-mark"></span><span translate="no">{db.prefs.disguise ? 'Notes' : m.app_name()}</span>
+          <span class="brand-mark"></span><span translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</span>
         </div>
         <div class="rail-new">
           <button class="btn btn-primary" style="width:100%" onclick={() => (ui.chooserOpen = true)}>

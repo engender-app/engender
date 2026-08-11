@@ -1,6 +1,7 @@
 /* GenderDimensionRepository (PRD F3). */
 
 import { db, save } from '../db.svelte';
+import { prefs } from '../prefs/store.svelte';
 import { builtInPresets } from '../demo/seed';
 import type { GenderDimension, GenderPreset } from '../types';
 
@@ -10,7 +11,7 @@ export function getPresets(): GenderPreset[] {
 
 export function activePreset(): GenderPreset {
   const presets = getPresets();
-  return presets.find((p) => p.id === db.prefs.activePreset) ?? presets[0];
+  return presets.find((p) => p.id === prefs.activePreset) ?? presets[0];
 }
 
 export function activeDimensions(): GenderDimension[] {
@@ -34,7 +35,7 @@ export function addCustomDimension(dim: Omit<GenderDimension, 'builtIn'>) {
     dims: [...active.dims, dim.key],
   };
   db.customPresets.push(custom);
-  db.prefs.activePreset = custom.id;
+  prefs.activePreset = custom.id;
   save();
 }
 

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db, save } from '$lib/data/db.svelte';
+  import { db } from '$lib/data/db.svelte';
   import { setReminderEnabled, scheduleLabel } from '$lib/data/repositories/reminders';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -39,15 +40,14 @@
           <span class="row-subtitle">“How are you today?” · skipped on days you already logged</span>
         </span>
         <Switch
-          checked={db.prefs.checkIn.enabled}
+          checked={prefs.checkInEnabled}
           label="Daily check-in"
           onChange={(v) => {
-            db.prefs.checkIn.enabled = v;
-            save();
+            prefs.checkInEnabled = v;
           }}
         />
       </div>
-      {#if db.prefs.checkIn.enabled}
+      {#if prefs.checkInEnabled}
         <div class="spread" style="margin-top:var(--space-3)">
           <label class="small muted" for="checkin-time">Time</label>
           <input
@@ -56,8 +56,7 @@
             type="time"
             id="checkin-time"
             name="checkin-time"
-            bind:value={db.prefs.checkIn.time}
-            onchange={save}
+            bind:value={prefs.checkInTime}
           />
         </div>
       {/if}
