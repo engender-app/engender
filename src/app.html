@@ -4,6 +4,31 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#F4F8FB" />
+    <script>
+      /* Stamps the user's theme and palette before first paint (ADR-0009).
+         The attributes on <html> above are only what a first-ever visit,
+         or a visit where this throws, falls back to; SQLite is still
+         hundreds of milliseconds from opening at this point, which is why
+         these six preferences are mirrored outside it at all.
+
+         Inline and dependency-free because it has to run before any module
+         is parsed, so it cannot import the key or the shape - both are
+         owned by src/lib/data/prefs/boot-cache.ts and have to be changed
+         in the two places together. */
+      try {
+        const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+        const root = document.documentElement;
+        if (boot.palette) root.dataset.palette = boot.palette;
+        root.dataset.theme =
+          !boot.theme || boot.theme === 'system'
+            ? matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+            : boot.theme;
+      } catch {
+        /* no mirror yet, or storage is unavailable */
+      }
+    </script>
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
     <link rel="preload" href="%sveltekit.assets%/fonts/nunito-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="%sveltekit.assets%/fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin />

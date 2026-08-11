@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db, save } from '$lib/data/db.svelte';
-  import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
+    import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -12,7 +12,7 @@
 
   let android = $derived(ui.frame === 'phone');
   let backupAge = $derived(
-    db.prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(db.prefs.lastBackupAt) : null
+    prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(prefs.lastBackupAt) : null
   );
 
   let expPass = $state('');
@@ -34,9 +34,8 @@
 
   function confirmExport() {
     exportWarningOpen = false;
-    db.prefs.lastBackupAt = Date.now();
-    db.prefs.backupNoticeDismissed = false;
-    save();
+    prefs.lastBackupAt = Date.now();
+    prefs.backupNoticeDismissed = false;
     toast(android ? 'Encrypted. Opening share sheet…' : 'Encrypted. Downloading…');
   }
 
@@ -56,8 +55,7 @@
   function confirmPlain() {
     const fmt = plainSheet;
     plainSheet = null;
-    db.prefs.lastBackupAt = Date.now();
-    save();
+    prefs.lastBackupAt = Date.now();
     toast(`${fmt} exported.`);
   }
 </script>
@@ -114,16 +112,16 @@
           <span class="row-title">Auto-export</span>
           <span class="row-subtitle">encrypted backup to a folder you pick</span>
         </span>
-        <Switch checked={db.prefs.autoExport.enabled} label="Auto-export"
-          onChange={(v) => { db.prefs.autoExport.enabled = v; save(); }} />
+        <Switch checked={prefs.autoExportEnabled} label="Auto-export"
+          onChange={(v) => (prefs.autoExportEnabled = v)} />
       </div>
-      {#if db.prefs.autoExport.enabled}
+      {#if prefs.autoExportEnabled}
         <div class="spread" style="margin-top:var(--space-3)">
           <span class="small muted">Schedule</span>
           <Segmented name="Schedule"
             options={[{ value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]}
-            value={db.prefs.autoExport.schedule}
-            onChange={(v) => { db.prefs.autoExport.schedule = v as 'weekly' | 'monthly'; save(); }} />
+            value={prefs.autoExportSchedule}
+            onChange={(v) => (prefs.autoExportSchedule = v as 'weekly' | 'monthly')} />
         </div>
         <p class="muted small" style="margin-top:var(--space-3)">
           Folder: <strong>Downloads/TransitionTracker</strong> · password asked once; only a device-locked key is

@@ -2,12 +2,14 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db, save } from '$lib/data/db.svelte';
+  import { db } from '$lib/data/db.svelte';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { entriesNewestFirst, quickLog, streakDays } from '$lib/data/repositories/entries';
   import { upcomingMilestones } from '$lib/data/repositories/milestones';
   import { activeDimensions } from '$lib/data/repositories/dimensions';
+  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { metricKey } from '$lib/data/prefs/catalogue';
   import { toast } from '$lib/stores/toasts.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -28,16 +30,16 @@
   let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
 
   let backupAgeDays = $derived(
-    db.prefs.lastBackupAt ? today - epochDayFromTimestamp(db.prefs.lastBackupAt) : null
+    prefs.lastBackupAt ? today - epochDayFromTimestamp(prefs.lastBackupAt) : null
   );
   let showBackupNotice = $derived(
-    backupAgeDays != null && backupAgeDays > 30 && !db.prefs.backupNoticeDismissed
+    backupAgeDays != null && backupAgeDays > 30 && !prefs.backupNoticeDismissed
   );
 
   let metricName = $derived(
-    db.prefs.colorMetric === 'mood'
+    prefs.metricKind === 'mood'
       ? m.mood()
-      : (db.dimensions.find((d) => d.key === db.prefs.colorMetric)?.name ?? m.mood())
+      : (db.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
   );
 
   let dayGroups = $derived.by(() => {
@@ -63,7 +65,7 @@
   <PrideAurora />
   <header class="home-header">
     <h1 class="home-hero" translate="no">{m.app_name()}</h1>
-    <p class="home-hello">{db.prefs.name ? `${m.hello()} ${db.prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <p class="home-hello">{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     {#if streak > 1}
       <p class="home-streak"><Icon name="sparkle" size={14} /> {streak} {m.streak_row()}</p>
     {/if}
@@ -91,8 +93,7 @@
         class="icon-btn"
         aria-label={m.dismiss()}
         onclick={() => {
-          db.prefs.backupNoticeDismissed = true;
-          save();
+          prefs.backupNoticeDismissed = true;
         }}><Icon name="x" size={18} /></button
       >
     </div>
@@ -121,7 +122,7 @@
       </button>
     {/snippet}
   </SectionTitle>
-  <div class="card"><WeekStrip metric={db.prefs.colorMetric} /></div>
+  <div class="card"><WeekStrip metric={metricKey(prefs)} /></div>
 
   <SectionTitle text={m.recent_entries()}>
     {#snippet aside()}<a href="/calendar">{m.nav_calendar()} <Icon name="chevronRight" size={14} /></a>{/snippet}
@@ -147,17 +148,16 @@
   <Sheet bind:open={metricSheetOpen} title={m.colour_days_by()}>
     <h3>{m.colour_days_by()}</h3>
     <div class="list-group" style="box-shadow:none">
-      {#each [{ key: 'mood', name: m.mood() }, ...activeDimensions()] as d (d.key)}
+      {#each [{ key: null, name: m.mood() }, ...activeDimensions()] as d (d.key ?? 'mood')}
         <button
           class="list-row"
           onclick={() => {
-            db.prefs.colorMetric = d.key;
-            save();
+            selectMetric(d.key);
             metricSheetOpen = false;
           }}
         >
           <span class="row-text"><span class="row-title">{d.name}</span></span>
-          {#if db.prefs.colorMetric === d.key}<Icon name="check" size={20} />{/if}
+          {#if prefs.metricDimension === d.key}<Icon name="check" size={20} />{/if}
         </button>
       {/each}
     </div>

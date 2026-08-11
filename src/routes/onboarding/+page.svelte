@@ -1,10 +1,10 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db, save } from '$lib/data/db.svelte';
-  import { builtInPresets } from '$lib/data/repositories/dimensions';
+    import { builtInPresets } from '$lib/data/repositories/dimensions';
   import { milestoneTemplates, upsertMilestone } from '$lib/data/repositories/milestones';
   import { todayEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PrideAurora from '$lib/components/PrideAurora.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
@@ -19,11 +19,10 @@
   let appLock = $state(false);
 
   function finish() {
-    db.prefs.name = name.trim();
-    db.prefs.activePreset = preset;
-    db.prefs.appLock = appLock;
-    db.prefs.onboarded = true;
-    save();
+    prefs.name = name.trim();
+    prefs.activePreset = preset;
+    prefs.appLock = appLock;
+    prefs.onboarded = true;
     if (milestoneTemplate) {
       const tpl = milestoneTemplates.find((t) => t.key === milestoneTemplate)!;
       const epochDay = epochDayFromDateInputValue(milestoneDate) ?? todayEpochDay() - 1;

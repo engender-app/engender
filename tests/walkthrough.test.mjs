@@ -194,6 +194,37 @@ try {
   ok('web reminders note');
 } catch (e) { fail('reminders web', e); }
 
+/* 16. preferences survive a reload and land before first paint (ticket 06) */
+try {
+  await page.setViewportSize({ width: 440, height: 940 });
+  await fresh('/settings');
+  await page.locator('[data-palette-pick="lesbian"]').click();
+  await page.locator('.segment:has-text("Dark")').click();
+  /* Waits on the mirror, not on the screen: the screen updates from the
+     in-memory projection immediately, while the write to SQLite and the
+     cache refresh behind it are a round-trip away. */
+  await page.waitForFunction(() => {
+    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    return boot.theme === 'dark' && boot.palette === 'lesbian';
+  });
+
+  /* Sampled at DOMContentLoaded: the body has been parsed by then, so
+     anything already stamped on <html> was stamped before the first paint
+     could show the wrong theme. Hydration is still several ticks away. */
+  await page.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      window.__themeAtDomReady = { ...document.documentElement.dataset };
+    });
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+
+  const early = await page.evaluate(() => window.__themeAtDomReady);
+  if (early?.theme !== 'dark' || early?.palette !== 'lesbian') {
+    throw new Error('before first paint: ' + JSON.stringify(early));
+  }
+  ok('theme and palette persist and apply before first paint');
+} catch (e) { fail('boot preferences', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');
