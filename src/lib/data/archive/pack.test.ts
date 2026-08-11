@@ -148,6 +148,26 @@ test('the journal that comes back out holds what went in', async () => {
   assert.ok(payload.journal.dimensions.some((d) => d.name === 'Voice'));
 });
 
+test('a lab result survives the encrypted archive and restores into another journal', async () => {
+  const { contents } = await contentsOf();
+  const opened = await openArchive(oneShot(await pack(contents)), 'correct horse');
+  const target = openJournal(await migratedDb(), fakeFileStore());
+
+  await target.archive.replace({ journal: opened.payload.journal, files: opened.files });
+
+  const [result] = await target.labs.getResults('estradiol');
+  assert.deepEqual(
+    {
+      epochDay: result.epochDay,
+      analyte: result.analyte,
+      value: result.value,
+      unit: result.unit,
+      note: result.note
+    },
+    { epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: '' }
+  );
+});
+
 test('a wrong password is rejected cleanly, and says only that', async () => {
   const { contents } = await contentsOf();
   const archive = await pack(contents);

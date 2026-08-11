@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtMonthName } from '$lib/data/dates';
-  import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
+  import { localDateFromEpochDay, todayEpochDay, previousCalendarMonthRange, previousCalendarYearRange } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
@@ -52,6 +52,7 @@
     const { year, month } = previousCalendarMonthRange(today);
     return fmtMonthName(year, month);
   });
+  let lastYear = $derived(localDateFromEpochDay(today).getMonth() === 0 ? previousCalendarYearRange(today).year : null);
 
   let valueSheet = $state<{ name: string; key: string } | null>(null);
   let insightSheet = $state<{ label: string; id: string } | null>(null);
@@ -153,6 +154,15 @@
     </span>
     <Icon name="chevronRight" size={20} />
   </a>
+  {#if lastYear !== null}
+    <a class="card spread recap-cta" href="/recap?period=year" style="margin-top:var(--space-3)">
+      <span class="row-text">
+        <span class="row-title">Your {lastYear}</span>
+        <span class="row-subtitle">A look back at the year you recorded.</span>
+      </span>
+      <Icon name="chevronRight" size={20} />
+    </a>
+  {/if}
 
   <Sheet open={valueSheet !== null} title={valueSheet?.name ?? ''} onClose={() => (valueSheet = null)}>
     {#if valueSheet}
