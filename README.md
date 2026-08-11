@@ -27,7 +27,20 @@ npm run dev        # dev server with the demo control bar
 npm run build      # static SPA bundle in build/ (adapter-static, no SSR)
 npm run preview
 npm run check      # svelte-check
+npm test                  # unit/repository tests (Vitest, Node tier)
+npm run test:browser      # OPFS/SQLocal/crypto checks in a real Chromium
+npm run test:walkthrough  # the 15 walkable flows, also in a real Chromium
+npm run verify:build      # after `npm run build`: no off-origin requests
 ```
+
+`test:walkthrough` builds first (with the demo bar compiled in, since one
+flow drives its jump-to-screen control) and serves that build, the same way
+`verify:build` does - the dev server's dependency re-optimization forces a
+mid-boot page reload that a static build doesn't have.
+
+The two browser-driven commands and `verify:build` launch Chromium via
+`playwright-core`, looking for it at `/usr/bin/chromium-browser` unless
+`CHROMIUM_PATH` points somewhere else.
 
 The dev/demo build shows a **demo bar** (theme toggle, phone-frame emulation,
 reset demo state, jump-to-screen). It is compiled out of production builds
