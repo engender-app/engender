@@ -11,7 +11,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:browser": "node tests/browser-tier/run.mjs",
-    "verify:build": "vite build && node tests/browser-tier/verify-build.mjs"
+    "verify:build": "vite build && node tests/browser-tier/verify-build.mjs",
+    "benchmark:argon2": "node scripts/benchmark-argon2.mjs"
   },
   "devDependencies": {
     "@inlang/paraglide-js": "^2.0.0",
@@ -32,6 +33,7 @@
     "@types/d3-shape": "^3.1.6",
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
+    "hash-wasm": "^4.12.0",
     "melt": "^0.30.0",
     "sqlocal": "^0.18.0"
   }

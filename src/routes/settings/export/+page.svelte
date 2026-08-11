@@ -21,12 +21,18 @@
   let impError = $state('');
   let plainSheet = $state<string | null>(null);
   let daylioSheet = $state(false);
+  let exportWarningOpen = $state(false);
 
-  function doExport() {
+  function openExportWarning() {
     if (!expPass) {
       toast('Choose a password first.');
       return;
     }
+    exportWarningOpen = true;
+  }
+
+  function confirmExport() {
+    exportWarningOpen = false;
     db.prefs.lastBackupAt = Date.now();
     db.prefs.backupNoticeDismissed = false;
     save();
@@ -87,7 +93,7 @@
       <input class="input" type="password" id="exp-pass" name="exp-pass" placeholder="Choose a strong password"
         autocomplete="new-password" bind:value={expPass} />
     </div>
-    <button class="btn btn-primary" data-export onclick={doExport}>
+    <button class="btn btn-primary" data-export onclick={openExportWarning}>
       <Icon name={android ? 'share' : 'download'} size={20} /><span>{android ? 'Encrypt & share' : 'Encrypt & download'}</span>
     </button>
     <p class="muted small" style="margin-top:var(--space-3)">
@@ -97,6 +103,10 @@
   </div>
 
   {#if android}
+    <!-- Mockup only: no password prompt or export trigger exists yet, so
+         there's nothing here to attach ticket 12's "warning before any
+         encrypted export" to. Its real Android implementation must show
+         the same warning the manual export sheet above does, once. -->
     <div class="card editor-section">
       <div class="spread">
         <span class="row-text">
@@ -172,6 +182,24 @@
       <button class="btn btn-soft" data-plain="json" onclick={() => (plainSheet = 'JSON')}><span>JSON</span></button>
     </div>
   </div>
+
+  <Sheet open={exportWarningOpen} title="Before you continue" onClose={() => (exportWarningOpen = false)}>
+    <h3>There's no way to recover a forgotten password</h3>
+    <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
+      <Icon name="alert" size={20} />
+      <div class="notice-body">
+        <span class="notice-title">This can't be undone</span>
+        If you forget this password, the archive is unreadable forever - including to us. There is no recovery
+        option, no exceptions.
+      </div>
+    </div>
+    <div class="stack-3">
+      <button class="btn btn-danger" data-confirm-export onclick={confirmExport}>
+        <span>I understand, encrypt & export</span>
+      </button>
+      <button class="btn btn-ghost" onclick={() => (exportWarningOpen = false)}><span>{m.cancel()}</span></button>
+    </div>
+  </Sheet>
 
   <Sheet open={plainSheet !== null} title="Plain export" onClose={() => (plainSheet = null)}>
     {#if plainSheet}
