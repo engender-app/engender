@@ -55,6 +55,13 @@ export const BUILT_IN_TAG_GROUPS = [
   {
     key: 'activities',
     tags: ['a-work', 'a-friends', 'a-family', 'a-exercise', 'a-therapy', 'a-shopping', 'a-selfcare']
+  },
+  {
+    // Empty until a Daylio import finds an activity no existing tag names.
+    // Keeping the group key built-in makes imports from different devices
+    // converge on one group rather than minting one each (PRD F28).
+    key: 'imported',
+    tags: []
   }
 ] as const;
 

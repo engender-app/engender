@@ -116,6 +116,20 @@ test('an import announces every table, because a restore rewrites the journal', 
   assert.deepEqual(announced, [TABLE_NAMES]);
 });
 
+test('a Daylio preview commits through the observed journal the screen uses', async () => {
+  const { journal, announced } = await observed();
+  const csv = [
+    'full_date,date,weekday,time,mood,activities,note_title,note',
+    '2026-01-15,January 15,Thursday,07:15,Rad,,,from Daylio'
+  ].join('\n');
+  const preview = await journal.archive.previewDaylioImport(csv, { tagLabels: () => [] });
+
+  const result = await journal.archive.commitDaylioImport(preview);
+
+  assert.deepEqual(result, { entriesAdded: 1, tagsAdded: 0 });
+  assert.deepEqual(announced, [TABLE_NAMES]);
+});
+
 test('an operation classified as neither read nor write is rejected on sight', async () => {
   const { journal } = await journalWithBuiltIns();
   (journal.entries as unknown as Record<string, unknown>).recountEverything = () => Promise.resolve();

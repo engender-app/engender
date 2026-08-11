@@ -6,7 +6,9 @@
   import { openArchive } from '$lib/data/archive/pack';
   import { CorruptArchiveError, UnsupportedArchiveError } from '$lib/data/archive/container';
   import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
-  import { dimensionName, tagLabel } from '$lib/data/vocabulary/labels';
+  import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
+  import { chooseFiles } from '$lib/data/fileDialog';
+  import { dimensionName, moodName, tagLabel, tagLabels } from '$lib/data/vocabulary/labels';
   import { DecryptionFailedError } from '$lib/crypto/aesGcm';
   import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -29,6 +31,10 @@
   let impError = $state('');
   let plainSheet = $state<'csv' | 'json' | null>(null);
   let daylioSheet = $state(false);
+  let daylioName = $state('');
+  let daylioPreview = $state.raw<DaylioPreview | null>(null);
+  let daylioError = $state('');
+  let daylioImporting = $state(false);
   let exportWarningOpen = $state(false);
   /* Which export is under way, or null. Not a boolean: the encrypted
      button says what it is doing, and it is not encrypting when the CSV
@@ -173,6 +179,49 @@
     return 'The import couldn’t be finished. Your journal is exactly as it was.';
   }
 
+  function openDaylio() {
+    daylioName = '';
+    daylioPreview = null;
+    daylioError = '';
+    daylioSheet = true;
+  }
+
+  async function chooseDaylio() {
+    try {
+      const [file] = await chooseFiles('.csv,text/csv');
+      if (!file) return;
+      daylioName = file.name;
+      daylioPreview = null;
+      daylioError = '';
+      daylioPreview = await journal.archive.previewDaylioImport(await file.text(), { tagLabels });
+      if (daylioPreview.unmappedMoodLabels.length > 0) {
+        daylioError = `These mood labels aren't mapped: ${daylioPreview.unmappedMoodLabels.join(', ')}. Nothing has been imported. Rename them in Daylio to a default English or Polish mood, export again, and retry.`;
+      }
+    } catch (error) {
+      console.error('the Daylio preview failed', error);
+      daylioPreview = null;
+      daylioError = error instanceof DaylioCsvError
+        ? `${error.message}. Nothing has been imported.`
+        : `This CSV couldn't be read. Nothing has been imported.`;
+    }
+  }
+
+  async function importDaylio() {
+    if (!daylioPreview || daylioPreview.unmappedMoodLabels.length > 0 || daylioImporting) return;
+    daylioImporting = true;
+    daylioError = '';
+    try {
+      const result = await journal.archive.commitDaylioImport(daylioPreview);
+      daylioSheet = false;
+      toast(`${result.entriesAdded} entries and ${result.tagsAdded} new tags imported.`);
+    } catch (error) {
+      console.error('the Daylio import failed', error);
+      daylioError = `The Daylio import couldn't be finished. Your journal is exactly as it was.`;
+    } finally {
+      daylioImporting = false;
+    }
+  }
+
 </script>
 
 <div class="screen">
@@ -285,7 +334,7 @@
     </button>
     <div class="hr"></div>
     <button class="list-row" data-daylio style="border-radius:var(--radius-md);background:var(--surface-2)"
-      onclick={() => (daylioSheet = true)}>
+      onclick={openDaylio}>
       <span class="row-icon"><Icon name="book" size={20} /></span>
       <span class="row-text">
         <span class="row-title">Import from Daylio (CSV)</span>
@@ -344,26 +393,54 @@
 
   <Sheet bind:open={daylioSheet} title="Import from Daylio">
     <h3>Import from Daylio</h3>
-    <p class="muted small" style="margin-bottom:var(--space-3)">daylio_export_2026-08-01.csv</p>
-    <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
-      <div class="value-row"><span>Entries found</span><strong>412</strong></div>
-      <div class="value-row"><span>Activities → tags</span><strong>18 matched · 5 new in “Imported”</strong></div>
-      <div class="value-row"><span>Notes</span><strong>preserved</strong></div>
-      <div class="value-row"><span>Photos</span><strong>not in Daylio’s CSV</strong></div>
-      <div class="hr"></div>
-      <p class="small" style="margin-bottom:var(--space-2)"><strong>Mood mapping</strong></p>
-      <div class="value-row"><span>rad → great</span><span>awful → awful</span></div>
-      <div class="value-row"><span>good → good</span><span>bad → bad</span></div>
-      <div class="value-row"><span>meh → meh</span><span></span></div>
-    </div>
-    <p class="muted small" style="margin-bottom:var(--space-4)">
-      Imports are always a <strong>merge</strong> — nothing you already logged is touched.
-    </p>
-    <div class="stack-3">
-      <button class="btn btn-primary" data-confirm-daylio
-        onclick={() => { daylioSheet = false; toast('412 entries merged in.'); }}>
-        <span>Import 412 entries</span>
+    <div class="field">
+      <span class="field-label">Daylio CSV</span>
+      <button class="input" style="text-align:left;color:var(--text-2)" data-pick-daylio onclick={chooseDaylio}>
+        <Icon name="upload" size={18} />
+        <span style={daylioName ? 'color:var(--text)' : ''}>
+          {daylioName || 'Choose a Daylio .csv file…'}
+        </span>
       </button>
+    </div>
+    {#if daylioError}
+      <div class="notice notice-danger" style="margin-bottom:var(--space-4)" role="alert">
+        <Icon name="alert" size={20} />
+        <div class="notice-body">{daylioError}</div>
+      </div>
+    {/if}
+    {#if daylioPreview}
+      <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
+        <div class="value-row"><span>Entries to add</span><strong>{daylioPreview.entryCount}</strong></div>
+        <div class="value-row">
+          <span>Activities → tags</span>
+          <strong>{daylioPreview.matchedTagCount} matched · {daylioPreview.newTagCount} new in "Imported"</strong>
+        </div>
+        <div class="value-row"><span>Notes</span><strong>preserved</strong></div>
+        <div class="value-row"><span>Photos</span><strong>not in Daylio's CSV</strong></div>
+        <div class="hr"></div>
+        <p class="small" style="margin-bottom:var(--space-2)"><strong>Mood mapping</strong></p>
+        {#if daylioPreview.moodMappings.length > 0}
+          {#each daylioPreview.moodMappings as mapping (mapping.label)}
+            <div class="value-row">
+              <span>{mapping.label}</span>
+              <strong>{mapping.mood === null ? 'not mapped' : `${mapping.mood} · ${moodName(mapping.mood)}`}</strong>
+            </div>
+          {/each}
+        {:else}
+          <p class="muted small">No moods in this file.</p>
+        {/if}
+      </div>
+      <p class="muted small" style="margin-bottom:var(--space-4)">
+        This import is always a <strong>merge</strong>. Nothing you already logged is changed.
+      </p>
+    {/if}
+    <div class="stack-3">
+      {#if daylioPreview}
+        <button class="btn btn-primary" data-confirm-daylio onclick={importDaylio}
+          disabled={daylioPreview.unmappedMoodLabels.length > 0 || daylioImporting}>
+          <span>{daylioImporting ? 'Importing…' : `Import ${daylioPreview.entryCount} entries`}</span>
+        </button>
+      {/if}
       <button class="btn btn-ghost" onclick={() => (daylioSheet = false)}><span>{m.cancel()}</span></button>
     </div>
   </Sheet>

@@ -20,7 +20,7 @@ import type {
   MilestoneTemplateKey
 } from './builtins';
 
-type Message = () => string;
+type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
 const DIMENSION_NAME: Record<BuiltInDimensionKey, Message> = {
   euphoria_dysphoria: m.dim_euphoria_dysphoria,
@@ -64,7 +64,8 @@ const PRESET_NAME: Record<BuiltInPresetKey, Message> = {
 const TAG_GROUP_NAME: Record<BuiltInTagGroupKey, Message> = {
   gender: m.taggroup_gender,
   emotions: m.taggroup_emotions,
-  activities: m.taggroup_activities
+  activities: m.taggroup_activities,
+  imported: m.taggroup_imported
 };
 
 const TAG_LABEL: Record<BuiltInTagKey, Message> = {
@@ -115,4 +116,10 @@ export const dimensionHigh = (key: string) => lookup(DIMENSION_HIGH, key);
 export const presetName = (key: string) => lookup(PRESET_NAME, key);
 export const tagGroupName = (key: string) => lookup(TAG_GROUP_NAME, key);
 export const tagLabel = (key: string) => lookup(TAG_LABEL, key);
+/** All supported wordings of a built-in tag, so a Daylio export matches
+    the stored key whichever app language is active during import. */
+export const tagLabels = (key: string): string[] => {
+  const message = (TAG_LABEL as Record<string, Message | undefined>)[key];
+  return message ? [message({}, { locale: 'en' }), message({}, { locale: 'pl' })] : [key];
+};
 export const milestoneTemplateName = (key: string) => lookup(TEMPLATE_NAME, key);
