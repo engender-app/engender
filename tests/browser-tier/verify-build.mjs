@@ -6,13 +6,13 @@
    real Chromium through it with Playwright. Run with
    `npm run verify:build` after `npm run build`. */
 import { preview } from 'vite';
-import { chromium } from 'playwright-core';
+import { createReporter, launchChromium } from '../browser-harness.mjs';
 
 const server = await preview({ preview: { port: 0 } });
 const address = server.httpServer.address();
 const origin = `http://localhost:${address.port}`;
 
-const browser = await chromium.launch({ executablePath: '/usr/bin/chromium-browser', headless: true });
+const browser = await launchChromium();
 const page = await (await browser.newContext()).newPage();
 
 const allRequests = [];
@@ -22,12 +22,7 @@ page.on('request', (req) => {
   if (new URL(req.url()).origin !== origin) externalRequests.push(req.url());
 });
 
-let failures = 0;
-const ok = (n) => console.log('PASS', n);
-const fail = (n, detail) => {
-  failures++;
-  console.log('FAIL', n, '—', detail);
-};
+const { ok, fail, finish } = createReporter();
 
 try {
   await page.goto(origin, { waitUntil: 'networkidle' });
@@ -56,5 +51,5 @@ try {
 await browser.close();
 await server.close();
 
-console.log(failures ? `\n${failures} FAILURE(S)` : '\nBUILD VERIFICATION PASSES');
+const failures = finish('BUILD VERIFICATION PASSES');
 process.exit(failures ? 1 : 0);
