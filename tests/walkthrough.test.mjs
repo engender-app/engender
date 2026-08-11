@@ -16,7 +16,8 @@ import { createReporter, launchChromium } from './browser-harness.mjs';
 const { ok, fail, finish } = createReporter();
 
 const server = await preview({ preview: { port: 0 } });
-const BASE = `http://localhost:${server.httpServer.address().port}`;
+const address = server.httpServer.address();
+const BASE = `http://localhost:${address.port}`;
 
 const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 440, height: 940 } })).newPage();
