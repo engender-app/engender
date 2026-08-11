@@ -24,17 +24,21 @@ export function dimensionByKey(key: string): GenderDimension | undefined {
   return db.dimensions.find((d) => d.key === key);
 }
 
-/** Adding a custom dimension spawns a custom preset extending the active one. */
-export function addCustomDimension(dim: Omit<GenderDimension, 'builtIn'>) {
-  db.dimensions.push({ ...dim, builtIn: false });
+/** Adding a custom dimension spawns a custom preset extending the active
+    one. Both identities are minted here (ticket 07): the dimension's key
+    and the preset's id, never in a screen. */
+export function addCustomDimension(dim: Omit<GenderDimension, 'key' | 'builtIn' | 'hidden'>): GenderDimension {
+  const created: GenderDimension = { ...dim, key: crypto.randomUUID(), builtIn: false, hidden: false };
+  db.dimensions.push(created);
   const active = activePreset();
   const custom: GenderPreset = {
-    id: 'p-custom-' + Date.now(),
+    id: crypto.randomUUID(),
     name: 'Custom',
     builtIn: false,
-    dims: [...active.dims, dim.key],
+    dims: [...active.dims, created.key],
   };
   db.customPresets.push(custom);
   prefs.activePreset = custom.id;
   save();
+  return created;
 }

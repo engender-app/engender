@@ -14,6 +14,7 @@
 
 import { boot } from '../data/sqlite/boot';
 import { createWebSqlite } from '../data/sqlite/sqlocal-driver';
+import { openJournal, type Journal } from '../data/journal/journal';
 import { localStorageCache } from '../data/prefs/boot-cache';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
@@ -27,11 +28,16 @@ export const bootState = $state<{
   error: string | null;
   persistDenied: boolean;
   driver: SqliteDriver | null;
+  /** The one journal instance the UI reads (ADR-0017). Ticket 08's query
+      layer takes over as the only consumer; the driver stops being
+      exposed then. */
+  journal: Journal | null;
 }>({
   status: 'booting',
   error: null,
   persistDenied: false,
-  driver: null
+  driver: null,
+  journal: null
 });
 
 let started = false;
@@ -61,6 +67,12 @@ export function startBoot() {
       return;
     }
 
+    // Built-ins reconcile on every boot, by key - not seed-if-empty, so a
+    // journal can never end up short of one (ADR-0002; ticket 14's Replace
+    // calls the same operation before an import applies).
+    const journal = openJournal(result.driver);
+    await journal.reconcileBuiltIns();
+
     const preferences = await openPreferences(result.driver, cache);
     // The demo persona's preferences (Alice, onboarded, her active preset)
     // are what make the demo build land on a populated Home rather than on
@@ -76,6 +88,7 @@ export function startBoot() {
     bootState.status = 'ready';
     bootState.persistDenied = result.persistDenied;
     bootState.driver = result.driver;
+    bootState.journal = journal;
 
     // Raised here rather than from an $effect in +layout.svelte, where it
     // used to live: toast() pushes onto a $state array, and reading that

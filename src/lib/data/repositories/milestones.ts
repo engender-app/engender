@@ -1,9 +1,11 @@
-/* MilestoneRepository (PRD F6/F26). */
+/* MilestoneRepository (PRD F6/F26). Identity is minted here (ticket 07):
+   a screen hands over a milestone or a draft photo without an id and gets
+   the ids back on the stored rows, never a Date.now() of its own. */
 
 import { db, save } from '../db.svelte';
 import { todayEpochDay, calendarDuration, nextAnniversaryEpochDay } from '../epochDay';
 import { milestoneTemplateRows } from '../vocabulary/builtins';
-import type { Milestone, MilestoneTemplate } from '../types';
+import type { DraftPhoto, Milestone, MilestoneTemplate, Photo } from '../types';
 
 export interface MilestoneStatus {
   type: 'countdown' | 'today' | 'anniversary';
@@ -32,18 +34,35 @@ export function upcomingMilestones(): { m: Milestone; s: MilestoneStatus }[] {
     });
 }
 
-export function upsertMilestone(m: Partial<Milestone> & { name: string; epochDay: number }) {
+export interface MilestoneInput {
+  id?: string;
+  name: string;
+  epochDay: number;
+  templateKey?: string | null;
+  photo?: Photo | DraftPhoto | null;
+}
+
+function withPhotoId(photo: Photo | DraftPhoto | null): Photo | null {
+  if (!photo) return null;
+  return 'id' in photo ? photo : { ...photo, id: crypto.randomUUID() };
+}
+
+export function upsertMilestone(m: MilestoneInput) {
   if (m.id) {
     const i = db.milestones.findIndex((x) => x.id === m.id);
-    if (i >= 0) db.milestones[i] = { ...db.milestones[i], ...m } as Milestone;
+    if (i < 0) throw new Error(`unknown milestone: ${m.id}`);
+    // `photo` omitted keeps the stored photo; explicit null removes it.
+    const photo = m.photo === undefined ? db.milestones[i].photo : withPhotoId(m.photo);
+    db.milestones[i] = { ...db.milestones[i], ...m, id: m.id, photo };
   } else {
+    const photo = withPhotoId(m.photo ?? null);
     db.milestones.push({
-      kind: m.epochDay > todayEpochDay() ? 'countdown' : 'anniversary',
-      templateKey: null,
-      photo: null,
-      ...m,
-      id: 'm' + Date.now(),
-    } as Milestone);
+      id: crypto.randomUUID(),
+      name: m.name,
+      epochDay: m.epochDay,
+      templateKey: m.templateKey ?? null,
+      photo
+    });
   }
   save();
 }

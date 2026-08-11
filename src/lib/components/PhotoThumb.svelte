@@ -2,7 +2,9 @@
   import Icon from './Icon.svelte';
   import type { Photo } from '$lib/data/types';
 
-  let { photo, size = 72, label = '' }: { photo: Photo; size?: number; label?: string } = $props();
+  // Only the hue is read: drafts the editor has not saved yet have no id,
+  // and both render the same placeholder.
+  let { photo, size = 72, label = '' }: { photo: Pick<Photo, 'hue'>; size?: number; label?: string } = $props();
 </script>
 
 <!-- Demo stand-in for stored photos; the app renders the real file here. -->

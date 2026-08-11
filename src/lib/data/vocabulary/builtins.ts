@@ -95,7 +95,7 @@ export function milestoneTemplateRows(): MilestoneTemplate[] {
    milestone templates, which are not stored rows yet. */
 
 function builtInDimension(key: string, min: number, max: number): GenderDimension {
-  return { key, name: '', low: '', high: '', min, max, builtIn: true };
+  return { key, name: '', low: '', high: '', min, max, builtIn: true, hidden: false };
 }
 
 export function withBuiltInDimensions(existing: GenderDimension[]): GenderDimension[] {
