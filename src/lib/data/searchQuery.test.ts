@@ -19,6 +19,20 @@ test('folds before building, so query and index meet on the same letters', () =>
   assert.equal(ftsMatchExpression('Zażółć Gęślą'), '"zazolc"* AND "gesla"*');
 });
 
+test('a letter the fold does not cover stays inside its word', () => {
+  /* The fold covers Polish and the Western European forms it inherited, not
+     every letter anyone can type. What it leaves alone must still reach FTS5
+     as one token: FTS5's own tokenizer folds ü to u on both the index and the
+     query side, so "müller" finds it - but only if the query arrives as one
+     word. Splitting on the unfolded letter yields "m" AND "ller", which
+     misses the very word it was typed to find. */
+  assert.equal(ftsMatchExpression('Müller'), '"müller"*');
+  assert.equal(ftsMatchExpression('naïve idea'), '"naïve"* AND "idea"*');
+  assert.equal(ftsMatchExpression('Straße'), '"straße"*');
+  // Cyrillic and CJK are not folded either, and must not be shredded.
+  assert.equal(ftsMatchExpression('привет'), '"привет"*');
+});
+
 test('nothing to search for is null, not an empty expression', () => {
   // A bare '' reaches FTS5 as a syntax error, and '""*' matches nothing
   // while still costing a round trip to the worker.

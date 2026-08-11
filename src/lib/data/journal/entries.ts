@@ -37,12 +37,10 @@ export interface EntriesArea {
   /** Notes matching the query, unioned with the entries carrying any of
       `matchingTagIds`, newest first (ADR-0005, PRD F19).
 
-      Tag matching is the caller's half and is not optional to think about:
-      a built-in tag stores a key rather than a word, and resolving keys to
-      labels needs paraglide, which this tier cannot import (ADR-0016). Pass
-      `tagIdsMatching(query, tags)` from searchQuery.ts over the mirrored
-      vocabulary; pass `[]` only to mean "notes alone". */
-  searchEntries(query: string, matchingTagIds: readonly string[]): Promise<Entry[]>;
+      Matching labels to ids is the caller's half, for the reason
+      searchQuery.ts sets out: pass `tagIdsMatching(query, tags)` over the
+      mirrored vocabulary, or `[]` to mean "notes alone". */
+  searchEntries(query: string, matchingTagIds: string[]): Promise<Entry[]>;
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
@@ -168,14 +166,17 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       }
 
       if (matchingTagIds.length > 0) {
-        const ph = matchingTagIds.map(() => '?').join(', ');
+        // COALESCE(key, uuid) is the domain id of a tag: a built-in has the
+        // key, a custom row has the uuid (ADR-0002), which is the same rule
+        // domainIdOf() applies when reading one back out.
+        const placeholders = matchingTagIds.map(() => '?').join(', ');
         clauses.push(
           `e.id IN (
              SELECT et.entry_id FROM entry_tag et JOIN tag t ON t.id = et.tag_id
-             WHERE t.key IN (${ph}) OR t.uuid IN (${ph})
+             WHERE COALESCE(t.key, t.uuid) IN (${placeholders})
            )`
         );
-        params.push(...matchingTagIds, ...matchingTagIds);
+        params.push(...matchingTagIds);
       }
 
       if (clauses.length === 0) return [];

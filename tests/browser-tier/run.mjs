@@ -108,6 +108,12 @@ try {
   eq('typing the accented form folds the same way', r.folded.accentedInput, [r.ids.bed]);
   eq('a matched tag finds the entry carrying it', r.tagOnly, [r.ids.tagged]);
 
+  // A letter foldText does not cover has to stay one token, or the word it
+  // sits in stops matching itself.
+  eq("'Müller' finds the note it was typed from", r.unfolded.asTyped, [r.ids.muller]);
+  eq("'muller' finds it too, unicode61 folding ü on both sides", r.unfolded.asAscii, [r.ids.muller]);
+  eq('the fold still reaches ł in that same note', r.unfolded.polishInSameNote, [r.ids.muller]);
+
   eq('editing a note leaves none of the old text in the index', r.afterEdit.old, []);
   eq('editing a note indexes the new text', r.afterEdit.new, [r.ids.bed]);
   eq('a deleted entry leaves the index', r.afterDelete, []);

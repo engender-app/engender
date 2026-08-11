@@ -8,45 +8,56 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './test-support.ts';
 
-/** Notes land on distinct days so newest-first is unambiguous. */
+/** Notes land on distinct days so newest-first is unambiguous. `found` is the
+    note text of the hits, which is what most of these tests assert on. */
 async function journalWithNotes(notes: string[]) {
   const { journal, db } = await journalWithBuiltIns();
   const ids: number[] = [];
   for (const [i, note] of notes.entries()) {
     ids.push(await journal.entries.upsertEntry({ epochDay: 100 + i, note }));
   }
-  return { journal, db, ids };
+  const found = async (query: string) => (await journal.entries.searchEntries(query, [])).map((e) => e.note);
+  return { journal, db, ids, found };
 }
 
 test('a folded query finds text the fold reaches but FTS5 alone cannot', async () => {
-  const { journal } = await journalWithNotes(['spałem w łóżko', 'zażółć gęślą jaźń', 'ćwiczenia rano']);
+  const { found } = await journalWithNotes(['spałem w łóżko', 'zażółć gęślą jaźń', 'ćwiczenia rano']);
 
-  const notes = async (q: string) => (await journal.entries.searchEntries(q, [])).map((e) => e.note);
-
-  assert.deepEqual(await notes('lozko'), ['spałem w łóżko']);
-  assert.deepEqual(await notes('zazolc'), ['zażółć gęślą jaźń']);
-  assert.deepEqual(await notes('cwiczenia'), ['ćwiczenia rano']);
+  assert.deepEqual(await found('lozko'), ['spałem w łóżko']);
+  assert.deepEqual(await found('zazolc'), ['zażółć gęślą jaźń']);
+  assert.deepEqual(await found('cwiczenia'), ['ćwiczenia rano']);
   // Symmetric: typing the accented form finds it too, because both sides fold.
-  assert.deepEqual(await notes('ŁÓŻKO'), ['spałem w łóżko']);
-  assert.deepEqual(await notes('gęślą'), ['zażółć gęślą jaźń']);
+  assert.deepEqual(await found('ŁÓŻKO'), ['spałem w łóżko']);
+  assert.deepEqual(await found('gęślą'), ['zażółć gęślą jaźń']);
+});
+
+test('a word the fold does not cover is still found, by FTS5 folding it', async () => {
+  /* The fold and FTS5's tokenizer each cover letters the other does not, and
+     the query has to survive both. ü is not in the fold, so it reaches the
+     index intact and unicode61 folds it to u there; the query has to arrive
+     as one token for the same thing to happen on its side. */
+  const { found } = await journalWithNotes(['Müller kupił bilet', 'naïve idea']);
+
+  assert.deepEqual(await found('Müller'), ['Müller kupił bilet']);
+  assert.deepEqual(await found('muller'), ['Müller kupił bilet']);
+  assert.deepEqual(await found('naïve'), ['naïve idea']);
+  assert.deepEqual(await found('naive'), ['naïve idea']);
+  // And the fold still does the half FTS5 cannot, in the same note.
+  assert.deepEqual(await found('kupil'), ['Müller kupił bilet']);
 });
 
 test('a partial word finds the entry it starts', async () => {
-  const { journal } = await journalWithNotes(['Coffee with Marta', 'ćwiczenia rano']);
+  const { found } = await journalWithNotes(['Coffee with Marta', 'ćwiczenia rano']);
 
-  const notes = async (q: string) => (await journal.entries.searchEntries(q, [])).map((e) => e.note);
-
-  assert.deepEqual(await notes('cof'), ['Coffee with Marta']);
-  assert.deepEqual(await notes('cwicz'), ['ćwiczenia rano']);
-  assert.deepEqual(await notes('coffee mar'), ['Coffee with Marta']);
+  assert.deepEqual(await found('cof'), ['Coffee with Marta']);
+  assert.deepEqual(await found('cwicz'), ['ćwiczenia rano']);
+  assert.deepEqual(await found('coffee mar'), ['Coffee with Marta']);
 });
 
 test('every word has to appear somewhere in the note', async () => {
-  const { journal } = await journalWithNotes(['Coffee with Marta', 'Coffee alone']);
+  const { found } = await journalWithNotes(['Coffee with Marta', 'Coffee alone']);
 
-  assert.deepEqual((await journal.entries.searchEntries('coffee marta', [])).map((e) => e.note), [
-    'Coffee with Marta'
-  ]);
+  assert.deepEqual(await found('coffee marta'), ['Coffee with Marta']);
 });
 
 test('results come back newest first, by day then by time within the day', async () => {
@@ -63,29 +74,24 @@ test('results come back newest first, by day then by time within the day', async
 });
 
 test('a query with nothing searchable in it returns nothing', async () => {
-  const { journal } = await journalWithNotes(['Coffee with Marta']);
+  const { found } = await journalWithNotes(['Coffee with Marta']);
 
   for (const q of ['', '   ', '...', '*']) {
-    assert.deepEqual(await journal.entries.searchEntries(q, []), [], JSON.stringify(q));
+    assert.deepEqual(await found(q), [], JSON.stringify(q));
   }
 });
 
 test('typed FTS5 syntax is searched for as words rather than obeyed or thrown', async () => {
-  const { journal } = await journalWithNotes(['Coffee with Marta', 'the OR keyword']);
-
-  const notes = async (q: string) => (await journal.entries.searchEntries(q, [])).map((e) => e.note);
+  const { found } = await journalWithNotes(['Coffee with Marta', 'the OR keyword']);
 
   // Were the operator honoured, this would return both notes.
-  assert.deepEqual(await notes('coffee OR keyword'), []);
-  assert.deepEqual(await notes('or keyword'), ['the OR keyword']);
-  assert.deepEqual(await notes('"'), []);
-  assert.deepEqual(await notes('marta*'), ['Coffee with Marta']);
+  assert.deepEqual(await found('coffee OR keyword'), []);
+  assert.deepEqual(await found('or keyword'), ['the OR keyword']);
+  assert.deepEqual(await found('"'), []);
+  assert.deepEqual(await found('marta*'), ['Coffee with Marta']);
 });
 
 test('entries carrying a matched tag come back alongside the note matches', async () => {
-  // The caller resolves labels to ids above this seam (ADR-0016: a built-in
-  // tag stores a key, and turning keys into words needs paraglide, which the
-  // journal cannot import).
   const { journal } = await journalWithBuiltIns();
   const tagged = await journal.entries.upsertEntry({ epochDay: 100, tags: ['e-happy'] });
   const noted = await journal.entries.upsertEntry({ epochDay: 101, note: 'a happy note' });
