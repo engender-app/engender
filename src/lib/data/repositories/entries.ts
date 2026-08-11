@@ -4,6 +4,7 @@
 
 import { db, save, newId } from '../db.svelte';
 import { todayEpochDay } from '../epochDay';
+import { foldText as fold } from '../fold';
 import type { Entry } from '../types';
 import { tagById } from './tags';
 
@@ -60,12 +61,6 @@ export function streakDays(): number {
   }
   return n;
 }
-
-const fold = (s: string) =>
-  s.toLowerCase()
-    .replace(/[ąàáâä]/g, 'a').replace(/[ćç]/g, 'c').replace(/[ęèéêë]/g, 'e')
-    .replace(/[łl]/g, 'l').replace(/[ńñ]/g, 'n').replace(/[óòôö]/g, 'o')
-    .replace(/[śš]/g, 's').replace(/[żźž]/g, 'z');
 
 /** FTS5 stand-in: prefix-friendly, diacritics-insensitive note + tag match.
 
