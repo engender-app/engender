@@ -33,7 +33,7 @@ that reads like a bug rather than like a damaged file.
 A reference the archive cannot resolve - an entry naming a gender dimension or a tag
 the same archive does not carry - fails the import instead of being dropped. The
 alternative is silent partial data loss in the middle of a restore, which is the one
-outcome a backup exists to prevent. It also cannot happen to a file this app wrote:
+outcome a restore exists to prevent. It also cannot happen to a file this app wrote:
 an export reads every table at once.
 
 Replace and Merge each live in `journal/restore.ts` rather than beside the snapshot

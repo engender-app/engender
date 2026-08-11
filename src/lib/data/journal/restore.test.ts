@@ -42,6 +42,9 @@ async function populated() {
   const preset = await journal.dimensions.addPreset({ name: 'Mine', dims: [voice.key, 'femininity'] });
   const group = await journal.tags.addGroup('Appointments');
   const tag = await journal.tags.addTag(group.key, 'endo');
+  // A custom tag in a built-in group, which is the case a merge has to place
+  // among tags the importing device already has.
+  const sharedGroupTag = await journal.tags.addTag('emotions', 'wired');
   await journal.tags.setTagHidden('a-work', true);
   await journal.tags.renameTag('a-therapy', 'therapy session');
   await journal.tags.setGroupEnabled('activities', false);
@@ -77,7 +80,7 @@ async function populated() {
     enabled: true
   });
 
-  return { ...made, voice, preset, group, tag, photo, milestone, milestonePhoto };
+  return { ...made, voice, preset, group, tag, sharedGroupTag, photo, milestone, milestonePhoto };
 }
 
 /** What an export hands an import: the rows, and the photo files as a
@@ -219,6 +222,36 @@ test('merge does not duplicate built-ins either, however they arrived', async ()
   assert.equal(await rowCount(target.db, 'preset_dimension'), 2 + 5 + 2);
 });
 
+test('a built-in preset the archive does not carry keeps the dimensions it was reconciled with', async () => {
+  const source = await populated();
+  const target = await device();
+
+  // An archive written by a build that did not have p-nb yet. Emptying
+  // preset_dimension wholesale left it offering no scales at all, for good.
+  const contents = await exported(source.journal);
+  contents.journal.presets = contents.journal.presets.filter((p) => p.id !== 'p-nb');
+
+  await target.journal.archive.replace(contents);
+
+  const presets = await target.journal.dimensions.getPresets();
+  assert.equal(presets.find((p) => p.id === 'p-nb')?.dims.length, 5);
+  assert.deepEqual(presets.find((p) => p.id === 'p-btw')?.dims, ['euphoria_dysphoria', 'femininity']);
+});
+
+test('a tag merged into a group this device already has lands after the tags in it', async () => {
+  const source = await populated();
+  const target = await device();
+  const mine = await target.journal.tags.addTag('emotions', 'restless');
+
+  await target.journal.archive.merge(await exported(source.journal));
+
+  /* The archive holds its own tag at a position this device's tag already
+     occupies, so it goes after it rather than tying with it - which is where
+     adding a tag by hand puts one (tags.ts). */
+  const emotions = (await target.journal.tags.getTagGroups()).find((g) => g.key === 'emotions')!;
+  assert.deepEqual(emotions.tags.slice(-2).map((t) => t.label), ['restless', 'wired']);
+});
+
 test('replace applies the state the archive put on built-in rows; merge leaves it alone', async () => {
   const source = await populated();
   const replaced = await device();
@@ -308,6 +341,26 @@ test('a failure after the files are written and before the commit leaves the jou
   // The archive's files did land, and stay as orphans for the boot sweep -
   // which is the whole cost of ordering it this way.
   assert.deepEqual(await target.files.read(`${source.photo}.jpg`), bytes('full-photo'));
+});
+
+test('a failed import into a journal that has never been seeded leaves it empty, not half-seeded', async () => {
+  const source = await populated();
+  const db = await migratedDb();
+  const target = openJournal(db, fakeFileStore());
+
+  const contents = await exported(source.journal);
+  contents.journal.reminders = [{ ...contents.journal.reminders[0], type: 'nonsense' }];
+
+  await assert.rejects(target.archive.replace(contents));
+
+  // Seeding is inside the same transaction as the swap, so a rollback takes
+  // the built-ins with it: "exactly as it was" and not "as the next boot
+  // would have left it".
+  assert.equal(await rowCount(db, 'gender_dimension'), 0);
+  assert.equal(await rowCount(db, 'gender_preset'), 0);
+  assert.equal(await rowCount(db, 'preset_dimension'), 0);
+  assert.equal(await rowCount(db, 'tag_group'), 0);
+  assert.equal(await rowCount(db, 'tag'), 0);
 });
 
 test('an entry naming a gender dimension the archive does not carry fails the whole import', async () => {
