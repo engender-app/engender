@@ -511,6 +511,9 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   color: rgb(255 255 255 / 0.85);
   position: relative; overflow: hidden; flex-shrink: 0;
 }
+/* The gradient stays underneath as the loading state, so a thumbnail
+   arriving does not reflow the tile it lands in. */
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .photo-label {
   position: absolute; bottom: 0; left: 0; right: 0;
   font-size: 10px; text-align: center; padding: 2px;

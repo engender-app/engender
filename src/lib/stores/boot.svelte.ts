@@ -15,6 +15,9 @@
 import { boot } from '../data/sqlite/boot';
 import { createWebSqlite } from '../data/sqlite/sqlocal-driver';
 import { openJournal, type Journal } from '../data/journal/journal';
+import { sweepOrphanPhotos } from '../data/journal/photos';
+import { opfsPhotoFiles } from '../data/photos/opfs-file-store';
+import { setPhotoFiles } from './photoFiles';
 import { localStorageCache } from '../data/prefs/boot-cache';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
@@ -55,11 +58,20 @@ export function startBoot() {
   // first-save moment once ticket 07 adds one, rather than adding a
   // second call there.
   const { driver, fileOps, requestPersistentStorage } = createWebSqlite('gender-diary.sqlite3');
+
+  // Set before boot() rather than after, so the first screen to render a
+  // photo already has somewhere to read it from.
+  const photoFiles = opfsPhotoFiles();
+  setPhotoFiles(photoFiles);
+
   boot({
     createDriver: () => driver,
     fileOps,
     requestPersistentStorage,
-    applyBootPreferences: () => applyCachedBootPreferences(cache.read())
+    applyBootPreferences: () => applyCachedBootPreferences(cache.read()),
+    // Step 4 of the sequence: after the database is open and migrated, so
+    // the rows it compares against are the current ones (ADR-0008).
+    sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles)
   }).then(async (result) => {
     if (result.phase === 'error') {
       bootState.status = 'error';
@@ -70,7 +82,7 @@ export function startBoot() {
     // Built-ins reconcile on every boot, by key - not seed-if-empty, so a
     // journal can never end up short of one (ADR-0002; ticket 14's Replace
     // calls the same operation before an import applies).
-    const journal = openJournal(result.driver);
+    const journal = openJournal(result.driver, photoFiles);
     await journal.reconcileBuiltIns();
 
     const preferences = await openPreferences(result.driver, cache);

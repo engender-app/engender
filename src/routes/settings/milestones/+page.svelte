@@ -121,8 +121,9 @@
               </button>
             </div>
           {:else}
+            <!-- Placeholder until ticket 08, like EntryEditor's. -->
             <button class="photo-add" aria-label={m.add_photo()}
-              onclick={() => (editor!.photo = { hue: Math.floor(Math.random() * 360), label: 'Photo' })}>
+              onclick={() => (editor!.photo = { fileName: null })}>
               <Icon name="camera" size={20} /><span>{m.add_photo()}</span>
             </button>
           {/if}
