@@ -1,6 +1,6 @@
 /* The dimensions area (PRD F3). Dimensions hide, never delete: the
    ON DELETE CASCADE on entry_dimension_value would take every value ever
-   logged on the axis, so no delete operation exists here at all. A true
+   logged on it, so no delete operation exists here at all. A true
    delete, if ever offered, is a separate explicitly-worded action that
    states how many values it destroys.
 

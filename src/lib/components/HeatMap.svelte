@@ -5,7 +5,7 @@
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
-  import { heatLevel } from '$lib/data/metricScale';
+  import { heatLevel } from '$lib/data/metricRange';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let { year, month }: { year: number; month: number /* 0-based */ } = $props();
@@ -16,7 +16,7 @@
     const metric = metricKey(prefs);
     // The day's value stays native; only the swatch it picks is normalized,
     // so a 0-10 dimension and mood shade comparably (ADR-0012).
-    const scale = vocabulary.scaleOf(metric);
+    const range = vocabulary.rangeOf(metric);
     const first = new Date(Date.UTC(year, month, 1));
     const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
     const startDow = (first.getUTCDay() + 6) % 7; // Monday-first
@@ -31,7 +31,7 @@
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const epochDay = epochDayFromLocalDate(new Date(year, month, d));
-      const level = heatLevel(dayMetricValue(epochDay, metric), scale);
+      const level = heatLevel(dayMetricValue(epochDay, metric), range);
       const count = db.entries.filter((e) => e.epochDay === epochDay).length;
       out.push({
         day: d,

@@ -5,7 +5,7 @@
    Native units is the rule this module is built around. Mood comes back on
    1 to 5 because that is what was logged; a dimension comes back within its
    own range. Nothing here rescales anything to make two metrics look alike -
-   that job belongs to metricScale.ts, whose output drives colour and is
+   that job belongs to metricRange.ts, whose output drives colour and is
    never shown as a number. The demo store mixed the two and ended up
    answering "the metric's average" with mood, with mood x 20, and with mood
    x 20 again from three different functions.
@@ -17,7 +17,7 @@
    Nothing is stored. A recap is recomputed from entries, tags, milestones
    and dimension values every time it is opened (ADR-0010). */
 
-import { normalize } from '../metricScale';
+import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
 
 export interface DayAverage {
@@ -237,8 +237,8 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
       /* First and last value per dimension, ordered the way the timeline
          orders entries. A hidden dimension is left out: this is the app
-         choosing an axis to show, and choosing one the user has put away
-         would be volunteering it back. */
+         choosing a dimension to show, and choosing one the user has put
+         away would be volunteering it back. */
       const changes = await driver.query<{
         key: string;
         min_value: number;
@@ -264,8 +264,8 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       );
 
       /* Ranked by how far the value moved through its own range, because a
-         20-point move on a 0-100 axis and a 3-point move on a 0-10 one are
-         not comparable as numbers - and then reported in native units,
+         20-point move on a 0-100 dimension and a 3-point move on a 0-10
+         one are not comparable as numbers - and then reported in native units,
          which is the only form anyone is shown (ADR-0012). */
       const biggestDimensionChange =
         changes

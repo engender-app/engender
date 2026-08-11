@@ -7,7 +7,7 @@
    Dimension values write per dimension, never as a whole object: a value
    belongs to the entry, not to the preset that happened to be active when
    it was logged, so editing under a narrower preset must leave the other
-   axes' rows alone. Tags, by contrast, arrive as the whole set the editor
+   dimensions' rows alone. Tags, by contrast, arrive as the whole set the editor
    showed, and replace.
 
    Photos become writable in ticket 11; their rows are already cleaned up

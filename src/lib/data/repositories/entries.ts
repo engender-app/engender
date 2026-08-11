@@ -49,7 +49,7 @@ export function upsertEntry(entry: EntryInput): number {
     if (i < 0) throw new Error(`unknown entry: ${entry.id}`);
     // Dimension values merge per dimension, never as a whole object:
     // replacing `dims` wholesale is how editing an old entry under a
-    // narrower preset silently dropped the axes the preset lacks.
+    // narrower preset silently dropped the dimensions the preset lacks.
     const next: Entry = {
       ...db.entries[i],
       ...entry,
@@ -90,7 +90,7 @@ export function quickLog(mood: number): number {
     to 5, a dimension within its own range (ADR-0012). It used to return
     mood x 20 while seriesForRange returned raw mood, so "the metric" meant
     two different numbers depending on which function was asked. Turning
-    this into colour is metricScale.ts's job, not this one's. */
+    this into colour is metricRange.ts's job, not this one's. */
 export function dayMetricValue(epochDay: number, metric: string): number | null {
   const vals = entriesForDay(epochDay)
     .map((e) => (metric === 'mood' ? e.mood : (e.dims?.[metric] ?? null)))

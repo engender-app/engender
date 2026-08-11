@@ -2,7 +2,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { dayMetricValue } from '$lib/data/repositories/entries';
   import { fmtDay } from '$lib/data/dates';
-  import { heatLevel } from '$lib/data/metricScale';
+  import { heatLevel } from '$lib/data/metricRange';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let { metric }: { metric: string } = $props();
@@ -11,12 +11,12 @@
     const today = todayEpochDay();
     // Native value in, swatch out: the strip and the calendar shade the
     // same day the same way whatever the metric's range is (ADR-0012).
-    const scale = vocabulary.scaleOf(metric);
+    const range = vocabulary.rangeOf(metric);
     return Array.from({ length: 7 }, (_, idx) => {
       const day = today - (6 - idx);
       return {
         day,
-        level: heatLevel(dayMetricValue(day, metric), scale),
+        level: heatLevel(dayMetricValue(day, metric), range),
         isToday: day === today,
       };
     });

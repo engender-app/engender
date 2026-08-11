@@ -4,7 +4,7 @@
   import { db } from '$lib/data/db.svelte';
   import { fmtMonthName } from '$lib/data/dates';
   import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
-  import { normalize } from '$lib/data/metricScale';
+  import { normalize } from '$lib/data/metricRange';
   import Icon from '$lib/components/Icon.svelte';
   import PrideAurora from '$lib/components/PrideAurora.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
@@ -37,18 +37,19 @@
       bestStreak = Math.max(bestStreak, run);
     });
 
-    /* Every active scale, not a hardcoded one, ranked by how far it moved
-       through its own range and reported in native units (ADR-0012): a
-       20-point move on a 0-100 axis and a 3-point move on a 0-10 one are
-       not comparable as numbers. */
+    /* Every active dimension, not a hardcoded one, ranked by how far it
+       moved through its own range and reported in native units (ADR-0012):
+       a 20-point move on a 0-100 dimension and a 3-point move on a 0-10 one
+       are not comparable as numbers. The wording on screen says "scale",
+       which is what the interface calls a gender dimension. */
     const inOrder = [...entries].sort((a, b) => a.epochDay - b.epochDay || a.timestamp - b.timestamp);
     const dimChange = vocabulary.activeDimensions
       .map((d) => {
         const vals = inOrder.map((e) => e.dims?.[d.key]).filter((v): v is number => v != null);
         if (vals.length < 2) return null;
         const [from, to] = [vals[0], vals[vals.length - 1]];
-        const scale = { min: d.min, max: d.max };
-        return { name: d.name, change: to - from, span: Math.abs(normalize(to, scale) - normalize(from, scale)) };
+        const range = { min: d.min, max: d.max };
+        return { name: d.name, change: to - from, span: Math.abs(normalize(to, range) - normalize(from, range)) };
       })
       .filter((c) => c != null)
       .sort((a, b) => b.span - a.span)[0];

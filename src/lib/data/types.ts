@@ -41,7 +41,7 @@ export interface GenderDimension {
   builtIn: boolean;
   /** Hidden dimensions leave presets, the editor and the charts; their
       logged values survive (CONTEXT: "Hidden"). Dimensions hide, never
-      delete - a delete would take every value ever logged on the axis. */
+      delete - a delete would take every value ever logged on it. */
   hidden: boolean;
 }
 
