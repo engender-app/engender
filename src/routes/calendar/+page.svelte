@@ -1,11 +1,11 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
   import { fmtMonthYear } from '$lib/data/dates';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const now = new Date();
   let year = $state(now.getFullYear());
@@ -14,7 +14,7 @@
   let metricName = $derived(
     prefs.metricKind === 'mood'
       ? m.mood()
-      : (db.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
+      : (vocabulary.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
   );
   let monthLabel = $derived(fmtMonthYear(year, month));
 

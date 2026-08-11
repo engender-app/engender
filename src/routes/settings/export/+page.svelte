@@ -9,8 +9,9 @@
   import Switch from '$lib/components/Switch.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { isAndroid } from '$lib/platform';
 
-  let android = $derived(ui.frame === 'phone');
+  let android = $derived(isAndroid());
   let backupAge = $derived(
     prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(prefs.lastBackupAt) : null
   );

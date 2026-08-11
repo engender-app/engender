@@ -2,7 +2,6 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { entriesForDay, dayMetricValue } from '$lib/data/repositories/entries';
@@ -11,12 +10,13 @@
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let epochDay = $derived(page.params.day === 'today' ? todayEpochDay() : Number(page.params.day));
   let entries = $derived(entriesForDay(epochDay));
   let metric = $derived(metricKey(prefs));
   let metricName = $derived(
-    metric === 'mood' ? m.mood() : (db.dimensions.find((d) => d.key === metric)?.name ?? m.mood())
+    metric === 'mood' ? m.mood() : (vocabulary.dimensions.find((d) => d.key === metric)?.name ?? m.mood())
   );
   let avg = $derived(dayMetricValue(epochDay, metric));
   let isToday = $derived(epochDay === todayEpochDay());

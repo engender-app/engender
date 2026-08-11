@@ -5,10 +5,10 @@
   import { fmtMonthName } from '$lib/data/dates';
   import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
   import { streakDays } from '$lib/data/repositories/entries';
-  import { tagById } from '$lib/data/repositories/tags';
   import Icon from '$lib/components/Icon.svelte';
   import PrideAurora from '$lib/components/PrideAurora.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let step = $state(0);
 
@@ -23,7 +23,7 @@
     const topTags = Object.entries(tagCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
-      .map(([id, n]) => ({ label: tagById(id)?.label ?? id, n }));
+      .map(([id, n]) => ({ label: vocabulary.tag(id)?.label ?? id, n }));
     const milestonesReached = db.milestones.filter((mi) => mi.epochDay >= start && mi.epochDay <= end);
     const dimVals = entries.map((e) => e.dims?.euphoria_dysphoria).filter((v): v is number => v != null);
     const dimChange = dimVals.length > 1 ? Math.round(dimVals[dimVals.length - 1] - dimVals[0]) : null;

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
-  import { milestoneStatus, upsertMilestone, deleteMilestone, randomTemplates } from '$lib/data/repositories/milestones';
+  import { milestoneStatus, upsertMilestone, deleteMilestone } from '$lib/data/repositories/milestones';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Milestone, MilestoneTemplate } from '$lib/data/types';
@@ -9,8 +9,9 @@
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
-  let shown = $state(randomTemplates(3));
+  let shown = $state(vocabulary.randomTemplates(3));
   let editor = $state<{ id?: string; name: string; date: string; photo: Milestone['photo']; templateKey: string | null } | null>(null);
   let deleteTarget = $state<Milestone | null>(null);
 
@@ -55,7 +56,7 @@
   <div class="card editor-section">
     <div class="spread" style="margin-bottom:var(--space-3)">
       <h2 class="editor-heading">Add a milestone</h2>
-      <button class="icon-btn" data-shuffle aria-label="Shuffle templates" onclick={() => (shown = randomTemplates(3))}>
+      <button class="icon-btn" data-shuffle aria-label="Shuffle templates" onclick={() => (shown = vocabulary.randomTemplates(3))}>
         <Icon name="shuffle" size={20} />
       </button>
     </div>

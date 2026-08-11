@@ -2,7 +2,7 @@
 
 import { db, save } from '../db.svelte';
 import { todayEpochDay, calendarDuration, nextAnniversaryEpochDay } from '../epochDay';
-import { milestoneTemplates } from '../demo/seed';
+import { milestoneTemplateRows } from '../vocabulary/builtins';
 import type { Milestone, MilestoneTemplate } from '../types';
 
 export interface MilestoneStatus {
@@ -53,11 +53,13 @@ export function deleteMilestone(id: string) {
   save();
 }
 
+/** Keys only, names resolved at display time (ticket 05) - read these
+    through vocabulary.ts, not straight from here. */
+export const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
+
 export function randomTemplates(n = 3): MilestoneTemplate[] {
   const pool = [...milestoneTemplates];
   const out: MilestoneTemplate[] = [];
   while (out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   return out;
 }
-
-export { milestoneTemplates };

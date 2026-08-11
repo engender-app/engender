@@ -18,11 +18,9 @@ import { localStorageCache } from '../data/prefs/boot-cache';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
 import { toast } from './toasts.svelte';
-import { demoPreferences } from '../data/demo/seed';
+import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
 import type { SqliteDriver } from '../data/sqlite/driver';
-
-const DEMO = import.meta.env.DEV || import.meta.env.VITE_DEMO === '1';
 
 export const bootState = $state<{
   status: 'booting' | 'ready' | 'error';
@@ -68,7 +66,7 @@ export function startBoot() {
     // are what make the demo build land on a populated Home rather than on
     // onboarding. Ticket 05 moves this behind the dev-only persona module
     // along with the rest of the persona.
-    if (DEMO && preferences.openedEmpty()) {
+    if (__DEMO__ && preferences.openedEmpty()) {
       for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
         await preferences.set(key, value);
       }

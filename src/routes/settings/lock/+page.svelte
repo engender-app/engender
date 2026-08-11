@@ -2,15 +2,15 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PrideAurora from '$lib/components/PrideAurora.svelte';
+  import { isAndroid } from '$lib/platform';
 
   let pin = $state('');
   let setup = $derived(page.url.searchParams.get('setup') === '1');
-  let android = $derived(ui.frame === 'phone');
+  let android = $derived(isAndroid());
 
   function unlock() {
     pin = '';

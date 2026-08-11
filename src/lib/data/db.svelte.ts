@@ -4,15 +4,22 @@
 
    Preferences left here in ticket 06 - they are in SQLite now, reached
    through prefs/store.svelte.ts. Everything below is entry data, which
-   ticket 07 takes. */
+   ticket 07 takes.
 
-import { demoPreferences, seed } from './demo/seed';
-import { prefs } from './prefs/store.svelte';
-import { PREFERENCE_DEFAULTS } from './prefs/catalogue';
+   The built-in vocabulary is reconciled into whatever loads, every time,
+   rather than seeded only into an empty store (ticket 05). What a fresh
+   store starts as is the only thing the demo flag decides. */
+
+import { emptyDb, seedVocabulary } from './firstRun';
+import { personaDb } from './demo/persona';
 import type { DB } from './types';
 
 const KEY = 'gender-diary-demo-v1';
 const browser = typeof localStorage !== 'undefined';
+
+function initial(): DB {
+  return __DEMO__ ? personaDb() : emptyDb();
+}
 
 function load(): DB {
   if (browser) {
@@ -20,13 +27,13 @@ function load(): DB {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const s = JSON.parse(raw) as DB;
-        if (s.version === 1) return s;
+        if (s.version === 1) return seedVocabulary(s);
       }
     } catch {
       /* corrupted → reseed */
     }
   }
-  return seed();
+  return seedVocabulary(initial());
 }
 
 export const db = $state<DB>(load());
@@ -41,7 +48,9 @@ export function save() {
   }
 }
 
-function replace(next: DB) {
+/** Swaps the whole store at once. Only the demo controls need this today
+    (demo/controls.ts); ticket 14's Replace import is the real caller. */
+export function replaceAll(next: DB) {
   db.version = next.version;
   db.dimensions = next.dimensions;
   db.customPresets = next.customPresets;
@@ -51,29 +60,6 @@ function replace(next: DB) {
   db.reminders = next.reminders;
   db.labResults = next.labResults;
   save();
-}
-
-export function resetDemo() {
-  if (browser) localStorage.removeItem(KEY);
-  // Defaults first, then the persona: without the defaults a palette or a
-  // disguise toggle a reviewer flipped would survive "Reset demo state",
-  // which is not what reset means.
-  Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
-  replace(seed());
-}
-
-/** True first-run state, used by the demo bar's "Onboarding (first run)".
-    Only the preferences onboarding itself decides are reset, so a reviewer
-    who picked a theme or palette keeps it across the jump. */
-export function markFirstRun() {
-  const s = seed();
-  s.entries = [];
-  s.milestones = [];
-  s.labResults = [];
-  prefs.onboarded = PREFERENCE_DEFAULTS.onboarded;
-  prefs.name = PREFERENCE_DEFAULTS.name;
-  prefs.lastBackupAt = PREFERENCE_DEFAULTS.lastBackupAt;
-  replace(s);
 }
 
 let nextId = 100000;
