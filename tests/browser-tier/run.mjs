@@ -9,6 +9,7 @@
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -292,6 +293,59 @@ try {
   else fail('picked bytes go straight into normalize()', JSON.stringify(picked.normalizedSizes));
 } catch (e) {
   fail('ticket 11 browser tier', e.message ?? String(e));
+}
+
+// --- Ticket 13: the archive, packed on the real platform and downloaded --
+try {
+  const r = await load('/archive.html', 'data-archive-probe-ready', '__archiveProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  if (r.header.formatVersion === 1 && r.spansChunks)
+    ok(`a real journal packs into ${r.header.totalChunks} chunks of ${r.header.chunkSize} bytes (${r.archiveLength} bytes, ${r.packMs}ms including the KDF)`);
+  else fail('a real journal packs into several chunks', JSON.stringify(r.header));
+
+  const manifest = JSON.stringify(r.manifest);
+  if (manifest === JSON.stringify(r.unpacked) && r.photoMatches)
+    ok('every photo and thumbnail comes back out of the archive, byte for byte, through the browser\'s own WebCrypto');
+  else fail('every photo and thumbnail comes back out of the archive', `${manifest} in, ${JSON.stringify(r.unpacked)} out`);
+
+  if (r.entry?.note === 'zażółć gęślą jaźń' && r.entry.dims?.femininity === 60 && r.entry.tags?.includes('e-happy'))
+    ok('the entry round-trips with its note, dimension values and tags');
+  else fail('the entry round-trips with its note, dimension values and tags', JSON.stringify(r.entry));
+
+  if (r.preferences?.name === 'Alicja' && r.preferences.theme === 'dark' && !('pinHash' in r.preferences) && !r.pinHashInPlaintext)
+    ok('portable preferences travel and the PIN hash appears nowhere in the file (ADR-0003)');
+  else fail('portable preferences travel and the PIN hash appears nowhere in the file', JSON.stringify(r.preferences));
+
+  if (r.wrongPassword?.name === 'DecryptionFailedError' && r.wrongPassword.message === 'wrong password')
+    ok('a wrong password fails with nothing but "wrong password"');
+  else fail('a wrong password fails with nothing but "wrong password"', JSON.stringify(r.wrongPassword));
+
+  // The archive really becomes a file: a click, a download, and bytes on
+  // disk that plain Node - which knows nothing about this app - can read
+  // the header of, which is the whole point of the header being plaintext.
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('#deliver')]);
+  const saved = await download.path();
+  const bytes = await readFile(saved);
+  const delivery = await page.evaluate(() => window.__deliveryResult);
+
+  if (download.suggestedFilename() === 'alicja-journal-' + new Date().toISOString().slice(0, 10) + '.ttbackup' && delivery.delivery === 'downloaded')
+    ok(`the archive downloads as ${download.suggestedFilename()}`);
+  else fail('the archive downloads under a dated name', `${download.suggestedFilename()}, ${JSON.stringify(delivery)}`);
+
+  const magic = bytes.subarray(0, 6).toString('latin1');
+  const headerJson = JSON.parse(bytes.subarray(12, 12 + bytes.readUInt32BE(8)).toString('utf8'));
+  if (bytes.length === r.archiveLength && magic === 'GDIARY' && bytes.readUInt16BE(6) === 1 && headerJson.totalChunks === r.header.totalChunks)
+    ok('the downloaded file is the archive, and its version, KDF parameters and salt read without a password');
+  else fail('the downloaded file is the archive with a readable plaintext header', `${bytes.length} bytes, magic ${magic}`);
+
+  /* Not covered here: the same file opening on Android. The Capacitor
+     shell does not exist yet, so the acceptance line about a round trip
+     between the two platforms is half-done - this is the web half, and
+     the Android half has to run against the shell when it lands. */
+  console.log('SKIP  an archive produced on web imports on Android: no Capacitor shell to run it against yet');
+} catch (e) {
+  fail('ticket 13 browser tier', e.message ?? String(e));
 }
 
 await browser.close();
