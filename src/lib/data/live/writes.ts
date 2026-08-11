@@ -57,8 +57,7 @@ export const TABLE_NAMES: TableName[] = [
 const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>; reads: string[] }> = {
   entries: {
     writes: {
-      // Photos as well as the entry: a save carries the photos picked in the
-      // same edit (EntryInput.attachPhotos).
+      // Photos as well as the entry: a save carries additions and removals.
       upsertEntry: ['entry', 'photo'],
       // Takes the entry's photo rows and files with it (entries.ts).
       deleteEntry: ['entry', 'photo']
@@ -89,7 +88,8 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   },
   milestones: {
     writes: {
-      upsertMilestone: ['milestone'],
+      // A milestone save can preserve, remove or replace its photo.
+      upsertMilestone: ['milestone', 'photo'],
       deleteMilestone: ['milestone', 'photo']
     },
     reads: ['getMilestones']

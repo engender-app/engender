@@ -20,7 +20,7 @@ test('a write announces exactly the tables it touched, and hands its result back
   const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4 });
 
   assert.equal(typeof id, 'number');
-  // Photos too, because a save carries the ones picked in the same edit.
+  // Photos too, because a save carries additions and removals.
   assert.deepEqual(announced, [['entry', 'photo']]);
 });
 
@@ -42,6 +42,21 @@ test('a photo write announces its owners, not just the photo table', async () =>
     ['photo', 'entry', 'milestone'],
     ['photo', 'entry', 'milestone']
   ]);
+});
+
+test('a milestone save announces photos because it can preserve, remove or replace one', async () => {
+  const { journal, announced } = await observed();
+
+  await journal.milestones.upsertMilestone({
+    name: 'HRT start',
+    epochDay: 90,
+    photo: {
+      action: 'replace',
+      photo: { full: new Uint8Array([1]), thumb: new Uint8Array([2]) }
+    }
+  });
+
+  assert.deepEqual(announced, [['milestone', 'photo']]);
 });
 
 test('a write that reaches into another area announces both', async () => {
