@@ -57,7 +57,18 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
   const persistDenied = deps.requestPersistentStorage ? !(await deps.requestPersistentStorage()) : false;
 
   await deps.loadReferenceData?.(driver);
-  await deps.sweepOrphanPhotos?.(driver);
+
+  /* The sweep is housekeeping: it reclaims photo files no row references
+     (ticket 11). It touches OPFS, which can fail on quota or in a browser
+     without it, and none of that is a reason to withhold the app - the
+     files it did not reclaim are still there for the next boot to try
+     again. Reference data above is not like this: a screen cannot render
+     without it, so its failure stays the caller's. */
+  try {
+    await deps.sweepOrphanPhotos?.(driver);
+  } catch (error) {
+    console.warn('photo orphan sweep failed; unreferenced files stay until the next boot', error);
+  }
 
   return { phase: 'ready', driver, persistDenied };
 }

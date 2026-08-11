@@ -176,15 +176,26 @@ try {
       JSON.stringify(carried)
     );
 
-  // The one segment that does survive, and why it is allowed to.
-  if (r.iccProfilesMatch)
-    ok(
-      `the only surviving segment is the canvas's own ${r.iccProfileLength}-byte ICC profile, byte-identical across two unrelated photos`
-    );
+  // The one segment that does survive, and where it comes from. Both
+  // fixtures have to be what they claim, or the inference is circular.
+  if (r.strippedSourceHadNone && r.forgedSourceCarriedIt)
+    ok('the ICC fixtures are what they claim: one source with no profile, one with a forged profile');
   else
     fail(
-      "the only surviving segment is the canvas's own ICC profile",
-      'the ICC profiles of two unrelated photos differ, so one is being carried over from the source'
+      'the ICC fixtures are what they claim',
+      `stripped had none: ${r.strippedSourceHadNone}, forged carried it: ${r.forgedSourceCarriedIt}`
+    );
+
+  if (r.encoderAddsProfile)
+    ok(`the ${r.iccProfileLength}-byte ICC profile comes from the encoder: a source with none comes back with one`);
+  else fail('the ICC profile comes from the encoder', 'a source with no profile came back with none either');
+
+  if (!r.forgedProfileSurvived)
+    ok("a source's own ICC profile does not survive the re-encode, so no device name can ride in on one");
+  else
+    fail(
+      "a source's own ICC profile does not survive the re-encode",
+      'the forged profile came back out, so profiles are carried over from the photo'
     );
 
   if (size(r.rotatedSize) === '50x100')
@@ -243,6 +254,37 @@ try {
 
   if (r.filesAfterSweep.length === 0) ok('the boot sweep reclaims a file no row references, against real OPFS');
   else fail('the boot sweep reclaims a file no row references, against real OPFS', JSON.stringify(r.filesAfterSweep));
+
+  /* The picker, driven through a real file dialog. Two files rather than
+     one, because an entry holds several photos and the input is set
+     multiple; the bytes are handed straight to normalize(), which is what
+     ticket 08's editor will do with them. A 1x1 PNG is enough - what is
+     being tested is that bytes survive the trip, not what they depict. */
+  const pngBuffer = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+
+  page.once('filechooser', async (chooser) => {
+    await chooser.setFiles([
+      { name: 'first.png', mimeType: 'image/png', buffer: pngBuffer },
+      { name: 'second.png', mimeType: 'image/png', buffer: pngBuffer }
+    ]);
+  });
+  await page.click('#pick');
+  await page.waitForFunction(() => window.__pickerResult !== undefined, null, { timeout: 5000 });
+  const picked = await page.evaluate(() => window.__pickerResult);
+
+  if (picked.error) throw new Error(`picker: ${picked.error}`);
+  // 0x89 'P' 'N' 'G' - the bytes arrive as the file's own, not re-encoded
+  // by the picker, which only reads them.
+  if (picked.count === 2 && JSON.stringify(picked.firstBytes) === JSON.stringify([137, 80, 78, 71]))
+    ok('the web picker returns the raw bytes of every file chosen, ready for normalize()');
+  else fail('the web picker returns the raw bytes of every file chosen', JSON.stringify(picked));
+
+  if (picked.normalizedSizes.length === 2 && picked.normalizedSizes.every((s) => s.width === 1 && s.height === 1))
+    ok('picked bytes go straight into normalize() with no filename or MIME type involved');
+  else fail('picked bytes go straight into normalize()', JSON.stringify(picked.normalizedSizes));
 } catch (e) {
   fail('ticket 11 browser tier', e.message ?? String(e));
 }

@@ -18,6 +18,7 @@ import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
 import { normalizePhoto, MAX_EDGE, UnsupportedImageError } from '../../src/lib/data/photos/normalize.ts';
+import { filePhotoPicker } from '../../src/lib/data/photos/picker.ts';
 import {
   opfsPhotoFiles,
   PHOTO_DIRECTORY,
@@ -27,7 +28,9 @@ import {
   ascii,
   metadataMarkers,
   segmentBody,
-  withExifOrientation
+  withExifOrientation,
+  withFakeIccProfile,
+  withoutIccProfile
 } from '../../src/lib/data/photos/test-support/jpeg-metadata.ts';
 
 /** A real JPEG of the given size, produced by the same canvas path the app
@@ -80,17 +83,31 @@ async function run() {
 
   /* Chromium's canvas writes an APP2 ICC colour profile of its own into
      everything it encodes. That is the colour space of the bytes we just
-     wrote, not anything carried over from the photo - but "it came from
-     our encoder" is a claim worth checking rather than assuming, since an
-     ICC profile is one of the places a camera can put a device name.
+     wrote, not anything carried over from the photo - but an ICC profile
+     is one of the places a camera can put a device name, so where it came
+     from has to be established rather than assumed.
 
-     Two unrelated sources, one of which carried EXIF: if the profile were
-     coming from the photo, these two would differ. */
-  const profileA = segmentBody(rotated.full, 'APP2/ICC_PROFILE');
-  const profileB = segmentBody(big.full, 'APP2/ICC_PROFILE');
-  result.iccProfilesMatch =
-    profileA != null && profileB != null && String([...profileA]) === String([...profileB]);
-  result.iccProfileLength = profileA?.length ?? null;
+     Comparing two canvas-made photos would prove nothing: both sources
+     already carry the same profile, so they would match either way. These
+     two feed sources whose profiles are known and different from the
+     encoder's - one with none at all, one with recognisable nonsense. */
+  const stripped = withoutIccProfile(await sourceJpeg(120, 80));
+  result.strippedSourceHadNone = segmentBody(stripped, 'APP2/ICC_PROFILE') === null;
+  const fromStripped = await normalizePhoto(stripped);
+  const profileOut = segmentBody(fromStripped.full, 'APP2/ICC_PROFILE');
+  // A profile on the way out of a source that had none can only be the
+  // encoder's.
+  result.encoderAddsProfile = profileOut !== null;
+  result.iccProfileLength = profileOut?.length ?? null;
+
+  const forged = withFakeIccProfile(await sourceJpeg(120, 80));
+  result.forgedSourceCarriedIt = /NOT-A-REAL-PROFILE/.test(
+    String.fromCharCode(...(segmentBody(forged, 'APP2/ICC_PROFILE') ?? []))
+  );
+  const fromForged = await normalizePhoto(forged);
+  const forgedOut = String.fromCharCode(...(segmentBody(fromForged.full, 'APP2/ICC_PROFILE') ?? []));
+  // And the source's own profile does not survive the re-encode.
+  result.forgedProfileSurvived = /NOT-A-REAL-PROFILE/.test(forgedOut);
 
   // --- normalize: what it refuses ----------------------------------------
   const heic = new Uint8Array([0, 0, 0, 0x18, ...ascii('ftyp'), ...ascii('heic'), ...ascii('mif1heic')]);
@@ -161,6 +178,28 @@ async function run() {
   await files.write('00000000-0000-4000-8000-00000000dead.jpg', new Uint8Array([7]));
   await sweepOrphanPhotos(booted.driver, files);
   result.filesAfterSweep = await files.list();
+
+  /* The picker cannot run on load - it opens a file dialog, which needs
+     something outside the page to answer it. run.mjs clicks this after
+     reading the result above, with a filechooser handler attached. */
+  document.getElementById('pick')!.addEventListener('click', () => {
+    filePhotoPicker()
+      .pick()
+      .then(async (picked) => {
+        // What the editor will do with them at ticket 08: the bytes go
+        // straight into normalize(), whatever the dialog called the files.
+        const normalizedSizes = [];
+        for (const bytes of picked) normalizedSizes.push(await sizeOf((await normalizePhoto(bytes)).full));
+        (window as unknown as { __pickerResult: unknown }).__pickerResult = {
+          count: picked.length,
+          firstBytes: [...picked[0].slice(0, 4)],
+          normalizedSizes
+        };
+      })
+      .catch((error) => {
+        (window as unknown as { __pickerResult: unknown }).__pickerResult = { error: String(error) };
+      });
+  });
 
   (window as unknown as { __photosProbeResult: unknown }).__photosProbeResult = result;
   document.body.dataset.photosProbeReady = 'true';

@@ -7,13 +7,17 @@
    that names them, and the row goes before the files are forgotten:
 
      attach  - write both files, then insert the row.
-     remove  - delete the row in a transaction, then delete the files.
+     remove  - delete the row, then delete the files.
 
    Either way a crash in the gap leaves a file no row references, never a
-   row pointing at a file that is not there. The first is reclaimed by the
-   boot sweep (sweep.ts); the second would be a photo the user can see in
-   the list and never open. That asymmetry is ADR-0011's rule - import
-   writes files first and never deletes - applied to the ordinary path. */
+   row pointing at a file that is not there. The first is reclaimed by
+   sweepOrphanPhotos() below; the second would be a photo the user can see
+   in the list and never open. That asymmetry is ADR-0011's rule - import
+   writes files first and never deletes - applied to the ordinary path.
+
+   deleteEntry and deleteMilestone follow the same order for the rows they
+   own, and hand their file paths to removeFilesOf() here so the rule about
+   what a photo's files are lives in one place. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Photo } from '../types';
@@ -39,7 +43,6 @@ export interface PhotosArea {
   /** Returns the photo's uuid. Throws if the owner is unknown, before
       anything is written. */
   attach(owner: PhotoOwner, photo: NormalizedPhoto): Promise<string>;
-  listFor(owner: PhotoOwner): Promise<Photo[]>;
   /** Idempotent, like the journal's other deletes. */
   remove(id: string): Promise<void>;
 }
@@ -47,6 +50,17 @@ export interface PhotosArea {
 type PhotoRow = { uuid: string; file_path: string };
 
 const toPhoto = (row: PhotoRow): Photo => ({ id: row.uuid, fileName: row.file_path });
+
+/** Deletes every file the given photo rows owned, thumbnails included.
+    Called after the rows are gone, by all three paths that delete photo
+    rows - a failure here must not resurrect them, and what it leaves
+    behind is the sweep's to reclaim. */
+export async function removeFilesOf(
+  files: PhotoFileStore,
+  rows: { file_path: string }[]
+): Promise<void> {
+  for (const row of rows) for (const name of filesOf(row.file_path)) await files.remove(name);
+}
 
 /** The owner's photo rows, oldest first. Shared with the entries and
     milestones areas so a photo is read the same way wherever it is read. */
@@ -85,7 +99,12 @@ export async function photosByMilestone(driver: SqliteDriver): Promise<Map<numbe
 
    It is also why the store's root is a directory of its own and never the
    OPFS root: the database file lives in OPFS too, and no row references
-   it. */
+   it.
+
+   Precondition: nothing may attach a photo while this runs. It reads the
+   rows and then lists the files, so a photo whose files landed after the
+   read but whose row landed before the list would look like an orphan.
+   Boot is the only caller and runs before any screen can write. */
 export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
   const rows = await driver.query<{ file_path: string }>('SELECT file_path FROM photo');
   const referenced = new Set(rows.flatMap((row) => filesOf(row.file_path)));
@@ -139,22 +158,10 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
       return uuid;
     },
 
-    async listFor(owner) {
-      if (owner.entryId != null) return photosOfEntry(driver, owner.entryId);
-      const rows = await driver.query<PhotoRow>(
-        `SELECT p.uuid, p.file_path FROM photo p JOIN milestone m ON m.id = p.milestone_id
-         WHERE m.uuid = ? ORDER BY p.order_index, p.id`,
-        [owner.milestoneId]
-      );
-      return rows.map(toPhoto);
-    },
-
     async remove(id) {
       const rows = await driver.query<{ file_path: string }>('SELECT file_path FROM photo WHERE uuid = ?', [id]);
       await driver.run('DELETE FROM photo WHERE uuid = ?', [id]);
-      // After the row is gone, matching deleteEntry: a failed file removal
-      // must not resurrect the row, and the leftover is the sweep's.
-      for (const row of rows) for (const name of filesOf(row.file_path)) await files.remove(name);
+      await removeFilesOf(files, rows);
     }
   };
 }

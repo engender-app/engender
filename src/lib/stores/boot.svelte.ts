@@ -17,7 +17,7 @@ import { createWebSqlite } from '../data/sqlite/sqlocal-driver';
 import { openJournal, type Journal } from '../data/journal/journal';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { opfsPhotoFiles } from '../data/photos/opfs-file-store';
-import { usePhotoFiles } from './photoFiles.svelte';
+import { setPhotoFiles } from './photoFiles';
 import { localStorageCache } from '../data/prefs/boot-cache';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
@@ -62,7 +62,7 @@ export function startBoot() {
   // Set before boot() rather than after, so the first screen to render a
   // photo already has somewhere to read it from.
   const photoFiles = opfsPhotoFiles();
-  usePhotoFiles(photoFiles);
+  setPhotoFiles(photoFiles);
 
   boot({
     createDriver: () => driver,

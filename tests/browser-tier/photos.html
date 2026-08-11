@@ -5,6 +5,9 @@
     <title>photos probe</title>
   </head>
   <body>
+    <!-- Driven by run.mjs after the probe reports: a file picker needs a
+         real dialog, which only Playwright's side can answer. -->
+    <button id="pick">pick a photo</button>
     <script type="module" src="./photos-probe.ts"></script>
   </body>
 </html>

@@ -19,8 +19,7 @@ import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Entry } from '../types';
 import type { PhotoFileStore } from './journal';
-import { photosOfEntry } from './photos';
-import { filesOf } from '../photos/names';
+import { photosOfEntry, removeFilesOf } from './photos';
 import { domainIdOf, mintUuid, now, rowidByUuid } from './support';
 
 export interface EntryInput {
@@ -301,8 +300,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       });
       // After the commit: a failed file removal must not resurrect rows,
       // and an orphaned file is what the boot sweep (ticket 11) reclaims.
-      // The thumbnail goes with the photo it belongs to (names.ts).
-      for (const p of photos) for (const name of filesOf(p.file_path)) await files.remove(name);
+      await removeFilesOf(files, photos);
     }
   };
 }

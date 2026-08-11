@@ -15,7 +15,7 @@ import type { PhotoFileStore } from '../data/journal/journal';
 
 let store: PhotoFileStore | null = null;
 
-export function usePhotoFiles(files: PhotoFileStore): void {
+export function setPhotoFiles(files: PhotoFileStore): void {
   store = files;
 }
 

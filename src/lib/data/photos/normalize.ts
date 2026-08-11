@@ -24,7 +24,7 @@
    tier tests the pieces that are pure (bytes.ts) and the browser tier
    tests this against a real Chromium. */
 
-import { sniffImageKind } from './bytes';
+import { isHeic } from './bytes';
 import type { NormalizedPhoto } from '../journal/photos';
 
 /** The long edge of a stored photo, and of its thumbnail. 2048 is
@@ -51,20 +51,17 @@ const HEIC_MESSAGE =
 const UNREADABLE_MESSAGE = "This file isn't an image this app can read. Try a JPEG or PNG.";
 
 export async function normalizePhoto(bytes: Uint8Array): Promise<NormalizedPhoto> {
-  // Checked before the decoder sees it, so HEIC gets its own message
-  // rather than whatever createImageBitmap() throws for a format it does
-  // not know (ticket 11).
-  const kind = sniffImageKind(bytes);
-  if (kind === 'heic') throw new UnsupportedImageError(HEIC_MESSAGE);
-  if (kind === 'unknown') throw new UnsupportedImageError(UNREADABLE_MESSAGE);
+  // The one format checked ahead of the decoder, because Chromium cannot
+  // decode it and it deserves a message that says what to do (bytes.ts).
+  // Everything else the decoder gets to try.
+  if (isHeic(bytes)) throw new UnsupportedImageError(HEIC_MESSAGE);
 
   let source: ImageBitmap;
   try {
     source = await createImageBitmap(new Blob([bytes as BlobPart]), { imageOrientation: 'from-image' });
   } catch (cause) {
-    // A file that sniffed as an image and still would not decode: truncated,
-    // or a format this browser build lacks. Same message, since the person
-    // picking it can do the same thing about either.
+    // Not an image, truncated, or a format this browser build lacks - the
+    // person who picked it can do the same thing about all three.
     throw new UnsupportedImageError(UNREADABLE_MESSAGE, { cause });
   }
 
