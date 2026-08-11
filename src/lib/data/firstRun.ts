@@ -21,10 +21,10 @@ export function emptyDb(): DB {
   };
 }
 
-export function seedVocabulary(store: DB): DB {
+export function seedVocabulary(journal: DB): DB {
   return {
-    ...store,
-    dimensions: withBuiltInDimensions(store.dimensions),
-    tagGroups: withBuiltInTagGroups(store.tagGroups)
+    ...journal,
+    dimensions: withBuiltInDimensions(journal.dimensions),
+    tagGroups: withBuiltInTagGroups(journal.tagGroups)
   };
 }

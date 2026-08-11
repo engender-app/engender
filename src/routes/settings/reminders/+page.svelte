@@ -3,7 +3,6 @@
   import { db } from '$lib/data/db.svelte';
   import { setReminderEnabled, scheduleLabel } from '$lib/data/repositories/reminders';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';

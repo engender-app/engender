@@ -6,8 +6,6 @@
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { setGroupEnabled } from '$lib/data/repositories/tags';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { metricKey } from '$lib/data/prefs/catalogue';
-  import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -24,11 +22,7 @@
 
   let isWeb = $derived(!isAndroid());
   let preset = $derived(vocabulary.activePreset);
-  let metricName = $derived(
-    prefs.metricKind === 'mood'
-      ? m.mood()
-      : (vocabulary.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
-  );
+  let metricName = $derived(vocabulary.metricName);
   let backupAge = $derived(
     prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(prefs.lastBackupAt) : null
   );

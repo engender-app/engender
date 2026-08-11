@@ -16,7 +16,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
-  import DemoBar from '$lib/components/DemoBar.svelte';
 
   let { children } = $props();
 
@@ -86,7 +85,14 @@
 </script>
 
 {#if __DEMO__}
-  <DemoBar />
+  <!-- Imported dynamically, not at the top of the script. A static import
+       binds the component's <style> to this route node's stylesheet, so
+       dropping its JavaScript still left the demo bar's CSS in the
+       production build. Inside a branch Rollup folds away, the import
+       expression goes too, and with it the chunk and its CSS. -->
+  {#await import('$lib/components/DemoBar.svelte') then { default: DemoBar }}
+    <DemoBar />
+  {/await}
 {/if}
 
 <div class="app-viewport">

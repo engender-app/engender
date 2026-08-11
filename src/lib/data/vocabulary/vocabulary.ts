@@ -11,6 +11,9 @@
    what". */
 
 import { db } from '../db.svelte';
+import { m } from '$lib/paraglide/messages';
+import { prefs } from '../prefs/store.svelte';
+import { metricKey } from '../prefs/catalogue';
 import { activeDimensions, activePreset, getPresets } from '../repositories/dimensions';
 import { randomTemplates, milestoneTemplates } from '../repositories/milestones';
 import { tagById, visibleTagGroups } from '../repositories/tags';
@@ -67,6 +70,12 @@ export const vocabulary = {
   },
   get milestoneTemplates(): MilestoneTemplate[] {
     return milestoneTemplates.map(localizeTemplate);
+  },
+  /** What the metric is called on screen: mood, or the chosen gender
+      dimension. Four screens derived this identically before. */
+  get metricName(): string {
+    if (prefs.metricKind === 'mood') return m.mood();
+    return this.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood();
   },
   tag(id: string): Tag | null {
     const found = tagById(id);

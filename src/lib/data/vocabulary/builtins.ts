@@ -6,8 +6,8 @@
    display time (ADR-0002, and CONTEXT: Built-in). Storing "Femininity"
    would make a Polish install's archive disagree with an English one about
    what is the same dimension, and would freeze the wording at seed time.
-   labels.ts holds the lookups; this file stays import-free so the Node
-   tier can read it (ADR-0016).
+   labels.ts holds the lookups; this file takes nothing but types, so the
+   Node tier can read it without dragging in paraglide (ADR-0016).
 
    `as const` throughout, so each key list also produces the union type
    labels.ts has to cover exhaustively - a built-in added here without a
@@ -75,7 +75,7 @@ export const MILESTONE_TEMPLATE_KEYS = [
 export type MilestoneTemplateKey = (typeof MILESTONE_TEMPLATE_KEYS)[number];
 
 /* Presets and milestone templates are not stored rows in Phase 1 - the
-   store holds only what the user added - so these hand back the built-in
+   journal holds only what the user added - so these hand back the built-in
    ones in the shape the rest of the code already expects, names left for
    vocabulary.ts to fill in. */
 
@@ -90,8 +90,9 @@ export function milestoneTemplateRows(): MilestoneTemplate[] {
 /* Reconciling, not seeding-if-empty. Both functions add what is missing by
    key and touch nothing else, so they are safe to run on every boot and
    again before an import applies - which is the point, because a Replace
-   import must not be able to leave the vocabulary short of a built-in.
-   Ticket 07 moves the same shape onto SQLite rows. */
+   import must not be able to leave the journal short of a built-in.
+   Ticket 07 moves the same shape onto SQLite rows, and adds presets and
+   milestone templates, which are not stored rows yet. */
 
 function builtInDimension(key: string, min: number, max: number): GenderDimension {
   return { key, name: '', low: '', high: '', min, max, builtIn: true };
