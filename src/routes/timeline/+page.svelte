@@ -1,8 +1,8 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
+  import { reference } from '$lib/data/live/reference.svelte';
   import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
-  import { milestoneStatus } from '$lib/data/repositories/milestones';
+  import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import type { Milestone } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -14,8 +14,11 @@
     | { kind: 'gap'; label: string; id: string }
     | { kind: 'today'; id: string };
 
+  /* Milestones are mirrored (ADR-0004), so this screen needs no loading
+     state: they arrive with boot, bounded at tens of rows and already in
+     date order from the journal. */
   let items = $derived.by(() => {
-    const ms = [...db.milestones].sort((a, b) => a.epochDay - b.epochDay);
+    const ms = reference.milestones;
     const today = todayEpochDay();
     const out: Item[] = [];
     let prevDay: number | null = null;
@@ -29,7 +32,7 @@
         const label = fmtDuration(calendarDuration(prevDay, mi.epochDay));
         out.push({ kind: 'gap', label, id: 'gap-' + mi.id });
       }
-      const s = milestoneStatus(mi);
+      const s = milestoneStatus(mi, today);
       const status =
         s.type === 'countdown'
           ? `in ${s.days} day${s.days === 1 ? '' : 's'}`
@@ -52,7 +55,7 @@
     </div>
   </header>
 
-  {#if db.milestones.length}
+  {#if reference.milestones.length}
     <p class="muted small" style="margin-bottom:var(--space-5)">Your journey so far — and what’s ahead.</p>
     <div class="timeline">
       {#each items as item (item.kind === 'milestone' ? item.m.id : item.id)}

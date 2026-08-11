@@ -1,10 +1,15 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
-  import { milestoneStatus, upsertMilestone, deleteMilestone } from '$lib/data/repositories/milestones';
+  import { journal } from '$lib/data/live/journal.svelte';
+  import { reference } from '$lib/data/live/reference.svelte';
+  import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import type { DraftPhoto, Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
+  import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
+  import { filePhotoPicker } from '$lib/data/photos/picker';
+  import { normalizePhoto, UnsupportedImageError } from '$lib/data/photos/normalize';
+  import type { NormalizedPhoto } from '$lib/data/journal/photos';
+  import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -12,32 +17,86 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let shown = $state(vocabulary.randomTemplates(3));
-  let editor = $state<{ id?: string; name: string; date: string; photo: Photo | DraftPhoto | null; templateKey: string | null } | null>(null);
+  /* Three fields for one photo, because a milestone shows one and there are
+     three things to know about it: which row it has now (`photo`, cleared
+     when the user takes it off), which bytes they picked instead (`picked`),
+     and which row was there when the editor opened (`storedPhotoId`, so the
+     row can still be deleted after `photo` has been cleared). Nothing is
+     committed until Save (F1), so backing out of the sheet undoes all three. */
+  let editor = $state<{
+    id?: string;
+    name: string;
+    date: string;
+    photo: Photo | null;
+    picked: NormalizedPhoto | null;
+    storedPhotoId: string | null;
+    templateKey: string | null;
+  } | null>(null);
   let deleteTarget = $state<Milestone | null>(null);
 
-  let sorted = $derived([...db.milestones].sort((a, b) => a.epochDay - b.epochDay));
+  // Mirrored, and the journal already orders them by day (ADR-0004).
+  let sorted = $derived(reference.milestones);
 
   function statusText(mi: Milestone): string {
-    const s = milestoneStatus(mi);
+    const s = milestoneStatus(mi, todayEpochDay());
     return s.type === 'countdown' ? `in ${s.days} days` : s.type === 'today' ? 'today' : `${s.years} year${s.years === 1 ? '' : 's'} ago`;
   }
 
   function openEditor(existing: Milestone | null, template: MilestoneTemplate | null) {
     editor = existing
-      ? { id: existing.id, name: existing.name, date: dateInputValueFromEpochDay(existing.epochDay), photo: existing.photo, templateKey: existing.templateKey }
-      : { name: template?.name ?? '', date: dateInputValueFromEpochDay(todayEpochDay()), photo: null, templateKey: template?.key ?? null };
+      ? {
+          id: existing.id,
+          name: existing.name,
+          date: dateInputValueFromEpochDay(existing.epochDay),
+          photo: existing.photo,
+          picked: null,
+          storedPhotoId: existing.photo?.id ?? null,
+          templateKey: existing.templateKey
+        }
+      : {
+          name: template?.name ?? '',
+          date: dateInputValueFromEpochDay(todayEpochDay()),
+          photo: null,
+          picked: null,
+          storedPhotoId: null,
+          templateKey: template?.key ?? null
+        };
   }
 
-  function saveMilestone() {
+  /* Pick, normalize, hold - the same three steps as the entry editor, and
+     the same reason for normalizing now rather than on save: a file this app
+     cannot read is refused while the picker is still the thing in front of
+     the user (ticket 11). */
+  const picker = filePhotoPicker();
+
+  async function pickPhoto() {
     if (!editor) return;
-    upsertMilestone({
-      id: editor.id,
-      name: editor.name.trim() || 'Milestone',
-      epochDay: epochDayFromDateInputValue(editor.date) ?? todayEpochDay(),
-      templateKey: editor.templateKey,
-      photo: editor.photo,
-    });
+    const [bytes] = await picker.pick(); // one photo per milestone
+    if (!bytes) return;
+    try {
+      editor.picked = await normalizePhoto(bytes);
+    } catch (error) {
+      toast(error instanceof UnsupportedImageError ? error.message : "That photo couldn't be read.");
+    }
+  }
+
+  async function saveMilestone() {
+    if (!editor) return;
+    // Read out before the sheet closes: `editor` is null from the next line on.
+    const draft = { ...editor };
     editor = null;
+
+    const id = await journal.milestones.upsertMilestone({
+      id: draft.id,
+      name: draft.name.trim() || 'Milestone',
+      epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+      templateKey: draft.templateKey
+    });
+    // The stored row goes if it was taken off, or if a new photo replaces it.
+    if (draft.storedPhotoId && (draft.picked || !draft.photo)) {
+      await journal.photos.remove(draft.storedPhotoId);
+    }
+    if (draft.picked) await journal.photos.attach({ milestoneId: id }, draft.picked);
   }
 </script>
 
@@ -113,7 +172,14 @@
       <div class="field">
         <span class="field-label">Photo (optional)</span>
         <div class="photo-row">
-          {#if editor.photo}
+          {#if editor.picked}
+            <div class="photo-wrap">
+              <PhotoThumb photo={{ fileName: null }} bytes={editor.picked.thumb} size={64} />
+              <button class="photo-remove" aria-label="Remove photo" onclick={() => (editor!.picked = null)}>
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+          {:else if editor.photo}
             <div class="photo-wrap">
               <PhotoThumb photo={editor.photo} size={64} />
               <button class="photo-remove" aria-label="Remove photo" onclick={() => (editor!.photo = null)}>
@@ -121,9 +187,7 @@
               </button>
             </div>
           {:else}
-            <!-- Placeholder until ticket 08, like EntryEditor's. -->
-            <button class="photo-add" aria-label={m.add_photo()}
-              onclick={() => (editor!.photo = { fileName: null })}>
+            <button class="photo-add" aria-label={m.add_photo()} onclick={pickPhoto}>
               <Icon name="camera" size={20} /><span>{m.add_photo()}</span>
             </button>
           {/if}
@@ -140,7 +204,7 @@
       <h3>Delete “{deleteTarget.name}”?</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">Its photo is removed too. This cannot be undone.</p>
       <div class="stack-3">
-        <button class="btn btn-danger" onclick={() => { deleteMilestone(deleteTarget!.id); deleteTarget = null; }}>
+        <button class="btn btn-danger" onclick={() => { journal.milestones.deleteMilestone(deleteTarget!.id); deleteTarget = null; }}>
           <span>Delete milestone</span>
         </button>
         <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>

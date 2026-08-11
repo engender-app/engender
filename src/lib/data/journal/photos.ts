@@ -39,12 +39,25 @@ export interface NormalizedPhoto {
     what each area already speaks (ADR-0002). */
 export type PhotoOwner = { entryId: number; milestoneId?: never } | { milestoneId: string; entryId?: never };
 
+/** A photo placed in time, for the Progress screen (PRD F27). The date comes
+    from whichever owner the row hangs off, and `milestoneName` is that
+    owner's name when it was a milestone - the one thing that screen shows
+    beyond the picture and the date. */
+export interface DatedPhoto extends Photo {
+  epochDay: number;
+  milestoneName: string | null;
+}
+
 export interface PhotosArea {
   /** Returns the photo's uuid. Throws if the owner is unknown, before
       anything is written. */
   attach(owner: PhotoOwner, photo: NormalizedPhoto): Promise<string>;
   /** Idempotent, like the journal's other deletes. */
   remove(id: string): Promise<void>;
+  /** Every photo in the journal, oldest first, entry and milestone alike.
+      One query rather than a union assembled above the seam: both owners are
+      rows in this one table (ADR-0008). */
+  inJournal(): Promise<DatedPhoto[]>;
 }
 
 type PhotoRow = { uuid: string; file_path: string };
@@ -113,55 +126,92 @@ export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileSt
   }
 }
 
+/* Both owner columns, resolved before anything is written: an unknown
+   milestone has to fail without leaving two files behind for the sweep to
+   clean up after it. */
+async function columnsFor(
+  driver: SqliteDriver,
+  owner: PhotoOwner
+): Promise<{ entryId: number | null; milestoneId: number | null }> {
+  if (owner.entryId != null) {
+    const rows = await driver.query<{ id: number }>('SELECT id FROM entry WHERE id = ?', [owner.entryId]);
+    if (rows.length === 0) throw new Error(`unknown entry: ${owner.entryId}`);
+    return { entryId: rows[0].id, milestoneId: null };
+  }
+  const rows = await driver.query<{ id: number }>('SELECT id FROM milestone WHERE uuid = ?', [owner.milestoneId]);
+  if (rows.length === 0) throw new Error(`unknown milestone: ${owner.milestoneId}`);
+  return { entryId: null, milestoneId: rows[0].id };
+}
+
+async function nextOrderIndex(
+  driver: SqliteDriver,
+  columns: { entryId: number | null; milestoneId: number | null }
+): Promise<number> {
+  const rows = await driver.query<{ next: number }>(
+    `SELECT COALESCE(MAX(order_index) + 1, 0) AS next FROM photo
+     WHERE ${columns.entryId != null ? 'entry_id = ?' : 'milestone_id = ?'}`,
+    [columns.entryId ?? columns.milestoneId]
+  );
+  return rows[0].next;
+}
+
+/** Stores one photo against one owner, and returns its uuid. A function
+    rather than only a method on the area, because saving an entry attaches
+    the photos picked in the same edit (entries.ts) and there must not be a
+    second implementation of the file-before-row order for it to drift from. */
+export async function attachPhoto(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  owner: PhotoOwner,
+  photo: NormalizedPhoto
+): Promise<string> {
+  const columns = await columnsFor(driver, owner);
+  const uuid = mintUuid();
+  const fileName = photoFileName(uuid);
+  const [full, thumb] = filesOf(fileName);
+
+  // Files first (see the header): the row must never name a file that has not
+  // landed. A failure here leaves at most one loose file.
+  await files.write(full, photo.full);
+  await files.write(thumb, photo.thumb);
+
+  const orderIndex = await nextOrderIndex(driver, columns);
+  await driver.run(
+    `INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [uuid, columns.entryId, columns.milestoneId, fileName, orderIndex, now()]
+  );
+  return uuid;
+}
+
 export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): PhotosArea {
-  /* Both owner columns, resolved before anything is written: an unknown
-     milestone has to fail without leaving two files behind for the sweep
-     to clean up after it. */
-  const columnsFor = async (owner: PhotoOwner): Promise<{ entryId: number | null; milestoneId: number | null }> => {
-    if (owner.entryId != null) {
-      const rows = await driver.query<{ id: number }>('SELECT id FROM entry WHERE id = ?', [owner.entryId]);
-      if (rows.length === 0) throw new Error(`unknown entry: ${owner.entryId}`);
-      return { entryId: rows[0].id, milestoneId: null };
-    }
-    const rows = await driver.query<{ id: number }>('SELECT id FROM milestone WHERE uuid = ?', [owner.milestoneId]);
-    if (rows.length === 0) throw new Error(`unknown milestone: ${owner.milestoneId}`);
-    return { entryId: null, milestoneId: rows[0].id };
-  };
-
-  const nextOrderIndex = async (columns: { entryId: number | null; milestoneId: number | null }): Promise<number> => {
-    const rows = await driver.query<{ next: number }>(
-      `SELECT COALESCE(MAX(order_index) + 1, 0) AS next FROM photo
-       WHERE ${columns.entryId != null ? 'entry_id = ?' : 'milestone_id = ?'}`,
-      [columns.entryId ?? columns.milestoneId]
-    );
-    return rows[0].next;
-  };
-
   return {
-    async attach(owner, photo) {
-      const columns = await columnsFor(owner);
-      const uuid = mintUuid();
-      const fileName = photoFileName(uuid);
-      const [full, thumb] = filesOf(fileName);
-
-      // Files first (see the header): the row must never name a file that
-      // has not landed. A failure here leaves at most one loose file.
-      await files.write(full, photo.full);
-      await files.write(thumb, photo.thumb);
-
-      const orderIndex = await nextOrderIndex(columns);
-      await driver.run(
-        `INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [uuid, columns.entryId, columns.milestoneId, fileName, orderIndex, now()]
-      );
-      return uuid;
-    },
+    attach: (owner, photo) => attachPhoto(driver, files, owner, photo),
 
     async remove(id) {
       const rows = await driver.query<{ file_path: string }>('SELECT file_path FROM photo WHERE uuid = ?', [id]);
       await driver.run('DELETE FROM photo WHERE uuid = ?', [id]);
       await removeFilesOf(files, rows);
+    },
+
+    async inJournal() {
+      /* Two left joins rather than two queries: exactly one of the owner
+         columns is set (the table's CHECK), so COALESCE picks whichever day
+         applies and the other side contributes nothing. */
+      const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
+        `SELECT p.uuid, p.file_path,
+                COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
+                m.name AS milestone_name
+         FROM photo p
+         LEFT JOIN entry e ON e.id = p.entry_id
+         LEFT JOIN milestone m ON m.id = p.milestone_id
+         ORDER BY epoch_day, p.order_index, p.id`
+      );
+      return rows.map((row) => ({
+        ...toPhoto(row),
+        epochDay: row.epoch_day,
+        milestoneName: row.milestone_name
+      }));
     }
   };
 }

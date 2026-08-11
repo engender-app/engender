@@ -1,9 +1,8 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
   import { fmtDay, fmtMonthName } from '$lib/data/dates';
   import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
-  import { seriesForRange, tagInsights, streakDays } from '$lib/data/repositories/entries';
+  import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import Icon from '$lib/components/Icon.svelte';
@@ -11,23 +10,49 @@
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import type { DayAverage } from '$lib/data/journal/stats';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
+  /** How many entries the sheet behind a tag insight lists. */
+  const INSIGHT_ENTRIES = 20;
   let range = $state(30);
+
+  const today = todayEpochDay();
+  /* A range is a length on screen and two epoch days to the journal, which
+     never reads the clock for a domain answer (ticket 10). Inclusive of both
+     ends, so "7 days" is today and the six before it. */
+  let from = $derived(today - range + 1);
 
   let metrics = $derived([
     { key: 'mood', name: m.mood(), min: 1, max: 5 },
     ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max })),
   ]);
-  let streak = $derived(streakDays());
-  let insights = $derived(tagInsights(range, metricKey(prefs)));
+
+  let streakQuery = liveQuery(['entry'], (j) => j.stats.streak(today));
+  let streak = $derived(streakQuery.value ?? 0);
+
+  /* One query for every chart on screen rather than one per metric: the
+     charts differ only in which metric they plot, and asking per chart would
+     mean a round trip per active dimension every time the range changes. */
+  let seriesQuery = liveQuery(['entry', 'dimension'], async (j) => {
+    const keys = metrics.map((mt) => mt.key);
+    const [rangeFrom, rangeTo] = [from, today];
+    const series = await Promise.all(keys.map((key) => j.stats.dayAverages(key, rangeFrom, rangeTo)));
+    return new Map(keys.map((key, i) => [key, series[i]]));
+  });
+  let seriesFor = $derived((key: string): DayAverage[] => seriesQuery.value?.get(key) ?? []);
+
+  let insightsQuery = liveQuery(['entry', 'tag'], (j) => j.stats.tagInsights(metricKey(prefs), from, today));
+  let insights = $derived(insightsQuery.value ?? []);
+
   let lastMonthName = $derived.by(() => {
-    const { year, month } = previousCalendarMonthRange(todayEpochDay());
+    const { year, month } = previousCalendarMonthRange(today);
     return fmtMonthName(year, month);
   });
 
-  let valueSheet = $state<{ name: string; key: string; series: ReturnType<typeof seriesForRange> } | null>(null);
+  let valueSheet = $state<{ name: string; key: string } | null>(null);
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
   // Native units both ways (ADR-0012): mood arrives on 1 to 5 and only
@@ -35,14 +60,12 @@
   // that used to be here undid a x20 that no longer happens.
   const fmtMetric = (v: number) => (prefs.metricKind === 'mood' ? v.toFixed(1) : String(Math.round(v)));
 
-  let insightEntries = $derived.by(() => {
+  let insightEntriesQuery = liveQuery(['entry', 'tag'], (j) => {
     const sheet = insightSheet;
-    if (!sheet) return [];
-    return db.entries
-      .filter((e) => e.tags.includes(sheet.id))
-      .sort((a, b) => b.epochDay - a.epochDay)
-      .slice(0, 20);
+    if (!sheet) return Promise.resolve([]);
+    return j.entries.entriesWithTag(sheet.id, INSIGHT_ENTRIES);
   });
+  let insightEntries = $derived(insightEntriesQuery.value ?? []);
 </script>
 
 <div class="screen">
@@ -72,28 +95,34 @@
     </div>
   {/if}
 
-  {#each metrics as mt, mi (mt.key)}
-    {@const series = seriesForRange(range, mt.key)}
-    {@const avg = series.length ? series.reduce((a, p) => a + p.value, 0) / series.length : null}
-    <button
-      class="card chart-card"
-      style={mi % 2 === 1 ? '--chart-line:var(--chart-line-2);--chart-fill:var(--chart-fill-2)' : ''}
-      onclick={() => (valueSheet = { name: mt.name, key: mt.key, series })}
-    >
-      <div class="spread">
-        <span class="chart-title">{mt.name}</span>
-        <span class="chart-avg">
-          {avg == null ? '—' : m.avg_label({ value: mt.key === 'mood' ? avg.toFixed(1) : String(Math.round(avg)) })}
-        </span>
-      </div>
-      <LineChart points={series} min={mt.min} max={mt.max} />
-    </button>
-  {/each}
+  {#if seriesQuery.loading}
+    <Skeleton variant="chart" count={2} />
+  {:else}
+    {#each metrics as mt, mi (mt.key)}
+      {@const series = seriesFor(mt.key)}
+      {@const avg = series.length ? series.reduce((a, p) => a + p.value, 0) / series.length : null}
+      <button
+        class="card chart-card"
+        style={mi % 2 === 1 ? '--chart-line:var(--chart-line-2);--chart-fill:var(--chart-fill-2)' : ''}
+        onclick={() => (valueSheet = { name: mt.name, key: mt.key })}
+      >
+        <div class="spread">
+          <span class="chart-title">{mt.name}</span>
+          <span class="chart-avg">
+            {avg == null ? '—' : m.avg_label({ value: mt.key === 'mood' ? avg.toFixed(1) : String(Math.round(avg)) })}
+          </span>
+        </div>
+        <LineChart points={series} min={mt.min} max={mt.max} />
+      </button>
+    {/each}
+  {/if}
 
   <SectionTitle text={m.tag_insights()}>
     {#snippet aside()}{m.insights_sub({ metric: vocabulary.metricName })}{/snippet}
   </SectionTitle>
-  {#if insights.length}
+  {#if insightsQuery.loading}
+    <Skeleton variant="line" count={3} />
+  {:else if insights.length}
     <div class="list-group">
       {#each insights.slice(0, 6) as i (i.id)}
         {@const label = vocabulary.tag(i.id)?.label ?? i.id}
@@ -128,7 +157,7 @@
     {#if valueSheet}
       <h3>{m.values_title({ name: valueSheet.name })}</h3>
       <div class="value-list">
-        {#each [...valueSheet.series].reverse() as p (p.day)}
+        {#each seriesFor(valueSheet.key).toReversed() as p (p.day)}
           <div class="value-row">
             <span>{fmtDay(p.day, { day: 'numeric', month: 'short' })}</span>
             <span class="muted small">{p.count > 1 ? m.avg_of({ count: String(p.count) }) : ''}</span>

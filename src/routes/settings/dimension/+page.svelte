@@ -1,7 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { addCustomDimension } from '$lib/data/repositories/dimensions';
+  import { journal } from '$lib/data/live/journal.svelte';
+  import { reference } from '$lib/data/live/reference.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -23,14 +25,23 @@
     hidden: false,
   });
 
-  function saveDimension() {
-    addCustomDimension({
+  /* Adding a dimension spawns a custom preset extending the active one and
+     switches to it, which is what makes the new scale appear in the editor.
+     Three writes rather than one - the journal keeps presets and dimensions
+     separate, because a preset is also creatable without a new dimension. */
+  async function saveDimension() {
+    const created = await journal.dimensions.addCustomDimension({
       name: name.trim() || 'My dimension',
       low: low.trim() || 'low',
       high: high.trim() || 'high',
       min: 0,
       max,
     });
+    const preset = await journal.dimensions.addPreset({
+      name: 'Custom',
+      dims: [...reference.activePreset.dims, created.key],
+    });
+    prefs.activePreset = preset.id;
     goto('/settings');
     toast('Dimension added to a new custom preset.');
   }

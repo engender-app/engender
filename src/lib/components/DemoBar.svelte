@@ -35,12 +35,16 @@
     prefs.theme = t;
   }
 
-  function jump(e: Event) {
+  /* Both jumps that touch data await it before navigating: clearing the
+     journal is a round trip through the worker now, and onboarding rendering
+     over a journal still emptying itself would show the state the jump exists
+     to leave. */
+  async function jump(e: Event) {
     const v = (e.currentTarget as HTMLSelectElement).value;
     (e.currentTarget as HTMLSelectElement).value = '';
     if (!v) return;
     if (v === 'first-run') {
-      markFirstRun();
+      await markFirstRun();
       goto('/onboarding');
     } else {
       goto(v);
@@ -77,8 +81,8 @@
   </div>
   <button
     class="demo-btn"
-    onclick={() => {
-      resetDemo();
+    onclick={async () => {
+      await resetDemo();
       goto('/');
     }}>Reset demo state</button
   >

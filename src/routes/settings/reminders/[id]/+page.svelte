@@ -2,8 +2,7 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { db } from '$lib/data/db.svelte';
-  import { upsertReminder } from '$lib/data/repositories/reminders';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { nextOccurrence, type ReminderRule } from '$lib/data/reminderRule';
   import { epochDayFromLocalDate, todayEpochDay } from '$lib/data/epochDay';
   import { intlLocale } from '$lib/data/dates';
@@ -34,13 +33,24 @@
   }
 
   const isNew = page.params.id === 'new';
-  const existing = isNew ? undefined : db.reminders.find((r) => r.id === page.params.id);
 
-  let draft = $state(
-    existing
-      ? { title: existing.title, type: existing.type, time: existing.time, choice: choiceFromRule(existing) }
-      : { title: '', type: 'med' as Reminder['type'], time: '20:00', choice: 'DAILY' }
-  );
+  /* Reminders are tens of rows and not mirrored, so the one being edited comes
+     from the list rather than from a query of its own. The draft is filled the
+     moment it arrives and never again - re-running would discard whatever the
+     user has typed since. */
+  let stored = liveQuery([], (j) => (isNew ? Promise.resolve([]) : j.reminders.getReminders()));
+  let existing = $derived(stored.value?.find((r) => r.id === page.params.id));
+
+  let ready = $state(isNew);
+  let draft = $state({ title: '', type: 'med' as Reminder['type'], time: '20:00', choice: 'DAILY' });
+
+  $effect(() => {
+    if (ready || stored.loading) return;
+    if (existing) {
+      draft = { title: existing.title, type: existing.type, time: existing.time, choice: choiceFromRule(existing) };
+    }
+    ready = true;
+  });
 
   function ruleFromDraft(): ReminderRule {
     const none = { interval: null, anchorEpochDay: null, epochDay: null };
@@ -75,7 +85,7 @@
   });
 
   function saveReminder() {
-    upsertReminder({
+    journal.reminders.upsertReminder({
       id: existing?.id,
       title: draft.title || 'Reminder',
       type: draft.type,

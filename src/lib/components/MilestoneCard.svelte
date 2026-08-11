@@ -3,7 +3,7 @@
   import PhotoThumb from './PhotoThumb.svelte';
   import { fmtDay } from '$lib/data/dates';
   import type { Milestone } from '$lib/data/types';
-  import type { MilestoneStatus } from '$lib/data/repositories/milestones';
+  import type { MilestoneStatus } from '$lib/data/milestoneStatus';
 
   let { m, s, href = '/timeline' }: { m: Milestone; s: MilestoneStatus; href?: string } = $props();
 
