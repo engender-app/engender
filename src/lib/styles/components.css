@@ -596,6 +596,21 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 .pin-key:hover { background: var(--surface-2); }
 .pin-key:active { transform: scale(0.96); }
 .pin-key.is-ghost { background: none; box-shadow: none; }
+.pin-key:disabled { cursor: default; opacity: 0.45; }
+.pin-key:disabled:active { transform: none; }
+/* Holds its line whether or not there is anything to say, so the pad does
+   not jump down the screen on a wrong PIN. */
+.pin-status { min-height: 1.25rem; text-align: center; color: var(--danger); margin-bottom: var(--space-3); }
+
+/* Quick exit's neutral page. Above everything, including the demo bar at
+   60, and painted in the browser's own surface colours rather than the
+   app's - a themed page in the app's palette is exactly what it is trying
+   not to look like. */
+.quick-exit-blank {
+  position: fixed; inset: 0; z-index: 100;
+  border: none; padding: 0;
+  background: #fff; background: Canvas;
+}
 
 /* ---------- misc ---------- */
 .chip-value {

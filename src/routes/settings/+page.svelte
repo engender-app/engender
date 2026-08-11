@@ -202,8 +202,16 @@
         checked={prefs.appLock}
         label={m.app_lock()}
         onChange={(v) => {
-          prefs.appLock = v;
-          if (v) goto('/settings/lock?setup=1');
+          /* Turning it on is the setup screen's job to finish: it writes
+             both the hash and the flag once a PIN has been typed twice, so
+             the flag is never on without a PIN behind it. Turning it off
+             drops the hash, because the hash is what the gate reads. */
+          if (v) {
+            goto('/settings/lock?setup=1');
+            return;
+          }
+          prefs.appLock = false;
+          prefs.pinHash = null;
         }}
       />
     </div>
@@ -328,7 +336,11 @@
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
         <span class="row-text">
           <span class="row-title">Quick exit</span>
-          <span class="row-subtitle">two-finger swipe down locks instantly{isAndroid() ? '' : ' and swaps the tab to a blank page'}</span>
+          <span class="row-subtitle">
+            two-finger swipe down{isAndroid() ? '' : ' blanks the tab and'} locks instantly{prefs.appLock
+              ? ''
+              : ' · without app lock it only blanks the screen'}
+          </span>
         </span>
         <Switch
           checked={prefs.quickExit}

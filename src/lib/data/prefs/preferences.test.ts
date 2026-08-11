@@ -15,6 +15,9 @@ function recordingCache() {
     write(boot) {
       stored = { ...boot };
       writes.push({ ...boot });
+    },
+    clear() {
+      stored = {};
     }
   };
   return { cache, writes, current: () => stored };
