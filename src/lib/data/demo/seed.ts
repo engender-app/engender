@@ -3,7 +3,11 @@
    never looks stale and Reset restores exactly this state. */
 
 import type { DB, GenderDimension, GenderPreset, MilestoneTemplate, TagGroup } from '../types';
-import { DAY, todayEpochDay } from '../dates';
+import { todayEpochDay } from '../epochDay';
+
+// DAY is private to epochDay.ts (ticket 19); this is the one hand-multiplying
+// caller left, and ticket 05 deletes it along with the rest of this persona.
+const DAY = 86400000;
 
 function rng(seed: number) {
   return function () {

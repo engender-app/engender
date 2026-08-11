@@ -3,6 +3,7 @@
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { db, save } from '$lib/data/db.svelte';
+  import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { getPresets, activePreset } from '$lib/data/repositories/dimensions';
   import { setGroupEnabled } from '$lib/data/repositories/tags';
   import { ui } from '$lib/stores/ui.svelte';
@@ -26,7 +27,7 @@
       : (db.dimensions.find((d) => d.key === db.prefs.colorMetric)?.name ?? m.mood())
   );
   let backupAge = $derived(
-    db.prefs.lastBackupAt ? Math.floor((Date.now() - db.prefs.lastBackupAt) / 86400000) : null
+    db.prefs.lastBackupAt ? todayEpochDay() - epochDayFromTimestamp(db.prefs.lastBackupAt) : null
   );
 
   let presetSheet = $state(false);

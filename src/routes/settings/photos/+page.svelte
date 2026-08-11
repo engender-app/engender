@@ -2,6 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
   import { fmtDay } from '$lib/data/dates';
+  import { calendarDuration } from '$lib/data/epochDay';
   import type { Photo } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
@@ -32,12 +33,16 @@
 
   let gapLabel = $derived.by(() => {
     if (!pair) return '';
-    const gapDays = photos[pair.ib].epochDay - photos[pair.ia].epochDay;
-    if (gapDays >= 365) {
-      const y = Math.floor(gapDays / 365);
-      return `${y} year${y === 1 ? '' : 's'} ${Math.round((gapDays % 365) / 30)} months apart`;
-    }
-    return gapDays >= 30 ? `${Math.round(gapDays / 30)} months apart` : `${gapDays} days apart`;
+    const { years, months, days } = calendarDuration(photos[pair.ia].epochDay, photos[pair.ib].epochDay);
+    const duration =
+      years > 0
+        ? months > 0
+          ? `${m.n_years({ n: years })} ${m.n_months({ n: months })}`
+          : m.n_years({ n: years })
+        : months > 0
+          ? m.n_months({ n: months })
+          : m.n_days({ n: days });
+    return `${duration} ${m.apart_suffix()}`;
   });
 
   function toggle(i: number) {

@@ -2,9 +2,8 @@
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
   import { milestoneStatus, upsertMilestone, deleteMilestone, randomTemplates } from '$lib/data/repositories/milestones';
-  import { fmtDay, epochDayFromLocalDate, localDateFromEpochDay } from '$lib/data/dates';
-  import { dateInputValue, dateFromInputValue } from '$lib/data/dateInput';
-  import { todayEpochDay } from '$lib/data/db.svelte';
+  import { fmtDay } from '$lib/data/dates';
+  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Milestone, MilestoneTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
@@ -24,13 +23,13 @@
 
   function openEditor(existing: Milestone | null, template: MilestoneTemplate | null) {
     editor = existing
-      ? { id: existing.id, name: existing.name, date: dateInputValue(localDateFromEpochDay(existing.epochDay)), photo: existing.photo, templateKey: existing.templateKey }
-      : { name: template?.name ?? '', date: dateInputValue(localDateFromEpochDay(todayEpochDay())), photo: null, templateKey: template?.key ?? null };
+      ? { id: existing.id, name: existing.name, date: dateInputValueFromEpochDay(existing.epochDay), photo: existing.photo, templateKey: existing.templateKey }
+      : { name: template?.name ?? '', date: dateInputValueFromEpochDay(todayEpochDay()), photo: null, templateKey: template?.key ?? null };
   }
 
   function saveMilestone() {
     if (!editor) return;
-    const epochDay = editor.date ? epochDayFromLocalDate(dateFromInputValue(editor.date)) : todayEpochDay();
+    const epochDay = epochDayFromDateInputValue(editor.date) ?? todayEpochDay();
     upsertMilestone({
       id: editor.id,
       name: editor.name.trim() || 'Milestone',

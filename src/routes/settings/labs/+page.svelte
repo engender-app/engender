@@ -2,9 +2,8 @@
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
   import { labAnalytes, resultsFor, upsertLabResult } from '$lib/data/repositories/labs';
-  import { fmtDay, epochDayFromLocalDate, localDateFromEpochDay } from '$lib/data/dates';
-  import { dateInputValue, dateFromInputValue } from '$lib/data/dateInput';
-  import { todayEpochDay } from '$lib/data/db.svelte';
+  import { fmtDay } from '$lib/data/dates';
+  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
@@ -28,14 +27,14 @@
   });
 
   let editorOpen = $state(false);
-  let draft = $state({ date: dateInputValue(localDateFromEpochDay(todayEpochDay())), analyte: 'estradiol', value: '', unit: '', note: '' });
+  let draft = $state({ date: dateInputValueFromEpochDay(todayEpochDay()), analyte: 'estradiol', value: '', unit: '', note: '' });
 
   function saveResult() {
     const val = parseFloat(draft.value);
     editorOpen = false;
     if (isNaN(val)) return;
     upsertLabResult({
-      epochDay: draft.date ? epochDayFromLocalDate(dateFromInputValue(draft.date)) : todayEpochDay(),
+      epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
       analyte: draft.analyte === 'custom' ? 'other' : draft.analyte,
       value: val,
       unit: draft.unit || '—',

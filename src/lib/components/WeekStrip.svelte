@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { todayEpochDay } from '$lib/data/db.svelte';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { dayMetricValue } from '$lib/data/repositories/entries';
   import { fmtDay } from '$lib/data/dates';
 
