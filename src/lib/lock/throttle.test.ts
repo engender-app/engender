@@ -1,5 +1,21 @@
 import { test, expect } from 'vitest';
-import { createAttemptThrottle, delayAfterWrongAttempts, MAX_DELAY_MS } from './throttle.ts';
+import {
+  createAttemptThrottle,
+  delayAfterWrongAttempts,
+  MAX_DELAY_MS,
+  type AttemptState,
+  type AttemptStore
+} from './throttle.ts';
+
+function fakeStore(initial: AttemptState | null = null) {
+  let held = initial;
+  const store: AttemptStore = {
+    read: () => held,
+    write: (state) => void (held = { ...state }),
+    clear: () => void (held = null)
+  };
+  return { store, held: () => held };
+}
 
 test('the first wrong attempt is free and every one after it waits longer', () => {
   expect(delayAfterWrongAttempts(0)).toBe(0);
@@ -37,6 +53,38 @@ test('the wait counts down and reaches zero on its own', () => {
   expect(throttle.remainingMs(owed / 2)).toBe(owed / 2);
   expect(throttle.remainingMs(owed)).toBe(0);
   expect(throttle.remainingMs(owed + 10_000)).toBe(0);
+});
+
+test('the count survives the page it was made on', () => {
+  const { store, held } = fakeStore();
+  const before = createAttemptThrottle(store);
+  before.recordWrong(0);
+  before.recordWrong(0);
+  expect(held()).toEqual({ wrongAttempts: 2, acceptingFrom: delayAfterWrongAttempts(2) });
+
+  // A reload: same storage, a throttle that has never seen an attempt.
+  const after = createAttemptThrottle(store);
+  expect(after.remainingMs(0)).toBe(delayAfterWrongAttempts(2));
+  after.recordWrong(0);
+  expect(after.remainingMs(0)).toBe(delayAfterWrongAttempts(3));
+});
+
+test('a correct PIN clears the stored count too', () => {
+  const { store, held } = fakeStore();
+  const throttle = createAttemptThrottle(store);
+  throttle.recordWrong(0);
+  throttle.recordWrong(0);
+
+  throttle.reset();
+
+  expect(held()).toBe(null);
+  expect(createAttemptThrottle(store).remainingMs(0)).toBe(0);
+});
+
+test('a stored moment in the far future costs one delay, not a lockout', () => {
+  const { store } = fakeStore({ wrongAttempts: 2, acceptingFrom: 8.64e15 });
+
+  expect(createAttemptThrottle(store).remainingMs(0)).toBe(delayAfterWrongAttempts(2));
 });
 
 test('a correct PIN clears both the wait and the growth', () => {

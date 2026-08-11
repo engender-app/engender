@@ -19,11 +19,16 @@
 
   /* Nothing to try, and no PIN that could get you off this screen: the
      only button left would be the one that deletes everything. */
+  let usable = $derived(setup || prefs.pinHash !== null);
   $effect(() => {
-    if (!setup && prefs.pinHash === null) goto('/settings');
+    if (!usable) goto('/settings');
   });
 </script>
 
-{#if setup || prefs.pinHash !== null}
-  <LockScreen mode={setup ? 'setup' : 'unlock'} onDone={() => goto(next)} />
+{#if usable}
+  <LockScreen
+    mode={setup ? 'setup' : 'unlock'}
+    onDone={() => goto(next)}
+    onCancel={setup ? () => goto(next) : undefined}
+  />
 {/if}

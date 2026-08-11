@@ -12,6 +12,11 @@
    early (ADR-0009). The two are kept in step where a PIN is set and
    cleared, so a hash is present exactly when app lock is on.
 
+   A mirror cleared by hand does not open the gate either: boot lands the
+   real preferences before it unparks the journal's queries, so the hash is
+   back before an entry could be read, let alone rendered. What renders in
+   between is a skeleton.
+
    Biometrics (Android) will unlock by calling markUnlocked() after its own
    prompt succeeds; nothing about the PIN path has to change for it. */
 

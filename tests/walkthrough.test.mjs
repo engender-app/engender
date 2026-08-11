@@ -177,6 +177,16 @@ try {
   await fresh('/settings');
   await page.getByRole('switch', { name: 'App lock' }).click();
   await page.waitForSelector('.pin-pad');
+
+  // Second thoughts on a chromeless screen: there has to be a way back.
+  await page.locator('[data-cancel-setup]').click();
+  await page.waitForSelector('.list-group');
+  if ((await page.getByRole('switch', { name: 'App lock' }).getAttribute('aria-checked')) === 'true') {
+    throw new Error('app lock switched itself on without a PIN');
+  }
+
+  await page.getByRole('switch', { name: 'App lock' }).click();
+  await page.waitForSelector('.pin-pad');
   await typePin('1234');
   await typePin('1234');
   await page.waitForSelector('.list-group');
@@ -197,6 +207,26 @@ try {
   }
 
   await page.waitForSelector('.pin-key[data-key="1"]:not([disabled])', { timeout: 8000 });
+
+  /* A reload is the cheapest thing a guesser can do, so the count has to
+     outlive one. Forged rather than earned: waiting out a real doubling
+     would make the assertion a race against the clock. */
+  if (!(await page.evaluate(() => localStorage.getItem('gender-diary-pin-attempts')))) {
+    throw new Error('the wrong-attempt count never reached storage');
+  }
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'gender-diary-pin-attempts',
+      JSON.stringify({ wrongAttempts: 6, acceptingFrom: Date.now() + 30000 })
+    )
+  );
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-pin-status]:has-text("Try again in")');
+
+  await page.evaluate(() => localStorage.removeItem('gender-diary-pin-attempts'));
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
   await typePin('1234');
   await page.waitForSelector('.home-hello');
 
@@ -349,6 +379,12 @@ try {
   await page.waitForSelector('.applock', { state: 'detached', timeout: 60000 });
   await booted();
   if (await page.locator('.applock').count()) throw new Error('still locked after the reset');
+  const mirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
+  if (mirror.pinHash) throw new Error('the PIN survived the reset');
+  /* Home rather than onboarding, because this is the demo build: an empty
+     preference table is what makes it seed the persona, and the wipe left
+     one. In a production build the first-run gate (flow 13) is what a
+     wiped device meets instead. */
   await page.waitForSelector('.home-hello');
   ok('lock on leave, quick exit blanks and locks, forgotten-PIN reset clears the lock');
 } catch (e) { fail('lock on leave, quick exit and reset', e); }
