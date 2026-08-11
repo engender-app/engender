@@ -15,17 +15,19 @@ import { join } from 'node:path';
 import { preview } from 'vite';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
 
-function emittedJavaScript() {
-  const dir = 'build/_app/immutable';
+/** Everything the build emitted, JavaScript and CSS both - the demo bar's
+    styling used to sit in a shared stylesheet, where dropping the component
+    would still have left its rules behind. */
+function emittedAssets() {
   const files = [];
   const walk = (path) => {
     for (const entry of readdirSync(path, { withFileTypes: true })) {
       const full = join(path, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith('.js')) files.push(full);
+      else if (entry.name.endsWith('.js') || entry.name.endsWith('.css')) files.push(full);
     }
   };
-  walk(dir);
+  walk('build/_app/immutable');
   return files.map((f) => readFileSync(f, 'utf8')).join('\n');
 }
 
@@ -75,12 +77,14 @@ try {
      "Estradiol patch" is the reminder editor's placeholder as well as one
      of Alice's reminders, so it would fail against a bundle that is
      perfectly clean. */
-  const bundle = emittedJavaScript();
+  const bundle = emittedAssets();
   const persona = ['Alice', 'Coffee with Marta', 'Voice workshop weekend'].filter((s) => bundle.includes(s));
   if (persona.length === 0) ok('production build contains no demo persona');
   else fail('production build contains no demo persona', `found ${persona.join(', ')}`);
 
-  const demoBar = ['Demo controls', 'Jump to screen', 'Reset demo state'].filter((s) => bundle.includes(s));
+  const demoBar = ['Demo controls', 'Jump to screen', 'Reset demo state', 'demo-phone-frame'].filter((s) =>
+    bundle.includes(s)
+  );
   if (demoBar.length === 0) ok('production build contains no demo bar');
   else fail('production build contains no demo bar', `found ${demoBar.join(', ')}`);
 

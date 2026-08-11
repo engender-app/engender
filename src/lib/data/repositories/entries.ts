@@ -67,16 +67,18 @@ const fold = (s: string) =>
     .replace(/[łl]/g, 'l').replace(/[ńñ]/g, 'n').replace(/[óòôö]/g, 'o')
     .replace(/[śš]/g, 's').replace(/[żźž]/g, 'z');
 
-/** FTS5 stand-in: prefix-friendly, diacritics-insensitive note + tag match. */
-export function searchEntries(query: string): Entry[] {
+/** FTS5 stand-in: prefix-friendly, diacritics-insensitive note + tag match.
+
+    `tagLabel` is passed in rather than read off the row: a built-in tag
+    stores a key, not a word (ticket 05), so what someone types has to be
+    matched against what they were shown. ADR-0005 puts tag matching above
+    this seam for the same reason. */
+export function searchEntries(query: string, tagLabel: (id: string) => string): Entry[] {
   const q = fold(query.trim());
   if (!q) return [];
   return entriesNewestFirst().filter((e) => {
     if (fold(e.note || '').includes(q)) return true;
-    return e.tags.some((id) => {
-      const t = tagById(id);
-      return t ? fold(t.label).includes(q) : false;
-    });
+    return e.tags.some((id) => fold(tagLabel(id)).includes(q));
   });
 }
 
@@ -102,8 +104,9 @@ export function seriesForRange(rangeDays: number, metric: string): SeriesPoint[]
 }
 
 export interface TagInsight {
+  /** No label: built-in tags are keyed, and the wording comes from
+      vocabulary.ts at display time (ticket 05). */
   id: string;
-  label: string;
   count: number;
   withAvg: number;
   withoutAvg: number;
@@ -123,7 +126,7 @@ export function tagInsights(rangeDays: number, metric: string): TagInsight[] {
     const without = inRange.filter((e) => !e.tags.includes(id)).map(val).filter((v): v is number => v != null);
     if (withT.length < 3 || !without.length) continue; // <3 entries → too noisy
     const avg = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
-    rows.push({ id, label: t.label, count: withT.length, withAvg: avg(withT), withoutAvg: avg(without) });
+    rows.push({ id, count: withT.length, withAvg: avg(withT), withoutAvg: avg(without) });
   }
   return rows.sort((a, b) => Math.abs(b.withAvg - b.withoutAvg) - Math.abs(a.withAvg - a.withoutAvg));
 }

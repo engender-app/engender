@@ -2,7 +2,6 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, epochDayFromTimestamp } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { ui } from '$lib/stores/ui.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';

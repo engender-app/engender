@@ -5,8 +5,8 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { entriesForDay, dayMetricValue } from '$lib/data/repositories/entries';
-  import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -15,9 +15,7 @@
   let epochDay = $derived(page.params.day === 'today' ? todayEpochDay() : Number(page.params.day));
   let entries = $derived(entriesForDay(epochDay));
   let metric = $derived(metricKey(prefs));
-  let metricName = $derived(
-    metric === 'mood' ? m.mood() : (vocabulary.dimensions.find((d) => d.key === metric)?.name ?? m.mood())
-  );
+  let metricName = $derived(vocabulary.metricName);
   let avg = $derived(dayMetricValue(epochDay, metric));
   let isToday = $derived(epochDay === todayEpochDay());
 </script>

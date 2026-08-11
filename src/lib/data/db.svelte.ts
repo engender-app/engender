@@ -7,8 +7,8 @@
    ticket 07 takes.
 
    The built-in vocabulary is reconciled into whatever loads, every time,
-   rather than seeded only into an empty store (ticket 05). What a fresh
-   store starts as is the only thing the demo flag decides. */
+   rather than seeded only into an empty journal (ticket 05). What a fresh
+   one starts as is the only thing the demo flag decides. */
 
 import { emptyDb, seedVocabulary } from './firstRun';
 import { personaDb } from './demo/persona';

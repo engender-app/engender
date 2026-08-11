@@ -57,6 +57,7 @@
   });
   $effect(() => {
     document.body.classList.toggle('demo-phone-frame', frame.mode === 'phone');
+    return () => document.body.classList.remove('demo-phone-frame');
   });
 </script>
 
@@ -89,3 +90,50 @@
     </select>
   </div>
 </div>
+
+<style>
+  /* Lived in styles/app.css, which ships. Here it belongs to the component,
+     so a production build that drops DemoBar drops its styling too (ticket
+     05) - verify-build.mjs greps the emitted CSS as well as the JavaScript.
+     Every selector reaches outside this component, hence :global(). */
+  :global(body.has-demo-bar) { display: flex; flex-direction: column; height: 100dvh; }
+  :global(body.has-demo-bar .app-viewport) { flex: 1; min-height: 0; }
+  :global(.demo-bar) {
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  background: light-dark(#e9e5e0, #26221f);
+  color: light-dark(#4a443e, #c9c2ba);
+  border-bottom: 1px solid light-dark(#d0cbc4, #3a3530);
+  position: relative; z-index: 60;
+  }
+  :global(.demo-bar .demo-title) { font-weight: var(--weight-bold); }
+  :global(.demo-group) { display: inline-flex; gap: 2px; background: light-dark(#d7d2cb, #37322d); border-radius: 10px; padding: 3px; }
+  :global(.demo-btn) {
+  border: none; background: none; cursor: pointer;
+  font: inherit; font-size: var(--text-sm); color: inherit;
+  padding: 4px 12px; border-radius: 8px;
+  display: inline-flex; align-items: center; gap: 6px;
+  }
+  :global(.demo-btn:hover) { background: light-dark(#e8e4df, #45403a); }
+  :global(.demo-btn.is-active) { background: light-dark(#fdfcfb, #57504a); font-weight: var(--weight-bold); }
+  :global(.demo-jump) { margin-left: auto; }
+  :global(.demo-jump select) {
+  font: inherit; font-size: var(--text-sm);
+  padding: 5px 10px; border-radius: 8px;
+  border: 1px solid light-dark(#c5bfb8, #4a443e);
+  background: light-dark(#fdfcfb, #37322d); color: inherit;
+  max-width: 220px;
+  }
+
+  /* phone-frame emulation: constrain the container, container queries do the rest */
+  :global(body.demo-phone-frame .app-viewport) {
+  width: 390px; max-height: 844px;
+  margin: var(--space-4) auto;
+  border-radius: 44px;
+  border: 10px solid light-dark(#3a352f, #0c0a09);
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.35);
+  }
+  :global(body.demo-phone-frame) { background: light-dark(#e5e1dc, #1b1815); }
+</style>

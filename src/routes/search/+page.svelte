@@ -1,12 +1,13 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { searchEntries } from '$lib/data/repositories/entries';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
 
   let query = $state('');
-  let hits = $derived(searchEntries(query));
+  let hits = $derived(searchEntries(query, (id) => vocabulary.tag(id)?.label ?? ''));
 </script>
 
 <div class="screen">

@@ -82,7 +82,12 @@ try {
   await fresh('/search');
   await page.locator('#q').fill('coffee');
   await page.waitForSelector('.entry-card');
-  ok('search live results');
+  /* A word that is only ever a built-in tag's label, never note text.
+     Built-in tags are stored as keys now, so search has to match against
+     the resolved wording or this finds nothing. */
+  await page.locator('#q').fill('hopeful');
+  await page.waitForSelector('.entry-card');
+  ok('search matches note text and built-in tag labels');
 } catch (e) { fail('search', e); }
 
 /* 6. stats range + value list */
@@ -93,7 +98,11 @@ try {
   if (!title.includes('90')) throw new Error('title: ' + title);
   await page.locator('.chart-card').first().click();
   await page.waitForSelector('.value-row');
-  ok('stats range + value list');
+  /* Tag insights name a built-in tag, so a blank title means the key never
+     got resolved. */
+  const insight = await page.locator('.list-group .row-title').first().textContent();
+  if (!insight?.trim()) throw new Error('tag insight has no label');
+  ok('stats range, value list and named tag insights');
 } catch (e) { fail('stats', e); }
 
 /* 7. palette switch */

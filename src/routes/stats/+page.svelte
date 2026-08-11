@@ -93,9 +93,10 @@
   {#if insights.length}
     <div class="list-group">
       {#each insights.slice(0, 6) as i (i.id)}
-        <button class="list-row" onclick={() => (insightSheet = { label: i.label, id: i.id })}>
+        {@const label = vocabulary.tag(i.id)?.label ?? i.id}
+        <button class="list-row" onclick={() => (insightSheet = { label, id: i.id })}>
           <span class="row-text">
-            <span class="row-title">{i.label}</span>
+            <span class="row-title">{label}</span>
             <span class="row-subtitle">
               {i.count} entries · avg {fmtMetric(i.withAvg)} with · {fmtMetric(i.withoutAvg)} without
             </span>

@@ -35,11 +35,7 @@
     backupAgeDays != null && backupAgeDays > 30 && !prefs.backupNoticeDismissed
   );
 
-  let metricName = $derived(
-    prefs.metricKind === 'mood'
-      ? m.mood()
-      : (vocabulary.dimensions.find((d) => d.key === metricKey(prefs))?.name ?? m.mood())
-  );
+  let metricName = $derived(vocabulary.metricName);
 
   let dayGroups = $derived.by(() => {
     const byDay = new Map<number, ReturnType<typeof entriesNewestFirst>>();
