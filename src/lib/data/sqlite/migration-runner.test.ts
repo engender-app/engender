@@ -1,10 +1,10 @@
-/* Unit tests for the migration runner (ADR-0006), run with `node --test`.
-   No production SQLite driver exists yet (ticket 04); node:sqlite's
-   DatabaseSync stands in as a real, synchronous MigrationDb for these tests
-   only. The fake file-ops object stands in for ticket 04's OPFS/Capacitor
-   file copy. */
+/* Unit tests for the migration runner (ADR-0006). Part of the Node tier
+   (ticket 03); run with `npm test`. No production SQLite driver exists yet
+   (ticket 04); node:sqlite's DatabaseSync stands in as a real, synchronous
+   MigrationDb for these tests only. The fake file-ops object stands in for
+   ticket 04's OPFS/Capacitor file copy. */
 
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { runMigrations, SchemaTooNewError, Fts5UnavailableError, assertFts5Available } from './migration-runner.ts';
 import type { MigrationDb, MigrationFileOps, Migration } from './migration-runner.ts';
