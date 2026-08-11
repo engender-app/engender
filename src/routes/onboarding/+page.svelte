@@ -21,7 +21,6 @@
   async function finish() {
     prefs.name = name.trim();
     prefs.activePreset = preset;
-    prefs.appLock = appLock;
     prefs.onboarded = true;
     if (milestoneTemplate) {
       const tpl = vocabulary.milestoneTemplates.find((t) => t.key === milestoneTemplate)!;
@@ -30,7 +29,10 @@
       // refreshes from the write, and navigating first would race it.
       await journal.milestones.upsertMilestone({ name: tpl.name, epochDay, templateKey: tpl.key });
     }
-    goto('/');
+    /* The toggle above is a choice to set a PIN, not a PIN: nothing turns
+       app lock on until one has been typed twice on the setup screen
+       (ticket 17), which then brings the new user Home itself. */
+    goto(appLock ? '/settings/lock?setup=1&next=/' : '/');
   }
 </script>
 

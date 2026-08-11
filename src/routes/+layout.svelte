@@ -13,7 +13,9 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, startBoot } from '$lib/stores/boot.svelte';
+  import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import LockScreen from '$lib/components/LockScreen.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
 
@@ -32,8 +34,15 @@
     { href: '/settings', key: 'settings', icon: 'settings', label: () => m.nav_settings() },
   ];
 
+  /* The gate (F13). It is asked here rather than in a route guard because
+     a guard runs after navigation: `locked` has to decide what renders,
+     not where the app navigates to, or the first paint of a cold start
+     shows the journal for as long as the redirect takes. */
+  let locked = $derived(isLocked());
+  $effect(() => watchLock());
+
   let path = $derived(page.url.pathname);
-  let chromeless = $derived(path.startsWith('/onboarding') || path === '/settings/lock');
+  let chromeless = $derived(locked || path.startsWith('/onboarding') || path === '/settings/lock');
   let activeKey = $derived(
     path === '/' ? 'home'
     : path.startsWith('/calendar') || path.startsWith('/day') || path.startsWith('/search') ? 'calendar'
@@ -55,7 +64,7 @@
     const root = document.documentElement;
     root.dataset.palette = prefs.palette;
     root.dataset.theme = prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : prefs.theme;
-    document.title = prefs.disguise ? 'Notes' : 'Gender Diary';
+    document.title = lockState.blanked ? 'New tab' : prefs.disguise ? 'Notes' : 'Gender Diary';
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);
@@ -67,7 +76,7 @@
      database opens it reads as its default, which would send every
      returning user through onboarding again. */
   $effect(() => {
-    if (bootState.status !== 'ready') return;
+    if (bootState.status !== 'ready' || locked) return;
     if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
   });
   /* New-entry chooser (F1). */
@@ -134,7 +143,13 @@
     {/if}
 
     <main class="app-main">
-      {@render children()}
+      {#if locked}
+        <!-- Instead of the route, not over it: nothing below this renders,
+             so no screen mounts and no query runs while the app is locked. -->
+        <LockScreen />
+      {:else}
+        {@render children()}
+      {/if}
     </main>
 
     {#if !chromeless}
@@ -194,3 +209,15 @@
     <Toasts />
   </div>
 </div>
+
+{#if lockState.blanked}
+  <!-- Quick exit (F24): the whole tab, blank, over everything. Dismissing
+       it does not unlock anything - with a PIN set, what is underneath is
+       the lock screen. -->
+  <button
+    class="quick-exit-blank"
+    data-blank
+    aria-label="Back to the app"
+    onclick={() => (lockState.blanked = false)}
+  ></button>
+{/if}

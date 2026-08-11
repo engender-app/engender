@@ -202,8 +202,16 @@
         checked={prefs.appLock}
         label={m.app_lock()}
         onChange={(v) => {
-          prefs.appLock = v;
-          if (v) goto('/settings/lock?setup=1');
+          /* Turning it on is the setup screen's job to finish: it writes
+             both the hash and the flag once a PIN has been typed twice, so
+             the flag is never on without a PIN behind it. Turning it off
+             drops the hash, because the hash is what the gate reads. */
+          if (v) {
+            goto('/settings/lock?setup=1');
+            return;
+          }
+          prefs.appLock = false;
+          prefs.pinHash = null;
         }}
       />
     </div>

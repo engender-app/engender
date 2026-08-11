@@ -29,6 +29,9 @@ export function localStorageCache(): PreferenceCache {
       } catch {
         /* storage full / private mode - the next cold start just waits for SQLite */
       }
+    },
+    clear() {
+      localStorage.removeItem(BOOT_CACHE_KEY);
     }
   };
 }
