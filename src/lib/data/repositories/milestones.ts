@@ -1,6 +1,7 @@
 /* MilestoneRepository (PRD F6/F26). */
 
-import { db, save, todayEpochDay } from '../db.svelte';
+import { db, save } from '../db.svelte';
+import { todayEpochDay, calendarDuration, nextAnniversaryEpochDay } from '../epochDay';
 import { milestoneTemplates } from '../demo/seed';
 import type { Milestone, MilestoneTemplate } from '../types';
 
@@ -16,10 +17,9 @@ export function milestoneStatus(m: Milestone): MilestoneStatus {
   const today = todayEpochDay();
   if (m.epochDay > today) return { type: 'countdown', days: m.epochDay - today };
   if (m.epochDay === today) return { type: 'today', days: 0 };
-  const years = Math.floor((today - m.epochDay) / 365.25);
-  const nextAnniv = Math.round(m.epochDay + (years + 1) * 365.25);
-  const isAnnivToday = (today - m.epochDay) % 365 === 0 && years > 0;
-  return { type: 'anniversary', years, inDays: Math.max(0, nextAnniv - today), isAnnivToday };
+  const { years } = calendarDuration(m.epochDay, today);
+  const nextAnniv = nextAnniversaryEpochDay(m.epochDay, today);
+  return { type: 'anniversary', years, inDays: nextAnniv - today, isAnnivToday: nextAnniv === today };
 }
 
 export function upcomingMilestones(): { m: Milestone; s: MilestoneStatus }[] {

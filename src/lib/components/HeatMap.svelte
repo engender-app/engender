@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { db, todayEpochDay } from '$lib/data/db.svelte';
+  import { db } from '$lib/data/db.svelte';
   import { dayMetricValue } from '$lib/data/repositories/entries';
-  import { fmtDay, epochDayFromLocalDate } from '$lib/data/dates';
+  import { fmtDay } from '$lib/data/dates';
+  import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
 
   let { year, month }: { year: number; month: number /* 0-based */ } = $props();
 

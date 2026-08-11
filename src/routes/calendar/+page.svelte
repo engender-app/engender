@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { db } from '$lib/data/db.svelte';
-  import { intlLocale } from '$lib/data/dates';
+  import { fmtMonthYear } from '$lib/data/dates';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
 
@@ -14,9 +14,7 @@
       ? m.mood()
       : (db.dimensions.find((d) => d.key === db.prefs.colorMetric)?.name ?? m.mood())
   );
-  let monthLabel = $derived(
-    new Intl.DateTimeFormat(intlLocale(), { month: 'long', year: 'numeric' }).format(new Date(year, month, 1))
-  );
+  let monthLabel = $derived(fmtMonthYear(year, month));
 
   function step(delta: number) {
     let mo = month + delta;

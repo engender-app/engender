@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import EntryEditor from '$lib/components/EntryEditor.svelte';
-  import { todayEpochDay } from '$lib/data/db.svelte';
+  import { todayEpochDay } from '$lib/data/epochDay';
 
   let epochDay = $derived(
     page.params.day === 'today' ? todayEpochDay() : Number(page.params.day)
