@@ -45,10 +45,22 @@ async function run() {
   const miss = await result.driver.run("UPDATE entry SET updated_at = 2000 WHERE uuid = 'no-such-row'");
   await result.driver.run('DELETE FROM entry WHERE uuid = ?', [uuid]);
 
+  /* Ticket 10: the streak and the recap's best streak count runs of
+     consecutive days with ROW_NUMBER() OVER (...), the first window
+     functions in the codebase. A build compiled with SQLITE_OMIT_WINDOWFUNC
+     would fail on them here and nowhere else - the Node tier's SQLite is a
+     different build - so the check has to happen against the WASM one. */
+  const windowed = await result.driver.query<{ n: number }>(
+    `WITH days AS (SELECT DISTINCT epoch_day AS day FROM entry),
+          numbered AS (SELECT day, ROW_NUMBER() OVER (ORDER BY day) AS rn FROM days)
+     SELECT COUNT(*) AS n FROM numbered GROUP BY day - rn ORDER BY n DESC LIMIT 1`
+  ).then((rows) => rows[0]?.n ?? 0);
+
   (window as unknown as { __driverProbeResult: unknown }).__driverProbeResult = {
     userVersion,
     persistDenied: result.persistDenied,
     markerExisted,
+    windowFunctionRun: windowed,
     runContract: {
       insertChanges: insert.changes,
       lastInsertRowid: insert.lastInsertRowid,

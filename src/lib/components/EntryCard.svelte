@@ -2,6 +2,7 @@
   import Icon from './Icon.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import type { Entry } from '$lib/data/types';
+  import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let {
@@ -10,7 +11,6 @@
     dayCount = 1,
   }: { entry: Entry; showDay?: boolean; dayCount?: number } = $props();
 
-  const MOOD_LABELS = ['awful', 'bad', 'meh', 'good', 'great'];
   let tags = $derived(entry.tags.map((id) => vocabulary.tag(id)).filter((t) => t != null).slice(0, 4));
   let more = $derived(entry.tags.length - tags.length);
 </script>
@@ -22,7 +22,7 @@
         class="mood-dot"
         style="--dot:26px;background:var(--mood-{entry.mood})"
         role="img"
-        aria-label="mood: {MOOD_LABELS[entry.mood - 1]}"
+        aria-label="mood: {moodName(entry.mood)}"
       ></span>
     {:else}
       <span class="mood-dot is-empty" style="--dot:26px" title="no mood"></span>

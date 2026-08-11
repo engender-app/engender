@@ -1,7 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
-
-  export const MOOD_LABELS = ['awful', 'bad', 'meh', 'good', 'great'];
+  import { moodName } from '$lib/data/vocabulary/labels';
 
   let {
     value = null,
@@ -16,7 +15,7 @@
     4: 'M8.5 14.6c1 .9 2.2 1.4 3.5 1.4s2.5-.5 3.5-1.4',
     5: 'M8 14c1.2 1.6 2.6 2.4 4 2.4s2.8-.8 4-2.4',
   };
-  const MOODS = [1, 2, 3, 4, 5].map((v) => ({ value: v, label: MOOD_LABELS[v - 1] }));
+  let moods = $derived([1, 2, 3, 4, 5].map((v) => ({ value: v, label: moodName(v) })));
 </script>
 
 <!-- The face row is the static fallback + placeholder for the Rive mood
@@ -24,7 +23,7 @@
 <div class="mood-picker" class:is-compact={compact} role="radiogroup" aria-label="Mood">
   <div class="rive-note" aria-hidden="true"><Icon name="zap" size={12} /> Rive: mood faces state machine</div>
   <div class="mood-row">
-    {#each MOODS as m (m.value)}
+    {#each moods as m (m.value)}
       <button
         class="mood-btn"
         class:is-selected={m.value === value}

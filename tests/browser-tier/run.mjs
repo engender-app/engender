@@ -80,6 +80,11 @@ try {
     ok('run() reports lastInsertRowid as the row just inserted (checked against its uuid)');
   else fail('run() reports lastInsertRowid as the row just inserted (checked against its uuid)', JSON.stringify(rc));
 
+  // Ticket 10: the streak counts consecutive days with a window function,
+  // and this build is the only one that can tell us whether it has them.
+  if (first.windowFunctionRun >= 1) ok('the WASM build has the window functions the streak counts runs with');
+  else fail('the WASM build has the window functions the streak counts runs with', JSON.stringify(first.windowFunctionRun));
+
   await reload();
   const second = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
   if (second.error) throw new Error(second.error);

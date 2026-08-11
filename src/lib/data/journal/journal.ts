@@ -1,7 +1,7 @@
 /* The journal (ADR-0017, CONTEXT: "Journal"): everything this device holds
    about the user's transition, reached through one handle bound to a
    database driver. A factory takes a SqliteDriver and a photo file store
-   and composes seven area modules behind that handle. The interface is
+   and composes eight area modules behind that handle. The interface is
    uniformly async and free of Svelte runes, so the whole thing runs under
    the Node tier's real SQLite; it mints every row's identity itself
    (ADR-0002), so no screen ever needs a Date.now() scheme again.
@@ -17,6 +17,7 @@ import { makeLabsArea, type LabsArea } from './labs';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePhotosArea, type PhotosArea } from './photos';
 import { makeRemindersArea, type RemindersArea } from './reminders';
+import { makeStatsArea, type StatsArea } from './stats';
 import { makeTagsArea, type TagsArea } from './tags';
 import { reconcileBuiltIns } from './reconcile';
 
@@ -44,6 +45,9 @@ export interface Journal {
   photos: PhotosArea;
   labs: LabsArea;
   reminders: RemindersArea;
+  /** Read-only aggregates over everything above (ADR-0012). Nothing here
+      is stored; a stat is recomputed whenever it is asked for. */
+  stats: StatsArea;
   /** Adds whatever built-in vocabulary is missing, by key, and touches
       nothing else - safe on every boot and again before ticket 14's
       Replace import applies. */
@@ -59,6 +63,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     photos: makePhotosArea(driver, files),
     labs: makeLabsArea(driver),
     reminders: makeRemindersArea(driver),
+    stats: makeStatsArea(driver),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)
   };
 }
