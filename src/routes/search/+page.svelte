@@ -18,13 +18,22 @@
   /* Tag labels are matched here and note text in FTS5, which is ADR-0005's
      split: a built-in tag stores a key, so the words it was shown under only
      exist above the journal, over the mirrored vocabulary. Both halves and
-     the query itself are read before the first await, so typing re-runs it. */
+     the query itself are read before the first await, so typing re-runs it.
+
+     The count comes back separately from the page, because the screen states
+     how many entries matched and shows the first thirty of them: taking the
+     count from the page would have it report thirty for a query with fifty. */
   let search = liveQuery(['entry', 'tag'], (j) => {
     const typed = query.trim();
-    if (!typed) return Promise.resolve([]);
-    return j.entries.searchEntries(typed, tagIdsMatching(typed, vocabulary.tags), PAGE);
+    if (!typed) return Promise.resolve({ hits: [], total: 0 });
+    const tagIds = tagIdsMatching(typed, vocabulary.tags);
+    return Promise.all([
+      j.entries.searchEntries(typed, tagIds, PAGE),
+      j.entries.countSearchMatches(typed, tagIds)
+    ]).then(([hits, total]) => ({ hits, total }));
   });
-  let hits = $derived(search.value ?? []);
+  let hits = $derived(search.value?.hits ?? []);
+  let total = $derived(search.value?.total ?? 0);
 </script>
 
 <div class="screen">
@@ -57,7 +66,7 @@
     {:else if search.loading}
       <Skeleton variant="card" count={3} />
     {:else if hits.length}
-      <p class="muted small" style="margin-bottom:var(--space-3)">{m.results_count({ count: String(hits.length) })}</p>
+      <p class="muted small" style="margin-bottom:var(--space-3)">{m.results_count({ count: String(total) })}</p>
       {#each hits as e (e.id)}
         <EntryCard entry={e} />
       {/each}

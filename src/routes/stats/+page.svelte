@@ -19,10 +19,11 @@
   const INSIGHT_ENTRIES = 20;
   let range = $state(30);
 
-  const today = todayEpochDay();
   /* A range is a length on screen and two epoch days to the journal, which
      never reads the clock for a domain answer (ticket 10). Inclusive of both
-     ends, so "7 days" is today and the six before it. */
+     ends, so "7 days" is today and the six before it - and read on recompute
+     rather than captured, so a session open across midnight moves on. */
+  let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
 
   let metrics = $derived([
@@ -96,7 +97,7 @@
   {/if}
 
   {#if seriesQuery.loading}
-    <Skeleton variant="chart" count={2} />
+    <Skeleton variant="block" count={2} />
   {:else}
     {#each metrics as mt, mi (mt.key)}
       {@const series = seriesFor(mt.key)}

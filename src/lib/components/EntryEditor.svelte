@@ -3,13 +3,11 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { entryIsEmpty } from '$lib/data/entryContent';
-  import { filePhotoPicker } from '$lib/data/photos/picker';
-  import { normalizePhoto, UnsupportedImageError } from '$lib/data/photos/normalize';
-  import type { NormalizedPhoto } from '$lib/data/journal/photos';
+  import { pickPhotos, type EditorPhoto } from '$lib/stores/photoPicking';
   import { toast } from '$lib/stores/toasts.svelte';
-  import type { Entry, GenderDimension, Photo } from '$lib/data/types';
+  import type { Entry, GenderDimension } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
@@ -33,17 +31,8 @@
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? todayEpochDay());
 
-  /** A photo in the editor: one the entry already has, or one just picked and
-      normalized but not yet stored. The two are not interchangeable - a stored
-      photo is a row to keep or remove, a picked one is bytes to write. */
-  type EditorPhoto =
-    | { kind: 'stored'; photo: Photo }
-    | { kind: 'picked'; photo: NormalizedPhoto };
-
-  /* Local draft; committed as one action on Save (F1). Filled from `existing`
-     the moment it arrives, once - `ready` is what makes it once, because an
-     effect that re-ran would undo every edit made since. */
-  let ready = $state(false);
+  /* Local draft; committed as one action on Save (F1), and filled from the
+     stored entry the moment it arrives. */
   // Captured once on purpose: the route wraps this component in {#key}, so a
   // different entry or day mounts a fresh editor with a fresh draft.
   // svelte-ignore state_referenced_locally
@@ -61,20 +50,17 @@
       out of by leaving the screen has to be recoverable. */
   let removedPhotoIds: string[] = [];
 
-  $effect(() => {
-    if (ready || loaded.loading) return;
-    if (existing) {
-      draft = {
-        epochDay: existing.epochDay,
-        timestamp: existing.timestamp,
-        mood: existing.mood,
-        note: existing.note,
-        dims: { ...existing.dims },
-        tags: [...existing.tags]
-      };
-      photos = existing.photos.map((photo) => ({ kind: 'stored' as const, photo }));
-    }
-    ready = true;
+  onFirstResult(loaded, (entry) => {
+    if (!entry) return;
+    draft = {
+      epochDay: entry.epochDay,
+      timestamp: entry.timestamp,
+      mood: entry.mood,
+      note: entry.note,
+      dims: { ...entry.dims },
+      tags: [...entry.tags]
+    };
+    photos = entry.photos.map((photo) => ({ kind: 'stored' as const, photo }));
   });
 
   let deleteOpen = $state(false);
@@ -93,30 +79,10 @@
   let preset = $derived(vocabulary.activePreset);
   let isToday = $derived(day === todayEpochDay());
 
-  /* Pick, normalize, hold (ticket 11's handover to this ticket). Normalizing
-     here rather than on save so an unreadable or HEIC file is refused while
-     the user is still looking at the picker, and so the tile can show what
-     they actually chose. The bytes are stored when the entry is (ADR-0008:
-     files before the row that names them). */
-  const picker = filePhotoPicker();
-
+  // An entry holds several photos, so one trip through the picker can bring
+  // back several (photoPicking.ts).
   async function addPhoto() {
-    let picked: Uint8Array[];
-    try {
-      picked = await picker.pick();
-    } catch {
-      toast("Couldn't open the photo picker.");
-      return;
-    }
-    for (const bytes of picked) {
-      try {
-        photos.push({ kind: 'picked', photo: await normalizePhoto(bytes) });
-      } catch (error) {
-        // UnsupportedImageError carries a message written for the person who
-        // picked the file; anything else is a bug and gets a plain one.
-        toast(error instanceof UnsupportedImageError ? error.message : "That photo couldn't be read.");
-      }
-    }
+    for (const photo of await pickPhotos()) photos.push({ kind: 'picked', photo });
   }
 
   function removePhoto(index: number) {
@@ -144,7 +110,7 @@
     if (saving) return; // a second tap while the worker is writing
     saving = true;
     try {
-      const id = await journal.entries.upsertEntry({
+      await journal.entries.upsertEntry({
         id: existing?.id,
         ...draft,
         timestamp: draft.timestamp || undefined,
@@ -154,7 +120,6 @@
       removedPhotoIds = [];
       goto('/');
       toast(m.saved());
-      return id;
     } catch (error) {
       console.error('could not save the entry', error);
       toast("Couldn't save this entry.");
@@ -189,8 +154,8 @@
   <!-- An existing entry has to arrive before the draft can hold it, so the
        editor waits rather than showing an empty form that fills itself in
        under the user's hands. A new entry has nothing to wait for. -->
-  {#if !ready}
-    <Skeleton variant="chart" count={3} />
+  {#if loaded.loading}
+    <Skeleton variant="block" count={3} />
   {:else}
   <section class="card editor-section">
     <h2 class="editor-heading">{m.mood()}</h2>

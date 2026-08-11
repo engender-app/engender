@@ -20,7 +20,28 @@ test('a write announces exactly the tables it touched, and hands its result back
   const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4 });
 
   assert.equal(typeof id, 'number');
-  assert.deepEqual(announced, [['entry']]);
+  // Photos too, because a save carries the ones picked in the same edit.
+  assert.deepEqual(announced, [['entry', 'photo']]);
+});
+
+test('a photo write announces its owners, not just the photo table', async () => {
+  const { journal, announced } = await observed();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 100, mood: 4 });
+  announced.length = 0;
+
+  /* An entry carries its photos on the shape it is read back as, so an entry
+     list that watched only the entry table kept showing a photo indicator for
+     a photo that had just been deleted. */
+  const photoId = await journal.photos.attach(
+    { entryId },
+    { full: new Uint8Array([1]), thumb: new Uint8Array([2]) }
+  );
+  await journal.photos.remove(photoId);
+
+  assert.deepEqual(announced, [
+    ['photo', 'entry', 'milestone'],
+    ['photo', 'entry', 'milestone']
+  ]);
 });
 
 test('a write that reaches into another area announces both', async () => {

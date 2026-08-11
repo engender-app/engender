@@ -63,7 +63,7 @@
   </header>
 
   {#if usedQuery.loading}
-    <Skeleton variant="chart" count={1} />
+    <Skeleton variant="block" count={1} />
   {:else if analytes.length}
     <p class="muted small" style="margin-bottom:var(--space-3)">
       Your numbers, your trend. The app never interprets them and gives no medical advice.

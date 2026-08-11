@@ -186,3 +186,18 @@ export function liveQuery<T>(tables: TableName[], run: (journal: Journal) => Pro
     }
   };
 }
+
+/** Calls `fill` with a query's first result and never again.
+
+    What the two editors need: they build a local draft from a stored row that
+    is now a round trip away, and a re-run would discard everything the user
+    had typed since. Like `liveQuery`, call it while a component is
+    initialising. */
+export function onFirstResult<T>(query: LiveQuery<T>, fill: (value: T | undefined) => void): void {
+  let filled = false;
+  $effect(() => {
+    if (filled || query.loading) return;
+    filled = true;
+    fill(query.value);
+  });
+}

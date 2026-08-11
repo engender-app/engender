@@ -62,6 +62,12 @@ export interface EntriesArea {
       searchQuery.ts sets out: pass `tagIdsMatching(query, tags)` over the
       mirrored vocabulary, or `[]` to mean "notes alone". */
   searchEntries(query: string, matchingTagIds: string[], limit?: number): Promise<Entry[]>;
+  /** How many entries the same query matches in total. Its own call because
+      the search screen shows a page of hits and a count of all of them, and
+      the count must not become the page size - it said "30 results" for a
+      query with fifty. An aggregate, so it transfers one row however many
+      match. */
+  countSearchMatches(query: string, matchingTagIds: string[]): Promise<number>;
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
@@ -143,6 +149,52 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
      Deletes are not here: migration v3's trigger drops the index row with
      the entry row, so paths that delete entries without knowing about the
      index - ticket 14's Replace import - stay correct. */
+  /* Which entries a search matches, as one WHERE clause plus its parameters -
+     shared by the page of hits and the count of all of them, so the two can
+     never disagree about what matched.
+
+     One clause rather than two lookups unioned in JS, so ordering and
+     de-duplication are the database's job: an entry whose note and tag both
+     match has to appear once.
+
+     Either half can be absent - a query of pure punctuation yields no match
+     expression, a query matching no label yields no tag ids - so the halves
+     are assembled rather than parameterised away, and null means "do not go
+     to the database at all". An unused half cannot be left in the SQL and
+     disarmed with a parameter: an empty FTS5 expression is a syntax error,
+     not an empty result, and whether SQLite evaluates a guard before the
+     MATCH beside it is not something to depend on across three different
+     SQLite builds. */
+  const searchMatches = (
+    query: string,
+    matchingTagIds: string[]
+  ): { where: string; params: (string | number)[] } | null => {
+    const clauses: string[] = [];
+    const params: (string | number)[] = [];
+
+    const match = ftsMatchExpression(query);
+    if (match) {
+      clauses.push('e.id IN (SELECT rowid FROM entry_fts WHERE entry_fts MATCH ?)');
+      params.push(match);
+    }
+
+    if (matchingTagIds.length > 0) {
+      // COALESCE(key, uuid) is the domain id of a tag: a built-in has the key,
+      // a custom row has the uuid (ADR-0002), which is the same rule
+      // domainIdOf() applies when reading one back out.
+      const placeholders = matchingTagIds.map(() => '?').join(', ');
+      clauses.push(
+        `e.id IN (
+           SELECT et.entry_id FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+           WHERE COALESCE(t.key, t.uuid) IN (${placeholders})
+         )`
+      );
+      params.push(...matchingTagIds);
+    }
+
+    return clauses.length === 0 ? null : { where: clauses.join(' OR '), params };
+  };
+
   const indexEntry = async (entryId: number, note: string) => {
     await driver.run('DELETE FROM entry_fts WHERE rowid = ?', [entryId]);
     await driver.run('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)', [entryId, foldText(note)]);
@@ -194,50 +246,27 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     },
 
     async searchEntries(query, matchingTagIds, limit) {
-      /* One statement rather than two lookups unioned in JS, so ordering and
-         de-duplication are the database's job: an entry whose note and tag
-         both match has to appear once.
-
-         Either half can be absent - a query of pure punctuation yields no
-         match expression, a query matching no label yields no tag ids - so
-         the halves are assembled rather than parameterised away. An unused
-         half cannot be left in the SQL and disarmed with a parameter: an
-         empty FTS5 expression is a syntax error, not an empty result, and
-         whether SQLite evaluates a guard before the MATCH beside it is not
-         something to depend on across three different SQLite builds. */
-      const clauses: string[] = [];
-      const params: (string | number)[] = [];
-
-      const match = ftsMatchExpression(query);
-      if (match) {
-        clauses.push('e.id IN (SELECT rowid FROM entry_fts WHERE entry_fts MATCH ?)');
-        params.push(match);
-      }
-
-      if (matchingTagIds.length > 0) {
-        // COALESCE(key, uuid) is the domain id of a tag: a built-in has the
-        // key, a custom row has the uuid (ADR-0002), which is the same rule
-        // domainIdOf() applies when reading one back out.
-        const placeholders = matchingTagIds.map(() => '?').join(', ');
-        clauses.push(
-          `e.id IN (
-             SELECT et.entry_id FROM entry_tag et JOIN tag t ON t.id = et.tag_id
-             WHERE COALESCE(t.key, t.uuid) IN (${placeholders})
-           )`
-        );
-        params.push(...matchingTagIds);
-      }
-
-      if (clauses.length === 0) return [];
+      const matches = searchMatches(query, matchingTagIds);
+      if (!matches) return [];
 
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note FROM entry e
-         WHERE ${clauses.join(' OR ')}
+         WHERE ${matches.where}
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          ${limit == null ? '' : 'LIMIT ?'}`,
-        limit == null ? params : [...params, limit]
+        limit == null ? matches.params : [...matches.params, limit]
       );
       return Promise.all(rows.map(toEntry));
+    },
+
+    async countSearchMatches(query, matchingTagIds) {
+      const matches = searchMatches(query, matchingTagIds);
+      if (!matches) return 0;
+      const rows = await driver.query<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM entry e WHERE ${matches.where}`,
+        matches.params
+      );
+      return rows[0].n;
     },
 
     async upsertEntry(input) {
