@@ -32,6 +32,9 @@ export function fakeFileStore(initial: string[] = []): FakeFileStore {
     async read(name) {
       return files.get(name) ?? null;
     },
+    async size(name) {
+      return files.get(name)?.length ?? null;
+    },
     async remove(name) {
       files.delete(name);
     },
