@@ -3,6 +3,7 @@
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import type { LabResult } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
@@ -34,20 +35,68 @@
     return { points: results.map((r) => ({ day: r.epochDay, value: r.value })), min: min - pad, max: max + pad };
   });
 
-  let editorOpen = $state(false);
-  let draft = $state({ date: dateInputValueFromEpochDay(todayEpochDay()), analyte: 'estradiol', value: '', unit: '', note: '' });
+  let editor = $state<{
+    id?: string;
+    date: string;
+    analyte: string;
+    customAnalyte: string;
+    value: string;
+    unit: string;
+    note: string;
+  } | null>(null);
+  let deleteTarget = $state<LabResult | null>(null);
 
-  function saveResult() {
-    const val = parseFloat(draft.value);
-    editorOpen = false;
-    if (isNaN(val)) return;
-    journal.labs.upsertResult({
+  function openEditor(result: LabResult | null) {
+    editor = result
+      ? {
+          id: result.id,
+          date: dateInputValueFromEpochDay(result.epochDay),
+          analyte: result.analyte,
+          customAnalyte: '',
+          value: String(result.value),
+          unit: result.unit,
+          note: result.note
+        }
+      : {
+          date: dateInputValueFromEpochDay(todayEpochDay()),
+          analyte: 'estradiol',
+          customAnalyte: '',
+          value: '',
+          unit: '',
+          note: ''
+        };
+  }
+
+  async function saveResult() {
+    if (!editor) return;
+    const draft = { ...editor };
+    const value = parseFloat(draft.value);
+    const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
+    if (isNaN(value) || !resultAnalyte) return;
+
+    await journal.labs.upsertResult({
+      id: draft.id,
       epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
-      analyte: draft.analyte === 'custom' ? 'other' : draft.analyte,
-      value: val,
-      unit: draft.unit || '—',
-      note: draft.note,
+      analyte: resultAnalyte,
+      value,
+      unit: draft.unit,
+      note: draft.note
     });
+    analyte = resultAnalyte;
+    editor = null;
+  }
+
+  function askToDelete() {
+    if (!editor?.id) return;
+    deleteTarget = results.find((result) => result.id === editor!.id) ?? null;
+    if (deleteTarget) editor = null;
+  }
+
+  async function deleteResult() {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    deleteTarget = null;
+    await journal.labs.deleteResult(id);
   }
 </script>
 
@@ -56,7 +105,7 @@
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.lab_results()}</h1>
     <div class="header-action">
-      <button class="icon-btn" data-add aria-label="Add result" onclick={() => (editorOpen = true)}>
+      <button class="icon-btn" data-add aria-label="Add result" onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     </div>
@@ -84,14 +133,15 @@
 
     <div class="list-group" style="margin-top:var(--space-4)">
       {#each [...results].reverse() as r (r.id)}
-        <div class="list-row">
+        <button class="list-row" data-lab-result={r.id} aria-label="Edit {r.analyte} result from {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}" onclick={() => openEditor(r)}>
           <span class="row-text">
             <span class="row-title">{r.value} <span class="muted small">{r.unit}</span></span>
             <span class="row-subtitle">
               {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
             </span>
           </span>
-        </div>
+          <Icon name="pencil" size={18} />
+        </button>
       {/each}
     </div>
   {:else}
@@ -101,40 +151,64 @@
       text="Add bloodwork as it comes in and watch your own trend over time. No ranges, no grades — just your numbers."
     >
       {#snippet action()}
-        <button class="btn btn-primary" onclick={() => (editorOpen = true)}><span>Add a result</span></button>
+        <button class="btn btn-primary" onclick={() => openEditor(null)}><span>Add a result</span></button>
       {/snippet}
     </EmptyState>
   {/if}
 
-  <Sheet bind:open={editorOpen} title="New result">
-    <h3>New result</h3>
-    <div class="field">
-      <label class="field-label" for="lab-date">Date</label>
-      <input class="input" type="date" id="lab-date" name="lab-date" bind:value={draft.date} />
-    </div>
-    <div class="field">
-      <label class="field-label" for="lab-analyte">Analyte</label>
-      <select class="input" id="lab-analyte" bind:value={draft.analyte}>
-        {#each offeredQuery.value ?? [] as a (a)}
-          <option value={a}>{a}</option>
-        {/each}
-        <option value="custom">custom…</option>
-      </select>
-    </div>
-    <div class="cd-endpoints">
+  <Sheet open={editor !== null} title={editor?.id ? 'Edit result' : 'New result'} onClose={() => (editor = null)}>
+    {#if editor}
+      <h3>{editor.id ? 'Edit result' : 'New result'}</h3>
       <div class="field">
-        <label class="field-label" for="lab-value">Value</label>
-        <input class="input" type="number" id="lab-value" name="lab-value" placeholder="e.g. 165" inputmode="decimal" bind:value={draft.value} />
+        <label class="field-label" for="lab-date">Date</label>
+        <input class="input" type="date" id="lab-date" name="lab-date" bind:value={editor.date} />
       </div>
       <div class="field">
-        <label class="field-label" for="lab-unit">Unit</label>
-        <input class="input" id="lab-unit" name="lab-unit" placeholder="e.g. pg/mL" bind:value={draft.unit} />
+        <label class="field-label" for="lab-analyte">Analyte</label>
+        <select class="input" id="lab-analyte" bind:value={editor.analyte}>
+          {#each offeredQuery.value ?? [] as a (a)}
+            <option value={a}>{a}</option>
+          {/each}
+          <option value="custom">custom…</option>
+        </select>
       </div>
-    </div>
-    <div class="field">
-      <label class="field-label" for="lab-note">Note (optional)</label>
-      <input class="input" id="lab-note" name="lab-note" placeholder="e.g. new dose" bind:value={draft.note} />
-    </div>
-    <button class="btn btn-primary" data-save-lab onclick={saveResult}><span>Save result</span></button>
+      {#if editor.analyte === 'custom'}
+        <div class="field">
+          <label class="field-label" for="lab-custom-analyte">Custom analyte</label>
+          <input class="input" id="lab-custom-analyte" name="lab-custom-analyte" placeholder="e.g. SHBG" bind:value={editor.customAnalyte} />
+        </div>
+      {/if}
+      <div class="cd-endpoints">
+        <div class="field">
+          <label class="field-label" for="lab-value">Value</label>
+          <input class="input" type="number" id="lab-value" name="lab-value" placeholder="e.g. 165" inputmode="decimal" bind:value={editor.value} />
+        </div>
+        <div class="field">
+          <label class="field-label" for="lab-unit">Unit</label>
+          <input class="input" id="lab-unit" name="lab-unit" placeholder="e.g. pg/mL" bind:value={editor.unit} />
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="lab-note">Note (optional)</label>
+        <input class="input" id="lab-note" name="lab-note" placeholder="e.g. new dose" bind:value={editor.note} />
+      </div>
+      <div class="stack-3">
+        <button class="btn btn-primary" data-save-lab onclick={saveResult}><span>Save result</span></button>
+        {#if editor.id}
+          <button class="btn btn-ghost" data-delete-lab onclick={askToDelete}><span>Delete result</span></button>
+        {/if}
+      </div>
+    {/if}
+  </Sheet>
+
+  <Sheet open={deleteTarget !== null} title="Delete result" onClose={() => (deleteTarget = null)}>
+    {#if deleteTarget}
+      <h3>Delete this {deleteTarget.analyte} result?</h3>
+      <p class="muted small" style="margin-bottom:var(--space-4)">This cannot be undone.</p>
+      <div class="stack-3">
+        <button class="btn btn-danger" data-confirm-delete-lab onclick={deleteResult}><span>Delete result</span></button>
+        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
+      </div>
+    {/if}
   </Sheet>
 </div>

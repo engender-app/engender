@@ -1,8 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { fmtMonthName } from '$lib/data/dates';
-  import { todayEpochDay, previousCalendarMonthRange } from '$lib/data/epochDay';
+  import { todayEpochDay, previousCalendarMonthRange, previousCalendarYearRange } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PrideAurora from '$lib/components/PrideAurora.svelte';
@@ -12,8 +13,15 @@
 
   let step = $state(0);
 
-  let month = $derived(previousCalendarMonthRange(todayEpochDay()));
-  let monthName = $derived(fmtMonthName(month.year, month.month));
+  let period = $derived.by(() => {
+    const today = todayEpochDay();
+    if (page.url.searchParams.get('period') === 'year') {
+      const range = previousCalendarYearRange(today);
+      return { ...range, name: String(range.year), kind: 'year' as const };
+    }
+    const range = previousCalendarMonthRange(today);
+    return { ...range, name: fmtMonthName(range.year, range.month), kind: 'month' as const };
+  });
 
   /* Every number below comes from journal.stats (ticket 10) and nothing is
      stored (ADR-0010): a recap is recomputed from entries, tags, milestones
@@ -22,7 +30,7 @@
      it on the best streak, which was min(current streak, 28) and could count
      days outside the month. */
   let recapQuery = liveQuery(['entry', 'tag', 'milestone', 'dimension'], (j) =>
-    j.stats.recap(month.start, month.end)
+    j.stats.recap(period.start, period.end)
   );
   let recap = $derived(recapQuery.value);
 
@@ -42,14 +50,14 @@
   );
 
   let steps = $derived([
-    { title: m.recap_your({ month: monthName }), body: 'One month, held in your own words.', rive: 'Recap opener: calendar pages turning', confetti: false },
-    { title: `${recap?.entryCount ?? 0} entries`, body: recap?.entryCount ? 'You showed up, again and again. Some days were two-entry days — gender moves, and you caught it moving.' : 'A quiet month. Quiet counts too.', rive: null, confetti: false },
-    { title: recap?.averageMood ? `Mood: ${recap.averageMood.toFixed(1)} of 5` : 'Mood', body: recap?.averageMood ? 'Averaged across the month. Not a grade — just where you were.' : 'No moods logged this month.', rive: null, confetti: false },
+    { title: period.kind === 'year' ? `Your ${period.name}` : m.recap_your({ month: period.name }), body: period.kind === 'year' ? 'One year, held in your own words.' : 'One month, held in your own words.', rive: 'Recap opener: calendar pages turning', confetti: false },
+    { title: `${recap?.entryCount ?? 0} entries`, body: recap?.entryCount ? 'You showed up, again and again. Some days had two entries. Gender moves, and you caught it moving.' : `A quiet ${period.kind}. Quiet counts too.`, rive: null, confetti: false },
+    { title: recap?.averageMood ? `Mood: ${recap.averageMood.toFixed(1)} of 5` : 'Mood', body: recap?.averageMood ? `Averaged across the ${period.kind}. It is not a grade, only a record of where you were.` : `No moods logged this ${period.kind}.`, rive: null, confetti: false },
     { title: `Best streak: ${recap?.bestStreak ?? 0} days`, body: 'The longest run of days in a row you wrote something down. Consistency is a kindness to your future self.', rive: null, confetti: false },
-    { title: 'Top tags', body: topTags.length ? topTags.map((t) => `${t.label} (${t.n})`).join(' · ') : 'No tags this month.', rive: null, confetti: false },
-    { title: recap?.milestones.length ? `${recap.milestones.length} milestone${recap.milestones.length === 1 ? '' : 's'}` : 'Milestones', body: recap?.milestones.length ? recap.milestones.map((mi) => mi.name).join(' · ') : 'No milestones landed this month — some are on their way.', rive: null, confetti: false },
-    { title: dimChange ? `${dimChange.name}: ${dimChange.change >= 0 ? '+' : ''}${Math.round(dimChange.change)}` : 'Your scales', body: dimChange ? 'The scale that moved furthest this month, first entry to last. Whichever direction it went, it is yours.' : 'Not enough logged on any one scale this month to show a shift.', rive: null, confetti: false },
-    { title: `That was ${monthName}`, body: 'Thank you for keeping your own record. See you tomorrow.', rive: 'Recap finale: celebration in flag colours', confetti: true },
+    { title: 'Top tags', body: topTags.length ? topTags.map((t) => `${t.label} (${t.n})`).join(' · ') : `No tags this ${period.kind}.`, rive: null, confetti: false },
+    { title: recap?.milestones.length ? `${recap.milestones.length} milestone${recap.milestones.length === 1 ? '' : 's'}` : 'Milestones', body: recap?.milestones.length ? recap.milestones.map((mi) => mi.name).join(' · ') : `No milestones landed this ${period.kind}.`, rive: null, confetti: false },
+    { title: dimChange ? `${dimChange.name}: ${dimChange.change >= 0 ? '+' : ''}${Math.round(dimChange.change)}` : 'Your scales', body: dimChange ? `The scale that moved furthest this ${period.kind}, first entry to last. Whichever direction it went, it is yours.` : `Not enough logged on any one scale this ${period.kind} to show a shift.`, rive: null, confetti: false },
+    { title: `That was ${period.name}`, body: 'Thank you for keeping your own record. See you tomorrow.', rive: 'Recap finale: celebration in flag colours', confetti: true },
   ]);
 
   let s = $derived(steps[Math.min(step, steps.length - 1)]);

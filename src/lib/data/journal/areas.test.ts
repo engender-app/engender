@@ -123,6 +123,14 @@ test('the analytes in use are only the ones with a result, because a trend needs
   assert.deepEqual(await journal.labs.getUsedAnalytes(), ['estradiol', 'shbg']);
 });
 
+test('a lab result without a unit stays blank rather than acquiring a placeholder', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 120 });
+
+  assert.equal((await journal.labs.getResults('estradiol'))[0].unit, '');
+});
+
 test('lab results update by id, throw on unknown ids and delete idempotently', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 120 });
