@@ -5,7 +5,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { getEntry, upsertEntry, deleteEntry } from '$lib/data/repositories/entries';
   import { toast } from '$lib/stores/toasts.svelte';
-  import type { Entry, Photo } from '$lib/data/types';
+  import type { DraftPhoto, Entry, GenderDimension, Photo } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
@@ -23,8 +23,9 @@
   // svelte-ignore state_referenced_locally
   const day = existing?.epochDay ?? epochDay ?? todayEpochDay();
 
-  /* Local draft; committed as one action on Save (F1). */
-  let draft = $state<Omit<Entry, 'id'> & { id?: number }>(
+  /* Local draft; committed as one action on Save (F1). Photos carry no id
+     until saved - the repository mints identity, never a screen. */
+  let draft = $state<Omit<Entry, 'id' | 'photos'> & { id?: number; photos: (Photo | DraftPhoto)[] }>(
     existing
       ? {
           ...existing,
@@ -36,16 +37,40 @@
   );
 
   let deleteOpen = $state(false);
-  let dims = $derived(vocabulary.activeDimensions);
+  /* The union of the active preset's dimensions and the entry's own: an
+     old entry logged under a wider preset keeps its extra axes on screen
+     (marked below), instead of silently dropping their history on save. */
+  let dims = $derived.by(() => {
+    const active = vocabulary.activeDimensions;
+    const extras = Object.keys(draft.dims)
+      .filter((key) => !active.some((d) => d.key === key))
+      .map((key) => vocabulary.dimensions.find((d) => d.key === key))
+      .filter((d): d is GenderDimension => !!d);
+    return [...active.map((dim) => ({ dim, inPreset: true })), ...extras.map((dim) => ({ dim, inPreset: false }))];
+  });
   let preset = $derived(vocabulary.activePreset);
   let isToday = $derived(day === todayEpochDay());
 
   function addPhoto() {
-    draft.photos.push({ id: 'ph' + Date.now(), hue: Math.floor(Math.random() * 360), label: 'Photo' } as Photo);
+    draft.photos.push({ hue: Math.floor(Math.random() * 360), label: 'Photo' });
   }
 
+  /* The repository rejects an empty entry outright; this guard only turns
+     that rejection into a toast instead of an unhandled throw. */
+  let draftEmpty = $derived(
+    draft.mood == null &&
+      Object.keys(draft.dims).length === 0 &&
+      draft.tags.length === 0 &&
+      !draft.note.trim() &&
+      draft.photos.length === 0
+  );
+
   function saveEntry() {
-    upsertEntry({ ...draft, timestamp: draft.timestamp || undefined } as Entry);
+    if (draftEmpty) {
+      toast(m.empty_entry());
+      return;
+    }
+    upsertEntry({ ...draft, timestamp: draft.timestamp || undefined });
     goto('/');
     toast(m.saved());
   }
@@ -84,8 +109,13 @@
       <a class="small" style="color:var(--accent);text-decoration:none" href="/settings">{m.preset_prefix()} {preset.name}</a>
     </div>
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.gender_hint()}</p>
-    {#each dims as dim (dim.key)}
+    {#each dims as { dim, inPreset } (dim.key)}
       <DimensionSlider {dim} value={draft.dims[dim.key] ?? null} onInput={(v) => (draft.dims[dim.key] = v)} />
+      {#if !inPreset}
+        <p class="muted small" style="margin-top:calc(var(--space-2) * -1);margin-bottom:var(--space-3)">
+          {m.not_in_preset()}
+        </p>
+      {/if}
     {/each}
   </section>
 
@@ -108,7 +138,7 @@
   <section class="card editor-section">
     <h2 class="editor-heading">{m.photos_label()}</h2>
     <div class="photo-row">
-      {#each draft.photos as p, i (p.id)}
+      {#each draft.photos as p, i (p)}
         <div class="photo-wrap">
           <PhotoThumb photo={p} size={72} />
           <button class="photo-remove" aria-label="Remove photo" onclick={() => draft.photos.splice(i, 1)}>

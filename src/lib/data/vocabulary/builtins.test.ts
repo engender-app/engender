@@ -73,7 +73,8 @@ test('seeding leaves custom dimensions alone and does not duplicate built-ins', 
     high: 'easy',
     min: 0,
     max: 100,
-    builtIn: false
+    builtIn: false,
+    hidden: false
   };
 
   const seeded = withBuiltInDimensions([...withBuiltInDimensions([]), custom]);
