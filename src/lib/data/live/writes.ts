@@ -109,7 +109,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   },
   labs: {
     writes: { upsertResult: ['lab'], deleteResult: ['lab'] },
-    reads: ['getAnalytes', 'getUsedAnalytes', 'getResults']
+    reads: ['getAnalytes', 'getUsedAnalytes', 'getResults', 'getSeries']
   },
   reminders: {
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },
