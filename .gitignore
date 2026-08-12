@@ -4,6 +4,13 @@ build/
 src/lib/paraglide/
 vite.config.ts.timestamp-*
 
+# Release artifacts and the CI logs kept from a failed browser run. Both have to
+# stay untracked for another reason too: a release version needs an unedited
+# tree (ADR-0022), so anything the pipeline writes into the workspace while it
+# runs would otherwise turn the build it is packaging into a development build.
+dist/
+ci-logs/
+
 # AI/agent-local files - session state, trackers and agent config stay out of the repo
 .scratch/
 .claude/
