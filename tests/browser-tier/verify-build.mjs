@@ -201,11 +201,15 @@ try {
   else fail('the shell is one cache per release', JSON.stringify(shell.names));
 
   /* The whole release, file by file, against what is actually in the cache.
-     Three files are deliberately outside the shell: the fallback document,
+     Four files are deliberately outside the shell: the fallback document,
      which is cached under / because that is what a navigation asks for; the
-     version file, which has to stay live to be an update signal at all; and
-     the worker itself, which the browser fetches and stores on its own. */
-  const outsideShell = new Set(['/index.html', '/_app/version.json', '/service-worker.js']);
+     version file, which has to stay live to be an update signal at all; the
+     worker itself, which the browser fetches and stores on its own; and
+     release.json, which describes the directory on the server rather than the
+     app in the browser - nothing in the app reads it, and a cached copy would
+     go on answering for the release that was live when it was cached
+     (ticket 05). */
+  const outsideShell = new Set(['/index.html', '/_app/version.json', '/service-worker.js', '/release.json']);
   const release = releasePaths().filter((path) => !outsideShell.has(path));
   const missing = release.filter((path) => !shell.paths.includes(path));
   if (missing.length === 0 && shell.paths.includes('/'))

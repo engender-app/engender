@@ -47,6 +47,7 @@ npm run build      # static SPA bundle in build/ (adapter-static, no SSR)
 npm run preview
 npm run check      # svelte-check
 npm run test:walkthrough  # the 15 walkable flows, in a real Chromium
+npm run verify:hosting     # nginx-hosted origin checks + cold offline restart
 npm run check:copy      # catalogue parity, and no new hardcoded copy
 npm run check:licences  # every installed package's licence
 node scripts/app-version.mjs   # what this checkout would build as
@@ -168,6 +169,9 @@ that walks them is untracked operator tooling rather than part of the app.
 What it produces is not:
 [docs/provisioning.md](docs/provisioning.md) names every secret and variable the
 pipeline expects, where each one lives, and which ticket reads it.
+
+Hosting and release-switch mechanics are tracked in [deploy/README.md](deploy/README.md),
+including the nginx snippets, atomic switch command and schema-guarded rollback.
 
 ## Stack
 
