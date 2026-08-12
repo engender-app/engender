@@ -46,7 +46,7 @@ node scripts/app-version.mjs   # what this checkout would build as
 ## Privacy, security and support
 
 - Privacy policy (English): [docs/privacy-policy.en.md](docs/privacy-policy.en.md)
-- Polityka prywatnosci (Polski): [docs/privacy-policy.pl.md](docs/privacy-policy.pl.md)
+- Polityka prywatności (polski): [docs/privacy-policy.pl.md](docs/privacy-policy.pl.md)
 - Security disclosure process: [SECURITY.md](SECURITY.md)
 - Support boundaries and safe diagnostics: [SUPPORT.md](SUPPORT.md)
 
