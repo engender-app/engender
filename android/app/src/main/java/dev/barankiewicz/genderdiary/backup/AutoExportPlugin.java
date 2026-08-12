@@ -228,8 +228,9 @@ public class AutoExportPlugin extends Plugin {
             disableWithFailure("destination-revoked");
             call.reject("destination-revoked", e);
         } catch (IOException e) {
-            failure("destination-full");
-            call.reject("destination-full", e);
+            String reason = classifyIoFailure(e);
+            failure(reason);
+            call.reject(reason, e);
         } catch (IllegalStateException e) {
             String reason = message(e);
             if (reason.contains("destination-unavailable")) {
@@ -393,6 +394,14 @@ public class AutoExportPlugin extends Plugin {
     private static String message(Exception e) {
         String detail = e.getMessage();
         return detail == null || detail.isEmpty() ? e.getClass().getName() : detail;
+    }
+
+    private static String classifyIoFailure(IOException e) {
+        String text = message(e).toLowerCase();
+        if (text.contains("no space") || text.contains("enospc") || text.contains("quota")) {
+            return "destination-full";
+        }
+        return "partial-write";
     }
 
     private static final class PasswordStore {
