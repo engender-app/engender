@@ -1,7 +1,7 @@
 # Production hosting and release switch
 
 Ticket 05 serves the Journal from one decided origin:
-`app.genderdiary.barankiewicz.dev`.
+`app.gender-diary.barankiewicz.dev`.
 
 The VPS keeps immutable release directories and one symlink:
 
@@ -90,3 +90,8 @@ It boots nginx in a container with these exact config snippets and checks:
 - `release.json` metadata
 - cold install followed by offline launch
 - no runtime requests to other origins
+
+## Local operator note
+
+If you keep a machine-specific runbook, store it in
+`.scratch/ticket-05-hosting-checklist.md` so it stays local and untracked.
