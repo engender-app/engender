@@ -572,28 +572,36 @@ try {
   await fresh('/settings');
   await page.locator('[data-palette-pick="lesbian"]').click();
   await page.locator('.segment:has-text("Dark")').click();
+  /* Disguise rides along, because it is the one of these where arriving late
+     is a safety failure rather than a flicker: a tab that shows the flag for
+     the length of a boot has told the room already (F24). */
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.keyboard.press('Escape');
   /* Waits on the mirror, not on the screen: the screen updates from the
      in-memory projection immediately, while the write to SQLite and the
      cache refresh behind it are a round-trip away. */
   await page.waitForFunction(() => {
     const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
-    return boot.theme === 'dark' && boot.palette === 'lesbian';
+    return boot.theme === 'dark' && boot.palette === 'lesbian' && boot.disguise === true;
   });
 
-  /* Records the first time anything writes data-theme, and whether <body>
-     existed yet. The pre-paint script sits in <head>, so it runs with no
-     body at all; hydration cannot, which is what stops this passing if the
-     stamping quietly moved back into the layout's $effect. */
+  /* Records the first time anything writes data-theme or the tab icon, and
+     whether <body> existed yet. The pre-paint script sits in <head>, so it
+     runs with no body at all; hydration cannot, which is what stops this
+     passing if the stamping quietly moved back into the layout's $effect. */
   await page.addInitScript(() => {
     // Observes `document`, not `document.documentElement`: an init script
     // runs before the parser has created <html>, so there is no element to
     // hand the observer yet.
     new MutationObserver(() => {
       window.__firstStamp ??= { ...document.documentElement.dataset, hadBody: !!document.body };
+      const icon = document.querySelector('link[rel="icon"]')?.getAttribute('href');
+      if (icon?.includes('favicon-notes')) window.__firstIcon ??= { icon, hadBody: !!document.body };
     }).observe(document, {
       attributes: true,
       subtree: true,
-      attributeFilter: ['data-theme', 'data-palette']
+      attributeFilter: ['data-theme', 'data-palette', 'href']
     });
   });
   await page.reload({ waitUntil: 'networkidle' });
@@ -602,7 +610,20 @@ try {
   if (first?.theme !== 'dark' || first?.palette !== 'lesbian' || first.hadBody) {
     throw new Error('first stamp on <html>: ' + JSON.stringify(first));
   }
-  ok('theme and palette persist and apply before first paint');
+  const firstIcon = await page.evaluate(() => window.__firstIcon);
+  if (!firstIcon || firstIcon.hadBody) {
+    throw new Error('first disguised tab icon: ' + JSON.stringify(firstIcon));
+  }
+
+  /* Back off again, or every flow after this one meets a disguised app -
+     the toggle outlives localStorage.clear(), it lives in SQLite. */
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => {
+    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    return boot.disguise === false;
+  });
+  ok('theme, palette and the disguised tab icon land before first paint');
 } catch (e) { fail('boot preferences', e); }
 
 /* 17. built-in vocabulary is localized by key, not stored in English (ticket 05) */
@@ -640,6 +661,10 @@ try {
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
   if (!/favicon-notes\.svg$/.test(await favicon())) throw new Error('tab icon while disguised: ' + (await favicon()));
+  /* Fetched, not just read off the attribute: an href the build does not
+     serve leaves the flag in the tab and no attribute check would notice. */
+  const served = await page.evaluate((href) => fetch(href).then((r) => r.status), await favicon());
+  if (served !== 200) throw new Error('the disguised icon is not served: HTTP ' + served);
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'Gender Diary', null, { timeout: 8000 });
   if (!/\/favicon\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
