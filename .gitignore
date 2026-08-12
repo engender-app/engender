@@ -17,6 +17,26 @@ ci-logs/
 CLAUDE.md
 docs/agents/
 
+# The same rule for the other assistants, listed ahead of anyone using one, since
+# the repo is public and these files carry working notes rather than product
+# decisions. A decision that matters belongs in docs/adr/ or CONTEXT.md instead.
+.agents/
+AGENTS.md
+GEMINI.md
+.gemini/
+.cursor/
+.cursorrules
+.aider*
+.continue/
+.windsurfrules
+.clinerules
+.roo/
+.roomodes
+.codex/
+.opencode/
+.mcp.json
+.github/copilot-instructions.md
+
 # Written on every build by the emitted-client-assets plugin in vite.config.ts
 src/lib/pwa/*.generated.ts
 
