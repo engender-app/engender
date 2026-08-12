@@ -44,3 +44,39 @@ The version refusal applies unchanged, and is checked before the conversion
 starts rather than after: converting a schema this build does not know would
 write a faithful encrypted copy and then fail to open it, having already
 retired the only copy an older build could read.
+
+## Amended by ticket 04: the copy is not remade, and it can be put back
+
+Insurance nobody can claim on is not insurance, so ticket 04 turned the copy
+from a file that exists into a recovery this app performs. Three changes.
+
+**The copy is taken only when there is not one already.** "Before any step runs,
+the database file is copied" now means "unless a copy from an earlier boot is
+still there". A copy on disk when migrations are pending was left by a boot that
+tried these same steps and did not finish them, so it is the better of the two:
+taken before the attempt that failed, from a file nothing had been at. Remaking
+it would spend that, and if the failed attempt damaged the database the
+replacement could not be written at all, so a retry would destroy the only way
+back and leave nothing in its place.
+
+**The copy can become the live database again.** `MigrationFileOps` gained
+`restorePreMigrationCopy`, which the boot-failure screen offers when a copy is
+there. On the web it goes through both keyed pagers, like the copy itself, and
+it verifies the copy under the data key before unlinking anything: a copy that
+cannot be opened is not a recovery point, and finding that out afterwards would
+be finding it out too late. What comes back is the Journal as it was, which is
+the honest limit worth stating - a build whose migration is deterministically
+broken will fail again on it, and the release the Journal came from is what
+opens it.
+
+**An unmigrated database beside a readable copy is refused.** Restoring cannot
+be atomic here: SQLite's `VACUUM INTO` will not write over an existing file, so
+the database is unlinked and then written. A process killed in that window
+leaves an empty file with the copy beside it, and this ADR's forward-only rule
+would happily migrate the empty file to the current schema, open it, and let the
+next clean boot retire the copy - the whole Journal gone, silently, exactly what
+the copy exists to prevent. So that state is recognised and the restore is
+finished on the next boot instead. The question asked is whether the copy holds
+a journal rather than whether the file is there, because a first-ever migration
+that failed leaves an empty database beside an empty copy, and that is a real
+first run.

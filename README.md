@@ -22,8 +22,10 @@ slot and remain as fallbacks).
 
 The app installs as a PWA and starts without a network. `src/service-worker.ts`
 precaches the whole release into one cache per build version: app code,
-SQLocal's worker and WASM, the bundled fonts and everything in `static/`. When
-a new version is allowed to take over is deliberately not decided there. See
+SQLocal's worker and WASM, the bundled fonts and everything in `static/`. A new
+release waits instead of taking over: `src/lib/pwa/update.ts` asks it to stop
+waiting only once nothing is running that an activation must not land on, and
+`src/lib/data/journal-busy.ts` is what answers that question. See
 [ADR-0021](docs/adr/0021-the-offline-shell-is-one-document-and-one-cache-per-release.md).
 `npm run dev` does not register it, since a precached shell would be served
 ahead of every edit; `npm run verify:build` installs it, kills the network and
