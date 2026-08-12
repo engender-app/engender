@@ -113,6 +113,8 @@ jobs:
         run: npm run test:walkthrough 2>&1 | tee ci-logs/walkthrough.log
       - name: Built app
         run: npm run verify:build 2>&1 | tee ci-logs/verify-build.log
+      - name: Hosted origin (nginx)
+        run: npm run verify:hosting 2>&1 | tee ci-logs/verify-hosting.log
 
       - name: Keep the output of a failed run
         if: failure()
