@@ -7,6 +7,7 @@
   import '$lib/styles/screens.css';
 
   import { page } from '$app/state';
+  import { assets } from '$app/paths';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -95,7 +96,14 @@
     const root = document.documentElement;
     root.dataset.palette = prefs.palette;
     root.dataset.theme = prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : prefs.theme;
+    /* Title and icon together: a tab called "Notes" next to a trans flag is
+       not disguised at all, and the favicon is the half of the tab that
+       stays visible once the tab is narrow or in the background. */
+    const disguised = lockState.blanked || prefs.disguise;
     document.title = lockState.blanked ? 'New tab' : prefs.disguise ? 'Notes' : 'Gender Diary';
+    document
+      .querySelector('link[rel="icon"]')
+      ?.setAttribute('href', `${assets}/${disguised ? 'favicon-notes.svg' : 'favicon.svg'}`);
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);

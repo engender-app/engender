@@ -632,6 +632,18 @@ try {
   await typePin('1234');
   await page.waitForSelector('.list-group');
   await page.getByRole('button', { name: /Disguise/i }).click();
+
+  /* Disguise owns the whole tab, icon included: the title alone still leaves
+     a trans flag in the tab strip. Toggled back off afterwards so the flows
+     below meet the app under its own name. */
+  const favicon = () => page.evaluate(() => document.querySelector('link[rel="icon"]')?.getAttribute('href'));
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
+  if (!/favicon-notes\.svg$/.test(await favicon())) throw new Error('tab icon while disguised: ' + (await favicon()));
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title === 'Gender Diary', null, { timeout: 8000 });
+  if (!/\/favicon\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
+
   await page.getByRole('switch', { name: 'Lock on leave' }).click();
   await page.getByRole('switch', { name: 'Quick exit' }).click();
 
@@ -653,6 +665,7 @@ try {
   });
   await page.waitForSelector('[data-blank]');
   if ((await page.title()) !== 'New tab') throw new Error('tab title after quick exit: ' + (await page.title()));
+  if (!/favicon-notes\.svg$/.test(await favicon())) throw new Error('tab icon after quick exit: ' + (await favicon()));
 
   await page.locator('[data-blank]').click();
   await page.waitForSelector('.applock');
