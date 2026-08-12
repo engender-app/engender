@@ -9,5 +9,11 @@ import sqlocal from 'sqlocal/vite';
 
 export default defineConfig({
   root: import.meta.dirname,
-  plugins: [sqlocal()]
+  plugins: [sqlocal()],
+  // Same exclusion the app's own config needs (ticket 09): pre-bundling
+  // would inline the sqlite3mc wasm module in a way that breaks its own
+  // URL-relative wasm loading inside mc-worker.ts.
+  optimizeDeps: {
+    exclude: ['@evolu/sqlite-wasm']
+  }
 });
