@@ -67,6 +67,26 @@ export interface ConversionMarkerStore {
     naming here. */
 export type TableCensus = Record<string, number>;
 
+/** What "verified" counts, in one place. Both sides of the comparison have
+    to ask the same question of two different databases through two
+    different libraries, and a census that meant something slightly
+    different on each side would compare equal while hiding a difference. */
+export async function censusOf(
+  query: <Row extends Record<string, unknown>>(statement: string) => Promise<Row[]>
+): Promise<TableCensus> {
+  const tables = await query<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+  );
+  const counts: TableCensus = {};
+  for (const { name } of tables) {
+    // The name came out of sqlite_master, not from anything a person
+    // typed, and an identifier cannot be bound as a parameter anyway.
+    const [row] = await query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${name}"`);
+    counts[name] = Number(row.n);
+  }
+  return counts;
+}
+
 export interface SourceJournal {
   /** The whole database file. Small by design - photos are separate files,
       which is ADR-0006's own argument for copying it at all. */
@@ -163,13 +183,23 @@ export function spaceRequiredFor(sourceSizeBytes: number): number {
 }
 
 /** Everything that has to be true before the person is asked to choose a
-    passphrase, plus the marker that makes the attempt recoverable. Safe to
-    call again on a resume: it re-checks the space the retry needs and
-    leaves an existing marker at whatever stage it reached. */
+    passphrase, plus the marker that makes the attempt recoverable.
+
+    Only ever on a fresh start. A conversion with a marker is already under
+    way and is not re-litigated: the space it still needs is not the space
+    a fresh one needs (most of the copy is already written, and the retry
+    unlinks what it is about to replace), and past 'photos' there is no
+    plaintext Journal left to go back to - so a refusal there would be a
+    screen saying "nothing has been changed" over a device where plenty
+    has, with no way off it. A resume that genuinely runs out of disk fails
+    on the write instead, where the error says what actually happened and
+    the marker still says where to pick up. */
 export async function prepareConversion(
   ports: ConversionPrecheckPorts,
   knownSchemaVersion: number
 ): Promise<PrecheckResult> {
+  if ((await ports.marker.read()) !== null) return { ok: true };
+
   const { sizeBytes, schemaVersion } = await ports.inspectSource();
 
   /* ADR-0006's refusal, applied to the one path that opens a database this
@@ -186,9 +216,8 @@ export async function prepareConversion(
     return { ok: false, reason: 'not-enough-space', needBytes: need, freeBytes: free };
   }
 
-  // Before the keystore, always (see the header). Only on a first attempt:
-  // a resume must not lose the stage it had reached.
-  if ((await ports.marker.read()) === null) await ports.marker.write('preparing');
+  // Before the keystore, always (see the header).
+  await ports.marker.write('preparing');
 
   return { ok: true };
 }

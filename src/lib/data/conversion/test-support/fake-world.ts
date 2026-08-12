@@ -19,7 +19,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ConversionPorts, ConversionStage, JournalSurvey, TableCensus } from '../conversion.ts';
+import { censusOf, type ConversionPorts, type ConversionStage, type JournalSurvey, type TableCensus } from '../conversion.ts';
 import { makePhotoConverter } from '../photo-conversion.ts';
 import { fakeFileStore, type FakeFileStore } from '../../photos/test-support/fake-file-store.ts';
 import { encryptedFileStore } from '../../photos/encrypted-file-store.ts';
@@ -45,7 +45,8 @@ export const KILL_POINTS = [
   'marker:photos',
   'photo:2',
   'marker:retire',
-  'remnants:partial'
+  'remnants:partial',
+  'remnants:done'
 ] as const;
 
 export type KillPoint = (typeof KILL_POINTS)[number];
@@ -176,17 +177,12 @@ export async function fakeWorld(options: FakeWorldOptions = {}): Promise<FakeWor
     };
   }
 
-  function censusOf(file: string): TableCensus {
+  /** The same census the real port takes, over node:sqlite instead of a
+      worker - so the fake cannot quietly count something else. */
+  async function censusOfFile(file: string): Promise<TableCensus> {
     const raw = new DatabaseSync(file, { readOnly: true });
     try {
-      const tables = raw
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
-        .all() as { name: string }[];
-      const census: TableCensus = {};
-      for (const { name } of tables) {
-        census[name] = Number((raw.prepare(`SELECT COUNT(*) AS n FROM "${name}"`).get() as { n: number }).n);
-      }
-      return census;
+      return await censusOf(async (statement) => raw.prepare(statement).all() as never);
     } finally {
       raw.close();
     }
@@ -245,7 +241,7 @@ export async function fakeWorld(options: FakeWorldOptions = {}): Promise<FakeWor
     },
 
     async readSource() {
-      return { bytes: new Uint8Array(readFileSync(path(SOURCE))), census: censusOf(path(SOURCE)) };
+      return { bytes: new Uint8Array(readFileSync(path(SOURCE))), census: await censusOfFile(path(SOURCE)) };
     },
 
     async writeEncryptedCopy(bytes) {
@@ -263,7 +259,7 @@ export async function fakeWorld(options: FakeWorldOptions = {}): Promise<FakeWor
     },
 
     async censusOfEncryptedCopy() {
-      return censusOf(path(ENCRYPTED));
+      return censusOfFile(path(ENCRYPTED));
     },
 
     async photoNames() {
@@ -280,6 +276,10 @@ export async function fakeWorld(options: FakeWorldOptions = {}): Promise<FakeWor
       rmSync(path(SOURCE), { force: true });
       tick('remnants:partial');
       rmSync(path(SOURCE_BACKUP), { force: true });
+      // Everything plaintext is gone and the marker still says 'retire':
+      // the last durable state, and the one a kill would leave a boot to
+      // finish by clearing a marker with nothing left to point at.
+      tick('remnants:done');
     }
   };
 

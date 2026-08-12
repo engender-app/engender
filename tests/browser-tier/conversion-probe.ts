@@ -32,7 +32,7 @@ import { createKeystore, unlockKeystore } from '../../src/lib/crypto/keystore.ts
 import { readKeystoreFile, writeKeystoreFile, KEYSTORE_FILE } from '../../src/lib/data/keystore-file.ts';
 import { localStorageCache, BOOT_CACHE_KEY } from '../../src/lib/data/prefs/boot-cache.ts';
 import { openPreferences } from '../../src/lib/data/prefs/preferences.ts';
-import { migrations } from '../../src/lib/data/sqlite/migrations.ts';
+import { LATEST_SCHEMA_VERSION } from '../../src/lib/data/sqlite/migrations.ts';
 import {
   describeJournalState,
   prepareConversion,
@@ -57,7 +57,6 @@ const publish = (value: unknown) => {
 
 const PASSPHRASE = 'the passphrase this journal never had';
 const PROBE_KDF = { memorySize: 1024, iterations: 1, parallelism: 1, hashLength: 32 };
-const KNOWN_SCHEMA = Math.max(...migrations.map((migration) => migration.version));
 
 const NOTE = 'sentinel-converted-note-woke-up-early-4182';
 const ANALYTE = 'sentinel-converted-analyte-estradiol';
@@ -182,7 +181,7 @@ async function run() {
   result.stateBeforeConversion = describeJournalState(await survey());
 
   // --- the precheck, then the passphrase, then the conversion -------------
-  const precheck = await prepareConversion(webConversionPrecheckPorts(), KNOWN_SCHEMA);
+  const precheck = await prepareConversion(webConversionPrecheckPorts(), LATEST_SCHEMA_VERSION);
   result.precheck = precheck;
   result.markerAfterPrecheck = await opfsConversionMarker().read();
 
@@ -191,6 +190,21 @@ async function run() {
   result.stateWithKeystoreMidConversion = describeJournalState(await survey());
 
   const ports = webConversionPorts(created.dataKey);
+
+  /* An attempt that got as far as writing the copy and died, so that the
+     conversion below is a redo over a target that is already there. This
+     is the one place the real port has durable substates the Node tier's
+     fake cannot model: the plaintext importDb leaves in the pool before
+     the rekey runs, and the rollback journal the rekey writes its original
+     pages into (ADR-0020's amendment names both). Doing it twice puts the
+     unlink-and-start-again path under the final scan, which is what has to
+     find nothing readable. */
+  const source = await ports.readSource();
+  await ports.writeEncryptedCopy(source.bytes);
+  result.copyBeforeRedoVerifies = await ports
+    .censusOfEncryptedCopy()
+    .then((census) => census.entry === source.census.entry)
+    .catch((error: Error) => error.message);
 
   /* A kill part way through the photos, on the real store: the ports have
      to be resumable against OPFS and AES-GCM, not just against the Node
