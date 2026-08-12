@@ -66,20 +66,47 @@ const { ok, fail, finish } = createReporter();
 try {
   await page.goto(origin, { waitUntil: 'networkidle' });
 
-  // Give boot() (started from +layout.svelte) time to open the database
-  // and load the SQLocal worker/wasm - the whole point of this check.
-  await page.waitForFunction(
-    () => document.querySelector('.app-viewport') !== null,
-    null,
-    { timeout: 10000 }
-  );
+  /* A production first run stops at the passphrase gate before the
+     database exists (ticket 09) - only the demo build invents a passphrase
+     for itself. Meeting the gate here is itself an assertion: a production
+     journal is never created without one. */
+  await page.waitForSelector('#journal-passphrase', { timeout: 10000 });
+  ok('a production first run asks for a journal passphrase before anything else');
+
+  await page.fill('#journal-passphrase', 'verify-build passphrase');
+  await page.fill('#journal-passphrase-confirm', 'verify-build passphrase');
+  await page.click('[data-passphrase-submit]');
+
+  // Give boot() time to open the database and load the sqlite3mc
+  // worker/wasm - the whole point of this check.
+  await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
   await page.waitForTimeout(1000);
 
-  // Confirms boot() actually ran and fetched SQLocal's wasm/worker, rather
-  // than the zero-external-requests check above passing vacuously because
-  // nothing loaded at all.
-  if (allRequests.some((u) => u.includes('.wasm'))) ok("boot() loads SQLocal's wasm build from the app's own origin");
-  else fail("boot() loads SQLocal's wasm build from the app's own origin", `no .wasm request seen; requests were: ${allRequests.join(', ')}`);
+  // Confirms boot() actually ran and fetched the encrypted driver's
+  // wasm/worker, rather than the zero-external-requests check above
+  // passing vacuously because nothing loaded at all.
+  if (allRequests.some((u) => u.includes('.wasm'))) ok("boot() loads the sqlite3mc wasm build from the app's own origin");
+  else fail("boot() loads the sqlite3mc wasm build from the app's own origin", `no .wasm request seen; requests were: ${allRequests.join(', ')}`);
+
+  /* The session rule (ADR-0018), on the production build - the walkthrough
+     can't test this because the demo build unlocks itself: a reload ends
+     the unlocked session, the unwrapped key dies with it, and the journal
+     opens again only for the passphrase. */
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('#journal-passphrase', { timeout: 10000 });
+  const confirmField = await page.locator('#journal-passphrase-confirm').count();
+  if (confirmField === 0) ok('a production reload asks for the passphrase again (unlock, not a second setup)');
+  else fail('a production reload asks for the passphrase again', 'the setup form rendered instead of the unlock form');
+
+  await page.fill('#journal-passphrase', 'not the passphrase');
+  await page.click('[data-passphrase-submit]');
+  await page.waitForSelector('[data-passphrase-status]:has-text("not right")', { timeout: 15000 });
+  ok('a wrong passphrase is refused with no diagnosis beyond "not right"');
+
+  await page.fill('#journal-passphrase', 'verify-build passphrase');
+  await page.click('[data-passphrase-submit]');
+  await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+  ok('the right passphrase opens the same journal after the reload');
 
   if (externalRequests.length === 0) ok('production build makes zero requests off its own origin');
   else fail('production build makes zero requests off its own origin', externalRequests.join(', '));
@@ -130,6 +157,14 @@ try {
   installed = await launchPersistentChromium(profile);
   const cold = installed.pages()[0] ?? (await installed.newPage());
   await cold.goto(origin, { waitUntil: 'networkidle' });
+
+  /* A fresh profile is a first run, and a production first run creates its
+     journal only behind a passphrase (ticket 09) - walk the setup the way
+     a person would before anything below can boot. */
+  await cold.waitForSelector('#journal-passphrase', { timeout: 10000 });
+  await cold.fill('#journal-passphrase', 'verify-build passphrase');
+  await cold.fill('#journal-passphrase-confirm', 'verify-build passphrase');
+  await cold.click('[data-passphrase-submit]');
   await cold.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
 
   /* A production build has no persona in it, so a cold start is the first-run
@@ -232,6 +267,13 @@ try {
   const offlineRequests = [];
   restarted.on('request', (request) => offlineRequests.push(request.url()));
   await restarted.goto(origin);
+
+  /* The restart ended the unlocked session, so the journal opens for the
+     passphrase again - offline, which is itself worth having: the unlock
+     path (argon2 wasm included) has to come out of the shell cache. */
+  await restarted.waitForSelector('#journal-passphrase', { timeout: 30000 });
+  await restarted.fill('#journal-passphrase', 'verify-build passphrase');
+  await restarted.click('[data-passphrase-submit]');
   await restarted.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
   await restarted.waitForSelector('.entry-card');
 
@@ -256,9 +298,18 @@ try {
      paths.relative: false in svelte.config.js is for. With SvelteKit's
      default this passes at / and asks /entry/new/ for the app's entry
      chunk here. */
+  /* Closed first, because the encrypted driver's SAHPool holds the OPFS
+     access handles for as long as its tab lives (ADR-0020's one connection
+     per origin) - the deep start below is about a cold start at depth, not
+     about two simultaneous tabs, which the driver does not support. */
+  await restarted.close();
+
   const deep = await installed.newPage();
   deep.on('request', (request) => offlineRequests.push(request.url()));
   await deep.goto(`${origin}/entry/new/today`);
+  await deep.waitForSelector('#journal-passphrase', { timeout: 30000 }).catch(() => {});
+  await deep.fill('#journal-passphrase', 'verify-build passphrase').catch(() => {});
+  await deep.click('[data-passphrase-submit]').catch(() => {});
   const deepBooted = await deep
     .waitForSelector('.app[data-boot="ready"]', { timeout: 30000 })
     .then(() => true)

@@ -185,6 +185,14 @@
 
   <SectionTitle text={m.settings_privacy()} />
   <div class="list-group">
+    <a class="list-row" href="/settings/passphrase">
+      <span class="row-icon"><Icon name="shield" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">Journal passphrase</span>
+        <span class="row-subtitle">unlocks the encrypted journal · change it here</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
     <div class="list-row" style="cursor:default">
       <span class="row-icon"><Icon name="lock" size={22} /></span>
       <span class="row-text">

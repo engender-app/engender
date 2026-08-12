@@ -33,17 +33,19 @@ test('the allowlists name only real preferences', () => {
   expect(named.filter((key) => !isPreferenceKey(key))).toEqual([]);
 });
 
-test('the boot set is exactly the six preferences ADR-0009 fixes', () => {
-  expect([...BOOT_KEYS].sort()).toEqual(
-    ['disguise', 'language', 'lockOnLeave', 'palette', 'pinHash', 'theme'].sort()
-  );
+test('the boot set is exactly the five pre-database preferences, and never the PIN hash', () => {
+  expect([...BOOT_KEYS].sort()).toEqual(['disguise', 'language', 'lockOnLeave', 'palette', 'theme'].sort());
+  // The mirror is plaintext localStorage. The hash of a 4-digit PIN in it
+  // would be an offline-guessable secret sitting beside the encrypted
+  // journal (ticket 09) - it lives only in the pref table now.
+  expect([...BOOT_KEYS]).not.toContain('pinHash');
 });
 
 test('the boot set cuts across the portable split rather than following it', () => {
   const portable = new Set<string>(PORTABLE_KEYS);
 
   expect(BOOT_KEYS.filter((key) => portable.has(key))).toEqual(['theme', 'palette', 'language']);
-  expect(BOOT_KEYS.filter((key) => !portable.has(key))).toEqual(['pinHash', 'lockOnLeave', 'disguise']);
+  expect(BOOT_KEYS.filter((key) => !portable.has(key))).toEqual(['lockOnLeave', 'disguise']);
 });
 
 test('theme and language default to following the system, as the PRD asks', () => {

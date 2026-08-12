@@ -8,10 +8,11 @@
    matters is that fold-on-write and fold-on-query stay symmetric here too,
    and that migration v3's contentless_delete lets an edit and a delete
    actually leave the index. */
-import { createWebSqlite } from '../../src/lib/data/sqlite/sqlocal-driver.ts';
+import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
+import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 
 const publish = (value: unknown) => {
   (window as unknown as { __searchProbeResult: unknown }).__searchProbeResult = value;
@@ -19,10 +20,10 @@ const publish = (value: unknown) => {
 };
 
 async function run() {
-  // A fresh file per load: this probe is about folding, and run.mjs has no
-  // reason to reload it, so it should not have to reason about leftovers.
-  const name = `search-probe-${Date.now()}.sqlite3`;
-  const { driver, fileOps } = createWebSqlite(name);
+  // A fresh origin per load: this probe is about folding, and run.mjs has
+  // no reason to reload it, so it should not have to reason about leftovers.
+  await freshOrigin();
+  const { driver, fileOps } = createEncryptedWebSqlite('search-probe.sqlite3', PROBE_DATA_KEY);
   const result = await boot({ createDriver: () => driver, fileOps });
   if (result.phase === 'error') {
     publish({ error: String((result.error as Error)?.stack ?? result.error) });

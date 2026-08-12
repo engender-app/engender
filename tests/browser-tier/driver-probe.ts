@@ -2,12 +2,22 @@
    synthetic table like probe.ts/index.html use for ticket 03): boots the
    real driver against the real schema via the real migration runner, and
    proves it survives a full page reload - run.mjs reloads this same page
-   and re-runs this same probe. */
-import { createWebSqlite } from '../../src/lib/data/sqlite/sqlocal-driver.ts';
+   and re-runs this same probe.
+
+   The real driver is the encrypted one since ticket 09 - the boot
+   contract, run()'s reporting and the window functions all have to hold
+   on the sqlite3mc build that actually ships, not on the SQLocal build
+   the app no longer opens its journal with. */
+import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
+import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 
 async function run() {
-  const { driver, fileOps, requestPersistentStorage } = createWebSqlite('driver-probe.sqlite3');
+  await freshOrigin('driver-probe-cleared');
+  const { driver, fileOps, requestPersistentStorage } = createEncryptedWebSqlite(
+    'driver-probe.sqlite3',
+    PROBE_DATA_KEY
+  );
   const result = await boot({ createDriver: () => driver, fileOps, requestPersistentStorage });
 
   if (result.phase === 'error') {
