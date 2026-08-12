@@ -3,7 +3,8 @@
 A local-first, private diary for tracking gender transition — moods, gender
 feelings on configurable scales, quick tags, notes, photos, milestones. Web
 PWA + Android (Capacitor) from one SvelteKit codebase. No accounts, no
-network requests, GPLv3. Full product spec in [prd.md](prd.md).
+analytics, GPLv3. The hosted web app still uses network requests to its own
+origin for the app shell and updates. Full product spec in [prd.md](prd.md).
 
 ## Status
 
@@ -41,6 +42,13 @@ npm run check:copy      # catalogue parity, and no new hardcoded copy
 npm run check:licences  # every installed package's licence
 node scripts/app-version.mjs   # what this checkout would build as
 ```
+
+## Privacy, security and support
+
+- Privacy policy (English): [docs/privacy-policy.en.md](docs/privacy-policy.en.md)
+- Polityka prywatnosci (Polski): [docs/privacy-policy.pl.md](docs/privacy-policy.pl.md)
+- Security disclosure process: [SECURITY.md](SECURITY.md)
+- Support boundaries and safe diagnostics: [SUPPORT.md](SUPPORT.md)
 
 The version the build stamps into the app comes from a signed `v<semver>` tag
 and from nowhere else, so ordinary builds are `0.0.0-dev` plus the commit
@@ -121,8 +129,8 @@ builders where they exist today (slider, toggle); sheets are a small custom
 dialog until Melt's Svelte 5 dialog lands. Paraglide for i18n (en/pl,
 `messages/`). Hand-rolled SVG charts on `d3-scale` + `d3-shape`. Rive runtime
 wired with graceful fallbacks. Fonts (Nunito, Baloo 2) bundled in
-`static/fonts` — zero runtime network requests, verified against the built
-bundle.
+`static/fonts` and served from the same origin as the app bundle, with no
+runtime requests to third-party services.
 
 ## Structure
 
