@@ -143,11 +143,33 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     };
   },
 
-  /* Whether a copy from an earlier boot is still in the pool. Not a file
-     listing: SAHPool names are its own, and getFileNames() is the only thing
-     that knows them. */
-  preMigrationCopyExists() {
-    return poolUtil!.getFileNames().includes(backupPath);
+  /* Whether a copy from an earlier boot is in the pool and can be read back
+     as a journal. Not a file listing: SAHPool names are its own, and
+     getFileNames() is the only thing that knows them - and a name in that list
+     says nothing about whether the file behind it opens under the data key.
+
+     So it is opened and counted. A copy nobody can read is not a recovery
+     point, and the two callers both need the stronger answer: the runner
+     refuses an empty journal only when there is a real one to put back, and
+     the failure screen must not offer a restore it cannot perform. */
+  async preMigrationCopyIsUsable() {
+    if (!poolUtil!.getFileNames().includes(backupPath)) return false;
+    const api = await attach();
+    const copy = new api.oo1.DB({ filename: backupPath, flags: 'c', vfs: MC_VFS });
+    try {
+      keyAndVerify(copy, hexKey);
+      const [tables] = copy.exec({
+        sql: "SELECT count(*) AS tables FROM sqlite_master WHERE type = 'table'",
+        rowMode: 'object',
+        returnValue: 'resultRows'
+      }) as { tables: number }[];
+      return tables.tables > 0;
+    } catch {
+      // Unreadable under this key, or not a database: no recovery point.
+      return false;
+    } finally {
+      copy.close();
+    }
   },
 
   async copyDatabaseFile() {

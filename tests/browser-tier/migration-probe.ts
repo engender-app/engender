@@ -87,7 +87,13 @@ const AFTER_COPY = 'sentinel-migration-note-written-after-the-copy-8820';
 
 async function run() {
   await freshOrigin();
-  const result: Record<string, unknown> = {};
+  /* Reported rather than left for run.mjs to know: hard-coding 3 and 4 there
+     would make the next real migration break this probe's assertions instead
+     of the thing they are about. */
+  const result: Record<string, unknown> = {
+    shippedVersion: LATEST_SCHEMA_VERSION,
+    nextVersion: LATEST_SCHEMA_VERSION + 1
+  };
 
   // A Journal on the schema this build ships, with something in it.
   await withJournal(async ({ driver, fileOps, journal }) => {
@@ -105,12 +111,12 @@ async function run() {
     result.notesAfterForward = await notes(journal);
     // ADR-0006: the copy stays through the boot that migrated, and goes on
     // the next boot that comes up clean.
-    result.copyAfterForward = await fileOps.preMigrationCopyExists();
+    result.copyAfterForward = await fileOps.preMigrationCopyIsUsable();
   });
 
   await withJournal(async ({ driver, fileOps }) => {
     await runMigrations(driver, fileOps, NEXT_RELEASE);
-    result.copyAfterCleanBoot = await fileOps.preMigrationCopyExists();
+    result.copyAfterCleanBoot = await fileOps.preMigrationCopyIsUsable();
   });
 
   /* --- Older code refuses it ------------------------------------------- */
@@ -126,7 +132,7 @@ async function run() {
     }
     // Refused, not damaged: the Journal is still there and still readable by
     // the code that understands it.
-    result.copyAfterRefusal = await fileOps.preMigrationCopyExists();
+    result.copyAfterRefusal = await fileOps.preMigrationCopyIsUsable();
     result.notesAfterRefusal = await notes(journal);
   });
 
@@ -139,7 +145,7 @@ async function run() {
       result.brokenMigration = String((error as Error)?.message ?? error);
     }
     result.versionAfterFailure = await driver.getUserVersion();
-    result.copyAfterFailure = await fileOps.preMigrationCopyExists();
+    result.copyAfterFailure = await fileOps.preMigrationCopyIsUsable();
 
     /* Written after the copy was taken, so it is in the live Journal and not
        in the copy. Its absence afterwards is what tells a restore that moved
@@ -151,7 +157,7 @@ async function run() {
   // The retry, which must not spend the copy it did not make.
   await withJournal(async ({ driver, fileOps }) => {
     await runMigrations(driver, fileOps, BROKEN_RELEASE).catch(() => {});
-    result.copyAfterRetry = await fileOps.preMigrationCopyExists();
+    result.copyAfterRetry = await fileOps.preMigrationCopyIsUsable();
   });
 
   await withJournal(async ({ fileOps }) => {
@@ -164,7 +170,7 @@ async function run() {
     await runMigrations(driver, fileOps, NEXT_RELEASE);
     result.versionAfterRestore = await driver.getUserVersion();
     result.notesAfterRestore = await notes(journal);
-    result.copyAfterRestoredBoot = await fileOps.preMigrationCopyExists();
+    result.copyAfterRestoredBoot = await fileOps.preMigrationCopyIsUsable();
   });
 
   return result;

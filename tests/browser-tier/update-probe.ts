@@ -18,7 +18,7 @@
    own results away - everything below it, skipWaiting and controllerchange
    included, is the browser doing the real thing. */
 
-import { enterWriteInFlight } from '../../src/lib/pwa/writes-in-flight.ts';
+import { markJournalBusy } from '../../src/lib/data/journal-busy.ts';
 import { applyUpdate, updateReady, watchForUpdates } from '../../src/lib/pwa/update.ts';
 
 /** Resolves once a worker is sitting in `waiting`, which is where a release
@@ -68,7 +68,7 @@ async function run() {
   /* A write in flight before the release arrives: an entry save, a migration,
      an encryption conversion or an Archive import, as far as this guard is
      concerned. */
-  const saving = enterWriteInFlight();
+  const saving = markJournalBusy();
 
   await fetch('/update-sw-bump');
   await registration.update();

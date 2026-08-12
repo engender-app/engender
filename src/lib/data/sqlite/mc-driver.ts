@@ -147,8 +147,8 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
   };
 
   const fileOps: MigrationFileOps = {
-    async preMigrationCopyExists() {
-      return post<boolean>('preMigrationCopyExists');
+    async preMigrationCopyIsUsable() {
+      return post<boolean>('preMigrationCopyIsUsable');
     },
     async copyDatabaseFile() {
       await post('copyDatabaseFile');

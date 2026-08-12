@@ -15,13 +15,15 @@ export interface MigrationDb {
 }
 
 export interface MigrationFileOps {
-  /** Whether a copy from an earlier boot is still on disk. A boot that finds
-      one is a boot whose predecessor did not come up clean. */
-  preMigrationCopyExists(): boolean | Promise<boolean>;
+  /** Whether a copy from an earlier boot is on disk *and* holds a journal.
+      Both halves matter: a boot that finds one is a boot whose predecessor did
+      not come up clean, and a copy that cannot be read back is not a recovery
+      point however much of it is there. */
+  preMigrationCopyIsUsable(): boolean | Promise<boolean>;
   copyDatabaseFile(): void | Promise<void>;
   /** Puts the copy back as the live database, discarding whatever the failed
-      migration left (ticket 04). Never called from here: recovery is a person
-      acting on the failure screen, not something a boot decides. */
+      migration left (ticket 04). Never called from here - the caller does it,
+      because on the web it closes the connection this runner is holding. */
   restorePreMigrationCopy(): void | Promise<void>;
   cleanupPreMigrationCopy(): void | Promise<void>;
 }
@@ -40,6 +42,27 @@ export class SchemaTooNewError extends Error {
     this.name = 'SchemaTooNewError';
     this.foundVersion = foundVersion;
     this.knownVersion = knownVersion;
+  }
+}
+
+/** Thrown when the live database has no schema at all while a readable copy is
+    sitting beside it (ticket 04) - the window inside restorePreMigrationCopy,
+    where the database has been unlinked and the copy is being written over it.
+
+    Refusing matters because the alternative is silent: every migration applies
+    cleanly to an empty file, the app reaches its journal screen holding
+    nothing, and the boot after that comes up clean and retires the copy. That
+    is the whole journal gone, of exactly the kind ADR-0006's copy insures.
+
+    The caller finishes the restore and starts again, so this is a state that
+    heals rather than one to be shown to anybody. A first-ever migration that
+    failed leaves an empty database beside an empty copy, which is why the
+    question asked is whether the copy holds a journal and not whether it is
+    there: that case is a real first run and must not be caught here. */
+export class InterruptedRestoreError extends Error {
+  constructor() {
+    super('The journal is empty and a readable pre-migration copy is beside it: a restore was interrupted.');
+    this.name = 'InterruptedRestoreError';
   }
 }
 
@@ -76,6 +99,13 @@ export async function runMigrations(
   const latestKnown = sorted.length > 0 ? sorted[sorted.length - 1].version : 0;
   const current = await db.getUserVersion();
 
+  /* Whether this file is the journal at all, asked before what schema it is
+     on. An unmigrated database with a readable copy beside it is a restore
+     that was interrupted, not a first run (see InterruptedRestoreError). */
+  if (current === 0 && (await fileOps.preMigrationCopyIsUsable())) {
+    throw new InterruptedRestoreError();
+  }
+
   if (current > latestKnown) {
     throw new SchemaTooNewError(current, latestKnown);
   }
@@ -95,7 +125,7 @@ export async function runMigrations(
      file nothing had been at. Copying again would spend it - and if the
      failure damaged the database, the copy could not be written at all, so the
      retry would destroy the only way back and put nothing in its place. */
-  if (!(await fileOps.preMigrationCopyExists())) {
+  if (!(await fileOps.preMigrationCopyIsUsable())) {
     await fileOps.copyDatabaseFile();
   }
 

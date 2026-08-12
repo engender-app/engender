@@ -7,8 +7,9 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import type { SqliteDriver } from './driver.ts';
-import { writeInFlight } from '../../pwa/writes-in-flight.ts';
+import { journalIsBusy } from '../journal-busy.ts';
 import { boot } from './boot.ts';
+import { noopFileOps } from './test-support/migrated-db.ts';
 
 function makeFakeDriver(): SqliteDriver {
   const raw = new DatabaseSync(':memory:');
@@ -40,15 +41,6 @@ function makeFakeDriver(): SqliteDriver {
       throw new Error('boot() should never call run()');
     },
     async close() {}
-  };
-}
-
-function noopFileOps() {
-  return {
-    preMigrationCopyExists: () => false,
-    copyDatabaseFile() {},
-    restorePreMigrationCopy() {},
-    cleanupPreMigrationCopy() {}
   };
 }
 
@@ -141,7 +133,7 @@ test('migrations hold the update guard, so a waiting worker cannot take over mid
     return {
       ...driver,
       async exec(sql) {
-        duringMigration.push(writeInFlight());
+        duringMigration.push(journalIsBusy());
         return driver.exec(sql);
       }
     };
@@ -154,7 +146,7 @@ test('migrations hold the update guard, so a waiting worker cannot take over mid
     duringMigration.every((busy) => busy),
     'every statement a migration ran must have been under the guard'
   );
-  assert.equal(writeInFlight(), false, 'and the guard has to be back down once boot is finished');
+  assert.equal(journalIsBusy(), false, 'and the guard has to be back down once boot is finished');
 });
 
 test('a failed migration lets the update guard go, so the app is not stuck on this release', async () => {
@@ -165,7 +157,7 @@ test('a failed migration lets the update guard go, so the app is not stuck on th
 
   await boot({ createDriver: brokenDriver, fileOps: noopFileOps() });
 
-  assert.equal(writeInFlight(), false);
+  assert.equal(journalIsBusy(), false);
 });
 
 test('a failing photo sweep still boots: housekeeping must not cost the app its screens', async () => {
