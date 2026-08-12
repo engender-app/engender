@@ -12,6 +12,7 @@
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue, localDateFromEpochDay } from '../epochDay';
 import { entryIsEmpty } from '../entryContent';
 import { foldText } from '../fold';
+import { mintUuid } from '../journal/support';
 import type { ArchiveEntry, ArchiveJournal, ArchiveTag, ArchiveTagGroup } from './payload';
 
 export interface DaylioNaming {
@@ -275,7 +276,7 @@ export async function daylioPreview(
       }
       let tag = newTags.get(folded);
       if (!tag) {
-        tag = { id: crypto.randomUUID(), label, builtIn: false, hidden: false };
+        tag = { id: mintUuid(), label, builtIn: false, hidden: false };
         newTags.set(folded, tag);
       }
       candidate.entry.tags.push(tag.id);
