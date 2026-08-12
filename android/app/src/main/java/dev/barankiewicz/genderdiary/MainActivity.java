@@ -1,10 +1,13 @@
 package dev.barankiewicz.genderdiary;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
 
 import dev.barankiewicz.genderdiary.keystore.KeystorePlugin;
+import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
+import dev.barankiewicz.genderdiary.reminders.RemindersPlugin;
 import dev.barankiewicz.genderdiary.sqlite.SqlitePlugin;
 
 /**
@@ -20,6 +23,20 @@ public class MainActivity extends BridgeActivity {
         // registered afterwards is not in the bridge the WebView gets.
         registerPlugin(SqlitePlugin.class);
         registerPlugin(KeystorePlugin.class);
+        registerPlugin(RemindersPlugin.class);
         super.onCreate(savedInstanceState);
+        captureReminderRoute(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        captureReminderRoute(intent);
+    }
+
+    private void captureReminderRoute(Intent intent) {
+        if (intent == null) return;
+        ReminderScheduler.storeLaunchRoute(this, intent.getStringExtra(ReminderScheduler.EXTRA_ROUTE));
     }
 }
