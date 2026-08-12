@@ -11,6 +11,11 @@ and the release pipeline passes the same string to the release notes and the
 Android artifacts through `GENDER_DIARY_VERSION` rather than having each of them
 ask git a slightly differently worded question.
 
+This is the public version name, the one a person reads and quotes. It is not
+the build id ADR-0021 keys the offline shell cache to, which is SvelteKit's own
+and changes on every build whether or not the release did. Two values, one word;
+only this one is ever shown to anyone.
+
 ## Why
 
 Four things name a release - the built bundle, the About screen, the release
@@ -47,3 +52,13 @@ A release therefore cannot be built from a source archive without being told its
 version, since an extracted tarball has no tags. `GENDER_DIARY_VERSION` is that
 route, and it is also how the Android build and the release-notes step receive
 the value instead of re-deriving it.
+
+That override is the one hole in "the tag is the source", and it is deliberate.
+It is honoured by the web build too, unchecked and unconditionally, so
+`GENDER_DIARY_VERSION=2.0.0 npm run build` on an untagged tree does produce a
+bundle claiming 2.0.0. Validating its shape would not close that - a
+well-formed wrong version is the failure worth worrying about - so the guard is
+where the variable is set rather than where it is read: only the release
+pipeline sets it, from the tag, inside the protected release environment. What
+the rule prevents is a version claimed by accident. A version claimed on purpose
+by whoever holds the release credentials is the pipeline working.

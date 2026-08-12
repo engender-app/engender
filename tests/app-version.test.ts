@@ -9,36 +9,37 @@
 import { describe, expect, it } from 'vitest';
 import { readGitFacts, resolveAppVersion } from '../scripts/app-version.mjs';
 
-const at = (sha = '1a2b3c4d') => ({ tag: null, signed: false, dirty: false, sha });
+/** A checkout with no tag on HEAD, which the cases below vary from. */
+const untagged = (sha = '1a2b3c4d') => ({ tag: null, signed: false, dirty: false, sha });
 
 describe('resolveAppVersion', () => {
   it('takes a signed version tag on a clean tree as the public version name', () => {
-    expect(resolveAppVersion({}, { ...at(), tag: 'v1.2.3', signed: true })).toBe('1.2.3');
+    expect(resolveAppVersion({}, { ...untagged(), tag: 'v1.2.3', signed: true })).toBe('1.2.3');
   });
 
   it('keeps a prerelease suffix from the tag', () => {
-    expect(resolveAppVersion({}, { ...at(), tag: 'v1.2.3-beta.1', signed: true })).toBe('1.2.3-beta.1');
+    expect(resolveAppVersion({}, { ...untagged(), tag: 'v1.2.3-beta.1', signed: true })).toBe('1.2.3-beta.1');
   });
 
   it('names the commit rather than a version when nothing tags it', () => {
-    expect(resolveAppVersion({}, at('deadbeef'))).toBe('0.0.0-dev+gdeadbeef');
+    expect(resolveAppVersion({}, untagged('deadbeef'))).toBe('0.0.0-dev+gdeadbeef');
   });
 
   it('refuses an unsigned tag as a release', () => {
     // A lightweight `git tag v1.2.3` carries no signature, and the release
     // contract (spec, "Release contract and CI") sources versions from signed
     // tags. Taking it would let any local tag mint a release name.
-    expect(resolveAppVersion({}, { ...at(), tag: 'v1.2.3', signed: false })).toBe('0.0.0-dev+g1a2b3c4d');
+    expect(resolveAppVersion({}, { ...untagged(), tag: 'v1.2.3', signed: false })).toBe('0.0.0-dev+g1a2b3c4d');
   });
 
   it('refuses a signed tag that is not a version', () => {
-    expect(resolveAppVersion({}, { ...at(), tag: 'nightly', signed: true })).toBe('0.0.0-dev+g1a2b3c4d');
+    expect(resolveAppVersion({}, { ...untagged(), tag: 'nightly', signed: true })).toBe('0.0.0-dev+g1a2b3c4d');
   });
 
   it('refuses a signed version tag when the tree has been edited under it', () => {
     // The tag names a commit; a dirty tree is not that commit's contents, so
     // the build is not the release however the tag was made.
-    expect(resolveAppVersion({}, { ...at(), tag: 'v1.2.3', signed: true, dirty: true })).toBe(
+    expect(resolveAppVersion({}, { ...untagged(), tag: 'v1.2.3', signed: true, dirty: true })).toBe(
       '0.0.0-dev+g1a2b3c4d.dirty'
     );
   });
@@ -52,12 +53,12 @@ describe('resolveAppVersion', () => {
     /* The web bundle, the release notes and the Android build each need the
        one string, and only one of them can practically shell out to git. The
        pipeline reads the tag once and passes it down. */
-    expect(resolveAppVersion({ GENDER_DIARY_VERSION: '2.0.0' }, at())).toBe('2.0.0');
+    expect(resolveAppVersion({ GENDER_DIARY_VERSION: '2.0.0' }, untagged())).toBe('2.0.0');
   });
 
   it('ignores an empty override rather than releasing as the empty string', () => {
     // An unset CI variable expands to '' far more often than it is missing.
-    expect(resolveAppVersion({ GENDER_DIARY_VERSION: '  ' }, at())).toBe('0.0.0-dev+g1a2b3c4d');
+    expect(resolveAppVersion({ GENDER_DIARY_VERSION: '  ' }, untagged())).toBe('0.0.0-dev+g1a2b3c4d');
   });
 });
 

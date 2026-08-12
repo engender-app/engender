@@ -10,7 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:browser": "node tests/browser-tier/run.mjs",
-    "test:walkthrough": "VITE_DEMO=1 vite build && node tests/walkthrough.test.mjs",
+    "test:walkthrough": "GENDER_DIARY_VERSION=9.9.9-walkthrough VITE_DEMO=1 vite build && node tests/walkthrough.test.mjs",
     "verify:build": "vite build && node tests/browser-tier/verify-build.mjs",
     "benchmark:argon2": "node scripts/benchmark-argon2.mjs"
   },
