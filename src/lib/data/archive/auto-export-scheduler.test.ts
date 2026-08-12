@@ -40,12 +40,12 @@ const flush = async () => {
   for (let i = 0; i < 12; i++) await Promise.resolve();
 };
 
-let nowSeed = 200_000;
+let nowSeed = 2_000_000;
 
 describe('auto-export scheduler', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    nowSeed += 120_000;
+    nowSeed += 2_000_000;
     vi.setSystemTime(new Date(nowSeed));
     vi.clearAllMocks();
     vi.stubGlobal('document', {
@@ -104,5 +104,36 @@ describe('auto-export scheduler', () => {
     await flush();
 
     expect(toast).toHaveBeenCalledWith('reselect');
+  });
+
+  test('retries on the next interval after a failed scheduled run', async () => {
+    runAndroidAutoExport
+      .mockResolvedValueOnce({ outcome: 'failed', reason: 'destination-full' })
+      .mockResolvedValueOnce({ outcome: 'ok', writtenAt: 22 });
+
+    startAutoExportScheduler();
+    await flush();
+    expect(runAndroidAutoExport).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(runAndroidAutoExport).toHaveBeenCalledTimes(2);
+  });
+
+  test('after scheduler restart it re-attempts due backup (process death shape)', async () => {
+    runAndroidAutoExport
+      .mockResolvedValueOnce({ outcome: 'failed', reason: 'partial-write' })
+      .mockResolvedValueOnce({ outcome: 'ok', writtenAt: 33 });
+
+    startAutoExportScheduler();
+    await flush();
+    expect(runAndroidAutoExport).toHaveBeenCalledTimes(1);
+
+    stopAutoExportScheduler();
+    nowSeed += 120_000;
+    vi.setSystemTime(new Date(nowSeed));
+    startAutoExportScheduler();
+    await flush();
+    expect(runAndroidAutoExport).toHaveBeenCalledTimes(2);
   });
 });
