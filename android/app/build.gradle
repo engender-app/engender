@@ -42,6 +42,11 @@ dependencies {
     // measured on API 35 in ticket 08's probe.
     implementation "net.zetetic:sqlcipher-android:$sqlcipherVersion@aar"
     implementation "androidx.sqlite:sqlite:$androidxSqliteVersion"
+    // The prompt in front of the Keystore-wrapped data key (ticket 13,
+    // ADR-0018). androidx rather than the framework's BiometricPrompt: the
+    // app's floor is API 26 and the framework class arrived in 28, and only
+    // androidx knows how to reach the device credential below API 30.
+    implementation "androidx.biometric:biometric:$androidxBiometricVersion"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test:runner:$androidxTestRunnerVersion"
     androidTestImplementation "androidx.test:core:$androidxTestCoreVersion"

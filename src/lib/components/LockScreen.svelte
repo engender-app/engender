@@ -15,6 +15,8 @@
   import { createAttemptThrottle } from '$lib/lock/throttle';
   import { markUnlocked } from '$lib/stores/lock.svelte';
   import { resetApp } from '$lib/stores/boot.svelte';
+  import { confirmWithBiometrics } from '$lib/lock/android-key';
+  import { androidKeystore } from '$lib/lock/keystore-bridge';
   import { isAndroid } from '$lib/platform';
   import Icon from './Icon.svelte';
   import PrideAurora from './PrideAurora.svelte';
@@ -129,6 +131,49 @@
     startCountdown();
   }
 
+  /* The biometric key on the pad (ticket 13). Nothing cryptographic happens
+     here and nothing should: this gate is reached mid-session, so the data
+     key is already unwrapped and in memory, and app lock is a casual-access
+     layer rather than an encryption credential (ADR-0014). The prompt is
+     asking the platform the same question the four digits beside it ask.
+
+     Only an explicit success unlocks. Every other outcome puts a line on the
+     status row and leaves the pad exactly where it was, which is the way
+     forward here - there is always one, because the PIN never went away. */
+  async function useBiometrics() {
+    if (busy || waitMs > 0) return;
+    busy = true;
+    error = '';
+    try {
+      const result = await confirmWithBiometrics(androidKeystore, {
+        title: m.ak_prompt_title(),
+        subtitle: m.ak_prompt_subtitle(),
+        cancel: m.ak_prompt_cancel(),
+        deviceCredential: false
+      });
+      if (result.unlocksJournal) {
+        markUnlocked();
+        onDone?.();
+        return;
+      }
+      /* Not counted against the PIN throttle: it throttles guesses at a
+         four-digit number, and a finger the sensor did not recognise is not
+         one. The platform does its own rate limiting, which is where
+         `lockedOut` comes from. */
+      error =
+        result.outcome === 'unenrolled' ? m.ak_unenrolled()
+        : result.outcome === 'unavailable' ? m.ak_unavailable()
+        : result.outcome === 'lockedOut' ? m.ak_locked_out()
+        : result.outcome === 'cancelled' ? m.ak_cancelled()
+        : m.ak_failed();
+    } catch (e) {
+      console.error('the biometric prompt failed', e);
+      error = m.ak_failed();
+    } finally {
+      busy = false;
+    }
+  }
+
   async function confirmReset() {
     resetting = true;
     try {
@@ -183,9 +228,17 @@
         <button class="pin-key" data-key={n} disabled={waitMs > 0} onclick={() => press(n)}>{n}</button>
       {/each}
       {#if android && mode === 'unlock'}
-        <!-- The Android shell fills this in; on web there is nothing behind
-             it, so it stays out of the tab order entirely. -->
-        <button class="pin-key is-ghost" data-bio aria-label={m.pin_bio_label()} disabled>
+        <!-- Only on Android, where there is a prompt behind it (ticket 13);
+             on web there is nothing, so it stays out of the tab order
+             entirely. Throttled with the digits: a wait the PIN earned is not
+             one a fingerprint gets to skip. -->
+        <button
+          class="pin-key is-ghost"
+          data-bio
+          aria-label={m.pin_bio_label()}
+          disabled={busy || waitMs > 0}
+          onclick={useBiometrics}
+        >
           <Icon name="fingerprint" size={26} />
         </button>
       {:else}

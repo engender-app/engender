@@ -85,6 +85,29 @@ final class SqliteConnection {
         return "x'" + hexKey + "'";
     }
 
+    /**
+     * Whether a database file on disk is an unencrypted one, asked without
+     * opening it (ticket 13).
+     *
+     * <p>Every SQLite file begins with the same 16-byte string; an encrypted
+     * one begins with its own salt, so the header is the question. Asked
+     * before the driver opens anything, because opening a plaintext journal
+     * with a raw key fails as {@code SQLITE_NOTADB} - which is indistinguishable
+     * from a corrupt file, and reads to a person as "your journal is broken"
+     * when what is true is "this build will not open it".
+     */
+    static boolean isPlaintextDatabase(Context context, String name) throws IOException {
+        File file = context.getDatabasePath(name);
+        if (!file.exists()) return false;
+        byte[] header = new byte[SQLITE_MAGIC.length];
+        try (java.io.FileInputStream in = new java.io.FileInputStream(file)) {
+            if (in.read(header) != header.length) return false;
+        }
+        return java.util.Arrays.equals(header, SQLITE_MAGIC);
+    }
+
+    private static final byte[] SQLITE_MAGIC = "SQLite format 3\0".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
     void exec(String sql) {
         SQLiteDatabase db = requireOpen();
         for (String statement : SqlStatements.split(sql)) {
@@ -215,6 +238,28 @@ final class SqliteConnection {
         if (database != null) {
             database.close();
             database = null;
+        }
+    }
+
+    /**
+     * The reset path's half of the wipe on Android (ticket 13, ADR-0014).
+     *
+     * <p>Everything the web's reset gets for free by emptying the OPFS root:
+     * the database, its side files and ADR-0006's copy, all of which live in
+     * app-private storage here rather than in the WebView's storage. Without
+     * this a reset would erase the Keystore key and leave the ciphertext, and
+     * the next boot would mint a fresh key and meet a database it cannot open.
+     *
+     * <p>The connection goes first, because a file with an open handle on it
+     * deletes on some filesystems and not on others, and a reset that half
+     * worked is worse than one that failed.
+     */
+    void deleteDatabaseFiles() throws IOException {
+        close();
+        if (databaseFile == null) return;
+        for (String suffix : new String[] {"", "-wal", "-shm", "-journal", PRE_MIGRATION_SUFFIX}) {
+            File file = new File(databaseFile.getPath() + suffix);
+            if (file.exists() && !file.delete()) throw new IOException("could not delete " + file);
         }
     }
 

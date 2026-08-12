@@ -15,6 +15,7 @@
   import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
+  import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LockScreen from '$lib/components/LockScreen.svelte';
   import PassphraseGate from '$lib/components/PassphraseGate.svelte';
@@ -65,6 +66,12 @@
       bootState.status === 'conversion-refused'
   );
 
+  /* The same moment on Android, where nothing is typed: Keystore is holding
+     the data key and wants the platform's word for who is here first
+     (ticket 13). Its own gate rather than a branch inside the passphrase
+     one - they share the job and none of the words. */
+  let needsAuthentication = $derived(bootState.status === 'needs-authentication');
+
   /* Older code against a newer Journal (ticket 04). Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
@@ -72,7 +79,12 @@
 
   let path = $derived(page.url.pathname);
   let chromeless = $derived(
-    locked || needsPassphrase || schemaTooNew || path.startsWith('/onboarding') || path === '/settings/lock'
+    locked ||
+      needsPassphrase ||
+      needsAuthentication ||
+      schemaTooNew ||
+      path.startsWith('/onboarding') ||
+      path === '/settings/lock'
   );
   let activeKey = $derived(
     path === '/' ? 'home'
@@ -163,7 +175,7 @@
         <Icon name="alert" size={20} />
         <div class="notice-body">
           <span class="notice-title">{m.boot_db_failed_title()}</span>
-          {bootState.error}
+          {bootState.error === 'android-plaintext-journal' ? m.ak_plaintext_journal() : bootState.error}
           <!-- The way back out of a migration that could not finish (ticket
                04, ADR-0006): the copy taken before it started is still on the
                device, and this puts it back. Offered only when there is one,
@@ -214,6 +226,8 @@
         <SchemaTooNew />
       {:else if needsPassphrase}
         <PassphraseGate />
+      {:else if needsAuthentication}
+        <AndroidKeyGate />
       {:else if locked}
         <!-- Instead of the route, not over it: nothing below this renders,
              so no screen mounts and no query runs while the app is locked. -->
