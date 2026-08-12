@@ -4,6 +4,10 @@ build/
 src/lib/paraglide/
 vite.config.ts.timestamp-*
 
+# The android-tier probe bundle, built by tests/android-tier/run.mjs straight
+# into the test APK's assets on every run.
+android/app/src/androidTest/assets/
+
 # Release artifacts and the CI logs kept from a failed browser run. Both have to
 # stay untracked for another reason too: a release version needs an unedited
 # tree (ADR-0022), so anything the pipeline writes into the workspace while it

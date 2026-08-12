@@ -42,6 +42,39 @@ npm run check:licences  # every installed package's licence
 node scripts/app-version.mjs   # what this checkout would build as
 ```
 
+## Android
+
+The Android app is the same static bundle in a Capacitor shell, with one
+native piece: a local plugin that opens the journal over SQLCipher, because
+the key model everything else assumes wants a raw key and no derivation of
+its own (ADR-0020).
+
+```
+npm run build && npx cap sync android   # copy the web bundle into the APK
+npm run test:android                    # the checks that need a real device
+cd android && ./gradlew assembleDebug
+```
+
+`cap sync` is not optional after a fresh clone: Capacitor generates
+`android/capacitor-cordova-android-plugins/` and the copied web assets, and
+neither is committed, so Gradle has nothing to build without it.
+
+Building needs a **JDK 21** (Capacitor 8 compiles at that language level) and
+an Android SDK at `$ANDROID_HOME`. `test:android` finds a JDK 21 itself if
+sdkman has one, and says so plainly if it cannot.
+
+`test:android` runs on two emulators, `gd26` (API 26, the spec's floor) and
+`tracker35` (current Android), which it expects to exist; override with
+`ANDROID_TIER_AVDS`. It starts them windowed because this machine's emulator
+segfaults under `-no-window`; `ANDROID_TIER_HEADLESS=1` turns that off.
+
+Android updates its WebView separately from the OS, so the API level does not
+say what the app runs in. `capacitor.config.ts` puts the floor at Chrome 86,
+where OPFS arrived, and a WebView below it gets Capacitor's upgrade screen
+rather than a blank page. The API 26 emulator image ships Chrome 69 from 2018
+and so cannot start the app at all - the native half of the suite still runs
+there, and the full suite runs on the current Android.
+
 The version the build stamps into the app comes from a signed `v<semver>` tag
 and from nowhere else, so ordinary builds are `0.0.0-dev` plus the commit
 (ADR-0022). `GENDER_DIARY_VERSION` overrides it, which is how the release

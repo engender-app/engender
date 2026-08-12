@@ -150,3 +150,16 @@ KDF (105 ms to reopen and query), and recorded the raw-key path as documented
 rather than exercised. This ticket opens with a raw key on device and asserts
 it, though nothing is encrypted until ticket 13, because a bridge chosen for a
 capability should demonstrate it before three tickets are built on top.
+
+That assertion now exists and passes.
+`NativeSqliteCapabilitiesTest.aRawKeyOpensAndReopensTheDatabase` writes and
+reads back through `x'<64 hex>'` with no KDF pass over it, and
+`aWrongRawKeyIsRejected` shows the wrong key failing rather than returning
+plaintext - both on API 26 and on a current Android. The capability the bridge
+was chosen for is measured now rather than documented, so ticket 13 can take
+the raw key as given.
+
+The driver stays unencrypted meanwhile: `createAndroidSqlite` takes an
+optional data key, `boot.svelte.ts` passes none, and the plugin opens a plain
+database when there is none. Ticket 13's change here is a caller with a key to
+pass, not a change to the bridge.
