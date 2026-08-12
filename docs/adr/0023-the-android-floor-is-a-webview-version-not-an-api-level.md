@@ -1,8 +1,9 @@
 # The Android floor is a WebView version, not an API level
 
 The app declares `minSdkVersion 26` because the spec asks for it, and
-`minWebViewVersion 86` because that is the number that actually decides
-whether it runs. A WebView below the floor gets Capacitor's upgrade screen.
+`minWebViewVersion 87` because that is the number that actually decides
+whether it runs. A WebView below the floor gets `static/webview-too-old.html`,
+which says so in both languages.
 
 ## Why
 
@@ -17,16 +18,33 @@ Unexpected token .` in a log no one holding a phone can read. The image ships
 Chrome 69, from 2018, which has neither optional chaining nor - the part that
 cannot be compiled around - OPFS, where every photo the app stores lives.
 
-86 is where OPFS arrived, so it is the first version at which the app can do
-what it claims. It is a floor rather than a measurement: nothing has been run
-on a WebView between 86 and the current one.
+87 is where Vite compiles the bundle to - its default module target - so below
+it the app is syntax the WebView cannot parse, whatever else it can do.
+Everything the app needs at runtime sits at or under that: OPFS at 86,
+`Object.fromEntries` at 73. One call was above it, `Object.hasOwn` at 93, on
+the boot path in `prefs/catalogue.ts`; it was replaced with
+`hasOwnProperty.call` rather than allowed to set the floor six versions higher
+than the bundle needed.
+
+It is still a floor rather than a measurement. Nothing has been run on a
+WebView between 87 and the current one, and the two ends are what ticket 11
+saw: Chrome 69 refuses the bundle, and a current one runs it.
 
 ## Consequences
 
-**A device below the floor says so.** Capacitor renders its own "update your
-WebView" screen when `minWebViewVersion` is not met. The alternative is what
-ticket 11 saw first: a blank page that looks identical to a crash, on a
-device whose owner has no way to find out why.
+**A device below the floor says so, but only because a page was written for
+it.** `minWebViewVersion` on its own does nothing a user can see. Capacitor
+checks it, and when there is no `server.errorPath` configured it logs
+`Logger.error` and loads the app anyway - which is a blank page and a
+SyntaxError in a log nobody holding a phone can read. Ticket 11 shipped that
+mistake first and found it by looking at the emulator rather than at the code:
+the setting was there, the screen was blank, and the two facts sat together
+for an afternoon.
+
+So `server.errorPath` points at `static/webview-too-old.html`: no script, no
+build step, nothing newer than CSS2, because it exists precisely for the
+browsers that could not run the app. Both languages are on it at once, since
+choosing one would need the preference the app never got far enough to read.
 
 **The API 26 emulator cannot run the app, and that is not a gap in support.**
 `tests/android-tier/run.mjs` runs the native half of its suite there - the
@@ -35,16 +53,24 @@ touch a WebView - and the full suite on a current Android. A real API 26
 phone with a current WebView runs the same bundle as an API 35 one, and that
 is the configuration the current-Android run covers.
 
-**The floor is a claim to re-check, not a constant.** It was derived from one
-API - OPFS - and the app's bundle is compiled by Vite against its own default
-target, which is newer than 86. Nothing today proves the two agree, and the
-honest way to find out is a WebView in that range rather than more reading.
-Ticket 19's audit is the natural place for it.
+**The floor moves when Vite's default does.** It is inherited rather than
+chosen: `ESBUILD_MODULES_TARGET` is Vite's, not this repo's, and an upgrade
+that changes it changes what the app runs on without anyone deciding to. Worth
+pinning `build.target` explicitly the next time this is opened, so the number
+in `capacitor.config.ts` and the number the bundle was compiled against cannot
+drift apart silently.
 
-**One thing already found this way is fixed rather than declared.** Every
-journal write mints an id with `crypto.randomUUID` (ADR-0002), which arrived
-in Chrome 92 - above the floor, so declaring 86 would have been a lie the
-first time anyone saved anything. It now falls back to `getRandomValues`,
-which predates everything here. A capability the floor does not cover is a
-bug to fix while it is cheap, not a reason to raise the floor and lose the
-devices in between.
+**Two capabilities were fixed rather than declared.** `crypto.randomUUID`
+(Chrome 92) mints every row's id (ADR-0002), and `Object.hasOwn` (93) is read
+before the first paint. Both sat above the floor, so either would have been a
+lie the first time someone opened the app on a device between the two.
+`randomUUID` falls back to `getRandomValues` and `hasOwn` became
+`hasOwnProperty.call` - a few lines each. A capability the floor does not
+cover is a bug to fix while it is cheap, not a reason to raise the floor and
+lose the devices in between.
+
+**Nothing below the floor is tested, and the suite says so.** The API 26
+emulator runs only the native half of `tests/android-tier/`, because its
+WebView cannot start the app. What that run does prove is the error page: it
+is the one device available on which the floor is not met, so it is where the
+page was checked.

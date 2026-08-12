@@ -79,11 +79,16 @@ sdkman has one, and says so plainly if it cannot.
 segfaults under `-no-window`; `ANDROID_TIER_HEADLESS=1` turns that off.
 
 Android updates its WebView separately from the OS, so the API level does not
-say what the app runs in. `capacitor.config.ts` puts the floor at Chrome 86,
-where OPFS arrived, and a WebView below it gets Capacitor's upgrade screen
-rather than a blank page. The API 26 emulator image ships Chrome 69 from 2018
-and so cannot start the app at all - the native half of the suite still runs
-there, and the full suite runs on the current Android.
+say what the app runs in. `capacitor.config.ts` puts the floor at Chrome 87 -
+what Vite compiles the bundle to - and points `server.errorPath` at
+`static/webview-too-old.html`, so a device below it gets a page saying which
+component to update rather than a blank screen. `minWebViewVersion` alone does
+not do that: without an error path Capacitor logs the failure and loads the
+app anyway. See [ADR-0023](docs/adr/0023-the-android-floor-is-a-webview-version-not-an-api-level.md).
+
+The API 26 emulator image ships Chrome 69 from 2018 and so cannot start the
+app at all. It is where the error page is checked; the native half of the
+suite runs there too, and the full suite runs on the current Android.
 
 The version the build stamps into the app comes from a signed `v<semver>` tag
 and from nowhere else, so ordinary builds are `0.0.0-dev` plus the commit

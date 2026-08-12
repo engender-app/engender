@@ -117,7 +117,12 @@ export const BOOT_KEYS = [
 export type BootKey = (typeof BOOT_KEYS)[number];
 
 export function isPreferenceKey(key: string): key is PreferenceKey {
-  return Object.hasOwn(PREFERENCE_DEFAULTS, key);
+  /* hasOwnProperty.call rather than Object.hasOwn, which arrived in Chrome 93
+     and was the only call in app code above the bundle's own compile target
+     (ADR-0023). It sits on the boot path - preferences are read before the
+     first paint - so on a WebView between the two it took the app out before
+     anything could render. */
+  return Object.prototype.hasOwnProperty.call(PREFERENCE_DEFAULTS, key);
 }
 
 /** The metric in the form the entry repositories still take it: 'mood', or
