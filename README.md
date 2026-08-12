@@ -37,7 +37,14 @@ npm run build      # static SPA bundle in build/ (adapter-static, no SSR)
 npm run preview
 npm run check      # svelte-check
 npm run test:walkthrough  # the 15 walkable flows, in a real Chromium
+node scripts/app-version.mjs   # what this checkout would build as
 ```
+
+The version the build stamps into the app comes from a signed `v<semver>` tag
+and from nowhere else, so ordinary builds are `0.0.0-dev` plus the commit
+(ADR-0022). `GENDER_DIARY_VERSION` overrides it, which is how the release
+pipeline hands one value to the bundle, the release notes and the Android
+artifacts at once.
 
 `test:walkthrough` builds first (with the demo bar compiled in, since one
 flow drives its jump-to-screen control) and serves that build, the same way

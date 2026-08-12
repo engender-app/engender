@@ -237,7 +237,7 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
-    <button class="list-row" onclick={() => (aboutSheet = true)}>
+    <button class="list-row" data-about-open onclick={() => (aboutSheet = true)}>
       <span class="row-icon"><Icon name="info" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.about()}</span>
@@ -362,7 +362,10 @@
   <Sheet bind:open={aboutSheet} title={m.about()}>
     <h3>{m.about()}</h3>
     <div class="stack-3">
-      <p class="small"><span translate="no">{m.app_name()}</span> <span class="muted">· version 0.1.0</span></p>
+      <p class="small">
+        <span translate="no">{m.app_name()}</span>
+        <span class="muted">· {m.version()} <span translate="no" data-app-version>{__APP_VERSION__}</span></span>
+      </p>
       <p class="small">Free software under the <strong>GPLv3</strong> license. Source code is public.</p>
       <p class="small">
         <strong>This app makes no network requests.</strong> No account, no cloud, no telemetry, no analytics. Your
