@@ -47,6 +47,7 @@
   let autoLastSuccessAt = $state<number | null>(null);
   let autoLastFailureAt = $state<number | null>(null);
   let autoLastFailureReason = $state<string | null>(null);
+  let autoHasPassword = $state(false);
   let autoBusy = $state(false);
 
   const done: Record<ExportPath, () => string> = {
@@ -72,6 +73,7 @@
     prefs.autoExportEnabled = status.enabled;
     prefs.autoExportSchedule = status.schedule;
     autoDestination = status.destinationLabel;
+    autoHasPassword = status.hasPassword;
     autoLastSuccessAt = status.lastSuccessAt;
     autoLastFailureAt = status.lastFailureAt;
     autoLastFailureReason = status.lastFailureReason;
@@ -103,6 +105,15 @@
   }
 
   async function setAutoEnabled(enabled: boolean) {
+    if (enabled && !autoHasPassword) {
+      if (!expPass) {
+        toast(m.exp_auto_password_needed());
+        prefs.autoExportEnabled = false;
+        return;
+      }
+      await androidAutoExport.setPassword({ password: expPass });
+      autoHasPassword = true;
+    }
     prefs.autoExportEnabled = enabled;
     await configureAutoExport(enabled, prefs.autoExportSchedule);
   }
@@ -153,6 +164,10 @@
       );
 
       if (result.outcome === 'ok') {
+        if (expPass) {
+          await androidAutoExport.setPassword({ password: expPass });
+          autoHasPassword = true;
+        }
         toast(m.exp_auto_saved_toast());
       } else if (result.outcome === 'needs-destination') {
         toast(m.exp_auto_reselect_needed());
@@ -428,6 +443,9 @@
 
         <p class="muted small" style="margin-top:var(--space-3)">
           {m.exp_auto_note({ folder: autoDestination ?? m.exp_auto_destination_missing() })}
+        </p>
+        <p class="muted small" style="margin-top:var(--space-2)">
+          {autoHasPassword ? m.exp_auto_password_saved() : m.exp_auto_password_missing()}
         </p>
         <p class="muted small" style="margin-top:var(--space-2)">
           {m.exp_auto_last_success({ when: stampText(autoLastSuccessAt) })}

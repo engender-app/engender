@@ -26,6 +26,8 @@ export interface AndroidAutoExportDeps {
   recordBackup(at: number): void;
 }
 
+export type AutoExportTrigger = 'manual' | 'scheduled';
+
 const toBase64 = (bytes: Uint8Array): string => {
   let binary = '';
   for (let i = 0; i < bytes.length; i += BASE64_CHUNK) {
@@ -58,6 +60,21 @@ const reasonText = (error: unknown): string => {
 const isDestinationFailure = (message: string): boolean =>
   message.includes('destination-revoked') || message.includes('destination-unavailable');
 
+const isTransientFailure = (message: string): boolean =>
+  message.includes('verification-failed') || message.includes('destination-full') || message.includes('partial-write');
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function nextDueAt(status: Pick<AutoExportStatus, 'schedule' | 'lastSuccessAt'>): number {
+  const span = status.schedule === 'weekly' ? 7 * DAY_MS : 30 * DAY_MS;
+  return (status.lastSuccessAt ?? 0) + span;
+}
+
+export function isDue(status: Pick<AutoExportStatus, 'enabled' | 'destinationUri' | 'hasPassword' | 'schedule' | 'lastSuccessAt'>, now: number): boolean {
+  if (!status.enabled || !status.destinationUri || !status.hasPassword) return false;
+  return now >= nextDueAt(status);
+}
+
 function timestampedFileName(name: string, at: number): string {
   const base = exportFileName(name, ARCHIVE_FILE_EXTENSION).slice(0, -ARCHIVE_FILE_EXTENSION.length);
   const stamp = new Date(at).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
@@ -71,7 +88,8 @@ async function disable(status: AutoExportStatus) {
 
 export async function runAndroidAutoExport(
   source: AndroidAutoExportSource,
-  deps: AndroidAutoExportDeps
+  deps: AndroidAutoExportDeps,
+  trigger: AutoExportTrigger = 'manual'
 ): Promise<AndroidAutoExportResult> {
   if (!isAndroid()) return { outcome: 'failed', reason: 'android-only' };
 
@@ -95,15 +113,24 @@ export async function runAndroidAutoExport(
 
   try {
     const bytes = await collect(body);
-    await androidAutoExport.writeBackup({ fileName, base64: toBase64(bytes) });
+    const payload = { fileName, base64: toBase64(bytes) };
+    try {
+      await androidAutoExport.writeBackup(payload);
+    } catch (error) {
+      const first = reasonText(error);
+      if (!isTransientFailure(first)) throw error;
+      await androidAutoExport.writeBackup(payload);
+    }
     deps.recordBackup(writtenAt);
     return { outcome: 'ok', writtenAt };
   } catch (error) {
     const reason = reasonText(error);
     if (isDestinationFailure(reason)) {
       await disable(status);
+      if (trigger === 'scheduled') await androidAutoExport.notifyFailure();
       return { outcome: 'needs-destination' };
     }
+    if (trigger === 'scheduled') await androidAutoExport.notifyFailure();
     return { outcome: 'failed', reason };
   }
 }
