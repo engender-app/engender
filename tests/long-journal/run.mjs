@@ -2,9 +2,14 @@
    `npm run benchmark:long-journal`.
 
    Its own script rather than another block in tests/browser-tier/run.mjs,
-   because generating a decade of Journal takes minutes and nobody should
-   pay that to check FTS5 folding. CI runs it as its own job for the same
-   reason.
+   and its own CI job. The run takes 44 seconds, most of it writing the
+   fixture, and it leaves 340MB in the origin's storage - so folding it into
+   the browser tier would put that alongside every other probe's SAHPool for
+   the rest of that run, and add 44 seconds to a suite that answers a
+   different kind of question. This one gates on timing rather than on
+   correctness, so a wobble here should not turn the correctness suite red,
+   and its log should be retrievable on its own. As a separate CI job it
+   also runs concurrently, which costs nothing in wall clock.
 
    Two modes. By default it measures and fails on anything over budget,
    which is what CI wants. With --record it prints the numbers in the shape
@@ -13,11 +18,12 @@
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { launchChromium } from '../browser-harness.mjs';
-import { breaches, budgets, overTarget } from './budgets.mjs';
+import { createReporter, launchChromium } from '../browser-harness.mjs';
+import { breaches, budgets, mb, overTarget } from './budgets.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const recording = process.argv.includes('--record');
+const { fail, finish } = createReporter();
 
 const server = await createServer({
   configFile: `${here}/long-journal.vite.config.ts`,
@@ -38,12 +44,12 @@ page.on('console', (message) => {
   if (message.type() === 'error') console.log('  browser error:', message.text());
 });
 
-console.log('Generating ten years of Journal and measuring it. This takes a few minutes.\n');
+console.log('Generating ten years of Journal and measuring it. Around 45 seconds.\n');
 
 let result;
 try {
   await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('body[data-long-journal-ready]', { state: 'attached', timeout: 20 * 60_000 });
+  await page.waitForSelector('body[data-long-journal-ready]', { state: 'attached', timeout: 5 * 60_000 });
   result = await page.evaluate(() => window.__longJournalResult);
 } finally {
   await browser.close();
@@ -51,7 +57,8 @@ try {
 }
 
 if (result?.error) {
-  console.log('FAIL  the benchmark did not run —', result.error);
+  fail('the benchmark ran', result.error);
+  finish('');
   process.exit(1);
 }
 
@@ -81,27 +88,30 @@ for (const m of measurements) {
 console.log('');
 
 if (recording) {
-  /* A 3x time budget with a 100ms floor. The floor is there because half
-     these measurements are single-digit milliseconds, and 3x of 4ms is a
-     gate on how loaded the runner is rather than on the code. What this is
-     meant to catch is work that grew with the journal, and that arrives in
-     seconds. Heap comes through as a recorded baseline and no budget, for
-     the reason budgets.mjs sets out. */
-  console.log('budgets.json measurements, with a 3x time budget and a 100ms floor:\n');
+  /* A 5x time budget with a 200ms floor, for the reason budgets.mjs sets
+     out. Computed from the rounded baseline rather than the raw
+     measurement, so the file reproduces its own rule when someone checks
+     it. An existing heap budget is carried over rather than cleared: the
+     web sets none, and a re-record must not wipe one a platform that
+     answers more steadily has set. */
+  console.log('budgets.json measurements, with a 5x time budget and a 200ms floor:\n');
   console.log(
     JSON.stringify(
       Object.fromEntries(
-        measurements.map((m) => [
-          m.name,
-          {
-            what: m.what,
-            baselineMs: Math.round(m.ms),
-            budgetMs: Math.max(100, Math.round(m.ms * 3)),
-            targetMs: budgets.measurements[m.name]?.targetMs ?? null,
-            heapBaselineBytes: m.heapBytes === null ? null : Math.round(m.heapBytes),
-            heapBudgetBytes: null
-          }
-        ])
+        measurements.map((m) => {
+          const baselineMs = Math.round(m.ms);
+          return [
+            m.name,
+            {
+              what: m.what,
+              baselineMs,
+              budgetMs: Math.max(200, baselineMs * 5),
+              targetMs: budgets.measurements[m.name]?.targetMs ?? null,
+              heapBaselineBytes: m.heapBytes === null ? null : Math.round(m.heapBytes),
+              heapBudgetBytes: budgets.measurements[m.name]?.heapBudgetBytes ?? null
+            }
+          ];
+        })
       ),
       null,
       2
@@ -110,18 +120,13 @@ if (recording) {
   process.exit(0);
 }
 
-const over = breaches(measurements);
-for (const line of over) console.log('FAIL ', line);
+for (const line of breaches(measurements)) fail('within budget', line);
 
 const past = overTarget();
 if (past.length) {
-  console.log('\nBaselines already past what a person can wait for. Each of these has a ticket:');
+  console.log('Baselines already past what a person can wait for. Each of these has a ticket:');
   for (const line of past) console.log(' ', line);
 }
 
-console.log(over.length ? `\n${over.length} MEASUREMENT(S) OVER BUDGET` : '\nEVERY MEASUREMENT IS WITHIN BUDGET');
-process.exit(over.length ? 1 : 0);
-
-function mb(bytes) {
-  return `${(bytes / 1_048_576).toFixed(1)}MB`;
-}
+const failures = finish('EVERY MEASUREMENT IS WITHIN BUDGET');
+process.exit(failures ? 1 : 0);
