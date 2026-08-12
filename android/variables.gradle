@@ -1,6 +1,7 @@
-/* Capacitor generated this file; the only edit is minSdkVersion, raised from
+/* Capacitor generated this file; the edits are minSdkVersion, raised from
    Capacitor's default of 24 to the 26 the spec asks for, plus the SQLCipher
-   version the driver plugin binds against.
+   version the driver plugin binds against and the androidx.biometric the
+   Keystore plugin prompts through.
 
    26 is a floor, not a ceiling: net.zetetic:sqlcipher-android declares
    minSdk 23, so the library is not what sets it. */
@@ -14,6 +15,7 @@ ext {
     androidxTestCoreVersion = '1.6.1'
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'
+    androidxBiometricVersion = '1.1.0'
     androidxCoordinatorLayoutVersion = '1.3.0'
     androidxCoreVersion = '1.17.0'
     androidxFragmentVersion = '1.8.9'

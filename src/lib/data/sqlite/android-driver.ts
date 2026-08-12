@@ -47,10 +47,32 @@ interface SqliteBridge {
   copyDatabaseFile(): Promise<void>;
   restorePreMigrationCopy(): Promise<void>;
   cleanupPreMigrationCopy(): Promise<void>;
+  deleteDatabase(): Promise<void>;
+  isPlaintextDatabase(options: { name: string }): Promise<{ plaintext: boolean }>;
   close(): Promise<void>;
 }
 
 const Sqlite = registerPlugin<SqliteBridge>('Sqlite');
+
+/** The reset path's wipe on Android (ticket 13, ADR-0014). The journal's
+    files live in app-private storage, so emptying the OPFS root - which is
+    all the web's reset has to do - does not touch them.
+
+    Outside the queue below, and safely so: the plugin holds one connection
+    for the whole app, and the caller has already awaited the close that let
+    go of it (data/reset.ts closes before it wipes). */
+export async function deleteAndroidDatabase(): Promise<void> {
+  await Sqlite.deleteDatabase();
+}
+
+/** Whether app storage holds a journal from the pre-encryption Android build
+    (ticket 13). Asked before the driver opens anything: a raw-key open of a
+    plaintext file fails as SQLITE_NOTADB, which is the same error a corrupt
+    journal gives, and the two deserve different sentences. */
+export async function androidJournalIsPlaintext(databaseName: string): Promise<boolean> {
+  const { plaintext } = await Sqlite.isPlaintextDatabase({ name: databaseName });
+  return plaintext;
+}
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');

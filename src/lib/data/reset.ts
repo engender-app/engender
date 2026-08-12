@@ -19,6 +19,11 @@ export interface LocalDataTargets {
       goes. Emptied rather than deleted by name, so a reset does not have
       to be kept in step with whatever writes there next. */
   storageRoot: () => Promise<ListableDirectory>;
+  /** What a platform holds outside that root, where it holds anything. On
+      Android the journal itself is an app-private file and the data key is
+      in the platform key store, and the WebView's storage reaches neither
+      (ticket 13). Absent on the web, where the root is everything. */
+  wipePlatformStorage?: () => Promise<void>;
   clearBootCache: () => void;
 }
 
@@ -28,6 +33,10 @@ export async function wipeLocalData(targets: LocalDataTargets): Promise<void> {
   await targets.closeDatabase().catch((error) => {
     console.warn('could not close the database before resetting; deleting anyway', error);
   });
+
+  // Not caught, unlike the close above: this one is the journal, and a
+  // failure here has to stop the reset rather than be worked around.
+  await targets.wipePlatformStorage?.();
 
   const root = await targets.storageRoot();
   for await (const name of root.keys()) {
