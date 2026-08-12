@@ -9,3 +9,6 @@ vite.config.ts.timestamp-*
 .claude/
 CLAUDE.md
 docs/agents/
+
+# Written on every build by the emitted-client-assets plugin in vite.config.ts
+src/lib/pwa/*.generated.ts
