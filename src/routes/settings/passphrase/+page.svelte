@@ -7,6 +7,7 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
+  import { bootState, upgradeJournalToPassphrase } from '$lib/stores/boot.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
 
@@ -15,6 +16,7 @@
   let confirmation = $state('');
   let error = $state('');
   let busy = $state(false);
+  let adding = $derived(bootState.accessMode === 'device-bound');
 
   async function submit(event: SubmitEvent) {
     event.preventDefault();
@@ -32,11 +34,16 @@
 
     busy = true;
     try {
-      await changeJournalPassphrase(current, next);
-      toast(m.pp_changed_toast());
+      if (adding) {
+        await upgradeJournalToPassphrase(next);
+        toast(m.pp_added_toast());
+      } else {
+        await changeJournalPassphrase(current, next);
+        toast(m.pp_changed_toast());
+      }
       goto('/settings');
     } catch {
-      error = m.pp_change_wrong_current();
+      error = adding ? m.pp_skip_unavailable() : m.pp_change_wrong_current();
     } finally {
       busy = false;
     }
@@ -46,25 +53,27 @@
 <div class="screen">
   <header class="screen-header">
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.pp_change_title()}</h1>
+    <h1 class="screen-title">{adding ? m.pp_add_title() : m.pp_change_title()}</h1>
     <div class="header-action"></div>
   </header>
 
   <div class="card">
-    <p class="ob-text">{m.pp_change_body()}</p>
+    <p class="ob-text">{adding ? m.pp_add_body() : m.pp_change_body()}</p>
     <form class="stack-3" onsubmit={submit} style="margin-top:var(--space-4)">
-      <div>
-        <label class="field-label" for="current-passphrase">{m.pp_current_label()}</label>
-        <input
-          class="input"
-          type="password"
-          id="current-passphrase"
-          name="current"
-          autocomplete="current-password"
-          bind:value={current}
-          disabled={busy}
-        />
-      </div>
+      {#if !adding}
+        <div>
+          <label class="field-label" for="current-passphrase">{m.pp_current_label()}</label>
+          <input
+            class="input"
+            type="password"
+            id="current-passphrase"
+            name="current"
+            autocomplete="current-password"
+            bind:value={current}
+            disabled={busy}
+          />
+        </div>
+      {/if}
       <div>
         <label class="field-label" for="new-passphrase">{m.pp_new_label()}</label>
         <input
@@ -91,7 +100,10 @@
       </div>
       <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
       <button class="btn btn-primary" type="submit" data-change-passphrase disabled={busy}>
-        <span>{busy ? m.pp_change_running() : m.pp_change_submit()}</span>
+        <span>
+          {#if busy}{adding ? m.pp_add_running() : m.pp_change_running()}
+          {:else}{adding ? m.pp_add_submit() : m.pp_change_submit()}{/if}
+        </span>
       </button>
     </form>
   </div>

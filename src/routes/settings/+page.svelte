@@ -6,6 +6,7 @@
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { reference } from '$lib/data/live/reference.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { bootState } from '$lib/stores/boot.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -193,7 +194,9 @@
       <span class="row-icon"><Icon name="shield" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.settings_passphrase_row()}</span>
-        <span class="row-subtitle">{m.settings_passphrase_sub()}</span>
+        <span class="row-subtitle">
+          {bootState.accessMode === 'device-bound' ? m.settings_passphrase_sub_device() : m.settings_passphrase_sub_portable()}
+        </span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
