@@ -51,14 +51,16 @@ export const ARCHIVE_FILE_EXTENSION = '.ttbackup';
     failure because it is decided from the plaintext header, which anyone
     holding the file can read anyway - so saying so tells an attacker
     nothing and tells the user something useful. */
-export class UnsupportedArchiveError extends Error {
-  /* Which of the two cases this is. The screen picks its wording from
-     `kind` rather than from `message`: the message is a diagnostic and
-     stays English for the console, while the sentence a person reads has
-     to exist in both catalogues (docs/ui-copy.md). */
-  readonly kind: 'not-an-archive' | 'newer-version';
+/** Which of the two refusals it was. The screen picks its wording from this
+    rather than from the message: the message is a diagnostic and stays
+    English for the console, while the sentence a person reads has to exist
+    in both catalogues (docs/ui-copy.md). */
+export type UnsupportedArchiveKind = 'not-an-archive' | 'newer-version';
 
-  constructor(kind: 'not-an-archive' | 'newer-version', message: string) {
+export class UnsupportedArchiveError extends Error {
+  readonly kind: UnsupportedArchiveKind;
+
+  constructor(kind: UnsupportedArchiveKind, message: string) {
     super(message);
     this.name = 'UnsupportedArchiveError';
     this.kind = kind;

@@ -38,12 +38,14 @@ const THUMB_QUALITY = 0.7;
 
 /** A picked file this app will not store, with a message meant for the
     person who picked it. */
-export class UnsupportedImageError extends Error {
-  /* As with UnsupportedArchiveError: `kind` is what the screen words its
-     message from, `message` is the English diagnostic for the console. */
-  readonly kind: 'heic' | 'unreadable';
+/** As with UnsupportedArchiveKind: the screen words its message from this,
+    while the message itself is the English diagnostic for the console. */
+export type UnsupportedImageKind = 'heic' | 'unreadable';
 
-  constructor(kind: 'heic' | 'unreadable', message: string, options?: ErrorOptions) {
+export class UnsupportedImageError extends Error {
+  readonly kind: UnsupportedImageKind;
+
+  constructor(kind: UnsupportedImageKind, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'UnsupportedImageError';
     this.kind = kind;

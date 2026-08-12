@@ -49,7 +49,7 @@
     <!-- The ends are the metric's own words, never "worst" and "best":
          neither end of binary↔nonbinary is the better one, and colour that
          judges is the one thing this app cannot do (ADR-0012, F15). -->
-    <div class="heat-legend" aria-label="{metricName}: {legend.low} to {legend.high}">
+    <div class="heat-legend" aria-label={m.heat_legend_aria({ metric: metricName, low: legend.low, high: legend.high })}>
       <span class="legend-end">{legend.low}</span>
       {#each [1, 2, 3, 4] as i (i)}<span class="legend-swatch" style="background:var(--heat-{i})"></span>{/each}
       <span class="legend-end">{legend.high}</span>

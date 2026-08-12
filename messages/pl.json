@@ -50,14 +50,30 @@
   "empty_home_title": "Twoja historia zaczyna się od jednego wpisu",
   "empty_home_body": "Zapisz, jaki był dzisiejszy dzień. Sam nastrój wystarczy, resztę możesz dodać później.",
   "colour_days_by": "Koloruj dni według",
-  "metric_note": "Ta sama miara koloruje mapę w kalendarzu.",
+  "metric_note": "Ten sam wybór koloruje mapę w kalendarzu.",
   "change_on_home": "zmień na ekranie startowym",
   "prev_month": "Poprzedni miesiąc",
   "next_month": "Następny miesiąc",
   "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dni z kilkoma wpisami pokazują średnią. Dotknij wypełnionego dnia, żeby zobaczyć wpisy.",
   "legend_none": "brak wpisu",
   "day_avg": "śr. {metric}",
-  "entries_this_day": "Wpisy tego dnia: {count}",
+  "entries_this_day": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} wpis tego dnia",
+        "countPlural=few": "Wpisy tego dnia: {count}",
+        "countPlural=many": "Wpisy tego dnia: {count}",
+        "countPlural=other": "Wpisy tego dnia: {count}"
+      }
+    }
+  ],
   "add_another_entry": "Dodaj kolejny wpis do tego dnia",
   "nothing_logged": "Nic nie zapisano tego dnia",
   "nothing_logged_body": "Nadal możesz dodać wpis. Pamięć też się liczy.",
@@ -65,7 +81,23 @@
   "search_placeholder": "Szukaj w notatkach i tagach…",
   "search_hint": "Notatki i tagi, z polskimi znakami lub bez. „lozko” znajdzie „łóżko”.",
   "search_try": "Spróbuj „euforia”, „kawa” albo tagu „terapia”.",
-  "results_count": "Wyniki: {count}",
+  "results_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} wynik",
+        "countPlural=few": "Wyniki: {count}",
+        "countPlural=many": "Wyniki: {count}",
+        "countPlural=other": "Wyniki: {count}"
+      }
+    }
+  ],
   "no_results": "Nic nie znaleziono",
   "no_results_body": "Żaden wpis nie pasuje do „{query}”. Spróbuj krótszego słowa. Początki słów też działają.",
   "stats_title": "Statystyki · ostatnie {days} dni",
@@ -117,7 +149,23 @@
   "off": "wył.",
   "try_it": "wypróbuj",
   "footer_note": "nic nie opuszcza tego urządzenia",
-  "scales_count": "Skale: {count}",
+  "scales_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} skala",
+        "countPlural=few": "Skale: {count}",
+        "countPlural=many": "Skale: {count}",
+        "countPlural=other": "Skale: {count}"
+      }
+    }
+  ],
   "custom_suffix": "własny",
   "add_custom": "Własna…",
   "add_custom_sub": "dodaj własną skalę",
@@ -315,7 +363,7 @@
   "pp_change_mismatch": "Nowe hasło i jego powtórzenie się różnią.",
   "pp_change_wrong_current": "Obecne hasło jest nieprawidłowe.",
   "pp_changed_toast": "Hasło zmienione. Zmień je też w menedżerze haseł.",
-  "boot_db_failed_title": "Nie udało się otworzyć bazy",
+  "boot_db_failed_title": "Nie udało się otworzyć dziennika",
   "boot_plaintext_era": "Ten dziennik powstał przed szyfrowaniem, a ta wersja nie umie go jeszcze przekonwertować. Zostań przy starszej wersji, dopóki nie pojawi się aktualizacja z konwersją.",
   "boot_no_persistent_storage": "Ta przeglądarka nie przyznała trwałego magazynu. Rób regularnie kopie zapasowe, żeby nic nie przepadło, gdy zabraknie miejsca.",
   "quick_exit_back": "Powrót do aplikacji",
@@ -334,7 +382,7 @@
   "exp_run_share": "Zaszyfruj i wyślij",
   "exp_run_download": "Zaszyfruj i pobierz",
   "exp_running": "Szyfrowanie…",
-  "exp_crypto_note": "AES-256-GCM, klucz wyprowadzony przez Argon2id. Bez hasła plik jest nieczytelny, także dla autorki tej aplikacji.",
+  "exp_crypto_note": "AES-256-GCM, klucz wyprowadzony przez Argon2id. Bez hasła plik jest nieczytelny, także dla osoby, która napisała tę aplikację.",
   "exp_done_encrypted": "Zaszyfrowano",
   "exp_done_csv": "CSV wyeksportowany",
   "exp_done_json": "JSON wyeksportowany",
@@ -374,7 +422,7 @@
   "exp_warning_sheet": "Zanim przejdziesz dalej",
   "exp_warning_title": "Zapomnianego hasła nie da się odzyskać",
   "exp_warning_notice_title": "Tego nie da się cofnąć",
-  "exp_warning_body": "Jeśli zapomnisz tego hasła, plik zostanie nieczytelny na zawsze, także dla autorki tej aplikacji. Nie ma opcji odzyskiwania ani żadnych wyjątków.",
+  "exp_warning_body": "Jeśli zapomnisz tego hasła, plik zostanie nieczytelny na zawsze, także dla osoby, która napisała tę aplikację. Nie ma opcji odzyskiwania ani żadnych wyjątków.",
   "exp_warning_confirm": "Rozumiem, zaszyfruj i wyeksportuj",
   "plain_sheet_title": "Wyeksportować {format} bez szyfrowania?",
   "plain_notice_title": "Ten plik nie jest zaszyfrowany",
@@ -399,7 +447,23 @@
   "daylio_mood_unmapped": "brak odpowiednika",
   "daylio_no_moods": "W tym pliku nie ma nastrojów.",
   "daylio_always_merge": "Ten import zawsze tylko dołącza. Nic z twoich wpisów się nie zmienia.",
-  "daylio_confirm": "Importuj wpisy: {count}",
+  "daylio_confirm": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Importuj {count} wpis",
+        "countPlural=few": "Importuj wpisy: {count}",
+        "countPlural=many": "Importuj wpisy: {count}",
+        "countPlural=other": "Importuj wpisy: {count}"
+      }
+    }
+  ],
   "daylio_imported_toast": "Zaimportowano wpisy: {entries}, nowe tagi: {tags}.",
   "palette_trans": "Transpłciowa",
   "palette_nonbinary": "Niebinarna",
@@ -411,7 +475,23 @@
   "palette_agender": "Agender",
   "settings_taggroup_switch": "Grupa {group}",
   "settings_reminders_sub": "aktywne: {count} · codzienne pytanie {state}",
-  "settings_milestones_sub": "ważne dni: {count}",
+  "settings_milestones_sub": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} ważny dzień",
+        "countPlural=few": "ważne dni: {count}",
+        "countPlural=many": "ważne dni: {count}",
+        "countPlural=other": "ważne dni: {count}"
+      }
+    }
+  ],
   "settings_passphrase_row": "Hasło do dziennika",
   "settings_passphrase_sub": "otwiera zaszyfrowany dziennik · tu je zmienisz",
   "settings_lock_on_pin": "PIN",
@@ -488,9 +568,9 @@
   "cd_name_label": "Nazwa",
   "cd_name_placeholder": "np. komfort głosu",
   "cd_low_label": "Lewy koniec",
-  "cd_low_placeholder": "np. napięty",
+  "cd_low_placeholder": "np. napięcie",
   "cd_high_label": "Prawy koniec",
-  "cd_high_placeholder": "np. naturalny",
+  "cd_high_placeholder": "np. swoboda",
   "cd_range_label": "Zakres",
   "cd_preview": "Podgląd",
   "cd_preview_note": "Tak będzie wyglądać na ekranie wpisu.",
@@ -592,7 +672,23 @@
   "recap_year_title": "Twój {year}",
   "recap_open_month": "Miesiąc zapisany twoimi słowami.",
   "recap_open_year": "Rok zapisany twoimi słowami.",
-  "recap_entries_title": "Wpisy: {count}",
+  "recap_entries_title": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} wpis",
+        "countPlural=few": "Wpisy: {count}",
+        "countPlural=many": "Wpisy: {count}",
+        "countPlural=other": "Wpisy: {count}"
+      }
+    }
+  ],
   "recap_entries_body": "Wpis po wpisie, raz za razem. W niektóre dni były dwa. Płeć się rusza, a tutaj został ślad tego ruchu.",
   "recap_entries_quiet_month": "Spokojny miesiąc. Spokój też się liczy.",
   "recap_entries_quiet_year": "Spokojny rok. Spokój też się liczy.",
@@ -607,7 +703,23 @@
   "recap_tags_none_month": "W tym miesiącu bez tagów.",
   "recap_tags_none_year": "W tym roku bez tagów.",
   "recap_tag_count": "{label} ({count})",
-  "recap_ms_title": "Kamienie milowe: {count}",
+  "recap_ms_title": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} kamień milowy",
+        "countPlural=few": "Kamienie milowe: {count}",
+        "countPlural=many": "Kamienie milowe: {count}",
+        "countPlural=other": "Kamienie milowe: {count}"
+      }
+    }
+  ],
   "recap_ms_none_month": "W tym miesiącu bez kamieni milowych.",
   "recap_ms_none_year": "W tym roku bez kamieni milowych.",
   "recap_scale_title": "{name}: {change}",
@@ -625,12 +737,32 @@
   "week_cell_no_entry": "{day}: bez wpisu",
   "week_cell_level": "{day}: poziom {level} z 4",
   "heat_cell_none": "{date}, bez wpisów",
-  "heat_cell_entries": "{date}, wpisy: {count}",
+  "heat_cell_entries": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{date}, {count} wpis",
+        "countPlural=few": "{date}, wpisy: {count}",
+        "countPlural=many": "{date}, wpisy: {count}",
+        "countPlural=other": "{date}, wpisy: {count}"
+      }
+    }
+  ],
   "heat_legend_aria": "{metric}: od {low} do {high}",
   "slider_aria": "{name}: od {low} do {high}",
   "entry_save_failed": "Nie udało się zapisać tego wpisu.",
   "ms_status_next_in": "następna za {days}",
   "photo_placeholder": "Miejsce na zdjęcie",
   "photo_placeholder_labelled": "Miejsce na zdjęcie: {label}",
-  "mood_none": "bez nastroju"
+  "mood_none": "bez nastroju",
+  "entry_mood_aria": "nastrój: {name}",
+  "entry_day_count": "{count} tego dnia",
+  "rive_aria": "{label} (animowana ilustracja)",
+  "tags_group_aria": "tagi: {group}"
 }

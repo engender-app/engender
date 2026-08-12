@@ -50,14 +50,28 @@
   "empty_home_title": "Your story starts with one entry",
   "empty_home_body": "Log how today felt. A mood is enough, and you can add more later.",
   "colour_days_by": "Colour days by",
-  "metric_note": "The same colour metric drives the calendar heat-map.",
+  "metric_note": "The same colour choice drives the calendar heat-map.",
   "change_on_home": "change it on Home",
   "prev_month": "Previous month",
   "next_month": "Next month",
   "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. Days with several entries show the day’s average. Tap a filled day to see its entries.",
   "legend_none": "no entry",
   "day_avg": "avg {metric}",
-  "entries_this_day": "{count} entries this day",
+  "entries_this_day": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} entry this day",
+        "countPlural=other": "{count} entries this day"
+      }
+    }
+  ],
   "add_another_entry": "Add another entry for this day",
   "nothing_logged": "Nothing logged this day",
   "nothing_logged_body": "You can still add an entry for it. Memory counts.",
@@ -65,7 +79,21 @@
   "search_placeholder": "Search notes and tags…",
   "search_hint": "Notes and tags, with or without diacritics. “lozko” finds “łóżko”.",
   "search_try": "Try “euphoria”, “coffee”, or a tag like “therapy”.",
-  "results_count": "{count} results",
+  "results_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} result",
+        "countPlural=other": "{count} results"
+      }
+    }
+  ],
   "no_results": "Nothing found",
   "no_results_body": "No entries match “{query}”. Try a shorter word: prefixes match too.",
   "stats_title": "Stats · last {days} days",
@@ -117,7 +145,21 @@
   "off": "off",
   "try_it": "try it",
   "footer_note": "nothing leaves this device",
-  "scales_count": "{count} scales",
+  "scales_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} scale",
+        "countPlural=other": "{count} scales"
+      }
+    }
+  ],
   "custom_suffix": "custom",
   "add_custom": "Custom…",
   "add_custom_sub": "add your own scale",
@@ -309,7 +351,7 @@
   "pp_change_mismatch": "The new passphrase and its confirmation did not match.",
   "pp_change_wrong_current": "The current passphrase is not right.",
   "pp_changed_toast": "Passphrase changed. Update it in your password manager too.",
-  "boot_db_failed_title": "Couldn’t open the database",
+  "boot_db_failed_title": "Couldn’t open your journal",
   "boot_plaintext_era": "This journal was created before encryption and this build cannot convert it yet. Keep the older build until the conversion update lands.",
   "boot_no_persistent_storage": "This browser didn’t grant persistent storage. Export backups regularly so nothing is lost to storage pressure.",
   "quick_exit_back": "Back to the app",
@@ -328,7 +370,7 @@
   "exp_run_share": "Encrypt & share",
   "exp_run_download": "Encrypt & download",
   "exp_running": "Encrypting…",
-  "exp_crypto_note": "AES-256-GCM, key derived with Argon2id. Without the password the file is unreadable, including to whoever wrote this app.",
+  "exp_crypto_note": "AES-256-GCM, key derived with Argon2id. Without the password the file is unreadable, including to the person who wrote this app.",
   "exp_done_encrypted": "Encrypted",
   "exp_done_csv": "CSV exported",
   "exp_done_json": "JSON exported",
@@ -368,7 +410,7 @@
   "exp_warning_sheet": "Before you continue",
   "exp_warning_title": "There’s no way to recover a forgotten password",
   "exp_warning_notice_title": "This can’t be undone",
-  "exp_warning_body": "If you forget this password, the archive is unreadable forever, including to whoever wrote this app. There is no recovery option, no exceptions.",
+  "exp_warning_body": "If you forget this password, the archive is unreadable forever, including to the person who wrote this app. There is no recovery option, no exceptions.",
   "exp_warning_confirm": "I understand, encrypt & export",
   "plain_sheet_title": "Export unencrypted {format}?",
   "plain_notice_title": "This file is not encrypted",
@@ -393,7 +435,21 @@
   "daylio_mood_unmapped": "not mapped",
   "daylio_no_moods": "No moods in this file.",
   "daylio_always_merge": "This import is always a merge. Nothing you already logged is changed.",
-  "daylio_confirm": "Import {count} entries",
+  "daylio_confirm": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Import {count} entry",
+        "countPlural=other": "Import {count} entries"
+      }
+    }
+  ],
   "daylio_imported_toast": "{entries} entries and {tags} new tags imported.",
   "palette_trans": "Transgender",
   "palette_nonbinary": "Nonbinary",
@@ -405,7 +461,21 @@
   "palette_agender": "Agender",
   "settings_taggroup_switch": "{group} group",
   "settings_reminders_sub": "{count} active · daily check-in {state}",
-  "settings_milestones_sub": "{count} significant days",
+  "settings_milestones_sub": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} significant day",
+        "countPlural=other": "{count} significant days"
+      }
+    }
+  ],
   "settings_passphrase_row": "Journal passphrase",
   "settings_passphrase_sub": "opens the encrypted journal · change it here",
   "settings_lock_on_pin": "PIN",
@@ -586,7 +656,21 @@
   "recap_year_title": "Your {year}",
   "recap_open_month": "One month, held in your own words.",
   "recap_open_year": "One year, held in your own words.",
-  "recap_entries_title": "{count} entries",
+  "recap_entries_title": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} entry",
+        "countPlural=other": "{count} entries"
+      }
+    }
+  ],
   "recap_entries_body": "You showed up, again and again. Some days had two entries. Gender moves, and you caught it moving.",
   "recap_entries_quiet_month": "A quiet month. Quiet counts too.",
   "recap_entries_quiet_year": "A quiet year. Quiet counts too.",
@@ -601,7 +685,21 @@
   "recap_tags_none_month": "No tags this month.",
   "recap_tags_none_year": "No tags this year.",
   "recap_tag_count": "{label} ({count})",
-  "recap_ms_title": "{count} milestones",
+  "recap_ms_title": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} milestone",
+        "countPlural=other": "{count} milestones"
+      }
+    }
+  ],
   "recap_ms_none_month": "No milestones landed this month.",
   "recap_ms_none_year": "No milestones landed this year.",
   "recap_scale_title": "{name}: {change}",
@@ -619,12 +717,30 @@
   "week_cell_no_entry": "{day}: no entry",
   "week_cell_level": "{day}: level {level} of 4",
   "heat_cell_none": "{date}, no entries",
-  "heat_cell_entries": "{date}, {count} entries",
+  "heat_cell_entries": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{date}, {count} entry",
+        "countPlural=other": "{date}, {count} entries"
+      }
+    }
+  ],
   "heat_legend_aria": "{metric}: {low} to {high}",
   "slider_aria": "{name}: {low} to {high}",
   "entry_save_failed": "Couldn’t save this entry.",
   "ms_status_next_in": "next in {days}",
   "photo_placeholder": "Photo placeholder",
   "photo_placeholder_labelled": "Photo placeholder: {label}",
-  "mood_none": "no mood"
+  "mood_none": "no mood",
+  "entry_mood_aria": "mood: {name}",
+  "entry_day_count": "{count} that day",
+  "rive_aria": "{label} (animated illustration)",
+  "tags_group_aria": "{group} tags"
 }

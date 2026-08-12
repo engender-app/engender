@@ -165,7 +165,7 @@
       <span class="row-icon"><Icon name="flag" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.milestones()}</span>
-        <span class="row-subtitle">{m.settings_milestones_sub({ count: String(reference.milestones.length) })}</span>
+        <span class="row-subtitle">{m.settings_milestones_sub({ count: reference.milestones.length })}</span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
@@ -271,7 +271,7 @@
         >
           <span class="row-text">
             <span class="row-title">{p.name}</span>
-            <span class="row-subtitle">{m.scales_count({ count: String(p.dims.length) })}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
+            <span class="row-subtitle">{m.scales_count({ count: p.dims.length })}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
           </span>
           {#if prefs.activePreset === p.id}<Icon name="check" size={20} />{/if}
         </button>

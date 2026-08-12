@@ -74,7 +74,7 @@
             <button class="list-row" data-preset={p.id} onclick={() => (preset = p.id)}>
               <span class="row-text">
                 <span class="row-title">{p.name}</span>
-                <span class="row-subtitle">{m.scales_count({ count: String(p.dims.length) })}</span>
+                <span class="row-subtitle">{m.scales_count({ count: p.dims.length })}</span>
               </span>
               {#if preset === p.id}<Icon name="check" size={20} />{/if}
             </button>
