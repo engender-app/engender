@@ -11,9 +11,30 @@
 import { createKeystore, rewrapKeystore, unlockKeystore } from '../crypto/keystore';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
 
+/** One floor, shared by the setup screen and the change screen, so the two
+    cannot drift into accepting different passphrases. A floor and nothing
+    more: strength ultimately comes from the KDF cost (ADR-0013) and the
+    person's own choice, and copy - not code - is what pushes toward a
+    password manager. */
+export const MIN_PASSPHRASE_LENGTH = 8;
+
 /** Null on a first run - the signal that boot should offer setup. */
 export async function journalKeystoreExists(): Promise<boolean> {
   return (await readKeystoreFile()) !== null;
+}
+
+/** A database SQLocal left in the OPFS root predates encryption (the
+    encrypted journal lives inside the SAHPool directory instead).
+    Converting it is ticket 10's whole job; until then boot must refuse it
+    loudly rather than start a second, empty journal beside it. */
+export async function plaintextEraJournalPresent(): Promise<boolean> {
+  const root = await navigator.storage.getDirectory();
+  try {
+    await root.getFileHandle('gender-diary.sqlite3');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** First run: mints the data key, wraps it under the passphrase, persists

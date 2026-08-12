@@ -12,12 +12,10 @@
      likely cause and never diagnoses. */
 
   import { bootState, submitPassphraseSetup, submitPassphraseUnlock, resetApp } from '$lib/stores/boot.svelte';
-  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import Icon from './Icon.svelte';
   import PrideAurora from './PrideAurora.svelte';
   import Sheet from './Sheet.svelte';
-
-  const MIN_LENGTH = 8;
 
   let passphrase = $state('');
   let confirmation = $state('');
@@ -34,8 +32,8 @@
     error = '';
 
     if (mode === 'setup') {
-      if (passphrase.length < MIN_LENGTH) {
-        error = `Use at least ${MIN_LENGTH} characters.`;
+      if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+        error = `Use at least ${MIN_PASSPHRASE_LENGTH} characters.`;
         return;
       }
       if (passphrase !== confirmation) {
@@ -75,8 +73,10 @@
   <PrideAurora />
   <div class="applock">
     <div class="applock-badge"><Icon name="lock" size={30} /></div>
+    <!-- No name in the unlock greeting on purpose: the display name lives in
+         the encrypted journal, and this screen renders before it can be read. -->
     <h1 class="ob-title" style="text-align:center">
-      {#if mode === 'setup'}Choose a journal passphrase{:else}Hi{prefs.name ? ', ' + prefs.name : ''}{/if}
+      {#if mode === 'setup'}Choose a journal passphrase{:else}Welcome back{/if}
     </h1>
     <p class="ob-text" style="text-align:center">
       {#if mode === 'setup'}

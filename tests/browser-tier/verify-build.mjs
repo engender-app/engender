@@ -72,6 +72,26 @@ try {
   if (allRequests.some((u) => u.includes('.wasm'))) ok("boot() loads the sqlite3mc wasm build from the app's own origin");
   else fail("boot() loads the sqlite3mc wasm build from the app's own origin", `no .wasm request seen; requests were: ${allRequests.join(', ')}`);
 
+  /* The session rule (ADR-0018), on the production build - the walkthrough
+     can't test this because the demo build unlocks itself: a reload ends
+     the unlocked session, the unwrapped key dies with it, and the journal
+     opens again only for the passphrase. */
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('#journal-passphrase', { timeout: 10000 });
+  const confirmField = await page.locator('#journal-passphrase-confirm').count();
+  if (confirmField === 0) ok('a production reload asks for the passphrase again (unlock, not a second setup)');
+  else fail('a production reload asks for the passphrase again', 'the setup form rendered instead of the unlock form');
+
+  await page.fill('#journal-passphrase', 'not the passphrase');
+  await page.click('[data-passphrase-submit]');
+  await page.waitForSelector('[data-passphrase-status]:has-text("not right")', { timeout: 15000 });
+  ok('a wrong passphrase is refused with no diagnosis beyond "not right"');
+
+  await page.fill('#journal-passphrase', 'verify-build passphrase');
+  await page.click('[data-passphrase-submit]');
+  await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+  ok('the right passphrase opens the same journal after the reload');
+
   if (externalRequests.length === 0) ok('production build makes zero requests off its own origin');
   else fail('production build makes zero requests off its own origin', externalRequests.join(', '));
 

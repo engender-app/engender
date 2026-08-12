@@ -26,6 +26,7 @@ import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file
 import { encryptedFileStore } from '../data/photos/encrypted-file-store';
 import {
   journalKeystoreExists,
+  plaintextEraJournalPresent,
   setupJournalPassphrase,
   unlockJournalPassphrase
 } from '../data/journal-passphrase';
@@ -88,19 +89,6 @@ export async function resetApp(): Promise<void> {
     of at a setup wall. Folded out of production bundles with the rest of
     the demo (ticket 05). */
 const DEMO_PASSPHRASE = 'demo';
-
-/** A database SQLocal left in the OPFS root predates encryption. Converting
-    it is ticket 10's whole job; this build must refuse it loudly rather
-    than start a second, empty journal beside it. */
-async function plaintextEraJournalPresent(): Promise<boolean> {
-  const root = await navigator.storage.getDirectory();
-  try {
-    await root.getFileHandle('gender-diary.sqlite3');
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export function startBoot() {
   if (started) return;

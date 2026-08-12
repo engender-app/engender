@@ -121,10 +121,18 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
   if (raw.kdf !== 'argon2id' || typeof raw.salt !== 'string' || typeof raw.nonce !== 'string' || typeof raw.wrappedKey !== 'string') {
     throw new KeystoreUnreadableError('keystore file is missing fields');
   }
+  // The parameters get fed to the KDF as-is (that is the evolvability), so
+  // a mangled block must fail here by name, not later as a derive error
+  // that would read as a wrong passphrase.
+  const params = raw.params as Partial<Argon2Params> | undefined;
+  const numbers: (keyof Argon2Params)[] = ['memorySize', 'iterations', 'parallelism', 'hashLength'];
+  if (!params || numbers.some((field) => typeof params[field] !== 'number')) {
+    throw new KeystoreUnreadableError('keystore file has no usable KDF parameters');
+  }
   return {
     version: KEYSTORE_VERSION,
     kdf: 'argon2id',
-    params: raw.params as Argon2Params,
+    params: params as Argon2Params,
     salt: fromBase64(raw.salt),
     nonce: fromBase64(raw.nonce),
     wrappedKey: fromBase64(raw.wrappedKey)
