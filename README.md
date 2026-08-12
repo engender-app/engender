@@ -29,6 +29,13 @@ a new version is allowed to take over is deliberately not decided there. See
 ahead of every edit; `npm run verify:build` installs it, kills the network and
 starts the app again.
 
+## Privacy, security and support
+
+- Privacy policy (English): [docs/privacy-policy.en.md](docs/privacy-policy.en.md)
+- Polityka prywatności (polski): [docs/privacy-policy.pl.md](docs/privacy-policy.pl.md)
+- Security disclosure process: [SECURITY.md](SECURITY.md)
+- Support boundaries and safe diagnostics: [SUPPORT.md](SUPPORT.md)
+
 ## Development
 
 ```
@@ -42,13 +49,6 @@ npm run check:copy      # catalogue parity, and no new hardcoded copy
 npm run check:licences  # every installed package's licence
 node scripts/app-version.mjs   # what this checkout would build as
 ```
-
-## Privacy, security and support
-
-- Privacy policy (English): [docs/privacy-policy.en.md](docs/privacy-policy.en.md)
-- Polityka prywatności (polski): [docs/privacy-policy.pl.md](docs/privacy-policy.pl.md)
-- Security disclosure process: [SECURITY.md](SECURITY.md)
-- Support boundaries and safe diagnostics: [SUPPORT.md](SUPPORT.md)
 
 The version the build stamps into the app comes from a signed `v<semver>` tag
 and from nowhere else, so ordinary builds are `0.0.0-dev` plus the commit

@@ -1,7 +1,8 @@
 # Security policy
 
-This project keeps journal data local and encrypted at rest. Security reports
-still matter, and they should be reportable without posting details publicly.
+Gender Diary keeps journal data on the device and encrypts it at rest. Security
+reports still matter, and a report should be possible without posting the
+details in public first.
 
 ## Report a vulnerability
 
@@ -13,7 +14,7 @@ That channel is private between the reporter and maintainers.
 
 ## What to include
 
-- App version from Settings -> About.
+- App version, from Settings, then About.
 - Platform and browser or device model.
 - Clear reproduction steps.
 - Expected result and observed result.
@@ -23,16 +24,16 @@ That channel is private between the reporter and maintainers.
 
 Do not include personal journal data in a report.
 
-- Do not attach Archive files.
-- Do not attach screenshots that show entries, notes, reminders, labs or photos.
-- Do not paste logs that include journal content.
+- No backup or archive files.
+- No screenshots that show entries, notes, reminders, labs or photos.
+- No logs that carry journal content.
 
-The reason is simple: support and security triage do not need your transition
-history to confirm a bug.
+Confirming a bug does not need your transition history, so nothing here will ask
+for it.
 
-## Response process
+## What happens next
 
-- We acknowledge new reports within 7 days.
-- We reproduce and assess severity.
-- We agree a disclosure timeline with the reporter.
-- We publish a fix and release notes once a patch is available.
+One person maintains this project, so a report is read when that person next
+sits down with it rather than inside a fixed window. What follows is a
+reproduction, an assessment of severity, and a disclosure timeline agreed with
+the reporter. The fix ships with release notes naming the problem.
