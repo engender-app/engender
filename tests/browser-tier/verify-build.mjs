@@ -21,6 +21,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { preview } from 'vite';
 import { createReporter, launchChromium, launchPersistentChromium } from '../browser-harness.mjs';
+import { appVersion } from '../../scripts/app-version.mjs';
 
 /** Every file under `path`, recursively. */
 function walk(path, files = []) {
@@ -254,6 +255,24 @@ try {
           : "no Rive WASM in the shell - RuntimeLoader still points at the CDN, so set it to a bundled copy and turn the fallback off"
       );
   }
+
+  /* The version the running app shows (phase 2 ticket 01), read out of the
+     release that was just built - the real one, resolved from this checkout,
+     which is the version this build would ship under.
+
+     What this half proves is that the value reached the app: the resolver
+     runs again here rather than comparing against a literal, so it catches a
+     build that stopped carrying its version, or carried a stale one. What it
+     cannot prove is that the resolver itself is right, since both sides ask
+     the same function. The walkthrough suite holds the other half - it
+     builds under a GENDER_DIARY_VERSION nobody derives and insists on seeing
+     exactly that string - and the rules live in tests/app-version.test.ts. */
+  await cold.locator('a[href="/settings"]:visible').first().click();
+  await cold.locator('[data-about-open]').click();
+  const shownVersion = (await cold.locator('[data-app-version]').innerText()).trim();
+  const builtVersion = appVersion();
+  if (shownVersion === builtVersion) ok(`the About screen shows the version this build resolved (${builtVersion})`);
+  else fail('the About screen shows the version this build resolved', `built ${builtVersion}, shown ${shownVersion}`);
 
   /* The restart, with the origin gone rather than merely unreachable: a new
      browser process against the same profile, the preview server closed
