@@ -461,8 +461,15 @@ try {
   await typePin('1234');
   await page.waitForSelector('.list-group');
 
-  /* A cold start, not a navigation: the gate has to be what renders, and
-     it has to render from the mirror rather than after SQLite opens. */
+  /* With app lock ON, the localStorage mirror must not hold the hash: a
+     4-digit hash in plaintext beside the encrypted journal would be an
+     offline-guessable secret (ticket 09 moved it into the pref table). */
+  const bootMirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
+  if ('pinHash' in bootMirror) throw new Error('the PIN hash is in the plaintext boot mirror');
+
+  /* A cold start, not a navigation: the gate has to be what renders once
+     boot lands the real preferences - the demo build unlocks the journal
+     passphrase itself, so the PIN gate is the first thing asked for. */
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
   if (!(await page.locator('.applock').count())) throw new Error('no gate after a reload');
@@ -504,10 +511,16 @@ try {
      page.goto: a fresh load is a cold start, and a cold start locks. */
   await page.locator('.nav-item[href="/settings"]').click();
   await page.getByRole('switch', { name: 'App lock' }).click();
+  /* The switch reads back off, and the hash may never appear in the
+     localStorage mirror at all - ticket 09 moved it behind encryption, so
+     the mirror is also asserted hash-free while the lock is ON above. */
   await page.waitForFunction(() => {
     const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
-    return boot.pinHash === null;
+    return !('pinHash' in boot) || boot.pinHash === null;
   });
+  if ((await page.getByRole('switch', { name: 'App lock' }).getAttribute('aria-checked')) !== 'false') {
+    throw new Error('app lock did not switch off');
+  }
   ok('app lock gates a cold start, throttles wrong PINs, opens on the right one');
 } catch (e) { fail('app lock', e); }
 

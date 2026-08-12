@@ -13,8 +13,10 @@
    file SQLocal keeps in the OPFS root. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
-import { createWebSqlite } from '../../src/lib/data/sqlite/sqlocal-driver.ts';
+import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
+import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-store.ts';
+import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
 import { normalizePhoto, MAX_EDGE, UnsupportedImageError } from '../../src/lib/data/photos/normalize.ts';
@@ -57,6 +59,7 @@ const sizeOf = async (bytes: Uint8Array): Promise<{ width: number; height: numbe
 };
 
 async function run() {
+  await freshOrigin();
   const result: Record<string, unknown> = {};
 
   // --- normalize: size ----------------------------------------------------
@@ -128,8 +131,22 @@ async function run() {
   await files.remove('nothing-here.jpg');
   result.removeMissingWasQuiet = true;
 
-  // The database SQLocal opened lives in the OPFS root; the photo store
-  // must not be able to see it, or the sweep would delete it.
+  /* --- the whole creation path, on the real platform --------------------
+     Everything above tests one piece. This runs the path a picked photo
+     actually takes - normalize, attach, read the row back, load the
+     thumbnail the way PhotoThumb does - against the real encrypted driver
+     and real OPFS, which is the only place it can be run at all. The Node
+     tier can do the rows and the fake store, never the canvas or OPFS.
+     The store is the app's own composition since ticket 09: per-file
+     AES-GCM over the OPFS adapter, under the same key as the database. */
+  const journalFiles = encryptedFileStore(files, PROBE_DATA_KEY);
+  const { driver, fileOps } = createEncryptedWebSqlite('photos-probe.sqlite3', PROBE_DATA_KEY);
+  const booted = await boot({ createDriver: () => driver, fileOps });
+  if (booted.phase === 'error') throw booted.error;
+
+  // The database lives inside the SAHPool directory now, not the OPFS
+  // root - but the safety property is unchanged: the sweep deletes what
+  // the store lists, so the store must see only its own directory.
   const rootNames: string[] = [];
   const root = (await navigator.storage.getDirectory()) as ListableDirectory;
   for await (const name of root.keys()) rootNames.push(name);
@@ -137,17 +154,7 @@ async function run() {
   result.photoDirectory = PHOTO_DIRECTORY;
   result.maxEdge = MAX_EDGE;
 
-  /* --- the whole creation path, on the real platform --------------------
-     Everything above tests one piece. This runs the path a picked photo
-     actually takes - normalize, attach, read the row back, load the
-     thumbnail the way PhotoThumb does - against the real SQLocal driver
-     and real OPFS, which is the only place it can be run at all. The Node
-     tier can do the rows and the fake store, never the canvas or OPFS. */
-  const { driver, fileOps } = createWebSqlite('photos-probe.sqlite3');
-  const booted = await boot({ createDriver: () => driver, fileOps });
-  if (booted.phase === 'error') throw booted.error;
-
-  const journal = openJournal(booted.driver, files);
+  const journal = openJournal(booted.driver, journalFiles);
   await journal.reconcileBuiltIns();
 
   const picked = await sourceJpeg(3000, 2000);
@@ -164,20 +171,26 @@ async function run() {
 
   // What PhotoThumb does: read the derived thumbnail name, decode it, and
   // check it is the small one - the grid must never decode the full photo.
-  const thumbBytes = await files.read(thumbFileName(entry!.photos[0].fileName!));
+  const thumbBytes = await journalFiles.read(thumbFileName(entry!.photos[0].fileName!));
   result.thumbFromStore = thumbBytes ? await sizeOf(thumbBytes) : null;
-  result.fullIsStoredToo = (await files.read(entry!.photos[0].fileName!)) !== null;
+  result.fullIsStoredToo = (await journalFiles.read(entry!.photos[0].fileName!)) !== null;
+  // And the file a thief would copy is ciphertext: no JPEG signature on
+  // the raw OPFS bytes the encrypted store wrapped (ticket 09; the
+  // encryption probe scans every file, this pins the photo path itself).
+  const rawStored = await files.read(entry!.photos[0].fileName!);
+  result.storedPhotoIsCiphertext =
+    rawStored !== null && !(rawStored[0] === 0xff && rawStored[1] === 0xd8);
 
   // Deleting the entry takes both files, and the sweep finds nothing left
   // to do - the two halves of the delete rule, on real storage.
   await journal.entries.deleteEntry(entryId);
-  result.filesAfterDelete = (await files.list()).filter((n) => n.startsWith(photoId));
+  result.filesAfterDelete = (await journalFiles.list()).filter((n) => n.startsWith(photoId));
 
   // An orphan the sweep must reclaim: a file with no row, like a crash
   // between writing bytes and inserting the row would leave.
-  await files.write('00000000-0000-4000-8000-00000000dead.jpg', new Uint8Array([7]));
-  await sweepOrphanPhotos(booted.driver, files);
-  result.filesAfterSweep = await files.list();
+  await journalFiles.write('00000000-0000-4000-8000-00000000dead.jpg', new Uint8Array([7]));
+  await sweepOrphanPhotos(booted.driver, journalFiles);
+  result.filesAfterSweep = await journalFiles.list();
 
   /* The picker cannot run on load - it opens a file dialog, which needs
      something outside the page to answer it. run.mjs clicks this after

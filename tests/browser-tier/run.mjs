@@ -231,15 +231,19 @@ try {
   else fail('remove takes the file, and removing what is not there stays quiet', JSON.stringify(r.listedAfterRemove));
 
   // The safety property: the sweep deletes everything the store lists, so
-  // the store must not be able to list the database.
-  const database = r.rootNames.filter((n) => n.endsWith('.sqlite3'));
-  if (r.rootNames.includes(r.photoDirectory) && database.length > 0 && !r.listed.some((n) => n.endsWith('.sqlite3')))
-    ok(`photos live in ${r.photoDirectory}/, so the sweep can never see the database in the OPFS root`);
+  // the store must see only its own directory - never the SAHPool
+  // directory holding the database (ticket 09 moved it off the root).
+  const poolDir = r.rootNames.find((n) => n.includes('sahpool'));
+  if (r.rootNames.includes(r.photoDirectory) && poolDir && !r.listed.includes(poolDir))
+    ok(`photos live in ${r.photoDirectory}/, so the sweep can never see the database pool (${poolDir}/)`);
   else
     fail(
-      'photos live in their own directory, so the sweep can never see the database in the OPFS root',
+      'photos live in their own directory, so the sweep can never see the database pool',
       `root: ${JSON.stringify(r.rootNames)}, store listed: ${JSON.stringify(r.listed)}`
     );
+
+  if (r.storedPhotoIsCiphertext) ok('the photo file on raw OPFS carries no JPEG signature - ciphertext, not a photo');
+  else fail('the photo file on raw OPFS carries no JPEG signature', 'raw bytes start with a JPEG SOI marker');
 
   // The whole path, end to end, on the real driver and real OPFS.
   const rt = r.roundTrip;
@@ -335,8 +339,8 @@ try {
     restored.builtInDimensions === 5 &&
     restored.photoBytesMatch
   )
-    ok('a Replace installs the archive over SQLocal and OPFS: rows, photo bytes and the built-ins it kept by key');
-  else fail('a Replace installs the archive over SQLocal and OPFS', JSON.stringify(restored));
+    ok('a Replace installs the archive over the encrypted driver and OPFS: rows, photo bytes and the built-ins it kept by key');
+  else fail('a Replace installs the archive over the encrypted driver and OPFS', JSON.stringify(restored));
 
   if (restored.searchHits === 1)
     ok("a restored note is in the search index, folded by the import rather than carried in the file");
@@ -377,6 +381,62 @@ try {
   console.log('SKIP  an archive produced on web imports on Android: no Capacitor shell to run it against yet');
 } catch (e) {
   fail('ticket 13 browser tier', e.message ?? String(e));
+}
+
+// --- Ticket 09 (phase 2): at-rest encryption, gated by the closed-app scan -
+try {
+  const r = await load('/encryption.html', 'data-encryption-probe-ready', '__encryptionProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  if (r.keystoreRoundTrips) ok('the keystore file round-trips: unlock returns the same data key that was created');
+  else fail('the keystore file round-trips', 'unlocked key differs from the created one');
+
+  if (r.searchHitsWhileOpen >= 1) ok(`FTS5 searches the encrypted journal while it is open (${r.searchHitsWhileOpen} hits)`);
+  else fail('FTS5 searches the encrypted journal while it is open', `got ${r.searchHitsWhileOpen} hits`);
+
+  /* The claim gate itself. Every persistent file the closed app left -
+     SAHPool pool files (database, side files, the pre-migration copy),
+     encrypted photos, the keystore - and every localStorage value, scanned
+     for seeded entry text, lab strings, a reminder title, a milestone
+     name, a preference value, photo body text and the JPEG signature. */
+  const dirtyFiles = r.scan.filter((f) => f.found.length > 0);
+  if (r.scan.length >= 3 && dirtyFiles.length === 0)
+    ok(`closed-app scan: no protected content readable in any of ${r.scan.length} OPFS files (pre-migration copy included)`);
+  else
+    fail(
+      'closed-app scan: no protected content readable in any OPFS file',
+      dirtyFiles.map((f) => `${f.path}: ${f.found.join(', ')}`).join('; ') || `only ${r.scan.length} files scanned`
+    );
+
+  const dirtyKeys = r.localStorageScan.filter((k) => k.found.length > 0);
+  if (r.bootCachePresent && dirtyKeys.length === 0)
+    ok('closed-app scan: the localStorage boot mirror exists and holds none of the protected content');
+  else
+    fail(
+      'closed-app scan: localStorage holds none of the protected content',
+      dirtyKeys.map((k) => `${k.key}: ${k.found.join(', ')}`).join('; ') || 'boot cache was never written'
+    );
+
+  if (r.wrongPassphrase?.name === 'DecryptionFailedError' && r.wrongPassphrase.message === 'wrong password')
+    ok('a wrong passphrase fails with nothing but "wrong password"');
+  else fail('a wrong passphrase fails with nothing but "wrong password"', JSON.stringify(r.wrongPassphrase));
+
+  if (r.reopenedNote === 'sentinel-note-woke-up-early-9351' && r.reopenedPhotoIntact)
+    ok('the right passphrase brings back the journal and its photos through a full close');
+  else fail('the right passphrase brings back the journal', JSON.stringify({ note: r.reopenedNote, photo: r.reopenedPhotoIntact }));
+
+  if (r.oldPassphraseAfterRewrap?.name === 'DecryptionFailedError' && r.noteAfterRewrap === 'sentinel-note-woke-up-early-9351')
+    ok('changing the passphrase rewraps the data key: old passphrase dead, journal untouched and readable');
+  else
+    fail(
+      'changing the passphrase rewraps the data key',
+      JSON.stringify({ old: r.oldPassphraseAfterRewrap, note: r.noteAfterRewrap })
+    );
+
+  if (r.wrongRawKey !== null) ok('a wrong raw key is refused by SQLite rather than read as garbage');
+  else fail('a wrong raw key is refused by SQLite', 'a query under a random key succeeded');
+} catch (e) {
+  fail('ticket 09 (phase 2) browser tier', e.message ?? String(e));
 }
 
 await browser.close();

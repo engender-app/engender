@@ -50,20 +50,27 @@ const { ok, fail, finish } = createReporter();
 try {
   await page.goto(origin, { waitUntil: 'networkidle' });
 
-  // Give boot() (started from +layout.svelte) time to open the database
-  // and load the SQLocal worker/wasm - the whole point of this check.
-  await page.waitForFunction(
-    () => document.querySelector('.app-viewport') !== null,
-    null,
-    { timeout: 10000 }
-  );
+  /* A production first run stops at the passphrase gate before the
+     database exists (ticket 09) - only the demo build invents a passphrase
+     for itself. Meeting the gate here is itself an assertion: a production
+     journal is never created without one. */
+  await page.waitForSelector('#journal-passphrase', { timeout: 10000 });
+  ok('a production first run asks for a journal passphrase before anything else');
+
+  await page.fill('#journal-passphrase', 'verify-build passphrase');
+  await page.fill('#journal-passphrase-confirm', 'verify-build passphrase');
+  await page.click('[data-passphrase-submit]');
+
+  // Give boot() time to open the database and load the sqlite3mc
+  // worker/wasm - the whole point of this check.
+  await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
   await page.waitForTimeout(1000);
 
-  // Confirms boot() actually ran and fetched SQLocal's wasm/worker, rather
-  // than the zero-external-requests check above passing vacuously because
-  // nothing loaded at all.
-  if (allRequests.some((u) => u.includes('.wasm'))) ok("boot() loads SQLocal's wasm build from the app's own origin");
-  else fail("boot() loads SQLocal's wasm build from the app's own origin", `no .wasm request seen; requests were: ${allRequests.join(', ')}`);
+  // Confirms boot() actually ran and fetched the encrypted driver's
+  // wasm/worker, rather than the zero-external-requests check above
+  // passing vacuously because nothing loaded at all.
+  if (allRequests.some((u) => u.includes('.wasm'))) ok("boot() loads the sqlite3mc wasm build from the app's own origin");
+  else fail("boot() loads the sqlite3mc wasm build from the app's own origin", `no .wasm request seen; requests were: ${allRequests.join(', ')}`);
 
   if (externalRequests.length === 0) ok('production build makes zero requests off its own origin');
   else fail('production build makes zero requests off its own origin', externalRequests.join(', '));
