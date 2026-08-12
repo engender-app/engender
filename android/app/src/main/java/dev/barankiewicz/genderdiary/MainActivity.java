@@ -5,6 +5,7 @@ import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
 
+import dev.barankiewicz.genderdiary.backup.AutoExportPlugin;
 import dev.barankiewicz.genderdiary.keystore.KeystorePlugin;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
 import dev.barankiewicz.genderdiary.reminders.RemindersPlugin;
@@ -13,8 +14,8 @@ import dev.barankiewicz.genderdiary.sqlite.SqlitePlugin;
 /**
  * The whole Android application. Everything above the driver seam is the same
  * static bundle the web release serves (ADR-0017), so the only Android-specific
- * things here are the two bridges: the SQLite one the journal opens through,
- * and the Keystore one that produces the key it opens under (ticket 13).
+ * things here are the platform bridges: SQLite, Keystore, and the Storage
+ * Access Framework bridge for backup destinations.
  */
 public class MainActivity extends BridgeActivity {
     @Override
@@ -24,6 +25,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SqlitePlugin.class);
         registerPlugin(KeystorePlugin.class);
         registerPlugin(RemindersPlugin.class);
+        registerPlugin(AutoExportPlugin.class);
         super.onCreate(savedInstanceState);
         captureReminderRoute(getIntent());
     }
