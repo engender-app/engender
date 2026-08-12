@@ -183,6 +183,48 @@ try {
   if (installabilityErrors.length === 0) ok('Chromium finds the built app installable: manifest, icons and worker all satisfy it');
   else fail('Chromium finds the built app installable', JSON.stringify(installabilityErrors));
 
+  /* The same question with disguise on (ticket 25). Flipped through the real
+     Settings control, then waited on the boot mirror the head script reads,
+     so SQLite and localStorage agree before a fresh page asks Chromium what
+     it would install. That keeps this from passing only because the profile
+     happens to be sitting at the passphrase gate and boot never got as far as
+     opening preferences again. */
+  await cold.locator('a[href="/settings"]:visible').first().click();
+  await cold.getByRole('button', { name: /Disguise/i }).click();
+  await cold.getByRole('switch', { name: 'Disguise app' }).click();
+  await cold.waitForFunction(() => {
+    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    return boot.disguise === true;
+  });
+
+  const disguisedPage = await installed.newPage();
+  await disguisedPage.goto(origin, { waitUntil: 'networkidle' });
+  const disguisedCdp = await installed.newCDPSession(disguisedPage);
+  const resolved = await disguisedCdp.send('Page.getAppManifest');
+  const { installabilityErrors: disguisedErrors } = await disguisedCdp.send('Page.getInstallabilityErrors');
+  const identity = resolved.data ? JSON.parse(resolved.data) : {};
+  if (
+    disguisedErrors.length === 0 &&
+    resolved.url.endsWith('/manifest-notes.webmanifest') &&
+    identity.name === 'Notes'
+  )
+    ok('a disguised install is installable too, and Chromium reads it as "Notes"');
+  else
+    fail(
+      'a disguised install is installable too, and Chromium reads it as "Notes"',
+      JSON.stringify({ url: resolved.url, name: identity.name, errors: disguisedErrors })
+    );
+  /* Back to the app's own identity before anything else reloads this origin,
+     again through the real preference path rather than by poking only the
+     mirror the head script reads. */
+  await cold.getByRole('switch', { name: 'Disguise app' }).click();
+  await cold.waitForFunction(() => {
+    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    return boot.disguise === false;
+  });
+  await cold.keyboard.press('Escape');
+  await disguisedPage.close();
+
   // Precaching is what the install step waits on, so a worker that reached
   // 'activated' is a shell that is either complete or absent.
   await cold.waitForFunction(
@@ -229,10 +271,16 @@ try {
       (path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.wasm')
     ),
     'all four bundled woff2 faces': shell.paths.filter((path) => path.endsWith('.woff2')).length === 4,
-    'the manifest and its icons': shell.paths.includes('/manifest.webmanifest') && shell.paths.filter((path) => path.startsWith('/icons/')).length === 2
+    /* Both manifests, because either one can be the one a disguised install
+       reads (ticket 25), and every icon either one names - counted off the
+       files rather than written down here, so adding a purpose or a disguise
+       cannot leave this passing while the shell is short an icon. */
+    'the manifests and their icons':
+      ['/manifest.webmanifest', '/manifest-notes.webmanifest'].every((path) => shell.paths.includes(path)) &&
+      readdirSync(new URL('../../static/icons/', import.meta.url)).every((icon) => shell.paths.includes(`/icons/${icon}`))
   };
   const absent = Object.keys(kinds).filter((kind) => !kinds[kind]);
-  if (absent.length === 0) ok('the shell names what an offline boot reaches for first: worker, WASM, fonts, manifest, icons');
+  if (absent.length === 0) ok('the shell names what an offline boot reaches for first: worker, WASM, fonts, manifests, icons');
   else fail('the shell names what an offline boot reaches for first', `no ${absent.join(', no ')}`);
 
   /* The animation assets, which are the one part of the shell there is

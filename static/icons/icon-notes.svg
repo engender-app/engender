@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Notes">
+  <!-- The disguised install icon (F24), same book glyph as the tab's
+       favicon-notes.svg and the preview in Settings. Flat grey on purpose:
+       a launcher icon that stands out is not a disguise. -->
+  <rect width="512" height="512" rx="116" fill="#8A94A6" />
+  <g transform="translate(112 112) scale(12)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z" />
+    <path d="M20 17v5H6.5a2.5 2.5 0 0 1 0-5" />
+  </g>
+</svg>
