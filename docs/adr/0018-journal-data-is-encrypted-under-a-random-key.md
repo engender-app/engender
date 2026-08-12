@@ -30,3 +30,31 @@ manager and states that Gender Diary cannot recover it.
 Memory inspection, a compromised unlocked operating system, and a person who can
 use an already unlocked app remain outside this guarantee. Platform-specific copy
 must state any difference that survives implementation and testing.
+
+## Amended by ticket 09: the web boundary, as implemented
+
+The web keystore is a JSON file in the OPFS root: Argon2id parameters (a salt
+and the tuned set of ADR-0013's third consumer, stored as data so they can
+evolve per keystore), and the data key wrapped with AES-GCM under the derived
+key. Everything in that file survives disclosure without the passphrase; the
+unwrapped key lives in worker and page memory only, so it is gone when the
+browser process is. The database itself is keyed with the raw data key
+(`PRAGMA hexkey`), never with the passphrase - stretching happens once, in
+the wrap.
+
+What deliberately stays outside the encryption on the web, and must be named
+in any claim copy, is exactly this: the keystore metadata above; the
+localStorage boot mirror, now reduced to theme, palette, language,
+lock-on-leave and disguise (the PIN hash left it with this ticket - a hash
+with 10,000 preimages beside the ciphertext was an offline-guessable secret);
+paraglide's own locale record; and the PIN throttle's attempt timestamps.
+None of it is journal content. Imports stream through memory and touch no
+temporary file. The claim gate scans everything else - SAHPool pool files,
+the pre-migration copy, photos, thumbnails - byte for byte
+(tests/browser-tier/encryption-probe.ts).
+
+A journal from before this ticket is refused with a plain message rather
+than opened or silently replaced; converting it is ticket 10's job. Demo
+builds create and unlock a fixed passphrase themselves so the walkthrough
+suite and reviewers land in the journal - the mechanism is identical, only
+the typing is skipped, and none of it ships in a production bundle.

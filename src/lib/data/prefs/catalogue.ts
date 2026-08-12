@@ -11,8 +11,13 @@
    - The boot set (ADR-0009) decides whether a preference is mirrored
      outside SQLite, and its one question is different: is this needed
      before the database is open? Theme, palette and language must apply on
-     first paint; the PIN hash and lock flags must be readable before the
-     lock screen renders.
+     first paint; the lock flags shape the passphrase gate that renders
+     before the database can be unlocked (ticket 09). The mirror lives in
+     plaintext localStorage, so nothing sensitive may join it: the PIN hash
+     used to be here for the pre-database lock screen, and moved back
+     behind encryption when the passphrase gate took that slot - a 4-digit
+     hash beside the ciphertext is an offline-guessable secret (ADR-0018
+     names sensitive boot preferences as covered).
 
    catalogue.test.ts fails if a preference lands in neither of the first
    two lists. */
@@ -105,7 +110,6 @@ export const BOOT_KEYS = [
   'theme',
   'palette',
   'language',
-  'pinHash',
   'lockOnLeave',
   'disguise'
 ] as const satisfies readonly PreferenceKey[];

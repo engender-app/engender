@@ -7,15 +7,20 @@
    way the safe answer is the default: `unlocked` starts false, so a cold
    start with a PIN set is locked before anything else decides anything.
 
-   `pinHash` rather than `appLock` is what the gate reads, because the gate
-   renders before SQLite opens and only the boot set is available that
-   early (ADR-0009). The two are kept in step where a PIN is set and
-   cleared, so a hash is present exactly when app lock is on.
+   `pinHash` rather than `appLock` is what the gate reads. The two are kept
+   in step where a PIN is set and cleared, so a hash is present exactly
+   when app lock is on. The hash arrives with the real preferences from
+   SQLite (it left the plaintext boot mirror with ticket 09), and boot
+   lands those before it unparks the journal's queries, so the hash is in
+   place before an entry could be read, let alone rendered. What renders
+   until then is the passphrase gate, then a skeleton.
 
-   A mirror cleared by hand does not open the gate either: boot lands the
-   real preferences before it unparks the journal's queries, so the hash is
-   back before an entry could be read, let alone rendered. What renders in
-   between is a skeleton.
+   On a cold start the passphrase gate stands in front of this one, and a
+   passphrase the person just typed satisfies both (boot marks the session
+   unlocked). This gate earns its keep mid-session: lock-on-leave and quick
+   exit lock the app while the unlocked key is still in memory, and the PIN
+   is the quicker way back in (ADR-0018: a casual-access layer, never an
+   encryption credential).
 
    Biometrics (Android) will unlock by calling markUnlocked() after its own
    prompt succeeds; nothing about the PIN path has to change for it. */

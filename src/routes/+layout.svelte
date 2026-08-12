@@ -16,6 +16,7 @@
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LockScreen from '$lib/components/LockScreen.svelte';
+  import PassphraseGate from '$lib/components/PassphraseGate.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
 
@@ -41,8 +42,15 @@
   let locked = $derived(isLocked());
   $effect(() => watchLock());
 
+  /* The passphrase gate (ticket 09) renders before the database can even
+     open, the same way the lock renders instead of the app: no route shows
+     journal content, because there is no journal to show yet. */
+  let needsPassphrase = $derived(bootState.status === 'needs-setup' || bootState.status === 'needs-unlock');
+
   let path = $derived(page.url.pathname);
-  let chromeless = $derived(locked || path.startsWith('/onboarding') || path === '/settings/lock');
+  let chromeless = $derived(
+    locked || needsPassphrase || path.startsWith('/onboarding') || path === '/settings/lock'
+  );
   let activeKey = $derived(
     path === '/' ? 'home'
     : path.startsWith('/calendar') || path.startsWith('/day') || path.startsWith('/search') ? 'calendar'
@@ -143,7 +151,9 @@
     {/if}
 
     <main class="app-main">
-      {#if locked}
+      {#if needsPassphrase}
+        <PassphraseGate />
+      {:else if locked}
         <!-- Instead of the route, not over it: nothing below this renders,
              so no screen mounts and no query runs while the app is locked. -->
         <LockScreen />

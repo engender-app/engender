@@ -17,23 +17,34 @@
 
 import { boot } from '../data/sqlite/boot';
 import type { SqliteDriver } from '../data/sqlite/driver';
-import { createWebSqlite } from '../data/sqlite/sqlocal-driver';
+import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
 import { openJournal, type Journal } from '../data/journal/journal';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { hydrateReference } from '../data/live/reference.svelte';
 import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file-store';
+import { encryptedFileStore } from '../data/photos/encrypted-file-store';
+import {
+  journalKeystoreExists,
+  setupJournalPassphrase,
+  unlockJournalPassphrase
+} from '../data/journal-passphrase';
 import { setPhotoFiles } from './photoFiles';
 import { localStorageCache } from '../data/prefs/boot-cache';
 import { wipeLocalData } from '../data/reset';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
+import { markUnlocked } from './lock.svelte';
 import { toast } from './toasts.svelte';
 import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
 
 export const bootState = $state<{
-  status: 'booting' | 'ready' | 'error';
+  /** The two passphrase states come before the database exists for this
+      session (ticket 09): `needs-setup` on a first run, `needs-unlock` on
+      every later cold start. The layout renders the passphrase gate for
+      both, and submitPassphraseSetup/-Unlock below are what move on. */
+  status: 'booting' | 'needs-setup' | 'needs-unlock' | 'ready' | 'error';
   error: string | null;
   persistDenied: boolean;
   /** The one journal instance the UI reads (ADR-0017), for anything that
@@ -71,20 +82,116 @@ export async function resetApp(): Promise<void> {
   location.replace('/');
 }
 
+/** In a demo build the passphrase machinery runs for real - keystore,
+    wrap, encrypted database - but under a fixed passphrase entered by no
+    one, so reviewers and the walkthrough suite land in the journal instead
+    of at a setup wall. Folded out of production bundles with the rest of
+    the demo (ticket 05). */
+const DEMO_PASSPHRASE = 'demo';
+
+/** A database SQLocal left in the OPFS root predates encryption. Converting
+    it is ticket 10's whole job; this build must refuse it loudly rather
+    than start a second, empty journal beside it. */
+async function plaintextEraJournalPresent(): Promise<boolean> {
+  const root = await navigator.storage.getDirectory();
+  try {
+    await root.getFileHandle('gender-diary.sqlite3');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function startBoot() {
   if (started) return;
   started = true;
+
+  /* Before anything async: the passphrase gate is about to render, and it
+     should do so in the person's theme and palette, not the defaults. This
+     used to be step 1 inside boot(), which now runs only after the gate. */
+  applyCachedBootPreferences(bootCache.read());
+
+  (async () => {
+    if (await journalKeystoreExists()) {
+      if (__DEMO__) {
+        /* A reviewer may have changed the demo passphrase in Settings; the
+           gate is the honest fallback. */
+        try {
+          continueBoot(await unlockJournalPassphrase(DEMO_PASSPHRASE));
+        } catch {
+          bootState.status = 'needs-unlock';
+        }
+        return;
+      }
+      bootState.status = 'needs-unlock';
+      return;
+    }
+
+    if (await plaintextEraJournalPresent()) {
+      if (!__DEMO__) {
+        bootState.status = 'error';
+        bootState.error =
+          'This journal was created before encryption and this build cannot convert it yet. ' +
+          'Keep the older build until the conversion update lands.';
+        return;
+      }
+      /* A demo journal is throwaway by definition - reseeded from the
+         persona on every empty boot - so a plaintext leftover from before
+         this ticket is wiped rather than converted. */
+      await wipeLocalData({
+        closeDatabase: async () => {},
+        storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
+        clearBootCache: () => bootCache.clear()
+      });
+    }
+
+    if (__DEMO__) {
+      continueBoot(await setupJournalPassphrase(DEMO_PASSPHRASE));
+      return;
+    }
+    bootState.status = 'needs-setup';
+  })().catch((error) => {
+    bootState.status = 'error';
+    bootState.error = String((error as Error)?.message ?? error);
+  });
+}
+
+/** The setup screen's submit (first run). The passphrase the person just
+    chose also opens this session: the casual-access gate has nothing left
+    to ask on top of it (spec: app lock may grant shorter access while an
+    unlocked key is available - a key unlocked by hand is the strong case). */
+export async function submitPassphraseSetup(passphrase: string): Promise<void> {
+  const dataKey = await setupJournalPassphrase(passphrase);
+  markUnlocked();
+  continueBoot(dataKey);
+}
+
+/** The unlock screen's submit. Throws DecryptionFailedError back to the
+    screen on a wrong passphrase; the screen owns the copy. */
+export async function submitPassphraseUnlock(passphrase: string): Promise<void> {
+  const dataKey = await unlockJournalPassphrase(passphrase);
+  markUnlocked();
+  continueBoot(dataKey);
+}
+
+function continueBoot(dataKey: Uint8Array<ArrayBuffer>) {
+  bootState.status = 'booting';
 
   // The PRD asks for navigator.storage.persist() on first save, not on
   // boot - but persist() is safe to call more than once and asking here
   // covers every save path at once. Worth revisiting when the PWA ticket
   // lands, not by adding a second call.
-  const { driver, fileOps, requestPersistentStorage } = createWebSqlite('gender-diary.sqlite3');
+  const { driver, fileOps, requestPersistentStorage } = createEncryptedWebSqlite(
+    'gender-diary.sqlite3',
+    dataKey
+  );
   openDriver = driver;
 
   // Set before boot() rather than after, so the first screen to render a
-  // photo already has somewhere to read it from.
-  const photoFiles = opfsPhotoFiles();
+  // photo already has somewhere to read it from. Encrypted per file under
+  // the same data key as the database (ticket 09): whole-database
+  // encryption never reaches files outside SQLite (ADR-0020).
+  const photoFiles = encryptedFileStore(opfsPhotoFiles(), dataKey);
   setPhotoFiles(photoFiles);
 
   /* Attached before the migrations run, so the writes step 3 makes below -
@@ -96,7 +203,6 @@ export function startBoot() {
     createDriver: () => driver,
     fileOps,
     requestPersistentStorage,
-    applyBootPreferences: () => applyCachedBootPreferences(bootCache.read()),
     // Step 3: built-ins reconcile on every boot, by key - not seed-if-empty,
     // so a journal can never end up short of one (ADR-0002; ticket 14's
     // Replace calls the same operation before an import applies). Then the
