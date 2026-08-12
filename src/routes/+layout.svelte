@@ -108,6 +108,16 @@
         : { title: 'Gender Diary', icon: 'favicon.svg' };
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
+    /* The installed app's identity (ticket 25). Follows the preference and
+       not the blank, because quick exit is a moment and an install is not:
+       what a launcher calls this app should change when someone asks for a
+       disguise, not for as long as a tab is held blank. */
+    document
+      .querySelector('link[rel="manifest"]')
+      ?.setAttribute(
+        'href',
+        `${assets}/${prefs.disguise ? 'manifest-notes.webmanifest' : 'manifest.webmanifest'}`
+      );
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);

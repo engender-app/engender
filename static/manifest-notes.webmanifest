@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "Notes",
+  "short_name": "Notes",
+  "description": "A place to write things down.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F4F8FB",
+  "theme_color": "#F4F8FB",
+  "icons": [
+    { "src": "/icons/icon-notes.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon-notes-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
