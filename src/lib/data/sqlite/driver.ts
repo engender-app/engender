@@ -1,8 +1,8 @@
-/* The one driver interface both platforms satisfy (ticket 04): SQLocal over
-   OPFS on web, @capacitor-community/sqlite on Android (comes with the
-   Capacitor shell later). No OPFS or worker concept appears here - only
-   SQL in, rows out, so a repository (ticket 07) never needs to know which
-   platform it's talking to.
+/* The one driver interface every platform satisfies: sqlite3mc over a wrapped
+   OPFS SAHPool VFS on web, and a local Capacitor plugin over
+   net.zetetic:sqlcipher-android on Android (both ADR-0020). No OPFS, worker or
+   bridge concept appears here - only SQL in, rows out, so a repository never
+   needs to know which platform it's talking to.
 
    Extends MigrationDb (migration-runner.ts) rather than duplicating it, so
    the same driver that opens the database also runs its migrations. */
