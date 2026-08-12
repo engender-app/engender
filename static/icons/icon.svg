@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gender Diary">
+  <!-- The transgender flag in the app's own rounded-square mark. One vector
+       file at every size the manifest asks for; the maskable variant next to
+       it drops the rounding and bleeds the stripes to the edges. -->
+  <rect width="512" height="512" rx="116" fill="#5BCEFA" />
+  <rect y="102" width="512" height="308" fill="#F5A9B8" />
+  <rect y="205" width="512" height="102" fill="#FFFFFF" />
+</svg>

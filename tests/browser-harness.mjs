@@ -21,6 +21,19 @@ export function launchChromium(options = {}) {
   });
 }
 
+/** Launches headless Chromium against a real profile directory and returns
+    the context, for the checks a throwaway incognito context cannot answer
+    (ticket 03): Chromium calls an incognito profile uninstallable before it
+    looks at anything else, and "restart the app" means a profile that was
+    still there afterwards. The caller owns `userDataDir` and removes it. */
+export function launchPersistentChromium(userDataDir, options = {}) {
+  return chromium.launchPersistentContext(userDataDir, {
+    executablePath: process.env.CHROMIUM_PATH ?? DEFAULT_CHROMIUM_PATH,
+    headless: true,
+    ...options,
+  });
+}
+
 /** Collects PASS/FAIL lines in the format all three scripts already
     printed, plus the closing summary line and failure count. */
 export function createReporter() {

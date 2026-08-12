@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gender Diary">
+  <!-- Maskable: a launcher may crop this to a circle, a squircle or a
+       teardrop, so the stripes run edge to edge and nothing that has to
+       survive sits outside the safe zone (the middle 80%). -->
+  <rect width="512" height="512" fill="#5BCEFA" />
+  <rect y="102" width="512" height="308" fill="#F5A9B8" />
+  <rect y="205" width="512" height="102" fill="#FFFFFF" />
+</svg>
