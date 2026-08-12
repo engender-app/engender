@@ -3,6 +3,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig } from 'vite';
 import sqlocal from 'sqlocal/vite';
+import { appVersion } from './scripts/app-version.mjs';
 
 /* What the client build actually emitted, written where src/service-worker.ts
    can import it (phase 2 ticket 03; ADR-0021 for why the shell cannot be
@@ -57,8 +58,15 @@ export default defineConfig(({ command }) => ({
   // while developing, and in a build only when VITE_DEMO=1 asks for it -
   // which is what `npm run test:walkthrough` does, since the walkthrough
   // drives the persona and the demo bar's jump control.
+  //
+  // __APP_VERSION__ is the same literal treatment, for the reason the release
+  // contract needs rather than the one Rollup needs (ticket 01): the version
+  // the build was given has to be inside the bundle it built, so the About
+  // screen can only ever show what was actually shipped. Read once here, from
+  // the signed tag or from GENDER_DIARY_VERSION, and nowhere else.
   define: {
-    __DEMO__: JSON.stringify(command === 'serve' || process.env.VITE_DEMO === '1')
+    __DEMO__: JSON.stringify(command === 'serve' || process.env.VITE_DEMO === '1'),
+    __APP_VERSION__: JSON.stringify(appVersion())
   },
   // Pre-bundling would inline the sqlite3mc wasm module in a way that
   // breaks its URL-relative sqlite3.wasm loading inside mc-worker.ts

@@ -21,6 +21,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { preview } from 'vite';
 import { createReporter, launchChromium, launchPersistentChromium } from '../browser-harness.mjs';
+import { readGitFacts, resolveAppVersion } from '../../scripts/app-version.mjs';
 
 /** Every file under `path`, recursively. */
 function walk(path, files = []) {
@@ -254,6 +255,20 @@ try {
           : "no Rive WASM in the shell - RuntimeLoader still points at the CDN, so set it to a bundled copy and turn the fallback off"
       );
   }
+
+  /* The version the running app shows (phase 2 ticket 01), read out of the
+     release that was just built. Compared against the same resolver the
+     build read rather than against a literal written here: a literal would
+     be the second place naming a version, which is the thing the version
+     contract exists to prevent. Both run against the same checkout and the
+     same environment, so they can only disagree if the build stopped
+     carrying its version into the app. */
+  await cold.locator('a[href="/settings"]:visible').first().click();
+  await cold.locator('[data-about-open]').click();
+  const shownVersion = (await cold.locator('[data-app-version]').innerText()).trim();
+  const builtVersion = resolveAppVersion(process.env, readGitFacts());
+  if (shownVersion === builtVersion) ok(`the About screen shows the version the build was given (${builtVersion})`);
+  else fail('the About screen shows the version the build was given', `built ${builtVersion}, shown ${shownVersion}`);
 
   /* The restart, with the origin gone rather than merely unreachable: a new
      browser process against the same profile, the preview server closed
