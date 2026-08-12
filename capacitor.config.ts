@@ -20,20 +20,25 @@ const config: CapacitorConfig = {
        WebView, so nothing here needs a mixed-content or cleartext exception. */
     allowMixedContent: false,
     /* Android updates its WebView separately from the OS, so the API level
-       does not tell you what the app is running in. API 26 is the spec's
-       floor and the emulator image for it ships Chrome 69, from 2018, which
-       has no OPFS - the app stores its photos there and cannot work without
-       it. OPFS arrived in Chrome 86, so that is the honest floor.
+       does not tell you what the app is running in (ADR-0023). This is the
+       number that decides whether it runs at all.
 
-       Declaring it means an under-spec WebView gets Capacitor's "update
-       your WebView" screen. Without it the same device gets a blank page
-       and a SyntaxError in a log nobody on a phone can read, which is what
-       ticket 11 found when it first launched on API 26. */
-    minWebViewVersion: 86
+       87 is where Vite compiles the bundle to - its default module target -
+       so below it the app is syntax the WebView cannot parse. Everything the
+       app needs at runtime is at or under that: OPFS at 86, Object.fromEntries
+       at 73. The one call that was above it, Object.hasOwn at 93, was
+       replaced in prefs/catalogue.ts rather than allowed to set the floor
+       six versions higher than the bundle needed. */
+    minWebViewVersion: 87
   },
   server: {
     androidScheme: 'https',
-    hostname: 'localhost'
+    hostname: 'localhost',
+    /* What a device below that floor sees. Without this, Capacitor logs the
+       failure and loads the app anyway, which is a blank screen and a
+       SyntaxError in a log nobody holding a phone can read - measured on the
+       API 26 emulator, whose WebView is Chrome 69. */
+    errorPath: 'webview-too-old.html'
   }
 };
 

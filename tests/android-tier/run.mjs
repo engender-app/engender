@@ -17,7 +17,7 @@
    and Android updates its WebView separately from the OS, so an API level
    says nothing about what the app runs in. The API 26 emulator image ships
    Chrome 69 from 2018, which has no OPFS - capacitor.config.ts puts the
-   floor at Chrome 86 for exactly that reason - so the app cannot start
+   floor at Chrome 87 for exactly that reason - so the app cannot start
    there at all. A real API 26 phone with a current WebView runs the same
    bundle as an API 35 one, and that is what the API 35 run covers.
 
@@ -214,7 +214,7 @@ for (const avd of AVDS) {
 
     const nativeOnly = NATIVE_ONLY.has(avd);
     if (nativeOnly) {
-      console.log(`  (${avd}: native checks only - its WebView predates the app's Chrome 86 floor)`);
+      console.log(`  (${avd}: native checks only - its WebView predates the app's Chrome 87 floor)`);
     }
 
     /* :app: rather than the whole build. The empty capacitor-cordova-android-plugins
