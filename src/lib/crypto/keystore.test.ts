@@ -78,3 +78,10 @@ test('parsing a keystore from a newer format version refuses rather than misread
   const newer = serializeKeystore(metadata).replace('"version":1', '"version":2');
   expect(() => parseKeystore(newer)).toThrow(/version/);
 });
+
+test('a mangled KDF parameter block is refused by name, not surfaced as a wrong passphrase', async () => {
+  const { metadata } = await createKeystore('passphrase');
+  const parsed = JSON.parse(serializeKeystore(metadata)) as { params: unknown };
+  parsed.params = { memorySize: 'lots' };
+  expect(() => parseKeystore(JSON.stringify(parsed))).toThrow(/parameters/);
+});

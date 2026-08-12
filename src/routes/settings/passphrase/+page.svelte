@@ -5,11 +5,9 @@
      journal size, and an interrupted one loses nothing: the keystore file
      is either the old wrap or the new one. */
   import { goto } from '$app/navigation';
-  import { changeJournalPassphrase } from '$lib/data/journal-passphrase';
+  import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
-
-  const MIN_LENGTH = 8;
 
   let current = $state('');
   let next = $state('');
@@ -22,8 +20,8 @@
     if (busy) return;
     error = '';
 
-    if (next.length < MIN_LENGTH) {
-      error = `Use at least ${MIN_LENGTH} characters.`;
+    if (next.length < MIN_PASSPHRASE_LENGTH) {
+      error = `Use at least ${MIN_PASSPHRASE_LENGTH} characters.`;
       return;
     }
     if (next !== confirmation) {

@@ -26,3 +26,17 @@ ADR-0003, and neither subsumes the other. Theme, palette and language are portab
 *and* boot-critical; the PIN hash is device-local *and* boot-critical; display
 name, active preset and metric are portable and not boot-critical. Both lists have
 to be written out explicitly.
+
+## Amended by ticket 09: the PIN hash left the boot set
+
+The boot set is five preferences now: theme, palette, language, lock-on-leave,
+disguise. The PIN hash was in it so the lock screen could render before the
+database opened, and ticket 09 removed both halves of that reason at once: the
+passphrase gate is what renders before the database now, and the mirror is
+plaintext localStorage sitting beside an encrypted journal - a hash with
+10,000 possible preimages in it is an offline-guessable secret, which is
+exactly the "sensitive boot preference" the encryption claim covers
+(ADR-0018). The hash lives only in the pref table; the gate reads it after
+the real preferences land, which is before any journal query is answered. A
+mirror written by an older build heals on the next preference write, which
+refreshes the whole boot set.

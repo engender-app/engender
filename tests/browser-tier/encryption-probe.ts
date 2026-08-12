@@ -25,6 +25,7 @@ import { readKeystoreFile, writeKeystoreFile } from '../../src/lib/data/keystore
 import { localStorageCache, BOOT_CACHE_KEY } from '../../src/lib/data/prefs/boot-cache.ts';
 import { openPreferences } from '../../src/lib/data/prefs/preferences.ts';
 import { scanOpfs, scanLocalStorage, textSentinel, type Sentinel } from './opfs-scan.ts';
+import { freshOrigin } from './fresh-origin.ts';
 
 const publish = (value: unknown) => {
   (window as unknown as { __encryptionProbeResult: unknown }).__encryptionProbeResult = value;
@@ -81,11 +82,7 @@ async function run() {
   const result: Record<string, unknown> = {};
 
   // A clean slate: this probe owns the whole origin's storage for its run.
-  localStorage.clear();
-  const root = await navigator.storage.getDirectory();
-  for await (const name of (root as unknown as { keys(): AsyncIterableIterator<string> }).keys()) {
-    await root.removeEntry(name, { recursive: true }).catch(() => {});
-  }
+  await freshOrigin();
 
   // --- setup: the production first-run path --------------------------------
   const created = await createKeystore(PASSPHRASE, PROBE_KDF);
