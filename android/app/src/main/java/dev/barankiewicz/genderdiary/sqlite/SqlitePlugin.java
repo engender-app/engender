@@ -60,6 +60,28 @@ public class SqlitePlugin extends Plugin {
         }
     }
 
+    /**
+     * Whether the named database is a plaintext one, asked before anything is
+     * opened (ticket 13). A journal written by the pre-encryption Android
+     * build is the only way this is true, and the boot says so plainly rather
+     * than letting a raw-key open fail as a corrupt file.
+     */
+    @PluginMethod
+    public void isPlaintextDatabase(PluginCall call) {
+        String name = call.getString("name");
+        if (name == null || name.isEmpty()) {
+            call.reject("isPlaintextDatabase requires a database name");
+            return;
+        }
+        try {
+            JSObject result = new JSObject();
+            result.put("plaintext", SqliteConnection.isPlaintextDatabase(getContext(), name));
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
     /** Runs one or more statements for their effect. Used by migrations. */
     @PluginMethod
     public void exec(PluginCall call) {
@@ -195,6 +217,19 @@ public class SqlitePlugin extends Plugin {
     public void cleanupPreMigrationCopy(PluginCall call) {
         try {
             connection.cleanupPreMigrationCopy();
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    /** The reset path's wipe (ticket 13): the journal's files, which are in
+        app-private storage rather than in the WebView's, so emptying OPFS
+        does not reach them. */
+    @PluginMethod
+    public void deleteDatabase(PluginCall call) {
+        try {
+            connection.deleteDatabaseFiles();
             call.resolve();
         } catch (Exception e) {
             call.reject(message(e), e);

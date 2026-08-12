@@ -2,7 +2,15 @@ import { test, expect } from 'vitest';
 import { wipeLocalData, type LocalDataTargets } from './reset.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
-function targets(options: { entries?: string[]; closeFails?: boolean; removeFails?: string } = {}) {
+function targets(
+  options: {
+    entries?: string[];
+    closeFails?: boolean;
+    removeFails?: string;
+    platform?: boolean;
+    platformFails?: boolean;
+  } = {}
+) {
   const log: string[] = [];
   const entries = options.entries ?? ['gender-diary.sqlite3', 'gender-diary.sqlite3.pre-migration-backup', 'photos'];
 
@@ -22,6 +30,12 @@ function targets(options: { entries?: string[]; closeFails?: boolean; removeFail
       if (options.closeFails) throw new Error('worker gone');
     },
     storageRoot: async () => root,
+    wipePlatformStorage: options.platform
+      ? async () => {
+          log.push('wipe platform storage');
+          if (options.platformFails) throw new Error('the database file is still held');
+        }
+      : undefined,
     clearBootCache: () => log.push('clear cache')
   };
 
@@ -77,5 +91,26 @@ test('a reset during an interrupted conversion takes the plaintext journal and t
 test('storage that will not empty fails loudly, with the mirror left alone', async () => {
   const { deps, log } = targets({ removeFails: 'gender-diary.sqlite3' });
   await expect(wipeLocalData(deps)).rejects.toThrow('still open');
+  expect(log).not.toContain('clear cache');
+});
+
+test('a platform with storage of its own has it wiped too, after the close', async () => {
+  /* Android (ticket 13): the journal and the Keystore-wrapped data key live
+     in app-private storage, which the OPFS root does not reach. A reset that
+     emptied only OPFS would leave the whole journal behind. */
+  const { deps, log } = targets({ platform: true });
+  await wipeLocalData(deps);
+
+  expect(log.indexOf('close')).toBeLessThan(log.indexOf('wipe platform storage'));
+  expect(log).toContain('wipe platform storage');
+  expect(log.at(-1)).toBe('clear cache');
+});
+
+test('platform storage that will not go stops the reset before the mirror', async () => {
+  /* The same rule the OPFS failure follows, and for the same reason: the
+     mirror is what tells the next cold start there is a PIN at all, so
+     dropping it over data that survived hands the journal back unlocked. */
+  const { deps, log } = targets({ platform: true, platformFails: true });
+  await expect(wipeLocalData(deps)).rejects.toThrow('still held');
   expect(log).not.toContain('clear cache');
 });

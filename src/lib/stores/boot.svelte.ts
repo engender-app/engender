@@ -19,7 +19,11 @@ import { boot } from '../data/sqlite/boot';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
 import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
-import { createAndroidSqlite } from '../data/sqlite/android-driver';
+import {
+  androidJournalIsPlaintext,
+  createAndroidSqlite,
+  deleteAndroidDatabase
+} from '../data/sqlite/android-driver';
 import { isAndroid } from '../platform';
 import { InterruptedRestoreError, SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
 import { markJournalBusy } from '../data/journal-busy';
@@ -54,6 +58,8 @@ import { wipeLocalData } from '../data/reset';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
 import { markUnlocked } from './lock.svelte';
+import { openAndroidDataKey, type AndroidKeyRefusal, type UnlockRequest } from '../lock/android-key';
+import { androidKeystore } from '../lock/keystore-bridge';
 import { toast } from './toasts.svelte';
 import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
@@ -68,10 +74,16 @@ export const bootState = $state<{
       a Journal a newer one has already migrated, and refuses it rather than
       guessing (ADR-0006). Its own status rather than an `error`, because the
       journal is intact and the screen has something to say about what to do. */
+  /** `needs-authentication` is the Android shape of the same moment
+      (ticket 13): there is a data key on this device, Android Keystore is
+      holding it, and it will not hand it over until somebody authenticates.
+      Nothing is typed, so it is a screen with a prompt behind it rather than
+      a form. */
   status:
     | 'booting'
     | 'needs-setup'
     | 'needs-unlock'
+    | 'needs-authentication'
     | 'converting'
     | 'conversion-refused'
     | 'ready'
@@ -94,6 +106,12 @@ export const bootState = $state<{
   conversion: { progress: ConversionProgress | null } | null;
   /** Why a conversion cannot even start. The gate owns the wording. */
   conversionRefusal: ConversionRefusal | null;
+  /** Why the last attempt at the Android data key did not produce one
+      (ticket 13). Null before the first attempt, which is what tells the
+      gate to make one rather than to sit there explaining a refusal that has
+      not happened. A successful attempt never lands here: the key goes
+      straight into the driver and stays out of anything a screen reads. */
+  androidKey: AndroidKeyRefusal | null;
 }>({
   status: 'booting',
   error: null,
@@ -101,7 +119,8 @@ export const bootState = $state<{
   recoverable: false,
   journal: null,
   conversion: null,
-  conversionRefusal: null
+  conversionRefusal: null,
+  androidKey: null
 });
 
 let started = false;
@@ -126,6 +145,18 @@ export async function resetApp(): Promise<void> {
       await openDriver?.close();
     },
     storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
+    /* Android keeps the journal and the wrapped data key in app-private
+       storage rather than in the WebView's, so emptying the OPFS root - all
+       the web's reset has to do - reaches neither (ticket 13). Erasing only
+       the key would be worse than doing nothing: the ciphertext would stay,
+       unopenable, and the next boot would mint a fresh key and meet a
+       database it cannot read. */
+    wipePlatformStorage: isAndroid()
+      ? async () => {
+          await deleteAndroidDatabase();
+          await androidKeystore.erase();
+        }
+      : undefined,
     clearBootCache: () => bootCache.clear()
   });
   // replace(), so back doesn't return to the lock screen of a journal that
@@ -247,10 +278,7 @@ export function startBoot() {
     }
 
     bootState.status = state === 'unlock' ? 'needs-unlock' : 'needs-setup';
-  })().catch((error) => {
-    bootState.status = 'error';
-    bootState.error = String((error as Error)?.message ?? error);
-  });
+  })().catch(failBoot);
 }
 
 /** The three questions that decide what a boot is looking at, asked of the
@@ -333,16 +361,85 @@ function continueBoot(dataKey: Uint8Array<ArrayBuffer>) {
   );
 }
 
-/** The Android shell's boot (ticket 11). No passphrase gate and no data key:
-    the journal opens through the native driver, and what wraps its key is
-    the Android Keystore, which is ticket 13. The web tier's gate cannot
-    stand in for it - it exists to unwrap a key held beside the ciphertext in
-    OPFS, which is precisely the arrangement ADR-0018 replaces on Android.
+/** The Android shell's boot (ticket 13). Where the web asks for a passphrase
+    and unwraps a keystore file with it, this asks Android Keystore, which
+    holds the wrapping key itself and will not use it until the platform says
+    somebody authenticated (ADR-0018).
 
-    Photos stay on the WebView's OPFS until ticket 12 moves them, and
-    unencrypted for the same reason the journal is: there is no key yet. */
+    A first run is silent - the wrap needs no authentication, so there is no
+    prompt about a Journal that does not exist yet - and lands in the app.
+    Every later run stops here and hands over to the gate, because the prompt
+    is Android's own UI and its words have to come from the catalogue.
+
+    The `void` is the same fire-and-forget continueBoot() is: what the caller
+    needs is that the screen has changed, and every failure below sets a
+    status rather than throwing. */
 function continueBootOnAndroid() {
-  openAndBoot(createAndroidSqlite(JOURNAL_DATABASE), opfsPhotoFiles());
+  void (async () => {
+    const { hasKey } = await androidKeystore.status();
+    if (!hasKey && (await androidJournalIsPlaintext(JOURNAL_DATABASE))) {
+      bootState.status = 'error';
+      /* Rendered through i18n in +layout: this path is expected and needs a
+         user sentence, not a raw SQLite failure string. */
+      bootState.error = 'android-plaintext-journal';
+      return;
+    }
+    if (hasKey) {
+      bootState.status = 'needs-authentication';
+      return;
+    }
+    /* The request is unused on this path - creating a key shows no prompt -
+       but the flow takes one call, and a first run that somehow finds a key
+       waiting should ask for it properly rather than with empty strings. */
+    await openAndroidJournal({ title: '', subtitle: '', cancel: '', deviceCredential: false });
+  })().catch(failBoot);
+}
+
+/** The Android gate's submit, and the first run's own call. Asks Keystore for
+    the data key and either opens the Journal under it or leaves the gate
+    something to say (ticket 13).
+
+    The prompt copy arrives from the component rather than being read here:
+    Android draws the dialog, so its words are UI copy and belong in the
+    catalogue with the rest of it. */
+export async function openAndroidJournal(request: UnlockRequest): Promise<void> {
+  let result;
+  try {
+    result = await openAndroidDataKey(androidKeystore, request);
+  } catch (error) {
+    /* The bridge itself failed - no plugin, no keystore, a platform that
+       threw. Not a refusal with a way forward, so it goes to the boot error
+       screen rather than being dressed up as one. */
+    failBoot(error);
+    return;
+  }
+
+  if (result.kind !== 'key') {
+    bootState.androidKey = result;
+    bootState.status = 'needs-authentication';
+    return;
+  }
+
+  bootState.androidKey = null;
+  /* The authentication that unwrapped the key satisfies the casual-access
+     gate too, the same way a typed passphrase does on the web: this is the
+     strong case the spec allows app lock to stand down for. */
+  markUnlocked();
+  openAndBoot(
+    createAndroidSqlite(JOURNAL_DATABASE, result.dataKey),
+    /* Encrypted per file under the same data key as the database, exactly as
+       the web does it (ticket 09): whole-database encryption never reaches
+       files outside SQLite (ADR-0020), and ADR-0018's claim covers photos and
+       thumbnails. The store underneath is still the WebView's OPFS until
+       ticket 12 moves it to app-private files; what that swaps is where the
+       ciphertext sits, not whether there is any. */
+    encryptedFileStore(opfsPhotoFiles(), result.dataKey)
+  );
+}
+
+function failBoot(error: unknown) {
+  bootState.status = 'error';
+  bootState.error = String((error as Error)?.message ?? error);
 }
 
 /** Everything both platforms do once they have a driver: the journal is
