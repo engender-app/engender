@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { createKeystore, unlockKeystore, rewrapKeystore, parseKeystore, serializeKeystore } from './keystore.ts';
+import { createKeystore, unlockKeystore, rewrapKeystore, parseKeystore, serializeKeystore, wrapDataKeyWithPassphrase } from './keystore.ts';
 import { DecryptionFailedError } from './aesGcm.ts';
 import { JOURNAL_ARGON2_PARAMS, type Argon2Params } from './params.ts';
 
@@ -43,6 +43,13 @@ test('rewrapping changes the passphrase without changing the data key', async ()
 
   expect(await unlockKeystore(rewrapped, 'new passphrase')).toEqual(dataKey);
   await expect(unlockKeystore(rewrapped, 'old passphrase')).rejects.toThrow(DecryptionFailedError);
+});
+
+test('wrapping an existing data key under a passphrase unlocks back to the same bytes', async () => {
+  const dataKey = crypto.getRandomValues(new Uint8Array(32));
+  const metadata = await wrapDataKeyWithPassphrase(dataKey, 'portable secret');
+
+  expect(await unlockKeystore(metadata, 'portable secret')).toEqual(dataKey);
 });
 
 test('rewrapping with a wrong current passphrase fails and leaves nothing changed', async () => {

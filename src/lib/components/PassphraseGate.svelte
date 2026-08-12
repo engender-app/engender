@@ -21,7 +21,7 @@
      gets one that says why in numbers. */
 
   import { m } from '$lib/paraglide/messages';
-  import { bootState, submitPassphraseSetup, submitPassphraseUnlock, resetApp } from '$lib/stores/boot.svelte';
+  import { bootState, submitPassphraseSetup, submitPassphraseUnlock, submitSkipSetup, resetApp } from '$lib/stores/boot.svelte';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import Icon from './Icon.svelte';
   import PrideAurora from './PrideAurora.svelte';
@@ -32,12 +32,15 @@
   let error = $state('');
   let busy = $state(false);
   let resetOpen = $state(false);
+  let skipOpen = $state(false);
+  let skipAcknowledged = $state(false);
   let resetting = $state(false);
 
   let mode = $derived(bootState.status === 'needs-setup' ? 'setup' : 'unlock');
   /** The device holds a plaintext Journal, so this passphrase converts it
       rather than opening one. */
   let converting = $derived(bootState.conversion !== null);
+  let canSkip = $derived(mode === 'setup' && !converting);
 
   /** Whole units, for a person deciding whether to go and delete
       something. Nobody needs three decimal places of megabyte, and both
@@ -102,6 +105,26 @@
       error = m.reset_failed();
     }
   }
+
+  async function confirmSkip() {
+    if (!skipAcknowledged || busy) return;
+
+    busy = true;
+    error = '';
+    try {
+      const result = await submitSkipSetup();
+      if (result === 'ok') {
+        skipOpen = false;
+        return;
+      }
+
+      skipOpen = false;
+      skipAcknowledged = false;
+      error = result === 'needs-device-lock' ? m.pp_skip_no_device_lock() : m.pp_skip_unavailable();
+    } finally {
+      busy = false;
+    }
+  }
 </script>
 
 {#if bootState.status === 'conversion-refused'}
@@ -155,6 +178,18 @@
       {:else}{m.pp_unlock_body()}{/if}
     </p>
 
+    {#if canSkip}
+      <div class="notice notice-warn" style="margin-top:var(--space-4)">
+        <Icon name="info" size={20} />
+        <div class="notice-body">
+          <span class="notice-title">{m.pp_modes_title()}</span>
+          <div>{m.pp_mode_passphrase()}</div>
+          <div>{m.pp_mode_device()}</div>
+          <div>{m.pp_mode_pin()}</div>
+        </div>
+      </div>
+    {/if}
+
     <form class="stack-3" onsubmit={submit} style="margin-top:var(--space-4)">
       <div>
         <label class="field-label" for="journal-passphrase">
@@ -194,6 +229,11 @@
           {:else}{m.pp_submit_unlock()}{/if}
         </span>
       </button>
+      {#if canSkip}
+        <button class="btn btn-ghost" type="button" data-skip-passphrase disabled={busy} onclick={() => (skipOpen = true)}>
+          <span>{m.pp_skip()}</span>
+        </button>
+      {/if}
     </form>
 
     {#if mode === 'unlock'}
@@ -222,6 +262,30 @@
       <span>{resetting ? m.reset_running() : m.reset_confirm()}</span>
     </button>
     <button class="btn btn-ghost" disabled={resetting} onclick={() => (resetOpen = false)}>
+      <span>{m.reset_keep_trying()}</span>
+    </button>
+  </div>
+</Sheet>
+
+<Sheet bind:open={skipOpen} title={m.pp_skip_title()}>
+  <h3>{m.pp_skip_title()}</h3>
+  <p class="ob-text">{m.pp_skip_body()}</p>
+  <label class="spread" style="align-items:flex-start;gap:var(--space-3);margin-top:var(--space-4)">
+    <input type="checkbox" bind:checked={skipAcknowledged} data-skip-ack />
+    <span class="small">{m.pp_skip_ack()}</span>
+  </label>
+  <div class="stack-3" style="margin-top:var(--space-4)">
+    <button class="btn btn-danger" data-confirm-skip-passphrase disabled={!skipAcknowledged || busy} onclick={confirmSkip}>
+      <span>{m.pp_skip_confirm()}</span>
+    </button>
+    <button
+      class="btn btn-ghost"
+      disabled={busy}
+      onclick={() => {
+        skipOpen = false;
+        skipAcknowledged = false;
+      }}
+    >
       <span>{m.reset_keep_trying()}</span>
     </button>
   </div>
