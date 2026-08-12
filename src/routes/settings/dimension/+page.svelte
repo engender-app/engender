@@ -16,9 +16,9 @@
 
   let previewDim = $derived({
     key: 'preview',
-    name: name || 'Your dimension',
-    low: low || 'left end',
-    high: high || 'right end',
+    name: name || m.cd_preview_name(),
+    low: low || m.cd_preview_low(),
+    high: high || m.cd_preview_high(),
     min: 0,
     max,
     builtIn: false,
@@ -31,19 +31,19 @@
      separate, because a preset is also creatable without a new dimension. */
   async function saveDimension() {
     const created = await journal.dimensions.addCustomDimension({
-      name: name.trim() || 'My dimension',
-      low: low.trim() || 'low',
-      high: high.trim() || 'high',
+      name: name.trim() || m.cd_default_name(),
+      low: low.trim() || m.cd_default_low(),
+      high: high.trim() || m.cd_default_high(),
       min: 0,
       max,
     });
     const preset = await journal.dimensions.addPreset({
-      name: 'Custom',
+      name: m.cd_preset_name(),
       dims: [...reference.activePreset.dims, created.key],
     });
     prefs.activePreset = preset.id;
     goto('/settings');
-    toast('Dimension added to a new custom preset.');
+    toast(m.cd_added_toast());
   }
 </script>
 
@@ -53,29 +53,27 @@
     <h1 class="screen-title">{m.custom_dimension()}</h1>
     <div class="header-action"></div>
   </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">
-    Track anything the built-in scales miss. You choose the words for both ends.
-  </p>
+  <p class="muted small" style="margin-bottom:var(--space-4)">{m.cd_intro()}</p>
 
   <div class="card editor-section">
     <div class="field">
-      <label class="field-label" for="cd-name">Name</label>
-      <input class="input" id="cd-name" name="cd-name" placeholder="e.g. Voice comfort" bind:value={name} />
+      <label class="field-label" for="cd-name">{m.cd_name_label()}</label>
+      <input class="input" id="cd-name" name="cd-name" placeholder={m.cd_name_placeholder()} bind:value={name} />
     </div>
     <div class="cd-endpoints">
       <div class="field">
-        <label class="field-label" for="cd-low">Left endpoint</label>
-        <input class="input" id="cd-low" name="cd-low" placeholder="e.g. strained" bind:value={low} />
+        <label class="field-label" for="cd-low">{m.cd_low_label()}</label>
+        <input class="input" id="cd-low" name="cd-low" placeholder={m.cd_low_placeholder()} bind:value={low} />
       </div>
       <div class="field">
-        <label class="field-label" for="cd-high">Right endpoint</label>
-        <input class="input" id="cd-high" name="cd-high" placeholder="e.g. natural" bind:value={high} />
+        <label class="field-label" for="cd-high">{m.cd_high_label()}</label>
+        <input class="input" id="cd-high" name="cd-high" placeholder={m.cd_high_placeholder()} bind:value={high} />
       </div>
     </div>
     <div class="field">
-      <span class="field-label">Range</span>
+      <span class="field-label">{m.cd_range_label()}</span>
       <Segmented
-        name="Range"
+        name={m.cd_range_label()}
         options={[
           { value: '10', label: '0–10' },
           { value: '100', label: '0–100' },
@@ -87,8 +85,8 @@
   </div>
 
   <div class="card editor-section">
-    <h2 class="editor-heading">Preview</h2>
-    <p class="muted small" style="margin-bottom:var(--space-3)">This is how it will look on the entry screen.</p>
+    <h2 class="editor-heading">{m.cd_preview()}</h2>
+    <p class="muted small" style="margin-bottom:var(--space-3)">{m.cd_preview_note()}</p>
     {#key `${previewDim.name}|${previewDim.low}|${previewDim.high}|${max}`}
       <DimensionSlider dim={previewDim} value={Math.round(max * 0.6)} onInput={() => {}} />
     {/key}
@@ -96,7 +94,7 @@
 
   <div class="editor-savebar">
     <button class="btn btn-primary" data-save onclick={saveDimension}>
-      <Icon name="check" size={20} /><span>Add dimension</span>
+      <Icon name="check" size={20} /><span>{m.cd_save()}</span>
     </button>
   </div>
 </div>

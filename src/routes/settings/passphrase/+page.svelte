@@ -5,6 +5,7 @@
      journal size, and an interrupted one loses nothing: the keystore file
      is either the old wrap or the new one. */
   import { goto } from '$app/navigation';
+  import { m } from '$lib/paraglide/messages';
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -21,21 +22,21 @@
     error = '';
 
     if (next.length < MIN_PASSPHRASE_LENGTH) {
-      error = `Use at least ${MIN_PASSPHRASE_LENGTH} characters.`;
+      error = m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) });
       return;
     }
     if (next !== confirmation) {
-      error = 'The new passphrase and its confirmation did not match.';
+      error = m.pp_change_mismatch();
       return;
     }
 
     busy = true;
     try {
       await changeJournalPassphrase(current, next);
-      toast('Passphrase changed. Update it in your password manager too.');
+      toast(m.pp_changed_toast());
       goto('/settings');
     } catch {
-      error = 'The current passphrase is not right.';
+      error = m.pp_change_wrong_current();
     } finally {
       busy = false;
     }
@@ -44,21 +45,16 @@
 
 <div class="screen">
   <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label="Back to settings"><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">Journal passphrase</h1>
+    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
+    <h1 class="screen-title">{m.pp_change_title()}</h1>
     <div class="header-action"></div>
   </header>
 
   <div class="card">
-    <p class="ob-text">
-      The passphrase wraps the key your journal is encrypted with, so changing it takes effect immediately
-      and nothing is re-encrypted. The old passphrase stops working everywhere, including for this device's
-      unlock screen. Gender Diary cannot recover a lost passphrase, so save the new one in a password manager
-      before you change it.
-    </p>
+    <p class="ob-text">{m.pp_change_body()}</p>
     <form class="stack-3" onsubmit={submit} style="margin-top:var(--space-4)">
       <div>
-        <label class="field-label" for="current-passphrase">Current passphrase</label>
+        <label class="field-label" for="current-passphrase">{m.pp_current_label()}</label>
         <input
           class="input"
           type="password"
@@ -70,7 +66,7 @@
         />
       </div>
       <div>
-        <label class="field-label" for="new-passphrase">New passphrase</label>
+        <label class="field-label" for="new-passphrase">{m.pp_new_label()}</label>
         <input
           class="input"
           type="password"
@@ -82,7 +78,7 @@
         />
       </div>
       <div>
-        <label class="field-label" for="new-passphrase-confirm">New passphrase, once more</label>
+        <label class="field-label" for="new-passphrase-confirm">{m.pp_new_confirm_label()}</label>
         <input
           class="input"
           type="password"
@@ -95,7 +91,7 @@
       </div>
       <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
       <button class="btn btn-primary" type="submit" data-change-passphrase disabled={busy}>
-        <span>{busy ? 'Changing…' : 'Change passphrase'}</span>
+        <span>{busy ? m.pp_change_running() : m.pp_change_submit()}</span>
       </button>
     </form>
   </div>

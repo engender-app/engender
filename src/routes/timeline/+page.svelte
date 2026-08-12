@@ -35,10 +35,10 @@
       const s = milestoneStatus(mi, today);
       const status =
         s.type === 'countdown'
-          ? `in ${s.days} day${s.days === 1 ? '' : 's'}`
+          ? m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) })
           : s.type === 'today'
-            ? 'today'
-            : `${s.years} year${s.years === 1 ? '' : 's'} ago`;
+            ? m.ms_status_today()
+            : m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
       out.push({ kind: 'milestone', m: mi, status, future: mi.epochDay > today });
       prevDay = mi.epochDay;
     }
@@ -51,22 +51,22 @@
     <a class="icon-btn" href="/" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.timeline()}</h1>
     <div class="header-action">
-      <a class="icon-btn" href="/settings/milestones" aria-label="Add milestone"><Icon name="plus" size={22} /></a>
+      <a class="icon-btn" href="/settings/milestones" aria-label={m.tl_add_aria()}><Icon name="plus" size={22} /></a>
     </div>
   </header>
 
   {#if reference.milestones.length}
-    <p class="muted small" style="margin-bottom:var(--space-5)">Your journey so far — and what’s ahead.</p>
+    <p class="muted small" style="margin-bottom:var(--space-5)">{m.tl_intro()}</p>
     <div class="timeline">
       {#each items as item (item.kind === 'milestone' ? item.m.id : item.id)}
         {#if item.kind === 'today'}
           <div class="tl-item tl-today">
             <span class="tl-dot is-today"></span>
-            <div class="tl-body"><span class="tl-name muted small">today — you are here</span></div>
+            <div class="tl-body"><span class="tl-name muted small">{m.tl_you_are_here()}</span></div>
           </div>
         {:else if item.kind === 'gap'}
-          <div class="tl-gap" aria-label="{item.label} without milestones, compressed">
-            <span class="tl-gap-line"></span><span class="tl-gap-label">{item.label} compressed</span><span class="tl-gap-line"></span>
+          <div class="tl-gap" aria-label={m.tl_gap_aria({ duration: item.label })}>
+            <span class="tl-gap-line"></span><span class="tl-gap-label">{m.tl_gap_label({ duration: item.label })}</span><span class="tl-gap-line"></span>
           </div>
         {:else}
           <div class="tl-item" class:is-future={item.future}>
@@ -89,12 +89,12 @@
     </div>
   {:else}
     <EmptyState
-      riveLabel="Empty timeline: a winding path"
-      title="No milestones yet"
-      text="Add the days that matter and watch your journey take shape."
+      riveLabel={m.rive_empty_timeline()}
+      title={m.tl_empty_title()}
+      text={m.tl_empty_body()}
     >
       {#snippet action()}
-        <a class="btn btn-primary" href="/settings/milestones"><span>Add a milestone</span></a>
+        <a class="btn btn-primary" href="/settings/milestones"><span>{m.tl_empty_action()}</span></a>
       {/snippet}
     </EmptyState>
   {/if}

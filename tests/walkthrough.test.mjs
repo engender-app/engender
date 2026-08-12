@@ -330,8 +330,11 @@ try {
   await page.waitForFunction(() => document.querySelector('#picked-file')?.textContent.includes('not-a-backup'));
   await page.locator('#imp-pass').fill('wrongpass');
   await page.locator('[data-import]').click();
-  await page.waitForSelector('[role="alert"]');
-  ok('a file that is not a backup is refused');
+  /* The sentence, not just the alert: the screen words this from the error's
+     `kind` now (ticket 23), so an alert alone would still pass if the wrong
+     branch fired or the key went missing. */
+  await page.waitForSelector('[role="alert"]:has-text("isn’t a Gender Diary backup file")');
+  ok('a file that is not a backup is refused, in the words the catalogue gives');
 } catch (e) { fail('export/import', e); }
 
 /* 11b. the whole of F14 through the screen: export the demo journal, then

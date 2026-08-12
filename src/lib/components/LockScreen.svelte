@@ -8,6 +8,7 @@
      Copy rule for this screen (ADR-0014): the PIN keeps the app shut, it
      does not encrypt anything. Nothing here may suggest otherwise. */
 
+  import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { hashPin, verifyPin } from '$lib/lock/pin';
   import { localStorageAttempts } from '$lib/lock/attempt-store';
@@ -98,7 +99,7 @@
       return;
     }
     if (pin !== chosen) {
-      error = 'Those two did not match. Start again.';
+      error = m.pin_mismatch();
       chosen = '';
       pin = '';
       return;
@@ -124,7 +125,7 @@
 
     throttle.recordWrong(Date.now());
     pin = '';
-    error = 'That PIN is not right.';
+    error = m.pin_wrong();
     startCountdown();
   }
 
@@ -139,16 +140,18 @@
       console.error('the app reset failed', e);
       resetting = false;
       resetOpen = false;
-      error = 'Could not reset the app. Try again, or close and reopen it first.';
+      error = m.reset_failed();
     }
   }
 
   let title = $derived(
     mode === 'setup'
       ? confirming
-        ? 'Type it once more'
-        : 'Choose a PIN'
-      : `Hi${prefs.name ? ', ' + prefs.name : ''}`
+        ? m.pin_again_title()
+        : m.pin_choose_title()
+      : prefs.name
+        ? m.pin_greeting_named({ name: prefs.name })
+        : m.pin_greeting()
   );
 </script>
 
@@ -159,18 +162,12 @@
     <h1 class="ob-title" style="text-align:center">{title}</h1>
     <p class="ob-text" style="text-align:center">
       {#if mode === 'setup'}
-        {#if confirming}
-          The same four digits again, so a slip of the thumb doesn’t lock you out.
-        {:else}
-          Four digits, asked for every time the app opens. It keeps the app shut to a casual look; what is on
-          the device is not encrypted either way. Forget it and the only way back in is to reset the app and
-          lose everything on here, so pick one you will remember.
-        {/if}
+        {#if confirming}{m.pin_confirm_body()}{:else}{m.pin_setup_body()}{/if}
       {:else}
-        Enter your PIN to open your journal.
+        {m.pin_unlock_body()}
       {/if}
     </p>
-    <div class="pin-dots" aria-label="PIN progress: {pin.length} of {PIN_LENGTH} digits">
+    <div class="pin-dots" aria-label={m.pin_progress({ typed: String(pin.length), total: String(PIN_LENGTH) })}>
       {#each Array.from({ length: PIN_LENGTH }) as _, i (i)}<span
           class="pin-dot"
           class:is-filled={i < pin.length}
@@ -178,7 +175,7 @@
     </div>
     <p class="pin-status small" role="alert" data-pin-status>
       {#if waitMs > 0}
-        Too many wrong tries. Try again in {Math.ceil(waitMs / 1000)}s.
+        {m.pin_throttled({ seconds: String(Math.ceil(waitMs / 1000)) })}
       {:else}{error}{/if}
     </p>
     <div class="pin-pad" class:is-waiting={waitMs > 0}>
@@ -188,7 +185,7 @@
       {#if android && mode === 'unlock'}
         <!-- The Android shell fills this in; on web there is nothing behind
              it, so it stays out of the tab order entirely. -->
-        <button class="pin-key is-ghost" data-bio aria-label="Unlock with biometrics" disabled>
+        <button class="pin-key is-ghost" data-bio aria-label={m.pin_bio_label()} disabled>
           <Icon name="fingerprint" size={26} />
         </button>
       {:else}
@@ -198,7 +195,7 @@
       <button
         class="pin-key is-ghost"
         data-backspace
-        aria-label="Delete digit"
+        aria-label={m.pin_backspace()}
         disabled={waitMs > 0}
         onclick={() => (pin = pin.slice(0, -1))}
       >
@@ -209,7 +206,7 @@
     {#if mode === 'setup' && onCancel}
       <div style="text-align:center;margin-top:var(--space-6)">
         <button class="btn btn-ghost" data-cancel-setup onclick={onCancel}>
-          <span>Not now</span>
+          <span>{m.not_now()}</span>
         </button>
       </div>
     {/if}
@@ -217,38 +214,35 @@
     {#if mode === 'unlock'}
       <div style="text-align:center;margin-top:var(--space-6)">
         <button class="btn btn-ghost" data-forgot onclick={() => (resetOpen = true)}>
-          <span>Forgotten your PIN?</span>
+          <span>{m.pin_forgot()}</span>
         </button>
       </div>
       {#if prefs.lockOnLeave || prefs.quickExit}
         <p class="muted small" style="text-align:center;margin-top:var(--space-3)">
-          {prefs.lockOnLeave ? 'Locks automatically when the app goes to background. ' : ''}
-          {prefs.quickExit ? 'Two-finger swipe down locks instantly.' : ''}
+          {prefs.lockOnLeave ? m.lock_auto_note() + ' ' : ''}
+          {prefs.quickExit ? m.lock_quick_exit_note() : ''}
         </p>
       {/if}
     {/if}
   </div>
 </div>
 
-<Sheet bind:open={resetOpen} title="Forgotten your PIN?">
-  <h3>Forgotten your PIN?</h3>
+<Sheet bind:open={resetOpen} title={m.pin_forgot()}>
+  <h3>{m.pin_forgot()}</h3>
   <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
     <Icon name="alert" size={20} />
     <div class="notice-body">
-      <span class="notice-title">There is no way to recover it</span>
-      The PIN is stored as a hash, so nobody, including this app, can read it back.
+      <span class="notice-title">{m.pin_forgot_no_recovery()}</span>
+      {m.pin_forgot_hash_note()}
     </div>
   </div>
-  <p class="ob-text">
-    You can start over instead. That deletes every entry, photo and setting on this device and takes you back
-    to the welcome screen. If you have an archive from an earlier export, you can restore from it afterwards.
-  </p>
+  <p class="ob-text">{m.reset_offer()}</p>
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-reset disabled={resetting} onclick={confirmReset}>
-      <span>{resetting ? 'Deleting…' : 'Delete everything and start over'}</span>
+      <span>{resetting ? m.reset_running() : m.reset_confirm()}</span>
     </button>
     <button class="btn btn-ghost" disabled={resetting} onclick={() => (resetOpen = false)}>
-      <span>Keep trying</span>
+      <span>{m.reset_keep_trying()}</span>
     </button>
   </div>
 </Sheet>

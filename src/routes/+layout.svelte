@@ -138,13 +138,13 @@
       <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">
-          <span class="notice-title">Couldn't open the database</span>
+          <span class="notice-title">{m.boot_db_failed_title()}</span>
           {bootState.error}
         </div>
       </div>
     {/if}
     {#if !chromeless}
-      <nav class="app-rail" aria-label="Main">
+      <nav class="app-rail" aria-label={m.nav_main()}>
         <div class="rail-brand">
           <span class="brand-mark"></span><span translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</span>
         </div>
@@ -179,7 +179,7 @@
     </main>
 
     {#if !chromeless}
-      <nav class="app-nav" aria-label="Main">
+      <nav class="app-nav" aria-label={m.nav_main()}>
         {#each NAV.slice(0, 2) as item (item.key)}
           <a
             class="nav-item"
@@ -243,7 +243,7 @@
   <button
     class="quick-exit-blank"
     data-blank
-    aria-label="Back to the app"
+    aria-label={m.quick_exit_back()}
     onclick={() => (lockState.blanked = false)}
   ></button>
 {/if}

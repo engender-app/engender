@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { reminderScheduleLabel } from '$lib/data/vocabulary/reminderLabel';
+  import { reminderScheduleLabel, reminderTypeLabel } from '$lib/data/vocabulary/reminderLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -20,30 +20,28 @@
     <h1 class="screen-title">{m.reminders()}</h1>
     <div class="header-action">
       {#if !isWeb}
-        <a class="icon-btn" href="/settings/reminders/new" aria-label="Add reminder"><Icon name="plus" size={22} /></a>
+        <a class="icon-btn" href="/settings/reminders/new" aria-label={m.rem_add_aria()}><Icon name="plus" size={22} /></a>
       {/if}
     </div>
   </header>
 
   {#if isWeb}
     <EmptyState
-      riveLabel="Web reminders: a bell with a gentle z-z-z"
-      title="Reminders need the Android app"
-      text="Browsers cannot fire scheduled notifications reliably while the app is closed. Install the Android app to get medication and check-in reminders."
+      riveLabel={m.rive_reminders_web()}
+      title={m.rem_web_title()}
+      text={m.rem_web_body()}
     />
-    <p class="muted small" style="text-align:center">
-      Your data syncs nowhere — but an encrypted export moves it to the Android app safely.
-    </p>
+    <p class="muted small" style="text-align:center">{m.rem_web_note()}</p>
   {:else}
     <div class="card checkin-card">
       <div class="spread">
         <span class="row-text">
-          <span class="row-title"><Icon name="sparkle" size={16} /> Daily check-in</span>
-          <span class="row-subtitle">“How are you today?” · skipped on days you already logged</span>
+          <span class="row-title"><Icon name="sparkle" size={16} /> {m.checkin_title()}</span>
+          <span class="row-subtitle">{m.checkin_sub()}</span>
         </span>
         <Switch
           checked={prefs.checkInEnabled}
-          label="Daily check-in"
+          label={m.checkin_title()}
           onChange={(v) => {
             prefs.checkInEnabled = v;
           }}
@@ -51,7 +49,7 @@
       </div>
       {#if prefs.checkInEnabled}
         <div class="spread" style="margin-top:var(--space-3)">
-          <label class="small muted" for="checkin-time">Time</label>
+          <label class="small muted" for="checkin-time">{m.checkin_time()}</label>
           <input
             class="input"
             style="width:110px"
@@ -70,9 +68,9 @@
           <span class="row-icon"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
           <a class="row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
             <span class="row-title">{r.title}</span>
-            <span class="row-subtitle">{r.type} · {reminderScheduleLabel(r)}</span>
+            <span class="row-subtitle">{reminderTypeLabel(r.type)} · {reminderScheduleLabel(r)}</span>
           </a>
-          <Switch checked={r.enabled} label="Enable {r.title}" onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
+          <Switch checked={r.enabled} label={m.rem_enable_aria({ title: r.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
         </div>
       {/each}
     </div>
@@ -80,10 +78,9 @@
     <div class="notice notice-info" style="margin-top:var(--space-5)">
       <Icon name="info" size={20} />
       <div class="notice-body">
-        <span class="notice-title">Reminders and battery savers</span>
-        Some phones (Xiaomi, Samsung, Huawei, OnePlus) kill background apps and silence alarms. If reminders stop
-        arriving, allow the app to run in the background.
-        <a href="/settings/reminders">Open battery settings</a>
+        <span class="notice-title">{m.rem_battery_title()}</span>
+        {m.rem_battery_body()}
+        <a href="/settings/reminders">{m.rem_battery_link()}</a>
       </div>
     </div>
   {/if}

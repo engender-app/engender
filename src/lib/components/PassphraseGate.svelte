@@ -12,14 +12,15 @@
      likely cause and never diagnoses.
 
      Ticket 10 adds the case where the device already holds a Journal that
-     is not encrypted. The screens are the same two - a passphrase has to
+     is not encrypted. The two screens are the same - a passphrase has to
      be chosen, or re-entered after an interrupted attempt - but the copy
      has to say what is about to happen to the entries that are already
-     there, and it has to say it BEFORE the passphrase is set rather than
-     after (ADR-0018: setup states the consequence before conversion).
-     Then the conversion itself gets a screen, and a conversion that
-     cannot start gets one that says why in numbers. */
+     there, and say it BEFORE the passphrase is set rather than after
+     (ADR-0018: setup states the consequence before conversion). The
+     conversion itself gets a screen, and a conversion that cannot start
+     gets one that says why in numbers. */
 
+  import { m } from '$lib/paraglide/messages';
   import { bootState, submitPassphraseSetup, submitPassphraseUnlock, resetApp } from '$lib/stores/boot.svelte';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import Icon from './Icon.svelte';
@@ -35,11 +36,12 @@
 
   let mode = $derived(bootState.status === 'needs-setup' ? 'setup' : 'unlock');
   /** The device holds a plaintext Journal, so this passphrase converts it
-      rather than starting an empty one. */
+      rather than opening one. */
   let converting = $derived(bootState.conversion !== null);
 
-  /** Whole numbers with a unit, for a person deciding whether to go and
-      delete something. Nobody needs three decimal places of megabyte. */
+  /** Whole units, for a person deciding whether to go and delete
+      something. Nobody needs three decimal places of megabyte, and both
+      catalogues write the unit the same way. */
   function megabytes(bytes: number): string {
     return bytes >= 1024 * 1024
       ? `${Math.round(bytes / (1024 * 1024))} MB`
@@ -49,14 +51,14 @@
   let progress = $derived(bootState.conversion?.progress ?? null);
   let progressLine = $derived(
     progress === null
-      ? 'Getting ready…'
+      ? m.pp_converting_preparing()
       : progress.stage === 'database'
-        ? 'Copying your journal into encrypted storage…'
+        ? m.pp_converting_database()
         : progress.stage === 'photos'
           ? progress.total === 0
-            ? 'No photos to encrypt.'
-            : `Encrypting photos: ${progress.done} of ${progress.total}.`
-          : 'Removing the old unencrypted copy…'
+            ? m.pp_converting_no_photos()
+            : m.pp_converting_photos({ done: String(progress.done), total: String(progress.total) })
+          : m.pp_converting_retire()
   );
 
   async function submit(event: SubmitEvent) {
@@ -66,11 +68,11 @@
 
     if (mode === 'setup') {
       if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
-        error = `Use at least ${MIN_PASSPHRASE_LENGTH} characters.`;
+        error = m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) });
         return;
       }
       if (passphrase !== confirmation) {
-        error = 'Those two did not match.';
+        error = m.pp_mismatch();
         return;
       }
     }
@@ -83,7 +85,7 @@
       confirmation = '';
     } catch {
       // DecryptionFailedError, deliberately undiagnosed (see header).
-      error = 'That passphrase is not right.';
+      error = m.pp_wrong();
     } finally {
       busy = false;
     }
@@ -97,7 +99,7 @@
       console.error('the app reset failed', e);
       resetting = false;
       resetOpen = false;
-      error = 'Could not reset the app. Try again, or close and reopen it first.';
+      error = m.reset_failed();
     }
   }
 </script>
@@ -107,20 +109,17 @@
     <PrideAurora />
     <div class="applock">
       <div class="applock-badge"><Icon name="alert" size={30} /></div>
-      <h1 class="ob-title" style="text-align:center">Not yet</h1>
-      {#if bootState.conversionRefusal?.reason === 'not-enough-space'}
-        <p class="ob-text" style="text-align:center" data-conversion-refusal>
-          Encrypting your journal means writing a second copy of it before the first one goes, and there is
-          not enough room on this device: it needs about {megabytes(bootState.conversionRefusal.needBytes)} free
-          and has {megabytes(bootState.conversionRefusal.freeBytes)}. Free some space and open Gender Diary
-          again. Nothing has been changed.
-        </p>
-      {:else if bootState.conversionRefusal?.reason === 'schema-too-new'}
-        <p class="ob-text" style="text-align:center" data-conversion-refusal>
-          This journal was last opened by a newer version of Gender Diary, and this one would not understand
-          all of it. Update the app, then open it again. Nothing has been changed.
-        </p>
-      {/if}
+      <h1 class="ob-title" style="text-align:center">{m.pp_convert_refused_title()}</h1>
+      <p class="ob-text" style="text-align:center" data-conversion-refusal>
+        {#if bootState.conversionRefusal?.reason === 'not-enough-space'}
+          {m.pp_convert_refused_space({
+            need: megabytes(bootState.conversionRefusal.needBytes),
+            free: megabytes(bootState.conversionRefusal.freeBytes)
+          })}
+        {:else if bootState.conversionRefusal?.reason === 'schema-too-new'}
+          {m.pp_convert_refused_schema()}
+        {/if}
+      </p>
     </div>
   </div>
 {:else if bootState.status === 'converting'}
@@ -128,15 +127,12 @@
     <PrideAurora />
     <div class="applock">
       <div class="applock-badge"><Icon name="lock" size={30} /></div>
-      <h1 class="ob-title" style="text-align:center">Encrypting your journal</h1>
+      <h1 class="ob-title" style="text-align:center">{m.pp_converting_title()}</h1>
       <p class="ob-text" style="text-align:center" data-conversion-progress>{progressLine}</p>
       <!-- True, and worth saying: every step is written down before it
            happens, so a closed tab or a dead battery resumes rather than
            starts over (conversion.ts). -->
-      <p class="ob-text small" style="text-align:center">
-        This can take a while on a big journal. If it stops, opening Gender Diary again picks up where it
-        left off.
-      </p>
+      <p class="ob-text small" style="text-align:center">{m.pp_converting_note()}</p>
     </div>
   </div>
 {:else}
@@ -147,33 +143,22 @@
     <!-- No name in the unlock greeting on purpose: the display name lives in
          the encrypted journal, and this screen renders before it can be read. -->
     <h1 class="ob-title" style="text-align:center">
-      {#if converting && mode === 'setup'}Encrypt what you have written
-      {:else if converting}Finish encrypting your journal
-      {:else if mode === 'setup'}Choose a journal passphrase
-      {:else}Welcome back{/if}
+      {#if converting && mode === 'setup'}{m.pp_convert_setup_title()}
+      {:else if converting}{m.pp_convert_resume_title()}
+      {:else if mode === 'setup'}{m.pp_setup_title()}
+      {:else}{m.pp_unlock_title()}{/if}
     </h1>
     <p class="ob-text" style="text-align:center">
-      {#if converting && mode === 'setup'}
-        Your journal is on this device but it is not encrypted yet. Choosing a passphrase now encrypts every
-        entry, photo and setting already in it, and from then on this passphrase is the only thing that opens
-        them. Save it in a password manager before you continue: Gender Diary has no account behind it and
-        cannot recover the passphrase or the journal if it is lost.
-      {:else if converting}
-        Encrypting your journal was interrupted. Enter the passphrase you chose and it will carry on from
-        where it stopped. Everything you had written is still here.
-      {:else if mode === 'setup'}
-        Everything you write is encrypted on this device, and this passphrase is the only thing that opens it.
-        Save it in a password manager now: Gender Diary has no account behind it and cannot recover the
-        passphrase or the journal if it is lost.
-      {:else}
-        Enter your journal passphrase to decrypt your journal.
-      {/if}
+      {#if converting && mode === 'setup'}{m.pp_convert_setup_body()}
+      {:else if converting}{m.pp_convert_resume_body()}
+      {:else if mode === 'setup'}{m.pp_setup_body()}
+      {:else}{m.pp_unlock_body()}{/if}
     </p>
 
     <form class="stack-3" onsubmit={submit} style="margin-top:var(--space-4)">
       <div>
         <label class="field-label" for="journal-passphrase">
-          {mode === 'setup' ? 'Passphrase' : 'Journal passphrase'}
+          {mode === 'setup' ? m.pp_label_setup() : m.pp_label_unlock()}
         </label>
         <input
           class="input"
@@ -187,7 +172,7 @@
       </div>
       {#if mode === 'setup'}
         <div>
-          <label class="field-label" for="journal-passphrase-confirm">Once more</label>
+          <label class="field-label" for="journal-passphrase-confirm">{m.pp_label_confirm()}</label>
           <input
             class="input"
             type="password"
@@ -202,11 +187,11 @@
       <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
       <button class="btn btn-primary" type="submit" data-passphrase-submit disabled={busy}>
         <span>
-          {#if busy}{mode === 'setup' ? 'Encrypting…' : 'Decrypting…'}
-          {:else if converting && mode === 'setup'}Encrypt everything
-          {:else if converting}Carry on encrypting
-          {:else if mode === 'setup'}Encrypt my journal
-          {:else}Open my journal{/if}
+          {#if busy}{mode === 'setup' ? m.pp_encrypting() : m.pp_decrypting()}
+          {:else if converting && mode === 'setup'}{m.pp_convert_submit_setup()}
+          {:else if converting}{m.pp_convert_submit_resume()}
+          {:else if mode === 'setup'}{m.pp_submit_setup()}
+          {:else}{m.pp_submit_unlock()}{/if}
         </span>
       </button>
     </form>
@@ -214,7 +199,7 @@
     {#if mode === 'unlock'}
       <div style="text-align:center;margin-top:var(--space-6)">
         <button class="btn btn-ghost" data-forgot-passphrase onclick={() => (resetOpen = true)}>
-          <span>Forgotten your passphrase?</span>
+          <span>{m.pp_forgot()}</span>
         </button>
       </div>
     {/if}
@@ -222,27 +207,22 @@
 </div>
 {/if}
 
-<Sheet bind:open={resetOpen} title="Forgotten your passphrase?">
-  <h3>Forgotten your passphrase?</h3>
+<Sheet bind:open={resetOpen} title={m.pp_forgot()}>
+  <h3>{m.pp_forgot()}</h3>
   <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
     <Icon name="alert" size={20} />
     <div class="notice-body">
-      <span class="notice-title">There is no way to recover it</span>
-      The journal is encrypted with a key only your passphrase can unwrap. Nobody, including this app, can
-      read it back without one or the other.
+      <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
+      {m.pp_forgot_key_note()}
     </div>
   </div>
-  <p class="ob-text">
-    You can start over instead. That deletes every entry, photo and setting on this device and takes you back
-    to the welcome screen. If you have an archive from an earlier export, you can restore from it afterwards
-    with the archive's own password.
-  </p>
+  <p class="ob-text">{m.reset_offer_archive_password()}</p>
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-reset disabled={resetting} onclick={confirmReset}>
-      <span>{resetting ? 'Deleting…' : 'Delete everything and start over'}</span>
+      <span>{resetting ? m.reset_running() : m.reset_confirm()}</span>
     </button>
     <button class="btn btn-ghost" disabled={resetting} onclick={() => (resetOpen = false)}>
-      <span>Keep trying</span>
+      <span>{m.reset_keep_trying()}</span>
     </button>
   </div>
 </Sheet>

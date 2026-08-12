@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/paraglide/messages';
   import { Rive } from '@rive-app/canvas';
   import Icon from './Icon.svelte';
 
@@ -35,7 +36,7 @@
   }
 </script>
 
-<div class="rive-stage" style:height="{height}px" role="img" aria-label="{label} (animated illustration)">
+<div class="rive-stage" style:height="{height}px" role="img" aria-label={m.rive_aria({ label })}>
   {#if src}
     <canvas {@attach attachRive} style:display={riveLoaded ? 'block' : 'none'} width="600" height={height * 2}
     ></canvas>

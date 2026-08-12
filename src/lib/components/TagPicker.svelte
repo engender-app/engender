@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/paraglide/messages';
   import Icon from './Icon.svelte';
   import type { TagGroup } from '$lib/data/types';
 
@@ -13,7 +14,7 @@
   {#each groups as g (g.key)}
     <div class="tag-group">
       <span class="tag-group-name">{g.name}</span>
-      <div class="tag-row" role="group" aria-label="{g.name} tags">
+      <div class="tag-row" role="group" aria-label={m.tags_group_aria({ group: g.name })}>
         {#each g.tags as t (t.id)}
           <button
             class="tag-chip"

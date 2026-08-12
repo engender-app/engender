@@ -122,7 +122,7 @@
       toast(m.saved());
     } catch (error) {
       console.error('could not save the entry', error);
-      toast("Couldn't save this entry.");
+      toast(m.entry_save_failed());
     } finally {
       saving = false;
     }
@@ -204,7 +204,7 @@
           {:else}
             <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
           {/if}
-          <button class="photo-remove" aria-label="Remove photo" onclick={() => removePhoto(i)}>
+          <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => removePhoto(i)}>
             <Icon name="x" size={14} />
           </button>
         </div>
