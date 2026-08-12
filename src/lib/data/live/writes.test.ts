@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support.ts';
 import type { Journal } from '../journal/journal.ts';
+import { journalIsBusy } from '../journal-busy.ts';
 import { observeWrites, TABLE_NAMES, type TableName } from './writes.ts';
 
 async function observed() {
@@ -143,6 +144,55 @@ test('a Daylio preview commits through the observed journal the screen uses', as
 
   assert.deepEqual(result, { entriesAdded: 1, tagsAdded: 0 });
   assert.deepEqual(announced, [TABLE_NAMES]);
+});
+
+/* The update guard hangs off the same wrapper (ticket 04). The reason it is
+   here rather than at the call sites is that this is the one place that knows
+   what a write is: a journal operation added next month is covered by
+   classifying it, and a service worker cannot activate under it. */
+
+test('a write holds the update guard open until it lands', async () => {
+  const { journal } = await observed();
+  assert.equal(journalIsBusy(), false);
+
+  const saving = journal.entries.upsertEntry({ epochDay: 100, mood: 4 });
+  assert.equal(journalIsBusy(), true, 'a save in flight has to block an update');
+  await saving;
+
+  assert.equal(journalIsBusy(), false);
+});
+
+test('a write that throws lets the guard go too', async () => {
+  const { journal } = await observed();
+
+  // Not just tidiness: a guard left open by a rejected save would keep the
+  // app on an old release for the rest of the session, and no screen would
+  // have anything to show for it.
+  await assert.rejects(journal.entries.upsertEntry({ epochDay: 100, note: '   ' }));
+
+  assert.equal(journalIsBusy(), false);
+});
+
+test('an Archive import holds the guard, because that is a write like any other', async () => {
+  const { journal } = await observed();
+  const snapshot = await journal.archive.snapshot();
+
+  const importing = journal.archive.merge({
+    journal: snapshot.journal,
+    files: (async function* () {})()
+  });
+  assert.equal(journalIsBusy(), true);
+  await importing;
+
+  assert.equal(journalIsBusy(), false);
+});
+
+test('a read never holds the guard: an update during one interrupts nothing', async () => {
+  const { journal } = await observed();
+
+  const reading = journal.entries.recentDays(5);
+  assert.equal(journalIsBusy(), false);
+  await reading;
 });
 
 test('an operation classified as neither read nor write is rejected on sight', async () => {

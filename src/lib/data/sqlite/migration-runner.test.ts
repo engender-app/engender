@@ -6,7 +6,13 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { runMigrations, SchemaTooNewError, Fts5UnavailableError, assertFts5Available } from './migration-runner.ts';
+import {
+  runMigrations,
+  SchemaTooNewError,
+  Fts5UnavailableError,
+  InterruptedRestoreError,
+  assertFts5Available
+} from './migration-runner.ts';
 import type { MigrationDb, MigrationFileOps, Migration } from './migration-runner.ts';
 import { makeNodeSqliteDb as makeDb } from './test-support/node-sqlite-driver.ts';
 
@@ -14,6 +20,9 @@ import { makeNodeSqliteDb as makeDb } from './test-support/node-sqlite-driver.ts
 // build available to reproduce that, so the probe statement is faked.
 // getUserVersion throws too, so a test can prove FTS5 is checked before
 // anything else touches the database.
+/** One step, enough for the runner to have something pending. */
+const migrationsFixture: Migration[] = [{ version: 1, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' }];
+
 function makeFts5UnavailableDb(): MigrationDb {
   return {
     exec() {
@@ -29,12 +38,20 @@ function makeFts5UnavailableDb(): MigrationDb {
   };
 }
 
-function makeFileOpsSpy(): MigrationFileOps & { copyCalls: number; cleanupCalls: number } {
+function makeFileOpsSpy(
+  options: { copyExists?: boolean } = {}
+): MigrationFileOps & { copyCalls: number; cleanupCalls: number } {
   return {
     copyCalls: 0,
     cleanupCalls: 0,
+    preMigrationCopyIsUsable() {
+      return options.copyExists ?? false;
+    },
     copyDatabaseFile() {
       this.copyCalls++;
+    },
+    restorePreMigrationCopy() {
+      throw new Error('runMigrations must never restore by itself; a person decides that');
     },
     cleanupPreMigrationCopy() {
       this.cleanupCalls++;
@@ -163,6 +180,82 @@ test('applies out-of-order pending migrations in ascending version order', async
     columns.map((c) => c.name),
     ['id', 'label']
   );
+});
+
+test('a copy left by a failed migration is not written over by the retry', async () => {
+  /* Ticket 04. The retry's copy would be taken from a database the failed
+     attempt has already been at, and if the file is damaged the copy cannot
+     be written at all - so overwriting spends the one recovery point to make
+     a worse one, or destroys it and makes none. ADR-0006 keeps the copy until
+     a boot comes up clean; a boot that finds migrations pending is not one. */
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy({ copyExists: true });
+  /* At v1 with v2 pending, which is what a retry after a failed later step
+     looks like. Not at v0, which beside a readable copy is the interrupted
+     restore further down rather than a retry. */
+  db.raw.exec('CREATE TABLE widget (id INTEGER PRIMARY KEY); PRAGMA user_version = 1');
+  const migrations: Migration[] = [
+    { version: 1, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' },
+    { version: 2, sql: 'ALTER TABLE widget ADD COLUMN label TEXT;' }
+  ];
+
+  await runMigrations(db, fileOps, migrations);
+
+  assert.equal(fileOps.copyCalls, 0);
+  assert.equal(db.getUserVersion(), 2, 'and the migration still runs: the copy it needed is already there');
+});
+
+test('a copy is still made when the pending migration is the first attempt', async () => {
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy({ copyExists: false });
+  const migrations: Migration[] = [{ version: 1, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' }];
+
+  await runMigrations(db, fileOps, migrations);
+
+  assert.equal(fileOps.copyCalls, 1);
+});
+
+test('a failed migration leaves the copy where it is', async () => {
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy();
+  const migrations: Migration[] = [
+    { version: 1, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' },
+    { version: 2, sql: 'this is not valid sql;' }
+  ];
+
+  await assert.rejects(() => runMigrations(db, fileOps, migrations));
+
+  assert.equal(fileOps.copyCalls, 1);
+  assert.equal(fileOps.cleanupCalls, 0, 'the copy is the only way back to the previous journal');
+});
+
+test('refuses an empty database while a pre-migration copy is sitting next to it', async () => {
+  /* The window inside restorePreMigrationCopy (mc-worker.ts): the live
+     database is unlinked and the copy is being written over it. A process
+     killed there leaves a fresh empty file with a copy beside it - and
+     without this refusal, every migration applies cleanly to the empty file,
+     the app reaches its journal screen holding nothing, and the boot after
+     that comes up clean and deletes the copy. Silent total loss, of exactly
+     the journal ADR-0006's copy exists to insure.
+
+     An empty database with a copy beside it cannot arise any other way: a
+     copy is only ever written from a database that had a schema. */
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy({ copyExists: true });
+
+  await assert.rejects(() => runMigrations(db, fileOps, migrationsFixture), InterruptedRestoreError);
+
+  assert.equal(db.getUserVersion(), 0, 'and nothing was applied to the empty file');
+  assert.equal(fileOps.copyCalls, 0, 'nor was the copy replaced by one taken from it');
+});
+
+test('a first run with no copy beside it is not mistaken for an interrupted restore', async () => {
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy({ copyExists: false });
+
+  await runMigrations(db, fileOps, migrationsFixture);
+
+  assert.equal(db.getUserVersion(), 1);
 });
 
 test('assertFts5Available resolves against a build that has FTS5 compiled in', async () => {

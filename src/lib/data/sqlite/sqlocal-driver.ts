@@ -86,9 +86,22 @@ export function createWebSqlite(databasePath: string): WebSqlite {
   };
 
   const fileOps: MigrationFileOps = {
+    async preMigrationCopyIsUsable() {
+      /* SQLocal creates the backup path on construction and deleting it leaves
+         an empty database behind, so the question is whether the file holds a
+         schema rather than whether it is there at all. */
+      const [row] = await backup.sql<{ tables: number }>(
+        "SELECT count(*) AS tables FROM sqlite_master WHERE type = 'table'"
+      );
+      return row.tables > 0;
+    },
     async copyDatabaseFile() {
       const file = await primary.getDatabaseFile();
       await backup.overwriteDatabaseFile(file);
+    },
+    async restorePreMigrationCopy() {
+      const file = await backup.getDatabaseFile();
+      await primary.overwriteDatabaseFile(file);
     },
     async cleanupPreMigrationCopy() {
       await backup.deleteDatabaseFile();

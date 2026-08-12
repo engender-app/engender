@@ -168,6 +168,29 @@ public class SqlitePlugin extends Plugin {
         }
     }
 
+    /** Whether there is a copy worth going back to (ticket 04). */
+    @PluginMethod
+    public void preMigrationCopyIsUsable(PluginCall call) {
+        try {
+            JSObject result = new JSObject();
+            result.put("usable", connection.preMigrationCopyIsUsable());
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    /** Puts that copy back as the live database and closes the connection. */
+    @PluginMethod
+    public void restorePreMigrationCopy(PluginCall call) {
+        try {
+            connection.restorePreMigrationCopy();
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
     @PluginMethod
     public void cleanupPreMigrationCopy(PluginCall call) {
         try {

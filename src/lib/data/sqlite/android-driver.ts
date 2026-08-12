@@ -43,7 +43,9 @@ interface SqliteBridge {
   beginTransaction(): Promise<void>;
   commitTransaction(): Promise<void>;
   rollbackTransaction(): Promise<void>;
+  preMigrationCopyIsUsable(): Promise<{ usable: boolean }>;
   copyDatabaseFile(): Promise<void>;
+  restorePreMigrationCopy(): Promise<void>;
   cleanupPreMigrationCopy(): Promise<void>;
   close(): Promise<void>;
 }
@@ -137,8 +139,19 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
   };
 
   const fileOps: MigrationFileOps = {
+    async preMigrationCopyIsUsable() {
+      const { usable } = await afterOpen(() => Sqlite.preMigrationCopyIsUsable());
+      return usable;
+    },
     async copyDatabaseFile() {
       await afterOpen(() => Sqlite.copyDatabaseFile());
+    },
+    /* Closes the connection on the way, like the web tier's does and for the
+       same reason: it is holding the file being replaced. The caller reloads
+       afterwards rather than carrying on over a driver whose database is
+       gone (ticket 04). */
+    async restorePreMigrationCopy() {
+      await afterOpen(() => Sqlite.restorePreMigrationCopy());
     },
     async cleanupPreMigrationCopy() {
       await afterOpen(() => Sqlite.cleanupPreMigrationCopy());
