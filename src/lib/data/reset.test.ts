@@ -48,6 +48,32 @@ test('a database that will not close is no reason to leave the data', async () =
   expect(log).toContain('clear cache');
 });
 
+test('a reset during an interrupted conversion takes the plaintext journal and the marker too', async () => {
+  /* The one path where "everything under the root" is doing real work
+     rather than being tidy (ticket 10): mid-conversion the root holds the
+     plaintext journal, the keystore for a journal that does not exist yet
+     and the marker saying how far it got. Leaving any of them would hand
+     the next boot either readable entries the person asked to be rid of,
+     or a conversion to resume with no key to resume it under. */
+  const { deps, log } = targets({
+    entries: [
+      'gender-diary.sqlite3',
+      'gender-diary.sqlite3.pre-migration-backup',
+      'photos',
+      'keystore.json',
+      'conversion.json',
+      '.opfs-sahpool'
+    ]
+  });
+  await wipeLocalData(deps);
+
+  expect(log).toContain('remove gender-diary.sqlite3 (recursive)');
+  expect(log).toContain('remove conversion.json (recursive)');
+  expect(log).toContain('remove keystore.json (recursive)');
+  expect(log).toContain('remove .opfs-sahpool (recursive)');
+  expect(log.at(-1)).toBe('clear cache');
+});
+
 test('storage that will not empty fails loudly, with the mirror left alone', async () => {
   const { deps, log } = targets({ removeFails: 'gender-diary.sqlite3' });
   await expect(wipeLocalData(deps)).rejects.toThrow('still open');
