@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { normalizeUnit } from '$lib/data/journal/labs';
+  import { normalizeUnit, type LabSeries } from '$lib/data/journal/labs';
   import { toast } from '$lib/stores/toasts.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -29,19 +29,24 @@
   /* The list is every result this analyte has, in order. The charts are those
      same results split by unit (ticket 02): a value in ng/dL and one in
      nmol/L differ by a factor of about 29, so a single line over both would
-     draw a cliff where nothing happened. */
+     draw a cliff where nothing happened.
+
+     Two reads rather than one regrouped here, because they are two questions:
+     the list's order is the query's, down to how two results on one day
+     settle, and reconstructing that from the series would be re-implementing
+     it. */
   let resultsQuery = liveQuery(['lab'], (j) => j.labs.getResults(analyte));
   let results = $derived(resultsQuery.value ?? []);
   let seriesQuery = liveQuery(['lab'], (j) => j.labs.getSeries(analyte));
   let series = $derived(seriesQuery.value ?? []);
 
-  function chartFor(seriesResults: LabResult[]) {
-    if (seriesResults.length < 2) return null;
-    const values = seriesResults.map((r) => r.value);
+  function chartFor(s: LabSeries) {
+    if (s.results.length < 2) return null;
+    const values = s.results.map((r) => r.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const pad = (max - min) * 0.2 || 10;
-    return { points: seriesResults.map((r) => ({ day: r.epochDay, value: r.value })), min: min - pad, max: max + pad };
+    return { points: s.results.map((r) => ({ day: r.epochDay, value: r.value })), min: min - pad, max: max + pad };
   }
 
   let editor = $state<{
@@ -149,7 +154,7 @@
     <Segmented name="Analyte" options={analytes.map((a) => ({ value: a, label: a }))} value={analyte} onChange={(v) => (analyte = v)} />
 
     {#each series as s (s.unit)}
-      {@const chart = chartFor(s.results)}
+      {@const chart = chartFor(s)}
       <div class="card" data-lab-series={s.unit} style="margin-top:var(--space-4)">
         <div class="spread" style="margin-bottom:var(--space-2)">
           <span class="chart-title">{analyte}</span>
