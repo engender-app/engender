@@ -41,15 +41,15 @@
      is what someone asked for. */
   let running = $state<ExportPath | null>(null);
 
-  const DONE: Record<ExportPath, string> = {
-    encrypted: 'Encrypted',
-    csv: 'CSV exported',
-    json: 'JSON exported'
+  const done: Record<ExportPath, () => string> = {
+    encrypted: m.exp_done_encrypted,
+    csv: m.exp_done_csv,
+    json: m.exp_done_json
   };
 
   function openExportWarning() {
     if (!expPass) {
-      toast('Choose a password first.');
+      toast(m.exp_password_first());
       return;
     }
     exportWarningOpen = true;
@@ -89,13 +89,14 @@
       );
 
       if (delivery === 'cancelled') {
-        toast('Export cancelled. Nothing left the app.');
+        toast(m.exp_cancelled());
         return;
       }
-      toast(delivery === 'shared' ? `${DONE[path]} and shared.` : `${DONE[path]}. Check your downloads.`);
+      const what = done[path]();
+      toast(delivery === 'shared' ? m.exp_done_shared({ what }) : m.exp_done_downloaded({ what }));
     } catch (error) {
       console.error(`the ${path} export failed`, error);
-      toast('The export could not be finished. Nothing was saved.');
+      toast(m.exp_failed());
     } finally {
       running = null;
     }
@@ -123,7 +124,7 @@
       impError = '';
     } catch (error) {
       console.error('the archive picker failed', error);
-      toast("Couldn't open the file picker.");
+      toast(m.imp_picker_failed());
     }
   }
 
@@ -133,11 +134,11 @@
      sequencing of its own beyond picking a mode. */
   async function doImport() {
     if (!picked) {
-      impError = 'Pick a backup file first.';
+      impError = m.imp_pick_first();
       return;
     }
     if (!impPass) {
-      impError = 'Type the password this backup was made with.';
+      impError = m.imp_password_needed();
       return;
     }
     impError = '';
@@ -153,12 +154,12 @@
            the disguise - are not in the archive at all, so restoring cannot
            lock anybody out of an app with no recovery path. */
         applyPortablePreferences(payload.preferences);
-        toast('Restored. This journal is the backup now.');
+        toast(m.imp_replaced_toast());
       } else {
         // A merge writes no settings, for the same reason it leaves rows
         // alone: what is already on this device wins.
         await journal.archive.merge(contents);
-        toast('Merged in. Nothing you already had was touched.');
+        toast(m.imp_merged_toast());
       }
     } catch (error) {
       console.error('the import failed', error);
@@ -168,15 +169,17 @@
     }
   }
 
+  /* Each branch is a catalogued sentence rather than an error message: the
+     archive errors carry English diagnostics for the console, and a Polish
+     reader must not get one of those spliced into a Polish paragraph
+     (docs/ui-copy.md). */
   function importFailure(error: unknown): string {
-    if (error instanceof DecryptionFailedError) {
-      return 'That password doesn’t unlock this file. Passwords are case-sensitive, so check and try again. Nothing was imported.';
+    if (error instanceof DecryptionFailedError) return m.imp_wrong_password();
+    if (error instanceof UnsupportedArchiveError) {
+      return error.kind === 'newer-version' ? m.imp_newer_version() : m.imp_not_an_archive();
     }
-    if (error instanceof UnsupportedArchiveError) return `${error.message} Nothing was imported.`;
-    if (error instanceof CorruptArchiveError) {
-      return 'This file is damaged and can’t be read to the end. Nothing was imported; your journal is exactly as it was.';
-    }
-    return 'The import couldn’t be finished. Your journal is exactly as it was.';
+    if (error instanceof CorruptArchiveError) return m.imp_corrupt();
+    return m.imp_failed();
   }
 
   function openDaylio() {
@@ -195,14 +198,13 @@
       daylioError = '';
       daylioPreview = await journal.archive.previewDaylioImport(await file.text(), { tagLabels });
       if (daylioPreview.unmappedMoodLabels.length > 0) {
-        daylioError = `These mood labels aren't mapped: ${daylioPreview.unmappedMoodLabels.join(', ')}. Nothing has been imported. Rename them in Daylio to a default English or Polish mood, export again, and retry.`;
+        daylioError = m.daylio_unmapped({ labels: daylioPreview.unmappedMoodLabels.join(', ') });
       }
     } catch (error) {
       console.error('the Daylio preview failed', error);
       daylioPreview = null;
-      daylioError = error instanceof DaylioCsvError
-        ? `${error.message}. Nothing has been imported.`
-        : `This CSV couldn't be read. Nothing has been imported.`;
+      // Same rule as importFailure: the parse detail is a console diagnostic.
+      daylioError = m.daylio_unreadable();
     }
   }
 
@@ -213,10 +215,10 @@
     try {
       const result = await journal.archive.commitDaylioImport(daylioPreview);
       daylioSheet = false;
-      toast(`${result.entriesAdded} entries and ${result.tagsAdded} new tags imported.`);
+      toast(m.daylio_imported_toast({ entries: String(result.entriesAdded), tags: String(result.tagsAdded) }));
     } catch (error) {
       console.error('the Daylio import failed', error);
-      daylioError = `The Daylio import couldn't be finished. Your journal is exactly as it was.`;
+      daylioError = m.daylio_failed();
     } finally {
       daylioImporting = false;
     }
@@ -227,42 +229,42 @@
 <div class="screen">
   <header class="screen-header">
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">Export & import</h1>
+    <h1 class="screen-title">{m.exp_title()}</h1>
     <div class="header-action"></div>
   </header>
 
   <div class="card spread" style="margin-bottom:var(--space-4)">
     <span class="row-text">
-      <span class="row-title">Last backup</span>
+      <span class="row-title">{m.exp_last_backup()}</span>
       <span class="row-subtitle">
-        {backupAge == null ? 'never — your journal exists only on this device' : backupAge === 0 ? 'today' : `${backupAge} days ago`}
+        {backupAge == null
+          ? m.exp_last_backup_never()
+          : backupAge === 0
+            ? m.exp_last_backup_today()
+            : m.exp_last_backup_days({ days: m.n_days({ n: backupAge }) })}
       </span>
     </span>
     {#if stale}
-      <span class="notice-warn" style="padding:4px 10px;border-radius:var(--radius-pill);font-size:var(--text-xs);font-weight:700">stale</span>
+      <span class="notice-warn" style="padding:4px 10px;border-radius:var(--radius-pill);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
     {:else}
       <Icon name="check" size={20} />
     {/if}
   </div>
 
-  <SectionTitle text="Encrypted export" />
+  <SectionTitle text={m.exp_encrypted_section()} />
   <div class="card editor-section">
-    <p class="small" style="margin-bottom:var(--space-3)">
-      Everything — entries, photos, milestones, tags, custom dimensions & presets, lab results, settings — packed
-      into one file and encrypted <strong>before</strong> it leaves the app.
-    </p>
+    <p class="small" style="margin-bottom:var(--space-3)">{m.exp_encrypted_body()}</p>
     <div class="field">
-      <label class="field-label" for="exp-pass">Password</label>
-      <input class="input" type="password" id="exp-pass" name="exp-pass" placeholder="Choose a strong password"
+      <label class="field-label" for="exp-pass">{m.exp_password_label()}</label>
+      <input class="input" type="password" id="exp-pass" name="exp-pass" placeholder={m.exp_password_placeholder()}
         autocomplete="new-password" bind:value={expPass} />
     </div>
     <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={running !== null}>
       <Icon name={android ? 'share' : 'download'} size={20} />
-      <span>{running === 'encrypted' ? 'Encrypting…' : android ? 'Encrypt & share' : 'Encrypt & download'}</span>
+      <span>{running === 'encrypted' ? m.exp_running() : android ? m.exp_run_share() : m.exp_run_download()}</span>
     </button>
     <p class="muted small" style="margin-top:var(--space-3)">
-      <Icon name="key" size={13} /> AES-256-GCM, key derived with Argon2id. Without the password the file is
-      unreadable — including by us.
+      <Icon name="key" size={13} /> {m.exp_crypto_note()}
     </p>
   </div>
 
@@ -274,48 +276,47 @@
     <div class="card editor-section">
       <div class="spread">
         <span class="row-text">
-          <span class="row-title">Auto-export</span>
-          <span class="row-subtitle">encrypted backup to a folder you pick</span>
+          <span class="row-title">{m.exp_auto_title()}</span>
+          <span class="row-subtitle">{m.exp_auto_sub()}</span>
         </span>
-        <Switch checked={prefs.autoExportEnabled} label="Auto-export"
+        <Switch checked={prefs.autoExportEnabled} label={m.exp_auto_title()}
           onChange={(v) => (prefs.autoExportEnabled = v)} />
       </div>
       {#if prefs.autoExportEnabled}
         <div class="spread" style="margin-top:var(--space-3)">
-          <span class="small muted">Schedule</span>
-          <Segmented name="Schedule"
-            options={[{ value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]}
+          <span class="small muted">{m.exp_schedule()}</span>
+          <Segmented name={m.exp_schedule()}
+            options={[{ value: 'weekly', label: m.exp_schedule_weekly() }, { value: 'monthly', label: m.exp_schedule_monthly() }]}
             value={prefs.autoExportSchedule}
             onChange={(v) => (prefs.autoExportSchedule = v as 'weekly' | 'monthly')} />
         </div>
         <p class="muted small" style="margin-top:var(--space-3)">
-          Folder: <strong>Downloads/TransitionTracker</strong> · password asked once; only a device-locked key is
-          kept, never the password.
+          {m.exp_auto_note({ folder: 'Downloads/GenderDiary' })}
         </p>
       {/if}
     </div>
   {/if}
 
-  <SectionTitle text="Import" />
+  <SectionTitle text={m.imp_section()} />
   <div class="card editor-section">
     <div class="field">
-      <span class="field-label">Backup file</span>
+      <span class="field-label">{m.imp_file_label()}</span>
       <button class="input" style="text-align:left;color:var(--text-2)" data-pick-file onclick={choose}>
         <Icon name="upload" size={18} />
         <span id="picked-file" style={picked ? 'color:var(--text)' : ''}>
-          {picked ? picked.name : 'Choose a .ttbackup file…'}
+          {picked ? picked.name : m.imp_file_placeholder()}
         </span>
       </button>
     </div>
     <div class="field">
-      <label class="field-label" for="imp-pass">Password</label>
+      <label class="field-label" for="imp-pass">{m.exp_password_label()}</label>
       <input class="input" type="password" id="imp-pass" name="imp-pass"
-        placeholder="The password it was exported with" bind:value={impPass} />
+        placeholder={m.imp_password_placeholder()} bind:value={impPass} />
     </div>
     <div class="field">
-      <span class="field-label">How to import</span>
-      <Segmented name="Import mode"
-        options={[{ value: 'merge', label: 'Merge into current' }, { value: 'replace', label: 'Replace everything' }]}
+      <span class="field-label">{m.imp_how_label()}</span>
+      <Segmented name={m.imp_how_label()}
+        options={[{ value: 'merge', label: m.imp_mode_merge() }, { value: 'replace', label: m.imp_mode_replace() }]}
         value={impMode} onChange={(v) => (impMode = v)} />
     </div>
     {#if impError}
@@ -325,80 +326,76 @@
       </div>
     {/if}
     <p class="muted small" style="margin-bottom:var(--space-3)">
-      {impMode === 'replace'
-        ? 'Everything in this journal is discarded and the backup takes its place. Your PIN, app lock and disguise settings stay as they are.'
-        : 'Anything the backup has and this device doesn’t is added. Nothing you already logged is changed.'}
+      {impMode === 'replace' ? m.imp_replace_note() : m.imp_merge_note()}
     </p>
     <button class="btn btn-soft" data-import onclick={doImport} disabled={importing}>
-      <span>{importing ? 'Importing…' : 'Import backup'}</span>
+      <span>{importing ? m.imp_running() : m.imp_run()}</span>
     </button>
     <div class="hr"></div>
     <button class="list-row" data-daylio style="border-radius:var(--radius-md);background:var(--surface-2)"
       onclick={openDaylio}>
       <span class="row-icon"><Icon name="book" size={20} /></span>
       <span class="row-text">
-        <span class="row-title">Import from Daylio (CSV)</span>
-        <span class="row-subtitle">moods, activities and notes — always a merge</span>
+        <span class="row-title">{m.daylio_row_title()}</span>
+        <span class="row-subtitle">{m.daylio_row_sub()}</span>
       </span>
       <Icon name="chevronRight" size={18} />
     </button>
   </div>
 
-  <SectionTitle text="Plain export" />
+  <SectionTitle text={m.plain_section()} />
   <div class="card editor-section">
-    <p class="small" style="margin-bottom:var(--space-3)">For spreadsheets and portability: CSV (flat) or JSON (full structure).</p>
+    <p class="small" style="margin-bottom:var(--space-3)">{m.plain_body()}</p>
     <div class="spread">
       <button class="btn btn-soft" data-plain="csv" disabled={running !== null} onclick={() => (plainSheet = 'csv')}><span>CSV</span></button>
       <button class="btn btn-soft" data-plain="json" disabled={running !== null} onclick={() => (plainSheet = 'json')}><span>JSON</span></button>
     </div>
   </div>
 
-  <Sheet open={exportWarningOpen} title="Before you continue" onClose={() => (exportWarningOpen = false)}>
-    <h3>There's no way to recover a forgotten password</h3>
+  <Sheet open={exportWarningOpen} title={m.exp_warning_sheet()} onClose={() => (exportWarningOpen = false)}>
+    <h3>{m.exp_warning_title()}</h3>
     <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
       <Icon name="alert" size={20} />
       <div class="notice-body">
-        <span class="notice-title">This can't be undone</span>
-        If you forget this password, the archive is unreadable forever - including to us. There is no recovery
-        option, no exceptions.
+        <span class="notice-title">{m.exp_warning_notice_title()}</span>
+        {m.exp_warning_body()}
       </div>
     </div>
     <div class="stack-3">
       <button class="btn btn-danger" data-confirm-export onclick={confirmExport}>
-        <span>I understand, encrypt & export</span>
+        <span>{m.exp_warning_confirm()}</span>
       </button>
       <button class="btn btn-ghost" onclick={() => (exportWarningOpen = false)}><span>{m.cancel()}</span></button>
     </div>
   </Sheet>
 
-  <Sheet open={plainSheet !== null} title="Plain export" onClose={() => (plainSheet = null)}>
+  <Sheet open={plainSheet !== null} title={m.plain_section()} onClose={() => (plainSheet = null)}>
     {#if plainSheet}
-      <h3>Export unencrypted {plainSheet.toUpperCase()}?</h3>
+      <h3>{m.plain_sheet_title({ format: plainSheet.toUpperCase() })}</h3>
       <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
         <Icon name="alert" size={20} />
         <div class="notice-body">
-          <span class="notice-title">This file is not encrypted</span>
-          Anyone who gets it can read your whole journal. Store it somewhere only you can reach, or use the
-          encrypted export instead.
+          <span class="notice-title">{m.plain_notice_title()}</span>
+          {m.plain_notice_body()}
         </div>
       </div>
       <div class="stack-3">
         <button class="btn btn-danger" data-confirm-plain onclick={confirmPlain}>
-          <span>Export plain {plainSheet.toUpperCase()}</span>
+          <span>{m.plain_confirm({ format: plainSheet.toUpperCase() })}</span>
         </button>
         <button class="btn btn-ghost" onclick={() => (plainSheet = null)}><span>{m.cancel()}</span></button>
       </div>
     {/if}
   </Sheet>
 
-  <Sheet bind:open={daylioSheet} title="Import from Daylio">
-    <h3>Import from Daylio</h3>
+  <Sheet bind:open={daylioSheet} title={m.daylio_sheet_title()}>
+    <h3>{m.daylio_sheet_title()}</h3>
     <div class="field">
-      <span class="field-label">Daylio CSV</span>
+      <span class="field-label">{m.daylio_file_label()}</span>
       <button class="input" style="text-align:left;color:var(--text-2)" data-pick-daylio onclick={chooseDaylio}>
         <Icon name="upload" size={18} />
         <span style={daylioName ? 'color:var(--text)' : ''}>
-          {daylioName || 'Choose a Daylio .csv file…'}
+          {daylioName || m.daylio_file_placeholder()}
         </span>
       </button>
     </div>
@@ -410,35 +407,33 @@
     {/if}
     {#if daylioPreview}
       <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
-        <div class="value-row"><span>Entries to add</span><strong>{daylioPreview.entryCount}</strong></div>
+        <div class="value-row"><span>{m.daylio_entries_to_add()}</span><strong>{daylioPreview.entryCount}</strong></div>
         <div class="value-row">
-          <span>Activities → tags</span>
-          <strong>{daylioPreview.matchedTagCount} matched · {daylioPreview.newTagCount} new in "Imported"</strong>
+          <span>{m.daylio_activities_to_tags()}</span>
+          <strong>{m.daylio_tag_counts({ matched: String(daylioPreview.matchedTagCount), new: String(daylioPreview.newTagCount) })}</strong>
         </div>
-        <div class="value-row"><span>Notes</span><strong>preserved</strong></div>
-        <div class="value-row"><span>Photos</span><strong>not in Daylio's CSV</strong></div>
+        <div class="value-row"><span>{m.daylio_notes_row()}</span><strong>{m.daylio_notes_kept()}</strong></div>
+        <div class="value-row"><span>{m.daylio_photos_row()}</span><strong>{m.daylio_photos_absent()}</strong></div>
         <div class="hr"></div>
-        <p class="small" style="margin-bottom:var(--space-2)"><strong>Mood mapping</strong></p>
+        <p class="small" style="margin-bottom:var(--space-2)"><strong>{m.daylio_mood_mapping()}</strong></p>
         {#if daylioPreview.moodMappings.length > 0}
           {#each daylioPreview.moodMappings as mapping (mapping.label)}
             <div class="value-row">
               <span>{mapping.label}</span>
-              <strong>{mapping.mood === null ? 'not mapped' : `${mapping.mood} · ${moodName(mapping.mood)}`}</strong>
+              <strong>{mapping.mood === null ? m.daylio_mood_unmapped() : `${mapping.mood} · ${moodName(mapping.mood)}`}</strong>
             </div>
           {/each}
         {:else}
-          <p class="muted small">No moods in this file.</p>
+          <p class="muted small">{m.daylio_no_moods()}</p>
         {/if}
       </div>
-      <p class="muted small" style="margin-bottom:var(--space-4)">
-        This import is always a <strong>merge</strong>. Nothing you already logged is changed.
-      </p>
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.daylio_always_merge()}</p>
     {/if}
     <div class="stack-3">
       {#if daylioPreview}
         <button class="btn btn-primary" data-confirm-daylio onclick={importDaylio}
           disabled={daylioPreview.unmappedMoodLabels.length > 0 || daylioImporting}>
-          <span>{daylioImporting ? 'Importing…' : `Import ${daylioPreview.entryCount} entries`}</span>
+          <span>{daylioImporting ? m.imp_running() : m.daylio_confirm({ count: daylioPreview.entryCount })}</span>
         </button>
       {/if}
       <button class="btn btn-ghost" onclick={() => (daylioSheet = false)}><span>{m.cancel()}</span></button>
