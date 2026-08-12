@@ -14,9 +14,11 @@
    chunks and the last one is a partial. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
-import { createWebSqlite } from '../../src/lib/data/sqlite/sqlocal-driver.ts';
+import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
+import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-store.ts';
+import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 import { PREFERENCE_DEFAULTS } from '../../src/lib/data/prefs/catalogue.ts';
 import { ARCHIVE_FILE_EXTENSION, byteReader, collect, readArchiveHeader } from '../../src/lib/data/archive/container.ts';
 import { openArchive, packArchive } from '../../src/lib/data/archive/pack.ts';
@@ -39,10 +41,14 @@ async function* oneShot(bytes: Uint8Array): AsyncGenerator<Uint8Array> {
 }
 
 async function run() {
+  await freshOrigin();
   const result: Record<string, unknown> = {};
 
-  const files = opfsPhotoFiles('archive-probe-photos');
-  const { driver, fileOps } = createWebSqlite('archive-probe.sqlite3');
+  // The app's own store composition since ticket 09: an archive packs
+  // plaintext photo bytes read *through* the encrypting store, and its
+  // size() has to answer plaintext lengths for the chunk count (ADR-0007).
+  const files = encryptedFileStore(opfsPhotoFiles('archive-probe-photos'), PROBE_DATA_KEY);
+  const { driver, fileOps } = createEncryptedWebSqlite('archive-probe.sqlite3', PROBE_DATA_KEY);
   const booted = await boot({ createDriver: () => driver, fileOps });
   if (booted.phase === 'error') throw booted.error;
 
@@ -83,6 +89,11 @@ async function run() {
   result.archiveLength = archive.length;
   result.manifest = snapshot.files;
 
+  /* The source journal is finished with - the archive is in memory. Closed
+     here because the restore journal below needs the SAHPool VFS, and the
+     pool's sync access handles belong to one worker at a time. */
+  await booted.driver.close();
+
   const { header } = await readArchiveHeader(byteReader(oneShot(archive)));
   result.header = { formatVersion: header.formatVersion, kdf: header.kdf, totalChunks: header.totalChunks, chunkSize: header.chunkSize };
   result.spansChunks = header.totalChunks > 1;
@@ -108,12 +119,12 @@ async function run() {
 
   /* Ticket 14: the same archive read back into a different journal, here
      rather than only in the Node tier. A Replace runs a dozen deletes and
-     every insert inside one manual BEGIN/COMMIT through SQLocal's worker
-     (sqlocal-driver.ts), and the photo files land in real OPFS - and this is
-     the path where getting either wrong destroys a journal that by design
-     has no other copy. */
-  const restoreFiles = opfsPhotoFiles('archive-restore-photos');
-  const restoreSqlite = createWebSqlite('archive-restore.sqlite3');
+     every insert inside one manual BEGIN/COMMIT through the encrypted
+     driver's worker (mc-driver.ts), and the photo files land in real OPFS,
+     encrypted per file - and this is the path where getting either wrong
+     destroys a journal that by design has no other copy. */
+  const restoreFiles = encryptedFileStore(opfsPhotoFiles('archive-restore-photos'), PROBE_DATA_KEY);
+  const restoreSqlite = createEncryptedWebSqlite('archive-restore.sqlite3', PROBE_DATA_KEY);
   const restoreBoot = await boot({
     createDriver: () => restoreSqlite.driver,
     fileOps: restoreSqlite.fileOps

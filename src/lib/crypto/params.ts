@@ -34,3 +34,21 @@ export const PIN_ARGON2_PARAMS: Argon2Params = {
   parallelism: 1,
   hashLength: 32
 };
+
+/** The Journal passphrase, ADR-0013's third consumer: paid on every cold
+    start, so it cannot cost what the archive costs, but it is the wall
+    between a copied keystore file and the data key, so it cannot cost what
+    the PIN costs either. ~59ms on the benchmark desktop, which the archive
+    path's ratio (107ms here ~ 1s on a mid-range 2020 Android) puts around
+    half a second on the reference device. Memory-heavy rather than
+    iteration-heavy, because memory is what prices out GPU guessing.
+
+    These numbers are a starting point like the two sets above, and they are
+    also *data*: the keystore stores the set it was written with (ticket 09),
+    so re-tuning here changes new keystores without breaking old ones. */
+export const JOURNAL_ARGON2_PARAMS: Argon2Params = {
+  memorySize: 49152,
+  iterations: 2,
+  parallelism: 1,
+  hashLength: 32
+};

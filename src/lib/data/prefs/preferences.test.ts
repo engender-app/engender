@@ -83,7 +83,6 @@ test('SQLite wins over the cache, because the cache is only a cache', async () =
     theme: 'system',
     palette: 'stale-from-a-past-session',
     language: 'system',
-    pinHash: null,
     lockOnLeave: false,
     disguise: false
   });
