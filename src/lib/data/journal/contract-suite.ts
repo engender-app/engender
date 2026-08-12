@@ -24,8 +24,10 @@ import { foldText } from '../fold.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
 import { openPreferences } from '../prefs/preferences.ts';
 import { LATEST_SCHEMA_VERSION } from '../sqlite/migrations.ts';
+import { thumbFileName } from '../photos/names.ts';
 import type { Journal, PhotoFileStore } from './journal.ts';
 import { openJournal } from './journal.ts';
+import { sweepOrphanPhotos } from './photos.ts';
 
 export interface ContractCheck {
   name: string;
@@ -199,6 +201,35 @@ export async function runJournalContract(
     const id = await journal.entries.upsertEntry({ epochDay: 2000, mood: 4, note: 'a note' });
     const entry = await journal.entries.getEntry(id);
     r.equal('an entry reads back as it was written', [entry?.mood, entry?.note], [4, 'a note']);
+  });
+
+  await r.section('photo store and orphan sweep', async () => {
+    const full = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    const thumb = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 9, 8, 7]);
+
+    const entryId = await journal.entries.upsertEntry({ epochDay: 2111, note: 'photo owner' });
+    const photoId = await journal.photos.attach({ entryId }, { full, thumb });
+    const entry = await journal.entries.getEntry(entryId);
+    const fileName = entry?.photos[0]?.fileName ?? null;
+
+    r.equal('the attached photo is listed on its owner', entry?.photos.map((p) => p.id), [photoId]);
+    r.equal('an attached photo has a stored file name', fileName == null, false);
+    if (fileName == null) return;
+
+    r.equal('the full photo has a size for archive packing', await files.size(fileName), full.length);
+    r.equal(
+      'the thumbnail has a size for archive packing',
+      await files.size(thumbFileName(fileName)),
+      thumb.length
+    );
+
+    await files.write('orphan-photo.jpg', new Uint8Array([1, 2, 3]));
+    await files.write('orphan-photo-thumb.jpg', new Uint8Array([4, 5, 6]));
+    await sweepOrphanPhotos(driver, files);
+
+    r.equal('the sweep keeps referenced photo files', await files.read(fileName).then((v) => v != null), true);
+    r.equal('the sweep removes orphan files', await files.read('orphan-photo.jpg').then((v) => v == null), true);
+    r.equal('the sweep removes orphan thumbnails', await files.read('orphan-photo-thumb.jpg').then((v) => v == null), true);
   });
 
   /* ADR-0009: preferences live in SQLite and the boot cache mirrors them.

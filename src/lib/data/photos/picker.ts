@@ -10,6 +10,8 @@
    URI is an Android one, and normalize() takes neither. */
 
 import { chooseFiles } from '../fileDialog';
+import { isAndroid } from '../../platform';
+import { androidPhotos } from './android-bridge';
 
 export interface PhotoPicker {
   /** The bytes of everything the user chose, or an empty array if they
@@ -20,6 +22,11 @@ export interface PhotoPicker {
 export function filePhotoPicker(): PhotoPicker {
   return {
     async pick() {
+      if (isAndroid()) {
+        const { images } = await androidPhotos.pickImages();
+        return images.map((base64) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
+      }
+
       // Whatever the OS decides matches "image/*", HEIC included: the bytes
       // still go through normalize(). An entry holds several photos, so one
       // trip through the dialog can bring back several.
