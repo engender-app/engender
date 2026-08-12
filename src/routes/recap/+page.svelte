@@ -49,15 +49,91 @@
     (recap?.topTags ?? []).map((t) => ({ label: vocabulary.tag(t.id)?.label ?? t.id, n: t.count }))
   );
 
+  /* A month and a year are separate messages rather than one sentence with
+     the period injected: Polish inflects the noun, and "this {month}" would
+     need a case the English never asks for (docs/ui-copy.md). */
+  let isYear = $derived(period.kind === 'year');
+
   let steps = $derived([
-    { title: period.kind === 'year' ? `Your ${period.name}` : m.recap_your({ month: period.name }), body: period.kind === 'year' ? 'One year, held in your own words.' : 'One month, held in your own words.', rive: 'Recap opener: calendar pages turning', confetti: false },
-    { title: `${recap?.entryCount ?? 0} entries`, body: recap?.entryCount ? 'You showed up, again and again. Some days had two entries. Gender moves, and you caught it moving.' : `A quiet ${period.kind}. Quiet counts too.`, rive: null, confetti: false },
-    { title: recap?.averageMood ? `Mood: ${recap.averageMood.toFixed(1)} of 5` : 'Mood', body: recap?.averageMood ? `Averaged across the ${period.kind}. It is not a grade, only a record of where you were.` : `No moods logged this ${period.kind}.`, rive: null, confetti: false },
-    { title: `Best streak: ${recap?.bestStreak ?? 0} days`, body: 'The longest run of days in a row you wrote something down. Consistency is a kindness to your future self.', rive: null, confetti: false },
-    { title: 'Top tags', body: topTags.length ? topTags.map((t) => `${t.label} (${t.n})`).join(' · ') : `No tags this ${period.kind}.`, rive: null, confetti: false },
-    { title: recap?.milestones.length ? `${recap.milestones.length} milestone${recap.milestones.length === 1 ? '' : 's'}` : 'Milestones', body: recap?.milestones.length ? recap.milestones.map((mi) => mi.name).join(' · ') : `No milestones landed this ${period.kind}.`, rive: null, confetti: false },
-    { title: dimChange ? `${dimChange.name}: ${dimChange.change >= 0 ? '+' : ''}${Math.round(dimChange.change)}` : 'Your scales', body: dimChange ? `The scale that moved furthest this ${period.kind}, first entry to last. Whichever direction it went, it is yours.` : `Not enough logged on any one scale this ${period.kind} to show a shift.`, rive: null, confetti: false },
-    { title: `That was ${period.name}`, body: 'Thank you for keeping your own record. See you tomorrow.', rive: 'Recap finale: celebration in flag colours', confetti: true },
+    {
+      title: isYear ? m.recap_year_title({ year: period.name }) : m.recap_your({ month: period.name }),
+      body: isYear ? m.recap_open_year() : m.recap_open_month(),
+      rive: m.rive_recap_open(),
+      confetti: false
+    },
+    {
+      title: m.recap_entries_title({ count: String(recap?.entryCount ?? 0) }),
+      body: recap?.entryCount
+        ? m.recap_entries_body()
+        : isYear
+          ? m.recap_entries_quiet_year()
+          : m.recap_entries_quiet_month(),
+      rive: null,
+      confetti: false
+    },
+    {
+      title: recap?.averageMood ? m.recap_mood_title({ value: recap.averageMood.toFixed(1) }) : m.mood(),
+      body: recap?.averageMood
+        ? isYear
+          ? m.recap_mood_body_year()
+          : m.recap_mood_body_month()
+        : isYear
+          ? m.recap_mood_none_year()
+          : m.recap_mood_none_month(),
+      rive: null,
+      confetti: false
+    },
+    {
+      title: m.recap_streak_title({ days: m.n_days({ n: recap?.bestStreak ?? 0 }) }),
+      body: m.recap_streak_body(),
+      rive: null,
+      confetti: false
+    },
+    {
+      title: m.recap_tags_title(),
+      body: topTags.length
+        ? topTags.map((t) => m.recap_tag_count({ label: t.label, count: String(t.n) })).join(' · ')
+        : isYear
+          ? m.recap_tags_none_year()
+          : m.recap_tags_none_month(),
+      rive: null,
+      confetti: false
+    },
+    {
+      title: recap?.milestones.length
+        ? m.recap_ms_title({ count: String(recap.milestones.length) })
+        : m.milestones(),
+      body: recap?.milestones.length
+        ? recap.milestones.map((mi) => mi.name).join(' · ')
+        : isYear
+          ? m.recap_ms_none_year()
+          : m.recap_ms_none_month(),
+      rive: null,
+      confetti: false
+    },
+    {
+      title: dimChange
+        ? m.recap_scale_title({
+            name: dimChange.name,
+            change: `${dimChange.change >= 0 ? '+' : ''}${Math.round(dimChange.change)}`
+          })
+        : m.recap_scales_title(),
+      body: dimChange
+        ? isYear
+          ? m.recap_scale_body_year()
+          : m.recap_scale_body_month()
+        : isYear
+          ? m.recap_scale_none_year()
+          : m.recap_scale_none_month(),
+      rive: null,
+      confetti: false
+    },
+    {
+      title: m.recap_end_title({ period: period.name }),
+      body: m.recap_end_body(),
+      rive: m.rive_recap_finale(),
+      confetti: true
+    },
   ]);
 
   let s = $derived(steps[Math.min(step, steps.length - 1)]);

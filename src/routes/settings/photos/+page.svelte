@@ -44,7 +44,7 @@
   {#if comparing && pair}
     <header class="screen-header">
       <button class="icon-btn" aria-label={m.back()} onclick={() => (comparing = false)}><Icon name="arrowLeft" /></button>
-      <h1 class="screen-title">Compare</h1>
+      <h1 class="screen-title">{m.ph_compare()}</h1>
       <div class="header-action"></div>
     </header>
     <p class="compare-gap">{gapLabel}</p>
@@ -54,18 +54,18 @@
           <PhotoThumb photo={photos[side.i]} size={150} />
           <div class="compare-nav">
             <button class="icon-btn" disabled={!side.canPrev} style={side.canPrev ? '' : 'opacity:.3'}
-              aria-label="Earlier photo" onclick={() => step(side.which, -1)}><Icon name="chevronLeft" size={18} /></button>
+              aria-label={m.ph_earlier()} onclick={() => step(side.which, -1)}><Icon name="chevronLeft" size={18} /></button>
             <span class="small">{fmtDay(photos[side.i].epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             <button class="icon-btn" disabled={!side.canNext} style={side.canNext ? '' : 'opacity:.3'}
-              aria-label="Later photo" onclick={() => step(side.which, 1)}><Icon name="chevronRight" size={18} /></button>
+              aria-label={m.ph_later()} onclick={() => step(side.which, 1)}><Icon name="chevronRight" size={18} /></button>
           </div>
-          <span class="muted small">{photos[side.i].milestoneName ?? 'journal entry'}</span>
+          <span class="muted small">{photos[side.i].milestoneName ?? m.ph_from_entry()}</span>
         </div>
       {/each}
     </div>
     <div style="margin-top:var(--space-6)">
       <button class="btn btn-soft" onclick={() => { comparing = false; selected = []; }}>
-        <span>Back to all photos</span>
+        <span>{m.ph_back_to_all()}</span>
       </button>
     </div>
   {:else}
@@ -79,15 +79,15 @@
     {:else if photos.length}
       <p class="muted small" style="margin-bottom:var(--space-4)">
         {selected.length === 0
-          ? 'Every photo in your journal, oldest first. Select two to compare.'
+          ? m.ph_pick_two()
           : selected.length === 1
-            ? 'One selected — pick a second to compare.'
-            : 'Two selected.'}
+            ? m.ph_one_selected()
+            : m.ph_two_selected()}
       </p>
       <div class="photo-grid">
         {#each photos as p, i (p.id + String(p.epochDay))}
           <button class="photo-cell" class:is-selected={selected.includes(i)} aria-pressed={selected.includes(i)}
-            aria-label="Photo from {fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}"
+            aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
             onclick={() => toggle(i)}>
             <PhotoThumb photo={p} size={104} />
             <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
@@ -98,15 +98,15 @@
       {#if selected.length === 2}
         <div class="editor-savebar">
           <button class="btn btn-primary" data-compare onclick={() => (comparing = true)}>
-            <Icon name="columns" size={20} /><span>Compare</span>
+            <Icon name="columns" size={20} /><span>{m.ph_compare()}</span>
           </button>
         </div>
       {/if}
     {:else}
       <EmptyState
-        riveLabel="Empty photos: a polaroid frame waiting"
-        title="No photos yet"
-        text="Photos you attach to entries and milestones gather here — and one day, “then vs now” will be worth it."
+        riveLabel={m.rive_empty_photos()}
+        title={m.ph_empty_title()}
+        text={m.ph_empty_body()}
       />
     {/if}
   {/if}

@@ -72,7 +72,7 @@
       {/each}
     {:else}
       <EmptyState
-        riveLabel="No results: a magnifying glass over gentle waves"
+        riveLabel={m.rive_no_results()}
         title={m.no_results()}
         text={m.no_results_body({ query })}
       />

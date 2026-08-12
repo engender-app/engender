@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/paraglide/messages';
   import Icon from './Icon.svelte';
   import type { Photo } from '$lib/data/types';
   import { readThumbnail } from '$lib/stores/photoFiles';
@@ -73,10 +74,10 @@
   style:height="{size}px"
   style:background="linear-gradient(135deg, hsl({hue} 45% 72%), hsl({(hue + 40) % 360} 40% 55%))"
   role={url ? 'presentation' : 'img'}
-  aria-label={url ? undefined : `Photo placeholder${label ? ': ' + label : ''}`}
+  aria-label={url ? undefined : label ? m.photo_placeholder_labelled({ label }) : m.photo_placeholder()}
 >
   {#if url}
-    <img src={url} alt={label || 'Photo'} />
+    <img src={url} alt={label || m.photo_alt()} />
   {:else}
     <Icon name="image" size={Math.min(28, size / 2.5)} />
   {/if}

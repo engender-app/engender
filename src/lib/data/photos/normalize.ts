@@ -39,9 +39,14 @@ const THUMB_QUALITY = 0.7;
 /** A picked file this app will not store, with a message meant for the
     person who picked it. */
 export class UnsupportedImageError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  /* As with UnsupportedArchiveError: `kind` is what the screen words its
+     message from, `message` is the English diagnostic for the console. */
+  readonly kind: 'heic' | 'unreadable';
+
+  constructor(kind: 'heic' | 'unreadable', message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'UnsupportedImageError';
+    this.kind = kind;
   }
 }
 
@@ -54,7 +59,7 @@ export async function normalizePhoto(bytes: Uint8Array): Promise<NormalizedPhoto
   // The one format checked ahead of the decoder, because Chromium cannot
   // decode it and it deserves a message that says what to do (bytes.ts).
   // Everything else the decoder gets to try.
-  if (isHeic(bytes)) throw new UnsupportedImageError(HEIC_MESSAGE);
+  if (isHeic(bytes)) throw new UnsupportedImageError('heic', HEIC_MESSAGE);
 
   let source: ImageBitmap;
   try {
@@ -62,7 +67,7 @@ export async function normalizePhoto(bytes: Uint8Array): Promise<NormalizedPhoto
   } catch (cause) {
     // Not an image, truncated, or a format this browser build lacks - the
     // person who picked it can do the same thing about all three.
-    throw new UnsupportedImageError(UNREADABLE_MESSAGE, { cause });
+    throw new UnsupportedImageError('unreadable', UNREADABLE_MESSAGE, { cause });
   }
 
   try {

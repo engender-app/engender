@@ -59,7 +59,7 @@
       {/each}
     </div>
   {:else}
-    <EmptyState riveLabel="Quiet day illustration" title={m.nothing_logged()} text={m.nothing_logged_body()} />
+    <EmptyState riveLabel={m.rive_quiet_day()} title={m.nothing_logged()} text={m.nothing_logged_body()} />
   {/if}
 
   <div style="margin-top:var(--space-6)">
