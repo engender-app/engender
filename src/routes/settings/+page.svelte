@@ -330,6 +330,12 @@
           <span class="muted small">{isAndroid() ? m.disguise_preview_android() : m.disguise_preview_web()}</span>
         </span>
       </div>
+      <!-- Web only: on Android the launcher alias switches at once, so there
+           is nothing to warn about. Here the manifest is the browser's to
+           refresh, and a promise the app cannot keep is worse than none. -->
+      {#if !isAndroid()}
+        <p class="muted small">{m.disguise_installed_note()}</p>
+      {/if}
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
         <span class="row-text">
           <span class="row-title">{m.lock_on_leave_title()}</span>

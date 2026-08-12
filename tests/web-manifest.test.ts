@@ -16,6 +16,7 @@ const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
 const exists = (path: string) => existsSync(fileURLToPath(new URL(path, root)));
 
 const manifest = JSON.parse(read('static/manifest.webmanifest'));
+const disguised = JSON.parse(read('static/manifest-notes.webmanifest'));
 
 describe('the web app manifest', () => {
   it('names the app and installs it as a standalone window', () => {
@@ -65,5 +66,68 @@ describe('the web app manifest', () => {
     // opens the editor on the current epoch day without a date in the URL.
     expect(exists('src/routes/entry/new/[day]/+page.svelte')).toBe(true);
     expect(read('src/routes/entry/new/[day]/+page.svelte')).toContain("=== 'today'");
+  });
+});
+
+/* The disguised install (ticket 25, F24). An installed app has no tab strip,
+   so this file is the whole disguise there: whatever it says is what the
+   launcher, the window switcher and the install prompt say. */
+describe('the disguised manifest', () => {
+  it('says nothing about a journal, a transition or this app', () => {
+    const words = /gender|diary|transition|journal|trans|entry|entries|mood|hrt/i;
+    for (const [field, value] of Object.entries(disguised)) {
+      if (typeof value === 'string') expect(value, field).not.toMatch(words);
+    }
+    expect(disguised.name).toBe('Notes');
+    expect(disguised.short_name).toBe('Notes');
+    // No shortcuts at all rather than renamed ones: a long-press menu is one
+    // more surface to keep neutral, and the disguise loses nothing without it.
+    expect(disguised.shortcuts).toBeUndefined();
+  });
+
+  it('is the same app renamed, not a second app to install', () => {
+    /* id, start_url and scope are what a browser matches an install against.
+       Diverge on any of them and a disguised visit offers a fresh install
+       next to the one already on the device, which is the opposite of the
+       point: two apps where there was one, and one of them still named. */
+    for (const key of ['id', 'start_url', 'scope', 'display', 'theme_color', 'background_color']) {
+      expect(disguised[key], key).toBe(manifest[key]);
+    }
+  });
+
+  it('carries its own icons, in the repository, for both purposes', () => {
+    expect(disguised.icons.length).toBe(manifest.icons.length);
+    for (const icon of disguised.icons) {
+      expect(icon.src).not.toBe('/icons/icon.svg');
+      expect(exists(`static${icon.src}`)).toBe(true);
+      // A flag left in the disguised icon would defeat the whole file.
+      expect(read(`static${icon.src}`)).not.toContain('#5BCEFA');
+    }
+    const purposes = disguised.icons.map((icon: { purpose?: string }) => icon.purpose ?? 'any');
+    expect(purposes).toContain('any');
+    expect(purposes).toContain('maskable');
+  });
+
+  it('is what the document points at while disguised, from before first paint', () => {
+    const appHtml = read('src/app.html');
+    const manifestLink = '<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />';
+    const manifestLinkAt = appHtml.indexOf(manifestLink);
+    const scriptAt = appHtml.indexOf('<script>');
+
+    /* The head script only wins the race if the parser has already created
+       the manifest link by the time the script runs. Move the link below the
+       script and this test fails even though both files still name the
+       neutral manifest somewhere. */
+    expect(manifestLinkAt).toBeGreaterThan(-1);
+    expect(scriptAt).toBeGreaterThan(-1);
+    expect(manifestLinkAt).toBeLessThan(scriptAt);
+    expect(appHtml).toContain("const manifest = document.querySelector('link[rel=\"manifest\"]');");
+    expect(appHtml).toContain(
+      "manifest.href = manifest.href.replace('manifest.webmanifest', 'manifest-notes.webmanifest');"
+    );
+
+    // app.html swaps it before first paint; the layout keeps it in step when
+    // the toggle moves after boot.
+    expect(read('src/routes/+layout.svelte')).toContain("prefs.disguise ? 'manifest-notes.webmanifest' : 'manifest.webmanifest'");
   });
 });
