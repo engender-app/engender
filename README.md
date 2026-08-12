@@ -124,13 +124,12 @@ minimum supported version - and the pipeline stops before it builds anything if
 one of them is blank. Everything left in `dist/release/` is checksummed and
 attached, which is how ticket 18's signed Android artifacts will join a release.
 
-The DNS records, hosting credentials, store account and signing key that any of
-this needs are steps a person has to take, and `scripts/provision.sh` walks
-them. It says what each value is for before asking, writes secrets to the
-protected `release` environment rather than into the repository, and skips what
-a previous run finished. `DRY_RUN=1 scripts/provision.sh` performs nothing and
-describes every step. [docs/provisioning.md](docs/provisioning.md) is the list
-of what ends up where, and which ticket reads it.
+The DNS record, deployment access, store account and signing key behind all of
+this are steps a person has to take, on one particular machine, so the wizard
+that walks them is untracked operator tooling rather than part of the app.
+What it produces is not:
+[docs/provisioning.md](docs/provisioning.md) names every secret and variable the
+pipeline expects, where each one lives, and which ticket reads it.
 
 ## Stack
 

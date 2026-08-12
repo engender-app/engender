@@ -37,6 +37,20 @@ GEMINI.md
 .mcp.json
 .github/copilot-instructions.md
 
+# The provisioning wizard and the test that exercises it. Operator tooling, not
+# product: it walks one person through DNS, deployment access, a store account
+# and a signing key, and what it says is specific to this machine - the ssh
+# alias it reads the VPS address from, the deploy user, the state directory it
+# keeps its own progress in. Nobody cloning a private diary app needs it, and it
+# would be read as a setup step for the app itself.
+#
+# What outlives a run is which secret goes where and which ticket reads it, and
+# that is docs/provisioning.md, which is tracked. The test goes with the script
+# because it runs the script: kept here it would fail on any clone that has one
+# and not the other.
+scripts/provision.sh
+tests/provisioning.test.ts
+
 # Written on every build by the emitted-client-assets plugin in vite.config.ts
 src/lib/pwa/*.generated.ts
 
