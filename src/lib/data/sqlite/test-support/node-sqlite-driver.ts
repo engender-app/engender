@@ -1,6 +1,6 @@
 /* Test-only SqliteDriver backed by node:sqlite's DatabaseSync. The real
-   drivers need a browser (SQLocal over OPFS) or an Android shell
-   (@capacitor-community/sqlite), so this is what lets the Node tier run
+   drivers need a browser (sqlite3mc over OPFS) or an Android shell (SQLCipher
+   behind a local Capacitor plugin), so this is what lets the Node tier run
    journal SQL at all - and it gives the driver seam its second adapter,
    which is what makes the seam real rather than hypothetical (ADR-0017).
 

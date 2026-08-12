@@ -1,6 +1,7 @@
-/* Forward-only migration runner (ADR-0006). Driver-agnostic: ticket 04 wires
-   SQLocal (web/OPFS) and @capacitor-community/sqlite (Android) behind
-   MigrationDb, and the pre-migration file copy behind MigrationFileOps. */
+/* Forward-only migration runner (ADR-0006). Driver-agnostic: both the web
+   driver (sqlite3mc over an OPFS SAHPool) and the Android one (SQLCipher
+   behind a local Capacitor plugin) sit behind MigrationDb, and the
+   pre-migration file copy behind MigrationFileOps. */
 
 export interface Migration {
   version: number;
