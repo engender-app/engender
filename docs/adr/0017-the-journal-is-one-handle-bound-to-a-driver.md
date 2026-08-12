@@ -133,3 +133,22 @@ before its first chunk is encrypted (ADR-0007), so packing needs every photo's
 length up front, and the alternative - reading each photo once to measure it and
 again to write it - is the cost the chunked format exists to avoid. OPFS answers it
 from file metadata without touching the bytes.
+
+## Amended after the Phase 1 architecture review: owner saves include photo changes
+
+Saving an entry or milestone is one journal operation, including the photo changes
+made in its editor. Callers describe additions, removals or replacement; they do not
+sequence calls to the photos area after saving the owner. The direct photo operations
+remain available for seeding, focused tests and work that is genuinely about one
+photo rather than an owner edit.
+
+The journal validates ownership and the entry-content invariant before writing. New
+files land first, then one database transaction updates the owner and its photo rows.
+If either step fails, the previous visible state remains and the orphan sweep can
+reclaim any new loose files. Old files are removed after commit. A cleanup failure
+does not turn a committed save into a reported failure; the orphan sweep finishes it
+on a later boot.
+
+A milestone save that removes or replaces a photo removes every existing photo row
+for that milestone before attaching at most one replacement. This repairs the
+one-photo domain invariant if an older or direct caller created duplicate rows.
