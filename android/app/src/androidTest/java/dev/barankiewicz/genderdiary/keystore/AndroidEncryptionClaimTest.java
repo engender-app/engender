@@ -40,8 +40,9 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <p>The reading is why this is a Java test rather than another WebView
  * probe. What has to be scanned is the app's own private directory - the
- * SQLCipher database, its side files, ADR-0006's copy, and the WebView's own
- * storage where the photo files sit - and a WebView cannot see any of that.
+ * SQLCipher database, its side files, ADR-0006's copy, and app-private photo
+ * files written through the Photos plugin - and a WebView cannot see any of
+ * that.
  * So {@code tests/android-tier/encryption/encryption-probe.ts} seeds and
  * closes, and this walks the directory afterwards.
  *
