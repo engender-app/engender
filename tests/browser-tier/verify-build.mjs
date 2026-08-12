@@ -9,26 +9,42 @@
    persona and the demo bar have to be absent from a production build, and
    the only way to know is to look at what was written, not at the source
    that was supposed to guard them. Run with `npm run verify:build` after
-   `npm run build`. */
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+   `npm run build`.
+
+   The second half installs the app for real (phase 2 ticket 03): manifest,
+   service worker and precached shell, then kills the network and starts the
+   app again. That is the check no test against a dev server can make -
+   neither the worker nor the manifest exists until something is built. */
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, relative } from 'node:path';
 import { preview } from 'vite';
-import { createReporter, launchChromium } from '../browser-harness.mjs';
+import { createReporter, launchChromium, launchPersistentChromium } from '../browser-harness.mjs';
+
+/** Every file under `path`, recursively. */
+function walk(path, files = []) {
+  for (const entry of readdirSync(path, { withFileTypes: true })) {
+    const full = join(path, entry.name);
+    if (entry.isDirectory()) walk(full, files);
+    else files.push(full);
+  }
+  return files;
+}
 
 /** Everything the build emitted, JavaScript and CSS both - the demo bar's
     styling used to sit in a shared stylesheet, where dropping the component
     would still have left its rules behind. */
 function emittedAssets() {
-  const files = [];
-  const walk = (path) => {
-    for (const entry of readdirSync(path, { withFileTypes: true })) {
-      const full = join(path, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith('.js') || entry.name.endsWith('.css')) files.push(full);
-    }
-  };
-  walk('build/_app/immutable');
-  return files.map((f) => readFileSync(f, 'utf8')).join('\n');
+  return walk('build/_app/immutable')
+    .filter((file) => file.endsWith('.js') || file.endsWith('.css'))
+    .map((file) => readFileSync(file, 'utf8'))
+    .join('\n');
+}
+
+/** Every file the release directory holds, as the paths it serves them at. */
+function releasePaths() {
+  return walk('build').map((file) => `/${relative('build', file)}`);
 }
 
 const server = await preview({ preview: { port: 0 } });
@@ -97,7 +113,176 @@ try {
 }
 
 await browser.close();
-await server.close();
+
+/* --- Phase 2 ticket 03: install the app, kill the network, start it again -
+
+   A profile directory rather than the throwaway context above, for two
+   reasons: Chromium answers every installability question about an incognito
+   profile with `in-incognito` and looks no further, and a restart that the
+   browser remembers nothing about would not be much of a restart. */
+const profile = await mkdtemp(join(tmpdir(), 'gender-diary-install-'));
+let installed;
+let serving = true;
+const closeServer = async () => {
+  if (serving) (serving = false), await server.close();
+};
+try {
+  installed = await launchPersistentChromium(profile);
+  const cold = installed.pages()[0] ?? (await installed.newPage());
+  await cold.goto(origin, { waitUntil: 'networkidle' });
+  await cold.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+
+  /* A production build has no persona in it, so a cold start is the first-run
+     gate. Walking it is what puts a journal on the device, and the quick log
+     after it is the entry the offline start has to read back. Five steps then
+     finish, the same six screens walkthrough.test.mjs flow 13 walks. */
+  for (let i = 0; i < 5; i++) await cold.locator('[data-next]').click();
+  await cold.locator('[data-finish]').click();
+  await cold.waitForSelector('.home-hello');
+  await cold.locator('.quicklog .mood-btn[data-mood="4"]').click();
+  await cold.waitForSelector('.entry-card');
+
+  const cdp = await installed.newCDPSession(cold);
+  const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors');
+  if (installabilityErrors.length === 0) ok('Chromium finds the built app installable: manifest, icons and worker all satisfy it');
+  else fail('Chromium finds the built app installable', JSON.stringify(installabilityErrors));
+
+  // Precaching is what the install step waits on, so a worker that reached
+  // 'activated' is a shell that is either complete or absent.
+  await cold.waitForFunction(
+    async () => (await navigator.serviceWorker.getRegistration())?.active?.state === 'activated',
+    null,
+    { timeout: 30000 }
+  );
+  const shell = await cold.evaluate(async () => {
+    const names = await caches.keys();
+    const cache = await caches.open(names[0]);
+    return { names, paths: (await cache.keys()).map((request) => new URL(request.url).pathname) };
+  });
+
+  if (shell.names.length === 1 && shell.names[0].startsWith('gender-diary-shell-'))
+    ok(`the shell is one cache per release (${shell.names[0]})`);
+  else fail('the shell is one cache per release', JSON.stringify(shell.names));
+
+  /* The whole release, file by file, against what is actually in the cache.
+     Three files are deliberately outside the shell: the fallback document,
+     which is cached under / because that is what a navigation asks for; the
+     version file, which has to stay live to be an update signal at all; and
+     the worker itself, which the browser fetches and stores on its own. */
+  const outsideShell = new Set(['/index.html', '/_app/version.json', '/service-worker.js']);
+  const release = releasePaths().filter((path) => !outsideShell.has(path));
+  const missing = release.filter((path) => !shell.paths.includes(path));
+  if (missing.length === 0 && shell.paths.includes('/'))
+    ok(`the precached shell holds the fallback document and all ${release.length} other files of the release`);
+  else
+    fail(
+      'the precached shell holds the fallback document and every other file of the release',
+      missing.length ? `missing ${missing.slice(0, 8).join(', ')}` : 'the fallback document is not cached under /'
+    );
+
+  /* Named separately from the count above, which both sides of a mistake can
+     satisfy at once: fonts dropped from static/ would leave the release and
+     the cache agreeing with each other and nothing to load offline. */
+  const kinds = {
+    "SQLocal's worker": shell.paths.some((path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.js')),
+    'the SQLite WASM the worker loads': shell.paths.some(
+      (path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.wasm')
+    ),
+    'all four bundled woff2 faces': shell.paths.filter((path) => path.endsWith('.woff2')).length === 4,
+    'the manifest and its icons': shell.paths.includes('/manifest.webmanifest') && shell.paths.filter((path) => path.startsWith('/icons/')).length === 2
+  };
+  const absent = Object.keys(kinds).filter((kind) => !kinds[kind]);
+  if (absent.length === 0) ok('the shell names what an offline boot reaches for first: worker, WASM, fonts, manifest, icons');
+  else fail('the shell names what an offline boot reaches for first', `no ${absent.join(', no ')}`);
+
+  /* The animation assets, which are the one part of the shell there is
+     nothing to check yet: static/rive/ does not exist, and RiveSlot.svelte
+     renders its CSS fallback until a .riv lands in there. The trap waiting
+     for whoever lands the first one is that @rive-app/canvas fetches its
+     runtime WASM from unpkg, falling back to jsdelivr, so an animation that
+     plays online would be a request off the origin and a blank canvas
+     offline. Hence a check that stays quiet until an asset exists and then
+     insists the runtime is local too. */
+  const animations = existsSync('static/rive') ? walk('static/rive').map((file) => `/${relative('static', file)}`) : [];
+  if (animations.length === 0) {
+    console.log('SKIP  the shell holds the local animation assets and a local Rive runtime: static/rive/ is empty');
+  } else {
+    const missingAnimations = animations.filter((path) => !shell.paths.includes(path));
+    const localRuntime = shell.paths.some((path) => /\/rive[^/]*\.wasm$/.test(path));
+    if (missingAnimations.length === 0 && localRuntime)
+      ok('the shell holds the local animation assets and a local Rive runtime');
+    else
+      fail(
+        'the shell holds the local animation assets and a local Rive runtime',
+        missingAnimations.length
+          ? `missing ${missingAnimations.join(', ')}`
+          : "no Rive WASM in the shell - RuntimeLoader still points at the CDN, so set it to a bundled copy and turn the fallback off"
+      );
+  }
+
+  /* The restart, with the origin gone rather than merely unreachable: a new
+     browser process against the same profile, the preview server closed
+     behind it, and the context offline so nothing else can answer either.
+     Nothing below this line can be served by anything but the cache. */
+  await installed.close();
+  await closeServer();
+  installed = await launchPersistentChromium(profile, { offline: true });
+
+  const restarted = installed.pages()[0] ?? (await installed.newPage());
+  const offlineRequests = [];
+  restarted.on('request', (request) => offlineRequests.push(request.url()));
+  await restarted.goto(origin);
+  await restarted.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+  await restarted.waitForSelector('.entry-card');
+
+  const entries = await restarted.locator('.entry-card').count();
+  const home = await restarted.locator('.home-hello').count();
+  if (home === 1 && entries >= 1)
+    ok(`with the network off the app opens the Journal and reads what is in it (${entries} entry card)`);
+  else fail('with the network off the app opens the Journal and reads existing entries', `home: ${home}, entries: ${entries}`);
+
+  /* Which the worker did, rather than an HTTP cache that happened to still
+     hold everything: workerStart is only set on a navigation a service
+     worker answered. */
+  const answeredByWorker = await restarted.evaluate(
+    () => navigator.serviceWorker.controller !== null && performance.getEntriesByType('navigation')[0].workerStart > 0
+  );
+  if (answeredByWorker) ok('the offline document came from the service worker, not from a browser cache');
+  else fail('the offline document came from the service worker', 'no worker controlled the page or answered the navigation');
+
+  /* A deep path, started cold and offline. The worker answers every
+     navigation with the one document it precached, so the URLs inside that
+     document have to mean the same thing at every depth - which is what
+     paths.relative: false in svelte.config.js is for. With SvelteKit's
+     default this passes at / and asks /entry/new/ for the app's entry
+     chunk here. */
+  const deep = await installed.newPage();
+  deep.on('request', (request) => offlineRequests.push(request.url()));
+  await deep.goto(`${origin}/entry/new/today`);
+  const deepBooted = await deep
+    .waitForSelector('.app[data-boot="ready"]', { timeout: 30000 })
+    .then(() => true)
+    .catch(() => false);
+  if (deepBooted && (await deep.locator('#ed-note').count()) === 1)
+    ok('an offline start on a nested route opens that screen, not a shell missing its chunks');
+  else
+    fail(
+      'an offline start on a nested route opens that screen',
+      deepBooted ? 'the entry editor did not render' : 'the app never booted - check the asset URLs in the cached document'
+    );
+
+  const offOrigin = offlineRequests.filter((url) => new URL(url).origin !== origin);
+  if (offOrigin.length === 0 && offlineRequests.length > 0)
+    ok(`offline startup made ${offlineRequests.length} requests and not one of them off its own origin`);
+  else fail('offline startup makes no request to another origin', offOrigin.join(', ') || 'no requests were seen at all');
+} catch (e) {
+  fail('install and offline start', e.message ?? String(e));
+} finally {
+  await installed?.close();
+  await rm(profile, { recursive: true, force: true });
+  // A no-op unless the section threw before it got that far itself.
+  await closeServer();
+}
 
 const failures = finish('BUILD VERIFICATION PASSES');
 process.exit(failures ? 1 : 0);

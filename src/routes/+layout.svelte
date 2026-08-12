@@ -13,6 +13,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, startBoot } from '$lib/stores/boot.svelte';
+  import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LockScreen from '$lib/components/LockScreen.svelte';
@@ -40,6 +41,13 @@
      shows the journal for as long as the redirect takes. */
   let locked = $derived(isLocked());
   $effect(() => watchLock());
+
+  /* A side effect with nothing above it to order against, unlike startBoot():
+     the registration is not awaited and the worker precaches the shell in the
+     background, whenever it gets there. */
+  $effect(() => {
+    registerServiceWorker();
+  });
 
   let path = $derived(page.url.pathname);
   let chromeless = $derived(locked || path.startsWith('/onboarding') || path === '/settings/lock');

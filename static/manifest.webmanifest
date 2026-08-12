@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "Gender Diary",
+  "short_name": "Gender Diary",
+  "description": "Track your transition day by day. The journal stays on this device: no account, no server.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F4F8FB",
+  "theme_color": "#F4F8FB",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [{ "name": "New entry", "short_name": "New entry", "url": "/entry/new/today" }]
+}

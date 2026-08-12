@@ -30,6 +30,9 @@
       }
     </script>
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+    <!-- Production hosting has to map the .webmanifest extension to
+         application/manifest+json; nginx's default mime.types does not. -->
+    <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
     <link rel="preload" href="%sveltekit.assets%/fonts/nunito-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="%sveltekit.assets%/fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin />
     %sveltekit.head%
