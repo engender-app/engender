@@ -50,7 +50,9 @@ jobs:
       - name: Read the version from the signed tag, once
         id: version
         run: |
-          version="$(node scripts/app-version.mjs)"
+          # --release refuses a development version here, at the step that reads
+          # the tag, rather than letting an unsigned tag get further in.
+          version="$(node scripts/app-version.mjs --release)"
           echo "Releasing $version"
           echo "value=$version" >> "$GITHUB_OUTPUT"
           # Every later step, and every artifact, is handed this same string.

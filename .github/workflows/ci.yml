@@ -36,6 +36,14 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Deep, with the tags, because release.yml calls this workflow against
+          # a tag and a shallow checkout has none: app-version.mjs would resolve
+          # a development version, svelte.config.js would leave the build id on
+          # the clock, and these jobs would be verifying a build shaped
+          # differently from the one that gets published.
+          fetch-depth: 0
+          fetch-tags: true
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -44,10 +52,11 @@ jobs:
       # whatever the registry offers today.
       - run: npm ci
 
-      # First, because two things the checks read are written by a build and
-      # are not committed: paraglide's generated message runtime, and the list
-      # of emitted client assets the service worker precaches. It is the
-      # production build check in its own right as well.
+      # First, because svelte-check cannot resolve two imports until a build
+      # writes them: paraglide's generated message runtime, and the list of
+      # emitted client assets the service worker precaches. Neither is
+      # committed. It is where a malformed catalogue fails, and the production
+      # build check in its own right.
       - name: Production build
         run: npm run build
       - name: Svelte and TypeScript
@@ -58,6 +67,10 @@ jobs:
         run: npm run check:copy
       - name: Dependency licences
         run: npm run check:licences
+      # The other half of the dependency policy the spec asks of CI - no
+      # Firebase, Play Services, analytics or proprietary runtime SDK in the
+      # Android graph - lands with the Android project, in ticket 18. There is
+      # nothing to check here until one exists.
 
   browser:
     name: Browser tier, walkthroughs and the built app
@@ -65,6 +78,14 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Deep, with the tags, because release.yml calls this workflow against
+          # a tag and a shallow checkout has none: app-version.mjs would resolve
+          # a development version, svelte.config.js would leave the build id on
+          # the clock, and these jobs would be verifying a build shaped
+          # differently from the one that gets published.
+          fetch-depth: 0
+          fetch-tags: true
       - uses: actions/setup-node@v4
         with:
           node-version: 24

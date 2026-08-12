@@ -93,4 +93,19 @@ export function appVersion() {
   return resolveAppVersion(process.env, readGitFacts());
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) console.log(appVersion());
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const version = appVersion();
+  /* `--release` is the release pipeline asking, and it wants to be told no
+     (ticket 06). Without it a tag that was never signed, or a tag on an edited
+     tree, would be answered with a development version and only fail several
+     steps later, inside the protected release environment, with a message
+     about something else. */
+  if (process.argv.includes('--release') && !isReleaseVersion(version)) {
+    console.error(
+      `${version} is not a release. That needs a signed v<semver> tag on a tree ` +
+        'with no edits and no untracked files, or GENDER_DIARY_VERSION set deliberately (ADR-0022).'
+    );
+    process.exit(1);
+  }
+  console.log(version);
+}

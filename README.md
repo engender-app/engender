@@ -99,7 +99,16 @@ Both refuse a development version, so a dry run of the whole path means handing
 one over deliberately: `GENDER_DIARY_VERSION=1.2.3 node scripts/package-release.mjs`.
 Packaging builds twice and stops unless both bundles have the same digest,
 because a checksum over a bundle nobody can rebuild only says the download
-arrived intact. Every release section in `CHANGELOG.md` has to answer four
+arrived intact. Anyone else can repeat that from the published source archive,
+which has no tags to read, so the version has to be handed over:
+
+```
+tar xzf gender-diary-src-1.2.3.tar.gz && cd gender-diary-1.2.3
+npm ci && GENDER_DIARY_VERSION=1.2.3 npm run build
+tar --create --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0 \
+    --format=gnu --directory=build . | gzip --no-name --best | sha256sum
+```
+ Every release section in `CHANGELOG.md` has to answer four
 questions - schema changes, Archive format changes, security migrations,
 minimum supported version - and the pipeline stops before it builds anything if
 one of them is blank. Everything left in `dist/release/` is checksummed and
