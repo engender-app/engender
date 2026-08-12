@@ -183,19 +183,22 @@ try {
   if (installabilityErrors.length === 0) ok('Chromium finds the built app installable: manifest, icons and worker all satisfy it');
   else fail('Chromium finds the built app installable', JSON.stringify(installabilityErrors));
 
-  /* The same question with disguise on (ticket 25). Asked on its own page, so
-     the journal `cold` has open is left alone, and asked of the browser rather
-     than of the file: what matters is not that the document points somewhere
-     neutral but that Chromium resolves it, accepts it and would put "Notes"
-     on the device. A disguise that quietly makes the app uninstallable would
-     fail exactly the person it is for. */
+  /* The same question with disguise on (ticket 25). Flipped through the real
+     Settings control, then waited on the boot mirror the head script reads,
+     so SQLite and localStorage agree before a fresh page asks Chromium what
+     it would install. That keeps this from passing only because the profile
+     happens to be sitting at the passphrase gate and boot never got as far as
+     opening preferences again. */
+  await cold.locator('a[href="/settings"]:visible').first().click();
+  await cold.getByRole('button', { name: /Disguise/i }).click();
+  await cold.getByRole('switch', { name: 'Disguise app' }).click();
+  await cold.waitForFunction(() => {
+    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    return boot.disguise === true;
+  });
+
   const disguisedPage = await installed.newPage();
   await disguisedPage.goto(origin, { waitUntil: 'networkidle' });
-  await disguisedPage.evaluate(() => {
-    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
-    localStorage.setItem('gender-diary-boot-prefs', JSON.stringify({ ...boot, disguise: true }));
-  });
-  await disguisedPage.reload({ waitUntil: 'networkidle' });
   const disguisedCdp = await installed.newCDPSession(disguisedPage);
   const resolved = await disguisedCdp.send('Page.getAppManifest');
   const { installabilityErrors: disguisedErrors } = await disguisedCdp.send('Page.getInstallabilityErrors');
@@ -211,12 +214,15 @@ try {
       'a disguised install is installable too, and Chromium reads it as "Notes"',
       JSON.stringify({ url: resolved.url, name: identity.name, errors: disguisedErrors })
     );
-  /* Back to the app's own identity before anything else reloads this origin:
-     the mirror is shared by every page in the profile. */
-  await disguisedPage.evaluate(() => {
+  /* Back to the app's own identity before anything else reloads this origin,
+     again through the real preference path rather than by poking only the
+     mirror the head script reads. */
+  await cold.getByRole('switch', { name: 'Disguise app' }).click();
+  await cold.waitForFunction(() => {
     const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
-    localStorage.setItem('gender-diary-boot-prefs', JSON.stringify({ ...boot, disguise: false }));
+    return boot.disguise === false;
   });
+  await cold.keyboard.press('Escape');
   await disguisedPage.close();
 
   // Precaching is what the install step waits on, so a worker that reached
