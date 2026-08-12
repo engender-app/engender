@@ -15,12 +15,8 @@ import { fakeFileStore } from '../../src/lib/data/photos/test-support/fake-file-
 import { migratedDb } from '../../src/lib/data/sqlite/test-support/migrated-db.ts';
 import { generateLongJournal } from './generate.ts';
 import { measureLongJournal, type Measurement } from './measure.ts';
-import { budgets, breaches } from './budgets.mjs';
-
-const bytePatternPhoto = async (n: number) => ({
-  full: new Uint8Array(64 + (n % 8)).fill(n % 251),
-  thumb: new Uint8Array(16).fill(n % 251)
-});
+import { budgets, breaches, overTarget } from './budgets.mjs';
+import { bytePatternPhoto } from './test-support.ts';
 
 async function measureSmallJournal(sampleHeap = async () => null as number | null): Promise<Measurement[]> {
   // The same file store the journal was opened with, which is what the
@@ -89,6 +85,16 @@ test('a measurement over budget is reported, and one under it is not', () => {
 test('a measurement with no budget entry is a breach, not a pass', () => {
   const stray = { name: 'not-budgeted', what: 'x', ms: 1, heapBytes: null, detail: 'x' };
   expect(breaches([stray])).toHaveLength(1);
+});
+
+test('a baseline past its target is reported, and one under it is not', () => {
+  const table = {
+    slow: { what: 'x', baselineMs: 900, budgetMs: 4500, targetMs: 250, heapBaselineBytes: null, heapBudgetBytes: null },
+    quick: { what: 'x', baselineMs: 9, budgetMs: 200, targetMs: 250, heapBaselineBytes: null, heapBudgetBytes: null }
+  };
+
+  expect(overTarget(table)).toHaveLength(1);
+  expect(overTarget(table)[0]).toContain('slow');
 });
 
 test('a heap budget is honoured where one is set, and web sets none', () => {

@@ -22,7 +22,7 @@ import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-store.ts';
 import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
-import { generateLongJournal, TEN_YEARS } from './generate.ts';
+import { generateLongJournal, TEN_YEARS_IN_DAYS } from './generate.ts';
 import { measureLongJournal } from './measure.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 
@@ -120,7 +120,7 @@ async function run() {
   await journal.reconcileBuiltIns();
 
   const startedAt = performance.now();
-  const summary = await generateLongJournal(journal, { days: TEN_YEARS, makePhoto: photoMaker() });
+  const summary = await generateLongJournal(journal, { days: TEN_YEARS_IN_DAYS, makePhoto: photoMaker() });
   const generatedInMs = Math.round(performance.now() - startedAt);
 
   // On raw OPFS rather than through the encrypting store: what the fixture

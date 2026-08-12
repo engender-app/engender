@@ -12,16 +12,8 @@
 import { expect, test } from 'vitest';
 import { journalWithBuiltIns } from '../../src/lib/data/journal/test-support.ts';
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
-import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
-import { generateLongJournal, TEN_YEARS, type LongJournalSummary } from './generate.ts';
-
-/** Photo bytes without a canvas: the Node tier has none, and what these
-    tests care about is that the rows and files land, not what they depict.
-    Length varies with `n` so a photo is distinguishable from its neighbour. */
-const bytePatternPhoto = async (n: number): Promise<NormalizedPhoto> => ({
-  full: new Uint8Array(64 + (n % 8)).fill(n % 251),
-  thumb: new Uint8Array(16).fill(n % 251)
-});
+import { generateLongJournal, type LongJournalSummary } from './generate.ts';
+import { bytePatternPhoto } from './test-support.ts';
 
 /** Everything a run wrote, in a form two runs can be compared by.
 
@@ -125,10 +117,17 @@ test('the search words are what the summary says they are', async () => {
   expect(summary.rareWordEntries).toBeGreaterThan(0);
 });
 
-test('ten years is the default span', async () => {
-  // Cheap: the constant is what the browser tier runs with, and getting it
-  // wrong there costs a two-minute run to find out.
-  expect(TEN_YEARS).toBe(3653);
+test('the tag word is a tag label, carried by entries, and in no note', async () => {
+  const { journal, summary } = await generate({ seed: 3, days: 400 });
+
+  const tags = (await journal.tags.getTagGroups()).flatMap((g) => g.tags);
+  const match = tags.find((t) => t.label === summary.tagWord);
+  expect(match, 'the tag word has to name a tag or the union branch is never taken').toBeDefined();
+
+  expect(await journal.entries.entriesWithTag(match!.id, 10_000)).toHaveLength(summary.tagWordEntries);
+  expect(summary.tagWordEntries).toBeGreaterThan(0);
+  // In no note, or the measurement would not tell the two branches apart.
+  expect(await journal.entries.countSearchMatches(summary.tagWord, [])).toBe(0);
 });
 
 test('every dimension the stats screen charts carries values', async () => {
@@ -155,7 +154,9 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'milestones',
       'photos',
       'rareWord',
-      'rareWordEntries'
+      'rareWordEntries',
+      'tagWord',
+      'tagWordEntries'
     ].sort()
   );
 });

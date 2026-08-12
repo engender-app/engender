@@ -125,10 +125,12 @@ jobs:
   benchmark:
     name: Ten-year Journal, against the regression budget
     runs-on: ubuntu-latest
-    # Generating a decade of Journal and measuring it takes minutes, which is
-    # why it is a job of its own rather than another step in the browser one:
-    # nobody should pay that to find out whether FTS5 still folds ł.
-    timeout-minutes: 30
+    # Its own job rather than another step in the browser one. The run takes
+    # 44 seconds and leaves 340MB in the origin's storage, and it gates on
+    # timing rather than on correctness - so a wobble here should not turn
+    # the correctness suite red, and its log should be retrievable on its
+    # own. Running concurrently, it costs nothing in wall clock.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -144,10 +146,10 @@ jobs:
 
       # The fixture is generated from a seed, holds no real Journal and its
       # data key is the fixed probe one, so the log is safe to keep. What it
-      # fails on is a measurement over budgets.json, which is set well above
-      # the recorded baseline: a runner is noisier than the desktop those
-      # numbers came off, and the gate is here to catch work that grew with
-      # the journal rather than a slow afternoon.
+      # fails on is a measurement over budgets.json, set at five times the
+      # recorded baseline: those numbers came off a quiet desktop and this
+      # runner is slower by an unknown factor, so the gate is sized to catch
+      # work that grew with the journal rather than a slow afternoon.
       - name: Long-Journal benchmark
         run: |
           mkdir -p ci-logs

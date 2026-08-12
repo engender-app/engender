@@ -19,14 +19,16 @@
    Photo bytes arrive from the caller. A representative photo is a real
    JPEG at the sizes ADR-0008 normalizes to, which needs a canvas the Node
    tier has not got, and the byte size is most of what the photo grid and
-   the archive export are measuring - so the platform that has the canvas
+   the Archive export are measuring - so the platform that has the canvas
    supplies it. */
 
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 
-/** Days in ten years, two of them leap. */
-export const TEN_YEARS = 3653;
+/** Days in ten years, two of them leap. The unit is in the name because the
+    option it is passed to takes days, and `{ days: TEN_YEARS }` read as
+    though it meant ten of them. */
+export const TEN_YEARS_IN_DAYS = 3653;
 
 /** The last day the generated journal holds: 2026-08-11, fixed rather than
     today, so the fixture is the same one next month and next year. */
@@ -56,6 +58,14 @@ export interface LongJournalSummary {
   commonWordEntries: number;
   rareWord: string;
   rareWordEntries: number;
+  /** A word that is a tag's label rather than note text. The search screen
+      always hands `searchEntries` the ids of tags whose label matches what
+      was typed, and a non-empty list unions a second query over `entry_tag`
+      onto the FTS clause - a different plan from the one a note-only word
+      takes. A custom tag, because a built-in stores a key and its wording
+      comes from the message catalogue above this seam (ADR-0016). */
+  tagWord: string;
+  tagWordEntries: number;
 }
 
 /* Deterministic and cheap. Not a cryptographic generator and does not need
@@ -139,6 +149,19 @@ const TAG_KEYS = [
   'a-selfcare'
 ];
 
+/* Custom tags as well as built-in ones. A ten-year journal has vocabulary
+   the app never shipped, and a custom tag joins on its uuid where a built-in
+   joins on its key - the same COALESCE either way, but the measurement
+   should be reading a real mix rather than a tidy one. The first label is
+   also the one a search measurement types, so it has to be a word no note
+   in WORDS contains. */
+const CUSTOM_TAG_LABELS = [
+  { group: 'activities', label: 'basen' },
+  { group: 'activities', label: 'lekarz' },
+  { group: 'emotions', label: 'duma' },
+  { group: 'gender', label: 'passing' }
+];
+
 const DIMENSION_KEYS = [
   'euphoria_dysphoria',
   'femininity',
@@ -158,7 +181,7 @@ const ANALYTES = [
 ];
 
 const MILESTONE_NAMES = [
-  'Pierwsza wizyta u sexuologa',
+  'Pierwsza wizyta u seksuologa',
   'Coming out - siostra',
   'Coming out - rodzice',
   'Start HRT',
@@ -180,7 +203,7 @@ export async function generateLongJournal(
   journal: Journal,
   options: LongJournalOptions
 ): Promise<LongJournalSummary> {
-  const { seed = 1, days = TEN_YEARS, lastEpochDay = LAST_EPOCH_DAY, makePhoto } = options;
+  const { seed = 1, days = TEN_YEARS_IN_DAYS, lastEpochDay = LAST_EPOCH_DAY, makePhoto } = options;
   const random = mulberry32(seed);
   const firstEpochDay = lastEpochDay - days + 1;
 
@@ -198,20 +221,16 @@ export async function generateLongJournal(
     commonWord: COMMON_WORD,
     commonWordEntries: 0,
     rareWord: RARE_WORD,
-    rareWordEntries: 0
+    rareWordEntries: 0,
+    tagWord: CUSTOM_TAG_LABELS[0].label,
+    tagWordEntries: 0
   };
 
-  /* Custom tags as well as built-in ones. A ten-year journal has vocabulary
-     the app never shipped, and a custom tag joins on its uuid where a
-     built-in joins on its key - the same COALESCE either way, but the
-     measurement should be reading a real mix rather than a tidy one. */
-  const customTags = await Promise.all([
-    journal.tags.addTag('activities', 'basen'),
-    journal.tags.addTag('activities', 'lekarz'),
-    journal.tags.addTag('emotions', 'duma'),
-    journal.tags.addTag('gender', 'passing')
-  ]);
+  const customTags = await Promise.all(
+    CUSTOM_TAG_LABELS.map(({ group, label }) => journal.tags.addTag(group, label))
+  );
   const tagIds = [...TAG_KEYS, ...customTags.map((t) => t.id)];
+  const tagWordId = customTags[0].id;
 
   for (let day = firstEpochDay; day <= lastEpochDay; day++) {
     const roll = random();
@@ -235,6 +254,7 @@ export async function generateLongJournal(
         const id = pick(tagIds);
         if (!tags.includes(id)) tags.push(id);
       }
+      if (tags.includes(tagWordId)) summary.tagWordEntries++;
 
       /* An entry has to carry at least one of mood, dimensions, tags, note
          or a photo or it does not exist (CONTEXT: Entry). A quarter carry
@@ -248,8 +268,12 @@ export async function generateLongJournal(
 
       await journal.entries.upsertEntry({
         epochDay: day,
-        // From the day and the entry's place in it, never from a clock:
-        // 08:40, 13:10, 17:40 local, as milliseconds.
+        /* From the day and the entry's place in it, never from a clock.
+           Increasing within a day and across days, which is all the journal
+           asks of it: a timestamp orders several entries on one epoch day
+           and is never the source of which day an entry belongs to
+           (CONTEXT: Timestamp). Not a wall-clock moment, and not claimed as
+           one - epoch day is local (ADR-0001) and this arithmetic is not. */
         timestamp: (day * 24 + 8 + i * 4.5) * 3_600_000 + 40 * 60_000,
         mood,
         note,
@@ -295,7 +319,9 @@ function makeNote(
   pick: <T>(from: readonly T[]) => T,
   between: (low: number, high: number) => number
 ): string {
-  // A tenth of entries are a mood and nothing else - the quick log.
+  // A tenth of entries carry no note at all. Not necessarily a quick log,
+  // which is mood-only (CONTEXT): this one may still carry dimensions and
+  // tags. What it is here for is that a note is not what makes an entry.
   if (random() < 0.1) return '';
 
   const words: string[] = [];

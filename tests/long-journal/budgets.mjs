@@ -4,12 +4,19 @@
 
      baselineMs           what the ten-year run actually measured, on the
                           machine and browser named in budgets.json.
-     budgetMs             what CI fails on. Set well above the baseline on
-                          purpose: a shared runner is not a quiet laptop,
-                          and a gate that trips on a 20 percent wobble gets
-                          disabled within a week. This one is here to catch
-                          a pagination-shaped regression - work that grew
-                          with the journal - not noise.
+     budgetMs             what CI fails on: five times the baseline, with a
+                          200ms floor. Set that far above the baseline
+                          because the baseline came off a quiet desktop and
+                          the gate runs on a shared ubuntu-latest runner,
+                          which is the slower machine by an unknown factor.
+                          A gate that trips on that difference gets disabled
+                          within a week. This one is here to catch a
+                          pagination-shaped regression - work that grew with
+                          the journal, which arrives as a multiple rather
+                          than a percentage - not noise. If CI turns out to
+                          be quieter than feared, re-record from a CI run
+                          and tighten it; widening it further is not the
+                          answer.
      targetMs             what a person waiting for that screen can stand.
                           Nothing to do with the baseline. A measurement
                           whose baseline is over its target is a release
@@ -87,13 +94,14 @@ export function breaches(measurements, table = budgets.measurements) {
  * Measurements whose baseline is already past what a person can wait for.
  * Each one is an optimization ticket, not something to fix here.
  *
+ * @param {Record<string, Budget>} [table] as `breaches`.
  * @returns {string[]}
  */
-export function overTarget() {
-  return Object.entries(budgets.measurements)
+export function overTarget(table = budgets.measurements) {
+  return Object.entries(table)
     .filter(([, b]) => b.baselineMs > b.targetMs)
     .map(([name, b]) => `${name}: baseline ${b.baselineMs}ms against a target of ${b.targetMs}ms`);
 }
 
 /** @param {number} bytes */
-const mb = (bytes) => `${(bytes / 1_048_576).toFixed(1)}MB`;
+export const mb = (bytes) => `${(bytes / 1_048_576).toFixed(1)}MB`;
