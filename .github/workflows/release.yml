@@ -1,0 +1,91 @@
+# A signed version tag becomes a GitHub Release (phase 2 ticket 06).
+#
+# The tag is the only thing that names the release: this workflow reads it once
+# through scripts/app-version.mjs and hands the same string to the notes, the
+# bundle and - once ticket 18 lands - the Android artifacts, through
+# GENDER_DIARY_VERSION (ADR-0022). Nothing here re-derives a version.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # The same checks a pull request runs, against the tagged commit. A release
+  # nobody verified is worse than a late release.
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Package and publish
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The protected environment. Ticket 18's signing credentials belong here,
+    # and this is the only job that will ever be able to read them.
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The tag object itself, not just the commit: app-version.mjs asks
+          # whether the tag carries a signature, and a shallow checkout has no
+          # tag to ask about.
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Read the version from the signed tag, once
+        id: version
+        run: |
+          # --release refuses a development version here, at the step that reads
+          # the tag, rather than letting an unsigned tag get further in.
+          version="$(node scripts/app-version.mjs --release)"
+          echo "Releasing $version"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+          # Every later step, and every artifact, is handed this same string.
+          echo "GENDER_DIARY_VERSION=$version" >> "$GITHUB_ENV"
+
+      # Before anything is built, so a tag cut without notes fails while
+      # nothing has been published.
+      - name: Release notes
+        run: |
+          mkdir -p dist
+          node scripts/release-notes.mjs > dist/release-notes.md
+          cat dist/release-notes.md
+
+      - name: Build, package, and check what came out
+        run: node scripts/package-release.mjs
+
+      # Android artifacts (ticket 18) join the release here: a job holding the
+      # signing key builds the APK and the App Bundle in this same protected
+      # environment, and puts them in dist/release/ before the step above runs.
+      # The checksums cover everything in that directory and the publish step
+      # attaches all of it, so neither needs changing for them.
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            cat dist/release-notes.md
+            printf '\n## Checksums\n\n```\n'
+            cat dist/release/SHA256SUMS
+            printf '```\n'
+          } > dist/release-body.md
+          gh release create "${{ github.ref_name }}" \
+            --title "Gender Diary ${{ steps.version.outputs.value }}" \
+            --notes-file dist/release-body.md \
+            dist/release/*
