@@ -1,0 +1,4 @@
+<!-- The disguised tab icon (F24). Deliberately dull, and the same book glyph
+     the Settings preview shows, so the tab matches what the toggle promised.
+     Fixed colours rather than palette tokens: a favicon gets no CSS. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="24" fill="#8A94A6"/><g transform="translate(14 14) scale(3)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/><path d="M20 17v5H6.5a2.5 2.5 0 0 1 0-5"/></g></svg>
