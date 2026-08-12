@@ -21,6 +21,8 @@ import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
 import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
 import { createAndroidSqlite } from '../data/sqlite/android-driver';
 import { isAndroid } from '../platform';
+import { InterruptedRestoreError, SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
+import { markJournalBusy } from '../data/journal-busy';
 import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
@@ -62,9 +64,25 @@ export const bootState = $state<{
       every later cold start. The layout renders the passphrase gate for
       those, for `converting` and for `conversion-refused`, and
       submitPassphraseSetup/-Unlock below are what move on. */
-  status: 'booting' | 'needs-setup' | 'needs-unlock' | 'converting' | 'conversion-refused' | 'ready' | 'error';
+  /** `schema-too-new` is the rollback direction of ticket 04: this build met
+      a Journal a newer one has already migrated, and refuses it rather than
+      guessing (ADR-0006). Its own status rather than an `error`, because the
+      journal is intact and the screen has something to say about what to do. */
+  status:
+    | 'booting'
+    | 'needs-setup'
+    | 'needs-unlock'
+    | 'converting'
+    | 'conversion-refused'
+    | 'ready'
+    | 'schema-too-new'
+    | 'error';
   error: string | null;
   persistDenied: boolean;
+  /** Set when a migration failed and the copy ADR-0006 took beforehand is
+      still on disk, so the failure screen can offer to put it back
+      (ticket 04). */
+  recoverable: boolean;
   /** The one journal instance the UI reads (ADR-0017), for anything that
       needs the handle itself rather than the reactive layer over it. */
   journal: Journal | null;
@@ -80,6 +98,7 @@ export const bootState = $state<{
   status: 'booting',
   error: null,
   persistDenied: false,
+  recoverable: false,
   journal: null,
   conversion: null,
   conversionRefusal: null
@@ -90,6 +109,10 @@ let started = false;
    will let go of the file. Nothing else reaches for it: screens go through
    data/live/, and bootState.journal is the handle for everything else. */
 let openDriver: SqliteDriver | null = null;
+/** Kept for the same reason, and for the restore below: putting the
+    pre-migration copy back is the one recovery a failed boot can offer, and
+    it needs the file ops of the driver that failed (ticket 04). */
+let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
 
 /** The forgotten-PIN escape hatch (ADR-0014): wipes what this device holds
@@ -108,6 +131,33 @@ export async function resetApp(): Promise<void> {
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
   location.replace('/');
+}
+
+/** Puts the pre-migration copy back as the live Journal and starts the app
+    again on it (ticket 04, ADR-0006).
+
+    Reached two ways. From the migration-failure screen, when a person decides
+    to go back: what comes back is the Journal as it was before the update that
+    could not finish, and if this build still cannot migrate it, the next boot
+    lands on the same screen with the copy still in place. The version of Gender
+    Diary the Journal came from is what opens it - the honest limit of an in-app
+    rollback, and the screen's copy says so.
+
+    And from the boot below, without asking, when a previous restore was
+    interrupted part way through. That is not a decision being made twice: it is
+    one that was already made, finishing.
+
+    Reloads rather than carrying on: the driver's connection was on the file
+    that has just been replaced (mc-driver.ts), and boot() has already run. */
+export async function restorePreviousJournal(): Promise<void> {
+  if (!openFileOps) throw new Error('there is no failed boot to recover from');
+  await openFileOps.restorePreMigrationCopy();
+  /* Closed before the reload, the way resetApp does it: the restore left the
+     database connection gone but the pool still held, and pauseVfs() is what
+     lets go of its access handles so the next boot's worker can acquire them
+     (ADR-0020's one connection per origin). */
+  await openDriver?.close();
+  location.reload();
 }
 
 /** In a demo build the passphrase machinery runs for real - keystore,
@@ -248,6 +298,11 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> 
   }
 
   bootState.status = 'converting';
+  /* The longest of the four windows an update must not land in (ticket 04):
+     a whole Journal and every photo, rewritten on a phone. The conversion
+     survives being killed and resumes, but code replaced under it mid-write
+     is not an interruption it can reason about. */
+  const converting = markJournalBusy();
   try {
     await runConversion(webConversionPorts(dataKey), (progress) => {
       bootState.conversion = { progress };
@@ -256,6 +311,8 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> 
     bootState.status = 'error';
     bootState.error = String((error as Error)?.message ?? error);
     return;
+  } finally {
+    converting();
   }
 
   bootState.conversion = null;
@@ -297,6 +354,7 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
 
   const { driver, fileOps, requestPersistentStorage } = sqlite;
   openDriver = driver;
+  openFileOps = fileOps;
 
   // Set before boot() rather than after, so the first screen to render a
   // photo already has somewhere to read it from.
@@ -324,8 +382,34 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles)
   }).then(async (result) => {
     if (result.phase === 'error') {
+      /* The rollback direction (ticket 04): older code has met a Journal a
+         newer build already migrated. Not the generic failure, because
+         nothing is wrong with the Journal and there is something to do about
+         it - the screen says which, in the person's language, rather than
+         printing the exception. */
+      if (result.error instanceof SchemaTooNewError) {
+        bootState.status = 'schema-too-new';
+        return;
+      }
+
+      /* A restore that was interrupted between unlinking the database and
+         writing the copy over it. Finished here rather than shown to anybody,
+         the way ticket 10's retirement is: the decision to restore was already
+         made, and this is the same operation reaching its end. Doing it once
+         and reloading terminates - what comes up is the copy's own schema,
+         which is not the empty database that got us here. */
+      if (result.error instanceof InterruptedRestoreError) {
+        await restorePreviousJournal();
+        return;
+      }
+
       bootState.status = 'error';
       bootState.error = String((result.error as Error)?.message ?? result.error);
+      /* Whether the failure screen can offer a way back. Asked of the disk
+         rather than assumed from the failure: a copy is there only if this
+         boot or an earlier one got as far as taking one, and a driver too
+         broken to answer is a driver that cannot restore either. */
+      bootState.recoverable = await Promise.resolve(fileOps.preMigrationCopyIsUsable()).catch(() => false);
       return;
     }
 

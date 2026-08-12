@@ -15,7 +15,8 @@
     "verify:build": "vite build && node tests/browser-tier/verify-build.mjs",
     "check:copy": "node scripts/check-copy.mjs",
     "check:licences": "node scripts/check-licences.mjs",
-    "benchmark:argon2": "node scripts/benchmark-argon2.mjs"
+    "benchmark:argon2": "node scripts/benchmark-argon2.mjs",
+    "benchmark:long-journal": "node tests/long-journal/run.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.0",

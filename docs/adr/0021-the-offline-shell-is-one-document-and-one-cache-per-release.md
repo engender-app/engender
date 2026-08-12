@@ -38,6 +38,23 @@ HTTP cache, so unchanged hashed assets are usually re-stored rather than
 re-downloaded. That is the cost of never mixing generations, and the shell is small
 enough to pay it.
 
-When a waiting worker may take over is a separate decision, made where a Journal
-write in flight can be seen (ticket 04). This worker does not claim clients or skip
-waiting.
+## Amended by ticket 04: the worker waits to be asked, and the page asks when idle
+
+The deferred question - when a waiting worker may take over - is answered now,
+and the answer keeps the worker as passive as this decision left it. It still
+never calls `skipWaiting()` on its own schedule and still never claims clients.
+What ticket 04 adds is one message: a waiting worker that is asked stops
+waiting, and nothing else ends the wait early.
+
+The asking is where the rule lives, because that is the only place a Journal
+write in flight can be seen. A page asks when nothing is running that an
+activation must not land on: an Entry save, a migration, an encryption
+conversion or an Archive import. It does not offer the action during one
+either, so there is no button to argue with, and the offer appears by itself
+when the write lands.
+
+Keeping `clients.claim()` out matters as much as the message. A page that
+loaded on the old worker keeps it until it reloads itself, so the reload after
+an activation is what moves that page to the new release, in one step it
+chose - rather than the document and the chunks it names drifting apart while
+it is still open, which is the mixing this decision exists to prevent.

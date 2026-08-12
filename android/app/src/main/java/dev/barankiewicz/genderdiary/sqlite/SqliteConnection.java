@@ -54,6 +54,9 @@ final class SqliteConnection {
 
     private SQLiteDatabase database;
     private File databaseFile;
+    /** Kept so the pre-migration copy can be opened under the same key it was
+        written with - a copy that will not open is not a recovery point. */
+    private String password = "";
 
     static void loadNativeLibrary() {
         System.loadLibrary("sqlcipher");
@@ -64,8 +67,8 @@ final class SqliteConnection {
         databaseFile = context.getDatabasePath(name);
         File parent = databaseFile.getParentFile();
         if (parent != null) parent.mkdirs();
-        database =
-            SQLiteDatabase.openOrCreateDatabase(databaseFile, rawKeyPassword(hexKey), null, null, null);
+        password = rawKeyPassword(hexKey);
+        database = SQLiteDatabase.openOrCreateDatabase(databaseFile, password, null, null, null);
     }
 
     /**
@@ -149,6 +152,57 @@ final class SqliteConnection {
         File source = requireFile();
         if (!source.exists()) return; // nothing migrated yet, nothing to copy
         Files.copy(source.toPath(), preMigrationCopy().toPath(), StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    /**
+     * Whether the copy is on disk <em>and</em> holds a journal. Both halves
+     * matter for the same reason they do on the web: a copy nobody can read
+     * is not a recovery point, and the failure screen must not offer a
+     * restore it cannot perform.
+     */
+    boolean preMigrationCopyIsUsable() {
+        if (databaseFile == null) return false;
+        File copy = preMigrationCopy();
+        if (!copy.exists() || copy.length() == 0) return false;
+        try (SQLiteDatabase check =
+                SQLiteDatabase.openDatabase(
+                    copy.getPath(), password, null, SQLiteDatabase.OPEN_READONLY, null, null);
+             Cursor cursor =
+                check.rawQuery("SELECT count(*) FROM sqlite_master WHERE type = 'table'", null)) {
+            cursor.moveToFirst();
+            return cursor.getLong(0) > 0;
+        } catch (Exception unreadable) {
+            // Wrong key, or not a database. Either way there is nothing to go back to.
+            return false;
+        }
+    }
+
+    /**
+     * Puts the copy back as the live database, after a migration that could
+     * not be finished (ticket 04, ADR-0006).
+     *
+     * <p>A file copy rather than the web tier's VACUUM INTO, because these are
+     * ordinary files rather than an opaque OPFS pool. The connection is closed
+     * first for the same reason it is there: it is holding the file about to
+     * be replaced. The copy stays afterwards - it is still the only insurance,
+     * and ADR-0006 retires it at the next clean boot.
+     */
+    void restorePreMigrationCopy() throws IOException {
+        File copy = preMigrationCopy();
+        if (!copy.exists()) throw new IOException("there is no pre-migration copy to restore");
+        if (!preMigrationCopyIsUsable()) {
+            // Checked before anything is deleted, so a copy that cannot be
+            // opened leaves the database it was going to replace on disk.
+            throw new IOException("the pre-migration copy cannot be opened; it is not a recovery point");
+        }
+
+        close();
+        File live = requireFile();
+        for (String suffix : new String[] {"-wal", "-shm", "-journal"}) {
+            File side = new File(live.getPath() + suffix);
+            if (side.exists()) side.delete();
+        }
+        Files.copy(copy.toPath(), live.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
 
     void cleanupPreMigrationCopy() {
