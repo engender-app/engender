@@ -159,12 +159,16 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       /* "Without" is per tag - each row's comparison set is every valued
          entry in the range that does not carry that tag - but it does not
          have to be read per tag. A valued entry either carries the tag or
-         does not, and `entry_tag` is keyed on (entry_id, tag_id), so the
-         two sets partition the range: the tag's own total subtracted from
-         the range's total is exactly the "without" total. That makes this
-         one pass over the range and one over the tag links, instead of the
-         correlated pair per tag that cost 3.5 seconds over a year
-         (ticket 24).
+         does not, so the two sets partition the range and the tag's own
+         total subtracted from the range's total is exactly the "without"
+         total. Two keys are what make that a partition rather than an
+         approximation: `entry_tag` is keyed on (entry_id, tag_id), so an
+         entry is counted once per tag it carries, and an entry yields at
+         most one `in_range` row either way - mood is a column on it, and
+         `entry_dimension_value` is keyed on (entry_id, dimension_id)
+         against a unique dimension key. That makes this one pass over the
+         range and one over the tag links, instead of the correlated pair
+         per tag that cost 3.5 seconds over a year (ticket 24).
 
          Summed rather than averaged, because only sums subtract. The
          `* 1.0` is what keeps the division off the integer path: mood and a
@@ -186,7 +190,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         // applies reading one back out.
         `WITH metric_value AS (${values.sql}),
               in_range AS (SELECT entry_id, value FROM metric_value WHERE epoch_day BETWEEN ? AND ?),
-              range_total AS (SELECT COUNT(*) AS n, SUM(value) AS total FROM in_range),
+              range_total AS (SELECT COUNT(*) AS entries, SUM(value) AS total FROM in_range),
               per_tag AS (
                 SELECT COALESCE(t.key, t.uuid) AS id,
                        COUNT(*) AS with_count,
@@ -195,13 +199,18 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
                 JOIN entry_tag et ON et.entry_id = in_range.entry_id
                 JOIN tag t ON t.id = et.tag_id
                 WHERE t.hidden = 0
-                GROUP BY t.id)
-         SELECT per_tag.id AS id,
+                GROUP BY t.id),
+              compared AS (
+                SELECT id, with_count, with_total,
+                       range_total.entries - with_count AS without_count,
+                       range_total.total - with_total AS without_total
+                FROM per_tag, range_total)
+         SELECT id,
                 with_count,
                 with_total * 1.0 / with_count AS with_avg,
-                (range_total.total - with_total) * 1.0 / (range_total.n - with_count) AS without_avg
-         FROM per_tag, range_total
-         WHERE with_count >= 3 AND range_total.n - with_count > 0
+                without_total * 1.0 / without_count AS without_avg
+         FROM compared
+         WHERE with_count >= 3 AND without_count > 0
          ORDER BY ABS(with_avg - without_avg) DESC, id`,
         [...values.params, fromEpochDay, toEpochDay]
       );
