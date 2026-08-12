@@ -17,10 +17,13 @@
 
 import { boot } from '../data/sqlite/boot';
 import type { SqliteDriver } from '../data/sqlite/driver';
+import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
 import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
+import { createAndroidSqlite } from '../data/sqlite/android-driver';
+import { isAndroid } from '../platform';
 import { InterruptedRestoreError, SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
 import { markJournalBusy } from '../data/journal-busy';
-import { openJournal, type Journal } from '../data/journal/journal';
+import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { hydrateReference } from '../data/live/reference.svelte';
@@ -38,6 +41,7 @@ import {
 } from '../data/conversion/conversion';
 import { opfsConversionMarker } from '../data/conversion/marker-file';
 import {
+  JOURNAL_DATABASE,
   plaintextJournalPresent,
   removePlaintextRemnants,
   webConversionPorts,
@@ -171,6 +175,16 @@ export function startBoot() {
      should do so in the person's theme and palette, not the defaults. This
      used to be step 1 inside boot(), which now runs only after the gate. */
   applyCachedBootPreferences(bootCache.read());
+
+  /* Android takes none of what follows (ticket 11). The survey below asks
+     OPFS what an earlier web install left there, and the states it can
+     return - convert, retire, unlock - are all about the web keystore and
+     the plaintext journal that predated it. A phone has neither: this is
+     the first build that runs on one. */
+  if (isAndroid()) {
+    continueBootOnAndroid();
+    return;
+  }
 
   (async () => {
     let state = describeJournalState(await surveyJournal());
@@ -306,24 +320,44 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> 
 }
 
 function continueBoot(dataKey: Uint8Array<ArrayBuffer>) {
-  bootState.status = 'booting';
-
   // The PRD asks for navigator.storage.persist() on first save, not on
   // boot - but persist() is safe to call more than once and asking here
   // covers every save path at once. Worth revisiting when the PWA ticket
   // lands, not by adding a second call.
-  const { driver, fileOps, requestPersistentStorage } = createEncryptedWebSqlite(
-    'gender-diary.sqlite3',
-    dataKey
+  openAndBoot(
+    createEncryptedWebSqlite(JOURNAL_DATABASE, dataKey),
+    // Encrypted per file under the same data key as the database (ticket
+    // 09): whole-database encryption never reaches files outside SQLite
+    // (ADR-0020).
+    encryptedFileStore(opfsPhotoFiles(), dataKey)
   );
+}
+
+/** The Android shell's boot (ticket 11). No passphrase gate and no data key:
+    the journal opens through the native driver, and what wraps its key is
+    the Android Keystore, which is ticket 13. The web tier's gate cannot
+    stand in for it - it exists to unwrap a key held beside the ciphertext in
+    OPFS, which is precisely the arrangement ADR-0018 replaces on Android.
+
+    Photos stay on the WebView's OPFS until ticket 12 moves them, and
+    unencrypted for the same reason the journal is: there is no key yet. */
+function continueBootOnAndroid() {
+  openAndBoot(createAndroidSqlite(JOURNAL_DATABASE), opfsPhotoFiles());
+}
+
+/** Everything both platforms do once they have a driver: the journal is
+    constructed over it, boot() runs its sequence, and the UI is handed the
+    result. Nothing below this point knows which platform it is on, which is
+    ADR-0017's seam doing its job. */
+function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
+  bootState.status = 'booting';
+
+  const { driver, fileOps, requestPersistentStorage } = sqlite;
   openDriver = driver;
   openFileOps = fileOps;
 
   // Set before boot() rather than after, so the first screen to render a
-  // photo already has somewhere to read it from. Encrypted per file under
-  // the same data key as the database (ticket 09): whole-database
-  // encryption never reaches files outside SQLite (ADR-0020).
-  const photoFiles = encryptedFileStore(opfsPhotoFiles(), dataKey);
+  // photo already has somewhere to read it from.
   setPhotoFiles(photoFiles);
 
   /* Attached before the migrations run, so the writes step 3 makes below -
