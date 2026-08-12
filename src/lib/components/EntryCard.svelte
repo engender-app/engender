@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/paraglide/messages';
   import Icon from './Icon.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import type { Entry } from '$lib/data/types';
@@ -25,7 +26,7 @@
         aria-label="mood: {moodName(entry.mood)}"
       ></span>
     {:else}
-      <span class="mood-dot is-empty" style="--dot:26px" title="no mood"></span>
+      <span class="mood-dot is-empty" style="--dot:26px" title={m.mood_none()}></span>
     {/if}
   </div>
   <div class="entry-main">

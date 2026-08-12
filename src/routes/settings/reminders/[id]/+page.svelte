@@ -11,19 +11,19 @@
   import Segmented from '$lib/components/Segmented.svelte';
 
   const TYPES = [
-    { value: 'med', label: 'Medication' },
-    { value: 'injection', label: 'Injection' },
-    { value: 'appointment', label: 'Appointment' },
-    { value: 'other', label: 'Other' },
+    { value: 'med', label: m.rem_type_med() },
+    { value: 'injection', label: m.rem_type_injection() },
+    { value: 'appointment', label: m.rem_type_appointment() },
+    { value: 'other', label: m.rem_type_other() },
   ];
   /* What the segmented control offers; the stored rule is reminderRule.ts's
      shape (a one-off day, DAILY/WEEKLY, or an anchored EVERY_N_DAYS). */
   const RECURRENCES = [
-    { value: 'ONCE', label: 'Once' },
-    { value: 'DAILY', label: 'Daily' },
-    { value: 'EVERY_3_DAYS', label: 'Every 3 days' },
-    { value: 'EVERY_7_DAYS', label: 'Every 7 days' },
-    { value: 'WEEKLY', label: 'Weekly' },
+    { value: 'ONCE', label: m.rem_rec_once() },
+    { value: 'DAILY', label: m.rem_rec_daily() },
+    { value: 'EVERY_3_DAYS', label: m.rem_rec_every_3() },
+    { value: 'EVERY_7_DAYS', label: m.rem_rec_every_7() },
+    { value: 'WEEKLY', label: m.rem_rec_weekly() },
   ];
 
   function choiceFromRule(r: Reminder): string {
@@ -83,7 +83,7 @@
   function saveReminder() {
     journal.reminders.upsertReminder({
       id: existing?.id,
-      title: draft.title || 'Reminder',
+      title: draft.title || m.rem_default_name(),
       type: draft.type,
       enabled: existing?.enabled ?? true,
       ...ruleFromDraft(),
@@ -95,41 +95,41 @@
 <div class="screen">
   <header class="screen-header">
     <a class="icon-btn" href="/settings/reminders" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{isNew ? 'New reminder' : 'Edit reminder'}</h1>
+    <h1 class="screen-title">{isNew ? m.rem_new_title() : m.rem_edit_title()}</h1>
     <div class="header-action"></div>
   </header>
 
   <div class="card editor-section">
     <div class="field">
-      <span class="field-label">Type</span>
-      <Segmented name="Type" options={TYPES} value={draft.type} onChange={(v) => (draft.type = v as Reminder['type'])} />
+      <span class="field-label">{m.rem_type_label()}</span>
+      <Segmented name={m.rem_type_label()} options={TYPES} value={draft.type} onChange={(v) => (draft.type = v as Reminder['type'])} />
     </div>
     <div class="field">
-      <label class="field-label" for="r-name">Name</label>
-      <input class="input" id="r-name" name="r-name" placeholder="e.g. Estradiol patch" bind:value={draft.title} />
+      <label class="field-label" for="r-name">{m.rem_name_label()}</label>
+      <input class="input" id="r-name" name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
     </div>
     <div class="field">
-      <label class="field-label" for="r-time">Time</label>
+      <label class="field-label" for="r-time">{m.rem_time_label()}</label>
       <input class="input" id="r-time" name="r-time" type="time" style="max-width:160px" bind:value={draft.time} />
     </div>
     <div class="field">
-      <span class="field-label">Repeats</span>
-      <Segmented name="Repeats" options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v)} />
+      <span class="field-label">{m.rem_repeats_label()}</span>
+      <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v)} />
     </div>
-    <p class="next-preview"><Icon name="clock" size={14} /> Next: <strong>{nextPreview}</strong></p>
+    <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
   </div>
 
   <div class="notice notice-info">
     <Icon name="info" size={20} />
     <div class="notice-body">
-      Exact alarms survive reboots, but aggressive battery savers can silence them.
-      <a href="/settings/reminders">Check your phone’s battery settings</a> if a reminder ever goes quiet.
+      {m.rem_alarm_note()}
+      <a href="/settings/reminders">{m.rem_alarm_note_link()}</a>
     </div>
   </div>
 
   <div class="editor-savebar">
     <button class="btn btn-primary" data-save onclick={saveReminder}>
-      <Icon name="check" size={20} /><span>Save reminder</span>
+      <Icon name="check" size={20} /><span>{m.rem_save()}</span>
     </button>
   </div>
 </div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/paraglide/messages';
   import { scaleLinear } from 'd3-scale';
   import { line as d3line, area as d3area } from 'd3-shape';
   import { fmtDay } from '$lib/data/dates';
@@ -32,7 +33,11 @@
       line: lineGen(points) ?? '',
       area: areaGen(points) ?? '',
       dots: points.map((p) => ({ cx: x(p.day), cy: y(p.value) })),
-      label: `Line chart, ${points.length} points from ${fmtDay(x0, { day: 'numeric', month: 'short' })} to ${fmtDay(x1, { day: 'numeric', month: 'short' })}`,
+      label: m.chart_aria({
+        count: String(points.length),
+        from: fmtDay(x0, { day: 'numeric', month: 'short' }),
+        to: fmtDay(x1, { day: 'numeric', month: 'short' })
+      }),
     };
   });
 
@@ -51,5 +56,5 @@
     {/if}
   </svg>
 {:else}
-  <div class="chart-too-little">Not enough data in this range yet.</div>
+  <div class="chart-too-little">{m.not_enough_data()}</div>
 {/if}

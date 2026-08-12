@@ -11,6 +11,7 @@
      indistinguishable failure (aesGcm.ts), so the error names only the
      likely cause and never diagnoses. */
 
+  import { m } from '$lib/paraglide/messages';
   import { bootState, submitPassphraseSetup, submitPassphraseUnlock, resetApp } from '$lib/stores/boot.svelte';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import Icon from './Icon.svelte';
@@ -33,11 +34,11 @@
 
     if (mode === 'setup') {
       if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
-        error = `Use at least ${MIN_PASSPHRASE_LENGTH} characters.`;
+        error = m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) });
         return;
       }
       if (passphrase !== confirmation) {
-        error = 'Those two did not match.';
+        error = m.pp_mismatch();
         return;
       }
     }
@@ -50,7 +51,7 @@
       confirmation = '';
     } catch {
       // DecryptionFailedError, deliberately undiagnosed (see header).
-      error = 'That passphrase is not right.';
+      error = m.pp_wrong();
     } finally {
       busy = false;
     }
@@ -64,7 +65,7 @@
       console.error('the app reset failed', e);
       resetting = false;
       resetOpen = false;
-      error = 'Could not reset the app. Try again, or close and reopen it first.';
+      error = m.reset_failed();
     }
   }
 </script>
@@ -76,22 +77,16 @@
     <!-- No name in the unlock greeting on purpose: the display name lives in
          the encrypted journal, and this screen renders before it can be read. -->
     <h1 class="ob-title" style="text-align:center">
-      {#if mode === 'setup'}Choose a journal passphrase{:else}Welcome back{/if}
+      {#if mode === 'setup'}{m.pp_setup_title()}{:else}{m.pp_unlock_title()}{/if}
     </h1>
     <p class="ob-text" style="text-align:center">
-      {#if mode === 'setup'}
-        Everything you write is encrypted on this device, and this passphrase is the only thing that opens it.
-        Save it in a password manager now: Gender Diary has no account behind it and cannot recover the
-        passphrase or the journal if it is lost.
-      {:else}
-        Enter your journal passphrase to decrypt your journal.
-      {/if}
+      {#if mode === 'setup'}{m.pp_setup_body()}{:else}{m.pp_unlock_body()}{/if}
     </p>
 
     <form class="stack-3" onsubmit={submit} style="margin-top:var(--space-4)">
       <div>
         <label class="field-label" for="journal-passphrase">
-          {mode === 'setup' ? 'Passphrase' : 'Journal passphrase'}
+          {mode === 'setup' ? m.pp_label_setup() : m.pp_label_unlock()}
         </label>
         <input
           class="input"
@@ -105,7 +100,7 @@
       </div>
       {#if mode === 'setup'}
         <div>
-          <label class="field-label" for="journal-passphrase-confirm">Once more</label>
+          <label class="field-label" for="journal-passphrase-confirm">{m.pp_label_confirm()}</label>
           <input
             class="input"
             type="password"
@@ -120,7 +115,7 @@
       <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
       <button class="btn btn-primary" type="submit" data-passphrase-submit disabled={busy}>
         <span>
-          {#if busy}{mode === 'setup' ? 'Encrypting…' : 'Decrypting…'}{:else}{mode === 'setup' ? 'Encrypt my journal' : 'Open my journal'}{/if}
+          {#if busy}{mode === 'setup' ? m.pp_encrypting() : m.pp_decrypting()}{:else}{mode === 'setup' ? m.pp_submit_setup() : m.pp_submit_unlock()}{/if}
         </span>
       </button>
     </form>
@@ -128,34 +123,29 @@
     {#if mode === 'unlock'}
       <div style="text-align:center;margin-top:var(--space-6)">
         <button class="btn btn-ghost" data-forgot-passphrase onclick={() => (resetOpen = true)}>
-          <span>Forgotten your passphrase?</span>
+          <span>{m.pp_forgot()}</span>
         </button>
       </div>
     {/if}
   </div>
 </div>
 
-<Sheet bind:open={resetOpen} title="Forgotten your passphrase?">
-  <h3>Forgotten your passphrase?</h3>
+<Sheet bind:open={resetOpen} title={m.pp_forgot()}>
+  <h3>{m.pp_forgot()}</h3>
   <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
     <Icon name="alert" size={20} />
     <div class="notice-body">
-      <span class="notice-title">There is no way to recover it</span>
-      The journal is encrypted with a key only your passphrase can unwrap. Nobody, including this app, can
-      read it back without one or the other.
+      <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
+      {m.pp_forgot_key_note()}
     </div>
   </div>
-  <p class="ob-text">
-    You can start over instead. That deletes every entry, photo and setting on this device and takes you back
-    to the welcome screen. If you have an archive from an earlier export, you can restore from it afterwards
-    with the archive's own password.
-  </p>
+  <p class="ob-text">{m.reset_offer_archive_password()}</p>
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-reset disabled={resetting} onclick={confirmReset}>
-      <span>{resetting ? 'Deleting…' : 'Delete everything and start over'}</span>
+      <span>{resetting ? m.reset_running() : m.reset_confirm()}</span>
     </button>
     <button class="btn btn-ghost" disabled={resetting} onclick={() => (resetOpen = false)}>
-      <span>Keep trying</span>
+      <span>{m.reset_keep_trying()}</span>
     </button>
   </div>
 </Sheet>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
@@ -51,7 +52,9 @@
         level: heatLevel(valueByDay.get(epochDay) ?? null, range),
         count,
         isToday: epochDay === today,
-        label: `${fmtDay(epochDay, { day: 'numeric', month: 'long' })}${count ? `, ${count} entr${count === 1 ? 'y' : 'ies'}` : ', no entries'}`,
+        label: count
+          ? m.heat_cell_entries({ date: fmtDay(epochDay, { day: 'numeric', month: 'long' }), count: String(count) })
+          : m.heat_cell_none({ date: fmtDay(epochDay, { day: 'numeric', month: 'long' }) }),
       });
     }
     return { startDow, days: out };
