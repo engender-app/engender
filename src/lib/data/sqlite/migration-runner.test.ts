@@ -29,12 +29,20 @@ function makeFts5UnavailableDb(): MigrationDb {
   };
 }
 
-function makeFileOpsSpy(): MigrationFileOps & { copyCalls: number; cleanupCalls: number } {
+function makeFileOpsSpy(
+  options: { copyExists?: boolean } = {}
+): MigrationFileOps & { copyCalls: number; cleanupCalls: number } {
   return {
     copyCalls: 0,
     cleanupCalls: 0,
+    preMigrationCopyExists() {
+      return options.copyExists ?? false;
+    },
     copyDatabaseFile() {
       this.copyCalls++;
+    },
+    restorePreMigrationCopy() {
+      throw new Error('runMigrations must never restore by itself; a person decides that');
     },
     cleanupPreMigrationCopy() {
       this.cleanupCalls++;
@@ -163,6 +171,46 @@ test('applies out-of-order pending migrations in ascending version order', async
     columns.map((c) => c.name),
     ['id', 'label']
   );
+});
+
+test('a copy left by a failed migration is not written over by the retry', async () => {
+  /* Ticket 04. The retry's copy would be taken from a database the failed
+     attempt has already been at, and if the file is damaged the copy cannot
+     be written at all - so overwriting spends the one recovery point to make
+     a worse one, or destroys it and makes none. ADR-0006 keeps the copy until
+     a boot comes up clean; a boot that finds migrations pending is not one. */
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy({ copyExists: true });
+  const migrations: Migration[] = [{ version: 1, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' }];
+
+  await runMigrations(db, fileOps, migrations);
+
+  assert.equal(fileOps.copyCalls, 0);
+  assert.equal(db.getUserVersion(), 1, 'and the migration still runs: the copy it needed is already there');
+});
+
+test('a copy is still made when the pending migration is the first attempt', async () => {
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy({ copyExists: false });
+  const migrations: Migration[] = [{ version: 1, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' }];
+
+  await runMigrations(db, fileOps, migrations);
+
+  assert.equal(fileOps.copyCalls, 1);
+});
+
+test('a failed migration leaves the copy where it is', async () => {
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy();
+  const migrations: Migration[] = [
+    { version: 1, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' },
+    { version: 2, sql: 'this is not valid sql;' }
+  ];
+
+  await assert.rejects(() => runMigrations(db, fileOps, migrations));
+
+  assert.equal(fileOps.copyCalls, 1);
+  assert.equal(fileOps.cleanupCalls, 0, 'the copy is the only way back to the previous journal');
 });
 
 test('assertFts5Available resolves against a build that has FTS5 compiled in', async () => {

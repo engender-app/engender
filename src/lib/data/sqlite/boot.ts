@@ -16,6 +16,7 @@
    unit-tested in the Node tier against a fake driver, while the real app
    supplies createWebSqlite() from sqlocal-driver.ts. */
 
+import { enterWriteInFlight } from '../../pwa/writes-in-flight.ts';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import { runMigrations } from './migration-runner.ts';
@@ -38,6 +39,11 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
   deps.applyBootPreferences?.();
 
   let driver: SqliteDriver;
+  /* No service worker may activate over a migration in progress (ticket 04):
+     the transaction covers a failed step, but nothing covers the code being
+     replaced between two of them. Taken before createDriver() so the window
+     starts where the file is first touched. */
+  const migrating = enterWriteInFlight();
   try {
     // createDriver() itself isn't expected to be where a failure surfaces
     // (SQLocal defers real I/O to its worker, so constructing it doesn't
@@ -52,6 +58,8 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
     // instead of going on to render screens over a database that isn't
     // there (ticket 04's acceptance: not a blank screen).
     return { phase: 'error', error };
+  } finally {
+    migrating();
   }
 
   const persistDenied = deps.requestPersistentStorage ? !(await deps.requestPersistentStorage()) : false;

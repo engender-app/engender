@@ -5,17 +5,21 @@
    and whatever else sits in static/ - the manifest's icons today, a .riv
    animation the moment one lands there.
 
-   Deliberately absent: skipWaiting(). When a worker that is waiting may take
-   over is phase 2 ticket 04's decision, because that question is about a
-   journal write in flight, not about caching. Until then a new release
-   installs quietly and activates on the browser's own schedule, once no page
-   is using the old worker any more. */
+   This worker still never decides for itself when to take over (phase 2
+   ticket 04, which owns that decision): a new release installs quietly and
+   waits, and the only thing that ends the wait early is a page asking through
+   the message below. A page asks when the journal is idle and never while a
+   write, a migration, an encryption conversion or an Archive import is in
+   flight - lib/pwa/update.ts holds that rule and lib/pwa/writes-in-flight.ts
+   is what it reads. clients.claim() stays absent for the same reason: a page
+   that loaded on the old worker keeps it until it reloads itself. */
 /// <reference types="@sveltejs/kit" />
 /// <reference no-default-lib="true"/>
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 import { base, build, files, version } from '$service-worker';
 import { emittedClientAssets } from './lib/pwa/emitted-client-assets.generated';
+import { listenForSkipWaiting } from './lib/pwa/sw-messages';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
@@ -35,6 +39,8 @@ const SHELL = `${base}/`;
 const PRECACHE = [
   ...new Set([...build, ...emittedClientAssets.map((asset) => base + asset), ...files])
 ];
+
+listenForSkipWaiting(sw);
 
 sw.addEventListener('install', (event) => {
   event.waitUntil(

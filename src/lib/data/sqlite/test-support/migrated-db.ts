@@ -7,7 +7,12 @@ import { migrations } from '../migrations.ts';
 import { makeNodeSqliteDb } from './node-sqlite-driver.ts';
 
 function noopFileOps() {
-  return { copyDatabaseFile() {}, cleanupPreMigrationCopy() {} };
+  return {
+    preMigrationCopyExists: () => false,
+    copyDatabaseFile() {},
+    restorePreMigrationCopy() {},
+    cleanupPreMigrationCopy() {}
+  };
 }
 
 export async function migratedDb() {

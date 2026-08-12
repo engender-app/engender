@@ -24,6 +24,7 @@
    misfiled as a read shows stale data forever, and the failure looks like a
    Svelte bug rather than a missing line here. */
 
+import { enterWriteInFlight } from '../../pwa/writes-in-flight';
 import type { Journal } from '../journal/journal';
 
 /** The tables a query can depend on. Coarser than the schema - one name
@@ -139,6 +140,12 @@ const RECONCILE_TABLES: TableName[] = ['tag', 'dimension', 'preset'];
     resolves - never before, and never when it rejects: a write that threw
     changed nothing, so nothing that read those tables is stale.
 
+    Each mutation also holds the update guard while it runs (ticket 04), which
+    is why this wrapper is where that belongs: it is the one place that knows
+    which operations are writes, so a service worker cannot take over under
+    one that a later ticket adds. An Archive import comes free, being a
+    declared write on every table.
+
     Throws if the journal carries an area, or an operation on one, that this
     module does not classify. */
 export function observeWrites(journal: Journal, onWrite: (tables: TableName[]) => void): Journal {
@@ -177,8 +184,13 @@ type Mutation = (...args: never[]) => Promise<unknown>;
 
 function announcing(implementation: Mutation, tables: TableName[], onWrite: (tables: TableName[]) => void) {
   return async (...args: never[]) => {
-    const result = await implementation(...args);
-    onWrite(tables);
-    return result;
+    const done = enterWriteInFlight();
+    try {
+      const result = await implementation(...args);
+      onWrite(tables);
+      return result;
+    } finally {
+      done();
+    }
   };
 }
