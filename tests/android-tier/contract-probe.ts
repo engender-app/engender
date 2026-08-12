@@ -1,18 +1,18 @@
 /* The Android tier's probe (ticket 11): boots the native driver through the
-   Capacitor bridge and runs the shared contract suite over it - the same
-   suite src/lib/data/journal/contract-suite.test.ts runs over node:sqlite.
+  Capacitor bridge and runs the shared contract suite over it - the same
+  suite src/lib/data/journal/contract-suite.test.ts runs over node:sqlite.
 
    It loads inside the real app's WebView, which the instrumentation test
    points at this bundle with Bridge.setServerBasePath, so the plugin, the
    bridge and the WebView are the ones the app ships rather than stand-ins.
 
-   Photos are ticket 12, so the journal gets the same in-memory file store
-   the Node tier uses. Nothing the contract asks about touches it. */
+  Ticket 12 extends the contract with photo-file checks too, so the probe
+  uses app-private files through the Photos plugin. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createAndroidSqlite } from '../../src/lib/data/sqlite/android-driver.ts';
 import { runJournalContract } from '../../src/lib/data/journal/contract-suite.ts';
-import { fakeFileStore } from '../../src/lib/data/photos/test-support/fake-file-store.ts';
+import { appPrivatePhotoFiles } from '../../src/lib/data/photos/android-file-store.ts';
 
 declare global {
   interface Window {
@@ -39,7 +39,7 @@ async function run() {
     return;
   }
 
-  const checks = await runJournalContract(result.driver, fakeFileStore());
+  const checks = await runJournalContract(result.driver, appPrivatePhotoFiles('contract-probe-photos'));
   publish({ persistDenied: result.persistDenied, checks });
   await driver.close();
 }
