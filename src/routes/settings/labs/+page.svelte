@@ -1,6 +1,8 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { normalizeUnit } from '$lib/data/journal/labs';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { LabResult } from '$lib/data/types';
@@ -24,16 +26,23 @@
     if (analytes.length && !analytes.includes(analyte)) analyte = analytes[0];
   });
 
+  /* The list is every result this analyte has, in order. The charts are those
+     same results split by unit (ticket 02): a value in ng/dL and one in
+     nmol/L differ by a factor of about 29, so a single line over both would
+     draw a cliff where nothing happened. */
   let resultsQuery = liveQuery(['lab'], (j) => j.labs.getResults(analyte));
   let results = $derived(resultsQuery.value ?? []);
-  let chart = $derived.by(() => {
-    if (results.length < 2) return null;
-    const values = results.map((r) => r.value);
+  let seriesQuery = liveQuery(['lab'], (j) => j.labs.getSeries(analyte));
+  let series = $derived(seriesQuery.value ?? []);
+
+  function chartFor(seriesResults: LabResult[]) {
+    if (seriesResults.length < 2) return null;
+    const values = seriesResults.map((r) => r.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const pad = (max - min) * 0.2 || 10;
-    return { points: results.map((r) => ({ day: r.epochDay, value: r.value })), min: min - pad, max: max + pad };
-  });
+    return { points: seriesResults.map((r) => ({ day: r.epochDay, value: r.value })), min: min - pad, max: max + pad };
+  }
 
   let editor = $state<{
     id?: string;
@@ -74,6 +83,16 @@
     const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
     if (isNaN(value) || !resultAnalyte) return;
 
+    /* Which units this analyte already has, ignoring the result being edited,
+       so that changing the unit on an analyte's only result does not announce
+       a second trend that will not exist. */
+    const unit = normalizeUnit(draft.unit);
+    const otherUnits = new Set(
+      (await journal.labs.getSeries(resultAnalyte))
+        .filter((s) => s.results.some((r) => r.id !== draft.id))
+        .map((s) => s.unit)
+    );
+
     await journal.labs.upsertResult({
       id: draft.id,
       epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
@@ -84,6 +103,16 @@
     });
     analyte = resultAnalyte;
     editor = null;
+
+    /* Stated, not warned about: a new unit is a normal thing for a lab to
+       report, and all that follows from it is a second line. */
+    if (otherUnits.size && !otherUnits.has(unit)) {
+      toast(
+        unit
+          ? `${unit} is new for ${resultAnalyte}, so it gets its own trend.`
+          : `This result has no unit, so it gets its own trend.`
+      );
+    }
   }
 
   function askToDelete() {
@@ -119,17 +148,20 @@
     </p>
     <Segmented name="Analyte" options={analytes.map((a) => ({ value: a, label: a }))} value={analyte} onChange={(v) => (analyte = v)} />
 
-    <div class="card" style="margin-top:var(--space-4)">
-      <div class="spread" style="margin-bottom:var(--space-2)">
-        <span class="chart-title">{analyte}</span>
-        <span class="muted small">{results[0]?.unit ?? ''}</span>
+    {#each series as s (s.unit)}
+      {@const chart = chartFor(s.results)}
+      <div class="card" data-lab-series={s.unit} style="margin-top:var(--space-4)">
+        <div class="spread" style="margin-bottom:var(--space-2)">
+          <span class="chart-title">{analyte}</span>
+          <span class="muted small series-unit">{s.unit || 'no unit'}</span>
+        </div>
+        {#if chart}
+          <LineChart points={chart.points} min={chart.min} max={chart.max} showDots />
+        {:else}
+          <div class="chart-too-little">Two results make a trend — add another when it comes in.</div>
+        {/if}
       </div>
-      {#if chart}
-        <LineChart points={chart.points} min={chart.min} max={chart.max} showDots />
-      {:else}
-        <div class="chart-too-little">Two results make a trend — add another when it comes in.</div>
-      {/if}
-    </div>
+    {/each}
 
     <div class="list-group" style="margin-top:var(--space-4)">
       {#each [...results].reverse() as r (r.id)}
