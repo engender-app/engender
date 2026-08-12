@@ -28,26 +28,26 @@
     },
     "stats-month-insights": {
       "what": "stats screen, 30 days of tag insights",
-      "baselineMs": 115,
-      "budgetMs": 575,
+      "baselineMs": 1,
+      "budgetMs": 200,
       "targetMs": 250,
-      "heapBaselineBytes": 12704,
+      "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "stats-year-insights": {
       "what": "stats screen, 365 days of tag insights",
-      "baselineMs": 3581,
-      "budgetMs": 17905,
+      "baselineMs": 1,
+      "budgetMs": 200,
       "targetMs": 250,
-      "heapBaselineBytes": 81292,
+      "heapBaselineBytes": 8448,
       "heapBudgetBytes": null
     },
     "stats-year-insights-dimension": {
       "what": "stats screen, 365 days of tag insights on a dimension",
-      "baselineMs": 3237,
-      "budgetMs": 16185,
+      "baselineMs": 2,
+      "budgetMs": 200,
       "targetMs": 250,
-      "heapBaselineBytes": 70140,
+      "heapBaselineBytes": 7572,
       "heapBudgetBytes": null
     },
     "stats-recap-year": {
