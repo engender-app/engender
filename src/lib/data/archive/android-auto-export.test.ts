@@ -180,6 +180,56 @@ describe('runAndroidAutoExport', () => {
     expect(result).toEqual({ outcome: 'needs-destination' });
     expect(androidAutoExport.notifyFailure).toHaveBeenCalledTimes(1);
   });
+
+  test('unavailable destination disables schedule and returns needs-destination', async () => {
+    vi.mocked(androidAutoExport.writeBackup).mockRejectedValue(new Error('destination-unavailable'));
+
+    const result = await runAndroidAutoExport(
+      {
+        snapshot,
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
+        password: 'correct horse'
+      },
+      { recordBackup: () => {} }
+    );
+
+    expect(result).toEqual({ outcome: 'needs-destination' });
+    expect(androidAutoExport.configure).toHaveBeenCalledWith({ enabled: false, schedule: 'weekly' });
+  });
+
+  test('destination-full returns failed and does not disable schedule', async () => {
+    vi.mocked(androidAutoExport.writeBackup).mockRejectedValue(new Error('destination-full'));
+
+    const result = await runAndroidAutoExport(
+      {
+        snapshot,
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
+        password: 'correct horse'
+      },
+      { recordBackup: () => {} }
+    );
+
+    expect(result).toEqual({ outcome: 'failed', reason: 'destination-full' });
+    expect(androidAutoExport.configure).not.toHaveBeenCalled();
+  });
+
+  test('partial-write retries once and then fails if both attempts fail', async () => {
+    vi.mocked(androidAutoExport.writeBackup)
+      .mockRejectedValueOnce(new Error('partial-write'))
+      .mockRejectedValueOnce(new Error('partial-write'));
+
+    const result = await runAndroidAutoExport(
+      {
+        snapshot,
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
+        password: 'correct horse'
+      },
+      { recordBackup: () => {} }
+    );
+
+    expect(result).toEqual({ outcome: 'failed', reason: 'partial-write' });
+    expect(androidAutoExport.writeBackup).toHaveBeenCalledTimes(2);
+  });
 });
 
 test('next due time and due checks use schedule windows and required prerequisites', () => {
