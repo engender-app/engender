@@ -25,6 +25,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
   import UpdateNotice from '$lib/components/UpdateNotice.svelte';
+  import { startAutoExportScheduler, stopAutoExportScheduler } from '$lib/data/archive/auto-export-scheduler';
 
   let { children } = $props();
 
@@ -146,6 +147,14 @@
   $effect(() => {
     if (bootState.status !== 'ready' || locked) return;
     if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
+  });
+
+  $effect(() => {
+    if (bootState.status === 'ready' && !locked) {
+      startAutoExportScheduler();
+      return () => stopAutoExportScheduler();
+    }
+    stopAutoExportScheduler();
   });
   /* Putting the pre-migration copy back (ticket 04). Only reachable from the
      boot-failure notice, and only when boot found a copy to put back. */

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import type { ArchiveSnapshot } from '../journal/archive.ts';
-import { runAndroidAutoExport } from './android-auto-export.ts';
+import { isDue, nextDueAt, runAndroidAutoExport } from './android-auto-export.ts';
 import { androidAutoExport } from './android-auto-export-bridge.ts';
 
 vi.mock('$lib/platform', () => ({ isAndroid: () => true }));
@@ -10,7 +10,11 @@ vi.mock('./android-auto-export-bridge.ts', () => ({
     status: vi.fn(),
     pickDestination: vi.fn(),
     configure: vi.fn(),
-    writeBackup: vi.fn()
+    writeBackup: vi.fn(),
+    setPassword: vi.fn(),
+    revealPassword: vi.fn(),
+    clearPassword: vi.fn(),
+    notifyFailure: vi.fn()
   }
 }));
 
@@ -40,7 +44,9 @@ describe('runAndroidAutoExport', () => {
       destinationLabel: 'backup',
       lastSuccessAt: null,
       lastFailureAt: null,
-      lastFailureReason: null
+      lastFailureReason: null,
+      hasPassword: true,
+      nextDueAt: null
     });
     vi.mocked(androidAutoExport.writeBackup).mockResolvedValue({ writtenAt: 12345 });
     vi.mocked(androidAutoExport.configure).mockResolvedValue({
@@ -50,7 +56,9 @@ describe('runAndroidAutoExport', () => {
       destinationLabel: null,
       lastSuccessAt: null,
       lastFailureAt: null,
-      lastFailureReason: 'destination-revoked'
+      lastFailureReason: 'destination-revoked',
+      hasPassword: true,
+      nextDueAt: null
     });
   });
 
@@ -75,6 +83,7 @@ describe('runAndroidAutoExport', () => {
     expect(recorded).toBe(17);
     expect(androidAutoExport.writeBackup).toHaveBeenCalledTimes(1);
     expect(androidAutoExport.configure).not.toHaveBeenCalled();
+    expect(androidAutoExport.notifyFailure).not.toHaveBeenCalled();
   });
 
   test('asks for a new destination and disables schedule when destination access is revoked', async () => {
@@ -106,7 +115,9 @@ describe('runAndroidAutoExport', () => {
       destinationLabel: null,
       lastSuccessAt: null,
       lastFailureAt: null,
-      lastFailureReason: null
+      lastFailureReason: null,
+      hasPassword: true,
+      nextDueAt: null
     });
 
     const result = await runAndroidAutoExport(
@@ -122,4 +133,70 @@ describe('runAndroidAutoExport', () => {
     expect(androidAutoExport.writeBackup).not.toHaveBeenCalled();
     expect(androidAutoExport.configure).toHaveBeenCalledWith({ enabled: false, schedule: 'monthly' });
   });
+
+  test('retries once for transient verification failure', async () => {
+    vi.mocked(androidAutoExport.writeBackup)
+      .mockRejectedValueOnce(new Error('verification-failed'))
+      .mockResolvedValueOnce({ writtenAt: 12345 });
+    let recorded: number | null = null;
+
+    const result = await runAndroidAutoExport(
+      {
+        snapshot,
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
+        password: 'correct horse'
+      },
+      {
+        now: () => 17,
+        recordBackup: (at) => {
+          recorded = at;
+        }
+      }
+    );
+
+    expect(result).toEqual({ outcome: 'ok', writtenAt: 17 });
+    expect(recorded).toBe(17);
+    expect(androidAutoExport.writeBackup).toHaveBeenCalledTimes(2);
+  });
+
+  test('scheduled failure sends privacy-safe notification', async () => {
+    vi.mocked(androidAutoExport.writeBackup).mockRejectedValue(new Error('destination-revoked'));
+
+    const result = await runAndroidAutoExport(
+      {
+        snapshot,
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
+        password: 'correct horse'
+      },
+      {
+        now: () => 17,
+        recordBackup: () => {
+          throw new Error('must not record on failure');
+        }
+      },
+      'scheduled'
+    );
+
+    expect(result).toEqual({ outcome: 'needs-destination' });
+    expect(androidAutoExport.notifyFailure).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('next due time and due checks use schedule windows and required prerequisites', () => {
+  const weekly = {
+    enabled: true,
+    destinationUri: 'content://tree/backup',
+    hasPassword: true,
+    schedule: 'weekly' as const,
+    lastSuccessAt: 1_000
+  };
+  const weeklyDueAt = nextDueAt(weekly);
+  expect(weeklyDueAt).toBe(1_000 + 7 * 24 * 60 * 60 * 1000);
+  expect(isDue(weekly, weeklyDueAt - 1)).toBe(false);
+  expect(isDue(weekly, weeklyDueAt)).toBe(true);
+
+  const monthly = { ...weekly, schedule: 'monthly' as const, lastSuccessAt: null };
+  expect(nextDueAt(monthly)).toBe(30 * 24 * 60 * 60 * 1000);
+  expect(isDue({ ...monthly, destinationUri: null }, Number.MAX_SAFE_INTEGER)).toBe(false);
+  expect(isDue({ ...monthly, hasPassword: false }, Number.MAX_SAFE_INTEGER)).toBe(false);
 });
