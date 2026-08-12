@@ -13,13 +13,20 @@
    bridge and the driver; ticket 13 lands the Android Keystore that produces
    the key, and the only change it needs here is a caller that passes one.
 
-   Calls are serialized. The web driver gets that free - a worker processes
-   messages in the order they were posted - but Capacitor dispatches bridge
-   calls on a thread pool, so two overlapping journal operations could
-   otherwise have their statements interleave, and a BEGIN could commit work
-   it never meant to wrap. The queue below restores post-order, which is the
-   property the migration runner's callback composition and every
-   journal transaction already assume. */
+   Calls are serialized, and the queue below is what does it. The web driver
+   gets the same property free, because a worker processes messages in the
+   order they were posted; Capacitor dispatches bridge calls on a thread pool
+   and guarantees no order at all, so without the queue two statements issued
+   back to back could reach SQLite the other way round. Post-order is what the
+   migration runner's callback composition assumes, and what makes a BEGIN
+   arrive before the statements written after it.
+
+   What the queue does not do - on either platform - is isolate a
+   transaction. An unrelated call made while one is open still lands between
+   its BEGIN and COMMIT, because both drivers have one connection and one
+   queue. Nothing today issues journal work concurrently with a transaction,
+   and the web driver has the same exposure, so this is a property the two
+   share rather than something Android introduces. */
 
 import { registerPlugin } from '@capacitor/core';
 import type { SqliteDriver } from './driver.ts';
@@ -64,62 +71,77 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
   /* Queued like everything else rather than awaited here, so construction
      stays synchronous the way the web driver's is: a failure to open
      surfaces on the first statement, which is inside runMigrations, which
-     is exactly where boot() already catches driver failures. */
+     is exactly where boot() already catches driver failures.
+
+     The failure is kept rather than dropped. Without this the next statement
+     reports "the database is not open", which describes the symptom and
+     loses the cause - and the cause is the part worth having, since
+     SQLITE_NOTADB on this path is a wrong key (ADR-0020) rather than a bug. */
+  let openFailure: Error | null = null;
   enqueue(() => Sqlite.open({ name: databaseName, hexKey: dataKey ? toHex(dataKey) : undefined })).catch(
-    () => {}
+    (error: Error) => {
+      openFailure = error;
+    }
   );
+
+  /** Wraps a call so the open failure, if there was one, is what surfaces. */
+  const afterOpen = <T>(work: () => Promise<T>): Promise<T> =>
+    enqueue(() => {
+      if (openFailure) return Promise.reject(openFailure);
+      return work();
+    });
 
   const driver: SqliteDriver = {
     async exec(statements: string) {
-      await enqueue(() => Sqlite.exec({ sql: statements }));
+      await afterOpen(() => Sqlite.exec({ sql: statements }));
     },
 
     async query<Row extends Record<string, unknown> = Record<string, unknown>>(
       statement: string,
       params: unknown[] = []
     ) {
-      const { rows } = await enqueue(() => Sqlite.query({ sql: statement, params }));
+      const { rows } = await afterOpen(() => Sqlite.query({ sql: statement, params }));
       return rows as Row[];
     },
 
     async run(statement: string, params: unknown[] = []) {
-      return enqueue(() => Sqlite.run({ sql: statement, params }));
+      return afterOpen(() => Sqlite.run({ sql: statement, params }));
     },
 
     async getUserVersion() {
-      const { version } = await enqueue(() => Sqlite.getUserVersion());
+      const { version } = await afterOpen(() => Sqlite.getUserVersion());
       return version;
     },
 
     async setUserVersion(version: number) {
-      await enqueue(() => Sqlite.setUserVersion({ version }));
+      await afterOpen(() => Sqlite.setUserVersion({ version }));
     },
 
     /* The steps are queued individually, so a statement the callback makes
        lands between the BEGIN and the COMMIT rather than behind both. */
     async transaction<T>(fn: () => T | Promise<T>): Promise<T> {
-      await enqueue(() => Sqlite.beginTransaction());
+      await afterOpen(() => Sqlite.beginTransaction());
       try {
         const result = await fn();
-        await enqueue(() => Sqlite.commitTransaction());
+        await afterOpen(() => Sqlite.commitTransaction());
         return result;
       } catch (err) {
-        await enqueue(() => Sqlite.rollbackTransaction());
+        await afterOpen(() => Sqlite.rollbackTransaction());
         throw err;
       }
     },
 
     async close() {
-      await enqueue(() => Sqlite.close());
+      await afterOpen(() => Sqlite.close());
     }
   };
 
   const fileOps: MigrationFileOps = {
     async copyDatabaseFile() {
-      await enqueue(() => Sqlite.copyDatabaseFile());
+      await afterOpen(() => Sqlite.copyDatabaseFile());
     },
     async cleanupPreMigrationCopy() {
-      await enqueue(() => Sqlite.cleanupPreMigrationCopy());
+      await afterOpen(() => Sqlite.cleanupPreMigrationCopy());
     }
   };
 

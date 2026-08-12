@@ -53,9 +53,13 @@ public class JournalContractTest {
     /** The suite writes and searches a few hundred rows on an emulator. */
     private static final long RESULT_TIMEOUT_SECONDS = 120;
 
+    /** The database contract-probe.ts opens, deleted so each run starts fresh. */
+    private static final String PROBE_DATABASE = "contract-probe.sqlite3";
+
     @Test
     public void theNativeDriverPassesTheSharedContractSuite() throws Exception {
         File probeDir = unpackProbe();
+        deleteProbeDatabase();
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> activity.getBridge().setServerBasePath(probeDir.getAbsolutePath()));
@@ -134,6 +138,21 @@ public class JournalContractTest {
             return new JSONArray("[" + evaluated + "]").getString(0);
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * Clears the probe's database and its side files, so the suite always
+     * opens an empty one and runs its migrations for real. Deleting rather
+     * than opening a uniquely named database each time, which would leave one
+     * behind in app storage on every run.
+     */
+    private static void deleteProbeDatabase() {
+        Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        File database = app.getDatabasePath(PROBE_DATABASE);
+        for (String suffix : new String[] {"", "-wal", "-shm", "-journal", ".pre-migration-backup"}) {
+            File file = new File(database.getPath() + suffix);
+            if (file.exists()) file.delete();
         }
     }
 

@@ -1,6 +1,7 @@
 package dev.barankiewicz.genderdiary.sqlite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
@@ -113,5 +114,44 @@ public class SqlStatementsTest {
             SqlStatements.split("SELECT CASE WHEN x THEN 1 ELSE 2 END FROM t; SELECT 2;");
         assertEquals(2, out.size());
         assertEquals("SELECT CASE WHEN x THEN 1 ELSE 2 END FROM t", out.get(0));
+    }
+
+    /**
+     * A CASE inside a trigger body. Its END must close the CASE and not the
+     * trigger, or the next semicolon splits the body and execSQL runs a
+     * fragment - silently, because execSQL takes the first statement and
+     * discards the rest.
+     */
+    @Test
+    public void aCaseInsideATriggerBodyDoesNotEndTheTrigger() {
+        String sql =
+            "CREATE TRIGGER t AFTER DELETE ON entry BEGIN\n"
+                + "  UPDATE counters SET n = CASE WHEN n > 0 THEN n - 1 ELSE 0 END;\n"
+                + "  DELETE FROM entry_fts WHERE rowid = old.id;\n"
+                + "END;\n"
+                + "SELECT 1;";
+
+        List<String> out = SqlStatements.split(sql);
+
+        assertEquals(2, out.size());
+        assertEquals("SELECT 1", out.get(1));
+        assertTrue("the trigger body was cut short: " + out.get(0), out.get(0).endsWith("END"));
+        assertTrue("the second body statement was lost", out.get(0).contains("DELETE FROM entry_fts"));
+    }
+
+    /** Nested CASE inside a trigger, so the stack has to unwind in order. */
+    @Test
+    public void nestedCasesInsideATriggerBodyStayInside() {
+        String sql =
+            "CREATE TRIGGER t AFTER INSERT ON entry BEGIN\n"
+                + "  UPDATE a SET x = CASE WHEN y THEN CASE WHEN z THEN 1 ELSE 2 END ELSE 3 END;\n"
+                + "  UPDATE b SET w = 1;\n"
+                + "END;\n"
+                + "SELECT 1;";
+
+        List<String> out = SqlStatements.split(sql);
+
+        assertEquals(2, out.size());
+        assertTrue("the trigger body was cut short: " + out.get(0), out.get(0).contains("UPDATE b SET w = 1"));
     }
 }

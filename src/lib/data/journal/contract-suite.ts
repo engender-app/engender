@@ -122,7 +122,13 @@ export async function runJournalContract(
      app has to fold on both sides of the index. A native build that tokenized
      differently would show up here and nowhere else. */
   await r.section('folded search', async () => {
-    const notes = ['spałem w łóżko', 'zażółć gęślą jaźń', 'ćwiczenia rano', 'Müller kupił bilet'];
+    const notes = [
+      'spałem w łóżko',
+      'zażółć gęślą jaźń',
+      'ćwiczenia rano',
+      'Müller kupił bilet',
+      'naïve idea'
+    ];
     const ids: number[] = [];
     for (const [i, note] of notes.entries()) {
       ids.push(await journal.entries.upsertEntry({ epochDay: 500 + i, note }));
@@ -135,10 +141,21 @@ export async function runJournalContract(
     r.equal("'cwiczenia' finds 'ćwiczenia rano'", await found('cwiczenia'), ['ćwiczenia rano']);
     r.equal("the accented form finds it too ('ŁÓŻKO')", await found('ŁÓŻKO'), ['spałem w łóżko']);
     r.equal("'gęślą' finds its own note", await found('gęślą'), ['zażółć gęślą jaźń']);
-    // ü is outside the fold, so FTS5's own tokenizer has to be the one folding it.
-    r.equal("'muller' finds 'Müller kupił bilet'", await found('muller'), ['Müller kupił bilet']);
-    r.equal("'kupil' finds it by the app's fold", await found('kupil'), ['Müller kupił bilet']);
     r.equal('a prefix finds the word it starts', await found('cwicz'), ['ćwiczenia rano']);
+
+    /* The half of ADR-0005 the fold does not do. ü and ï are outside
+       foldText, so they reach the index intact and unicode61 folds them
+       there - and the query has to arrive as one token for the same thing to
+       happen on its side. Both directions are asked, because a build whose
+       tokenizer folded differently would answer one and not the other, and
+       that asymmetry is exactly what a new SQLite build can change. */
+    r.equal("'muller' finds 'Müller kupił bilet'", await found('muller'), ['Müller kupił bilet']);
+    r.equal('the accented spelling finds it too', await found('Müller'), ['Müller kupił bilet']);
+    r.equal("'naive' finds 'naïve idea'", await found('naive'), ['naïve idea']);
+    r.equal("'naïve' as typed finds it too", await found('naïve'), ['naïve idea']);
+    r.equal("'kupil' finds it by the app's fold, in the same note", await found('kupil'), [
+      'Müller kupił bilet'
+    ]);
 
     // Edits and deletes have to leave the index, which is migration v3's
     // contentless_delete - a build without it fails here.
@@ -147,8 +164,15 @@ export async function runJournalContract(
     await journal.entries.deleteEntry(ids[1]);
     r.equal('a deleted entry stops being findable', await found('zazolc'), []);
 
+    /* Against the entries that actually have note text rather than against a
+       number written here: a literal would be asserting that the database was
+       empty when the suite started, which is a precondition nothing gives it
+       and which would fail as a search bug the first time it was not true. */
     const [indexed] = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM entry_fts');
-    r.equal('the index holds one row per surviving entry', indexed.n, 3);
+    const [noted] = await driver.query<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM entry WHERE note IS NOT NULL AND note != ''"
+    );
+    r.equal('the index holds one row per entry that has note text', indexed.n, noted.n);
 
     for (const id of ids) await journal.entries.deleteEntry(id).catch(() => {});
   });

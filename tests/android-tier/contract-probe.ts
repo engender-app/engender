@@ -26,11 +26,12 @@ const publish = (value: unknown) => {
 };
 
 async function run() {
-  /* A fresh database per run, so a re-run is not reading what the last one
-     wrote. The name is the probe's own - the app's journal is not touched. */
-  const { driver, fileOps, requestPersistentStorage } = createAndroidSqlite(
-    `contract-probe-${Date.now()}.sqlite3`
-  );
+  /* One fixed name, the probe's own - the app's journal is not touched.
+     Freshness comes from JournalContractTest deleting this file before it
+     launches the activity, rather than from a new name per run, which would
+     leave a database behind in app storage every time the suite ran. */
+  const { driver, fileOps, requestPersistentStorage } =
+    createAndroidSqlite('contract-probe.sqlite3');
 
   const result = await boot({ createDriver: () => driver, fileOps, requestPersistentStorage });
   if (result.phase === 'error') {
