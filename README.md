@@ -37,6 +37,8 @@ npm run build      # static SPA bundle in build/ (adapter-static, no SSR)
 npm run preview
 npm run check      # svelte-check
 npm run test:walkthrough  # the 15 walkable flows, in a real Chromium
+npm run check:copy      # catalogue parity, and no new hardcoded copy
+npm run check:licences  # every installed package's licence
 node scripts/app-version.mjs   # what this checkout would build as
 ```
 
@@ -45,6 +47,14 @@ and from nowhere else, so ordinary builds are `0.0.0-dev` plus the commit
 (ADR-0022). `GENDER_DIARY_VERSION` overrides it, which is how the release
 pipeline hands one value to the bundle, the release notes and the Android
 artifacts at once.
+
+`check:copy` compares the two catalogues key by key and counts user-facing text
+written straight into the markup. Hundreds of those literals are still there
+from phase 0 and phase 1, so the check is a ratchet against
+`messages/untranslated-literals.txt`: a count may not go up, and one that goes
+down is recorded with `node scripts/check-copy.mjs --update`. A key the code
+calls and no catalogue has is a type error already, so `npm run check` covers
+that half.
 
 `test:walkthrough` builds first (with the demo bar compiled in, since one
 flow drives its jump-to-screen control) and serves that build, the same way
@@ -63,6 +73,37 @@ Demo state persists in `localStorage`; "Reset demo state" restores the Alice
 persona. "Onboarding (first run)" in the jump list clears it and walks the
 true first-launch flow. The demo import password is `demo` (any other input
 shows the wrong-password state).
+
+## CI and releases
+
+`.github/workflows/ci.yml` runs on pull requests and on `main`, since tickets
+here merge locally and main is where work actually lands. It installs from the
+lockfile and then splits: one job builds, type-checks, runs the Node tier and
+the copy and licence checks; the other drives a real Chromium through the
+browser tier, the walkthroughs and `verify:build`. A failed browser run keeps
+its output as an artifact for a week - every fixture in it is synthetic, and no
+job in that workflow is given a secret.
+
+`.github/workflows/release.yml` runs on a `v*` tag. It reads the version once,
+through `scripts/app-version.mjs`, so an unsigned tag or a tag on an edited tree
+produces no release at all (ADR-0022); hands that string to everything else
+through `GENDER_DIARY_VERSION`; takes the notes out of `CHANGELOG.md`; and
+publishes a web bundle, a source archive and checksums.
+
+```
+node scripts/release-notes.mjs [version]   # what the release would say
+node scripts/package-release.mjs           # bundle, source archive, checksums
+```
+
+Both refuse a development version, so a dry run of the whole path means handing
+one over deliberately: `GENDER_DIARY_VERSION=1.2.3 node scripts/package-release.mjs`.
+Packaging builds twice and stops unless both bundles have the same digest,
+because a checksum over a bundle nobody can rebuild only says the download
+arrived intact. Every release section in `CHANGELOG.md` has to answer four
+questions - schema changes, Archive format changes, security migrations,
+minimum supported version - and the pipeline stops before it builds anything if
+one of them is blank. Everything left in `dist/release/` is checksummed and
+attached, which is how ticket 18's signed Android artifacts will join a release.
 
 ## Stack
 

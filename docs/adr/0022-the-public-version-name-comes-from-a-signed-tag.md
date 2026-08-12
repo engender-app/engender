@@ -62,3 +62,23 @@ where the variable is set rather than where it is read: only the release
 pipeline sets it, from the tag, inside the protected release environment. What
 the rule prevents is a version claimed by accident. A version claimed on purpose
 by whoever holds the release credentials is the pipeline working.
+
+## Amendment (ticket 06): on a release, the build id is the version
+
+The sentence above about two values is now true of development builds only. A
+release has to be rebuildable from its tag byte for byte, or the checksum beside
+it says nothing more than that the download arrived intact - and SvelteKit's
+build id defaults to the time of the build and is folded into the entry chunk,
+so it changes every chunk hash. Two builds of one commit shared no bytes at all.
+
+So a build handed a release version uses it as the build id too
+(`svelte.config.js`, guarded by `isReleaseVersion`). Development builds keep the
+timestamp, where changing on every build is the useful behaviour: it is what
+stops two of them sharing an offline-shell cache (ADR-0021). Only the public
+version name is still ever shown to anyone; what changed is that on a release
+the two values are equal, which incidentally gives ADR-0021's "one cache per
+release" its name back - the shell cache of 1.2.3 is called after 1.2.3.
+
+The claim is checked rather than written down: `scripts/package-release.mjs`
+builds the release twice and refuses to publish unless the two bundles have the
+same digest.

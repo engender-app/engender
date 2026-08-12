@@ -1,0 +1,102 @@
+# Everything that has to be true before code lands (phase 2 ticket 06).
+#
+# The release workflow calls this same file rather than repeating the list, so
+# what a tag is verified against is what a change was verified against.
+name: Checks
+
+on:
+  pull_request:
+  # And main, because tickets here merge locally with `git merge --no-ff` and go
+  # straight to main. A pull-request-only workflow would be watching a door
+  # nobody uses.
+  push:
+    branches: [main]
+  workflow_call:
+
+# No job here is given a secret. Nothing in it needs one, and a pull request
+# from a fork must not be able to reach the signing credentials ticket 18 puts
+# in the release environment.
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    # For `-o pipefail`, which the default shell leaves off: the browser suites
+    # are piped through tee, and a failure has to survive the pipe.
+    shell: bash
+
+jobs:
+  node:
+    name: Checks, Node tier, catalogues and licences
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # From the lockfile, so this installs what was committed rather than
+      # whatever the registry offers today.
+      - run: npm ci
+
+      # First, because two things the checks read are written by a build and
+      # are not committed: paraglide's generated message runtime, and the list
+      # of emitted client assets the service worker precaches. It is the
+      # production build check in its own right as well.
+      - name: Production build
+        run: npm run build
+      - name: Svelte and TypeScript
+        run: npm run check
+      - name: Node tier
+        run: npm test
+      - name: Message catalogues and user-facing literals
+        run: npm run check:copy
+      - name: Dependency licences
+        run: npm run check:licences
+
+  browser:
+    name: Browser tier, walkthroughs and the built app
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # playwright-core ships no browser, and the three suites drive a real one
+      # for OPFS, WASM SQLite and the service worker. Installing through the
+      # pinned playwright-core gets the Chromium that version was built
+      # against, rather than whatever the runner image happens to carry.
+      - name: Chromium
+        run: |
+          npx playwright-core install --with-deps chromium
+          echo "CHROMIUM_PATH=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" >> "$GITHUB_ENV"
+
+      # Every fixture these three drive is synthetic: the probe pages build
+      # their own tables, and the walkthrough runs on the Alice demo persona.
+      # Nothing in this job holds a real Journal, a key or a password, which is
+      # what makes the logs safe to keep after a failure.
+      - name: Browser tier
+        run: |
+          mkdir -p ci-logs
+          npm run test:browser 2>&1 | tee ci-logs/browser-tier.log
+      - name: Walkthroughs
+        run: npm run test:walkthrough 2>&1 | tee ci-logs/walkthrough.log
+      - name: Built app
+        run: npm run verify:build 2>&1 | tee ci-logs/verify-build.log
+
+      - name: Keep the output of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-logs-${{ github.run_id }}
+          path: ci-logs/
+          retention-days: 7
