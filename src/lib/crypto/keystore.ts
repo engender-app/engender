@@ -43,6 +43,14 @@ export async function createKeystore(
   return { metadata: await wrap(dataKey, passphrase, params), dataKey };
 }
 
+export async function wrapDataKeyWithPassphrase(
+  dataKey: Uint8Array<ArrayBuffer>,
+  passphrase: string,
+  params: Argon2Params = JOURNAL_ARGON2_PARAMS
+): Promise<KeystoreMetadata> {
+  return wrap(dataKey, passphrase, params);
+}
+
 /** Recovers the data key, or throws DecryptionFailedError - a wrong
     passphrase and a corrupted keystore are deliberately the same failure
     (aesGcm.ts), and callers show only "wrong passphrase". */

@@ -16,6 +16,7 @@
   import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
+  import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LockScreen from '$lib/components/LockScreen.svelte';
@@ -73,6 +74,7 @@
      one - they share the job and none of the words. */
   let needsAuthentication = $derived(bootState.status === 'needs-authentication');
 
+  let needsDeviceRecovery = $derived(bootState.status === 'needs-device-recovery');
   /* Older code against a newer Journal (ticket 04). Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
@@ -83,6 +85,7 @@
     locked ||
       needsPassphrase ||
       needsAuthentication ||
+      needsDeviceRecovery ||
       schemaTooNew ||
       path.startsWith('/onboarding') ||
       path === '/settings/lock'
@@ -250,6 +253,8 @@
         <PassphraseGate />
       {:else if needsAuthentication}
         <AndroidKeyGate />
+      {:else if needsDeviceRecovery}
+        <DeviceBoundRecovery />
       {:else if locked}
         <!-- Instead of the route, not over it: nothing below this renders,
              so no screen mounts and no query runs while the app is locked. -->
