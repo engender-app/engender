@@ -121,3 +121,42 @@ jobs:
           name: browser-logs-${{ github.run_id }}
           path: ci-logs/
           retention-days: 7
+
+  benchmark:
+    name: Ten-year Journal, against the regression budget
+    runs-on: ubuntu-latest
+    # Generating a decade of Journal and measuring it takes minutes, which is
+    # why it is a job of its own rather than another step in the browser one:
+    # nobody should pay that to find out whether FTS5 still folds ł.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Chromium
+        run: |
+          npx playwright-core install --with-deps chromium
+          echo "CHROMIUM_PATH=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" >> "$GITHUB_ENV"
+
+      # The fixture is generated from a seed, holds no real Journal and its
+      # data key is the fixed probe one, so the log is safe to keep. What it
+      # fails on is a measurement over budgets.json, which is set well above
+      # the recorded baseline: a runner is noisier than the desktop those
+      # numbers came off, and the gate is here to catch work that grew with
+      # the journal rather than a slow afternoon.
+      - name: Long-Journal benchmark
+        run: |
+          mkdir -p ci-logs
+          npm run benchmark:long-journal 2>&1 | tee ci-logs/long-journal.log
+
+      - name: Keep the output of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-journal-log-${{ github.run_id }}
+          path: ci-logs/
+          retention-days: 7

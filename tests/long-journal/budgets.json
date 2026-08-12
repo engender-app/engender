@@ -1,0 +1,110 @@
+{
+  "measuredOn": "AMD Ryzen 7 9800X3D, 16 threads, Fedora 44, headless Chrome for Testing 151.0.7922.34. A desktop, and a fast one - re-record on the hardware a release is judged against before treating these as the last word. `npm run benchmark:long-journal -- --record` prints this block.",
+  "fixture": "seed 1, 3653 days ending epoch day 20676: 3231 entries over 2589 days with entries, 375 photos (339MB on disk), 122 lab results, 12 milestones, 24 tags. Encryption on: SQLite3MultipleCiphers under a data key, photos through the encrypting file store.",
+  "measurements": {
+    "calendar-month": {
+      "what": "calendar, one month of heat map",
+      "baselineMs": 6,
+      "budgetMs": 100,
+      "targetMs": 100,
+      "heapBaselineBytes": 0,
+      "heapBudgetBytes": null
+    },
+    "stats-year-streak": {
+      "what": "stats screen, the streak",
+      "baselineMs": 3,
+      "budgetMs": 100,
+      "targetMs": 100,
+      "heapBaselineBytes": 980,
+      "heapBudgetBytes": null
+    },
+    "stats-year-series": {
+      "what": "stats screen, 365 days of every chart",
+      "baselineMs": 7,
+      "budgetMs": 100,
+      "targetMs": 250,
+      "heapBaselineBytes": 159964,
+      "heapBudgetBytes": null
+    },
+    "stats-month-insights": {
+      "what": "stats screen, 30 days of tag insights",
+      "baselineMs": 112,
+      "budgetMs": 337,
+      "targetMs": 250,
+      "heapBaselineBytes": 12696,
+      "heapBudgetBytes": null
+    },
+    "stats-year-insights": {
+      "what": "stats screen, 365 days of tag insights",
+      "baselineMs": 3591,
+      "budgetMs": 10773,
+      "targetMs": 250,
+      "heapBaselineBytes": 81316,
+      "heapBudgetBytes": null
+    },
+    "stats-recap-year": {
+      "what": "recap, one year",
+      "baselineMs": 6,
+      "budgetMs": 100,
+      "targetMs": 400,
+      "heapBaselineBytes": 14920,
+      "heapBudgetBytes": null
+    },
+    "stats-decade": {
+      "what": "stats, the whole decade in one range",
+      "baselineMs": 5,
+      "budgetMs": 100,
+      "targetMs": 600,
+      "heapBaselineBytes": 299328,
+      "heapBudgetBytes": null
+    },
+    "search-common": {
+      "what": "search \"lustro\", one page and the total",
+      "baselineMs": 19,
+      "budgetMs": 100,
+      "targetMs": 150,
+      "heapBaselineBytes": 70544,
+      "heapBudgetBytes": null
+    },
+    "search-rare": {
+      "what": "search \"endokrynolog\", one page and the total",
+      "baselineMs": 16,
+      "budgetMs": 100,
+      "targetMs": 150,
+      "heapBaselineBytes": 153912,
+      "heapBudgetBytes": null
+    },
+    "archive-snapshot": {
+      "what": "Archive export, reading the journal out",
+      "baselineMs": 205,
+      "budgetMs": 616,
+      "targetMs": 5000,
+      "heapBaselineBytes": 2919978,
+      "heapBudgetBytes": null
+    },
+    "archive-pack": {
+      "what": "Archive export, encrypting the container",
+      "baselineMs": 1050,
+      "budgetMs": 3150,
+      "targetMs": 20000,
+      "heapBaselineBytes": 13815289,
+      "heapBudgetBytes": null
+    },
+    "photo-grid-list": {
+      "what": "photo grid, listing every photo",
+      "baselineMs": 2,
+      "budgetMs": 100,
+      "targetMs": 300,
+      "heapBaselineBytes": 0,
+      "heapBudgetBytes": null
+    },
+    "photo-grid-thumbs": {
+      "what": "photo grid, reading every thumbnail",
+      "baselineMs": 129,
+      "budgetMs": 388,
+      "targetMs": 3000,
+      "heapBaselineBytes": 10669615,
+      "heapBudgetBytes": null
+    }
+  }
+}
