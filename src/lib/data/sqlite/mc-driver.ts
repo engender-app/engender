@@ -27,7 +27,10 @@ import type { WebSqlite } from './sqlocal-driver.ts';
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
-export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Array): WebSqlite {
+/** One worker and the message plumbing over it. Two things are built on
+    this: the driver below, and ticket 10's conversion, which needs the same
+    pool and the same encryption shim but no open database. */
+function connectWorker() {
   const worker = new Worker(new URL('./mc-worker.ts', import.meta.url), { type: 'module' });
 
   let nextId = 0;
@@ -41,13 +44,58 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
     else waiter?.reject(new Error(error));
   };
 
-  function post<T>(op: string, args: Record<string, unknown> = {}): Promise<T> {
+  /* A worker that dies outside its own try/catch - a wasm module that
+     fails to initialize, a pool it cannot acquire - answers nothing, and
+     every caller waiting on it would wait for the rest of the session.
+     Failing them all is the only honest answer, and it is what turns that
+     class of fault into a boot error the layout can show. */
+  worker.onerror = (event: ErrorEvent) => {
+    const failure = new Error(`the database worker stopped: ${event.message || 'no message'}`);
+    for (const waiter of pending.values()) waiter.reject(failure);
+    pending.clear();
+  };
+
+  function post<T>(op: string, args: Record<string, unknown> = {}, transfer: Transferable[] = []): Promise<T> {
     const id = nextId++;
     return new Promise<T>((resolve, reject) => {
       pending.set(id, { resolve, reject });
-      worker.postMessage({ id, op, args });
+      worker.postMessage({ id, op, args }, transfer);
     });
   }
+
+  return { post, terminate: () => worker.terminate() };
+}
+
+/** Writes an encrypted copy of a plaintext-era database as the live
+    Journal (ticket 10). Its own worker, because the pool's sync access
+    handles belong to one at a time and the app's driver must not be
+    holding the file this is about to replace - so a conversion runs, closes
+    and only then lets boot open what it wrote. */
+export interface ConversionTarget {
+  writeFrom(plaintext: Uint8Array): Promise<void>;
+  close(): Promise<void>;
+}
+
+export function createConversionTarget(databasePath: string, dataKey: Uint8Array): ConversionTarget {
+  const { post, terminate } = connectWorker();
+
+  return {
+    async writeFrom(plaintext: Uint8Array) {
+      /* Transferred rather than cloned: this is the whole Journal, and a
+         structured clone would hold two copies of it in memory at once on
+         a phone. The caller's view is detached afterwards, which is what
+         the port's contract already says - it hands the bytes over. */
+      await post('convert', { path: databasePath, hexKey: toHex(dataKey), bytes: plaintext }, [plaintext.buffer]);
+    },
+    async close() {
+      await post('close');
+      terminate();
+    }
+  };
+}
+
+export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Array): WebSqlite {
+  const { post, terminate } = connectWorker();
 
   // Fire-and-queue: every later message waits behind this in the worker's
   // chain, and its failure resurfaces on the first statement (see above).
@@ -94,7 +142,7 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
 
     async close() {
       await post('close');
-      worker.terminate();
+      terminate();
     }
   };
 

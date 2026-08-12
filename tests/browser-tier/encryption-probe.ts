@@ -62,10 +62,17 @@ async function sentinelJpeg(): Promise<Uint8Array> {
   const segment = new Uint8Array(4 + comment.length);
   segment.set([0xff, 0xfe, (comment.length + 2) >> 8, (comment.length + 2) & 0xff]);
   segment.set(comment, 4);
+  /* After the encoder's own first segment, not straight after SOI: a
+     comment inserted at byte 2 displaces the JFIF marker, and the file
+     stops beginning ff d8 ff e0 - which is exactly what the JPEG-signature
+     sentinel above matches on, atStartOnly. Ticket 10's probe scans the
+     same fixture before encrypting it and asserts every sentinel is found,
+     which is how this one turned out to have been inert. */
+  const at = 4 + ((jpeg[4] << 8) | jpeg[5]);
   const withComment = new Uint8Array(jpeg.length + segment.length);
-  withComment.set(jpeg.subarray(0, 2)); // SOI stays first
-  withComment.set(segment, 2);
-  withComment.set(jpeg.subarray(2), 2 + segment.length);
+  withComment.set(jpeg.subarray(0, at));
+  withComment.set(segment, at);
+  withComment.set(jpeg.subarray(at), at + segment.length);
   return withComment;
 }
 

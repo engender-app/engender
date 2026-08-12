@@ -9,7 +9,16 @@
      (ADR-0014), this passphrase IS the wall in front of the data - the
      copy may say so. A wrong passphrase and a damaged keystore are one
      indistinguishable failure (aesGcm.ts), so the error names only the
-     likely cause and never diagnoses. */
+     likely cause and never diagnoses.
+
+     Ticket 10 adds the case where the device already holds a Journal that
+     is not encrypted. The two screens are the same - a passphrase has to
+     be chosen, or re-entered after an interrupted attempt - but the copy
+     has to say what is about to happen to the entries that are already
+     there, and say it BEFORE the passphrase is set rather than after
+     (ADR-0018: setup states the consequence before conversion). The
+     conversion itself gets a screen, and a conversion that cannot start
+     gets one that says why in numbers. */
 
   import { m } from '$lib/paraglide/messages';
   import { bootState, submitPassphraseSetup, submitPassphraseUnlock, resetApp } from '$lib/stores/boot.svelte';
@@ -26,6 +35,31 @@
   let resetting = $state(false);
 
   let mode = $derived(bootState.status === 'needs-setup' ? 'setup' : 'unlock');
+  /** The device holds a plaintext Journal, so this passphrase converts it
+      rather than opening one. */
+  let converting = $derived(bootState.conversion !== null);
+
+  /** Whole units, for a person deciding whether to go and delete
+      something. Nobody needs three decimal places of megabyte, and both
+      catalogues write the unit the same way. */
+  function megabytes(bytes: number): string {
+    return bytes >= 1024 * 1024
+      ? `${Math.round(bytes / (1024 * 1024))} MB`
+      : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  let progress = $derived(bootState.conversion?.progress ?? null);
+  let progressLine = $derived(
+    progress === null
+      ? m.pp_converting_preparing()
+      : progress.stage === 'database'
+        ? m.pp_converting_database()
+        : progress.stage === 'photos'
+          ? progress.total === 0
+            ? m.pp_converting_no_photos()
+            : m.pp_converting_photos({ done: String(progress.done), total: String(progress.total) })
+          : m.pp_converting_retire()
+  );
 
   async function submit(event: SubmitEvent) {
     event.preventDefault();
@@ -70,6 +104,38 @@
   }
 </script>
 
+{#if bootState.status === 'conversion-refused'}
+  <div class="screen">
+    <PrideAurora />
+    <div class="applock">
+      <div class="applock-badge"><Icon name="alert" size={30} /></div>
+      <h1 class="ob-title" style="text-align:center">{m.pp_convert_refused_title()}</h1>
+      <p class="ob-text" style="text-align:center" data-conversion-refusal>
+        {#if bootState.conversionRefusal?.reason === 'not-enough-space'}
+          {m.pp_convert_refused_space({
+            need: megabytes(bootState.conversionRefusal.needBytes),
+            free: megabytes(bootState.conversionRefusal.freeBytes)
+          })}
+        {:else if bootState.conversionRefusal?.reason === 'schema-too-new'}
+          {m.pp_convert_refused_schema()}
+        {/if}
+      </p>
+    </div>
+  </div>
+{:else if bootState.status === 'converting'}
+  <div class="screen">
+    <PrideAurora />
+    <div class="applock">
+      <div class="applock-badge"><Icon name="lock" size={30} /></div>
+      <h1 class="ob-title" style="text-align:center">{m.pp_converting_title()}</h1>
+      <p class="ob-text" style="text-align:center" data-conversion-progress>{progressLine}</p>
+      <!-- True, and worth saying: every step is written down before it
+           happens, so a closed tab or a dead battery resumes rather than
+           starts over (conversion.ts). -->
+      <p class="ob-text small" style="text-align:center">{m.pp_converting_note()}</p>
+    </div>
+  </div>
+{:else}
 <div class="screen">
   <PrideAurora />
   <div class="applock">
@@ -77,10 +143,16 @@
     <!-- No name in the unlock greeting on purpose: the display name lives in
          the encrypted journal, and this screen renders before it can be read. -->
     <h1 class="ob-title" style="text-align:center">
-      {#if mode === 'setup'}{m.pp_setup_title()}{:else}{m.pp_unlock_title()}{/if}
+      {#if converting && mode === 'setup'}{m.pp_convert_setup_title()}
+      {:else if converting}{m.pp_convert_resume_title()}
+      {:else if mode === 'setup'}{m.pp_setup_title()}
+      {:else}{m.pp_unlock_title()}{/if}
     </h1>
     <p class="ob-text" style="text-align:center">
-      {#if mode === 'setup'}{m.pp_setup_body()}{:else}{m.pp_unlock_body()}{/if}
+      {#if converting && mode === 'setup'}{m.pp_convert_setup_body()}
+      {:else if converting}{m.pp_convert_resume_body()}
+      {:else if mode === 'setup'}{m.pp_setup_body()}
+      {:else}{m.pp_unlock_body()}{/if}
     </p>
 
     <form class="stack-3" onsubmit={submit} style="margin-top:var(--space-4)">
@@ -115,7 +187,11 @@
       <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
       <button class="btn btn-primary" type="submit" data-passphrase-submit disabled={busy}>
         <span>
-          {#if busy}{mode === 'setup' ? m.pp_encrypting() : m.pp_decrypting()}{:else}{mode === 'setup' ? m.pp_submit_setup() : m.pp_submit_unlock()}{/if}
+          {#if busy}{mode === 'setup' ? m.pp_encrypting() : m.pp_decrypting()}
+          {:else if converting && mode === 'setup'}{m.pp_convert_submit_setup()}
+          {:else if converting}{m.pp_convert_submit_resume()}
+          {:else if mode === 'setup'}{m.pp_submit_setup()}
+          {:else}{m.pp_submit_unlock()}{/if}
         </span>
       </button>
     </form>
@@ -129,6 +205,7 @@
     {/if}
   </div>
 </div>
+{/if}
 
 <Sheet bind:open={resetOpen} title={m.pp_forgot()}>
   <h3>{m.pp_forgot()}</h3>

@@ -54,7 +54,33 @@ the pre-migration copy, photos, thumbnails - byte for byte
 (tests/browser-tier/encryption-probe.ts).
 
 A journal from before this ticket is refused with a plain message rather
-than opened or silently replaced; converting it is ticket 10's job. Demo
+than opened or silently replaced; converting it is ticket 10's job, and
+ticket 10 replaced that refusal with the conversion (below). Demo
 builds create and unlock a fixed passphrase themselves so the walkthrough
 suite and reviewers land in the journal - the mechanism is identical, only
 the typing is skipped, and none of it ships in a production bundle.
+
+## Amended by ticket 10: what the conversion adds outside the encryption
+
+Converting a plaintext-era Journal adds one file to the list of things that
+sit outside the encryption, and it is nothing: `conversion.json` in the OPFS
+root holds a single stage name, and its whole job is to be readable by a boot
+that has no data key yet. That an unfinished conversion exists is not a secret
+either - the plaintext Journal it is converting is lying next to it.
+
+The conversion holds two forms of the Journal at once, and the rule about
+which one the app will open is the marker's, not a guess: while the marker
+exists the plaintext one is the authority, and the encrypted one is only ever
+opened after it has been reopened under the data key and counted against the
+original. There is no state in which the app reports itself encrypted over a
+Journal that is partly still plaintext. Photos are the only thing rewritten in
+place, and only after that verification, so the window in which some are
+ciphertext and some are not is one-way by construction: the encrypted database
+is already proven, and a resume finishes the rest (a file that decrypts under
+the data key was converted; one that does not is still a photo).
+
+The last plaintext file goes before the conversion reports success (ADR-0006's
+amendment says why, rather than one boot later). From that moment the claim
+covers this device the same way it covers a Journal that was born encrypted,
+and the same scan proves it - on a Journal whose every sentinel was verifiably
+readable on disk minutes earlier.

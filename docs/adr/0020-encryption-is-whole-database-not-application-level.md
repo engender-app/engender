@@ -81,3 +81,37 @@ The web build takes `@evolu/sqlite-wasm` as a dependency, which tracks
 upstream sqlite-wasm with some lag (3.50.4 against 3.53.0 at decision time).
 If the lag or the project's maintenance ever becomes a problem, sqlite3mc
 documents a self-build path that follows sqlite.org's own wasm build.
+
+## Amended by ticket 10: how an unencrypted database becomes an encrypted one
+
+Whole-database encryption makes the conversion of an existing Journal a
+container change rather than a data migration, which is the property that
+carries the `pref` table across. An export and import would not: `restore.ts`
+deliberately never touches that table (ADR-0003, ADR-0011), so an archive-shaped
+conversion would silently drop the PIN hash, the app-lock flags, the disguise
+setting and the onboarding state.
+
+The mechanism is not the one the pre-migration copy uses, and this is worth
+recording because the obvious choice does not work. sqlite3mc takes a
+destination's cipher from the source connection's, not from the destination
+URI: `VACUUM INTO 'file:…?hexkey=…'` from an unencrypted source writes an
+unencrypted file and ignores the key entirely. Measured, not reasoned about -
+the copy came out carrying `SQLite format 3` and the seeded text in the clear.
+The pre-migration copy is unaffected, because there the source connection is
+already keyed. Rekeying the source first is the next idea and sqlite3mc refuses
+it: "Rekeying not supported for in-memory or temporary databases".
+
+So the conversion imports the plaintext into the SAHPool under the name the
+Journal will keep (`installOpfsSAHPoolVfs()`'s `importDb`, which wants exactly
+the plaintext SQLite magic a converted file no longer has) and rewrites every
+page in place with `PRAGMA hexrekey`. Between those two steps a readable copy of
+the Journal exists in the pool, and the rollback journal that makes the rekey
+atomic holds plaintext pages while it runs. Both are inside the window in which
+the source is still sitting in the OPFS root anyway and the app has not claimed
+to be encrypted; both are gone before it does. The claim gate reads the pool's
+bytes after a real conversion rather than taking that on trust
+(`tests/browser-tier/conversion-probe.ts`).
+
+Android's conversion is ticket 13's and does not inherit this: SQLCipher
+documents `sqlcipher_export()` for exactly this direction, and has no reason to
+reach for a rekey in place.

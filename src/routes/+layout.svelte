@@ -52,8 +52,16 @@
 
   /* The passphrase gate (ticket 09) renders before the database can even
      open, the same way the lock renders instead of the app: no route shows
-     journal content, because there is no journal to show yet. */
-  let needsPassphrase = $derived(bootState.status === 'needs-setup' || bootState.status === 'needs-unlock');
+     journal content, because there is no journal to show yet. Ticket 10's
+     two states belong to the same gate - a conversion running, and one
+     that could not start - because both are the same "there is no journal
+     open yet, and here is why". */
+  let needsPassphrase = $derived(
+    bootState.status === 'needs-setup' ||
+      bootState.status === 'needs-unlock' ||
+      bootState.status === 'converting' ||
+      bootState.status === 'conversion-refused'
+  );
 
   let path = $derived(page.url.pathname);
   let chromeless = $derived(

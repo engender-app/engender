@@ -22,3 +22,25 @@ Refusing a newer `user_version` matters because that case is reachable in practi
 a stale service worker can serve old code after a newer version has already
 migrated the database. Guessing at a schema from the future is how data gets
 mangled quietly.
+
+## Amended by ticket 10: the encryption conversion retires its source at verification
+
+Converting a plaintext-era Journal to an encrypted one (phase 2 ticket 10) is a
+migration in this ADR's sense, and it follows the rule with one difference. Its
+pre-conversion state is the source database itself: nothing plaintext is
+destroyed until the encrypted copy has been reopened under the data key and
+counted table by table against the original. That gives the same guarantee the
+copy exists for, without making a copy at all.
+
+The difference is when the source goes. This ADR keeps a copy until the next
+clean boot; the conversion deletes the source as soon as the copy is verified,
+in the same boot. Holding it one boot longer would mean the app calling itself
+encrypted while a readable copy of the whole Journal sits in OPFS, which
+ADR-0018 cannot claim over. A copy already verified page for page has nothing
+left to insure against, and the window this closes is the only one in which
+both forms exist and the app is not saying so.
+
+The version refusal applies unchanged, and is checked before the conversion
+starts rather than after: converting a schema this build does not know would
+write a faithful encrypted copy and then fail to open it, having already
+retired the only copy an older build could read.

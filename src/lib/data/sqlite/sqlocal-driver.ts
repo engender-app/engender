@@ -102,3 +102,37 @@ export function createWebSqlite(databasePath: string): WebSqlite {
 
   return { driver, fileOps, requestPersistentStorage };
 }
+
+/** A read-only view of a Journal from before encryption, for the one thing
+    that still needs one: converting it (ticket 10). ADR-0020 replaced this
+    driver, and the app never opens a plaintext database again - but the
+    conversion has to read one, and this file stays the only place that
+    knows SQLocal exists.
+
+    Read-only in intent rather than by a flag: `sql` is here because the
+    conversion counts the rows it is about to copy so it can count them
+    again on the other side, and because opening the database is what
+    applies a rollback journal a killed write left behind. The bytes that
+    come out are therefore a consistent database rather than a snapshot of
+    one mid-transaction, which is the reason to go through SQLocal at all
+    instead of reading the OPFS file directly. */
+export interface PlaintextEraJournal {
+  query<Row extends Record<string, unknown>>(statement: string, params?: unknown[]): Promise<Row[]>;
+  /** The whole database file, as SQLocal's own VFS sees it. */
+  readDatabaseFile(): Promise<Uint8Array<ArrayBuffer>>;
+  /** Lets go of the OPFS handle, which is what has to happen before the
+      file can be deleted or the SAHPool worker can take over. */
+  close(): Promise<void>;
+}
+
+export function openPlaintextEraJournal(databasePath: string): PlaintextEraJournal {
+  const client = new SQLocal(databasePath);
+
+  return {
+    query: (statement, params = []) => client.sql(statement, ...params) as never,
+    async readDatabaseFile() {
+      return new Uint8Array(await (await client.getDatabaseFile()).arrayBuffer());
+    },
+    close: () => client.destroy()
+  };
+}
