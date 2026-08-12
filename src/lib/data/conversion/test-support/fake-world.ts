@@ -125,7 +125,12 @@ export async function fakeWorld(options: FakeWorldOptions = {}): Promise<FakeWor
 
   async function seedSource(): Promise<void> {
     const raw = new DatabaseSync(path(SOURCE));
-    await runMigrations(nodeDriver(raw), { copyDatabaseFile() {}, cleanupPreMigrationCopy() {} }, migrations);
+    await runMigrations(nodeDriver(raw), {
+        preMigrationCopyExists: () => false,
+        copyDatabaseFile() {},
+        restorePreMigrationCopy() {},
+        cleanupPreMigrationCopy() {}
+      }, migrations);
     for (const [index, note] of notes.entries()) {
       raw
         .prepare('INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES (?, ?, ?, ?, ?)')

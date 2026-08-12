@@ -18,6 +18,8 @@
 import { boot } from '../data/sqlite/boot';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
+import { SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
+import { enterWriteInFlight } from '../pwa/writes-in-flight';
 import { openJournal, type Journal } from '../data/journal/journal';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
@@ -58,9 +60,25 @@ export const bootState = $state<{
       every later cold start. The layout renders the passphrase gate for
       those, for `converting` and for `conversion-refused`, and
       submitPassphraseSetup/-Unlock below are what move on. */
-  status: 'booting' | 'needs-setup' | 'needs-unlock' | 'converting' | 'conversion-refused' | 'ready' | 'error';
+  /** `schema-too-new` is the rollback direction of ticket 04: this build met
+      a Journal a newer one has already migrated, and refuses it rather than
+      guessing (ADR-0006). Its own status rather than an `error`, because the
+      journal is intact and the screen has something to say about what to do. */
+  status:
+    | 'booting'
+    | 'needs-setup'
+    | 'needs-unlock'
+    | 'converting'
+    | 'conversion-refused'
+    | 'ready'
+    | 'schema-too-new'
+    | 'error';
   error: string | null;
   persistDenied: boolean;
+  /** Set when a migration failed and the copy ADR-0006 took beforehand is
+      still on disk, so the failure screen can offer to put it back
+      (ticket 04). */
+  recoverable: boolean;
   /** The one journal instance the UI reads (ADR-0017), for anything that
       needs the handle itself rather than the reactive layer over it. */
   journal: Journal | null;
@@ -76,6 +94,7 @@ export const bootState = $state<{
   status: 'booting',
   error: null,
   persistDenied: false,
+  recoverable: false,
   journal: null,
   conversion: null,
   conversionRefusal: null
@@ -86,6 +105,10 @@ let started = false;
    will let go of the file. Nothing else reaches for it: screens go through
    data/live/, and bootState.journal is the handle for everything else. */
 let openDriver: SqliteDriver | null = null;
+/** Kept for the same reason, and for the restore below: putting the
+    pre-migration copy back is the one recovery a failed boot can offer, and
+    it needs the file ops of the driver that failed (ticket 04). */
+let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
 
 /** The forgotten-PIN escape hatch (ADR-0014): wipes what this device holds
@@ -104,6 +127,24 @@ export async function resetApp(): Promise<void> {
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
   location.replace('/');
+}
+
+/** Puts the pre-migration copy back as the live Journal and starts the app
+    again on it (ticket 04, ADR-0006).
+
+    Offered only from the migration-failure screen, and only when a copy is
+    there. What comes back is the Journal as it was before the update that
+    could not finish: if this build still cannot migrate it, the next boot
+    lands on the same screen with the copy still in place, and the version of
+    Gender Diary the Journal came from can open it. That is the honest limit of
+    an in-app rollback, and the screen's copy says it.
+
+    Reloads rather than carrying on: the driver's connection was on the file
+    that has just been replaced (mc-driver.ts), and boot() has already run. */
+export async function restorePreviousJournal(): Promise<void> {
+  if (!openFileOps) throw new Error('there is no failed boot to recover from');
+  await openFileOps.restorePreMigrationCopy();
+  location.reload();
 }
 
 /** In a demo build the passphrase machinery runs for real - keystore,
@@ -234,6 +275,11 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> 
   }
 
   bootState.status = 'converting';
+  /* The longest of the four windows an update must not land in (ticket 04):
+     a whole Journal and every photo, rewritten on a phone. The conversion
+     survives being killed and resumes, but code replaced under it mid-write
+     is not an interruption it can reason about. */
+  const converting = enterWriteInFlight();
   try {
     await runConversion(webConversionPorts(dataKey), (progress) => {
       bootState.conversion = { progress };
@@ -242,6 +288,8 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> 
     bootState.status = 'error';
     bootState.error = String((error as Error)?.message ?? error);
     return;
+  } finally {
+    converting();
   }
 
   bootState.conversion = null;
@@ -260,6 +308,7 @@ function continueBoot(dataKey: Uint8Array<ArrayBuffer>) {
     dataKey
   );
   openDriver = driver;
+  openFileOps = fileOps;
 
   // Set before boot() rather than after, so the first screen to render a
   // photo already has somewhere to read it from. Encrypted per file under
@@ -290,8 +339,22 @@ function continueBoot(dataKey: Uint8Array<ArrayBuffer>) {
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles)
   }).then(async (result) => {
     if (result.phase === 'error') {
+      /* The rollback direction (ticket 04): older code has met a Journal a
+         newer build already migrated. Not the generic failure, because
+         nothing is wrong with the Journal and there is something to do about
+         it - the screen says which, in the person's language, rather than
+         printing the exception. */
+      if (result.error instanceof SchemaTooNewError) {
+        bootState.status = 'schema-too-new';
+        return;
+      }
       bootState.status = 'error';
       bootState.error = String((result.error as Error)?.message ?? result.error);
+      /* Whether the failure screen can offer a way back. Asked of the disk
+         rather than assumed from the failure: a copy is there only if this
+         boot or an earlier one got as far as taking one, and a driver too
+         broken to answer is a driver that cannot restore either. */
+      bootState.recoverable = await Promise.resolve(fileOps.preMigrationCopyExists()).catch(() => false);
       return;
     }
 

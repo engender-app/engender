@@ -147,8 +147,18 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
   };
 
   const fileOps: MigrationFileOps = {
+    async preMigrationCopyExists() {
+      return post<boolean>('preMigrationCopyExists');
+    },
     async copyDatabaseFile() {
       await post('copyDatabaseFile');
+    },
+    /* Leaves this driver closed (mc-worker.ts): the file it had open has just
+       been replaced, so there is nothing sensible for a later statement to
+       run against. The caller reloads the page - boot.svelte.ts does - rather
+       than carrying on over a connection that is gone. */
+    async restorePreMigrationCopy() {
+      await post('restorePreMigrationCopy');
     },
     async cleanupPreMigrationCopy() {
       await post('cleanupPreMigrationCopy');

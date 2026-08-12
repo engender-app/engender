@@ -7,6 +7,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import type { SqliteDriver } from './driver.ts';
+import { writeInFlight } from '../../pwa/writes-in-flight.ts';
 import { boot } from './boot.ts';
 
 function makeFakeDriver(): SqliteDriver {
@@ -43,7 +44,12 @@ function makeFakeDriver(): SqliteDriver {
 }
 
 function noopFileOps() {
-  return { copyDatabaseFile() {}, cleanupPreMigrationCopy() {} };
+  return {
+    preMigrationCopyExists: () => false,
+    copyDatabaseFile() {},
+    restorePreMigrationCopy() {},
+    cleanupPreMigrationCopy() {}
+  };
 }
 
 test('opens the database, runs migrations, and reports ready', async () => {
@@ -124,6 +130,42 @@ test('does not load reference data or sweep photos after a failed migration', as
   });
 
   assert.equal(touchedAfterFailure, false);
+});
+
+test('migrations hold the update guard, so a waiting worker cannot take over mid-migration', async () => {
+  // The dangerous one of the four (ticket 04): a save interrupted costs a
+  // spinner, a migration interrupted can cost the journal.
+  const duringMigration: boolean[] = [];
+  const watchingDriver = (): SqliteDriver => {
+    const driver = makeFakeDriver();
+    return {
+      ...driver,
+      async exec(sql) {
+        duringMigration.push(writeInFlight());
+        return driver.exec(sql);
+      }
+    };
+  };
+
+  await boot({ createDriver: watchingDriver, fileOps: noopFileOps() });
+
+  assert.ok(duringMigration.length > 0, 'the migration runner has to have run for this to prove anything');
+  assert.ok(
+    duringMigration.every((busy) => busy),
+    'every statement a migration ran must have been under the guard'
+  );
+  assert.equal(writeInFlight(), false, 'and the guard has to be back down once boot is finished');
+});
+
+test('a failed migration lets the update guard go, so the app is not stuck on this release', async () => {
+  const brokenDriver = (): SqliteDriver => {
+    const driver = makeFakeDriver();
+    return { ...driver, getUserVersion: async () => { throw new Error('disk full'); } };
+  };
+
+  await boot({ createDriver: brokenDriver, fileOps: noopFileOps() });
+
+  assert.equal(writeInFlight(), false);
 });
 
 test('a failing photo sweep still boots: housekeeping must not cost the app its screens', async () => {

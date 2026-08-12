@@ -15,7 +15,14 @@ export interface MigrationDb {
 }
 
 export interface MigrationFileOps {
+  /** Whether a copy from an earlier boot is still on disk. A boot that finds
+      one is a boot whose predecessor did not come up clean. */
+  preMigrationCopyExists(): boolean | Promise<boolean>;
   copyDatabaseFile(): void | Promise<void>;
+  /** Puts the copy back as the live database, discarding whatever the failed
+      migration left (ticket 04). Never called from here: recovery is a person
+      acting on the failure screen, not something a boot decides. */
+  restorePreMigrationCopy(): void | Promise<void>;
   cleanupPreMigrationCopy(): void | Promise<void>;
 }
 
@@ -82,7 +89,15 @@ export async function runMigrations(
     return;
   }
 
-  await fileOps.copyDatabaseFile();
+  /* Unless one is already there (ticket 04). A copy on disk at this point was
+     left by a boot that tried these same steps and did not finish them, and it
+     is the better of the two: taken before the attempt that failed, from a
+     file nothing had been at. Copying again would spend it - and if the
+     failure damaged the database, the copy could not be written at all, so the
+     retry would destroy the only way back and put nothing in its place. */
+  if (!(await fileOps.preMigrationCopyExists())) {
+    await fileOps.copyDatabaseFile();
+  }
 
   for (const migration of pending) {
     await db.transaction(async () => {
