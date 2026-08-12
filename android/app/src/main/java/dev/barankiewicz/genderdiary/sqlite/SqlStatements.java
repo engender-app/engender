@@ -1,6 +1,8 @@
 package dev.barankiewicz.genderdiary.sqlite;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 /**
@@ -22,10 +24,19 @@ final class SqlStatements {
 
     private SqlStatements() {}
 
+    /** What an END closes: a trigger body, or a CASE expression inside one. */
+    private enum Open {
+        BLOCK,
+        CASE_EXPRESSION
+    }
+
     static List<String> split(String script) {
         List<String> statements = new ArrayList<>();
         StringBuilder current = new StringBuilder();
-        int depth = 0; // open BEGIN blocks, so a trigger body stays one statement
+        /* Innermost first. A CASE inside a trigger body has to consume its own
+           END, or the trigger closes early and the next semicolon splits its
+           body - which execSQL would then run as a fragment without saying so. */
+        Deque<Open> open = new ArrayDeque<>();
 
         int i = 0;
         while (i < script.length()) {
@@ -49,14 +60,15 @@ final class SqlStatements {
             if (isWordStart(script, i)) {
                 int end = endOfWord(script, i);
                 String word = script.substring(i, end);
-                if (word.equalsIgnoreCase("BEGIN") && opensABlock(current)) depth++;
-                else if (word.equalsIgnoreCase("END") && depth > 0) depth--;
+                if (word.equalsIgnoreCase("BEGIN") && opensABlock(current)) open.push(Open.BLOCK);
+                else if (word.equalsIgnoreCase("CASE")) open.push(Open.CASE_EXPRESSION);
+                else if (word.equalsIgnoreCase("END") && !open.isEmpty()) open.pop();
                 current.append(word);
                 i = end;
                 continue;
             }
 
-            if (c == ';' && depth == 0) {
+            if (c == ';' && !open.contains(Open.BLOCK)) {
                 addIfNotBlank(statements, current);
                 current.setLength(0);
                 i++;
@@ -75,10 +87,6 @@ final class SqlStatements {
      * A {@code BEGIN} opens a block only when it is not the whole statement.
      * {@code BEGIN;} on its own is a transaction, which the driver issues for
      * every write; {@code ... ON entry BEGIN} is a trigger body.
-     *
-     * <p>The same test rules out {@code CASE ... END}: a CASE always has a
-     * preceding expression, so it never reaches here as a block opener, and
-     * its {@code END} only decrements a depth that a trigger opened.
      */
     private static boolean opensABlock(StringBuilder current) {
         return current.toString().trim().length() > 0;

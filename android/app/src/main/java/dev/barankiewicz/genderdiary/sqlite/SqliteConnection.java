@@ -34,8 +34,11 @@ import java.nio.file.StandardCopyOption;
  */
 final class SqliteConnection {
 
-    /** ADR-0006's copy, taken before a migration and removed after it. */
-    private static final String PRE_MIGRATION_SUFFIX = ".pre-migration";
+    /** ADR-0006's copy, taken before a migration and removed after it. The
+        suffix matches the web tier's (web-ports.ts): one artifact of one ADR
+        should not be findable under two different names depending on which
+        platform wrote it. */
+    private static final String PRE_MIGRATION_SUFFIX = ".pre-migration-backup";
 
     enum TransactionStep {
         BEGIN("BEGIN"),
@@ -179,6 +182,15 @@ final class SqliteConnection {
      * JSON has one number type and so does JavaScript, so an integral value
      * binds as INTEGER and everything else as REAL - the same rule node:sqlite
      * applies in the test tier, which is what keeps the tiers comparable.
+     *
+     * <p>Nothing else is converted, deliberately. node:sqlite rejects a bound
+     * boolean rather than coercing it, so accepting one here would make the
+     * Android tier the lenient one and hide a call the Node tier would have
+     * failed - in exactly the parity the contract suite exists to prove. The
+     * schema stores booleans as 0/1 (see {@code bool} in journal/support.ts)
+     * and the journal converts above the driver, so this is unreachable in
+     * practice; it is a refusal rather than a conversion so that if it ever
+     * is reached, both tiers say so.
      */
     private static Object[] bindArgs(JSONArray params) throws JSONException {
         if (params == null) return new Object[0];
@@ -188,8 +200,6 @@ final class SqliteConnection {
             if (raw instanceof Number) {
                 double d = ((Number) raw).doubleValue();
                 args[i] = d == Math.rint(d) && !Double.isInfinite(d) ? (Object) (long) d : (Object) d;
-            } else if (raw instanceof Boolean) {
-                args[i] = ((Boolean) raw) ? 1L : 0L;
             } else {
                 args[i] = raw;
             }
