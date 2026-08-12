@@ -115,3 +115,38 @@ bytes after a real conversion rather than taking that on trust
 Android's conversion is ticket 13's and does not inherit this: SQLCipher
 documents `sqlcipher_export()` for exactly this direction, and has no reason to
 reach for a rekey in place.
+
+## Amended by phase 2 ticket 11: how the Android driver reaches SQLCipher
+
+The Android `SqliteDriver` is a local Capacitor plugin over
+`net.zetetic:sqlcipher-android`, not `@capacitor-community/sqlite`. The
+community plugin is not the wrong library: it uses SQLCipher underneath, "even
+for unencrypted databases", and its `minSdkVersion = 23` clears the API 26 the
+spec asks for. The disagreement is about who holds the key.
+
+`@capacitor-community/sqlite` takes a passphrase (`setEncryptionSecret`),
+derives the database key from it and keeps the secret in encrypted
+SharedPreferences. ADR-0018 puts a random data key under Android Keystore and
+hands it to SQLite raw, and ADR-0013 puts the single stretching step in the
+wrapping layer above it. Nothing in the plugin's documented API accepts a raw
+key. Adopting it would move key derivation and key storage inside a dependency
+and leave ticket 13 amending two ADRs to describe what the plugin happens to
+do. Writing the bridge is the smaller cost: `SqliteDriver` is seven methods of
+SQL in and rows out, which is most of what any bridge carries anyway, and
+ADR-0017's seam means nothing above it can tell which side it is talking to.
+
+Three comments named `@capacitor-community/sqlite` as the Android driver
+(`driver.ts`, `migration-runner.ts`, `node-sqlite-driver.ts`). They were
+written at phase 1 ticket 04, before ticket 08 measured anything, and two of
+them still named SQLocal as the web driver ticket 09 replaced. Corrected here.
+A guess repeated in three files reads like a decision, which is how this one
+nearly became one. `prd.md` says the same thing and stays as it is: it is the
+phase 0 document, unamended since the initial commit, and it is read as a
+record of what was wanted rather than of what was built.
+
+One thing the choice rests on that no measurement covers yet. The ticket 08
+probe opened the Android database with a passphrase and let SQLCipher run its
+KDF (105 ms to reopen and query), and recorded the raw-key path as documented
+rather than exercised. This ticket opens with a raw key on device and asserts
+it, though nothing is encrypted until ticket 13, because a bridge chosen for a
+capability should demonstrate it before three tickets are built on top.
