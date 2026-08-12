@@ -20,6 +20,10 @@ The exact numeric parameters (memory cost, iterations, parallelism) are not fixe
 by this decision — they come from benchmarking real hardware once the crypto
 module is built, and get recorded as a follow-up once measured.
 
+The Journal passphrase is a third consumer. Its parameters are benchmarked and
+tuned independently from both the archive password and the app-lock PIN. It must
+resist offline guessing without making every fresh web unlock unusable.
+
 Losing the archive password is unrecoverable by design; the app must warn the user
 of this plainly at the moment the password is set, and again before any encrypted
 export.
