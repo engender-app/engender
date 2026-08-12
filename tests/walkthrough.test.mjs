@@ -672,6 +672,24 @@ try {
   ok('lock on leave, quick exit blanks and locks, forgotten-PIN reset clears the lock');
 } catch (e) { fail('lock on leave, quick exit and reset', e); }
 
+/* 19. the About screen shows the version the build was given (ticket 01).
+
+   The literal is written twice on purpose: package.json's test:walkthrough
+   builds under GENDER_DIARY_VERSION=9.9.9-walkthrough, and this asks for
+   that exact string back. Deriving it here - reading the environment, or
+   calling the resolver - would make the assertion agree with itself and pass
+   against a build that shipped anything at all. A version nobody can derive
+   is the whole point, which is also why it is an obvious fake: this is the
+   demo build, and it never ships. verify:build covers the other direction,
+   where the version is the real one resolved from the checkout. */
+try {
+  await fresh('/settings');
+  await page.locator('[data-about-open]').click();
+  const shown = (await page.locator('[data-app-version]').innerText()).trim();
+  if (shown !== '9.9.9-walkthrough') throw new Error(`About shows "${shown}"`);
+  ok('About shows the exact version the build was given');
+} catch (e) { fail('the version the build was given', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');
