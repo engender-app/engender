@@ -11,9 +11,12 @@
    They do not run the same set, and the reason is worth knowing.
 
    The native checks run on both. That is the half that varies with the
-   platform: the framework, the linker and what the app process can load.
+   platform: the framework, the linker and what the app process can load -
+   and, since ticket 13, what Android Keystore does with the journal's data
+   key, whose authorization model changed at API 30.
 
-   The contract suite runs only on the current Android. It needs a WebView,
+   The WebView suites - the contract suite and the encryption claim gate -
+   run only on the current Android. They need a WebView,
    and Android updates its WebView separately from the OS, so an API level
    says nothing about what the app runs in. The API 26 emulator image ships
    Chrome 69 from 2018, which has no OPFS - capacitor.config.ts puts the
@@ -52,7 +55,15 @@ const BOOT_TIMEOUT_MS = 300_000;
 /** The AVDs whose WebView is too old to start the app, so only the native
     half is asked of them. See the header for why this is not a gap. */
 const NATIVE_ONLY = new Set(['gd26']);
-const NATIVE_TESTS = 'dev.barankiewicz.genderdiary.sqlite.NativeSqliteCapabilitiesTest';
+/* The two suites that need no WebView: what the native SQLite build has
+   (ticket 11) and what Android Keystore does with the journal's data key
+   (ticket 13). The Keystore one is worth having on the older emulator in
+   particular - below API 30 the key is authorized by time rather than
+   per-operation, and that branch exists nowhere else. */
+const NATIVE_TESTS = [
+  'dev.barankiewicz.genderdiary.sqlite.NativeSqliteCapabilitiesTest',
+  'dev.barankiewicz.genderdiary.keystore.JournalKeystoreTest'
+].join(',');
 
 const sdkRoot =
   process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT ?? join(process.env.HOME ?? '', 'Android/Sdk');
@@ -169,16 +180,19 @@ function reportInstrumentation(avd, output) {
   if (!sawAny) fail(`${avd}: instrumentation results`, `no test cases in ${resultsDir}\n${output.slice(-800)}`);
 }
 
-// --- Build the probe bundle the instrumentation test serves ----------------
-const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
-  cwd: repo
-});
-if (probeBuild.status !== 0) {
-  fail('build the android-tier probe bundle', probeBuild.stderr || probeBuild.stdout);
-  finish('');
-  process.exit(1);
+// --- Build the probe bundles the instrumentation tests serve ---------------
+for (const probe of ['contract', 'encryption']) {
+  const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
+    cwd: repo,
+    env: { ...env, ANDROID_TIER_PROBE: probe }
+  });
+  if (probeBuild.status !== 0) {
+    fail(`build the android-tier ${probe} probe bundle`, probeBuild.stderr || probeBuild.stdout);
+    finish('');
+    process.exit(1);
+  }
+  ok(`the android-tier ${probe} probe bundle builds`);
 }
-ok('the android-tier probe bundle builds');
 
 // --- Sync the app's web assets so the APK carries the real bundle ----------
 const appBuild = run('npm', ['run', 'build'], { cwd: repo });
