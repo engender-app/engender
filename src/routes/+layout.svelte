@@ -11,11 +11,15 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { journal, onTablesWritten } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
+  import { isAndroid } from '$lib/platform';
+  import { androidReminders } from '$lib/reminders/android-bridge';
+  import { buildAndroidReminderPayload } from '$lib/reminders/payload';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LockScreen from '$lib/components/LockScreen.svelte';
@@ -163,6 +167,62 @@
 
   /* New-entry chooser (F1). */
   let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
+  let remindersListenerAttached = false;
+  let reminderSyncRunning = false;
+  let reminderSyncQueued = false;
+
+  async function syncAndroidReminderSchedules() {
+    if (!isAndroid() || bootState.status !== 'ready') return;
+    if (reminderSyncRunning) {
+      reminderSyncQueued = true;
+      return;
+    }
+    reminderSyncRunning = true;
+    try {
+      const [reminders, recent] = await Promise.all([
+        journal.reminders.getReminders(),
+        journal.entries.recentDays(1)
+      ]);
+      await androidReminders.sync(
+        buildAndroidReminderPayload({
+          reminders,
+          checkInEnabled: prefs.checkInEnabled,
+          checkInTime: prefs.checkInTime,
+          latestEntryEpochDay: recent[0]?.epochDay ?? null,
+          texts: {
+            channelReminders: m.reminders(),
+            channelCheckIn: m.checkin_title(),
+            checkInTitle: m.checkin_title(),
+            checkInBody: m.checkin_sub()
+          }
+        })
+      );
+    } catch (error) {
+      console.error('Could not sync Android reminder schedules', error);
+    } finally {
+      reminderSyncRunning = false;
+      if (reminderSyncQueued) {
+        reminderSyncQueued = false;
+        void syncAndroidReminderSchedules();
+      }
+    }
+  }
+
+  async function consumeReminderLaunchRoute() {
+    if (!isAndroid() || bootState.status !== 'ready') return;
+    try {
+      const { route } = await androidReminders.consumeLaunchRoute();
+      if (!route || !isValidReminderLaunchRoute(route) || route === page.url.pathname) return;
+      await goto(route);
+    } catch (error) {
+      console.error('Could not consume reminder launch route', error);
+    }
+  }
+
+  function isValidReminderLaunchRoute(route: string) {
+    return /^\/settings\/reminders(?:\/[^/]+)?$/.test(route) || /^\/entry\/new\/\d+$/.test(route);
+  }
+
   function chooseToday() {
     ui.chooserOpen = false;
     goto(`/entry/new/${todayEpochDay()}`);
@@ -173,6 +233,38 @@
     ui.chooserOpen = false;
     goto(`/entry/new/${day}`);
   }
+
+  $effect(() => {
+    if (!isAndroid() || bootState.status !== 'ready' || remindersListenerAttached) return;
+    remindersListenerAttached = true;
+    onTablesWritten((tables) => {
+      if (tables.includes('reminder') || tables.includes('entry')) void syncAndroidReminderSchedules();
+    });
+    void syncAndroidReminderSchedules();
+    void consumeReminderLaunchRoute();
+  });
+
+  $effect(() => {
+    if (!isAndroid() || bootState.status !== 'ready') return;
+    void prefs.checkInEnabled;
+    void prefs.checkInTime;
+    void syncAndroidReminderSchedules();
+  });
+
+  $effect(() => {
+    if (!isAndroid() || bootState.status !== 'ready') return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      void syncAndroidReminderSchedules();
+      void consumeReminderLaunchRoute();
+    };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  });
 </script>
 
 {#if __DEMO__}
