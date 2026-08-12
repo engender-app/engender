@@ -533,6 +533,144 @@ try {
   fail('ticket 10 (phase 2) browser tier', e.message ?? String(e));
 }
 
+// --- Ticket 04 (phase 2): when a waiting release may take over ------------
+try {
+  const r = await load('/update.html', 'data-update-probe-ready', '__updateProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  /* The fixture first. Without a second release genuinely installed and
+     waiting behind the first, everything below passes for the wrong reason. */
+  if (r.secondReleaseWaiting) ok('a second release installs and waits behind the one running the page');
+  else fail('a second release installs and waits', 'no worker ever reached registration.waiting');
+
+  // Update while blocked, which is the whole point of the ticket.
+  if (r.offeredWhileBlocked === false && r.appliedWhileBlocked === false && r.reloadsWhileBlocked === 0)
+    ok('with a write in flight the update is neither offered nor applied');
+  else
+    fail(
+      'with a write in flight the update is neither offered nor applied',
+      JSON.stringify({ offered: r.offeredWhileBlocked, applied: r.appliedWhileBlocked, reloads: r.reloadsWhileBlocked })
+    );
+
+  /* And the consequence in the browser rather than in the app's own opinion
+     of itself: the waiting worker is still waiting, and the page is still
+     controlled by the release it loaded on. */
+  if (r.stillWaitingAfterBlockedAttempt && r.controllerUnchanged)
+    ok('the waiting worker really did not activate: same controller, still waiting');
+  else
+    fail(
+      'the waiting worker does not activate during a write',
+      JSON.stringify({ waiting: r.stillWaitingAfterBlockedAttempt, sameController: r.controllerUnchanged })
+    );
+
+  // Update when idle. Nothing happened between the two but the write landing.
+  if (r.offeredOnceIdle) ok('the update is offered once the write lands, without anything else happening');
+  else fail('the update is offered once the journal is idle', 'updateReady() stayed false');
+
+  if (r.appliedWhenIdle && r.controllerChanged && r.nothingLeftWaiting && r.reloadsWhenIdle === 1)
+    ok('applying it when idle hands the page to the new worker and reloads once');
+  else
+    fail(
+      'applying the update when idle hands the page over',
+      JSON.stringify({
+        applied: r.appliedWhenIdle,
+        controllerChanged: r.controllerChanged,
+        nothingWaiting: r.nothingLeftWaiting,
+        reloads: r.reloadsWhenIdle
+      })
+    );
+} catch (e) {
+  fail('ticket 04 (phase 2) update guard', e.message ?? String(e));
+}
+
+// --- Ticket 04 (phase 2): forward migration, refusal and the copy ---------
+try {
+  const r = await load('/migration.html', 'data-migration-probe-ready', '__migrationProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  const before = ['sentinel-migration-note-before-the-update-5514'];
+  const both = [...before, 'sentinel-migration-note-written-after-the-copy-8820'].sort();
+
+  if (r.startingVersion === 3 && JSON.stringify(r.startingNotes) === JSON.stringify(before))
+    ok(`the fixture is a journal on the shipped schema (v${r.startingVersion}) with an entry in it`);
+  else
+    fail(
+      'the fixture is a journal on the shipped schema',
+      JSON.stringify({ version: r.startingVersion, notes: r.startingNotes })
+    );
+
+  if (r.forwardVersion === 4 && JSON.stringify(r.notesAfterForward) === JSON.stringify(before))
+    ok('newer code migrates the older journal forward and the entry survives it');
+  else
+    fail(
+      'newer code migrates an older journal forward, preserving data',
+      JSON.stringify({ version: r.forwardVersion, notes: r.notesAfterForward })
+    );
+
+  if (r.copyAfterForward === true && r.copyAfterCleanBoot === false)
+    ok('the pre-migration copy outlives the boot that migrated and goes on the next clean one');
+  else
+    fail(
+      'the pre-migration copy is kept until the next clean boot',
+      JSON.stringify({ afterMigrating: r.copyAfterForward, afterCleanBoot: r.copyAfterCleanBoot })
+    );
+
+  if (r.refusal && r.refusal.found === 4 && r.refusal.known === 3)
+    ok('older code refuses a journal a newer schema touched, naming both versions');
+  else fail('older code refuses a journal created by a newer schema', JSON.stringify(r.refusal));
+
+  if (JSON.stringify(r.notesAfterRefusal) === JSON.stringify(before) && r.copyAfterRefusal === false)
+    ok('the refusal leaves the journal exactly as it was, and takes no copy');
+  else
+    fail('the refusal changes nothing', JSON.stringify({ notes: r.notesAfterRefusal, copy: r.copyAfterRefusal }));
+
+  if (
+    typeof r.brokenMigration === 'string' &&
+    r.brokenMigration !== 'nothing was thrown' &&
+    r.versionAfterFailure === 4
+  )
+    ok(`a failing migration rolls its step back and leaves the schema at v${r.versionAfterFailure}`);
+  else
+    fail(
+      'a failing migration leaves the schema where it was',
+      JSON.stringify({ thrown: r.brokenMigration, version: r.versionAfterFailure })
+    );
+
+  if (r.copyAfterFailure === true && r.copyAfterRetry === true)
+    ok('the failure leaves a copy, and the retry does not spend it on a worse one');
+  else
+    fail(
+      'a failed migration leaves a recoverable pre-migration copy',
+      JSON.stringify({ afterFailure: r.copyAfterFailure, afterRetry: r.copyAfterRetry })
+    );
+
+  /* The box this exists to close: the copy verifies under the data key, goes
+     back as the live journal, and what comes up is the journal from before -
+     the entry written after the copy was taken is gone, which is how a
+     restore that moved bytes tells itself from one that did nothing. */
+  if (
+    JSON.stringify(r.notesBeforeRestore) === JSON.stringify(both) &&
+    JSON.stringify(r.notesAfterRestore) === JSON.stringify(before) &&
+    r.versionAfterRestore === 4
+  )
+    ok('the copy goes back as the live journal and the previous visible journal is what opens');
+  else
+    fail(
+      'the app gets back to the previous visible journal',
+      JSON.stringify({
+        before: r.notesBeforeRestore,
+        after: r.notesAfterRestore,
+        version: r.versionAfterRestore
+      })
+    );
+
+  if (r.copyAfterRestoredBoot === false)
+    ok('and the restored journal coming up clean is what finally retires the copy');
+  else fail('a clean boot after the restore retires the copy', JSON.stringify(r.copyAfterRestoredBoot));
+} catch (e) {
+  fail('ticket 04 (phase 2) migration and rollback', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 
