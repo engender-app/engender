@@ -32,6 +32,7 @@ import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { hydrateReference } from '../data/live/reference.svelte';
 import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file-store';
+import { appPrivatePhotoFiles } from '../data/photos/android-file-store';
 import { encryptedFileStore } from '../data/photos/encrypted-file-store';
 import { journalKeystoreExists, setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
 import {
@@ -430,10 +431,9 @@ export async function openAndroidJournal(request: UnlockRequest): Promise<void> 
     /* Encrypted per file under the same data key as the database, exactly as
        the web does it (ticket 09): whole-database encryption never reaches
        files outside SQLite (ADR-0020), and ADR-0018's claim covers photos and
-       thumbnails. The store underneath is still the WebView's OPFS until
-       ticket 12 moves it to app-private files; what that swaps is where the
-       ciphertext sits, not whether there is any. */
-    encryptedFileStore(opfsPhotoFiles(), result.dataKey)
+       thumbnails. Ticket 12 stores that ciphertext in app-private Android
+       files rather than in the WebView's OPFS. */
+    encryptedFileStore(appPrivatePhotoFiles(), result.dataKey)
   );
 }
 

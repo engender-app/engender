@@ -22,7 +22,7 @@
 import { boot } from '../../../src/lib/data/sqlite/boot.ts';
 import { createAndroidSqlite } from '../../../src/lib/data/sqlite/android-driver.ts';
 import { openJournal } from '../../../src/lib/data/journal/journal.ts';
-import { opfsPhotoFiles } from '../../../src/lib/data/photos/opfs-file-store.ts';
+import { appPrivatePhotoFiles } from '../../../src/lib/data/photos/android-file-store.ts';
 import { encryptedFileStore } from '../../../src/lib/data/photos/encrypted-file-store.ts';
 
 declare global {
@@ -90,7 +90,7 @@ async function run() {
   const booted = await boot({ createDriver: () => driver, fileOps, requestPersistentStorage });
   if (booted.phase === 'error') throw booted.error;
 
-  const files = encryptedFileStore(opfsPhotoFiles(PROBE_PHOTOS), DATA_KEY);
+  const files = encryptedFileStore(appPrivatePhotoFiles(PROBE_PHOTOS), DATA_KEY);
   const journal = openJournal(driver, files);
   await journal.reconcileBuiltIns();
 
