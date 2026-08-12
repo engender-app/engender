@@ -157,12 +157,14 @@ async function run() {
      browser hands a file to a person. run.mjs attaches its own download
      handler before clicking. */
   document.getElementById('deliver')!.addEventListener('click', () => {
+    const now = new Date();
+    const localDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     deliverFile({
       fileName: exportFileName('Alicja', ARCHIVE_FILE_EXTENSION),
       type: 'application/octet-stream',
       body: oneShot(archive)
     }).then((delivery) => {
-      (window as unknown as { __deliveryResult: unknown }).__deliveryResult = { delivery };
+      (window as unknown as { __deliveryResult: unknown }).__deliveryResult = { delivery, localDay };
     });
   });
 

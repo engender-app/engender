@@ -360,7 +360,7 @@ try {
   const bytes = await readFile(saved);
   const delivery = await page.evaluate(() => window.__deliveryResult);
 
-  if (download.suggestedFilename() === 'alicja-journal-' + new Date().toISOString().slice(0, 10) + '.ttbackup' && delivery.delivery === 'downloaded')
+  if (download.suggestedFilename() === `alicja-journal-${delivery.localDay}.ttbackup` && delivery.delivery === 'downloaded')
     ok(`the archive downloads as ${download.suggestedFilename()}`);
   else fail('the archive downloads under a dated name', `${download.suggestedFilename()}, ${JSON.stringify(delivery)}`);
 
