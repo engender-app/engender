@@ -162,6 +162,13 @@ minimum supported version - and the pipeline stops before it builds anything if
 one of them is blank. Everything left in `dist/release/` is checksummed and
 attached, which is how ticket 18's signed Android artifacts will join a release.
 
+The DNS record, deployment access, store account and signing key behind all of
+this are steps a person has to take, on one particular machine, so the wizard
+that walks them is untracked operator tooling rather than part of the app.
+What it produces is not:
+[docs/provisioning.md](docs/provisioning.md) names every secret and variable the
+pipeline expects, where each one lives, and which ticket reads it.
+
 ## Stack
 
 SvelteKit + Svelte 5 (runes) + TypeScript, `adapter-static` SPA. Melt UI
