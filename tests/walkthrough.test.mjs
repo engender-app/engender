@@ -224,6 +224,41 @@ try {
   ok('lab result custom create, edit, delete and per-analyte chart');
 } catch (e) { fail('lab results', e); }
 
+/* 6d. a second unit for an analyte is a second trend, not a cliff in the
+   first one (ticket 02). The persona's estradiol history is five results in
+   pg/mL; one result in pmol/L is a number about 3.7 times larger, and the
+   screen has to keep it off that line. */
+try {
+  await fresh('/settings/labs');
+  await page.waitForSelector('[data-lab-series]');
+  if ((await page.locator('[data-lab-series]').count()) !== 1) throw new Error('estradiol did not start as one series');
+  const resultsBefore = await page.locator('[data-lab-result]').count();
+
+  await page.locator('[data-add]').click();
+  await page.locator('#lab-value').fill('612');
+  await page.locator('#lab-unit').fill('pmol/L');
+  await page.locator('[data-save-lab]').click();
+
+  /* Named rather than "the newest toast": boot's persistent-storage notice is
+     still on screen at this point. */
+  await page.waitForSelector('.toast:has-text("own trend")');
+  const notice = await page.locator('.toast', { hasText: 'own trend' }).textContent();
+  if (/error|invalid|wrong|cannot/i.test(notice)) throw new Error('the notice reads as an error: ' + notice);
+
+  const units = await page.locator('[data-lab-series] .series-unit').allTextContents();
+  if (JSON.stringify(units) !== JSON.stringify(['pg/mL', 'pmol/L'])) throw new Error('series units: ' + JSON.stringify(units));
+  /* One line, not two: the pmol/L series has a single result so far, and the
+     pg/mL line still runs over its own five. */
+  if ((await page.locator('.line-chart').count()) !== 1) throw new Error('the new unit was drawn into an existing line');
+  if ((await page.locator('[data-lab-result]').count()) !== resultsBefore + 1) throw new Error('the list dropped a result');
+
+  await page.locator('[data-lab-result]').first().click();
+  await page.locator('[data-delete-lab]').click();
+  await page.locator('[data-confirm-delete-lab]').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-lab-series]').length === 1);
+  ok('a second unit gets its own trend and a neutral notice');
+} catch (e) { fail('lab unit series', e); }
+
 /* 7. palette switch */
 try {
   await fresh('/settings');

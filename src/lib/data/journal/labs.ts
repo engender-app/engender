@@ -18,6 +18,21 @@ export interface LabResultInput {
   note?: string;
 }
 
+/** One chart line: the results of one analyte that share a unit, oldest
+    first. `unit` is the normalized text, blank for the unlabeled series. */
+export interface LabSeries {
+  unit: string;
+  results: LabResult[];
+}
+
+/** The unit as a series key. Surrounding whitespace is an artefact of typing,
+    so it goes. Nothing else does: deciding that `ng/dl` and `ng/dL` name the
+    same unit is an interpretation this app does not make, and the one after
+    that would be converting between them (CONTEXT: "Analyte"). */
+export function normalizeUnit(unit: string): string {
+  return unit.trim();
+}
+
 export interface LabsArea {
   /** Presets plus in-use: a preset is offerable with no data yet, and a
       custom analyte someone logged once stays offerable. */
@@ -27,6 +42,11 @@ export interface LabsArea {
       switch to. */
   getUsedAnalytes(): Promise<string[]>;
   getResults(analyte: string): Promise<LabResult[]>;
+  /** The analyte's results split into one series per unit, oldest series
+      first. A result logged in ng/dL and one logged in nmol/L differ by a
+      factor of about 29, so drawing them as one line invents a change that
+      never happened; two units are two lines and are never joined. */
+  getSeries(analyte: string): Promise<LabSeries[]>;
   /** Returns the result's id. Updating an unknown id throws. */
   upsertResult(input: LabResultInput): Promise<string>;
   /** Idempotent. */
@@ -39,6 +59,21 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
     return rows.map((r) => r.analyte);
   };
 
+  const resultsFor = async (analyte: string): Promise<LabResult[]> => {
+    const rows = await driver.query<{ uuid: string; epoch_day: number; analyte: string; value: number; unit: string; note: string | null }>(
+      'SELECT uuid, epoch_day, analyte, value, unit, note FROM lab_result WHERE analyte = ? ORDER BY epoch_day, id',
+      [analyte]
+    );
+    return rows.map((r) => ({
+      id: r.uuid,
+      epochDay: r.epoch_day,
+      analyte: r.analyte,
+      value: r.value,
+      unit: r.unit,
+      note: r.note ?? ''
+    }));
+  };
+
   return {
     async getAnalytes() {
       return [...new Set([...ANALYTE_PRESETS, ...(await usedAnalytes())])];
@@ -46,19 +81,22 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
 
     getUsedAnalytes: usedAnalytes,
 
-    async getResults(analyte) {
-      const rows = await driver.query<{ uuid: string; epoch_day: number; analyte: string; value: number; unit: string; note: string | null }>(
-        'SELECT uuid, epoch_day, analyte, value, unit, note FROM lab_result WHERE analyte = ? ORDER BY epoch_day, id',
-        [analyte]
-      );
-      return rows.map((r) => ({
-        id: r.uuid,
-        epochDay: r.epoch_day,
-        analyte: r.analyte,
-        value: r.value,
-        unit: r.unit,
-        note: r.note ?? ''
-      }));
+    getResults: resultsFor,
+
+    /* Grouped in the app rather than by SQL, because the key is the app's
+       rule and the stored text is left alone (no migration, nothing
+       rewritten). Series come out in the order their first result was
+       drawn, so a unit switch reads as a new line after the old one rather
+       than as a reshuffle. */
+    async getSeries(analyte) {
+      const series = new Map<string, LabSeries>();
+      for (const result of await resultsFor(analyte)) {
+        const unit = normalizeUnit(result.unit);
+        const existing = series.get(unit);
+        if (existing) existing.results.push(result);
+        else series.set(unit, { unit, results: [result] });
+      }
+      return [...series.values()];
     },
 
     async upsertResult(input) {

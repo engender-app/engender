@@ -131,6 +131,49 @@ test('a lab result without a unit stays blank rather than acquiring a placeholde
   assert.equal((await journal.labs.getResults('estradiol'))[0].unit, '');
 });
 
+test('two units on one analyte are two series, drawn from the values as logged', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.labs.upsertResult({ epochDay: 100, analyte: 'testosterone', value: 480, unit: 'ng/dL' });
+  await journal.labs.upsertResult({ epochDay: 200, analyte: 'testosterone', value: 27, unit: 'ng/dL' });
+  await journal.labs.upsertResult({ epochDay: 300, analyte: 'testosterone', value: 0.9, unit: 'nmol/L' });
+
+  const series = await journal.labs.getSeries('testosterone');
+  assert.deepEqual(
+    series.map((s) => [s.unit, s.results.map((r) => r.value)]),
+    [
+      ['ng/dL', [480, 27]],
+      ['nmol/L', [0.9]]
+    ]
+  );
+  // The whole point: 0.9 nmol/L is about 26 ng/dL, and nothing here says so.
+  assert.deepEqual((await journal.labs.getResults('testosterone')).map((r) => r.value), [480, 27, 0.9]);
+});
+
+test('a blank unit is its own series, and only surrounding whitespace is normalized away', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 41 });
+  await journal.labs.upsertResult({ epochDay: 200, analyte: 'estradiol', value: 96, unit: 'ng/dL' });
+  await journal.labs.upsertResult({ epochDay: 300, analyte: 'estradiol', value: 148, unit: '  ng/dL ' });
+  await journal.labs.upsertResult({ epochDay: 400, analyte: 'estradiol', value: 173, unit: 'ng/dl' });
+
+  assert.deepEqual(
+    (await journal.labs.getSeries('estradiol')).map((s) => [s.unit, s.results.map((r) => r.value)]),
+    [
+      ['', [41]],
+      ['ng/dL', [96, 148]],
+      ['ng/dl', [173]]
+    ]
+  );
+});
+
+test('a series carries the unit as stored, so nothing is rewritten to make the key work', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 41, unit: ' pg/mL ' });
+
+  assert.equal((await journal.labs.getResults('estradiol'))[0].unit, ' pg/mL ');
+  assert.equal((await journal.labs.getSeries('estradiol'))[0].unit, 'pg/mL');
+});
+
 test('lab results update by id, throw on unknown ids and delete idempotently', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 120 });
