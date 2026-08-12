@@ -47,6 +47,8 @@ dependencies {
     // app's floor is API 26 and the framework class arrived in 28, and only
     // androidx knows how to reach the device credential below API 30.
     implementation "androidx.biometric:biometric:$androidxBiometricVersion"
+    // SAF tree/document operations for scheduled backup destinations.
+    implementation "androidx.documentfile:documentfile:1.0.1"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test:runner:$androidxTestRunnerVersion"
     androidTestImplementation "androidx.test:core:$androidxTestCoreVersion"
