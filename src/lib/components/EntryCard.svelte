@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/paraglide/messages';
   import Icon from './Icon.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import type { Entry } from '$lib/data/types';
@@ -22,17 +23,17 @@
         class="mood-dot"
         style="--dot:26px;background:var(--mood-{entry.mood})"
         role="img"
-        aria-label="mood: {moodName(entry.mood)}"
+        aria-label={m.entry_mood_aria({ name: moodName(entry.mood) })}
       ></span>
     {:else}
-      <span class="mood-dot is-empty" style="--dot:26px" title="no mood"></span>
+      <span class="mood-dot is-empty" style="--dot:26px" title={m.mood_none()}></span>
     {/if}
   </div>
   <div class="entry-main">
     <div class="entry-meta">
       {#if showDay}<span class="entry-day">{fmtDay(entry.epochDay, { weekday: 'short', day: 'numeric', month: 'short' })}</span>{/if}
       <span class="entry-time">{fmtTime(entry.timestamp)}</span>
-      {#if dayCount > 1}<span class="entry-multi"><Icon name="dots" size={13} /> {dayCount} that day</span>{/if}
+      {#if dayCount > 1}<span class="entry-multi"><Icon name="dots" size={13} /> {m.entry_day_count({ count: String(dayCount) })}</span>{/if}
       {#if entry.photos?.length}<span class="entry-has-photo"><Icon name="image" size={13} /></span>{/if}
     </div>
     {#if entry.note}<p class="entry-note">{entry.note}</p>{/if}

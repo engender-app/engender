@@ -14,10 +14,11 @@
   import { isAndroid } from '$lib/platform';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
-  const PALETTES: [string, string][] = [
-    ['trans', 'Transgender'], ['nonbinary', 'Nonbinary'], ['genderfluid', 'Genderfluid'],
-    ['bisexual', 'Bisexual'], ['lesbian', 'Lesbian'], ['pansexual', 'Pansexual'],
-    ['rainbow', 'Rainbow'], ['agender', 'Agender'],
+  /* Keyed, not worded, so the swatch names translate with everything else. */
+  const PALETTES: [string, () => string][] = [
+    ['trans', m.palette_trans], ['nonbinary', m.palette_nonbinary], ['genderfluid', m.palette_genderfluid],
+    ['bisexual', m.palette_bisexual], ['lesbian', m.palette_lesbian], ['pansexual', m.palette_pansexual],
+    ['rainbow', m.palette_rainbow], ['agender', m.palette_agender],
   ];
 
   let isWeb = $derived(!isAndroid());
@@ -64,7 +65,7 @@
           onclick={() => pickPalette(key)}
         >
           <span class="swatch-preview" data-swatch={key}></span>
-          <span class="swatch-name">{label}</span>
+          <span class="swatch-name">{label()}</span>
         </button>
       {/each}
     </div>
@@ -128,7 +129,7 @@
       {#each vocabulary.tagGroups as g (g.key)}
         <div class="spread taggroup-row">
           <span>{g.name}</span>
-          <Switch checked={g.enabled} label="{g.name} group" onChange={(v) => journal.tags.setGroupEnabled(g.key, v)} />
+          <Switch checked={g.enabled} label={m.settings_taggroup_switch({ group: g.name })} onChange={(v) => journal.tags.setGroupEnabled(g.key, v)} />
         </div>
       {/each}
       <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
@@ -152,7 +153,10 @@
         <span class="row-subtitle">
           {isWeb
             ? m.reminders_web_sub()
-            : `${activeReminders} active · daily check-in ${prefs.checkInEnabled ? m.on() : m.off()}`}
+            : m.settings_reminders_sub({
+                count: String(activeReminders),
+                state: prefs.checkInEnabled ? m.on() : m.off()
+              })}
         </span>
       </span>
       <span class="row-trailing">{#if isWeb}<Icon name="info" size={18} />{:else}<Icon name="chevronRight" size={20} />{/if}</span>
@@ -161,7 +165,7 @@
       <span class="row-icon"><Icon name="flag" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.milestones()}</span>
-        <span class="row-subtitle">{reference.milestones.length} significant days</span>
+        <span class="row-subtitle">{m.settings_milestones_sub({ count: reference.milestones.length })}</span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
@@ -188,8 +192,8 @@
     <a class="list-row" href="/settings/passphrase">
       <span class="row-icon"><Icon name="shield" size={22} /></span>
       <span class="row-text">
-        <span class="row-title">Journal passphrase</span>
-        <span class="row-subtitle">unlocks the encrypted journal · change it here</span>
+        <span class="row-title">{m.settings_passphrase_row()}</span>
+        <span class="row-subtitle">{m.settings_passphrase_sub()}</span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
@@ -199,7 +203,7 @@
         <span class="row-title">{m.app_lock()}</span>
         <span class="row-subtitle">
           {#if prefs.appLock}
-            {m.on()} · PIN{isAndroid() ? ' + biometrics' : ''} ·
+            {m.on()} · {isAndroid() ? m.settings_lock_on_pin_bio() : m.settings_lock_on_pin()} ·
             <a href="/settings/lock" style="color:var(--accent)">{m.try_it()}</a>
           {:else}{m.off()}{/if}
         </span>
@@ -225,7 +229,7 @@
       <span class="row-icon"><Icon name="shield" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.disguise_row()}</span>
-        <span class="row-subtitle">{prefs.disguise ? 'disguised as “Notes”' : m.off()}</span>
+        <span class="row-subtitle">{prefs.disguise ? m.settings_disguise_on() : m.off()}</span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </button>
@@ -233,7 +237,9 @@
       <span class="row-icon"><Icon name="download" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.export_import()}</span>
-        <span class="row-subtitle">{backupAge != null ? `last backup ${backupAge} days ago` : 'no backup yet'}</span>
+        <span class="row-subtitle">
+          {backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()}
+        </span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
@@ -241,7 +247,7 @@
       <span class="row-icon"><Icon name="info" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.about()}</span>
-        <span class="row-subtitle">GPLv3 · no network requests</span>
+        <span class="row-subtitle">{m.settings_about_sub()}</span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </button>
@@ -265,7 +271,7 @@
         >
           <span class="row-text">
             <span class="row-title">{p.name}</span>
-            <span class="row-subtitle">{m.scales_count({ count: String(p.dims.length) })}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
+            <span class="row-subtitle">{m.scales_count({ count: p.dims.length })}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
           </span>
           {#if prefs.activePreset === p.id}<Icon name="check" size={20} />{/if}
         </button>
@@ -304,16 +310,14 @@
     <div class="stack-3">
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
         <span class="row-text">
-          <span class="row-title">Disguise app</span>
+          <span class="row-title">{m.disguise_app_title()}</span>
           <span class="row-subtitle">
-            {isAndroid()
-              ? 'launcher icon and name become a neutral “Notes” — the app closes briefly to switch'
-              : 'browser tab shows a neutral “Notes” title and icon'}
+            {isAndroid() ? m.disguise_app_sub_android() : m.disguise_app_sub_web()}
           </span>
         </span>
         <Switch
           checked={prefs.disguise}
-          label="Disguise app"
+          label={m.disguise_app_title()}
           onChange={(v) => {
             prefs.disguise = v;
           }}
@@ -323,17 +327,19 @@
         <span class="disguise-icon"><Icon name="book" size={22} /></span>
         <span>
           <strong>Notes</strong><br />
-          <span class="muted small">{isAndroid() ? 'how the app appears in your launcher' : 'how the tab appears'}</span>
+          <span class="muted small">{isAndroid() ? m.disguise_preview_android() : m.disguise_preview_web()}</span>
         </span>
       </div>
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
         <span class="row-text">
-          <span class="row-title">Lock on leave</span>
-          <span class="row-subtitle">locks the moment the app goes to background{prefs.appLock ? '' : ' · needs app lock on'}</span>
+          <span class="row-title">{m.lock_on_leave_title()}</span>
+          <span class="row-subtitle">
+            {m.lock_on_leave_sub()}{prefs.appLock ? '' : ` · ${m.lock_needs_app_lock()}`}
+          </span>
         </span>
         <Switch
           checked={prefs.lockOnLeave}
-          label="Lock on leave"
+          label={m.lock_on_leave_title()}
           onChange={(v) => {
             prefs.lockOnLeave = v;
           }}
@@ -341,16 +347,16 @@
       </div>
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
         <span class="row-text">
-          <span class="row-title">Quick exit</span>
+          <span class="row-title">{m.quick_exit_title()}</span>
           <span class="row-subtitle">
-            two-finger swipe down{isAndroid() ? '' : ' blanks the tab and'} locks instantly{prefs.appLock
+            {isAndroid() ? m.quick_exit_sub_android() : m.quick_exit_sub_web()}{prefs.appLock
               ? ''
-              : ' · without app lock it only blanks the screen'}
+              : ` · ${m.quick_exit_no_lock()}`}
           </span>
         </span>
         <Switch
           checked={prefs.quickExit}
-          label="Quick exit"
+          label={m.quick_exit_title()}
           onChange={(v) => {
             prefs.quickExit = v;
           }}
@@ -366,10 +372,9 @@
         <span translate="no">{m.app_name()}</span>
         <span class="muted">· {m.version()} <span translate="no" data-app-version>{__APP_VERSION__}</span></span>
       </p>
-      <p class="small">Free software under the <strong>GPLv3</strong> license. Source code is public.</p>
+      <p class="small">{m.about_license()}</p>
       <p class="small">
-        <strong>This app makes no network requests.</strong> No account, no cloud, no telemetry, no analytics. Your
-        journal exists only on this device and in backups you export yourself.
+        <strong>{m.about_no_network_title()}</strong> {m.about_no_network_body()}
       </p>
     </div>
   </Sheet>

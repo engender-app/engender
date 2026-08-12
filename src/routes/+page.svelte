@@ -76,11 +76,14 @@
 
   {#if celebrate}
     <div class="celebration card" role="status">
-      <RiveSlot label="Celebration: confetti in flag colours" height={90} variant="confetti" src="/rive/celebration.riv" />
+      <RiveSlot label={m.rive_celebration()} height={90} variant="confetti" src="/rive/celebration.riv" />
       <p class="celebration-text">
-        <strong>{landing?.m.name ?? 'HRT start'}</strong>{landing?.s.years
-          ? ` — ${landing.s.years} year${landing.s.years === 1 ? '' : 's'} ago today.`
-          : ' is today.'} That day mattered. So does this one.
+        {landing?.s.years
+          ? m.home_anniv_years({
+              name: landing.m.name,
+              years: m.n_years({ n: landing.s.years ?? 0 })
+            })
+          : m.home_anniv_today({ name: landing?.m.name ?? m.ms_default_name() })}
       </p>
     </div>
   {/if}
@@ -113,7 +116,7 @@
     </SectionTitle>
     <div class="milestone-scroller">
       {#each upcoming.slice(0, 4) as x (x.m.id)}
-        <MilestoneCard m={x.m} s={x.s} />
+        <MilestoneCard milestone={x.m} s={x.s} />
       {/each}
     </div>
   {/if}
@@ -140,7 +143,7 @@
     {/each}
   {:else}
     <EmptyState
-      riveLabel="Empty home: a small sprout in flag colours"
+      riveLabel={m.rive_empty_home()}
       title={m.empty_home_title()}
       text={m.empty_home_body()}
     >

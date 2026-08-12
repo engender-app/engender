@@ -48,7 +48,7 @@
         <span class="chip-value">{avg == null ? '—' : Math.round(avg * 10) / 10}</span>
         <span class="muted small">{m.day_avg({ metric: metricName })}{metric === 'mood' ? ' (1–5)' : ''}</span>
       </div>
-      <span class="muted small">{m.entries_this_day({ count: String(entries.length) })}</span>
+      <span class="muted small">{m.entries_this_day({ count: entries.length })}</span>
     </div>
     <div class="stack-3" style="margin-top:var(--space-4)">
       {#each entries as e (e.id)}
@@ -59,7 +59,7 @@
       {/each}
     </div>
   {:else}
-    <EmptyState riveLabel="Quiet day illustration" title={m.nothing_logged()} text={m.nothing_logged_body()} />
+    <EmptyState riveLabel={m.rive_quiet_day()} title={m.nothing_logged()} text={m.nothing_logged_body()} />
   {/if}
 
   <div style="margin-top:var(--space-6)">

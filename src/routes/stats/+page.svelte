@@ -75,7 +75,7 @@
     <h1 class="screen-title">{m.stats_title({ days: String(range) })}</h1>
   </header>
 
-  <div class="segmented" role="radiogroup" aria-label="Range" style="margin-bottom:var(--space-4)">
+  <div class="segmented" role="radiogroup" aria-label={m.stats_range_group()} style="margin-bottom:var(--space-4)">
     {#each RANGES as r (r)}
       <button
         class="segment"
@@ -132,7 +132,11 @@
           <span class="row-text">
             <span class="row-title">{label}</span>
             <span class="row-subtitle">
-              {i.count} entries · avg {fmtMetric(i.withAvg)} with · {fmtMetric(i.withoutAvg)} without
+              {m.insight_row_sub({
+                count: String(i.count),
+                with: fmtMetric(i.withAvg),
+                without: fmtMetric(i.withoutAvg)
+              })}
             </span>
           </span>
           <span class="insight-delta" class:is-neg={i.withAvg < i.withoutAvg}>
@@ -157,8 +161,8 @@
   {#if lastYear !== null}
     <a class="card spread recap-cta" href="/recap?period=year" style="margin-top:var(--space-3)">
       <span class="row-text">
-        <span class="row-title">Your {lastYear}</span>
-        <span class="row-subtitle">A look back at the year you recorded.</span>
+        <span class="row-title">{m.recap_year_title({ year: String(lastYear) })}</span>
+        <span class="row-subtitle">{m.recap_year_sub()}</span>
       </span>
       <Icon name="chevronRight" size={20} />
     </a>

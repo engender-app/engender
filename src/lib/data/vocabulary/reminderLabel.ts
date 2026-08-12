@@ -7,6 +7,19 @@ import { m } from '$lib/paraglide/messages';
 import { todayEpochDay } from '../epochDay';
 import type { Reminder } from '../types';
 
+const TYPE_NAME: Record<Reminder['type'], () => string> = {
+  med: m.rem_type_med,
+  injection: m.rem_type_injection,
+  appointment: m.rem_type_appointment,
+  other: m.rem_type_other
+};
+
+/** The wording for a reminder's type. The row used to print the stored
+    value, so a Polish reader read "med" and "injection" in English. */
+export function reminderTypeLabel(type: Reminder['type']): string {
+  return TYPE_NAME[type]();
+}
+
 function recurrenceLabel(r: Reminder): string {
   if (r.recurrence === 'DAILY') return m.recurrence_daily();
   if (r.recurrence === 'WEEKLY') return m.recurrence_weekly();

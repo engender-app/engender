@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
@@ -41,7 +42,9 @@
         class="week-cell"
         style="background:var(--heat-{d.level})"
         role="img"
-        aria-label="{fmtDay(d.day, { weekday: 'long' })}: {d.level === 0 ? 'no entry' : `level ${d.level} of 4`}"
+        aria-label={d.level === 0
+          ? m.week_cell_no_entry({ day: fmtDay(d.day, { weekday: 'long' }) })
+          : m.week_cell_level({ day: fmtDay(d.day, { weekday: 'long' }), level: String(d.level) })}
       ></span>
       <span class="week-name">{fmtDay(d.day, { weekday: 'narrow' })}</span>
     </span>

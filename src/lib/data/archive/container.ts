@@ -51,10 +51,19 @@ export const ARCHIVE_FILE_EXTENSION = '.ttbackup';
     failure because it is decided from the plaintext header, which anyone
     holding the file can read anyway - so saying so tells an attacker
     nothing and tells the user something useful. */
+/** Which of the two refusals it was. The screen picks its wording from this
+    rather than from the message: the message is a diagnostic and stays
+    English for the console, while the sentence a person reads has to exist
+    in both catalogues (docs/ui-copy.md). */
+export type UnsupportedArchiveKind = 'not-an-archive' | 'newer-version';
+
 export class UnsupportedArchiveError extends Error {
-  constructor(message: string) {
+  readonly kind: UnsupportedArchiveKind;
+
+  constructor(kind: UnsupportedArchiveKind, message: string) {
     super(message);
     this.name = 'UnsupportedArchiveError';
+    this.kind = kind;
   }
 }
 
@@ -210,10 +219,10 @@ export async function readArchiveHeader(
   reader: ByteReader
 ): Promise<{ header: ArchiveHeader; headerBytes: Uint8Array<ArrayBuffer> }> {
   const prefix = await reader.readExactly(PREFIX_LENGTH).catch(() => {
-    throw new UnsupportedArchiveError('this file is not a Gender Diary archive');
+    throw new UnsupportedArchiveError('not-an-archive', 'this file is not a Gender Diary archive');
   });
   if (!MAGIC.every((byte, i) => prefix[i] === byte)) {
-    throw new UnsupportedArchiveError('this file is not a Gender Diary archive');
+    throw new UnsupportedArchiveError('not-an-archive', 'this file is not a Gender Diary archive');
   }
 
   const view = new DataView(prefix.buffer, prefix.byteOffset);
@@ -222,9 +231,9 @@ export async function readArchiveHeader(
   // the body is read, a higher one is refused here, before a key is
   // derived - this build cannot know what it would be agreeing to.
   if (formatVersion > ARCHIVE_FORMAT_VERSION) {
-    throw new UnsupportedArchiveError('this archive was made by a newer version of the app');
+    throw new UnsupportedArchiveError('newer-version', 'this archive was made by a newer version of the app');
   }
-  if (formatVersion < 1) throw new UnsupportedArchiveError('this file is not a Gender Diary archive');
+  if (formatVersion < 1) throw new UnsupportedArchiveError('not-an-archive', 'this file is not a Gender Diary archive');
 
   const jsonLength = view.getUint32(MAGIC.length + 2);
   if (jsonLength > MAX_HEADER_JSON) throw new CorruptArchiveError('the archive header is not readable');
