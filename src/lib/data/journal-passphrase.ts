@@ -8,7 +8,7 @@
    drops them, which is exactly ADR-0018's session rule: the passphrase is
    required again after the browser process ends. */
 
-import { createKeystore, rewrapKeystore, unlockKeystore } from '../crypto/keystore';
+import { createKeystore, rewrapKeystore, unlockKeystore, wrapDataKeyWithPassphrase } from '../crypto/keystore';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
 
 /** One floor, shared by the setup screen and the change screen, so the two
@@ -29,6 +29,13 @@ export async function setupJournalPassphrase(passphrase: string): Promise<Uint8A
   const { metadata, dataKey } = await createKeystore(passphrase);
   await writeKeystoreFile(metadata);
   return dataKey;
+}
+
+export async function addJournalPassphrase(
+  dataKey: Uint8Array<ArrayBuffer>,
+  passphrase: string
+): Promise<void> {
+  await writeKeystoreFile(await wrapDataKeyWithPassphrase(dataKey, passphrase));
 }
 
 /** Every later run: throws DecryptionFailedError on a wrong passphrase,

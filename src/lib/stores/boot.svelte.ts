@@ -34,7 +34,20 @@ import { hydrateReference } from '../data/live/reference.svelte';
 import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file-store';
 import { appPrivatePhotoFiles } from '../data/photos/android-file-store';
 import { encryptedFileStore } from '../data/photos/encrypted-file-store';
-import { journalKeystoreExists, setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
+import { addJournalPassphrase, journalKeystoreExists, setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
+import {
+  deviceBoundJournalExists,
+  DeviceBoundKeyUnavailableError,
+  removeDeviceBoundJournal,
+  setupDeviceBoundJournal,
+  unlockDeviceBoundJournal
+} from '../data/device-bound-journal';
+import {
+  chooseJournalAccessMode,
+  describeAndroidBootPlan,
+  describeWebBootPlan,
+  type JournalAccessMode
+} from '../data/journal-access-mode';
 import {
   describeJournalState,
   finishRetirement,
@@ -85,6 +98,7 @@ export const bootState = $state<{
     | 'needs-setup'
     | 'needs-unlock'
     | 'needs-authentication'
+    | 'needs-device-recovery'
     | 'converting'
     | 'conversion-refused'
     | 'ready'
@@ -113,6 +127,7 @@ export const bootState = $state<{
       not happened. A successful attempt never lands here: the key goes
       straight into the driver and stays out of anything a screen reads. */
   androidKey: AndroidKeyRefusal | null;
+  accessMode: JournalAccessMode;
 }>({
   status: 'booting',
   error: null,
@@ -121,7 +136,8 @@ export const bootState = $state<{
   journal: null,
   conversion: null,
   conversionRefusal: null,
-  androidKey: null
+  androidKey: null,
+  accessMode: null
 });
 
 let started = false;
@@ -129,6 +145,7 @@ let started = false;
    will let go of the file. Nothing else reaches for it: screens go through
    data/live/, and bootState.journal is the handle for everything else. */
 let openDriver: SqliteDriver | null = null;
+let sessionDataKey: Uint8Array<ArrayBuffer> | null = null;
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
     it needs the file ops of the driver that failed (ticket 04). */
@@ -199,6 +216,8 @@ export async function restorePreviousJournal(): Promise<void> {
     the demo (ticket 05). */
 const DEMO_PASSPHRASE = 'demo';
 
+type SkipSetupResult = 'ok' | 'needs-device-lock' | 'device-bound-unavailable';
+
 export function startBoot() {
   if (started) return;
   started = true;
@@ -219,7 +238,15 @@ export function startBoot() {
   }
 
   (async () => {
-    let state = describeJournalState(await surveyJournal());
+    const passphraseKeystoreExists = await journalKeystoreExists();
+    const deviceBoundKeystoreExists = await deviceBoundJournalExists();
+    bootState.accessMode = chooseJournalAccessMode({ passphraseKeystoreExists, deviceBoundKeystoreExists });
+
+    let state = describeJournalState({
+      keystoreExists: passphraseKeystoreExists || deviceBoundKeystoreExists,
+      plaintextJournalPresent: await plaintextJournalPresent(),
+      marker: await opfsConversionMarker().read()
+    });
 
     /* A conversion that got all the way through and was killed before its
        last few deletes (ticket 10). Nothing here needs a data key, so it
@@ -248,13 +275,13 @@ export function startBoot() {
         /* A reviewer may have changed the demo passphrase in Settings; the
            gate is the honest fallback. */
         try {
-          continueBoot(await unlockJournalPassphrase(DEMO_PASSPHRASE));
+          continueBoot(await unlockJournalPassphrase(DEMO_PASSPHRASE), 'passphrase');
         } catch {
           bootState.status = 'needs-unlock';
         }
         return;
       }
-      continueBoot(await setupJournalPassphrase(DEMO_PASSPHRASE));
+      continueBoot(await setupJournalPassphrase(DEMO_PASSPHRASE), 'passphrase');
       return;
     }
 
@@ -273,12 +300,33 @@ export function startBoot() {
          passphrase screen, so ask for that passphrase again rather than
          for a new one - the one they saved is still the one. */
       const resuming = await journalKeystoreExists();
+      bootState.accessMode = 'passphrase';
       bootState.conversion = { progress: null };
       bootState.status = resuming ? 'needs-unlock' : 'needs-setup';
       return;
     }
 
-    bootState.status = state === 'unlock' ? 'needs-unlock' : 'needs-setup';
+    const plan = describeWebBootPlan({
+      passphraseKeystoreExists,
+      deviceBoundKeystoreExists,
+      plaintextJournalPresent: false,
+      marker: null
+    });
+
+    if (plan === 'auto-unlock') {
+      try {
+        continueBoot(await unlockDeviceBoundJournal(), 'device-bound');
+      } catch (error) {
+        if (error instanceof DeviceBoundKeyUnavailableError) {
+          bootState.status = 'needs-device-recovery';
+          return;
+        }
+        throw error;
+      }
+      return;
+    }
+
+    bootState.status = plan === 'needs-unlock' ? 'needs-unlock' : 'needs-setup';
   })().catch(failBoot);
 }
 
@@ -299,7 +347,7 @@ async function surveyJournal(): Promise<JournalSurvey> {
 export async function submitPassphraseSetup(passphrase: string): Promise<void> {
   const dataKey = await setupJournalPassphrase(passphrase);
   markUnlocked();
-  await convertThenBoot(dataKey);
+  await convertThenBoot(dataKey, 'passphrase');
 }
 
 /** The unlock screen's submit. Throws DecryptionFailedError back to the
@@ -307,7 +355,51 @@ export async function submitPassphraseSetup(passphrase: string): Promise<void> {
 export async function submitPassphraseUnlock(passphrase: string): Promise<void> {
   const dataKey = await unlockJournalPassphrase(passphrase);
   markUnlocked();
-  await convertThenBoot(dataKey);
+  await convertThenBoot(dataKey, 'passphrase');
+}
+
+export async function submitSkipSetup(): Promise<SkipSetupResult> {
+  if (isAndroid()) {
+    const result = await openAndroidDataKey(androidKeystore, {
+      title: '',
+      subtitle: '',
+      cancel: '',
+      deviceCredential: false
+    });
+    if (result.kind !== 'key') {
+      return result.kind === 'refused' && result.authentication.wayForward === 'setDeviceLock'
+        ? 'needs-device-lock'
+        : 'device-bound-unavailable';
+    }
+    markUnlocked();
+    continueBoot(result.dataKey, 'device-bound');
+    return 'ok';
+  }
+
+  try {
+    const dataKey = await setupDeviceBoundJournal();
+    markUnlocked();
+    continueBoot(dataKey, 'device-bound');
+    return 'ok';
+  } catch (error) {
+    if (error instanceof DeviceBoundKeyUnavailableError) return 'device-bound-unavailable';
+    throw error;
+  }
+}
+
+export async function upgradeJournalToPassphrase(passphrase: string): Promise<void> {
+  if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
+  await addJournalPassphrase(sessionDataKey, passphrase);
+  bootState.accessMode = 'passphrase';
+  if (isAndroid()) {
+    await androidKeystore.erase().catch((error) => {
+      console.warn('could not erase the Android device-bound key after adding a passphrase', error);
+    });
+    return;
+  }
+  await removeDeviceBoundJournal().catch((error) => {
+    console.warn('could not remove the browser device-bound key after adding a passphrase', error);
+  });
 }
 
 /** Between the passphrase and the journal, on a device that still holds a
@@ -320,9 +412,9 @@ export async function submitPassphraseUnlock(passphrase: string): Promise<void> 
     Not awaited past the conversion: continueBoot() is fire-and-forget by
     design, and the gate only needs its submit to resolve once the screen
     it renders has changed. */
-async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>, accessMode: JournalAccessMode): Promise<void> {
   if (bootState.conversion === null) {
-    continueBoot(dataKey);
+    continueBoot(dataKey, accessMode);
     return;
   }
 
@@ -345,14 +437,24 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> 
   }
 
   bootState.conversion = null;
-  continueBoot(dataKey);
+  continueBoot(dataKey, accessMode);
 }
 
-function continueBoot(dataKey: Uint8Array<ArrayBuffer>) {
+function continueBoot(dataKey: Uint8Array<ArrayBuffer>, accessMode: JournalAccessMode) {
+  sessionDataKey = dataKey;
+  bootState.accessMode = accessMode;
   // The PRD asks for navigator.storage.persist() on first save, not on
   // boot - but persist() is safe to call more than once and asking here
   // covers every save path at once. Worth revisiting when the PWA ticket
   // lands, not by adding a second call.
+  if (isAndroid()) {
+    openAndBoot(
+      createAndroidSqlite(JOURNAL_DATABASE, dataKey),
+      encryptedFileStore(appPrivatePhotoFiles(), dataKey)
+    );
+    return;
+  }
+
   openAndBoot(
     createEncryptedWebSqlite(JOURNAL_DATABASE, dataKey),
     // Encrypted per file under the same data key as the database (ticket
@@ -377,22 +479,38 @@ function continueBoot(dataKey: Uint8Array<ArrayBuffer>) {
     status rather than throwing. */
 function continueBootOnAndroid() {
   void (async () => {
+    const passphraseKeystoreExists = await journalKeystoreExists();
     const { hasKey } = await androidKeystore.status();
-    if (!hasKey && (await androidJournalIsPlaintext(JOURNAL_DATABASE))) {
+    bootState.accessMode = chooseJournalAccessMode({
+      passphraseKeystoreExists,
+      deviceBoundKeystoreExists: hasKey
+    });
+
+    const plan = describeAndroidBootPlan({
+      passphraseKeystoreExists,
+      nativeDeviceKeyExists: hasKey,
+      plaintextJournalPresent: await androidJournalIsPlaintext(JOURNAL_DATABASE)
+    });
+
+    if (plan === 'plaintext-error') {
       bootState.status = 'error';
       /* Rendered through i18n in +layout: this path is expected and needs a
          user sentence, not a raw SQLite failure string. */
       bootState.error = 'android-plaintext-journal';
       return;
     }
-    if (hasKey) {
+
+    if (plan === 'needs-unlock') {
+      bootState.status = 'needs-unlock';
+      return;
+    }
+
+    if (plan === 'needs-authentication') {
       bootState.status = 'needs-authentication';
       return;
     }
-    /* The request is unused on this path - creating a key shows no prompt -
-       but the flow takes one call, and a first run that somehow finds a key
-       waiting should ask for it properly rather than with empty strings. */
-    await openAndroidJournal({ title: '', subtitle: '', cancel: '', deviceCredential: false });
+
+    bootState.status = 'needs-setup';
   })().catch(failBoot);
 }
 
@@ -426,15 +544,7 @@ export async function openAndroidJournal(request: UnlockRequest): Promise<void> 
      gate too, the same way a typed passphrase does on the web: this is the
      strong case the spec allows app lock to stand down for. */
   markUnlocked();
-  openAndBoot(
-    createAndroidSqlite(JOURNAL_DATABASE, result.dataKey),
-    /* Encrypted per file under the same data key as the database, exactly as
-       the web does it (ticket 09): whole-database encryption never reaches
-       files outside SQLite (ADR-0020), and ADR-0018's claim covers photos and
-       thumbnails. Ticket 12 stores that ciphertext in app-private Android
-       files rather than in the WebView's OPFS. */
-    encryptedFileStore(appPrivatePhotoFiles(), result.dataKey)
-  );
+  continueBoot(result.dataKey, 'device-bound');
 }
 
 function failBoot(error: unknown) {
