@@ -21,9 +21,7 @@ import {
   type JournalState
 } from './conversion.ts';
 import { fakeWorld, KILL_POINTS, ProcessKilled, type FakeWorld, type KillPoint } from './test-support/fake-world.ts';
-import { migrations } from '../sqlite/migrations.ts';
-
-const KNOWN_SCHEMA = migrations[migrations.length - 1].version;
+import { LATEST_SCHEMA_VERSION } from '../sqlite/migrations.ts';
 
 const NOTES = ['woke up early', 'zażółć gęślą jaźń', 'first appointment'];
 const PHOTOS = ['aaa.jpg', 'bbb.jpg', 'ccc.jpg', 'ddd.jpg'];
@@ -44,7 +42,7 @@ async function attempt(world: FakeWorld, kill: KillPoint | null = null): Promise
   }
 
   if (state === 'convert') {
-    const precheck = await prepareConversion(world.ports, KNOWN_SCHEMA);
+    const precheck = await prepareConversion(world.ports, LATEST_SCHEMA_VERSION);
     if (!precheck.ok) return { ok: false, refusal: precheck };
     // The passphrase step: the keystore has to land after the marker, never
     // before it.
@@ -159,20 +157,54 @@ describe('before anything is written', () => {
     }
   });
 
+  test('a conversion already under way is never refused for space its own copy is using', async () => {
+    const world = await fakeWorld({ notes: NOTES, photoNames: PHOTOS });
+    try {
+      // Past the point of no return: the encrypted copy is written and
+      // verified, and some photos are already ciphertext.
+      await expect(attempt(world, 'photo:2')).rejects.toThrow(ProcessKilled);
+
+      /* That copy is occupying the room a fresh conversion would ask for,
+         so a precheck run again here can refuse - and there is no
+         plaintext Journal left to go back to, so the refusal screen would
+         be a dead end saying nothing had changed on a device where a great
+         deal had. */
+      world.setFreeBytes(0);
+
+      expect(await attempt(world)).toEqual({ ok: true, state: 'unlock' });
+      await expectConverted(world);
+    } finally {
+      world.dispose();
+    }
+  });
+
+  test('and it leaves the stage an interrupted attempt reached exactly where it was', async () => {
+    const world = await fakeWorld({ notes: NOTES, photoNames: PHOTOS });
+    try {
+      await expect(attempt(world, 'copy:partial')).rejects.toThrow(ProcessKilled);
+      world.setFreeBytes(0);
+
+      expect(await prepareConversion(world.ports, LATEST_SCHEMA_VERSION)).toEqual({ ok: true });
+      expect((await world.survey()).marker).toBe('database');
+    } finally {
+      world.dispose();
+    }
+  });
+
   test('refuses a schema this build does not know, rather than converting a journal it cannot open', async () => {
     const world = await fakeWorld({ notes: NOTES, photoNames: PHOTOS });
     try {
       const fromTheFuture: ConversionPorts = {
         ...world.ports,
-        inspectSource: async () => ({ sizeBytes: 4096, schemaVersion: KNOWN_SCHEMA + 1 })
+        inspectSource: async () => ({ sizeBytes: 4096, schemaVersion: LATEST_SCHEMA_VERSION + 1 })
       };
-      const precheck = await prepareConversion(fromTheFuture, KNOWN_SCHEMA);
+      const precheck = await prepareConversion(fromTheFuture, LATEST_SCHEMA_VERSION);
 
       expect(precheck).toEqual({
         ok: false,
         reason: 'schema-too-new',
-        foundVersion: KNOWN_SCHEMA + 1,
-        knownVersion: KNOWN_SCHEMA
+        foundVersion: LATEST_SCHEMA_VERSION + 1,
+        knownVersion: LATEST_SCHEMA_VERSION
       });
       expect((await world.survey()).marker).toBeNull();
       expect(world.sourceNotes()).toEqual(NOTES);
@@ -293,7 +325,7 @@ describe('what each kill leaves behind', () => {
 test('a copy that comes back short is refused, and the plaintext journal survives it', async () => {
   const world = await fakeWorld({ notes: NOTES, photoNames: PHOTOS });
   try {
-    await prepareConversion(world.ports, KNOWN_SCHEMA);
+    await prepareConversion(world.ports, LATEST_SCHEMA_VERSION);
     const lying: ConversionPorts = {
       ...world.ports,
       censusOfEncryptedCopy: async () => ({ ...(await world.ports.censusOfEncryptedCopy()), entry: 1 })

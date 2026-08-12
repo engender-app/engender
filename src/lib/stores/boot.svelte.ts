@@ -41,7 +41,7 @@ import {
   webConversionPorts,
   webConversionPrecheckPorts
 } from '../data/conversion/web-ports';
-import { migrations } from '../data/sqlite/migrations';
+import { LATEST_SCHEMA_VERSION } from '../data/sqlite/migrations';
 import { setPhotoFiles } from './photoFiles';
 import { localStorageCache } from '../data/prefs/boot-cache';
 import { wipeLocalData } from '../data/reset';
@@ -66,10 +66,10 @@ export const bootState = $state<{
   journal: Journal | null;
   /** Set when the Journal on this device is a plaintext one (ticket 10):
       the gate says so, and the passphrase submitted runs the conversion
-      before the app opens. `resuming` when an earlier attempt got far
-      enough to leave a keystore behind, which is what makes the gate ask
-      to unlock rather than to choose. */
-  conversion: { resuming: boolean; progress: ConversionProgress | null } | null;
+      before the app opens rather than opening one. Whether this is a first
+      attempt or a resume is already in `status` - needs-setup against
+      needs-unlock - so it is not repeated here. */
+  conversion: { progress: ConversionProgress | null } | null;
   /** Why a conversion cannot even start. The gate owns the wording. */
   conversionRefusal: ConversionRefusal | null;
 }>({
@@ -80,10 +80,6 @@ export const bootState = $state<{
   conversion: null,
   conversionRefusal: null
 });
-
-/** The newest schema this build could migrate to, which is also the newest
-    it is willing to convert (ADR-0006 refuses a database from the future). */
-const KNOWN_SCHEMA_VERSION = Math.max(...migrations.map((migration) => migration.version));
 
 let started = false;
 /* Kept for the reset below, which has to close the database before OPFS
@@ -139,19 +135,19 @@ export function startBoot() {
       state = describeJournalState(await surveyJournal());
     }
 
-    if (__DEMO__ && state === 'convert') {
-      /* A demo journal is throwaway by definition - reseeded from the
-         persona on every empty boot - so a plaintext leftover from before
-         encryption is wiped rather than converted. */
-      await wipeLocalData({
-        closeDatabase: async () => {},
-        storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
-        clearBootCache: () => bootCache.clear()
-      });
-      state = 'first-run';
-    }
-
     if (__DEMO__) {
+      if (state === 'convert') {
+        /* A demo journal is throwaway by definition - reseeded from the
+           persona on every empty boot - so a plaintext leftover from before
+           encryption is wiped rather than converted. */
+        await wipeLocalData({
+          closeDatabase: async () => {},
+          storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
+          clearBootCache: () => bootCache.clear()
+        });
+        state = 'first-run';
+      }
+
       if (state === 'unlock') {
         /* A reviewer may have changed the demo passphrase in Settings; the
            gate is the honest fallback. */
@@ -171,7 +167,7 @@ export function startBoot() {
          choose a passphrase and write it down - ticket 10 refuses clearly
          rather than part way through, and a refusal leaves the plaintext
          Journal exactly as it was. */
-      const precheck = await prepareConversion(webConversionPrecheckPorts(), KNOWN_SCHEMA_VERSION);
+      const precheck = await prepareConversion(webConversionPrecheckPorts(), LATEST_SCHEMA_VERSION);
       if (!precheck.ok) {
         bootState.conversionRefusal = precheck;
         bootState.status = 'conversion-refused';
@@ -180,8 +176,8 @@ export function startBoot() {
       /* A keystore already there means an earlier attempt got past the
          passphrase screen, so ask for that passphrase again rather than
          for a new one - the one they saved is still the one. */
-      const resuming = (await surveyJournal()).keystoreExists;
-      bootState.conversion = { resuming, progress: null };
+      const resuming = await journalKeystoreExists();
+      bootState.conversion = { progress: null };
       bootState.status = resuming ? 'needs-unlock' : 'needs-setup';
       return;
     }
@@ -240,7 +236,7 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> 
   bootState.status = 'converting';
   try {
     await runConversion(webConversionPorts(dataKey), (progress) => {
-      bootState.conversion = { resuming: bootState.conversion?.resuming ?? false, progress };
+      bootState.conversion = { progress };
     });
   } catch (error) {
     bootState.status = 'error';

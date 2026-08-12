@@ -13,7 +13,7 @@
    every port here opens what it needs and closes it again rather than
    keeping a connection alive across stages. */
 
-import type { ConversionPorts, ConversionPrecheckPorts, TableCensus } from './conversion';
+import { censusOf, type ConversionPorts, type ConversionPrecheckPorts } from './conversion';
 import { opfsConversionMarker } from './marker-file';
 import { makePhotoConverter } from './photo-conversion';
 import { createConversionTarget, createEncryptedWebSqlite } from '../sqlite/mc-driver';
@@ -61,24 +61,6 @@ export async function removePlaintextRemnants(): Promise<void> {
   }
 }
 
-/** Row counts for every table the database holds. FTS5's shadow tables are
-    ordinary tables here and are counted like the rest, which is what makes
-    this a check on the copy rather than on the tables someone remembered to
-    list. */
-async function census(query: PlaintextEraJournal['query']): Promise<TableCensus> {
-  const tables = await query<{ name: string }>(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
-  );
-  const counts: TableCensus = {};
-  for (const { name } of tables) {
-    // The name comes out of sqlite_master, not from anything a person
-    // typed, and PRAGMA-style identifiers cannot be bound anyway.
-    const [row] = await query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${name}"`);
-    counts[name] = Number(row.n);
-  }
-  return counts;
-}
-
 async function withSource<T>(use: (source: PlaintextEraJournal) => Promise<T>): Promise<T> {
   const source = openPlaintextEraJournal(JOURNAL_DATABASE);
   try {
@@ -123,7 +105,7 @@ export function webConversionPorts(dataKey: Uint8Array<ArrayBuffer>): Conversion
 
     async readSource() {
       return withSource(async (source) => ({
-        census: await census(source.query),
+        census: await censusOf((statement) => source.query(statement)),
         bytes: await source.readDatabaseFile()
       }));
     },
@@ -147,10 +129,10 @@ export function webConversionPorts(dataKey: Uint8Array<ArrayBuffer>): Conversion
         if (integrity.integrity_check !== 'ok') {
           throw new Error(`the encrypted copy fails SQLite's own integrity check: ${integrity.integrity_check}`);
         }
-        // Awaited inside the try, not returned out of it: `return census(…)`
+        // Awaited inside the try, not returned out of it: `return censusOf(…)`
         // settles this function before the counting has run, and the
         // finally below would close the database out from under it.
-        return await census((statement, params) => driver.query(statement, params));
+        return await censusOf((statement) => driver.query(statement));
       } finally {
         await driver.close();
       }

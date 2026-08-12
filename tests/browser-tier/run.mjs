@@ -469,6 +469,10 @@ try {
     ok('a keystore written mid-conversion does not make the app think the journal is already encrypted');
   else fail('a keystore written mid-conversion is still a conversion', r.stateWithKeystoreMidConversion);
 
+  if (r.copyBeforeRedoVerifies === true)
+    ok('a copy written by an attempt that then died verifies, and the conversion below writes over it');
+  else fail('an abandoned copy verifies and is written over', JSON.stringify(r.copyBeforeRedoVerifies));
+
   if (r.interrupted && r.markerAfterInterruption === 'photos' && r.stateAfterInterruption === 'convert' && r.sourceStillPresentMidPhotos)
     ok('killed part way through the photos: the marker says photos, and the plaintext journal is still on disk');
   else
