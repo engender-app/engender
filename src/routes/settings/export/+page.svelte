@@ -1,6 +1,8 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { runExport, type ExportPath } from '$lib/data/archive/backup';
+  import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
+  import { androidAutoExport, type AutoExportStatus } from '$lib/data/archive/android-auto-export-bridge';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { applyPortablePreferences, prefs } from '$lib/data/prefs/store.svelte';
   import { openArchive } from '$lib/data/archive/pack';
@@ -18,6 +20,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { isAndroid } from '$lib/platform';
+  import { onMount } from 'svelte';
 
   let android = $derived(isAndroid());
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
@@ -40,6 +43,11 @@
      button says what it is doing, and it is not encrypting when the CSV
      is what someone asked for. */
   let running = $state<ExportPath | null>(null);
+  let autoDestination = $state<string | null>(null);
+  let autoLastSuccessAt = $state<number | null>(null);
+  let autoLastFailureAt = $state<number | null>(null);
+  let autoLastFailureReason = $state<string | null>(null);
+  let autoBusy = $state(false);
 
   const done: Record<ExportPath, () => string> = {
     encrypted: m.exp_done_encrypted,
@@ -54,6 +62,116 @@
     }
     exportWarningOpen = true;
   }
+
+  function stampText(at: number | null): string {
+    if (at == null) return m.exp_last_backup_never();
+    return new Date(at).toLocaleString();
+  }
+
+  function applyAutoStatus(status: AutoExportStatus) {
+    prefs.autoExportEnabled = status.enabled;
+    prefs.autoExportSchedule = status.schedule;
+    autoDestination = status.destinationLabel;
+    autoLastSuccessAt = status.lastSuccessAt;
+    autoLastFailureAt = status.lastFailureAt;
+    autoLastFailureReason = status.lastFailureReason;
+  }
+
+  async function refreshAutoStatus() {
+    if (!android) return;
+    try {
+      applyAutoStatus(await androidAutoExport.status());
+    } catch (error) {
+      console.error('could not read auto-export status', error);
+      toast(m.exp_auto_config_failed());
+    }
+  }
+
+  async function configureAutoExport(enabled: boolean, schedule: 'weekly' | 'monthly') {
+    if (!android) return;
+    autoBusy = true;
+    try {
+      const status = await androidAutoExport.configure({ enabled, schedule });
+      applyAutoStatus(status);
+      if (enabled && !status.enabled && !status.destinationUri) toast(m.exp_auto_pick_destination_first());
+    } catch (error) {
+      console.error('could not configure auto-export', error);
+      toast(m.exp_auto_config_failed());
+    } finally {
+      autoBusy = false;
+    }
+  }
+
+  async function setAutoEnabled(enabled: boolean) {
+    prefs.autoExportEnabled = enabled;
+    await configureAutoExport(enabled, prefs.autoExportSchedule);
+  }
+
+  async function setAutoSchedule(value: string) {
+    const schedule = value === 'monthly' ? 'monthly' : 'weekly';
+    prefs.autoExportSchedule = schedule;
+    await configureAutoExport(prefs.autoExportEnabled, schedule);
+  }
+
+  async function pickAutoDestination() {
+    if (!android || autoBusy) return;
+    autoBusy = true;
+    try {
+      const result = await androidAutoExport.pickDestination();
+      if (!result.picked) return;
+      await refreshAutoStatus();
+      toast(m.exp_auto_destination_saved());
+    } catch (error) {
+      console.error('could not pick auto-export destination', error);
+      toast(m.exp_auto_config_failed());
+    } finally {
+      autoBusy = false;
+    }
+  }
+
+  async function backupNowToDestination() {
+    if (!android || autoBusy) return;
+    if (!expPass) {
+      toast(m.exp_password_first());
+      return;
+    }
+
+    autoBusy = true;
+    try {
+      const result = await runAndroidAutoExport(
+        {
+          snapshot: await journal.archive.snapshot(),
+          preferences: prefs,
+          password: expPass
+        },
+        {
+          recordBackup: (at) => {
+            prefs.lastBackupAt = at;
+            prefs.backupNoticeDismissed = false;
+          }
+        }
+      );
+
+      if (result.outcome === 'ok') {
+        toast(m.exp_auto_saved_toast());
+      } else if (result.outcome === 'needs-destination') {
+        toast(m.exp_auto_reselect_needed());
+      } else {
+        console.error('auto-export failed', result.reason);
+        toast(m.exp_auto_failed());
+      }
+      await refreshAutoStatus();
+    } catch (error) {
+      console.error('auto-export failed', error);
+      toast(m.exp_auto_failed());
+    } finally {
+      autoBusy = false;
+    }
+  }
+
+  onMount(() => {
+    if (android) void refreshAutoStatus();
+  });
 
   /* One function behind all three exports, so the backup timestamp is
      stamped once for every path there is (F21) rather than at three call
@@ -280,20 +398,48 @@
           <span class="row-subtitle">{m.exp_auto_sub()}</span>
         </span>
         <Switch checked={prefs.autoExportEnabled} label={m.exp_auto_title()}
-          onChange={(v) => (prefs.autoExportEnabled = v)} />
+          onChange={setAutoEnabled} />
       </div>
+
+        <div class="spread" style="margin-top:var(--space-3)">
+          <span class="small muted">{m.exp_auto_destination_label()}</span>
+          <button class="btn btn-soft" type="button" onclick={pickAutoDestination} disabled={autoBusy}>
+            <span>{autoDestination ? m.exp_auto_change_destination() : m.exp_auto_choose_destination()}</span>
+          </button>
+        </div>
+        <p class="muted small" style="margin-top:var(--space-2)">
+          {autoDestination ?? m.exp_auto_destination_missing()}
+        </p>
+
       {#if prefs.autoExportEnabled}
         <div class="spread" style="margin-top:var(--space-3)">
           <span class="small muted">{m.exp_schedule()}</span>
           <Segmented name={m.exp_schedule()}
             options={[{ value: 'weekly', label: m.exp_schedule_weekly() }, { value: 'monthly', label: m.exp_schedule_monthly() }]}
             value={prefs.autoExportSchedule}
-            onChange={(v) => (prefs.autoExportSchedule = v as 'weekly' | 'monthly')} />
+            onChange={setAutoSchedule} />
         </div>
-        <p class="muted small" style="margin-top:var(--space-3)">
-          {m.exp_auto_note({ folder: 'Downloads/GenderDiary' })}
-        </p>
+
+          <button class="btn btn-soft" style="margin-top:var(--space-3)" type="button"
+            onclick={backupNowToDestination} disabled={autoBusy}>
+            <span>{autoBusy ? m.exp_auto_running() : m.exp_auto_backup_now()}</span>
+          </button>
       {/if}
+
+        <p class="muted small" style="margin-top:var(--space-3)">
+          {m.exp_auto_note({ folder: autoDestination ?? m.exp_auto_destination_missing() })}
+        </p>
+        <p class="muted small" style="margin-top:var(--space-2)">
+          {m.exp_auto_last_success({ when: stampText(autoLastSuccessAt) })}
+        </p>
+        {#if autoLastFailureAt !== null}
+          <p class="muted small" style="margin-top:var(--space-2)">
+            {m.exp_auto_last_failure({ when: stampText(autoLastFailureAt) })}
+          </p>
+          {#if autoLastFailureReason}
+            <p class="muted small" style="margin-top:var(--space-1)">{m.exp_auto_failed()}</p>
+          {/if}
+        {/if}
     </div>
   {/if}
 
