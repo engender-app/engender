@@ -23,6 +23,7 @@ import { censusOf, type ConversionPorts, type ConversionStage, type JournalSurve
 import { makePhotoConverter } from '../photo-conversion.ts';
 import { fakeFileStore, type FakeFileStore } from '../../photos/test-support/fake-file-store.ts';
 import { encryptedFileStore } from '../../photos/encrypted-file-store.ts';
+import { noopFileOps } from '../../sqlite/test-support/migrated-db.ts';
 import { runMigrations } from '../../sqlite/migration-runner.ts';
 import { migrations } from '../../sqlite/migrations.ts';
 import type { SqliteDriver } from '../../sqlite/driver.ts';
@@ -125,7 +126,7 @@ export async function fakeWorld(options: FakeWorldOptions = {}): Promise<FakeWor
 
   async function seedSource(): Promise<void> {
     const raw = new DatabaseSync(path(SOURCE));
-    await runMigrations(nodeDriver(raw), { copyDatabaseFile() {}, cleanupPreMigrationCopy() {} }, migrations);
+    await runMigrations(nodeDriver(raw), noopFileOps(), migrations);
     for (const [index, note] of notes.entries()) {
       raw
         .prepare('INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES (?, ?, ?, ?, ?)')

@@ -12,14 +12,16 @@
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { bootState, startBoot } from '$lib/stores/boot.svelte';
+  import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LockScreen from '$lib/components/LockScreen.svelte';
   import PassphraseGate from '$lib/components/PassphraseGate.svelte';
+  import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
+  import UpdateNotice from '$lib/components/UpdateNotice.svelte';
 
   let { children } = $props();
 
@@ -63,9 +65,14 @@
       bootState.status === 'conversion-refused'
   );
 
+  /* Older code against a newer Journal (ticket 04). Its own screen rather
+     than the boot-error notice: nothing is wrong with the Journal, and there
+     is something the person can do. */
+  let schemaTooNew = $derived(bootState.status === 'schema-too-new');
+
   let path = $derived(page.url.pathname);
   let chromeless = $derived(
-    locked || needsPassphrase || path.startsWith('/onboarding') || path === '/settings/lock'
+    locked || needsPassphrase || schemaTooNew || path.startsWith('/onboarding') || path === '/settings/lock'
   );
   let activeKey = $derived(
     path === '/' ? 'home'
@@ -103,6 +110,23 @@
     if (bootState.status !== 'ready' || locked) return;
     if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
   });
+  /* Putting the pre-migration copy back (ticket 04). Only reachable from the
+     boot-failure notice, and only when boot found a copy to put back. */
+  let restoring = $state(false);
+  let restoreFailed = $state(false);
+  async function restore() {
+    restoring = true;
+    restoreFailed = false;
+    try {
+      // Reloads on success, so nothing after this runs.
+      await restorePreviousJournal();
+    } catch (e) {
+      console.error('restoring the pre-migration copy failed', e);
+      restoring = false;
+      restoreFailed = true;
+    }
+  }
+
   /* New-entry chooser (F1). */
   let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
   function chooseToday() {
@@ -140,8 +164,27 @@
         <div class="notice-body">
           <span class="notice-title">{m.boot_db_failed_title()}</span>
           {bootState.error}
+          <!-- The way back out of a migration that could not finish (ticket
+               04, ADR-0006): the copy taken before it started is still on the
+               device, and this puts it back. Offered only when there is one,
+               so the button never lies about having something to restore. -->
+          {#if bootState.recoverable}
+            <p style="margin-top:var(--space-2)" data-restore-offer>{m.boot_restore_offer()}</p>
+            <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
+              <span>{restoring ? m.boot_restore_running() : m.boot_restore_action()}</span>
+            </button>
+            {#if restoreFailed}
+              <p style="margin-top:var(--space-2)" data-restore-failed>{m.boot_restore_failed()}</p>
+            {/if}
+          {/if}
         </div>
       </div>
+    {/if}
+    <!-- Only over a Journal that is open and unlocked. The notice is not
+         urgent enough to sit above a passphrase gate or a lock screen, and
+         those two screens have one job each. -->
+    {#if bootState.status === 'ready' && !locked}
+      <UpdateNotice />
     {/if}
     {#if !chromeless}
       <nav class="app-rail" aria-label={m.nav_main()}>
@@ -167,7 +210,9 @@
     {/if}
 
     <main class="app-main">
-      {#if needsPassphrase}
+      {#if schemaTooNew}
+        <SchemaTooNew />
+      {:else if needsPassphrase}
         <PassphraseGate />
       {:else if locked}
         <!-- Instead of the route, not over it: nothing below this renders,

@@ -143,13 +143,81 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     };
   },
 
+  /* Whether a copy from an earlier boot is in the pool and can be read back
+     as a journal. Not a file listing: SAHPool names are its own, and
+     getFileNames() is the only thing that knows them - and a name in that list
+     says nothing about whether the file behind it opens under the data key.
+
+     So it is opened and counted. A copy nobody can read is not a recovery
+     point, and the two callers both need the stronger answer: the runner
+     refuses an empty journal only when there is a real one to put back, and
+     the failure screen must not offer a restore it cannot perform. */
+  async preMigrationCopyIsUsable() {
+    if (!poolUtil!.getFileNames().includes(backupPath)) return false;
+    const api = await attach();
+    const copy = new api.oo1.DB({ filename: backupPath, flags: 'c', vfs: MC_VFS });
+    try {
+      keyAndVerify(copy, hexKey);
+      const [tables] = copy.exec({
+        sql: "SELECT count(*) AS tables FROM sqlite_master WHERE type = 'table'",
+        rowMode: 'object',
+        returnValue: 'resultRows'
+      }) as { tables: number }[];
+      return tables.tables > 0;
+    } catch {
+      // Unreadable under this key, or not a database: no recovery point.
+      return false;
+    } finally {
+      copy.close();
+    }
+  },
+
   async copyDatabaseFile() {
     /* Through both pagers - the source's decrypts, the destination's (keyed
        by the URI's hexkey) encrypts - never through file bytes, which the
        pool keeps opaque anyway. Any copy left by an interrupted migration
-       goes first: VACUUM INTO refuses an existing target. */
+       goes first: VACUUM INTO refuses an existing target. The runner only
+       calls this when there is none to lose (ticket 04), so what the unlink
+       clears is a target left half-written inside this same call. */
     await poolUtil!.unlink(backupPath);
     db!.exec(`VACUUM INTO 'file:${backupPath}?vfs=${MC_VFS}&hexkey=${hexKey}'`);
+  },
+
+  /* Ticket 04: the copy becomes the live Journal again, after a migration
+     that could not be finished.
+
+     VACUUM INTO in the other direction, from the copy as source, for the
+     reason the copy itself is written that way: the pool's bytes are opaque,
+     there is no sqlite3_backup_* in this wasm build, and importDb wants the
+     plaintext magic that an encrypted file does not carry. Both connections
+     are keyed with the same hexkey, so the restored database is ciphertext on
+     disk like everything else the pool holds.
+
+     The live database is closed first, and the target unlinked, because
+     VACUUM INTO refuses an existing target and the file being replaced is the
+     one this worker has open. The copy stays where it is afterwards: it is
+     still the only insurance, and ADR-0006 retires it at the next clean boot,
+     which is a boot that found nothing pending - not this one. */
+  async restorePreMigrationCopy() {
+    if (!poolUtil!.getFileNames().includes(backupPath)) {
+      throw new Error('there is no pre-migration copy to restore');
+    }
+    db?.close();
+    db = null;
+
+    const api = await attach();
+    const copy = new api.oo1.DB({ filename: backupPath, flags: 'c', vfs: MC_VFS });
+    try {
+      /* Before anything is unlinked: keyAndVerify reads sqlite_master, so a
+         copy that cannot be opened under this key fails here, with the
+         database it was going to replace still on disk. */
+      keyAndVerify(copy, hexKey);
+      await poolUtil!.unlink(databasePath);
+      await poolUtil!.unlink(`${databasePath}-journal`);
+      copy.exec(`VACUUM INTO 'file:${databasePath}?vfs=${MC_VFS}&hexkey=${hexKey}'`);
+    } finally {
+      copy.close();
+    }
   },
 
   async cleanupPreMigrationCopy() {
