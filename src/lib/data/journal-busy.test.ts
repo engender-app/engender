@@ -3,50 +3,50 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { enterWriteInFlight, onWriteInFlightChange, writeInFlight } from './writes-in-flight.ts';
+import { markJournalBusy, onJournalBusyChange, journalIsBusy } from './journal-busy.ts';
 
 test('nothing in flight until something enters', () => {
-  assert.equal(writeInFlight(), false);
+  assert.equal(journalIsBusy(), false);
 });
 
 test('a write holds the flag until it releases', () => {
-  const done = enterWriteInFlight();
-  assert.equal(writeInFlight(), true);
+  const done = markJournalBusy();
+  assert.equal(journalIsBusy(), true);
   done();
-  assert.equal(writeInFlight(), false);
+  assert.equal(journalIsBusy(), false);
 });
 
 test('overlapping writes both have to finish', () => {
   // Two saves in flight at once is ordinary: the entry editor's save and the
   // photo store's write land on their own schedules. The flag has to survive
   // the first one finishing, or an update would land on the second.
-  const first = enterWriteInFlight();
-  const second = enterWriteInFlight();
+  const first = markJournalBusy();
+  const second = markJournalBusy();
 
   first();
-  assert.equal(writeInFlight(), true);
+  assert.equal(journalIsBusy(), true);
   second();
-  assert.equal(writeInFlight(), false);
+  assert.equal(journalIsBusy(), false);
 });
 
 test('releasing twice does not open the door early', () => {
-  const first = enterWriteInFlight();
-  const second = enterWriteInFlight();
+  const first = markJournalBusy();
+  const second = markJournalBusy();
 
   first();
   first();
 
-  assert.equal(writeInFlight(), true);
+  assert.equal(journalIsBusy(), true);
   second();
-  assert.equal(writeInFlight(), false);
+  assert.equal(journalIsBusy(), false);
 });
 
 test('listeners hear the edges and not the writes between them', () => {
   const heard: boolean[] = [];
-  const stop = onWriteInFlightChange((busy) => heard.push(busy));
+  const stop = onJournalBusyChange((busy) => heard.push(busy));
 
-  const first = enterWriteInFlight();
-  const second = enterWriteInFlight();
+  const first = markJournalBusy();
+  const second = markJournalBusy();
   first();
   second();
 
@@ -58,10 +58,10 @@ test('listeners hear the edges and not the writes between them', () => {
 
 test('a stopped listener hears nothing further', () => {
   const heard: boolean[] = [];
-  const stop = onWriteInFlightChange((busy) => heard.push(busy));
+  const stop = onJournalBusyChange((busy) => heard.push(busy));
   stop();
 
-  enterWriteInFlight()();
+  markJournalBusy()();
 
   assert.deepEqual(heard, []);
 });

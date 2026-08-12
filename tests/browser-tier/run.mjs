@@ -591,7 +591,7 @@ try {
   const before = ['sentinel-migration-note-before-the-update-5514'];
   const both = [...before, 'sentinel-migration-note-written-after-the-copy-8820'].sort();
 
-  if (r.startingVersion === 3 && JSON.stringify(r.startingNotes) === JSON.stringify(before))
+  if (r.startingVersion === r.shippedVersion && JSON.stringify(r.startingNotes) === JSON.stringify(before))
     ok(`the fixture is a journal on the shipped schema (v${r.startingVersion}) with an entry in it`);
   else
     fail(
@@ -599,7 +599,7 @@ try {
       JSON.stringify({ version: r.startingVersion, notes: r.startingNotes })
     );
 
-  if (r.forwardVersion === 4 && JSON.stringify(r.notesAfterForward) === JSON.stringify(before))
+  if (r.forwardVersion === r.nextVersion && JSON.stringify(r.notesAfterForward) === JSON.stringify(before))
     ok('newer code migrates the older journal forward and the entry survives it');
   else
     fail(
@@ -615,7 +615,7 @@ try {
       JSON.stringify({ afterMigrating: r.copyAfterForward, afterCleanBoot: r.copyAfterCleanBoot })
     );
 
-  if (r.refusal && r.refusal.found === 4 && r.refusal.known === 3)
+  if (r.refusal && r.refusal.found === r.nextVersion && r.refusal.known === r.shippedVersion)
     ok('older code refuses a journal a newer schema touched, naming both versions');
   else fail('older code refuses a journal created by a newer schema', JSON.stringify(r.refusal));
 
@@ -627,7 +627,7 @@ try {
   if (
     typeof r.brokenMigration === 'string' &&
     r.brokenMigration !== 'nothing was thrown' &&
-    r.versionAfterFailure === 4
+    r.versionAfterFailure === r.nextVersion
   )
     ok(`a failing migration rolls its step back and leaves the schema at v${r.versionAfterFailure}`);
   else
@@ -651,7 +651,7 @@ try {
   if (
     JSON.stringify(r.notesBeforeRestore) === JSON.stringify(both) &&
     JSON.stringify(r.notesAfterRestore) === JSON.stringify(before) &&
-    r.versionAfterRestore === 4
+    r.versionAfterRestore === r.nextVersion
   )
     ok('the copy goes back as the live journal and the previous visible journal is what opens');
   else

@@ -16,7 +16,7 @@
    unit-tested in the Node tier against a fake driver, while the real app
    supplies createWebSqlite() from sqlocal-driver.ts. */
 
-import { enterWriteInFlight } from '../../pwa/writes-in-flight.ts';
+import { markJournalBusy } from '../journal-busy.ts';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import { runMigrations } from './migration-runner.ts';
@@ -43,7 +43,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
      the transaction covers a failed step, but nothing covers the code being
      replaced between two of them. Taken before createDriver() so the window
      starts where the file is first touched. */
-  const migrating = enterWriteInFlight();
+  const migrating = markJournalBusy();
   try {
     // createDriver() itself isn't expected to be where a failure surfaces
     // (SQLocal defers real I/O to its worker, so constructing it doesn't
@@ -59,6 +59,12 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
     // there (ticket 04's acceptance: not a blank screen).
     return { phase: 'error', error };
   } finally {
+    /* The guard ends with the migrations, not with boot(). What follows is
+       reconcileBuiltIns, which takes the guard itself on the way through the
+       journal wrapper, and the photo sweep, which only ever deletes files no
+       row references - so an update landing mid-sweep leaves orphans for the
+       next boot to reclaim, which is what its own failure path already
+       does. */
     migrating();
   }
 

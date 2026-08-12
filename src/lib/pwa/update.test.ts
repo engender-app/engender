@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { enterWriteInFlight } from './writes-in-flight.ts';
+import { markJournalBusy } from '../data/journal-busy.ts';
 import { SKIP_WAITING } from './sw-messages.ts';
 import {
   applyUpdate,
@@ -122,7 +122,7 @@ test('a write in flight takes the offer off the screen', () => {
   const worker = fakeRegistration();
   const { environment } = fakeEnvironment();
   watchForUpdates(worker.registration, environment);
-  const saving = enterWriteInFlight();
+  const saving = markJournalBusy();
 
   worker.releaseArrives();
 
@@ -134,7 +134,7 @@ test('the offer appears by itself once the write lands', () => {
   const worker = fakeRegistration();
   const { environment } = fakeEnvironment();
   watchForUpdates(worker.registration, environment);
-  const saving = enterWriteInFlight();
+  const saving = markJournalBusy();
   worker.releaseArrives();
 
   saving();
@@ -166,7 +166,7 @@ test('a write that starts between the tap and the handler cancels the update', a
   worker.releaseArrives();
   // A quick log saved from Home in the same tick as the tap. The offer was
   // honestly on screen a moment ago; acting on it now would interrupt.
-  const saving = enterWriteInFlight();
+  const saving = markJournalBusy();
 
   const applied = await applyUpdate();
 
@@ -231,7 +231,7 @@ test('a listener hears the offer arrive, and not before', () => {
   watchForUpdates(worker.registration, environment);
   const stop = onUpdateReadyChange((ready) => heard.push(ready));
 
-  const saving = enterWriteInFlight();
+  const saving = markJournalBusy();
   worker.releaseArrives();
   saving();
 

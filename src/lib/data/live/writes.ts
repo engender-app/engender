@@ -24,7 +24,7 @@
    misfiled as a read shows stale data forever, and the failure looks like a
    Svelte bug rather than a missing line here. */
 
-import { enterWriteInFlight } from '../../pwa/writes-in-flight';
+import { markJournalBusy } from '../journal-busy';
 import type { Journal } from '../journal/journal';
 
 /** The tables a query can depend on. Coarser than the schema - one name
@@ -184,7 +184,7 @@ type Mutation = (...args: never[]) => Promise<unknown>;
 
 function announcing(implementation: Mutation, tables: TableName[], onWrite: (tables: TableName[]) => void) {
   return async (...args: never[]) => {
-    const done = enterWriteInFlight();
+    const done = markJournalBusy();
     try {
       const result = await implementation(...args);
       onWrite(tables);

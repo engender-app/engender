@@ -10,7 +10,7 @@
    waits, and the only thing that ends the wait early is a page asking through
    the message below. A page asks when the journal is idle and never while a
    write, a migration, an encryption conversion or an Archive import is in
-   flight - lib/pwa/update.ts holds that rule and lib/pwa/writes-in-flight.ts
+   flight - lib/pwa/update.ts holds that rule and lib/data/journal-busy.ts
    is what it reads. clients.claim() stays absent for the same reason: a page
    that loaded on the old worker keeps it until it reloads itself. */
 /// <reference types="@sveltejs/kit" />

@@ -17,7 +17,16 @@
    entry save and the photo store's write land on their own schedules - and the
    first one finishing does not mean the journal is idle. Rune-free like
    writes.ts, for the same two reasons: the Node tier can test it, and a
-   service worker's message plumbing has no business in reactive state. */
+   service worker's message plumbing has no business in reactive state.
+
+   Two things it deliberately does not cover. Preference writes: one upsert
+   into `pref`, which either committed or did not, and a preference is not part
+   of the journal (CONTEXT: "Journal") - it is none of the four the ticket
+   names. And a second tab, which this counter cannot see: the guard is
+   per-page module state, so a tab sitting idle would not know another was
+   saving. ADR-0020 is what makes that moot rather than lucky - the encrypted
+   driver holds the pool's access handles for one connection per origin, so
+   the second tab has no journal open to write to. */
 
 let open = 0;
 const listeners = new Set<(busy: boolean) => void>();
@@ -33,7 +42,7 @@ function announce(busy: boolean): void {
 
     The release is idempotent, so a caller that has already let go cannot
     release somebody else's write by calling twice. */
-export function enterWriteInFlight(): () => void {
+export function markJournalBusy(): () => void {
   open += 1;
   if (open === 1) announce(true);
 
@@ -47,14 +56,14 @@ export function enterWriteInFlight(): () => void {
 }
 
 /** True while anything an update must not interrupt is running. */
-export function writeInFlight(): boolean {
+export function journalIsBusy(): boolean {
   return open > 0;
 }
 
 /** Called on the edges only - when the journal becomes busy and when it goes
     idle again - because that is the whole of what a listener acts on.
     Returns the way to stop listening. */
-export function onWriteInFlightChange(listener: (busy: boolean) => void): () => void {
+export function onJournalBusyChange(listener: (busy: boolean) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }

@@ -10,7 +10,7 @@
      - never while the journal is busy. A write, a migration, an encryption
        conversion or an Archive import in flight means the code must not be
        swapped, so nothing is offered and nothing is sent
-       (writes-in-flight.ts).
+       (journal-busy.ts).
      - only when a person acts. There is no timer and no automatic apply: a
        reload the person did not ask for is an interruption whatever the
        journal is doing.
@@ -24,7 +24,7 @@
    half, over onUpdateReadyChange. */
 
 import { SKIP_WAITING } from './sw-messages';
-import { onWriteInFlightChange, writeInFlight } from './writes-in-flight';
+import { onJournalBusyChange, journalIsBusy } from '../data/journal-busy';
 
 /** Just enough of ServiceWorkerRegistration for this. `waiting` is read
     afresh every time rather than remembered, so the browser stays the single
@@ -52,6 +52,12 @@ export interface UpdateEnvironment {
   reload(): void;
 }
 
+/** How long a skip-waiting message is given to end in this page being
+    controlled by the new worker. Generous, because it covers an activate
+    handler doing work; short enough that a person is not left looking at a
+    disabled button. */
+const TAKEOVER_LIMIT_MS = 5000;
+
 let watched: WatchedRegistration | null = null;
 let environment: UpdateEnvironment | null = null;
 let offered = false;
@@ -61,7 +67,7 @@ let stopWatchingWrites: (() => void) | null = null;
 /** True when a new release is installed and waiting and the journal is idle -
     which is exactly when the update action may be on screen. */
 export function updateReady(): boolean {
-  return watched?.waiting != null && !writeInFlight();
+  return watched?.waiting != null && !journalIsBusy();
 }
 
 /** Called on the edges of that answer. Returns the way to stop listening. */
@@ -90,7 +96,7 @@ export function watchForUpdates(registration: WatchedRegistration, updateEnviron
      `waiting` and no event is coming for it, so the answer is worked out now
      as well as on every later change. */
   registration.addEventListener('updatefound', reconsider);
-  stopWatchingWrites = onWriteInFlightChange(reconsider);
+  stopWatchingWrites = onJournalBusyChange(reconsider);
   reconsider();
 }
 
@@ -132,17 +138,23 @@ export async function checkForNewerRelease(): Promise<boolean> {
     a quick log saved in the same moment as the tap is enough for that, and
     the save is the thing that must not be interrupted.
 
-    Reloading only after `controllerchange` matters: reload first and the old
-    worker is still in charge, so the page comes back on the old release and
-    the notice with it. */
+    Waiting for `controllerchange` before reloading is what makes the reload
+    land on the new release: reload first and the old worker is still in
+    charge, so the page comes back on the old release and the notice with it.
+
+    It is waited for with a limit, though, because it is not this page's to
+    guarantee - an install that goes redundant, or a worker that never gets to
+    activate, would otherwise leave the button disabled for the rest of the
+    session with nothing on screen to say why. Reloading anyway is the better
+    end: either the new release is in charge, or the notice is back. */
 export async function applyUpdate(): Promise<boolean> {
   const waiting = watched?.waiting;
-  if (!waiting || !environment || writeInFlight()) return false;
+  if (!waiting || !environment || journalIsBusy()) return false;
 
   const env = environment;
   const controlChanged = new Promise<void>((resolve) => env.onControllerChange(() => resolve()));
   waiting.postMessage(SKIP_WAITING);
-  await controlChanged;
+  await Promise.race([controlChanged, new Promise((resolve) => setTimeout(resolve, TAKEOVER_LIMIT_MS))]);
   env.reload();
   return true;
 }

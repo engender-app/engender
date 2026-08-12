@@ -18,8 +18,8 @@
 import { boot } from '../data/sqlite/boot';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
-import { SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
-import { enterWriteInFlight } from '../pwa/writes-in-flight';
+import { InterruptedRestoreError, SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
+import { markJournalBusy } from '../data/journal-busy';
 import { openJournal, type Journal } from '../data/journal/journal';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
@@ -132,18 +132,27 @@ export async function resetApp(): Promise<void> {
 /** Puts the pre-migration copy back as the live Journal and starts the app
     again on it (ticket 04, ADR-0006).
 
-    Offered only from the migration-failure screen, and only when a copy is
-    there. What comes back is the Journal as it was before the update that
-    could not finish: if this build still cannot migrate it, the next boot
-    lands on the same screen with the copy still in place, and the version of
-    Gender Diary the Journal came from can open it. That is the honest limit of
-    an in-app rollback, and the screen's copy says it.
+    Reached two ways. From the migration-failure screen, when a person decides
+    to go back: what comes back is the Journal as it was before the update that
+    could not finish, and if this build still cannot migrate it, the next boot
+    lands on the same screen with the copy still in place. The version of Gender
+    Diary the Journal came from is what opens it - the honest limit of an in-app
+    rollback, and the screen's copy says so.
+
+    And from the boot below, without asking, when a previous restore was
+    interrupted part way through. That is not a decision being made twice: it is
+    one that was already made, finishing.
 
     Reloads rather than carrying on: the driver's connection was on the file
     that has just been replaced (mc-driver.ts), and boot() has already run. */
 export async function restorePreviousJournal(): Promise<void> {
   if (!openFileOps) throw new Error('there is no failed boot to recover from');
   await openFileOps.restorePreMigrationCopy();
+  /* Closed before the reload, the way resetApp does it: the restore left the
+     database connection gone but the pool still held, and pauseVfs() is what
+     lets go of its access handles so the next boot's worker can acquire them
+     (ADR-0020's one connection per origin). */
+  await openDriver?.close();
   location.reload();
 }
 
@@ -279,7 +288,7 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> 
      a whole Journal and every photo, rewritten on a phone. The conversion
      survives being killed and resumes, but code replaced under it mid-write
      is not an interruption it can reason about. */
-  const converting = enterWriteInFlight();
+  const converting = markJournalBusy();
   try {
     await runConversion(webConversionPorts(dataKey), (progress) => {
       bootState.conversion = { progress };
@@ -348,13 +357,25 @@ function continueBoot(dataKey: Uint8Array<ArrayBuffer>) {
         bootState.status = 'schema-too-new';
         return;
       }
+
+      /* A restore that was interrupted between unlinking the database and
+         writing the copy over it. Finished here rather than shown to anybody,
+         the way ticket 10's retirement is: the decision to restore was already
+         made, and this is the same operation reaching its end. Doing it once
+         and reloading terminates - what comes up is the copy's own schema,
+         which is not the empty database that got us here. */
+      if (result.error instanceof InterruptedRestoreError) {
+        await restorePreviousJournal();
+        return;
+      }
+
       bootState.status = 'error';
       bootState.error = String((result.error as Error)?.message ?? result.error);
       /* Whether the failure screen can offer a way back. Asked of the disk
          rather than assumed from the failure: a copy is there only if this
          boot or an earlier one got as far as taking one, and a driver too
          broken to answer is a driver that cannot restore either. */
-      bootState.recoverable = await Promise.resolve(fileOps.preMigrationCopyExists()).catch(() => false);
+      bootState.recoverable = await Promise.resolve(fileOps.preMigrationCopyIsUsable()).catch(() => false);
       return;
     }
 
