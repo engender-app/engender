@@ -96,14 +96,18 @@
     const root = document.documentElement;
     root.dataset.palette = prefs.palette;
     root.dataset.theme = prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : prefs.theme;
-    /* Title and icon together: a tab called "Notes" next to a trans flag is
-       not disguised at all, and the favicon is the half of the tab that
-       stays visible once the tab is narrow or in the background. */
-    const disguised = lockState.blanked || prefs.disguise;
-    document.title = lockState.blanked ? 'New tab' : prefs.disguise ? 'Notes' : 'Gender Diary';
-    document
-      .querySelector('link[rel="icon"]')
-      ?.setAttribute('href', `${assets}/${disguised ? 'favicon-notes.svg' : 'favicon.svg'}`);
+    /* The tab's identity, decided once: a tab called "Notes" next to a trans
+       flag is not disguised at all, and the icon is the half of it that
+       survives a narrow tab strip, a background tab and the bookmark list.
+       app.html stamps the same icon before first paint, from the same
+       mirrored preference, so a disguised cold start never shows the flag. */
+    const tab = lockState.blanked
+      ? { title: 'New tab', icon: 'favicon-notes.svg' }
+      : prefs.disguise
+        ? { title: 'Notes', icon: 'favicon-notes.svg' }
+        : { title: 'Gender Diary', icon: 'favicon.svg' };
+    document.title = tab.title;
+    document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);

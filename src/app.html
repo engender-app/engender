@@ -4,8 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#F4F8FB" />
+    <!-- Above the script below, which swaps this for the neutral icon when
+         the app is disguised (F24). The order matters: the script can only
+         reach an element the parser has already seen, and the swap has to
+         happen in the same parse tick, before the tab paints a flag. -->
+    <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
     <script>
-      /* Stamps the user's theme and palette before first paint (ADR-0009).
+      /* Stamps the user's theme, palette and tab icon before first paint
+         (ADR-0009).
          The attributes on <html> above are only what a first-ever visit,
          or a visit where this throws, falls back to; SQLite is still
          hundreds of milliseconds from opening at this point, which is why
@@ -25,11 +31,18 @@
               ? 'dark'
               : 'light'
             : boot.theme;
+        /* Disguise is the one of these that cannot wait for the layout's
+           effect: by then the flag icon has already been in the tab strip
+           for as long as boot takes. Derived from the link above rather
+           than written out again, so the asset path lives in one place. */
+        if (boot.disguise) {
+          const icon = document.querySelector('link[rel="icon"]');
+          icon.href = icon.href.replace('favicon.svg', 'favicon-notes.svg');
+        }
       } catch {
         /* no mirror yet, or storage is unavailable */
       }
     </script>
-    <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
     <!-- Production hosting has to map the .webmanifest extension to
          application/manifest+json; nginx's default mime.types does not. -->
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
