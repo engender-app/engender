@@ -26,6 +26,9 @@ import { fileURLToPath } from 'node:url';
 /** `v` and a semantic version, which is what a release tag looks like. */
 const RELEASE_TAG = /^v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
 
+/** What every version that is not a release starts with. */
+const DEVELOPMENT = '0.0.0-dev+';
+
 /** @type {(args: string[]) => string | null} */
 function git(args) {
   try {
@@ -69,7 +72,20 @@ export function resolveAppVersion(env, facts) {
   const release = facts.tag && facts.signed && !facts.dirty ? RELEASE_TAG.exec(facts.tag) : null;
   if (release) return release[1];
 
-  return `0.0.0-dev+${facts.sha ? `g${facts.sha}${facts.dirty ? '.dirty' : ''}` : 'unknown'}`;
+  return `${DEVELOPMENT}${facts.sha ? `g${facts.sha}${facts.dirty ? '.dirty' : ''}` : 'unknown'}`;
+}
+
+/**
+ * Whether a resolved version names a release. Two callers need the question
+ * answered the same way (phase 2 ticket 06): the release pipeline refuses to
+ * publish a development version, and the build only pins its build id - and
+ * with it every chunk hash - when what it was given is reproducible.
+ *
+ * @param {string} version
+ * @returns {boolean}
+ */
+export function isReleaseVersion(version) {
+  return !version.startsWith(DEVELOPMENT);
 }
 
 /** What this checkout, right now, would build as. */
@@ -77,4 +93,19 @@ export function appVersion() {
   return resolveAppVersion(process.env, readGitFacts());
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) console.log(appVersion());
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const version = appVersion();
+  /* `--release` is the release pipeline asking, and it wants to be told no
+     (ticket 06). Without it a tag that was never signed, or a tag on an edited
+     tree, would be answered with a development version and only fail several
+     steps later, inside the protected release environment, with a message
+     about something else. */
+  if (process.argv.includes('--release') && !isReleaseVersion(version)) {
+    console.error(
+      `${version} is not a release. That needs a signed v<semver> tag on a tree ` +
+        'with no edits and no untracked files, or GENDER_DIARY_VERSION set deliberately (ADR-0022).'
+    );
+    process.exit(1);
+  }
+  console.log(version);
+}

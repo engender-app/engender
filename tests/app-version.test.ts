@@ -7,7 +7,7 @@
    The resolver is split from the `git` calls so these run without inventing
    repositories: readGitFacts() gathers, resolveAppVersion() decides. */
 import { describe, expect, it } from 'vitest';
-import { readGitFacts, resolveAppVersion } from '../scripts/app-version.mjs';
+import { isReleaseVersion, readGitFacts, resolveAppVersion } from '../scripts/app-version.mjs';
 
 /** A checkout with no tag on HEAD, which the cases below vary from. */
 const untagged = (sha = '1a2b3c4d') => ({ tag: null, signed: false, dirty: false, sha });
@@ -59,6 +59,23 @@ describe('resolveAppVersion', () => {
   it('ignores an empty override rather than releasing as the empty string', () => {
     // An unset CI variable expands to '' far more often than it is missing.
     expect(resolveAppVersion({ GENDER_DIARY_VERSION: '  ' }, untagged())).toBe('0.0.0-dev+g1a2b3c4d');
+  });
+});
+
+describe('isReleaseVersion', () => {
+  /* Two callers ask this and have to agree (phase 2 ticket 06): the pipeline
+     refuses to package a development version, and the build only pins its
+     build id - and with it every chunk hash - when what it was handed can be
+     rebuilt from a tag. */
+  it('says yes to a version from a tag, prerelease suffix and all', () => {
+    expect(isReleaseVersion('1.2.3')).toBe(true);
+    expect(isReleaseVersion('1.2.3-beta.1')).toBe(true);
+  });
+
+  it('says no to every shape of development version', () => {
+    expect(isReleaseVersion('0.0.0-dev+g1a2b3c4d')).toBe(false);
+    expect(isReleaseVersion('0.0.0-dev+g1a2b3c4d.dirty')).toBe(false);
+    expect(isReleaseVersion('0.0.0-dev+unknown')).toBe(false);
   });
 });
 

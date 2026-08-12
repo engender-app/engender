@@ -12,6 +12,7 @@
    concern the data layer has no business knowing about. */
 
 import { filePhotoPicker } from '../data/photos/picker';
+import { m } from '$lib/paraglide/messages';
 import { normalizePhoto, UnsupportedImageError } from '../data/photos/normalize';
 import type { NormalizedPhoto } from '../data/journal/photos';
 import { toast } from './toasts.svelte';
@@ -38,7 +39,7 @@ export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
     picked = await picker.pick();
   } catch (error) {
     console.error('the photo picker failed', error);
-    toast("Couldn't open the photo picker.");
+    toast(m.photo_picker_failed());
     return [];
   }
 
@@ -47,9 +48,16 @@ export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
     try {
       normalized.push(await normalizePhoto(bytes));
     } catch (error) {
-      // UnsupportedImageError carries a message written for the person who
-      // picked the file; anything else is a bug and gets a plain one.
-      toast(error instanceof UnsupportedImageError ? error.message : "That photo couldn't be read.");
+      /* UnsupportedImageError says which of the two refusals this is, and
+         the wording comes from the catalogue rather than from the error, so
+         a Polish reader gets a Polish sentence. Anything else is a bug and
+         gets the plain one. */
+      if (error instanceof UnsupportedImageError) {
+        toast(error.kind === 'heic' ? m.photo_heic() : m.photo_not_an_image());
+      } else {
+        console.error('a picked photo could not be normalized', error);
+        toast(m.photo_unreadable());
+      }
     }
   }
   return normalized;
