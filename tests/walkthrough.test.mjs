@@ -619,8 +619,8 @@ try {
     throw new Error('first disguised tab icon: ' + JSON.stringify(firstIcon));
   }
   /* The install identity has to be neutral before <body> too (ticket 25):
-     a browser reads the manifest once the head is parsed, and an install
-     started off the real one carries the app's own name to the launcher. */
+      a browser can query the manifest before hydration runs, and an install
+      started off the real one carries the app's own name to the launcher. */
   const firstManifest = await page.evaluate(() => window.__firstManifest);
   if (!firstManifest || firstManifest.hadBody) {
     throw new Error('first disguised manifest: ' + JSON.stringify(firstManifest));

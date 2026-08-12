@@ -109,9 +109,25 @@ describe('the disguised manifest', () => {
   });
 
   it('is what the document points at while disguised, from before first paint', () => {
-    // app.html swaps it in the pre-paint script; the layout keeps it in step
-    // when the toggle moves. Both have to name the file for either to work.
-    expect(read('src/app.html')).toContain('manifest-notes.webmanifest');
-    expect(read('src/routes/+layout.svelte')).toContain('manifest-notes.webmanifest');
+    const appHtml = read('src/app.html');
+    const manifestLink = '<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />';
+    const manifestLinkAt = appHtml.indexOf(manifestLink);
+    const scriptAt = appHtml.indexOf('<script>');
+
+    /* The head script only wins the race if the parser has already created
+       the manifest link by the time the script runs. Move the link below the
+       script and this test fails even though both files still name the
+       neutral manifest somewhere. */
+    expect(manifestLinkAt).toBeGreaterThan(-1);
+    expect(scriptAt).toBeGreaterThan(-1);
+    expect(manifestLinkAt).toBeLessThan(scriptAt);
+    expect(appHtml).toContain("const manifest = document.querySelector('link[rel=\"manifest\"]');");
+    expect(appHtml).toContain(
+      "manifest.href = manifest.href.replace('manifest.webmanifest', 'manifest-notes.webmanifest');"
+    );
+
+    // app.html swaps it before first paint; the layout keeps it in step when
+    // the toggle moves after boot.
+    expect(read('src/routes/+layout.svelte')).toContain("prefs.disguise ? 'manifest-notes.webmanifest' : 'manifest.webmanifest'");
   });
 });
