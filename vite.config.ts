@@ -13,6 +13,12 @@ export default defineConfig(({ command }) => ({
   define: {
     __DEMO__: JSON.stringify(command === 'serve' || process.env.VITE_DEMO === '1')
   },
+  // Pre-bundling would inline the sqlite3mc wasm module in a way that
+  // breaks its URL-relative sqlite3.wasm loading inside mc-worker.ts
+  // (ticket 09). Build output is unaffected; this is dev-server only.
+  optimizeDeps: {
+    exclude: ['@evolu/sqlite-wasm']
+  },
   plugins: [
     paraglideVitePlugin({
       project: './project.inlang',

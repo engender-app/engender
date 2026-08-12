@@ -1,0 +1,136 @@
+/* The worker half of the encrypted web driver (ticket 09, ADR-0020):
+   SQLite3MultipleCiphers WASM over the synchronous OPFS SAHPool VFS,
+   wrapped in sqlite3mc's encryption shim. The exact open/key/VFS sequence
+   is the one the ticket 08 prototype proved out (prototype/encryption/web/
+   whole-db-worker.ts on the prototype/encryption-mechanism branch):
+   sqlite3mc refuses to encrypt on the async 'opfs' VFS and on a bare
+   'opfs-sahpool' - the pool VFS must be wrapped via sqlite3mc_vfs_create()
+   and the database opened through the wrapped name.
+
+   A worker because SAHPool's synchronous access handles only exist in one,
+   and this file is the only place the wasm module, the pool or a database
+   pointer appear - mc-driver.ts talks to it in messages, everything above
+   talks to SqliteDriver (ADR-0017).
+
+   Messages are handled strictly in arrival order through one promise
+   chain. The handlers after `open` are all synchronous, so this mostly
+   guards one case: a statement arriving while the wasm module is still
+   initializing must wait for it, not race it.
+
+   The pre-migration copy is VACUUM INTO a URI carrying the same hexkey,
+   so the copy is written through a pager keyed like the original's and is
+   ciphertext on disk (ADR-0006 + ADR-0018: coverage includes migration
+   copies). The wasm build has no sqlite3_backup_*, and the pool util's
+   importDb() insists on the plaintext SQLite magic an encrypted file does
+   not carry - VACUUM INTO is the copy mechanism that exists here. SAHPool
+   stores opaque pool files, so the cleanup goes through the pool util
+   rather than OPFS paths. */
+
+import sqlite3InitModule, { type Database, type Sqlite3Static, type SAHPoolUtil } from '@evolu/sqlite-wasm';
+
+const MC_VFS = 'multipleciphers-opfs-sahpool';
+
+let sqlite3: Sqlite3Static | null = null;
+let poolUtil: SAHPoolUtil | null = null;
+let db: Database | null = null;
+let databasePath = '';
+let backupPath = '';
+let hexKey = '';
+
+/** Applies the raw data key (ADR-0018: PRAGMA hexkey, not a passphrase
+    through sqlite3mc's own KDF - stretching already happened in the
+    keystore) and proves it by reading, so a wrong key fails here as
+    SQLITE_NOTADB rather than on some later query. */
+function keyAndVerify(target: Database, key: string): void {
+  target.exec(`PRAGMA hexkey='${key}'`);
+  target.exec('SELECT count(*) FROM sqlite_master');
+}
+
+const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
+  async open(args: { path: string; hexKey: string }) {
+    sqlite3 = await sqlite3InitModule();
+    /* Slots, not files: the pool holds main database + rollback journal +
+       the pre-migration copy + its journal, and does not grow on demand.
+       Eight leaves headroom over that worst case. */
+    poolUtil = await sqlite3.installOpfsSAHPoolVfs({ initialCapacity: 8 });
+    const namePtr = sqlite3.wasm.allocCString('opfs-sahpool', false);
+    const rc = sqlite3.wasm.exports.sqlite3mc_vfs_create(namePtr, 0) as number;
+    if (rc !== 0) throw new Error(`sqlite3mc_vfs_create failed: rc=${rc}`);
+
+    // SAHPool stores every name with a leading slash; matching it keeps
+    // unlink() finding the same file VACUUM INTO writes.
+    databasePath = args.path.startsWith('/') ? args.path : `/${args.path}`;
+    backupPath = `${databasePath}.pre-migration-backup`;
+    hexKey = args.hexKey;
+    db = new sqlite3.oo1.DB({ filename: databasePath, flags: 'c', vfs: MC_VFS });
+    keyAndVerify(db, hexKey);
+  },
+
+  exec(args: { sql: string }) {
+    db!.exec(args.sql);
+  },
+
+  query(args: { sql: string; params: unknown[] }) {
+    return db!.exec({
+      sql: args.sql,
+      bind: args.params.length > 0 ? (args.params as never) : undefined,
+      rowMode: 'object',
+      returnValue: 'resultRows'
+    });
+  },
+
+  run(args: { sql: string; params: unknown[] }) {
+    db!.exec({ sql: args.sql, bind: args.params.length > 0 ? (args.params as never) : undefined });
+    return {
+      changes: db!.changes(),
+      lastInsertRowid: Number(sqlite3!.capi.sqlite3_last_insert_rowid(db!))
+    };
+  },
+
+  async copyDatabaseFile() {
+    /* Through both pagers - the source's decrypts, the destination's (keyed
+       by the URI's hexkey) encrypts - never through file bytes, which the
+       pool keeps opaque anyway. Any copy left by an interrupted migration
+       goes first: VACUUM INTO refuses an existing target. */
+    await poolUtil!.unlink(backupPath);
+    db!.exec(`VACUUM INTO 'file:${backupPath}?vfs=${MC_VFS}&hexkey=${hexKey}'`);
+  },
+
+  async cleanupPreMigrationCopy() {
+    await poolUtil!.unlink(backupPath);
+  },
+
+  close() {
+    db?.close();
+    db = null;
+    /* pauseVfs() lets go of the pool's sync access handles - which is what
+       allows a reset to empty the OPFS directory, and a later worker to
+       acquire the pool again. Not removeVfs(): that deletes the pool's
+       directory, databases included. */
+    poolUtil?.pauseVfs();
+    poolUtil = null;
+  }
+};
+
+interface Request {
+  id: number;
+  op: keyof typeof handlers;
+  args: never;
+}
+
+let chain: Promise<void> = Promise.resolve();
+
+onmessage = (event: MessageEvent<Request>) => {
+  const { id, op, args } = event.data;
+  chain = chain.then(async () => {
+    try {
+      const result = await handlers[op](args);
+      postMessage({ id, ok: true, result });
+    } catch (error) {
+      /* The message crosses the worker boundary as a string; the key never
+         appears in one - SQLite reports codes ("file is not a database"),
+         not the PRAGMA text. */
+      postMessage({ id, ok: false, error: String((error as Error)?.message ?? error) });
+    }
+  });
+};
