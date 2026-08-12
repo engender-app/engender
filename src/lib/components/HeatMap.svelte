@@ -53,7 +53,7 @@
         count,
         isToday: epochDay === today,
         label: count
-          ? m.heat_cell_entries({ date: fmtDay(epochDay, { day: 'numeric', month: 'long' }), count: String(count) })
+          ? m.heat_cell_entries({ date: fmtDay(epochDay, { day: 'numeric', month: 'long' }), count })
           : m.heat_cell_none({ date: fmtDay(epochDay, { day: 'numeric', month: 'long' }) }),
       });
     }

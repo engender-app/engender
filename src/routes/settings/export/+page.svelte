@@ -433,7 +433,7 @@
       {#if daylioPreview}
         <button class="btn btn-primary" data-confirm-daylio onclick={importDaylio}
           disabled={daylioPreview.unmappedMoodLabels.length > 0 || daylioImporting}>
-          <span>{daylioImporting ? m.imp_running() : m.daylio_confirm({ count: String(daylioPreview.entryCount) })}</span>
+          <span>{daylioImporting ? m.imp_running() : m.daylio_confirm({ count: daylioPreview.entryCount })}</span>
         </button>
       {/if}
       <button class="btn btn-ghost" onclick={() => (daylioSheet = false)}><span>{m.cancel()}</span></button>

@@ -66,7 +66,7 @@
     {:else if search.loading}
       <Skeleton variant="card" count={3} />
     {:else if hits.length}
-      <p class="muted small" style="margin-bottom:var(--space-3)">{m.results_count({ count: String(total) })}</p>
+      <p class="muted small" style="margin-bottom:var(--space-3)">{m.results_count({ count: total })}</p>
       {#each hits as e (e.id)}
         <EntryCard entry={e} />
       {/each}

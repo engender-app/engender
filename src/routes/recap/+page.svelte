@@ -62,7 +62,7 @@
       confetti: false
     },
     {
-      title: m.recap_entries_title({ count: String(recap?.entryCount ?? 0) }),
+      title: m.recap_entries_title({ count: recap?.entryCount ?? 0 }),
       body: recap?.entryCount
         ? m.recap_entries_body()
         : isYear
@@ -101,7 +101,7 @@
     },
     {
       title: recap?.milestones.length
-        ? m.recap_ms_title({ count: String(recap.milestones.length) })
+        ? m.recap_ms_title({ count: recap.milestones.length })
         : m.milestones(),
       body: recap?.milestones.length
         ? recap.milestones.map((mi) => mi.name).join(' · ')
