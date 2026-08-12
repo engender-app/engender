@@ -23,20 +23,6 @@ export async function journalKeystoreExists(): Promise<boolean> {
   return (await readKeystoreFile()) !== null;
 }
 
-/** A database SQLocal left in the OPFS root predates encryption (the
-    encrypted journal lives inside the SAHPool directory instead).
-    Converting it is ticket 10's whole job; until then boot must refuse it
-    loudly rather than start a second, empty journal beside it. */
-export async function plaintextEraJournalPresent(): Promise<boolean> {
-  const root = await navigator.storage.getDirectory();
-  try {
-    await root.getFileHandle('gender-diary.sqlite3');
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** First run: mints the data key, wraps it under the passphrase, persists
     the metadata, hands back the key for this session. */
 export async function setupJournalPassphrase(passphrase: string): Promise<Uint8Array<ArrayBuffer>> {

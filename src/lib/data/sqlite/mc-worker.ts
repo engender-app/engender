@@ -46,24 +46,80 @@ function keyAndVerify(target: Database, key: string): void {
   target.exec('SELECT count(*) FROM sqlite_master');
 }
 
+/** Brings up the wasm module, the pool and the encryption shim, without
+    opening anything. Split out of `open` because a conversion has to have
+    the VFS before there is a database to open through it (ticket 10), and
+    because `sqlite3mc_vfs_create` may only wrap the pool once. */
+async function attach(): Promise<Sqlite3Static> {
+  if (sqlite3 && poolUtil) return sqlite3;
+  sqlite3 = await sqlite3InitModule();
+  /* Slots, not files: the pool holds main database + rollback journal +
+     the pre-migration copy + its journal, and does not grow on demand.
+     Eight leaves headroom over that worst case. */
+  poolUtil = await sqlite3.installOpfsSAHPoolVfs({ initialCapacity: 8 });
+  const namePtr = sqlite3.wasm.allocCString('opfs-sahpool', false);
+  const rc = sqlite3.wasm.exports.sqlite3mc_vfs_create(namePtr, 0) as number;
+  if (rc !== 0) throw new Error(`sqlite3mc_vfs_create failed: rc=${rc}`);
+  return sqlite3;
+}
+
+// SAHPool stores every name with a leading slash; matching it keeps
+// unlink() finding the same file VACUUM INTO writes.
+const poolPath = (path: string): string => (path.startsWith('/') ? path : `/${path}`);
+
 const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
   async open(args: { path: string; hexKey: string }) {
-    sqlite3 = await sqlite3InitModule();
-    /* Slots, not files: the pool holds main database + rollback journal +
-       the pre-migration copy + its journal, and does not grow on demand.
-       Eight leaves headroom over that worst case. */
-    poolUtil = await sqlite3.installOpfsSAHPoolVfs({ initialCapacity: 8 });
-    const namePtr = sqlite3.wasm.allocCString('opfs-sahpool', false);
-    const rc = sqlite3.wasm.exports.sqlite3mc_vfs_create(namePtr, 0) as number;
-    if (rc !== 0) throw new Error(`sqlite3mc_vfs_create failed: rc=${rc}`);
-
-    // SAHPool stores every name with a leading slash; matching it keeps
-    // unlink() finding the same file VACUUM INTO writes.
-    databasePath = args.path.startsWith('/') ? args.path : `/${args.path}`;
+    const api = await attach();
+    databasePath = poolPath(args.path);
     backupPath = `${databasePath}.pre-migration-backup`;
     hexKey = args.hexKey;
-    db = new sqlite3.oo1.DB({ filename: databasePath, flags: 'c', vfs: MC_VFS });
+    db = new api.oo1.DB({ filename: databasePath, flags: 'c', vfs: MC_VFS });
     keyAndVerify(db, hexKey);
+  },
+
+  /* Ticket 10: a plaintext-era database becomes the encrypted Journal.
+
+     Not VACUUM INTO, which is how the pre-migration copy below is made.
+     sqlite3mc decides a destination's cipher from the source connection's,
+     not from the destination URI: with an unencrypted source, VACUUM INTO
+     writes an unencrypted file and ignores the `hexkey` in the URI
+     entirely. Measured, not assumed - the copy came out carrying "SQLite
+     format 3" and the seeded text in the clear. The pre-migration copy is
+     unaffected because there the source is already keyed.
+
+     Rekeying the source in memory first is the obvious next idea and
+     sqlite3mc refuses it outright: "Rekeying not supported for in-memory
+     or temporary databases". So the plaintext goes into the pool under the
+     name the Journal will keep, and PRAGMA hexrekey rewrites every page of
+     it in place.
+
+     The cost is honest and has to be named: between importDb and the end
+     of the rekey there is a readable copy of the Journal in the pool, and
+     the rollback journal that makes the rekey atomic holds plaintext pages
+     while it runs. Both are inside the window where the app has not
+     claimed to be encrypted yet - the source it was copied from is sitting
+     in the OPFS root, readable, the whole time - and both are gone before
+     the conversion reports success. The claim gate reads the pool's bytes
+     afterwards rather than taking that on trust
+     (tests/browser-tier/conversion-probe.ts).
+
+     Both names are unlinked first: importDb will not write over a slot
+     that is in use, and a target left half-written by a killed attempt is
+     thrown away rather than reasoned about, which is what lets the caller
+     resume by simply calling this again. */
+  async convert(args: { path: string; hexKey: string; bytes: Uint8Array }) {
+    const api = await attach();
+    const target = poolPath(args.path);
+    await poolUtil!.unlink(target);
+    await poolUtil!.unlink(`${target}-journal`);
+
+    await poolUtil!.importDb(target, args.bytes);
+    const imported = new api.oo1.DB({ filename: target, flags: 'c', vfs: MC_VFS });
+    try {
+      imported.exec(`PRAGMA hexrekey='${args.hexKey}'`);
+    } finally {
+      imported.close();
+    }
   },
 
   exec(args: { sql: string }) {

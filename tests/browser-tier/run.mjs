@@ -439,6 +439,96 @@ try {
   fail('ticket 09 (phase 2) browser tier', e.message ?? String(e));
 }
 
+// --- Ticket 10 (phase 2): converting a plaintext-era journal --------------
+try {
+  const r = await load('/conversion.html', 'data-conversion-probe-ready', '__conversionProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  /* The fixture first, or nothing below it means anything: this journal was
+     written by the pre-encryption app, so every sentinel has to be sitting
+     in the clear on disk before the conversion runs. */
+  const expected = ['JPEG signature', 'entry note', 'lab analyte', 'milestone name', 'photo body', 'pin hash', 'preference name', 'reminder title'];
+  if (JSON.stringify(r.plaintextScanFound) === JSON.stringify(expected))
+    ok('the pre-encryption journal really is readable on disk: all 8 sentinels found before converting');
+  else
+    fail(
+      'the pre-encryption journal is readable on disk before converting',
+      `found ${JSON.stringify(r.plaintextScanFound)}`
+    );
+
+  if (r.stateBeforeConversion === 'convert') ok('a plaintext journal in the OPFS root is recognised as one to convert');
+  else fail('a plaintext journal is recognised as one to convert', r.stateBeforeConversion);
+
+  if (r.precheck?.ok === true && r.markerAfterPrecheck === 'preparing')
+    ok('the precheck passes on a device with room, and leaves the marker before the keystore');
+  else fail('the precheck passes and leaves a marker', JSON.stringify({ precheck: r.precheck, marker: r.markerAfterPrecheck }));
+
+  // A keystore beside a plaintext journal is only unambiguous because the
+  // marker is already there (conversion.ts's ordering rule).
+  if (r.stateWithKeystoreMidConversion === 'convert')
+    ok('a keystore written mid-conversion does not make the app think the journal is already encrypted');
+  else fail('a keystore written mid-conversion is still a conversion', r.stateWithKeystoreMidConversion);
+
+  if (r.interrupted && r.markerAfterInterruption === 'photos' && r.stateAfterInterruption === 'convert' && r.sourceStillPresentMidPhotos)
+    ok('killed part way through the photos: the marker says photos, and the plaintext journal is still on disk');
+  else
+    fail(
+      'killed part way through the photos leaves a resumable state',
+      JSON.stringify({ error: r.interrupted, marker: r.markerAfterInterruption, state: r.stateAfterInterruption })
+    );
+
+  if (r.markerAfterConversion === null && r.stateAfterConversion === 'unlock' && r.plaintextGone)
+    ok('the resume finishes: marker cleared, plaintext journal retired, journal is one that unlocks');
+  else
+    fail(
+      'the resume finishes the conversion',
+      JSON.stringify({ marker: r.markerAfterConversion, state: r.stateAfterConversion, plaintextGone: r.plaintextGone })
+    );
+
+  /* The claim gate, on a journal that was plaintext ten seconds ago. Every
+     OPFS file: the SAHPool pool files holding the converted database and
+     its side files, the encrypted photos, the keystore - and no source, no
+     pre-migration copy and no temporary artifact left over from the copy
+     itself. */
+  if (r.dirtyFiles.length === 0 && r.scan.length >= 3)
+    ok(`closed-app scan after conversion: none of the 8 sentinels readable in any of ${r.scan.length} OPFS files`);
+  else fail('closed-app scan after conversion finds no readable journal content', r.dirtyFiles.join('; ') || `only ${r.scan.length} files scanned`);
+
+  const remnants = r.rootNames.filter((p) => p.includes('gender-diary.sqlite3'));
+  if (remnants.length === 0) ok('no plaintext database, pre-migration copy or side file survives in the OPFS root');
+  else fail('no plaintext database or side file survives in the OPFS root', JSON.stringify(remnants));
+
+  if (r.dirtyKeys.length === 0 && r.bootMirror && !('pinHash' in r.bootMirror))
+    ok('the boot mirror rewrites itself from the encrypted table, without the PIN hash it used to carry');
+  else fail('the boot mirror loses the PIN hash', JSON.stringify({ dirty: r.dirtyKeys, mirror: r.bootMirror }));
+
+  // The journal itself, read back through the passphrase.
+  const carried =
+    r.note === 'sentinel-converted-note-woke-up-early-4182' &&
+    r.photoCount === 1 &&
+    r.photoIntact &&
+    r.milestones?.includes('sentinel-converted-milestone-first-day-2260') &&
+    r.reminders?.includes('sentinel-converted-reminder-progynova-7715') &&
+    r.labs?.includes('sentinel-converted-analyte-estradiol') &&
+    r.preferenceName === 'sentinel-converted-preference-alicja-9014';
+  if (carried) ok('every entry, photo, milestone, reminder, lab result and preference comes back through the passphrase');
+  else fail('the whole journal comes back through the passphrase', JSON.stringify(r));
+
+  // Whole-database, not export/import: restore.ts never touches the pref
+  // table, so a PIN that survives proves the mechanism (ADR-0003/0020).
+  if (r.pinHashInDatabase === 'sentinel-converted-pinhash-6801')
+    ok('the PIN hash travels too - a device-local preference an archive would have dropped');
+  else fail('the PIN hash travels with the database', JSON.stringify(r.pinHashInDatabase));
+
+  if (r.searchHits >= 1) ok(`the FTS5 index came across with the pages rather than being rebuilt (${r.searchHits} hits)`);
+  else fail('the FTS5 index came across with the pages', `got ${r.searchHits} hits`);
+
+  if (r.secondConvertPhoto === true) ok('converting an already-converted photo again leaves it readable, which is what a resume relies on');
+  else fail('converting an already-converted photo is a no-op', JSON.stringify(r.secondConvertPhoto));
+} catch (e) {
+  fail('ticket 10 (phase 2) browser tier', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 
