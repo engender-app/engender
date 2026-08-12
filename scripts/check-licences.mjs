@@ -16,8 +16,30 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-/** Licences in the tree today, all of them GPL-3.0 compatible. */
-const ALLOWED = new Set(['MIT', 'ISC', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'MPL-2.0', '0BSD']);
+/** Licences in the tree today, all of them GPL-3.0 compatible.
+
+    BlueOak-1.0.0 and Unlicense arrived with Capacitor in phase 2 ticket 11
+    and were decided then. Both are permissive, neither is copyleft, and
+    neither restricts redistribution or carries field-of-use terms, so
+    ticket 18's F-Droid rebuild is unaffected by either.
+
+    - BlueOak-1.0.0 is OSI-approved and permissive, adding an explicit patent
+      grant over what MIT says. It came in under @capacitor/cli, through the
+      npm-maintained tooling packages: glob, minimatch, lru-cache, minipass,
+      path-scurry, rimraf, tar, chownr, yallist, package-json-from-dist.
+    - Unlicense is a public-domain dedication the FSF lists as GPL
+      compatible. Same subtree: big-integer and stream-buffers. */
+const ALLOWED = new Set([
+  'MIT',
+  'ISC',
+  'Apache-2.0',
+  'BSD-2-Clause',
+  'BSD-3-Clause',
+  'MPL-2.0',
+  '0BSD',
+  'BlueOak-1.0.0',
+  'Unlicense'
+]);
 
 /** Packages that ship a licence file and no `license` field. Read by hand from
     the file in the published tarball, which is the only place it exists.

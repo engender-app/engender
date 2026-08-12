@@ -10,6 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:browser": "node tests/browser-tier/run.mjs",
+    "test:android": "node tests/android-tier/run.mjs",
     "test:walkthrough": "GENDER_DIARY_VERSION=9.9.9-walkthrough VITE_DEMO=1 vite build && node tests/walkthrough.test.mjs",
     "verify:build": "vite build && node tests/browser-tier/verify-build.mjs",
     "check:copy": "node scripts/check-copy.mjs",
@@ -17,6 +18,7 @@
     "benchmark:argon2": "node scripts/benchmark-argon2.mjs"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
     "@inlang/paraglide-js": "^2.0.0",
     "@sveltejs/adapter-static": "^3.0.0",
     "@sveltejs/kit": "^2.0.0",
@@ -30,6 +32,8 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@evolu/sqlite-wasm": "^2.2.4",
     "@rive-app/canvas": "^2.21.0",
     "@types/d3-scale": "^4.0.8",
