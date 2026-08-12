@@ -1,4 +1,4 @@
-/* The offline shell (phase 2, ticket 03; ADR-0020 has the reasoning).
+/* The offline shell (phase 2, ticket 03; ADR-0021 has the reasoning).
    Everything the app needs to open without a network is precached under one
    key per release: the fallback document, the app's own chunks and CSS,
    SQLocal's worker and its copy of the SQLite WASM, the bundled woff2 faces
