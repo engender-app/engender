@@ -56,3 +56,9 @@ export const migrations: Migration[] = [
   { version: 2, sql: SCHEMA_V2 },
   { version: 3, sql: SCHEMA_V3 }
 ];
+
+/** The newest schema this build can produce. Two things refuse a database
+    numbered higher than this rather than guessing at it (ADR-0006): the
+    migration runner, which computes it from whatever array it was handed,
+    and ticket 10's conversion, which has no array to hand and asks here. */
+export const LATEST_SCHEMA_VERSION = Math.max(...migrations.map((migration) => migration.version));
