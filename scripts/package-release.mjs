@@ -17,9 +17,9 @@
    script did not write. That is how ticket 18's signed Android artifacts join
    a release: put them in the directory before this runs.
 
-   Run `node scripts/package-release.mjs [--out dist/release]`. On a checkout
-   with no signed tag, GENDER_DIARY_VERSION=<version> is the deliberate way in
-   (ADR-0022) and a dry run of the whole path. */
+   Run `node scripts/package-release.mjs`. On a checkout with no signed tag,
+   GENDER_DIARY_VERSION=<version> is the deliberate way in (ADR-0022) and a dry
+   run of the whole path. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -38,10 +38,9 @@ const SECRETS = [
 /** File names that are a private key or a store holding one. */
 const SECRET_NAMES = /\.(jks|keystore|p12|pfx|pem|key)$/i;
 
-const out = (() => {
-  const flag = process.argv.indexOf('--out');
-  return flag === -1 ? 'dist/release' : process.argv[flag + 1];
-})();
+/** Where the release is assembled. Gitignored, since a release needs a tree
+    with nothing in it that the tag does not name. */
+const out = 'dist/release';
 
 const version = appVersion();
 if (!isReleaseVersion(version)) {
@@ -114,6 +113,16 @@ function secretsIn(directory) {
 }
 
 mkdirSync(out, { recursive: true });
+/* Clear what this script wrote last time and nothing else. A second run at a
+   different version would otherwise checksum and publish the previous
+   version's tarballs alongside its own, while anything ticket 18 left in the
+   directory has to survive. */
+for (const name of readdirSync(out)) {
+  if (/^(gender-diary-(web|src)-.*\.tar\.gz|SHA256SUMS|\.reproducibility-check\.tar\.gz)$/.test(name)) {
+    rmSync(join(out, name));
+  }
+}
+
 const webBundle = join(out, `gender-diary-web-${version}.tar.gz`);
 const sourceArchive = join(out, `gender-diary-src-${version}.tar.gz`);
 
@@ -123,7 +132,7 @@ packWebBundle(webBundle);
 packSource(sourceArchive);
 
 console.log('\n=== Building it again, to see whether the tag is enough to rebuild it ===');
-const second = join(out, `.reproducibility-check.tar.gz`);
+const second = join(out, '.reproducibility-check.tar.gz');
 build();
 packWebBundle(second);
 const [once, twice] = [sha256(webBundle), sha256(second)];

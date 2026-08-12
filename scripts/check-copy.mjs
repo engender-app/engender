@@ -200,6 +200,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   }
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  console.log(`PASS both catalogues hold the same keys`);
+  console.log('PASS both catalogues hold the same keys');
   console.log(`PASS no new user-facing literals (${total} known, in ${Object.keys(counts).length} file(s))`);
 }

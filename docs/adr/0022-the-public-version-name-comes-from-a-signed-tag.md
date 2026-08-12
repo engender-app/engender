@@ -81,4 +81,9 @@ release" its name back - the shell cache of 1.2.3 is called after 1.2.3.
 
 The claim is checked rather than written down: `scripts/package-release.mjs`
 builds the release twice and refuses to publish unless the two bundles have the
-same digest.
+same digest. Someone outside the pipeline repeats it from the published source
+archive, where `GENDER_DIARY_VERSION` is not a convenience but the only way in -
+an extracted tarball has no tag to read, and without the version the build id
+falls back to the clock and every chunk hash moves. The README has the exact
+commands, and they were run: the archive of 0.0.1 rebuilt its bundle byte for
+byte outside the repository, with no `.git` anywhere.
