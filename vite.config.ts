@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 import sqlocal from 'sqlocal/vite';
 
 /* What the client build actually emitted, written where src/service-worker.ts
-   can import it (phase 2 ticket 03; ADR-0020 for why the shell cannot be
+   can import it (phase 2 ticket 03; ADR-0021 for why the shell cannot be
    precached from SvelteKit's own `build` list, which omits SQLocal's worker
    and the worker's copy of the SQLite WASM). verify-build.mjs fails if
    anything the build wrote is missing from the cache the worker fills. */
