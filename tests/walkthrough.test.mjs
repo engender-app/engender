@@ -598,6 +598,10 @@ try {
       window.__firstStamp ??= { ...document.documentElement.dataset, hadBody: !!document.body };
       const icon = document.querySelector('link[rel="icon"]')?.getAttribute('href');
       if (icon?.includes('favicon-notes')) window.__firstIcon ??= { icon, hadBody: !!document.body };
+      const manifest = document.querySelector('link[rel="manifest"]')?.getAttribute('href');
+      if (manifest?.includes('manifest-notes')) {
+        window.__firstManifest ??= { manifest, hadBody: !!document.body };
+      }
     }).observe(document, {
       attributes: true,
       subtree: true,
@@ -614,6 +618,20 @@ try {
   if (!firstIcon || firstIcon.hadBody) {
     throw new Error('first disguised tab icon: ' + JSON.stringify(firstIcon));
   }
+  /* The install identity has to be neutral before <body> too (ticket 25):
+     a browser reads the manifest once the head is parsed, and an install
+     started off the real one carries the app's own name to the launcher. */
+  const firstManifest = await page.evaluate(() => window.__firstManifest);
+  if (!firstManifest || firstManifest.hadBody) {
+    throw new Error('first disguised manifest: ' + JSON.stringify(firstManifest));
+  }
+  const installed = await page.evaluate(async () => {
+    const href = document.querySelector('link[rel="manifest"]').getAttribute('href');
+    return { href, ...(await fetch(href).then((r) => r.json())) };
+  });
+  if (installed.name !== 'Notes' || /Gender|transition/i.test(JSON.stringify(installed))) {
+    throw new Error('the disguised manifest as served: ' + JSON.stringify(installed));
+  }
 
   /* Back off again, or every flow after this one meets a disguised app -
      the toggle outlives localStorage.clear(), it lives in SQLite. */
@@ -623,7 +641,11 @@ try {
     const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
     return boot.disguise === false;
   });
-  ok('theme, palette and the disguised tab icon land before first paint');
+  const backToTheApp = await page.evaluate(() =>
+    document.querySelector('link[rel="manifest"]').getAttribute('href')
+  );
+  if (backToTheApp.includes('-notes')) throw new Error('manifest after undisguising: ' + backToTheApp);
+  ok('theme, palette, the disguised tab icon and the install identity land before first paint');
 } catch (e) { fail('boot preferences', e); }
 
 /* 17. built-in vocabulary is localized by key, not stored in English (ticket 05) */
