@@ -6,6 +6,7 @@
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
   import { pickPhotos } from '$lib/stores/photoPicking';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import type { GenderDimension } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -17,7 +18,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
-  let { epochDay, entryId }: { epochDay?: number; entryId?: number } = $props();
+  let { epochDay, entryId, seedMood }: { epochDay?: number; entryId?: number; seedMood?: number | null } = $props();
 
   /* An entry to edit is a round trip away now, so the draft cannot be built
      during initialisation the way it was over the synchronous store. The
@@ -36,7 +37,7 @@
   // Captured once on purpose: the route wraps this component in {#key}, so a
   // different entry or day mounts a fresh editor with a fresh draft.
   // svelte-ignore state_referenced_locally
-  let entryDraft = $state<EntryDraft>(createEntryDraft(epochDay ?? todayEpochDay()));
+  let entryDraft = $state<EntryDraft>(createEntryDraft(epochDay ?? todayEpochDay(), undefined, seedMood));
 
   onFirstResult(loaded, (entry) => {
     if (entry) entryDraft = createEntryDraft(entry.epochDay, entry);
@@ -64,21 +65,23 @@
     for (const photo of await pickPhotos()) entryDraft.addPhoto(photo);
   }
 
-  /* The journal rejects an empty entry outright; this guard only turns that
-     rejection into a toast instead of an unhandled throw. */
-  let draftEmpty = $derived(entryDraft.isEmpty);
+  let moodMissing = $derived(entryDraft.mood == null);
 
   async function saveEntry() {
-    if (draftEmpty) {
-      toast(m.empty_entry());
+    if (moodMissing) {
+      toast(m.entry_needs_mood());
       return;
     }
     if (saving) return; // a second tap while the worker is writing
     saving = true;
     try {
-      await journal.entries.upsertEntry(entryDraft.toUpsert());
-      goto('/');
-      toast(m.saved());
+      const id = await journal.entries.upsertEntry(entryDraft.toUpsert());
+      await goto('/');
+      if (prefs.entryNudges && entryDraft.hasMoodOnlyContent) {
+        toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`) });
+      } else {
+        toast(m.saved());
+      }
     } catch (error) {
       console.error('could not save the entry', error);
       toast(m.entry_save_failed());

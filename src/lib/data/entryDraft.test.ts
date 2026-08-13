@@ -24,6 +24,7 @@ const existingEntry = (): Entry => ({
 test('a fresh draft with no existing entry starts empty on the given day', () => {
   const draft = createEntryDraft(20_001);
   assert.equal(draft.isEmpty, true);
+  assert.equal(draft.hasMoodOnlyContent, false);
   assert.equal(draft.epochDay, 20_001);
   assert.deepEqual(draft.dims, {});
   assert.deepEqual(draft.tags, []);
@@ -33,6 +34,7 @@ test('a fresh draft with no existing entry starts empty on the given day', () =>
 test('a draft hydrated from an existing entry copies its fields and stored photos', () => {
   const draft = createEntryDraft(20_001, existingEntry());
   assert.equal(draft.isEmpty, false);
+  assert.equal(draft.hasMoodOnlyContent, false);
   assert.equal(draft.epochDay, 20_000);
   assert.equal(draft.timestamp, 123);
   assert.equal(draft.mood, 3);
@@ -48,21 +50,25 @@ test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty'
   const byMood = createEntryDraft(1);
   byMood.setMood(2);
   assert.equal(byMood.isEmpty, false);
+  assert.equal(byMood.hasMoodOnlyContent, true);
 
   const byNote = createEntryDraft(1);
   byNote.setNote('  ');
   assert.equal(byNote.isEmpty, true, 'a blank note stays empty, matching entryIsEmpty');
   byNote.setNote('hi');
   assert.equal(byNote.isEmpty, false);
+  assert.equal(byNote.hasMoodOnlyContent, false);
 
   const byDim = createEntryDraft(1);
   byDim.setDim('masculinity', 50);
   assert.equal(byDim.isEmpty, false);
+  assert.equal(byDim.hasMoodOnlyContent, false);
   assert.deepEqual(byDim.dims, { masculinity: 50 });
 
   const byTag = createEntryDraft(1);
   byTag.toggleTag('e-happy');
   assert.equal(byTag.isEmpty, false);
+  assert.equal(byTag.hasMoodOnlyContent, false);
   assert.deepEqual(byTag.tags, ['e-happy']);
 });
 
@@ -166,6 +172,15 @@ test('hydrating copies the existing entry, so a later mutation of it cannot disc
   assert.deepEqual(draft.dims, { masculinity: 40 });
   assert.deepEqual(draft.tags, ['e-happy', 'e-sad']);
   assert.equal(draft.photos.length, 1);
+});
+
+test('a fresh draft can be seeded with a mood and the seed survives hydration', () => {
+  const seeded = createEntryDraft(1, undefined, 4);
+  assert.equal(seeded.mood, 4);
+  assert.equal(seeded.hasMoodOnlyContent, true);
+
+  const hydrated = createEntryDraft(1, existingEntry(), 1);
+  assert.equal(hydrated.mood, 3);
 });
 
 test('toUpsert() drops a zero timestamp, matching upsertEntry\'s own fallback', () => {

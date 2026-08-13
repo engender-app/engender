@@ -31,6 +31,7 @@ export interface EntryDraft {
       backs out of by leaving the screen has to be recoverable. */
   removedPhotoIds: string[];
   readonly isEmpty: boolean;
+  readonly hasMoodOnlyContent: boolean;
   setMood(mood: number | null): void;
   setNote(note: string): void;
   setDim(key: string, value: number): void;
@@ -45,12 +46,12 @@ export interface EntryDraft {
 /** A blank draft for `epochDay`, or one hydrated from `existing` - the
     one-time fill EntryEditor.svelte's `onFirstResult` applies once the
     stored entry arrives over the async round trip. */
-export function createEntryDraft(epochDay: number, existing?: Entry): EntryDraft {
+export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: number | null): EntryDraft {
   return {
     id: existing?.id,
     epochDay: existing?.epochDay ?? epochDay,
     timestamp: existing?.timestamp ?? 0,
-    mood: existing?.mood ?? null,
+    mood: existing ? existing.mood : seedMood ?? null,
     note: existing?.note ?? '',
     dims: existing ? { ...existing.dims } : {},
     tags: existing ? [...existing.tags] : [],
@@ -65,6 +66,10 @@ export function createEntryDraft(epochDay: number, existing?: Entry): EntryDraft
         tagCount: this.tags.length,
         photoCount: this.photos.length
       });
+    },
+
+    get hasMoodOnlyContent() {
+      return this.mood != null && !this.note.trim() && Object.keys(this.dims).length === 0 && this.tags.length === 0 && this.photos.length === 0;
     },
 
     setMood(mood) {
