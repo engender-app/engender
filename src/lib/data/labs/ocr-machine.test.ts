@@ -44,6 +44,12 @@ Date: 2026-08-12
 Estradiol 123,4 pg/mL
 `;
 
+const TWO_ROWS_OCR_TEXT = `
+Date: 2026-08-12
+Estradiol 123,4 pg/mL
+Prolactin 18,5 ng/mL
+`;
+
 const ESTRADIOL_ROW: OcrReviewRow = {
   include: true,
   analyte: 'estradiol',
@@ -101,6 +107,62 @@ describe('OcrMachine – success path', () => {
     if (m.state.tag !== 'review') throw new Error(`expected review, got ${m.state.tag}`);
     expect(m.state.rows).toHaveLength(1);
     expect(m.state.rows[0].analyte).toBe('estradiol');
+  });
+
+  test('passes selected source to image adapter', async () => {
+    const calledSources: Array<'gallery' | 'camera'> = [];
+    const imageSource: OcrImageSource = {
+      async pickImage(source) {
+        calledSources.push(source);
+        return new Uint8Array([1]);
+      }
+    };
+    const m = createOcrMachine(imageSource, recognizerThat(GOOD_OCR_TEXT), saverWith());
+
+    m.open();
+    await m.pickSource('camera');
+
+    expect(calledSources).toEqual(['camera']);
+    expect(m.state.tag).toBe('review');
+  });
+
+  test('saves only included rows and uses edited field values', async () => {
+    const saver = saverWith();
+    const m = createOcrMachine(
+      imageSourceThat(new Uint8Array([1])),
+      recognizerThat(TWO_ROWS_OCR_TEXT),
+      saver
+    );
+    m.open();
+    await m.pickSource('gallery');
+
+    if (m.state.tag !== 'review') throw new Error(`expected review, got ${m.state.tag}`);
+    expect(m.state.rows).toHaveLength(2);
+
+    const editedRows = [
+      {
+        ...m.state.rows[0],
+        include: true,
+        value: '124,6',
+        note: 'after breakfast'
+      },
+      {
+        ...m.state.rows[1],
+        include: false
+      }
+    ];
+
+    m.updateRows(editedRows);
+    await m.save();
+
+    expect(m.state).toMatchObject({ tag: 'saved', count: 1 });
+    expect(saver.saved).toHaveLength(1);
+    expect(saver.saved[0]).toMatchObject({
+      analyte: 'estradiol',
+      value: 124.6,
+      unit: 'pg/mL',
+      note: 'after breakfast'
+    });
   });
 });
 
@@ -264,6 +326,38 @@ describe('OcrMachine – save-validation-failed path', () => {
     await m.save();
 
     expect(m.state.tag).toBe('saved');
+  });
+
+  test('returns invalid-value when included row value is not numeric', async () => {
+    const m = createOcrMachine(
+      imageSourceThat(new Uint8Array([1])),
+      recognizerThat(GOOD_OCR_TEXT),
+      saverWith()
+    );
+    m.open();
+    await m.pickSource('gallery');
+
+    if (m.state.tag !== 'review') throw new Error('expected review');
+    m.updateRows([{ ...m.state.rows[0], value: 'abc' }]);
+    await m.save();
+
+    expect(m.state).toMatchObject({ tag: 'save-validation-failed', error: 'invalid-value' });
+  });
+
+  test('returns invalid-date when included row has malformed date', async () => {
+    const m = createOcrMachine(
+      imageSourceThat(new Uint8Array([1])),
+      recognizerThat(GOOD_OCR_TEXT),
+      saverWith()
+    );
+    m.open();
+    await m.pickSource('gallery');
+
+    if (m.state.tag !== 'review') throw new Error('expected review');
+    m.updateRows([{ ...m.state.rows[0], date: '2026-99-40' }]);
+    await m.save();
+
+    expect(m.state).toMatchObject({ tag: 'save-validation-failed', error: 'invalid-date' });
   });
 });
 
