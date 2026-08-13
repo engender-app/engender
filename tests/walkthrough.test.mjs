@@ -312,6 +312,24 @@ try {
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
 
+/* 8b. accessibility tuning persists and affects rendering on core screens */
+try {
+  await fresh('/settings');
+  await page.getByRole('switch', { name: 'Text size boost' }).click();
+  await page.waitForFunction(() => document.documentElement.dataset.a11yTextSize === 'boost');
+
+  await page.goto(BASE + '/search', { waitUntil: 'networkidle' });
+  await booted();
+  const boostedPx = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.body).fontSize));
+  if (!(boostedPx > 16)) throw new Error('body font-size did not increase: ' + boostedPx);
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  const stillBoosted = await page.evaluate(() => document.documentElement.dataset.a11yTextSize === 'boost');
+  if (!stillBoosted) throw new Error('text-size boost did not persist after reload');
+  ok('accessibility text-size boost persists and affects search rendering');
+} catch (e) { fail('accessibility tuning', e); }
+
 /* 9. milestone shuffle */
 try {
   await fresh('/settings/milestones');
