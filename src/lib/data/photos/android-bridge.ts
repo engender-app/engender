@@ -1,4 +1,4 @@
-import { registerPlugin } from '@capacitor/core';
+import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
 export interface AndroidPhotosBridge {
   pickImages(): Promise<{ images: string[] }>;
@@ -10,4 +10,4 @@ export interface AndroidPhotosBridge {
   listFiles(options?: { directory?: string }): Promise<{ names: string[] }>;
 }
 
-export const androidPhotos = registerPlugin<AndroidPhotosBridge>('Photos');
+export const androidPhotos = registerAndroidPlugin<AndroidPhotosBridge>(androidPluginOwners.photos);

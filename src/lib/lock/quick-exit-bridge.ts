@@ -6,10 +6,10 @@
    message reached this thread and back, the system may already have taken
    its recents snapshot. */
 
-import { registerPlugin } from '@capacitor/core';
+import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
 export interface QuickExitBridge {
   setEnabled(options: { enabled: boolean }): Promise<void>;
 }
 
-export const androidQuickExit = registerPlugin<QuickExitBridge>('QuickExit');
+export const androidQuickExit = registerAndroidPlugin<QuickExitBridge>(androidPluginOwners.quickExit);

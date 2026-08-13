@@ -1,4 +1,4 @@
-import { registerPlugin } from '@capacitor/core';
+import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
 /** Native mirror of prefs.disguise (ticket 15): flips which launcher
     activity-alias is enabled, so the icon and label the launcher and
@@ -8,4 +8,4 @@ export interface AndroidDisguiseBridge {
   setDisguised(options: { disguised: boolean }): Promise<void>;
 }
 
-export const androidDisguise = registerPlugin<AndroidDisguiseBridge>('Disguise');
+export const androidDisguise = registerAndroidPlugin<AndroidDisguiseBridge>(androidPluginOwners.disguise);

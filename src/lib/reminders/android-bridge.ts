@@ -1,4 +1,4 @@
-import { registerPlugin } from '@capacitor/core';
+import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 import type { Reminder } from '$lib/data/types';
 
 export interface AndroidReminderTexts {
@@ -33,4 +33,4 @@ export interface AndroidRemindersBridge {
   consumeLaunchRoute(): Promise<{ route: string | null }>;
 }
 
-export const androidReminders = registerPlugin<AndroidRemindersBridge>('Reminders');
+export const androidReminders = registerAndroidPlugin<AndroidRemindersBridge>(androidPluginOwners.reminders);
