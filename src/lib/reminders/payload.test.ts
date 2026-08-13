@@ -20,6 +20,7 @@ describe('buildAndroidReminderPayload', () => {
       checkInEnabled: true,
       checkInTime: '21:30',
       latestEntryEpochDay: 20309,
+      hideNotificationTitles: true,
       texts: {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
@@ -45,6 +46,7 @@ describe('buildAndroidReminderPayload', () => {
       checkInEnabled: true,
       checkInTime: '21:30',
       latestEntryEpochDay: 20309,
+      hideNotificationTitles: true,
       texts: {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
@@ -74,6 +76,7 @@ describe('buildAndroidReminderPayload', () => {
       checkInEnabled: false,
       checkInTime: '21:00',
       latestEntryEpochDay: 21000,
+      hideNotificationTitles: false,
       texts: {
         channelReminders: 'A',
         channelCheckIn: 'B',

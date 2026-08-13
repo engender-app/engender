@@ -103,6 +103,20 @@
       {/if}
     </div>
 
+    <div class="card spread" style="margin-top:var(--space-3)">
+      <span class="row-text">
+        <span class="row-title"><Icon name="shield" size={16} /> {m.rem_hide_titles_title()}</span>
+        <span class="row-subtitle">{m.rem_hide_titles_sub()}</span>
+      </span>
+      <Switch
+        checked={prefs.hideNotificationTitles}
+        label={m.rem_hide_titles_title()}
+        onChange={(v) => {
+          prefs.hideNotificationTitles = v;
+        }}
+      />
+    </div>
+
     {#if status.notifications === 'denied' || status.exactAlarms === 'denied'}
       <div class="notice notice-warning" style="margin-top:var(--space-3)">
         <Icon name="alert" size={20} />
