@@ -1,3 +1,6 @@
+/* Shared binary primitives for archive modules that deal in framed bytes but
+   do not own the container header or the versioned payload codec. */
+
 export class CorruptArchiveError extends Error {
   constructor(message: string) {
     super(message);

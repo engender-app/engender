@@ -16,9 +16,10 @@
    costs one concatenation and makes the whole plaintext prefix
    tamper-evident rather than just the parts that would have failed anyway.
 
-   Nothing here knows what the body means; pack.ts owns that. Everything is
-   an async iterable of byte pieces, so neither side ever holds more than a
-   chunk plus whatever the caller is holding. */
+  Nothing here knows what the body means; codec.ts owns the versioned body
+  encode/decode contract and pack.ts routes archives through it. Everything
+  is an async iterable of byte pieces, so neither side ever holds more than
+  a chunk plus whatever the caller is holding. */
 
 import { decrypt, encrypt } from '../../crypto/aesGcm';
 import type { Argon2Params } from '../../crypto/params';
