@@ -201,6 +201,7 @@
           checkInEnabled: prefs.checkInEnabled,
           checkInTime: prefs.checkInTime,
           latestEntryEpochDay: recent[0]?.epochDay ?? null,
+          hideNotificationTitles: prefs.hideNotificationTitles,
           texts: {
             channelReminders: m.reminders(),
             channelCheckIn: m.checkin_title(),
@@ -260,6 +261,7 @@
     if (!isAndroid() || bootState.status !== 'ready') return;
     void prefs.checkInEnabled;
     void prefs.checkInTime;
+    void prefs.hideNotificationTitles;
     void syncAndroidReminderSchedules();
   });
 

@@ -41,6 +41,7 @@ public class RemindersPlugin extends Plugin {
             payload.put("reminders", reminders == null ? new JSArray() : reminders);
             payload.put("checkInEnabled", Boolean.TRUE.equals(call.getBoolean("checkInEnabled", false)));
             payload.put("checkInTime", text(call, "checkInTime", "21:00"));
+            payload.put("hideNotificationTitles", Boolean.TRUE.equals(call.getBoolean("hideNotificationTitles", false)));
 
             Integer latestEntryEpochDay = call.getInt("latestEntryEpochDay");
             payload.put("latestEntryEpochDay", latestEntryEpochDay == null ? JSONObject.NULL : latestEntryEpochDay);
