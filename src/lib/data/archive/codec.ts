@@ -85,12 +85,48 @@ export async function decodeArchive(
 async function* encodeV1Body(contents: ArchiveContents, json: Uint8Array): AsyncGenerator<Uint8Array> {
   yield u32(json.length);
   yield json;
-  for (const file of contents.files) {
-    const bytes = Uint8Array.from(await contents.readFile(file.name));
-    if (bytes.length !== file.length) {
-      throw new Error(`${file.name} changed length while exporting: ${file.length} to ${bytes.length}`);
+  if (!contents.readFiles) {
+    for (const file of contents.files) {
+      const bytes = Uint8Array.from(await contents.readFile(file.name));
+      if (bytes.length !== file.length) {
+        throw new Error(`${file.name} changed length while exporting: ${file.length} to ${bytes.length}`);
+      }
+      yield bytes;
     }
-    yield bytes;
+    return;
+  }
+
+  const BATCH_SIZE = 16;
+  const readBatch = (batch: typeof contents.files) =>
+    contents.readFiles!(batch.map((file) => file.name));
+
+  let i = 0;
+  let batch = contents.files.slice(i, i + BATCH_SIZE);
+  let pending = readBatch(batch);
+
+  for (; i < contents.files.length; i += BATCH_SIZE) {
+    const read = await pending;
+    if (read.length !== batch.length) {
+      throw new Error(`batched archive read returned ${read.length} files for ${batch.length} requested`);
+    }
+
+    const nextStart = i + BATCH_SIZE;
+    const nextBatch = contents.files.slice(nextStart, nextStart + BATCH_SIZE);
+    if (nextBatch.length > 0) pending = readBatch(nextBatch);
+
+    for (let j = 0; j < batch.length; j++) {
+      const file = batch[j];
+      const bytes = read[j];
+      if (bytes === null) {
+        throw new Error(`photo file missing while exporting: ${file.name}`);
+      }
+      if (bytes.length !== file.length) {
+        throw new Error(`${file.name} changed length while exporting: ${file.length} to ${bytes.length}`);
+      }
+      yield bytes;
+    }
+
+    batch = nextBatch;
   }
 }
 
