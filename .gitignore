@@ -43,7 +43,6 @@ GEMINI.md
 .codex/
 .opencode/
 .mcp.json
-.github/copilot-instructions.md
 
 # The provisioning wizard and the test that exercises it. Operator tooling, not
 # product: it walks one person through DNS, deployment access, a store account
