@@ -76,4 +76,33 @@ describe('journal-release deploy and rollback', () => {
     expect(result.status).toBe(0);
     expect(readlinkSync(current)).toContain('2.0.0--a');
   });
+
+  test('deploy refuses a development version by default', () => {
+    const root = join(ROOT, 'dev-guard', 'releases');
+    const current = join(ROOT, 'dev-guard', 'current');
+    const source = join(ROOT, 'dev-guard', 'upload');
+
+    mkdirSync(source, { recursive: true });
+    makeRelease(source, '0.0.0-dev+gabcd1234.dirty', 'build-dev', 3);
+
+    const result = run(['deploy', source, '--root', root, '--current', current], ROOT);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Refusing to deploy development version');
+  });
+
+  test('deploy allows a development version only with an explicit override', () => {
+    const root = join(ROOT, 'dev-override', 'releases');
+    const current = join(ROOT, 'dev-override', 'current');
+    const source = join(ROOT, 'dev-override', 'upload');
+
+    mkdirSync(source, { recursive: true });
+    makeRelease(source, '0.0.0-dev+gabcd1234.dirty', 'build-dev', 3);
+
+    const result = run(
+      ['deploy', source, '--root', root, '--current', current, '--allow-development-version'],
+      ROOT
+    );
+    expect(result.status).toBe(0);
+    expect(readlinkSync(current)).toContain('0.0.0-dev_gabcd1234.dirty--build-dev');
+  });
 });

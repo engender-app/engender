@@ -26,6 +26,7 @@ import {
   symlinkSync
 } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
+import { isReleaseVersion } from './app-version.mjs';
 
 const DEFAULT_ROOT = '/home/journal/releases';
 const DEFAULT_CURRENT = '/home/journal/current';
@@ -37,7 +38,7 @@ function die(message) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/journal-release.mjs deploy <source-dir> [--root DIR] [--current LINK]
+  node scripts/journal-release.mjs deploy <source-dir> [--root DIR] [--current LINK] [--allow-development-version]
   node scripts/journal-release.mjs rollback <release-name> [--root DIR] [--current LINK] [--force]
   node scripts/journal-release.mjs rollback --previous [--root DIR] [--current LINK] [--force]
   node scripts/journal-release.mjs list [--root DIR] [--current LINK]`);
@@ -48,6 +49,7 @@ function parseOptions(argv) {
     root: DEFAULT_ROOT,
     current: DEFAULT_CURRENT,
     force: false,
+    allowDevelopmentVersion: false,
     previous: false,
     positional: []
   };
@@ -66,6 +68,10 @@ function parseOptions(argv) {
     }
     if (arg === '--force') {
       options.force = true;
+      continue;
+    }
+    if (arg === '--allow-development-version') {
+      options.allowDevelopmentVersion = true;
       continue;
     }
     if (arg === '--previous') {
@@ -141,6 +147,12 @@ function deploy(source, options) {
   }
 
   const metadata = readReleaseMetadata(sourcePath);
+  if (!options.allowDevelopmentVersion && !isReleaseVersion(metadata.version)) {
+    die(
+      `Refusing to deploy development version ${metadata.version}. ` +
+        'Use --allow-development-version only for local checks or explicit incidents.'
+    );
+  }
   const name = releaseName(metadata);
 
   mkdirSync(options.root, { recursive: true });
