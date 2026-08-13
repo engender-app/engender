@@ -4,15 +4,16 @@
   "type": "module",
   "license": "GPL-3.0-only",
   "scripts": {
+    "postinstall": "node scripts/prepare-tesseract-assets.mjs",
     "dev": "vite dev",
-    "build": "vite build && node scripts/release-metadata.mjs",
+    "build": "node scripts/prepare-tesseract-assets.mjs && vite build && node scripts/release-metadata.mjs",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:browser": "node tests/browser-tier/run.mjs",
     "test:android": "node tests/android-tier/run.mjs",
-    "test:walkthrough": "GENDER_DIARY_VERSION=9.9.9-walkthrough VITE_DEMO=1 npm run build && node tests/walkthrough.test.mjs",
-    "verify:build": "npm run build && node tests/browser-tier/verify-build.mjs",
+    "test:walkthrough": "node scripts/prepare-tesseract-assets.mjs && GENDER_DIARY_VERSION=9.9.9-walkthrough VITE_DEMO=1 npm run build && node tests/walkthrough.test.mjs",
+    "verify:build": "node scripts/prepare-tesseract-assets.mjs && npm run build && node tests/browser-tier/verify-build.mjs",
     "verify:hosting": "node tests/hosting/run.mjs",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
@@ -41,12 +42,15 @@
     "@capacitor/core": "^8.5.0",
     "@evolu/sqlite-wasm": "^2.2.4",
     "@rive-app/canvas": "^2.21.0",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/pol": "^1.0.0",
     "@types/d3-scale": "^4.0.8",
     "@types/d3-shape": "^3.1.6",
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
     "hash-wasm": "^4.12.0",
     "melt": "^0.30.0",
-    "sqlocal": "^0.18.0"
+    "sqlocal": "^0.18.0",
+    "tesseract.js": "^7.0.0"
   }
 }

@@ -2,6 +2,7 @@ import { registerPlugin } from '@capacitor/core';
 
 export interface AndroidPhotosBridge {
   pickImages(): Promise<{ images: string[] }>;
+  captureImage(): Promise<{ image: string | null }>;
   writeFile(options: { name: string; base64: string; directory?: string }): Promise<void>;
   readFile(options: { name: string; directory?: string }): Promise<{ base64: string | null }>;
   sizeFile(options: { name: string; directory?: string }): Promise<{ size: number | null }>;
