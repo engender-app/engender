@@ -15,7 +15,8 @@
    restored journal's worth of images in memory. */
 
 import { deriveKey, randomSalt } from '../../crypto/argon2id';
-import { ARCHIVE_ARGON2_PARAMS, type Argon2Params } from '../../crypto/params';
+import { resolveCredentialProfile } from '../../crypto/credential-consumers';
+import type { Argon2Params } from '../../crypto/params';
 import {
   ARCHIVE_FORMAT_VERSION,
   CHUNK_SIZE,
@@ -49,7 +50,7 @@ export interface OpenedArchive {
 export async function* packArchive(
   contents: ArchiveContents,
   password: string,
-  kdf: Argon2Params = ARCHIVE_ARGON2_PARAMS
+  kdf: Argon2Params = resolveCredentialProfile('archive-export')
 ): AsyncGenerator<Uint8Array<ArrayBuffer>> {
   const encoded = await encodeArchive(contents);
 
@@ -75,7 +76,11 @@ export async function* packArchive(
 export async function openArchive(source: AsyncIterable<Uint8Array>, password: string): Promise<OpenedArchive> {
   const reader = byteReader(source);
   const { header, headerBytes } = await readArchiveHeader(reader);
-  const key = await deriveKey(password, header.salt, header.kdf);
+  const key = await deriveKey(
+    password,
+    header.salt,
+    resolveCredentialProfile('archive-import', { persistedParams: header.kdf })
+  );
   const plaintext = byteReader(unframeArchive(reader, header, headerBytes, key));
   return decodeArchive(plaintext, header.formatVersion);
 }

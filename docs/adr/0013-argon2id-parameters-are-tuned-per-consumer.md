@@ -24,6 +24,11 @@ The Journal passphrase is a third consumer. Its parameters are benchmarked and
 tuned independently from both the archive password and the app-lock PIN. It must
 resist offline guessing without making every fresh web unlock unusable.
 
+The owner of that choice is now explicit: credential consumers and whether they
+take the current profile or the persisted one are declared in the credential
+consumer registry, so archive, Journal-passphrase and PIN flows do not choose
+profiles ad hoc at their call sites.
+
 Losing the archive password is unrecoverable by design; the app must warn the user
 of this plainly at the moment the password is set, and again before any encrypted
 export.
