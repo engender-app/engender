@@ -204,8 +204,12 @@ export function validateRowsForSave(rows: OcrReviewRow[]): OcrSaveValidation {
     if (!row.include) continue;
     if (!row.analyte.trim()) return { ok: false, firstError: 'missing-analyte' };
     if (parseLabNumeric(row.value) === null) return { ok: false, firstError: 'invalid-value' };
-    if (!row.date.trim()) return { ok: false, firstError: 'missing-date' };
-    if (epochDayFromDateInputValue(row.date) === null) return { ok: false, firstError: 'invalid-date' };
+    const date = row.date.trim();
+    if (!date) return { ok: false, firstError: 'missing-date' };
+    const epochDay = epochDayFromDateInputValue(date);
+    if (epochDay === null || dateInputValueFromEpochDay(epochDay) !== date) {
+      return { ok: false, firstError: 'invalid-date' };
+    }
   }
   return { ok: true, firstError: null };
 }
