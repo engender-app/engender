@@ -109,6 +109,7 @@
 
   /* Theme, palette, disguise → document. */
   let systemDark = $state(false);
+  let systemReducedMotion = $state(false);
   $effect(() => {
     const mq = matchMedia('(prefers-color-scheme: dark)');
     systemDark = mq.matches;
@@ -117,9 +118,19 @@
     return () => mq.removeEventListener('change', onChange);
   });
   $effect(() => {
+    const mq = matchMedia('(prefers-reduced-motion: reduce)');
+    systemReducedMotion = mq.matches;
+    const onChange = (e: MediaQueryListEvent) => (systemReducedMotion = e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  });
+  $effect(() => {
     const root = document.documentElement;
     root.dataset.palette = prefs.palette;
     root.dataset.theme = prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : prefs.theme;
+    root.dataset.a11yTextSize = prefs.a11yTextSizeBoost ? 'boost' : 'normal';
+    root.dataset.a11yLegibility = prefs.a11yLegibilityBoost ? 'boost' : 'normal';
+    root.dataset.a11yMotion = prefs.a11yMotionReduce || systemReducedMotion ? 'reduce' : 'normal';
     /* The tab's identity, decided once: a tab called "Notes" next to a trans
        flag is not disguised at all, and the icon is the half of it that
        survives a narrow tab strip, a background tab and the bookmark list.
