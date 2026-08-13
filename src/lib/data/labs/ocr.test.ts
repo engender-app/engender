@@ -3,6 +3,7 @@ import { epochDayFromDateInputValue } from '../epochDay';
 import { journalWithBuiltIns } from '../journal/test-support';
 
 import {
+  applyPreferredUnitDefaults,
   buildDuplicateKeys,
   isPermissionDenied,
   makeReviewRows,
@@ -86,6 +87,81 @@ describe('OCR review helpers', () => {
     expect(review).toHaveLength(1);
     expect(review[0].duplicate).toBe(true);
     expect(review[0].include).toBe(false);
+  });
+
+  test('duplicate detection still matches convertible values across unit differences', () => {
+    const epochDay = epochDayFromDateInputValue('2026-08-12');
+    if (epochDay === null) throw new Error('fixture date must be valid');
+    const duplicates = buildDuplicateKeys([
+      { epochDay, analyte: 'estradiol', value: 123.4, unit: 'pg/mL' }
+    ]);
+
+    const preferred = applyPreferredUnitDefaults(
+      [
+        {
+          analyte: 'estradiol',
+          unresolvedAnalyte: false,
+          value: 123.4,
+          unit: 'pg/mL',
+          date: '2026-08-12',
+          note: '',
+          lowConfidence: false,
+          line: 'Estradiol 123,4 pg/mL'
+        }
+      ],
+      { estradiol: 'pmol/L' }
+    );
+
+    const review = makeReviewRows(preferred, duplicates);
+
+    expect(review).toHaveLength(1);
+    expect(review[0].unit).toBe('pmol/L');
+    expect(review[0].duplicate).toBe(true);
+    expect(review[0].include).toBe(false);
+  });
+
+  test('applies preferred unit defaults in OCR review when conversion is possible', () => {
+    const converted = applyPreferredUnitDefaults(
+      [
+        {
+          analyte: 'estradiol',
+          unresolvedAnalyte: false,
+          value: 123.4,
+          unit: 'pg/mL',
+          date: '2026-08-12',
+          note: '',
+          lowConfidence: false,
+          line: 'Estradiol 123,4 pg/mL'
+        }
+      ],
+      { estradiol: 'pmol/L' }
+    );
+
+    expect(converted[0].unit).toBe('pmol/L');
+    expect(converted[0].value).toBeCloseTo(453.0014, 4);
+    expect(converted[0].lowConfidence).toBe(false);
+  });
+
+  test('keeps source unit and marks low confidence when preferred conversion is not possible', () => {
+    const converted = applyPreferredUnitDefaults(
+      [
+        {
+          analyte: 'estradiol',
+          unresolvedAnalyte: false,
+          value: 123.4,
+          unit: 'ng/dL',
+          date: '2026-08-12',
+          note: '',
+          lowConfidence: false,
+          line: 'Estradiol 123,4 ng/dL'
+        }
+      ],
+      { estradiol: 'pmol/L' }
+    );
+
+    expect(converted[0].unit).toBe('ng/dL');
+    expect(converted[0].value).toBe(123.4);
+    expect(converted[0].lowConfidence).toBe(true);
   });
 
   test('blocks save when included rows miss date', () => {

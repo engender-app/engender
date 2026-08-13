@@ -197,7 +197,8 @@ function portableWith(marker: string) {
     theme: values.theme,
     language: values.language,
     checkInEnabled: values.checkInEnabled,
-    checkInTime: values.checkInTime
+    checkInTime: values.checkInTime,
+    preferredLabUnits: {}
   };
 }
 

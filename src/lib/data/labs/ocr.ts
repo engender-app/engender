@@ -1,6 +1,12 @@
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '../epochDay';
 import { normalizeUnit } from '../journal/labs';
 import { foldText } from '../fold';
+import {
+  canonicalizeLabMeasurement,
+  convertLabValue,
+  preferredUnitForAnalyte,
+  type PreferredLabUnits
+} from './units';
 
 export interface OcrCandidateRow {
   analyteText: string;
@@ -139,15 +145,40 @@ function duplicateKey(row: Pick<OcrReviewRow, 'date' | 'analyte' | 'value' | 'un
   const epochDay = epochDayFromDateInputValue(row.date);
   const value = parseLabNumeric(row.value);
   if (epochDay === null || value === null || !row.analyte.trim()) return null;
-  return `${epochDay}|${row.analyte.trim().toLowerCase()}|${value}|${normalizeUnit(row.unit)}`;
+  const analyte = row.analyte.trim().toLowerCase();
+  const canonical = canonicalizeLabMeasurement(analyte, value, row.unit);
+  const rounded = Math.round(canonical.value * 1_000_000) / 1_000_000;
+  return `${epochDay}|${analyte}|${rounded}|${canonical.unit}`;
 }
 
 export function buildDuplicateKeys(rows: Array<{ epochDay: number; analyte: string; value: number; unit: string }>): Set<string> {
   const keys = new Set<string>();
   for (const row of rows) {
-    keys.add(`${row.epochDay}|${row.analyte.trim().toLowerCase()}|${row.value}|${normalizeUnit(row.unit)}`);
+    const analyte = row.analyte.trim().toLowerCase();
+    const canonical = canonicalizeLabMeasurement(analyte, row.value, row.unit);
+    const rounded = Math.round(canonical.value * 1_000_000) / 1_000_000;
+    keys.add(`${row.epochDay}|${analyte}|${rounded}|${canonical.unit}`);
   }
   return keys;
+}
+
+export function applyPreferredUnitDefaults(parsed: OcrParsedRow[], preferredUnits: PreferredLabUnits): OcrParsedRow[] {
+  return parsed.map((row) => {
+    const preferred = preferredUnitForAnalyte(row.analyte, preferredUnits);
+    if (!preferred) return row;
+
+    const current = normalizeUnit(row.unit);
+    if (!current || current.toLowerCase() === preferred.toLowerCase()) {
+      return { ...row, unit: current || preferred };
+    }
+
+    const converted = convertLabValue(row.analyte, row.value, current, preferred);
+    if (converted === null) {
+      return { ...row, unit: current, lowConfidence: true };
+    }
+
+    return { ...row, value: converted, unit: preferred };
+  });
 }
 
 export function makeReviewRows(parsed: OcrParsedRow[], duplicates: Set<string>): OcrReviewRow[] {
