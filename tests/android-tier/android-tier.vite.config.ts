@@ -30,7 +30,9 @@ const PROBES = {
   /** Ticket 13: seeds a journal so the claim gate can read its bytes. */
   encryption: { root: 'encryption', outDir: `${ASSETS}/encryption-probe` },
   /** Ticket 17: archive import/export between web and Android implementations. */
-  archive: { root: 'archive', outDir: `${ASSETS}/archive-cross-probe` }
+  archive: { root: 'archive', outDir: `${ASSETS}/archive-cross-probe` },
+  /** Ticket 20: ten-year Journal benchmark over the native driver. */
+  'long-journal': { root: 'long-journal', outDir: `${ASSETS}/long-journal-probe` }
 };
 
 const name = process.env.ANDROID_TIER_PROBE ?? 'contract';
