@@ -63,6 +63,9 @@ test('round-trips every value shape a preference can hold', async () => {
   await written.set('metricKind', 'dimension');
   await written.set('lastBackupAt', null);
   await written.set('pinHash', null);
+  await written.set('a11yTextSizeBoost', true);
+  await written.set('a11yLegibilityBoost', true);
+  await written.set('a11yMotionReduce', true);
   await written.set('preferredLabUnits', { estradiol: 'pmol/L', testosterone: 'nmol/L' });
 
   const reread = await openPreferences(driver);
@@ -72,6 +75,9 @@ test('round-trips every value shape a preference can hold', async () => {
   expect(reread.get('metricKind')).toBe('dimension');
   expect(reread.get('lastBackupAt')).toBe(null);
   expect(reread.get('pinHash')).toBe(null);
+  expect(reread.get('a11yTextSizeBoost')).toBe(true);
+  expect(reread.get('a11yLegibilityBoost')).toBe(true);
+  expect(reread.get('a11yMotionReduce')).toBe(true);
   expect(reread.get('preferredLabUnits')).toEqual({ estradiol: 'pmol/L', testosterone: 'nmol/L' });
 });
 
@@ -85,6 +91,9 @@ test('SQLite wins over the cache, because the cache is only a cache', async () =
     theme: 'system',
     palette: 'stale-from-a-past-session',
     language: 'system',
+    a11yTextSizeBoost: false,
+    a11yLegibilityBoost: false,
+    a11yMotionReduce: false,
     lockOnLeave: false,
     disguise: false
   });

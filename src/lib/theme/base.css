@@ -63,6 +63,33 @@
   --bottom-nav-height: 64px;
 }
 
+html {
+  font-size: 100%;
+}
+
+html[data-a11y-text-size='boost'] {
+  font-size: 112.5%;
+}
+
+html[data-a11y-legibility='boost'] {
+  --leading-body: 1.65;
+  --text-2: color-mix(in oklab, var(--text) 76%, var(--bg));
+  --border: color-mix(in oklab, var(--text) 24%, var(--bg));
+}
+
+html[data-a11y-motion='reduce'] {
+  --dur-fast: 1ms;
+  --dur-med: 1ms;
+  --dur-slow: 1ms;
+}
+
+html[data-a11y-motion='reduce'] *,
+html[data-a11y-motion='reduce'] *::before,
+html[data-a11y-motion='reduce'] *::after {
+  animation-duration: 1ms !important;
+  transition-duration: 1ms !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-fast: 1ms;
