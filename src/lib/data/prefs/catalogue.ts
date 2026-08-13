@@ -33,6 +33,9 @@ export interface PreferenceValues {
   theme: 'system' | 'light' | 'dark';
   palette: string;
   language: 'system' | 'en' | 'pl';
+  a11yTextSizeBoost: boolean;
+  a11yLegibilityBoost: boolean;
+  a11yMotionReduce: boolean;
   appLock: boolean;
   /** Argon2id-derived, from ticket 17. Null until a PIN is set. */
   pinHash: string | null;
@@ -67,6 +70,9 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   theme: 'system',
   palette: 'trans',
   language: 'system',
+  a11yTextSizeBoost: false,
+  a11yLegibilityBoost: false,
+  a11yMotionReduce: false,
   appLock: false,
   pinHash: null,
   lockOnLeave: false,
@@ -99,6 +105,9 @@ export const PORTABLE_KEYS = [
 /** Describes this installation, so it never leaves it (ADR-0003). */
 export const DEVICE_LOCAL_KEYS = [
   'onboarded',
+  'a11yTextSizeBoost',
+  'a11yLegibilityBoost',
+  'a11yMotionReduce',
   'appLock',
   'pinHash',
   'lockOnLeave',
@@ -121,6 +130,9 @@ export const BOOT_KEYS = [
   'theme',
   'palette',
   'language',
+  'a11yTextSizeBoost',
+  'a11yLegibilityBoost',
+  'a11yMotionReduce',
   'lockOnLeave',
   'disguise'
 ] as const satisfies readonly PreferenceKey[];

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="%paraglide.locale%" data-palette="trans" data-theme="light">
+<html lang="%paraglide.locale%" data-palette="trans" data-theme="light" data-a11y-text-size="normal" data-a11y-legibility="normal" data-a11y-motion="normal">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -21,7 +21,7 @@
          The attributes on <html> above are only what a first-ever visit,
          or a visit where this throws, falls back to; SQLite is still
          hundreds of milliseconds from opening at this point, which is why
-         these six preferences are mirrored outside it at all.
+         these preferences are mirrored outside it at all.
 
          Inline and dependency-free because it has to run before any module
          is parsed, so it cannot import the key or the shape - both are
@@ -37,6 +37,11 @@
               ? 'dark'
               : 'light'
             : boot.theme;
+        root.dataset.a11yTextSize = boot.a11yTextSizeBoost ? 'boost' : 'normal';
+        root.dataset.a11yLegibility = boot.a11yLegibilityBoost ? 'boost' : 'normal';
+        root.dataset.a11yMotion = boot.a11yMotionReduce || matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'reduce'
+          : 'normal';
         /* Disguise is the one of these that cannot wait for the layout's
            effect: by then the flag icon has already been in the tab strip
            for as long as boot takes, and an install started in that window

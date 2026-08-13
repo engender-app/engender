@@ -98,6 +98,47 @@
         onChange={setLanguage}
       />
     </div>
+    <div class="hr"></div>
+    <p class="field-label" style="margin-bottom:var(--space-3)">{m.settings_accessibility_pack()}</p>
+    <div class="pref-row">
+      <span class="row-text">
+        <span class="row-title">{m.a11y_text_size_boost()}</span>
+        <span class="row-subtitle">{m.a11y_text_size_boost_sub()}</span>
+      </span>
+      <Switch
+        checked={prefs.a11yTextSizeBoost}
+        label={m.a11y_text_size_boost()}
+        onChange={(v) => {
+          prefs.a11yTextSizeBoost = v;
+        }}
+      />
+    </div>
+    <div class="pref-row">
+      <span class="row-text">
+        <span class="row-title">{m.a11y_legibility_boost()}</span>
+        <span class="row-subtitle">{m.a11y_legibility_boost_sub()}</span>
+      </span>
+      <Switch
+        checked={prefs.a11yLegibilityBoost}
+        label={m.a11y_legibility_boost()}
+        onChange={(v) => {
+          prefs.a11yLegibilityBoost = v;
+        }}
+      />
+    </div>
+    <div class="pref-row">
+      <span class="row-text">
+        <span class="row-title">{m.a11y_motion_reduce_override()}</span>
+        <span class="row-subtitle">{m.a11y_motion_reduce_override_sub()}</span>
+      </span>
+      <Switch
+        checked={prefs.a11yMotionReduce}
+        label={m.a11y_motion_reduce_override()}
+        onChange={(v) => {
+          prefs.a11yMotionReduce = v;
+        }}
+      />
+    </div>
   </div>
 
   <SectionTitle text={m.settings_tracking()} />
