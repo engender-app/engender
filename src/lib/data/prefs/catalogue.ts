@@ -50,6 +50,8 @@ export interface PreferenceValues {
   checkInEnabled: boolean;
   /** Wall-clock "HH:MM" in the device's timezone. */
   checkInTime: string;
+  /** Optional entry nudges that suggest adding detail after a mood-only save. */
+  entryNudges: boolean;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone' | 'prolactin', string>>;
   autoExportEnabled: boolean;
@@ -81,6 +83,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hideNotificationTitles: false,
   checkInEnabled: false,
   checkInTime: '21:00',
+  entryNudges: true,
   preferredLabUnits: {},
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
@@ -114,6 +117,7 @@ export const DEVICE_LOCAL_KEYS = [
   'disguise',
   'quickExit',
   'hideNotificationTitles',
+  'entryNudges',
   'autoExportEnabled',
   'autoExportSchedule',
   'lastBackupAt',

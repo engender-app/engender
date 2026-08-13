@@ -83,11 +83,15 @@ function parseCsv(text) {
 /* 1. quick log */
 try {
   await fresh('/');
+  const beforeCards = await page.locator('.entry-card').count();
   await page.locator('.quicklog .mood-btn[data-mood="4"]').click();
-  await page.waitForSelector('.toast');
-  await page.locator('.toast-action').click();
-  await page.waitForSelector('.mood-picker:not(.is-compact) .mood-btn.is-selected');
-  ok('quick log + Add details opens editor');
+  await page.waitForSelector('#ed-note');
+  await page.waitForSelector('.mood-picker:not(.is-compact) .mood-btn[data-mood="4"].is-selected');
+  await page.locator('a.icon-btn[href="/"]').click();
+  await page.waitForSelector('.entry-card');
+  const afterCards = await page.locator('.entry-card').count();
+  if (afterCards !== beforeCards) throw new Error(`home entry count changed: ${beforeCards} -> ${afterCards}`);
+  ok('home quick mood opens an unsaved seeded editor');
 } catch (e) { fail('quick log', e); }
 
 /* 2. full entry flow via FAB */
@@ -105,6 +109,56 @@ try {
   if (!note.includes('Playwright')) throw new Error('new entry not first');
   ok('new entry chooser → editor → save → Home');
 } catch (e) { fail('entry flow', e); }
+
+/* 2b. mood-only save nudges */
+try {
+  await fresh('/');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  const nudgeSwitch = page.locator('[data-entry-nudges] [role="switch"]');
+  const setNudges = async (enabled) => {
+    const expected = enabled ? 'true' : 'false';
+    await nudgeSwitch.scrollIntoViewIfNeeded();
+    if ((await nudgeSwitch.getAttribute('aria-checked')) !== expected) {
+      await nudgeSwitch.click();
+      await page.waitForFunction(
+        (want) => document.querySelector('[data-entry-nudges] [role="switch"]')?.getAttribute('aria-checked') === want,
+        expected
+      );
+    }
+  };
+  await setNudges(true);
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+
+  const toastCountBeforeNudge = await page.locator('.toast').count();
+  await page.locator('.quicklog .mood-btn[data-mood="2"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="1"]').click();
+  await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="2"]').click();
+  await page.locator('[data-save]').click();
+  await page.waitForFunction((before) => document.querySelectorAll('.toast').length > before, toastCountBeforeNudge);
+  if ((await page.locator('.toast').last().locator('.toast-action').count()) === 0) {
+    throw new Error('nudge action missing while nudges are enabled');
+  }
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await setNudges(false);
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+
+  const toastCountBeforeQuietSave = await page.locator('.toast').count();
+  await page.locator('.quicklog .mood-btn[data-mood="3"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="1"]').click();
+  await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="3"]').click();
+  await page.locator('[data-save]').click();
+  await page.waitForFunction((before) => document.querySelectorAll('.toast').length > before, toastCountBeforeQuietSave);
+  const hasAction = await page.locator('.toast').last().locator('.toast-action').count();
+  if (hasAction !== 0) throw new Error('nudge action still visible after opt-out');
+  ok('mood-only save nudges when enabled and stays quiet when disabled');
+} catch (e) { fail('nudge flow', e); }
 
 /* 3. melt slider keyboard interaction */
 try {

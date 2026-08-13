@@ -62,11 +62,12 @@ test('switching the active preset and re-saving preserves values for dimensions 
   // Logged under the wide preset: five dimensions... well, three are enough.
   const id = await journal.entries.upsertEntry({
     epochDay: 100,
+    mood: 3,
     dims: { euphoria_dysphoria: 70, masculinity: 20, binary_nonbinary: 80 }
   });
 
   // Re-saved under the narrow preset: the editor sends only its dimensions.
-  await journal.entries.upsertEntry({ id, dims: { euphoria_dysphoria: 40 }, note: 'edited' });
+  await journal.entries.upsertEntry({ id, mood: 3, dims: { euphoria_dysphoria: 40 }, note: 'edited' });
 
   const entry = await journal.entries.getEntry(id);
   assert.deepEqual(entry?.dims, { euphoria_dysphoria: 40, masculinity: 20, binary_nonbinary: 80 });
@@ -75,28 +76,34 @@ test('switching the active preset and re-saving preserves values for dimensions 
 
 test('tags replace as a whole set on update, unlike dimension values', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, tags: ['e-happy', 'e-calm'] });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-happy', 'e-calm'] });
 
-  await journal.entries.upsertEntry({ id, tags: ['e-sad'] });
+  await journal.entries.upsertEntry({ id, mood: 3, tags: ['e-sad'] });
 
   assert.deepEqual((await journal.entries.getEntry(id))?.tags, ['e-sad']);
 });
 
-test('saving an entry with nothing in it is rejected, on insert and on update', async () => {
-  const { journal } = await journalWithBuiltIns();
+test('saving without a mood is rejected, moodful edits keep their mood, and moodless rows stay readable', async () => {
+  const { journal, db } = await journalWithBuiltIns();
   await assert.rejects(journal.entries.upsertEntry({ epochDay: 100, note: '   ' }), /needs a mood/);
 
   const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4 });
-  await assert.rejects(journal.entries.upsertEntry({ id, mood: null }), /needs a mood/);
-  // The failed update left the entry intact.
+  await journal.entries.upsertEntry({ id, note: 'edited without resupplying the mood' });
   assert.equal((await journal.entries.getEntry(id))?.mood, 4);
+
+  db.raw.prepare(
+    "INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, updated_at) VALUES ('moodless-read', 101, 0, NULL, '', 0)"
+  ).run();
+  const moodlessId = db.raw.prepare("SELECT id FROM entry WHERE uuid = 'moodless-read'").get() as { id: number };
+  assert.equal((await journal.entries.getEntry(moodlessId.id))?.mood, null);
+  await assert.rejects(journal.entries.upsertEntry({ id: moodlessId.id, note: 'cannot save yet' }), /needs a mood/);
 });
 
 test('unknown write ids throw: entry id, dimension key, tag id', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(journal.entries.upsertEntry({ id: 999, mood: 4 }), /unknown entry/);
-  await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, dims: { nope: 1 } }), /unknown dimension/);
-  await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, tags: ['nope'] }), /unknown tag/);
+  await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, mood: 4, dims: { nope: 1 } }), /unknown dimension/);
+  await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, mood: 4, tags: ['nope'] }), /unknown tag/);
 });
 
 test('deleting an entry takes its dimension values, tag links, photo rows and files; twice is success', async () => {
@@ -182,7 +189,7 @@ test('entriesWithTag reads newest first, up to the limit, by key or by uuid', as
 test('searchEntries stops at the limit it is given, keeping the newest hits', async () => {
   const { journal } = await journalWithBuiltIns();
   for (const day of [100, 101, 102, 103]) {
-    await journal.entries.upsertEntry({ epochDay: day, note: 'coffee with Marta' });
+    await journal.entries.upsertEntry({ epochDay: day, mood: 4, note: 'coffee with Marta' });
   }
 
   assert.deepEqual(
@@ -194,9 +201,9 @@ test('searchEntries stops at the limit it is given, keeping the newest hits', as
 test('the match count counts every match, not just the page that was asked for', async () => {
   const { journal } = await journalWithBuiltIns();
   for (const day of [100, 101, 102, 103]) {
-    await journal.entries.upsertEntry({ epochDay: day, note: 'coffee with Marta' });
+    await journal.entries.upsertEntry({ epochDay: day, mood: 4, note: 'coffee with Marta' });
   }
-  await journal.entries.upsertEntry({ epochDay: 104, note: 'tea instead' });
+  await journal.entries.upsertEntry({ epochDay: 104, mood: 2, note: 'tea instead' });
 
   assert.equal((await journal.entries.searchEntries('coffee', [], 2)).length, 2);
   assert.equal(await journal.entries.countSearchMatches('coffee', []), 4);
@@ -204,15 +211,15 @@ test('the match count counts every match, not just the page that was asked for',
 
 test('the count matches on tags as well as notes, and counts an entry matching both once', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, note: 'felt hopeful', tags: ['e-hopeful'] });
-  await journal.entries.upsertEntry({ epochDay: 101, tags: ['e-hopeful'] });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'felt hopeful', tags: ['e-hopeful'] });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, tags: ['e-hopeful'] });
 
   assert.equal(await journal.entries.countSearchMatches('hopeful', ['e-hopeful']), 2);
 });
 
 test('a query with nothing searchable in it counts zero rather than everything', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, note: 'coffee' });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'coffee' });
 
   assert.equal(await journal.entries.countSearchMatches('...', []), 0);
 });

@@ -175,6 +175,21 @@
       {/each}
       <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
     </div>
+    <div class="card" style="margin-top:var(--space-3)">
+      <div class="spread" data-entry-nudges>
+        <span class="row-text">
+          <span class="row-title">{m.entry_nudges()}</span>
+          <span class="row-subtitle">{m.entry_nudges_sub()}</span>
+        </span>
+        <Switch
+          checked={prefs.entryNudges}
+          label={m.entry_nudges()}
+          onChange={(v) => {
+            prefs.entryNudges = v;
+          }}
+        />
+      </div>
+    </div>
     <button class="list-row" onclick={() => (metricSheet = true)}>
       <span class="row-icon"><Icon name="palette" size={22} /></span>
       <span class="row-text">
