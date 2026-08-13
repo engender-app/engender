@@ -9,6 +9,7 @@ import com.getcapacitor.BridgeActivity;
 import dev.barankiewicz.genderdiary.backup.AutoExportPlugin;
 import dev.barankiewicz.genderdiary.disguise.DisguisePlugin;
 import dev.barankiewicz.genderdiary.keystore.KeystorePlugin;
+import dev.barankiewicz.genderdiary.photos.PhotosPlugin;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
 import dev.barankiewicz.genderdiary.reminders.RemindersPlugin;
@@ -33,6 +34,7 @@ public class MainActivity extends BridgeActivity {
         // registered afterwards is not in the bridge the WebView gets.
         registerPlugin(SqlitePlugin.class);
         registerPlugin(KeystorePlugin.class);
+        registerPlugin(PhotosPlugin.class);
         registerPlugin(RemindersPlugin.class);
         registerPlugin(AutoExportPlugin.class);
         registerPlugin(DisguisePlugin.class);
