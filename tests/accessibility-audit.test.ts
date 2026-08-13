@@ -31,4 +31,13 @@ describe('phase 2 accessibility seams', () => {
     expect(app).toContain('@media (prefers-reduced-motion: reduce)');
     expect(components).toContain('@media (prefers-reduced-motion: reduce)');
   });
+
+  it('keeps recap range selection and trend summary labelled', () => {
+    const recap = read('src/routes/recap/+page.svelte');
+    expect(recap).toContain('aria-label={m.recap_period_group()}');
+    expect(recap).toContain('aria-label={m.recap_custom_start_label()}');
+    expect(recap).toContain('aria-label={m.recap_custom_end_label()}');
+    expect(recap).toContain('LineChart points={moodTrend} min={1} max={5}');
+    expect(recap).toContain('m.recap_change_summary_title()');
+  });
 });
