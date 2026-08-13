@@ -195,7 +195,7 @@ try {
   try {
     browser = await launchPersistentChromium(profile);
     const page = browser.pages()[0] ?? (await browser.newPage());
-    page.on('request', (request) => requests.push(request.url()));
+    page.on('request', (request) => requests.push(request));
 
     await page.goto(origin, { waitUntil: 'networkidle' });
     await page.waitForSelector('#journal-passphrase', { timeout: 15000 });
@@ -219,7 +219,7 @@ try {
     await browser.close();
     browser = await launchPersistentChromium(profile, { offline: true });
     const offline = browser.pages()[0] ?? (await browser.newPage());
-    offline.on('request', (request) => requests.push(request.url()));
+    offline.on('request', (request) => requests.push(request));
     await offline.goto(origin);
     await offline.waitForSelector('#journal-passphrase', { timeout: 30000 });
     await offline.fill('#journal-passphrase', 'hosting verify passphrase');
@@ -233,7 +233,13 @@ try {
     rmSync(profile, { recursive: true, force: true });
   }
 
-  const offOrigin = requests.filter((url) => {
+  const offOrigin = requests.filter((request) => {
+    // Exclude navigation requests: a user clicking a link to another origin
+    // should not be flagged as a violation. Only runtime requests (fetch, xhr)
+    // from the app itself should be checked.
+    if (request.isNavigationRequest?.()) return false;
+
+    const url = request.url();
     if (!/^https?:/i.test(url)) return false;
     return new URL(url).origin !== origin;
   });
@@ -247,6 +253,55 @@ try {
 } finally {
   stopContainer();
   rmSync(tempRoot, { recursive: true, force: true });
+}
+
+// Test the cross-origin filter logic: verify it distinguishes navigation requests
+// from runtime fetch/xhr requests (ticket 31).
+{
+  const testOrigin = 'http://127.0.0.1:8080';
+  const externalOrigin = 'https://example.com';
+
+  // Mock request objects with the isNavigationRequest() method
+  const mockNavigationRequest = {
+    url: () => `${externalOrigin}/page`,
+    isNavigationRequest: () => true
+  };
+
+  const mockFetchRequest = {
+    url: () => `${externalOrigin}/api/data`,
+    isNavigationRequest: () => false
+  };
+
+  const mockSelfRequest = {
+    url: () => `${testOrigin}/data`,
+    isNavigationRequest: () => false
+  };
+
+  const mockNonHttpRequest = {
+    url: () => 'data:image/png;base64,abc123',
+    isNavigationRequest: () => false
+  };
+
+  // Apply the same filter logic from the main test
+  const testRequests = [mockNavigationRequest, mockFetchRequest, mockSelfRequest, mockNonHttpRequest];
+  const testOffOrigin = testRequests.filter((request) => {
+    if (request.isNavigationRequest?.()) return false;
+    const url = request.url();
+    if (!/^https?:/i.test(url)) return false;
+    return new URL(url).origin !== testOrigin;
+  });
+
+  // Verify the results:
+  // - mockNavigationRequest should be excluded (navigation to another origin)
+  // - mockFetchRequest should be included (runtime fetch to another origin)
+  // - mockSelfRequest should be excluded (same origin)
+  // - mockNonHttpRequest should be excluded (not http/https)
+  if (testOffOrigin.length === 1 && testOffOrigin[0] === mockFetchRequest) {
+    ok('cross-origin filter correctly excludes navigation requests');
+  } else {
+    const found = testOffOrigin.map((r) => r.url()).join(', ');
+    fail('cross-origin filter correctly excludes navigation requests', `found: ${found}`);
+  }
 }
 
 const failures = finish('HOSTING VERIFICATION PASSES');
