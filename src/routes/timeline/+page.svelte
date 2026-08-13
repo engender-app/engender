@@ -1,10 +1,10 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { reference } from '$lib/data/live/reference.svelte';
   import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import type { Milestone } from '$lib/data/types';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -18,7 +18,7 @@
      state: they arrive with boot, bounded at tens of rows and already in
      date order from the journal. */
   let items = $derived.by(() => {
-    const ms = reference.milestones;
+    const ms = vocabulary.milestones;
     const today = todayEpochDay();
     const out: Item[] = [];
     let prevDay: number | null = null;
@@ -55,7 +55,7 @@
     </div>
   </header>
 
-  {#if reference.milestones.length}
+  {#if vocabulary.milestones.length}
     <p class="muted small" style="margin-bottom:var(--space-5)">{m.tl_intro()}</p>
     <div class="timeline">
       {#each items as item (item.kind === 'milestone' ? item.m.id : item.id)}
