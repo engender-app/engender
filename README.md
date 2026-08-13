@@ -174,6 +174,19 @@ is not update-compatible with this repository's signed APK, so moving between
 those channels is a reinstall plus Archive restore rather than an in-place
 update.
 
+Progressive release exercises are recorded and validated with ticket 22's gate:
+
+```
+npm run check:progressive-release -- --file docs/progressive-release-record.json --target stage1
+npm run check:progressive-release -- --file docs/progressive-release-record.json --target stage2
+npm run check:progressive-release -- --file docs/progressive-release-record.json --target stage3
+npm run check:progressive-release -- --file docs/progressive-release-record.json --target stage4
+npm run check:progressive-release -- --file docs/progressive-release-record.json --target stable
+```
+
+See `docs/progressive-release.md` and start from
+`docs/progressive-release-record.template.json`.
+
 The DNS record, deployment access, store account and signing key behind all of
 this are steps a person has to take, on one particular machine, so the wizard
 that walks them is untracked operator tooling rather than part of the app.
