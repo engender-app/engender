@@ -181,7 +181,7 @@ function reportInstrumentation(avd, output) {
 }
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of ['contract', 'encryption', 'archive']) {
+for (const probe of ['contract', 'encryption', 'archive', 'long-journal']) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }
@@ -220,6 +220,16 @@ if (!home) {
 }
 const gradleEnv = { JAVA_HOME: home };
 
+/* The long-journal benchmark test: generates ten years of journal data and
+   measures fifteen operations against timing budgets. It takes ten or more
+   minutes on a real device and far longer on an emulator, so it is excluded
+   from the regular test:android run. Run it separately on a real device:
+     npx cap sync android
+     cd android && ./gradlew :app:connectedDebugAndroidTest \
+       -Pandroid.testInstrumentationRunnerArguments.class=dev.barankiewicz.genderdiary.longjournal.LongJournalBenchmarkTest
+   Then copy the logged JSON block into android-budgets.json and commit it. */
+const BENCHMARK_TEST = 'dev.barankiewicz.genderdiary.longjournal.LongJournalBenchmarkTest';
+
 for (const avd of AVDS) {
   try {
     clearResults();
@@ -240,7 +250,9 @@ for (const avd of AVDS) {
       [
         ':app:connectedDebugAndroidTest',
         '--console=plain',
-        ...(nativeOnly ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`] : [])
+        ...(nativeOnly
+          ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
+          : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST}`])
       ],
       {
         cwd: androidDir,
