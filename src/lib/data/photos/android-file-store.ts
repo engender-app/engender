@@ -30,9 +30,19 @@ export function appPrivatePhotoFiles(directory = 'photos'): PhotoFileStore {
       const { base64 } = await androidPhotos.readFile({ name, directory });
       return base64 == null ? null : fromBase64(base64);
     },
+    async readMany(names) {
+      if (names.length === 0) return [];
+      const { base64 } = await androidPhotos.readFiles({ names, directory });
+      return base64.map((entry) => (entry == null ? null : fromBase64(entry)));
+    },
     async size(name) {
       const { size } = await androidPhotos.sizeFile({ name, directory });
       return size;
+    },
+    async sizeMany(names) {
+      if (names.length === 0) return [];
+      const { sizes } = await androidPhotos.sizeFiles({ names, directory });
+      return sizes;
     },
     async remove(name) {
       await androidPhotos.removeFile({ name, directory });

@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.os.Build;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.util.Base64OutputStream;
 
 import androidx.activity.result.ActivityResult;
 
@@ -166,7 +167,36 @@ public class PhotosPlugin extends Plugin {
                 call.resolve(result);
                 return;
             }
-            result.put("base64", Base64.encodeToString(readBytes(target), Base64.NO_WRAP));
+            result.put("base64", encodeBase64(target));
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    @PluginMethod
+    public void readFiles(PluginCall call) {
+        try {
+            JSArray names = call.getArray("names");
+            if (names == null) {
+                call.reject("readFiles requires names");
+                return;
+            }
+
+            JSArray values = new JSArray();
+            for (int i = 0; i < names.length(); i++) {
+                String name = names.getString(i);
+                if (name == null) throw new IllegalArgumentException("invalid photo file name");
+                File target = fileFor(call, name);
+                if (!target.exists()) {
+                    values.put(JSObject.NULL);
+                } else {
+                    values.put(encodeBase64(target));
+                }
+            }
+
+            JSObject result = new JSObject();
+            result.put("base64", values);
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -188,6 +218,35 @@ public class PhotosPlugin extends Plugin {
             } else {
                 result.put("size", target.length());
             }
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    @PluginMethod
+    public void sizeFiles(PluginCall call) {
+        try {
+            JSArray names = call.getArray("names");
+            if (names == null) {
+                call.reject("sizeFiles requires names");
+                return;
+            }
+
+            JSArray values = new JSArray();
+            for (int i = 0; i < names.length(); i++) {
+                String name = names.getString(i);
+                if (name == null) throw new IllegalArgumentException("invalid photo file name");
+                File target = fileFor(call, name);
+                if (!target.exists()) {
+                    values.put(JSObject.NULL);
+                } else {
+                    values.put(target.length());
+                }
+            }
+
+            JSObject result = new JSObject();
+            result.put("sizes", values);
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -270,22 +329,26 @@ public class PhotosPlugin extends Plugin {
     private String readBase64(Uri uri) throws Exception {
         try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
             if (input == null) throw new IllegalStateException("could not read selected image");
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
-            return Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
+            return encodeBase64(input, 8192);
         }
     }
 
-    private static byte[] readBytes(File file) throws Exception {
-        try (FileInputStream in = new FileInputStream(file);
-             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+    private static String encodeBase64(File file) throws Exception {
+        long estimate = ((file.length() + 2L) / 3L) * 4L;
+        int initialSize = (int) Math.min(Integer.MAX_VALUE, Math.max(1024L, estimate));
+        try (FileInputStream input = new FileInputStream(file)) {
+            return encodeBase64(input, initialSize);
+        }
+    }
+
+    private static String encodeBase64(InputStream input, int initialSize) throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream(initialSize);
+        try (Base64OutputStream encoded = new Base64OutputStream(output, Base64.NO_WRAP)) {
             byte[] buffer = new byte[8192];
             int read;
-            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
-            return out.toByteArray();
+            while ((read = input.read(buffer)) != -1) encoded.write(buffer, 0, read);
         }
+        return output.toString("US-ASCII");
     }
 
     private static String message(Exception e) {

@@ -213,6 +213,40 @@ export async function measureLongJournal(
     });
   }
 
+  // --- photo grid ---------------------------------------------------------
+  // The rows first, which is one query however many photos there are, and
+  // then the bytes, which is one read per thumbnail through the encrypting
+  // store. The grid decodes thumbnails only (PhotoThumb), so this reads
+  // thumbnails only.
+  let photos!: Awaited<ReturnType<Journal['photos']['inJournal']>>;
+  await measure('photo-grid-list', 'photo grid, listing every photo', async () => {
+    photos = await journal.photos.inJournal();
+    return { result: photos, detail: `${photos.length} photos` };
+  });
+
+  await measure('photo-grid-thumbs', 'photo grid, reading every thumbnail', async () => {
+    /* Kept rather than counted. A mounted grid holds every thumbnail it has
+       decoded (PhotoThumb), so what it costs in memory is the bytes still
+       being held, and returning a total would have the heap sample measure
+       nothing. */
+    const thumbs: Uint8Array[] = [];
+    const names = photos.flatMap((photo) => (photo.fileName ? [thumbFileName(photo.fileName)] : []));
+    if (files.readMany) {
+      const BATCH_SIZE = 32;
+      for (let i = 0; i < names.length; i += BATCH_SIZE) {
+        const batch = await files.readMany(names.slice(i, i + BATCH_SIZE));
+        for (const thumb of batch) if (thumb) thumbs.push(thumb);
+      }
+    } else {
+      for (const name of names) {
+        const thumb = await files.read(name);
+        if (thumb) thumbs.push(thumb);
+      }
+    }
+    const bytes = thumbs.reduce((total, thumb) => total + thumb.length, 0);
+    return { result: thumbs, detail: `${thumbs.length} thumbnails, ${mb(bytes)}` };
+  });
+
   // --- archive export -----------------------------------------------------
   // Two halves, because they fail differently: reading the whole journal
   // out by travelling identity, and encrypting it into the container.
@@ -231,7 +265,8 @@ export async function measureLongJournal(
       journal: snapshot.journal,
       preferences: portablePreferences(PREFERENCE_DEFAULTS),
       files: snapshot.files,
-      readFile: snapshot.readFile
+      readFile: snapshot.readFile,
+      readFiles: snapshot.readFiles
     };
     /* Summed rather than collected. A real export streams to a file, and
        collecting the decade into one array would measure an allocation the
@@ -239,32 +274,6 @@ export async function measureLongJournal(
     let bytes = 0;
     for await (const chunk of packArchive(contents, EXPORT_PASSWORD)) bytes += chunk.length;
     return { result: bytes, detail: `${mb(bytes)} archive` };
-  });
-
-  // --- photo grid ---------------------------------------------------------
-  // The rows first, which is one query however many photos there are, and
-  // then the bytes, which is one read per thumbnail through the encrypting
-  // store. The grid decodes thumbnails only (PhotoThumb), so this reads
-  // thumbnails only.
-  let photos!: Awaited<ReturnType<Journal['photos']['inJournal']>>;
-  await measure('photo-grid-list', 'photo grid, listing every photo', async () => {
-    photos = await journal.photos.inJournal();
-    return { result: photos, detail: `${photos.length} photos` };
-  });
-
-  await measure('photo-grid-thumbs', 'photo grid, reading every thumbnail', async () => {
-    /* Kept rather than counted. A mounted grid holds every thumbnail it has
-       decoded (PhotoThumb), so what it costs in memory is the bytes still
-       being held, and returning a total would have the heap sample measure
-       nothing. */
-    const thumbs: Uint8Array[] = [];
-    for (const photo of photos) {
-      if (!photo.fileName) continue;
-      const thumb = await files.read(thumbFileName(photo.fileName));
-      if (thumb) thumbs.push(thumb);
-    }
-    const bytes = thumbs.reduce((total, thumb) => total + thumb.length, 0);
-    return { result: thumbs, detail: `${thumbs.length} thumbnails, ${mb(bytes)}` };
   });
 
   return measurements;

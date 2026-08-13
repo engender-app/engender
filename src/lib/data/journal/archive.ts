@@ -51,6 +51,8 @@ export interface ArchiveSnapshot {
   files: ArchiveFile[];
   /** The bytes of one file named in `files`. */
   readFile(name: string): Promise<Uint8Array>;
+  /** Optional batched read. Results align with `names`; null means missing. */
+  readFiles?(names: string[]): Promise<(Uint8Array | null)[]>;
 }
 
 export interface ArchiveArea {
@@ -259,12 +261,23 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       already, and dropping the row would delete it from the archive
       too. */
   const manifest = async (photos: PhotoRow[]): Promise<ArchiveFile[]> => {
-    const manifested: ArchiveFile[] = [];
-    for (const photo of photos) {
-      for (const name of filesOf(photo.file_path)) {
-        const length = await files.size(name);
-        if (length !== null) manifested.push({ name, length });
+    const names = photos.flatMap((photo) => filesOf(photo.file_path));
+    if (names.length === 0) return [];
+
+    if (files.sizeMany) {
+      const lengths = await files.sizeMany(names);
+      const manifested: ArchiveFile[] = [];
+      for (let i = 0; i < names.length; i++) {
+        const length = lengths[i];
+        if (length !== null) manifested.push({ name: names[i], length });
       }
+      return manifested;
+    }
+
+    const manifested: ArchiveFile[] = [];
+    for (const name of names) {
+      const length = await files.size(name);
+      if (length !== null) manifested.push({ name, length });
     }
     return manifested;
   };
@@ -302,6 +315,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         'SELECT uuid, file_path, entry_id, milestone_id FROM photo ORDER BY order_index, id'
       );
 
+      const archivedFiles = await manifest(photos);
+
       return {
         journal: {
           dimensions: await dimensions(),
@@ -312,7 +327,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           labResults: await labResults(),
           reminders: await reminders()
         },
-        files: await manifest(photos),
+        files: archivedFiles,
         async readFile(name) {
           const bytes = await files.read(name);
           // The manifest is built from the store's own answers moments
@@ -321,6 +336,16 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           // an archive whose lengths no longer add up.
           if (!bytes) throw new Error(`photo file missing while exporting: ${name}`);
           return bytes;
+        },
+        async readFiles(names) {
+          if (names.length === 0) return [];
+          if (!files.readMany) {
+            return Promise.all(names.map(async (name) => {
+              const bytes = await files.read(name);
+              return bytes ?? null;
+            }));
+          }
+          return files.readMany(names);
         }
       };
     }

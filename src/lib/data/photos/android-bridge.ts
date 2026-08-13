@@ -5,7 +5,9 @@ export interface AndroidPhotosBridge {
   captureImage(): Promise<{ image: string | null }>;
   writeFile(options: { name: string; base64: string; directory?: string }): Promise<void>;
   readFile(options: { name: string; directory?: string }): Promise<{ base64: string | null }>;
+  readFiles(options: { names: string[]; directory?: string }): Promise<{ base64: (string | null)[] }>;
   sizeFile(options: { name: string; directory?: string }): Promise<{ size: number | null }>;
+  sizeFiles(options: { names: string[]; directory?: string }): Promise<{ sizes: (number | null)[] }>;
   removeFile(options: { name: string; directory?: string }): Promise<void>;
   listFiles(options?: { directory?: string }): Promise<{ names: string[] }>;
 }
