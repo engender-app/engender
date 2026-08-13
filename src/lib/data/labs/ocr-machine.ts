@@ -165,6 +165,9 @@ export function createOcrMachine(
 
     updateRows(rows) {
       const s = machine.state;
+      // No-op during saving: the UI disables inputs while a save is in flight,
+      // so we silently ignore any stale events rather than letting them corrupt
+      // the row list that is being persisted.
       if (s.tag === 'review' || s.tag === 'save-validation-failed') {
         machine.state = { tag: 'review', rows };
       }
