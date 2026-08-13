@@ -5,8 +5,11 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
+import type { SqliteDriver } from '../sqlite/driver.ts';
 import { BUILT_IN_DIMENSIONS, BUILT_IN_PRESETS, BUILT_IN_TAG_GROUPS } from '../vocabulary/builtins.ts';
+import type { TableName } from '../live/writes.ts';
 import { openJournal } from './journal.ts';
+import { RECONCILE_TABLES, reconcileBuiltIns } from './reconcile.ts';
 
 const count = (db: Awaited<ReturnType<typeof migratedDb>>, table: string): number =>
   (db.raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
@@ -61,4 +64,38 @@ test('restores a missing built-in without touching custom rows', async () => {
   const emotions = groups.find((g) => g.key === 'emotions')!;
   assert.ok(emotions.tags.some((t) => t.id === 'e-happy'), 'e-happy restored');
   assert.ok(emotions.tags.some((t) => t.label === 'proud'), 'custom tag survived');
+});
+
+// The physical schema tables reconcileBuiltIns inserts into, mapped to the
+// logical TableName writes.ts announces (ticket 28's drift guard): a new
+// built-in table added to reconcile.ts without an entry here, or without a
+// matching RECONCILE_TABLES entry, fails this test instead of silently
+// missing its invalidation.
+const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
+  gender_dimension: 'dimension',
+  gender_preset: 'preset',
+  preset_dimension: 'preset',
+  tag_group: 'tag',
+  tag: 'tag'
+};
+
+test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async () => {
+  const db = await migratedDb();
+  const written = new Set<TableName>();
+  const spyingDriver: SqliteDriver = {
+    ...db,
+    async run(sql, params) {
+      const table = /INSERT INTO\s+(\w+)/i.exec(sql)?.[1];
+      if (table) {
+        const logical = PHYSICAL_TO_LOGICAL[table];
+        assert.ok(logical, `reconcileBuiltIns writes ${table}, which no logical table covers`);
+        written.add(logical);
+      }
+      return db.run(sql, params);
+    }
+  };
+
+  await reconcileBuiltIns(spyingDriver);
+
+  assert.deepEqual([...written].toSorted(), [...RECONCILE_TABLES].toSorted());
 });

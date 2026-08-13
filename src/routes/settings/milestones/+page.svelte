@@ -1,7 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
-  import { reference } from '$lib/data/live/reference.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -30,7 +29,7 @@
   let deleteTarget = $state<Milestone | null>(null);
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
-  let sorted = $derived(reference.milestones);
+  let sorted = $derived(vocabulary.milestones);
 
   function statusText(mi: Milestone): string {
     const s = milestoneStatus(mi, todayEpochDay());

@@ -26,6 +26,7 @@
 
 import { markJournalBusy } from '../journal-busy';
 import type { Journal } from '../journal/journal';
+import { RECONCILE_TABLES } from '../journal/reconcile';
 
 /** The tables a query can depend on. Coarser than the schema - one name
     covers a row and everything hanging off it, so `entry` means the entry
@@ -130,11 +131,6 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     reads: ['snapshot', 'previewDaylioImport']
   }
 };
-
-/** Reconciling adds whatever built-in vocabulary is missing, by key. It
-    usually finds nothing to do, and announcing three tables for a no-op is
-    cheaper than asking it to report what it changed. */
-const RECONCILE_TABLES: TableName[] = ['tag', 'dimension', 'preset'];
 
 /** The journal, with every mutation announcing the tables it wrote after it
     resolves - never before, and never when it rejects: a write that threw
