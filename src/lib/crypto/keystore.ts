@@ -18,7 +18,8 @@
 
 import { encrypt, decrypt } from './aesGcm.ts';
 import { deriveKey, randomSalt } from './argon2id.ts';
-import { JOURNAL_ARGON2_PARAMS, type Argon2Params } from './params.ts';
+import { resolveCredentialProfile } from './credential-consumers.ts';
+import type { Argon2Params } from './params.ts';
 
 const KEYSTORE_VERSION = 1;
 const DATA_KEY_LENGTH = 32;
@@ -37,7 +38,7 @@ export interface KeystoreMetadata {
     only ever lives in memory; the metadata is what may be persisted. */
 export async function createKeystore(
   passphrase: string,
-  params: Argon2Params = JOURNAL_ARGON2_PARAMS
+  params: Argon2Params = resolveCredentialProfile('journal-passphrase-setup')
 ): Promise<{ metadata: KeystoreMetadata; dataKey: Uint8Array<ArrayBuffer> }> {
   const dataKey = crypto.getRandomValues(new Uint8Array(DATA_KEY_LENGTH));
   return { metadata: await wrap(dataKey, passphrase, params), dataKey };
@@ -46,7 +47,7 @@ export async function createKeystore(
 export async function wrapDataKeyWithPassphrase(
   dataKey: Uint8Array<ArrayBuffer>,
   passphrase: string,
-  params: Argon2Params = JOURNAL_ARGON2_PARAMS
+  params: Argon2Params = resolveCredentialProfile('journal-passphrase-add')
 ): Promise<KeystoreMetadata> {
   return wrap(dataKey, passphrase, params);
 }
@@ -58,7 +59,11 @@ export async function unlockKeystore(
   metadata: KeystoreMetadata,
   passphrase: string
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const wrappingKey = await deriveKey(passphrase, metadata.salt, metadata.params);
+  const wrappingKey = await deriveKey(
+    passphrase,
+    metadata.salt,
+    resolveCredentialProfile('journal-passphrase-unlock', { persistedParams: metadata.params })
+  );
   return decrypt(wrappingKey, metadata.nonce, metadata.wrappedKey);
 }
 
@@ -69,7 +74,7 @@ export async function rewrapKeystore(
   metadata: KeystoreMetadata,
   currentPassphrase: string,
   newPassphrase: string,
-  params: Argon2Params = JOURNAL_ARGON2_PARAMS
+  params: Argon2Params = resolveCredentialProfile('journal-passphrase-change')
 ): Promise<KeystoreMetadata> {
   const dataKey = await unlockKeystore(metadata, currentPassphrase);
   return wrap(dataKey, newPassphrase, params);

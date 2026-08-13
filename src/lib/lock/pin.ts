@@ -13,21 +13,23 @@
    must not suggest otherwise. */
 
 import { deriveKey, randomSalt } from '../crypto/argon2id.ts';
-import { PIN_ARGON2_PARAMS, type Argon2Params } from '../crypto/params.ts';
+import { resolveCredentialProfile } from '../crypto/credential-consumers.ts';
+import type { Argon2Params } from '../crypto/params.ts';
 
 const RECORD_VERSION = 'v1';
 
 /** `v1$memory$iterations$parallelism$length$salt$hash`, the last two
     base64. One string, because a preference is one value. */
 export async function hashPin(pin: string): Promise<string> {
+  const params = resolveCredentialProfile('pin-hash');
   const salt = randomSalt();
-  const hash = await deriveKey(pin, salt, PIN_ARGON2_PARAMS);
+  const hash = await deriveKey(pin, salt, params);
   return [
     RECORD_VERSION,
-    PIN_ARGON2_PARAMS.memorySize,
-    PIN_ARGON2_PARAMS.iterations,
-    PIN_ARGON2_PARAMS.parallelism,
-    PIN_ARGON2_PARAMS.hashLength,
+    params.memorySize,
+    params.iterations,
+    params.parallelism,
+    params.hashLength,
     base64(salt),
     base64(hash)
   ].join('$');
@@ -42,7 +44,11 @@ export async function verifyPin(pin: string, record: string | null): Promise<boo
   if (!pin) return false;
   const parsed = parseRecord(record);
   if (!parsed) return false;
-  const attempt = await deriveKey(pin, parsed.salt, parsed.params);
+  const attempt = await deriveKey(
+    pin,
+    parsed.salt,
+    resolveCredentialProfile('pin-verify', { persistedParams: parsed.params })
+  );
   return equalBytes(attempt, parsed.hash);
 }
 
