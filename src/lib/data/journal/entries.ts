@@ -303,6 +303,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           ])
         )[0];
         if (!current) throw new Error(`unknown entry: ${input.id}`);
+        const mood = input.mood !== undefined ? input.mood : current.mood;
+        if (mood == null) throw new Error('an entry needs a mood');
 
         const currentDims = await dimsOf(current.id);
         const mergedDims = { ...currentDims, ...input.dims };
@@ -310,7 +312,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const attaching = input.attachPhotos ?? [];
         const removedPhotos = await photosToRemove(current.id, input.removePhotoIds ?? []);
         assertHasContent({
-          mood: input.mood !== undefined ? input.mood : current.mood,
+          mood,
           note: input.note ?? current.note ?? '',
           dimCount: Object.keys(mergedDims).length,
           tagCount: tags.length,
@@ -335,7 +337,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
             [
               input.epochDay ?? current.epoch_day,
               input.timestamp ?? current.timestamp,
-              input.mood !== undefined ? input.mood : current.mood,
+              mood,
               note,
               now(),
               current.id
@@ -370,9 +372,11 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const dims = input.dims ?? {};
       const tags = input.tags ?? [];
       const attachingNew = input.attachPhotos ?? [];
+      const mood = input.mood;
+      if (mood == null) throw new Error('an entry needs a mood');
       await photosToRemove(null, input.removePhotoIds ?? []);
       assertHasContent({
-        mood: input.mood ?? null,
+        mood,
         note: input.note ?? '',
         dimCount: Object.keys(dims).length,
         tagCount: tags.length,
@@ -389,7 +393,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       return driver.transaction(async () => {
         await driver.run(
           'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-          [uuid, input.epochDay, input.timestamp ?? now(), input.mood ?? null, input.note ?? '', now()]
+          [uuid, input.epochDay, input.timestamp ?? now(), mood, input.note ?? '', now()]
         );
         const entryId = await rowidByUuid(driver, 'entry', uuid);
         await indexEntry(entryId, input.note ?? '');

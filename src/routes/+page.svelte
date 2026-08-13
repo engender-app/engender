@@ -6,11 +6,10 @@
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { fmtDay } from '$lib/data/dates';
   import type { Entry } from '$lib/data/types';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
-  import { toast } from '$lib/stores/toasts.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PrideAurora from '$lib/components/PrideAurora.svelte';
@@ -56,10 +55,9 @@
   let streak = $derived(streakQuery.value ?? 0);
   let metricSheetOpen = $state(false);
 
-  async function onQuickLog(v: number | null) {
+  function onQuickLog(v: number | null) {
     if (v == null) return;
-    const id = await journal.entries.upsertEntry({ epochDay: today, mood: v });
-    toast(m.quick_saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`) });
+    goto(`/entry/new/today?seedMood=${v}`);
   }
 </script>
 
