@@ -1,5 +1,25 @@
 apply plugin: 'com.android.application'
 
+def requireReleaseVersion = (System.getenv('ANDROID_REQUIRE_RELEASE_VERSION') ?: '').toBoolean()
+def releaseVersionName = System.getenv('GENDER_DIARY_VERSION')?.trim() ?: '0.0.0-dev'
+def releaseVersionCodeRaw = System.getenv('GENDER_DIARY_VERSION_CODE')?.trim() ?: '1'
+def releaseVersionCode = (releaseVersionCodeRaw ==~ /^\d+$/) ? Integer.parseInt(releaseVersionCodeRaw) : 1
+if (requireReleaseVersion && (releaseVersionName == '0.0.0-dev' || releaseVersionCode == 1)) {
+    throw new GradleException('Release version variables are required: set GENDER_DIARY_VERSION and GENDER_DIARY_VERSION_CODE.')
+}
+
+def requireSigning = (System.getenv('ANDROID_REQUIRE_SIGNING') ?: '').toBoolean()
+def keystorePath = System.getenv('ANDROID_KEYSTORE_PATH')
+def keystorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+def keyAlias = System.getenv('ANDROID_KEY_ALIAS')
+def keyPassword = System.getenv('ANDROID_KEY_PASSWORD') ?: keystorePassword
+def hasReleaseSigning = keystorePath && keystorePassword && keyAlias && keyPassword
+if (requireSigning && !hasReleaseSigning) {
+    throw new GradleException(
+        'Release signing is required but ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD are not all set.'
+    )
+}
+
 android {
     namespace = "dev.barankiewicz.genderdiary"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +27,8 @@ android {
         applicationId "dev.barankiewicz.genderdiary"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode releaseVersionCode
+        versionName releaseVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +36,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(keystorePath)
+                storePassword keystorePassword
+                keyAlias keyAlias
+                keyPassword keyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -63,12 +94,3 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
-
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
-}

@@ -69,8 +69,58 @@ jobs:
         run: npm run check:licences
       # The other half of the dependency policy the spec asks of CI - no
       # Firebase, Play Services, analytics or proprietary runtime SDK in the
-      # Android graph - lands with the Android project, in ticket 18. There is
-      # nothing to check here until one exists.
+      # Android graph - runs in the Android job where Gradle can resolve the
+      # release runtime classpath.
+
+  android:
+    name: Android debug artifact and F-Droid checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+
+      - name: Build web app and sync Android shell
+        run: |
+          npm run build
+          npx cap sync android
+
+      - name: Android dependency policy
+        run: node scripts/check-android-dependencies.mjs
+
+      - name: Build unsigned debug APK
+        run: cd android && ./gradlew :app:assembleDebug
+
+      - name: Keep PR debug APK
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          # Name cannot collide with the release APK ticket 18 publishes.
+          name: gender-diary-android-debug-${{ github.run_id }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+      - name: F-Droid rebuild attempt
+        run: node scripts/fdroid-rebuild-report.mjs
+
+      - name: Keep F-Droid rebuild report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fdroid-rebuild-report-${{ github.run_id }}
+          path: ci-logs/fdroid-rebuild.md
+          retention-days: 30
 
   browser:
     name: Browser tier, walkthroughs and the built app

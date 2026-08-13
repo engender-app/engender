@@ -2,7 +2,9 @@ package dev.barankiewicz.genderdiary.photos;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Build;
 import android.provider.MediaStore;
 import android.util.Base64;
@@ -45,6 +47,16 @@ public class PhotosPlugin extends Plugin {
         startActivityForResult(call, intent, "pickedImages");
     }
 
+    @PluginMethod
+    public void captureImage(PluginCall call) {
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        if (intent.resolveActivity(getContext().getPackageManager()) == null) {
+            call.reject("camera unavailable");
+            return;
+        }
+        startActivityForResult(call, intent, "capturedImage");
+    }
+
     @ActivityCallback
     private void pickedImages(PluginCall call, ActivityResult activityResult) {
         JSObject result = new JSObject();
@@ -73,6 +85,46 @@ public class PhotosPlugin extends Plugin {
                 images.put(readBase64(data.getData()));
             }
             result.put("images", images);
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    @ActivityCallback
+    private void capturedImage(PluginCall call, ActivityResult activityResult) {
+        JSObject result = new JSObject();
+
+        if (activityResult == null || activityResult.getResultCode() != Activity.RESULT_OK) {
+            result.put("image", JSObject.NULL);
+            call.resolve(result);
+            return;
+        }
+
+        Intent data = activityResult.getData();
+        if (data == null) {
+            result.put("image", JSObject.NULL);
+            call.resolve(result);
+            return;
+        }
+
+        try {
+            Bundle extras = data.getExtras();
+            if (extras == null) {
+                result.put("image", JSObject.NULL);
+                call.resolve(result);
+                return;
+            }
+            Object thumbnail = extras.get("data");
+            if (!(thumbnail instanceof Bitmap)) {
+                result.put("image", JSObject.NULL);
+                call.resolve(result);
+                return;
+            }
+
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            ((Bitmap) thumbnail).compress(Bitmap.CompressFormat.JPEG, 92, output);
+            result.put("image", Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP));
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);

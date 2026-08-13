@@ -45,6 +45,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - run: npm ci
 
       - name: Read the version from the signed tag, once
@@ -66,8 +70,51 @@ jobs:
           node scripts/release-notes.mjs > dist/release-notes.md
           cat dist/release-notes.md
 
+      - name: Derive Android version values from the same release version
+        run: |
+          mkdir -p dist
+          node scripts/android-version.mjs "${{ steps.version.outputs.value }}" > dist/android-version.env
+          cat dist/android-version.env >> "$GITHUB_ENV"
+
+      - name: Materialize Android signing key in the protected environment
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          key="$RUNNER_TEMP/upload-keystore.p12"
+          base64 --decode <<<"$ANDROID_KEYSTORE_BASE64" > "$key"
+          chmod 600 "$key"
+          echo "ANDROID_KEYSTORE_PATH=$key" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=${{ vars.ANDROID_KEY_ALIAS }}" >> "$GITHUB_ENV"
+          echo "ANDROID_REQUIRE_SIGNING=true" >> "$GITHUB_ENV"
+          echo "ANDROID_REQUIRE_RELEASE_VERSION=true" >> "$GITHUB_ENV"
+
+      - name: Build signed Android release artifacts
+        run: |
+          npm run build
+          npx cap sync android
+          (cd android && ./gradlew :app:assembleRelease :app:bundleRelease)
+
+          mkdir -p dist/release
+          cp android/app/build/outputs/apk/release/app-release.apk \
+             "dist/release/gender-diary-android-release-${{ steps.version.outputs.value }}.apk"
+          cp android/app/build/outputs/bundle/release/app-release.aab \
+             "dist/release/gender-diary-android-release-${{ steps.version.outputs.value }}.aab"
+
+      - name: Verify release artifacts before packaging
+        run: node scripts/check-release-artifacts.mjs
+
       - name: Build, package, and check what came out
         run: node scripts/package-release.mjs
+
+      - name: Upload App Bundle to Google Play internal
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.barankiewicz.genderdiary
+          releaseFiles: dist/release/gender-diary-android-release-${{ steps.version.outputs.value }}.aab
+          track: internal
+          status: completed
 
       # Android artifacts (ticket 18) join the release here: a job holding the
       # signing key builds the APK and the App Bundle in this same protected
