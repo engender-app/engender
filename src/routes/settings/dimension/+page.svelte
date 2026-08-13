@@ -2,9 +2,9 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
-  import { reference } from '$lib/data/live/reference.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
@@ -39,7 +39,7 @@
     });
     const preset = await journal.dimensions.addPreset({
       name: m.cd_preset_name(),
-      dims: [...reference.activePreset.dims, created.key],
+      dims: [...vocabulary.activePreset.dims, created.key],
     });
     prefs.activePreset = preset.id;
     goto('/settings');
