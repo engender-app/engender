@@ -155,3 +155,39 @@ export function previousCalendarYearRange(epochDay: number): CalendarYearRange {
     year
   };
 }
+
+export interface OngoingWindowRange {
+  start: number;
+  end: number;
+  days: number;
+}
+
+/** An ongoing inclusive window ending on `todayEpochDay`. */
+export function ongoingWindowRange(todayEpochDay: number, days: number): OngoingWindowRange {
+  const width = Math.max(1, Math.floor(days));
+  return {
+    start: todayEpochDay - width + 1,
+    end: todayEpochDay,
+    days: width
+  };
+}
+
+/** The inclusive range from local 1 January of this year through today. */
+export function yearToDateRange(todayEpochDay: number): CalendarYearRange {
+  const year = localDateFromEpochDay(todayEpochDay).getFullYear();
+  return {
+    start: epochDayFromLocalDate(new Date(year, 0, 1)),
+    end: todayEpochDay,
+    year
+  };
+}
+
+/** A custom inclusive range, requiring both boundaries and start <= end. */
+export function customInclusiveRange(
+  startEpochDay: number | null,
+  endEpochDay: number | null
+): { start: number; end: number } | null {
+  if (startEpochDay === null || endEpochDay === null) return null;
+  if (startEpochDay > endEpochDay) return null;
+  return { start: startEpochDay, end: endEpochDay };
+}
