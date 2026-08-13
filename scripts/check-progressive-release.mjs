@@ -5,34 +5,17 @@
 */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import {
+  CHANNEL_STAGE_GATE,
+  RELEASE_MATRIX_CHECKS,
+  STAGE_EVIDENCE_KEYS,
+  STAGE_ORDER,
+  stageIndex
+} from './progressive-release-gate-contract.mjs';
 
-export const STAGE_ORDER = ['stage1', 'stage2', 'stage3', 'stage4', 'stable'];
+export { CHANNEL_STAGE_GATE, RELEASE_MATRIX_CHECKS, STAGE_EVIDENCE_KEYS, STAGE_ORDER };
 
-export const RELEASE_MATRIX_CHECKS = [
-  'update',
-  'migration',
-  'encryptionConversion',
-  'archiveRoundTrip',
-  'scheduledBackup',
-  'rollback'
-];
-
-export const STAGE_EVIDENCE_KEYS = {
-  stage1: ['hostedWebBeta', 'landingSiteLive', 'truthfulAvailabilityLabels'],
-  stage2: ['androidApi26', 'androidCurrent', 'aggressiveBackgroundDevice'],
-  stage3: ['playOpenTesting', 'signedGithubReleaseApk'],
-  stage4: ['fdroidSubmission', 'fdroidRebuildPassed', 'fdroidDependencyCheckPassed'],
-  stable: ['update', 'migration', 'encryptionConversion', 'archiveRoundTrip', 'scheduledBackup', 'rollback']
-};
-
-export const CHANNEL_STAGE_GATE = {
-  web: 'stage1',
-  play: 'stage3',
-  obtainium: 'stage3',
-  fdroid: 'stage4'
-};
-
-/** @typedef {'stage1' | 'stage2' | 'stage3' | 'stage4' | 'stable'} StageName */
+/** @typedef {import('./progressive-release-gate-contract.mjs').StageName} StageName */
 
 /** @typedef {{
  *   releaseVersion: string;
@@ -47,13 +30,6 @@ function parseIsoDate(value) {
   if (typeof value !== 'string') return null;
   const t = Date.parse(value);
   return Number.isNaN(t) ? null : t;
-}
-
-/**
- * @param {string} stage
- */
-function stageIndex(stage) {
-  return STAGE_ORDER.indexOf(stage);
 }
 
 /**

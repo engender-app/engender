@@ -1,5 +1,12 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { progressiveReleaseProblems } from '../scripts/check-progressive-release.mjs';
+import {
+  CHANNEL_STAGE_GATE,
+  RELEASE_MATRIX_CHECKS,
+  STAGE_EVIDENCE_KEYS,
+  STAGE_ORDER
+} from '../scripts/progressive-release-gate-contract.mjs';
 
 function baseMatrix(ranAt = '2026-08-13T09:00:00Z') {
   return {
@@ -76,6 +83,10 @@ function fullRecord() {
   };
 }
 
+function progressiveTemplate() {
+  return JSON.parse(readFileSync('docs/progressive-release-record.template.json', 'utf8'));
+}
+
 describe('progressiveReleaseProblems', () => {
   it('fails malformed top-level structure', () => {
     const problems = progressiveReleaseProblems({ releaseVersion: '' }, 'stage1');
@@ -122,5 +133,24 @@ describe('progressiveReleaseProblems', () => {
     const problems = progressiveReleaseProblems(record, 'stage1');
     expect(problems.some((p) => p.includes('stage1.passedAt must be an ISO timestamp'))).toBe(true);
     expect(problems.some((p) => p.includes("channels.web.state must be 'label-only' or 'live'"))).toBe(true);
+  });
+
+  it('keeps template stages, checks, evidence keys, and channel gates aligned with contract', () => {
+    const template = progressiveTemplate();
+    expect(Object.keys(template.stages)).toEqual(STAGE_ORDER);
+
+    for (const stage of STAGE_ORDER as Array<keyof typeof STAGE_EVIDENCE_KEYS>) {
+      const stageChecks = Object.keys(template.stages[stage].releaseMatrix.checks);
+      const stageEvidence = Object.keys(template.stages[stage].evidence);
+
+      expect(stageChecks).toEqual(RELEASE_MATRIX_CHECKS);
+      expect(stageEvidence).toEqual(STAGE_EVIDENCE_KEYS[stage]);
+    }
+
+    expect(Object.keys(template.channels)).toEqual(Object.keys(CHANNEL_STAGE_GATE));
+  });
+
+  it('accepts the template as valid through stable', () => {
+    expect(progressiveReleaseProblems(progressiveTemplate(), 'stable')).toEqual([]);
   });
 });
