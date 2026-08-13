@@ -47,6 +47,16 @@ async function typePin(digits) {
   for (const digit of digits) await page.locator(`[data-key="${digit}"]`).click();
 }
 
+async function expectNoHorizontalOverflow(selector) {
+  const overflow = await page.locator(selector).evaluate((node) => ({
+    scrollWidth: node.scrollWidth,
+    clientWidth: node.clientWidth
+  }));
+  if (overflow.scrollWidth > overflow.clientWidth) {
+    throw new Error(`${selector} overflowed: ${JSON.stringify(overflow)}`);
+  }
+}
+
 /* RFC 4180, enough of it to read back what the plain export writes (ticket
    15): a quoted field can hold commas, newlines and doubled quotes, and
    splitting on commas would call every one of those a new column. */
@@ -556,12 +566,32 @@ try {
 
 /* 13. onboarding end-to-end via demo jump */
 try {
+  await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
   await page.selectOption('#demo-jump', 'first-run');
   await page.waitForSelector('[data-next]');
   await page.locator('[data-next]').click();
   await page.locator('#ob-name').fill('Ola');
   await page.locator('[data-next]').click();
+
+  const presetButtons = page.locator('[data-preset]');
+  const presetNames = await presetButtons.locator('.row-title').allTextContents();
+  const expectedPresetNames = [
+    'Femininity',
+    'Masculinity',
+    'Fem + masc',
+    'Fluid spectrum',
+    'Agender axis',
+    'Partly feminine',
+    'Partly masculine',
+    'Full spectrum'
+  ];
+  if (JSON.stringify(presetNames) !== JSON.stringify(expectedPresetNames)) {
+    throw new Error('onboarding preset names: ' + JSON.stringify(presetNames));
+  }
+  if ((await presetButtons.count()) !== 8) throw new Error('onboarding preset count was not 8');
+  await expectNoHorizontalOverflow('.app-viewport');
+
   await page.locator('[data-preset="p-nb"]').click();
   await page.locator('[data-next]').click();
   await page.locator('[data-tpl="hrt_start"]').click();
@@ -574,6 +604,39 @@ try {
   if ((await page.locator('.milestone-card').count()) < 1) throw new Error('no milestone on Home');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
+
+/* 13b. settings preset picker lists all built-ins at 390px and each pick persists */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/settings');
+  await page.getByRole('button', { name: /Gender preset/i }).click();
+
+  const picks = page.locator('[data-pick-preset]');
+  const names = await picks.locator('.row-title').allTextContents();
+  const expected = [
+    ['p-btw', 'Femininity'],
+    ['p-masc', 'Masculinity'],
+    ['p-fem-masc', 'Fem + masc'],
+    ['p-fluid', 'Fluid spectrum'],
+    ['p-agender', 'Agender axis'],
+    ['p-demi-fem', 'Partly feminine'],
+    ['p-demi-masc', 'Partly masculine'],
+    ['p-nb', 'Full spectrum']
+  ];
+  if (JSON.stringify(names) !== JSON.stringify(expected.map(([, label]) => label))) {
+    throw new Error('settings preset names: ' + JSON.stringify(names));
+  }
+  if ((await picks.count()) !== expected.length) throw new Error('settings preset count was not 8');
+  await expectNoHorizontalOverflow('.app-viewport');
+
+  for (const [key, label] of expected) {
+    await page.locator(`[data-pick-preset="${key}"]`).click();
+    await page.waitForSelector(`[data-active-preset-name]:text-is("${label}")`);
+    await page.getByRole('button', { name: /Gender preset/i }).click();
+    await page.waitForSelector(`[data-pick-preset="${key}"][data-selected="true"]`);
+  }
+  ok('settings preset picker lists and persists all built-ins');
+} catch (e) { fail('settings preset picker', e); }
 
 /* 14. desktop: rail via container query at wide viewport */
 try {

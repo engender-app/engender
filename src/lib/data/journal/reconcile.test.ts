@@ -33,7 +33,7 @@ test('seeds every built-in dimension, preset, group and tag into an empty journa
     )
     .all()
     .map((r) => (r as { key: string }).key);
-  assert.deepEqual(nb, [...BUILT_IN_PRESETS[1].dims]);
+  assert.deepEqual(nb, [...BUILT_IN_PRESETS.find((p) => p.key === 'p-nb')!.dims]);
 });
 
 test('running twice changes nothing', async () => {
