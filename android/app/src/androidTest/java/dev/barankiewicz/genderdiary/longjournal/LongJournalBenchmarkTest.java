@@ -63,8 +63,10 @@ public class LongJournalBenchmarkTest {
     /** The database the probe opens - deleted before each run so it starts empty. */
     private static final String PROBE_DATABASE = "long-journal-benchmark.sqlite3";
 
-    /** 10 minutes: the probe generates a decade of journal entries with photos. */
-    private static final long RESULT_TIMEOUT_SECONDS = 600;
+    /** 60 minutes: the probe generates a decade of journal entries with photos on real device.
+        Device I/O and encryption overhead make this ~14x slower than headless Chrome (~44s).
+        Real device timing (Pixel 10a GrapheneOS): fixture 600s+, measurements 300+s. */
+    private static final long RESULT_TIMEOUT_SECONDS = 3600;
 
     @Test
     public void longJournalMeasurementsAreWithinBudget() throws Exception {
