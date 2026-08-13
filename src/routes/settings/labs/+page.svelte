@@ -104,12 +104,16 @@
           : ocr.state.error === 'missing-date'
             ? m.labs_ocr_missing_date()
             : m.labs_ocr_invalid_date()
-      : ''
+      : ocr.state.tag === 'save-failed'
+        ? m.labs_ocr_failed()
+        : ''
   );
 
-  // The review rows, available from both review and save-validation-failed states.
+  // The review rows, available from review, save-validation-failed, and save-failed states.
   let ocrRows = $derived<OcrReviewRow[]>(
-    ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed'
+    ocr.state.tag === 'review' ||
+    ocr.state.tag === 'save-validation-failed' ||
+    ocr.state.tag === 'save-failed'
       ? ocr.state.rows
       : []
   );
@@ -119,7 +123,7 @@
 
   // Title for the sheet header.
   let ocrSheetTitle = $derived(
-    ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving'
+    ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving' || ocr.state.tag === 'save-failed'
       ? m.labs_ocr_review_sheet()
       : ocr.state.tag === 'no-rows'
         ? m.labs_ocr_empty_sheet()
@@ -367,7 +371,7 @@
         <button class="btn btn-primary" onclick={() => { ocr.close(); openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
         <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
       </div>
-    {:else if ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving'}
+    {:else if ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving' || ocr.state.tag === 'save-failed'}
       <h3>{m.labs_ocr_review_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-3)">{m.labs_ocr_review_intro()}</p>
       {#if ocrValidationError}

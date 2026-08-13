@@ -328,3 +328,59 @@ describe('OcrMachine – picker cancelled', () => {
     expect(m.state.tag).toBe('picking');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Save-failed path (saver.saveResult throws)
+// ---------------------------------------------------------------------------
+
+function saverThatThrows(): OcrSaver {
+  return {
+    async getExistingResults() { return []; },
+    async saveResult() { throw new Error('Network error'); }
+  };
+}
+
+describe('OcrMachine – save-failed path', () => {
+  test('lands in save-failed when saveResult throws', async () => {
+    const m = createOcrMachine(
+      imageSourceThat(new Uint8Array([1])),
+      recognizerThat(GOOD_OCR_TEXT),
+      saverThatThrows()
+    );
+    m.open();
+    await m.pickSource('gallery');
+    if (m.state.tag !== 'review') throw new Error(`expected review, got ${m.state.tag}`);
+    await m.save();
+    expect(m.state).toMatchObject({ tag: 'save-failed' });
+  });
+
+  test('save-failed preserves the rows and error text', async () => {
+    const m = createOcrMachine(
+      imageSourceThat(new Uint8Array([1])),
+      recognizerThat(GOOD_OCR_TEXT),
+      saverThatThrows()
+    );
+    m.open();
+    await m.pickSource('gallery');
+    if (m.state.tag !== 'review') throw new Error(`expected review, got ${m.state.tag}`);
+    await m.save();
+    const s = m.state as OcrMachineState;
+    if (s.tag !== 'save-failed') throw new Error('expected save-failed');
+    expect(s.rows).toHaveLength(1);
+    expect(s.error).toContain('Network error');
+  });
+
+  test('retry from save-failed returns to picking with no stale rows', async () => {
+    const m = createOcrMachine(
+      imageSourceThat(new Uint8Array([1])),
+      recognizerThat(GOOD_OCR_TEXT),
+      saverThatThrows()
+    );
+    m.open();
+    await m.pickSource('gallery');
+    if (m.state.tag !== 'review') throw new Error(`expected review, got ${m.state.tag}`);
+    await m.save();
+    m.retry();
+    expect(m.state.tag).toBe('picking');
+  });
+});
