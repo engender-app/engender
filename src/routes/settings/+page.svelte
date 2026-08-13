@@ -106,7 +106,7 @@
       <span class="row-icon"><Icon name="heart" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.gender_preset()}</span>
-        <span class="row-subtitle">{preset.name}</span>
+        <span class="row-subtitle" data-active-preset-name>{preset.name}</span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </button>
@@ -265,6 +265,7 @@
       {#each vocabulary.presets as p (p.id)}
         <button
           class="list-row"
+          data-selected={prefs.activePreset === p.id ? 'true' : 'false'}
           data-pick-preset={p.id}
           onclick={() => {
             prefs.activePreset = p.id;

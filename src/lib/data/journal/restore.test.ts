@@ -11,6 +11,7 @@ import { test } from 'vitest';
 import { thumbFileName } from '../photos/names.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
+import { BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
 import { openJournal, type Journal } from './journal.ts';
 import type { RestoreContents } from './restore.ts';
 
@@ -219,7 +220,10 @@ test('merge does not duplicate built-ins either, however they arrived', async ()
   assert.equal(await rowCount(target.db, "tag WHERE key = 'e-happy'"), 1);
   assert.equal(await rowCount(target.db, "tag_group WHERE key = 'activities'"), 1);
   assert.equal(await rowCount(target.db, "gender_preset WHERE key = 'p-nb'"), 1);
-  assert.equal(await rowCount(target.db, 'preset_dimension'), 2 + 5 + 2);
+  assert.equal(
+    await rowCount(target.db, 'preset_dimension'),
+    BUILT_IN_PRESETS.reduce((sum, preset) => sum + preset.dims.length, 0) + 2
+  );
 });
 
 test('a built-in preset the archive does not carry keeps the dimensions it was reconciled with', async () => {
@@ -404,7 +408,7 @@ test('importing into a journal that has never been through a boot works', async 
 
   assert.equal((await target.entries.entriesForDay(20000)).length, 1);
   assert.equal((await target.dimensions.getDimensions()).filter((d) => d.builtIn).length, 5);
-  assert.equal((await target.dimensions.getPresets()).filter((p) => p.builtIn).length, 2);
+  assert.equal((await target.dimensions.getPresets()).filter((p) => p.builtIn).length, BUILT_IN_PRESETS.length);
   assert.equal(await rowCount(db, 'pref'), 0);
 });
 

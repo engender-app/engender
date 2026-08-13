@@ -58,6 +58,12 @@ export const moodName = (value: number): string => MOOD_NAME[value - 1]?.() ?? S
 
 const PRESET_NAME: Record<BuiltInPresetKey, Message> = {
   'p-btw': m.preset_p_btw,
+  'p-masc': m.preset_p_masc,
+  'p-fem-masc': m.preset_p_fem_masc,
+  'p-fluid': m.preset_p_fluid,
+  'p-agender': m.preset_p_agender,
+  'p-demi-fem': m.preset_p_demi_fem,
+  'p-demi-masc': m.preset_p_demi_masc,
   'p-nb': m.preset_p_nb
 };
 
