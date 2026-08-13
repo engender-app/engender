@@ -9,10 +9,10 @@
    Nothing here is a Svelte rune, so it runs and is tested under the Node
    tier the same way entryContent.ts and entries.ts already are. */
 
-import { entryIsEmpty } from './entryContent.ts';
-import type { Entry } from './types.ts';
-import type { EntryInput } from './journal/entries.ts';
-import type { NormalizedPhoto } from './journal/photos.ts';
+import { entryIsEmpty } from './entryContent';
+import type { Entry } from './types';
+import type { EntryInput } from './journal/entries';
+import type { NormalizedPhoto } from './journal/photos';
 import type { EditorPhoto } from '$lib/stores/photoPicking';
 
 export interface EntryDraft {
@@ -89,7 +89,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry): EntryDraft
 
     removePhoto(index) {
       const [gone] = this.photos.splice(index, 1);
-      if (gone?.kind === 'stored') this.removedPhotoIds.push(gone.photo.id);
+      if (gone.kind === 'stored') this.removedPhotoIds.push(gone.photo.id);
     },
 
     toUpsert() {
