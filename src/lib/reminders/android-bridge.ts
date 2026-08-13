@@ -13,6 +13,9 @@ export interface AndroidReminderSyncPayload {
   checkInEnabled: boolean;
   checkInTime: string;
   latestEntryEpochDay: number | null;
+  /** Reminder notifications drop the reminder's own title for a generic
+      one when true (ticket 15). */
+  hideNotificationTitles: boolean;
   texts: AndroidReminderTexts;
 }
 

@@ -6,6 +6,7 @@ export function buildAndroidReminderPayload(input: {
   checkInEnabled: boolean;
   checkInTime: string;
   latestEntryEpochDay: number | null;
+  hideNotificationTitles: boolean;
   texts: AndroidReminderTexts;
 }): AndroidReminderSyncPayload {
   return {
@@ -13,6 +14,7 @@ export function buildAndroidReminderPayload(input: {
     checkInEnabled: input.checkInEnabled,
     checkInTime: input.checkInTime,
     latestEntryEpochDay: input.latestEntryEpochDay,
+    hideNotificationTitles: input.hideNotificationTitles,
     texts: { ...input.texts }
   };
 }
