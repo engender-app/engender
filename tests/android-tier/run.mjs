@@ -181,7 +181,7 @@ function reportInstrumentation(avd, output) {
 }
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of ['contract', 'encryption']) {
+for (const probe of ['contract', 'encryption', 'archive']) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }

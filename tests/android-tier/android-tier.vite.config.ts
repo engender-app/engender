@@ -20,6 +20,7 @@
    ANDROID_TIER_PROBE picks which one; run.mjs builds both. */
 import { defineConfig } from 'vite';
 import { join } from 'node:path';
+import sqlocal from 'sqlocal/vite';
 
 const ASSETS = 'android/app/src/androidTest/assets';
 
@@ -27,7 +28,9 @@ const PROBES = {
   /** Ticket 11: the shared journal contract suite over the native driver. */
   contract: { root: '.', outDir: `${ASSETS}/probe` },
   /** Ticket 13: seeds a journal so the claim gate can read its bytes. */
-  encryption: { root: 'encryption', outDir: `${ASSETS}/encryption-probe` }
+  encryption: { root: 'encryption', outDir: `${ASSETS}/encryption-probe` },
+  /** Ticket 17: archive import/export between web and Android implementations. */
+  archive: { root: 'archive', outDir: `${ASSETS}/archive-cross-probe` }
 };
 
 const name = process.env.ANDROID_TIER_PROBE ?? 'contract';
@@ -39,6 +42,13 @@ const repo = join(import.meta.dirname, '../..');
 export default defineConfig({
   root: join(import.meta.dirname, probe.root),
   base: './',
+  plugins: [sqlocal()],
+  optimizeDeps: {
+    exclude: ['@evolu/sqlite-wasm']
+  },
+  worker: {
+    format: 'es'
+  },
   build: {
     outDir: join(repo, probe.outDir),
     emptyOutDir: true,

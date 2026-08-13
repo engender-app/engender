@@ -374,11 +374,9 @@ try {
     ok('the downloaded file is the archive, and its version, KDF parameters and salt read without a password');
   else fail('the downloaded file is the archive with a readable plaintext header', `${bytes.length} bytes, magic ${magic}`);
 
-  /* Not covered here: the same file opening on Android. The Capacitor
-     shell does not exist yet, so the acceptance line about a round trip
-     between the two platforms is half-done - this is the web half, and
-     the Android half has to run against the shell when it lands. */
-  console.log('SKIP  an archive produced on web imports on Android: no Capacitor shell to run it against yet');
+  // Cross-platform archive round-trips now run in the Android tier, where
+  // one probe can boot both the web and Android storage stacks in one app.
+  console.log('INFO  cross-platform archive round-trips are verified in tests/android-tier');
 } catch (e) {
   fail('ticket 13 browser tier', e.message ?? String(e));
 }
