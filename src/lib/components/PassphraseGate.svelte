@@ -22,6 +22,7 @@
 
   import { m } from '$lib/paraglide/messages';
   import { bootState, submitPassphraseSetup, submitPassphraseUnlock, submitSkipSetup, resetApp } from '$lib/stores/boot.svelte';
+  import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import Icon from './Icon.svelte';
   import PrideAurora from './PrideAurora.svelte';
@@ -36,7 +37,8 @@
   let skipAcknowledged = $state(false);
   let resetting = $state(false);
 
-  let mode = $derived(bootState.status === 'needs-setup' ? 'setup' : 'unlock');
+  let mode = $derived(passphraseMode(bootState));
+  let screen = $derived(passphraseScreen(bootState));
   /** The device holds a plaintext Journal, so this passphrase converts it
       rather than opening one. */
   let converting = $derived(bootState.conversion !== null);
@@ -67,6 +69,7 @@
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     if (busy) return;
+    if (mode === null) return;
     error = '';
 
     if (mode === 'setup') {
@@ -127,7 +130,7 @@
   }
 </script>
 
-{#if bootState.status === 'conversion-refused'}
+{#if screen === 'conversion-refused'}
   <div class="screen">
     <PrideAurora />
     <div class="applock">
@@ -145,7 +148,7 @@
       </p>
     </div>
   </div>
-{:else if bootState.status === 'converting'}
+{:else if screen === 'converting'}
   <div class="screen">
     <PrideAurora />
     <div class="applock">
@@ -158,7 +161,7 @@
       <p class="ob-text small" style="text-align:center">{m.pp_converting_note()}</p>
     </div>
   </div>
-{:else}
+{:else if screen === 'form'}
 <div class="screen">
   <PrideAurora />
   <div class="applock">
