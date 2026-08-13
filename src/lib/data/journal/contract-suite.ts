@@ -133,7 +133,7 @@ export async function runJournalContract(
     ];
     const ids: number[] = [];
     for (const [i, note] of notes.entries()) {
-      ids.push(await journal.entries.upsertEntry({ epochDay: 500 + i, note }));
+      ids.push(await journal.entries.upsertEntry({ epochDay: 500 + i, mood: 3, note }));
     }
     const found = async (query: string) =>
       (await journal.entries.searchEntries(query, [])).map((e) => e.note);
@@ -190,7 +190,7 @@ export async function runJournalContract(
      compiled with SQLITE_OMIT_WINDOWFUNC fails here and nowhere else. */
   await r.section('window functions', async () => {
     for (const day of [1000, 1001, 1002, 1004]) {
-      await journal.entries.upsertEntry({ epochDay: day, note: `day ${day}` });
+      await journal.entries.upsertEntry({ epochDay: day, mood: 3, note: `day ${day}` });
     }
     r.equal('the streak counts the run ending today', await journal.stats.streak(1002), 3);
     r.equal('a run that ended before yesterday is not a streak', await journal.stats.streak(1010), 0);
@@ -207,7 +207,7 @@ export async function runJournalContract(
     const full = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
     const thumb = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 9, 8, 7]);
 
-    const entryId = await journal.entries.upsertEntry({ epochDay: 2111, note: 'photo owner' });
+    const entryId = await journal.entries.upsertEntry({ epochDay: 2111, mood: 3, note: 'photo owner' });
     const photoId = await journal.photos.attach({ entryId }, { full, thumb });
     const entry = await journal.entries.getEntry(entryId);
     const fileName = entry?.photos[0]?.fileName ?? null;

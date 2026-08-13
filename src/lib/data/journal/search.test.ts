@@ -14,7 +14,7 @@ async function journalWithNotes(notes: string[]) {
   const { journal, db } = await journalWithBuiltIns();
   const ids: number[] = [];
   for (const [i, note] of notes.entries()) {
-    ids.push(await journal.entries.upsertEntry({ epochDay: 100 + i, note }));
+    ids.push(await journal.entries.upsertEntry({ epochDay: 100 + i, mood: 3, note }));
   }
   const found = async (query: string) => (await journal.entries.searchEntries(query, [])).map((e) => e.note);
   return { journal, db, ids, found };
@@ -62,9 +62,9 @@ test('every word has to appear somewhere in the note', async () => {
 
 test('results come back newest first, by day then by time within the day', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 5, note: 'kawa oldest' });
-  await journal.entries.upsertEntry({ epochDay: 200, timestamp: 1, note: 'kawa earlier that day' });
-  await journal.entries.upsertEntry({ epochDay: 200, timestamp: 9, note: 'kawa later that day' });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 5, mood: 3, note: 'kawa oldest' });
+  await journal.entries.upsertEntry({ epochDay: 200, timestamp: 1, mood: 3, note: 'kawa earlier that day' });
+  await journal.entries.upsertEntry({ epochDay: 200, timestamp: 9, mood: 3, note: 'kawa later that day' });
 
   const hits = await journal.entries.searchEntries('kawa', []);
   assert.deepEqual(
@@ -93,8 +93,8 @@ test('typed FTS5 syntax is searched for as words rather than obeyed or thrown', 
 
 test('entries carrying a matched tag come back alongside the note matches', async () => {
   const { journal } = await journalWithBuiltIns();
-  const tagged = await journal.entries.upsertEntry({ epochDay: 100, tags: ['e-happy'] });
-  const noted = await journal.entries.upsertEntry({ epochDay: 101, note: 'a happy note' });
+  const tagged = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-happy'] });
+  const noted = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: 'a happy note' });
 
   const hits = await journal.entries.searchEntries('happy', ['e-happy']);
   assert.deepEqual(
@@ -105,7 +105,7 @@ test('entries carrying a matched tag come back alongside the note matches', asyn
 
 test('an entry matching both its note and a tag appears once', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, note: 'feeling happy', tags: ['e-happy'] });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, note: 'feeling happy', tags: ['e-happy'] });
 
   const hits = await journal.entries.searchEntries('happy', ['e-happy']);
   assert.deepEqual(
@@ -116,7 +116,7 @@ test('an entry matching both its note and a tag appears once', async () => {
 
 test('a tag match stands on its own when the query matches no note', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, tags: ['e-hopeful'] });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-hopeful'] });
 
   const hits = await journal.entries.searchEntries('hopeful', ['e-hopeful']);
   assert.deepEqual(
@@ -128,7 +128,7 @@ test('a tag match stands on its own when the query matches no note', async () =>
 test('a custom tag matches by uuid, the way a built-in matches by key', async () => {
   const { journal } = await journalWithBuiltIns();
   const tag = await journal.tags.addTag('emotions', 'zażółć');
-  const id = await journal.entries.upsertEntry({ epochDay: 100, tags: [tag.id] });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: [tag.id] });
 
   assert.deepEqual((await journal.entries.searchEntries('zazolc', [tag.id])).map((e) => e.id), [id]);
 });
@@ -138,14 +138,14 @@ test('tag ids alone still search when the query itself has no searchable text', 
   // in and disarmed: an empty FTS5 expression is a syntax error, so building
   // this query with both halves always present throws here.
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, tags: ['e-happy'] });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-happy'] });
 
   assert.deepEqual((await journal.entries.searchEntries('...', ['e-happy'])).map((e) => e.id), [id]);
 });
 
 test('editing a note replaces what search finds, leaving nothing of the old text', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, note: 'spałem w łóżko' });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, note: 'spałem w łóżko' });
 
   await journal.entries.upsertEntry({ id, note: 'ćwiczenia rano' });
 
@@ -157,7 +157,7 @@ test('an edit that leaves the note alone keeps it findable', async () => {
   // upsertEntry takes a partial: changing only the mood must not blank the
   // indexed text, the way passing note: undefined through a naive reindex would.
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, note: 'spałem w łóżko' });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, note: 'spałem w łóżko' });
 
   await journal.entries.upsertEntry({ id, mood: 5 });
 
@@ -166,7 +166,7 @@ test('an edit that leaves the note alone keeps it findable', async () => {
 
 test('a deleted entry stops being findable', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, note: 'spałem w łóżko' });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, note: 'spałem w łóżko' });
 
   await journal.entries.deleteEntry(id);
 
@@ -177,7 +177,7 @@ test('the index holds one row per entry, so a reused rowid cannot inherit old te
   // AUTOINCREMENT makes rowid reuse unlikely rather than impossible, and a
   // stale index row would surface as a hit joined to the wrong entry.
   const { journal, db } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, note: 'spałem w łóżko' });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, note: 'spałem w łóżko' });
   await journal.entries.upsertEntry({ id, note: 'ćwiczenia rano' });
 
   const rows = db.raw.prepare('SELECT COUNT(*) AS n FROM entry_fts').get() as { n: number };
