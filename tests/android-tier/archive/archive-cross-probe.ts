@@ -41,6 +41,14 @@ const ANDROID_KEY = new Uint8Array(Array.from({ length: 32 }, (_, i) => (i * 5 +
 
 const bytes = (text: string) => new TextEncoder().encode(text) as Uint8Array<ArrayBuffer>;
 
+function bytesEqual(a: Uint8Array | null, b: Uint8Array) {
+  if (!a || a.byteLength !== b.byteLength) return false;
+  for (let i = 0; i < a.byteLength; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 async function* oneShot(input: Uint8Array): AsyncGenerator<Uint8Array> {
   yield input;
 }
@@ -255,8 +263,8 @@ async function verifyImportedState(target: Handle, marker: string, sourceMeta: A
     importedMilestonePresent: Boolean(milestone),
     importedReminderPresent: reminderTitles.includes(sourceMeta.reminder),
     importedLabPresent: analytes.includes(sourceMeta.analyte),
-    importedEntryPhoto: new TextDecoder().decode(entryPhotoBytes ?? new Uint8Array()) === `entry-full-${marker}`,
-    importedMilestonePhoto: new TextDecoder().decode(milestonePhotoBytes ?? new Uint8Array()) === `milestone-full-${marker}`,
+    importedEntryPhoto: bytesEqual(entryPhotoBytes, bytes(`entry-full-${marker}`)),
+    importedMilestonePhoto: bytesEqual(milestonePhotoBytes, bytes(`milestone-full-${marker}`)),
     targetOnlyStillThere: entries.some((entry) => entry.note === `target-only-${marker}`)
   };
 }
