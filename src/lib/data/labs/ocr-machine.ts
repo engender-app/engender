@@ -1,4 +1,5 @@
 import {
+  applyPreferredUnitDefaults,
   buildDuplicateKeys,
   isPermissionDenied,
   makeReviewRows,
@@ -33,6 +34,7 @@ export interface OcrSaver {
     unit: string;
     note: string;
   }): Promise<void>;
+  getPreferredUnit?(analyte: string): string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,7 +128,14 @@ export function createOcrMachine(
         return;
       }
 
-      const parsed = parseOcrLabRows(text);
+      const parsed = applyPreferredUnitDefaults(
+        parseOcrLabRows(text),
+        {
+          estradiol: saver.getPreferredUnit?.('estradiol') ?? undefined,
+          testosterone: saver.getPreferredUnit?.('testosterone') ?? undefined,
+          prolactin: saver.getPreferredUnit?.('prolactin') ?? undefined
+        }
+      );
       if (!parsed.length) {
         machine.state = { tag: 'no-rows' };
         return;
