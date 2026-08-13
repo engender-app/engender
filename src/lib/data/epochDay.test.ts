@@ -18,9 +18,12 @@ import {
   dateInputValueFromEpochDay,
   calendarDuration,
   anniversaryYears,
+  customInclusiveRange,
   nextAnniversaryEpochDay,
+  ongoingWindowRange,
   previousCalendarMonthRange,
-  previousCalendarYearRange
+  previousCalendarYearRange,
+  yearToDateRange
 } from './epochDay.ts';
 
 const tz = process.env.TZ ?? '(system default)';
@@ -199,4 +202,53 @@ test(`previousCalendarYearRange covers the leap year offered by a January recap 
   expect(range.year).toBe(2024);
   expect(range.start).toBe(epochDayFromLocalDate(new Date(2024, 0, 1)));
   expect(range.end).toBe(epochDayFromLocalDate(new Date(2024, 11, 31)));
+});
+
+test(`ongoingWindowRange(7) includes today and the six days before under TZ=${tz}`, () => {
+  const today = epochDayFromLocalDate(new Date(2026, 7, 13));
+  expect(ongoingWindowRange(today, 7)).toEqual({ start: today - 6, end: today, days: 7 });
+});
+
+test(`ongoingWindowRange(30) stays inclusive under TZ=${tz}`, () => {
+  const today = epochDayFromLocalDate(new Date(2026, 7, 13));
+  const range = ongoingWindowRange(today, 30);
+  expect(range.start).toBe(today - 29);
+  expect(range.end).toBe(today);
+  expect(range.days).toBe(30);
+});
+
+test(`ongoingWindowRange(90) stays inclusive under TZ=${tz}`, () => {
+  const today = epochDayFromLocalDate(new Date(2026, 7, 13));
+  const range = ongoingWindowRange(today, 90);
+  expect(range.start).toBe(today - 89);
+  expect(range.end).toBe(today);
+  expect(range.days).toBe(90);
+});
+
+test(`yearToDateRange starts on local January 1 and ends on today under TZ=${tz}`, () => {
+  const today = epochDayFromLocalDate(new Date(2026, 7, 13));
+  expect(yearToDateRange(today)).toEqual({
+    start: epochDayFromLocalDate(new Date(2026, 0, 1)),
+    end: today,
+    year: 2026
+  });
+});
+
+test(`customInclusiveRange requires both boundaries under TZ=${tz}`, () => {
+  const start = epochDayFromLocalDate(new Date(2026, 7, 1));
+  const end = epochDayFromLocalDate(new Date(2026, 7, 13));
+  expect(customInclusiveRange(null, end)).toBeNull();
+  expect(customInclusiveRange(start, null)).toBeNull();
+});
+
+test(`customInclusiveRange keeps both inclusive boundaries, including today, under TZ=${tz}`, () => {
+  const start = epochDayFromLocalDate(new Date(2026, 7, 1));
+  const end = epochDayFromLocalDate(new Date(2026, 7, 13));
+  expect(customInclusiveRange(start, end)).toEqual({ start, end });
+});
+
+test(`customInclusiveRange rejects reversed boundaries under TZ=${tz}`, () => {
+  const start = epochDayFromLocalDate(new Date(2026, 7, 13));
+  const end = epochDayFromLocalDate(new Date(2026, 7, 1));
+  expect(customInclusiveRange(start, end)).toBeNull();
 });
