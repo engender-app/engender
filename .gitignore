@@ -21,6 +21,9 @@ ci-logs/
 .claude/
 CLAUDE.md
 docs/agents/
+prd.md
+docs/phase-2-translation-accessibility-audit.md
+messages/untranslated-literals.txt
 
 # The same rule for the other assistants, listed ahead of anyone using one, since
 # the repo is public and these files carry working notes rather than product
