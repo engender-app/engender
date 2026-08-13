@@ -129,15 +129,19 @@ shows the wrong-password state).
 here merge locally and main is where work actually lands. It installs from the
 lockfile and then splits: one job builds, type-checks, runs the Node tier and
 the copy and licence checks; the other drives a real Chromium through the
-browser tier, the walkthroughs and `verify:build`. A failed browser run keeps
-its output as an artifact for a week - every fixture in it is synthetic, and no
-job in that workflow is given a secret.
+browser tier, the walkthroughs and `verify:build`; and the Android job builds an
+unsigned debug APK, checks the Android runtime graph against the no-Firebase/no-
+analytics policy, and records an F-Droid rebuild attempt report. A failed
+browser run keeps its output as an artifact for a week - every fixture in it is
+synthetic, and no job in that workflow is given a secret.
 
 `.github/workflows/release.yml` runs on a `v*` tag. It reads the version once,
 through `scripts/app-version.mjs`, so an unsigned tag or a tag on an edited tree
 produces no release at all (ADR-0022); hands that string to everything else
 through `GENDER_DIARY_VERSION`; takes the notes out of `CHANGELOG.md`; and
-publishes a web bundle, a source archive and checksums.
+publishes a web bundle, a source archive, signed Android artifacts and
+checksums. The App Bundle upload to Play internal runs in that same protected
+environment.
 
 ```
 node scripts/release-notes.mjs [version]   # what the release would say
@@ -161,7 +165,14 @@ tar --create --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0 \
 questions - schema changes, Archive format changes, security migrations,
 minimum supported version - and the pipeline stops before it builds anything if
 one of them is blank. Everything left in `dist/release/` is checksummed and
-attached, which is how ticket 18's signed Android artifacts will join a release.
+attached. The signed APK there is always named
+`gender-diary-android-release-<version>.apk`, so it cannot be confused with
+debug or unsigned artifacts.
+
+F-Droid rebuilds from public source and signs with F-Droid's own key. That key
+is not update-compatible with this repository's signed APK, so moving between
+those channels is a reinstall plus Archive restore rather than an in-place
+update.
 
 The DNS record, deployment access, store account and signing key behind all of
 this are steps a person has to take, on one particular machine, so the wizard
