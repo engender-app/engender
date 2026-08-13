@@ -1,6 +1,4 @@
 import {
-  CorruptArchiveError,
-  u32,
   type ByteReader
 } from './container';
 import {
@@ -10,6 +8,7 @@ import {
   type ArchivePayload
 } from './payload';
 import type { ArchiveContents, OpenedArchive } from './pack';
+import { CorruptArchiveError, u32 } from './wire';
 
 const JSON_LENGTH_PREFIX = 4;
 
@@ -48,7 +47,7 @@ const archiveCodecV1: ArchiveCodec = {
 
 export const ARCHIVE_CODECS: readonly ArchiveCodec[] = [archiveCodecV1];
 
-function currentArchiveFormatVersion(codecs: readonly ArchiveCodec[]): number {
+export function currentArchiveFormatVersion(codecs: readonly ArchiveCodec[] = ARCHIVE_CODECS): number {
   const current = codecs[codecs.length - 1];
   if (!current) throw new Error('no archive codecs are registered');
   return current.formatVersion;

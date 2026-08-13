@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import type { ByteReader } from './container.ts';
+import { byteReader, type ByteReader } from './container.ts';
 import { decodeArchive, encodeArchive, type ArchiveCodec } from './codec.ts';
 import type { ArchivePayload } from './payload.ts';
 import type { ArchiveContents } from './pack.ts';
+import { u32 } from './wire.ts';
 
 const payload = (name: string): ArchivePayload =>
   ({ journal: { dimensions: [], presets: [], tagGroups: [], entries: [], milestones: [], labResults: [], reminders: [] }, preferences: { name }, files: [] }) as unknown as ArchivePayload;
@@ -46,7 +47,7 @@ test('write routing uses the newest registered codec', async () => {
   assert.deepEqual(called, [2]);
 });
 
-test('read routing decodes at the archive version then walks migrations in order', async () => {
+test('older supported payloads decode through the routed version and migration order', async () => {
   const seen: string[] = [];
   const codecs: readonly ArchiveCodec[] = [
     {
@@ -54,9 +55,11 @@ test('read routing decodes at the archive version then walks migrations in order
       async encode() {
         return { bodyLength: 1, body: oneChunk() };
       },
-      async decode(_plaintext: ByteReader) {
+      async decode(plaintext: ByteReader) {
         seen.push('decode v1');
-        return { payload: payload('v1'), files: noFiles() };
+        const jsonLength = new DataView((await plaintext.readExactly(4)).buffer).getUint32(0);
+        const raw = JSON.parse(new TextDecoder().decode(await plaintext.readExactly(jsonLength))) as ArchivePayload;
+        return { payload: raw, files: noFiles() };
       }
     },
     {
@@ -88,8 +91,9 @@ test('read routing decodes at the archive version then walks migrations in order
       return payload(`${raw.preferences.name}, then v3`);
     }
   ];
+  const json = new TextEncoder().encode(JSON.stringify(payload('v1')));
 
-  const opened = await decodeArchive({} as ByteReader, 1, codecs, migrations);
+  const opened = await decodeArchive(byteReader(oneShot(u32(json.length), json)), 1, codecs, migrations);
 
   assert.equal(opened.payload.preferences.name, 'v1, then v2, then v3');
   assert.deepEqual(seen, ['decode v1', 'v1->v2', 'v2->v3']);
@@ -101,6 +105,10 @@ test('an unrouted archive version fails loudly', async () => {
 
 async function* oneChunk(): AsyncGenerator<Uint8Array> {
   yield new Uint8Array([1]);
+}
+
+async function* oneShot(...chunks: Uint8Array[]): AsyncGenerator<Uint8Array> {
+  for (const chunk of chunks) yield chunk;
 }
 
 async function* noFiles(): AsyncGenerator<{ name: string; bytes: Uint8Array<ArrayBuffer> }> {}
