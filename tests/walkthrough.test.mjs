@@ -131,14 +131,18 @@ try {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
 
-  const toastCountBeforeNudge = await page.locator('.toast').count();
   await page.locator('.quicklog .mood-btn[data-mood="2"]').click();
   await page.waitForSelector('#ed-note');
   await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="1"]').click();
   await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="2"]').click();
   await page.locator('[data-save]').click();
-  await page.waitForFunction((before) => document.querySelectorAll('.toast').length > before, toastCountBeforeNudge);
-  if ((await page.locator('.toast').last().locator('.toast-action').count()) === 0) {
+  // Waits for a toast whose own text is the save confirmation, not just
+  // any new toast: the no-persistent-storage boot warning (boot.svelte.ts)
+  // can already be on screen, so counting toasts or taking ".last()" before
+  // the save toast lands can pick that one up instead and see no action.
+  await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('Saved')));
+  const nudgeToast = page.locator('.toast', { hasText: 'Saved' }).last();
+  if ((await nudgeToast.locator('.toast-action').count()) === 0) {
     throw new Error('nudge action missing while nudges are enabled');
   }
 
@@ -155,7 +159,8 @@ try {
   await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="3"]').click();
   await page.locator('[data-save]').click();
   await page.waitForFunction((before) => document.querySelectorAll('.toast').length > before, toastCountBeforeQuietSave);
-  const hasAction = await page.locator('.toast').last().locator('.toast-action').count();
+  const quietToast = page.locator('.toast', { hasText: 'Saved' }).last();
+  const hasAction = await quietToast.locator('.toast-action').count();
   if (hasAction !== 0) throw new Error('nudge action still visible after opt-out');
   ok('mood-only save nudges when enabled and stays quiet when disabled');
 } catch (e) { fail('nudge flow', e); }
@@ -500,6 +505,9 @@ try {
   const NOTE = 'Told them my name, out loud.\nShe said "finally".';
 
   await fresh('/entry/new/today');
+  // Mood is required to save (ticket 04): the fixture picks one before the
+  // note, same as any real entry would need to.
+  await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="3"]').click();
   await page.locator('#ed-note').fill(NOTE);
   await page.locator('[data-save]').click();
   await page.waitForSelector('.entry-card');
