@@ -18,6 +18,7 @@
   import { bootGate, isErrorState, isReadyState } from '$lib/stores/boot-state';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
+  import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import { androidReminders } from '$lib/reminders/android-bridge';
@@ -35,6 +36,10 @@
   import { startAutoExportScheduler, stopAutoExportScheduler } from '$lib/data/archive/auto-export-scheduler';
 
   let { children } = $props();
+
+  if (isAndroid()) {
+    assertAndroidRuntimePluginRegistry();
+  }
 
   /* Started here rather than from an $effect so that boot's first step -
      reading the mirrored theme and palette (ticket 06) - has run before the
