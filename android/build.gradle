@@ -22,6 +22,15 @@ allprojects {
         google()
         mavenCentral()
     }
+    // capacitor-cordova-android-plugins pulls a Cordova plugin that still
+    // depends on the standalone kotlin-stdlib-jdk7/jdk8 artifacts; Kotlin
+    // 1.8 folded both into kotlin-stdlib itself, so every class in them
+    // collides with the same class in kotlin-stdlib and
+    // checkDebugAndroidTestDuplicateClasses refuses to package the test APK.
+    configurations.all {
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
+    }
 }
 
 task clean(type: Delete) {

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same flat grey as static/icons/icon-notes.svg (ticket 25): a
+         launcher icon that stands out is not a disguise. -->
+    <color name="ic_launcher_disguised_background">#8A94A6</color>
+</resources>
