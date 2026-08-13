@@ -59,6 +59,9 @@ tests/provisioning.test.ts
 # Written on every build by the emitted-client-assets plugin in vite.config.ts
 src/lib/pwa/*.generated.ts
 
+# Generated from node_modules by scripts/prepare-tesseract-assets.mjs
+static/tesseract/
+
 # Throwaway prototypes, which live on their own branches and leave build output
 # behind on this one - ticket 08's Android probe left 87M of Gradle output and a
 # local.properties holding a machine's SDK path. The prototype/encryption-mechanism

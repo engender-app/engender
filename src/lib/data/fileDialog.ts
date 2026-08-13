@@ -9,7 +9,10 @@
    pickers through the shell, which is why each caller keeps a seam of its
    own - this is the web half of both. */
 
-export async function chooseFiles(accept: string, options: { multiple?: boolean } = {}): Promise<File[]> {
+export async function chooseFiles(
+  accept: string,
+  options: { multiple?: boolean; capture?: 'user' | 'environment' } = {}
+): Promise<File[]> {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -17,6 +20,7 @@ export async function chooseFiles(accept: string, options: { multiple?: boolean 
     // decided by reading it.
     input.accept = accept;
     input.multiple = options.multiple ?? false;
+    if (options.capture) input.capture = options.capture;
 
     const done = (result: File[] | Error) => {
       input.remove();
