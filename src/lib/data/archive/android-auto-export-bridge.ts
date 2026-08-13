@@ -1,4 +1,4 @@
-import { registerPlugin } from '@capacitor/core';
+import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
 export type AutoExportSchedule = 'weekly' | 'monthly';
 
@@ -25,4 +25,4 @@ export interface AndroidAutoExportBridge {
   notifyFailure(): Promise<void>;
 }
 
-export const androidAutoExport = registerPlugin<AndroidAutoExportBridge>('AutoExport');
+export const androidAutoExport = registerAndroidPlugin<AndroidAutoExportBridge>(androidPluginOwners.autoExport);

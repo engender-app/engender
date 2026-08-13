@@ -5,7 +5,7 @@
    Node tier against a fake, with no @capacitor/core anywhere near it. This
    file is the one line that cannot be. */
 
-import { registerPlugin } from '@capacitor/core';
+import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 import type { KeystoreBridge } from './android-key.ts';
 
-export const androidKeystore = registerPlugin<KeystoreBridge>('Keystore');
+export const androidKeystore = registerAndroidPlugin<KeystoreBridge>(androidPluginOwners.keystore);
