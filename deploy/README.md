@@ -44,8 +44,15 @@ node scripts/journal-release.mjs deploy /path/to/build --root /home/journal/rele
 What deploy enforces:
 
 - source directory must contain `index.html`, `service-worker.js`, `_app/version.json`, and `release.json`
+- source `release.json` must name a release version (not `0.0.0-dev...`) unless `--allow-development-version` is passed deliberately
 - full directory copy lands before the symlink switch
 - previous release directory stays in place
+
+For explicit non-release checks only:
+
+```bash
+node scripts/journal-release.mjs deploy /path/to/uploaded/build --allow-development-version
+```
 
 ## Rollback command
 
