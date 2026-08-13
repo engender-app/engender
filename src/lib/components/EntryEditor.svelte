@@ -4,10 +4,10 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
-  import { entryIsEmpty } from '$lib/data/entryContent';
-  import { pickPhotos, type EditorPhoto } from '$lib/stores/photoPicking';
+  import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
+  import { pickPhotos } from '$lib/stores/photoPicking';
   import { toast } from '$lib/stores/toasts.svelte';
-  import type { Entry, GenderDimension } from '$lib/data/types';
+  import type { GenderDimension } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
@@ -32,35 +32,14 @@
   let day = $derived(existing?.epochDay ?? epochDay ?? todayEpochDay());
 
   /* Local draft; committed as one action on Save (F1), and filled from the
-     stored entry the moment it arrives. */
+     stored entry the moment it arrives (entryDraft.ts, ticket 29). */
   // Captured once on purpose: the route wraps this component in {#key}, so a
   // different entry or day mounts a fresh editor with a fresh draft.
   // svelte-ignore state_referenced_locally
-  let draft = $state<Omit<Entry, 'id' | 'photos'>>({
-    epochDay: epochDay ?? todayEpochDay(),
-    timestamp: 0,
-    mood: null,
-    note: '',
-    dims: {},
-    tags: []
-  });
-  let photos = $state<EditorPhoto[]>([]);
-  /** Stored photo ids the user took off, removed on save rather than on the
-      tap: nothing is committed until Save (F1), so a removal the user backs
-      out of by leaving the screen has to be recoverable. */
-  let removedPhotoIds: string[] = [];
+  let entryDraft = $state<EntryDraft>(createEntryDraft(epochDay ?? todayEpochDay()));
 
   onFirstResult(loaded, (entry) => {
-    if (!entry) return;
-    draft = {
-      epochDay: entry.epochDay,
-      timestamp: entry.timestamp,
-      mood: entry.mood,
-      note: entry.note,
-      dims: { ...entry.dims },
-      tags: [...entry.tags]
-    };
-    photos = entry.photos.map((photo) => ({ kind: 'stored' as const, photo }));
+    if (entry) entryDraft = createEntryDraft(entry.epochDay, entry);
   });
 
   let deleteOpen = $state(false);
@@ -70,7 +49,7 @@
      (marked below), instead of silently dropping their history on save. */
   let dims = $derived.by(() => {
     const active = vocabulary.activeDimensions;
-    const extras = Object.keys(draft.dims)
+    const extras = Object.keys(entryDraft.dims)
       .filter((key) => !active.some((d) => d.key === key))
       .map((key) => vocabulary.dimensions.find((d) => d.key === key))
       .filter((d): d is GenderDimension => !!d);
@@ -82,25 +61,12 @@
   // An entry holds several photos, so one trip through the picker can bring
   // back several (photoPicking.ts).
   async function addPhoto() {
-    for (const photo of await pickPhotos()) photos.push({ kind: 'picked', photo });
-  }
-
-  function removePhoto(index: number) {
-    const [gone] = photos.splice(index, 1);
-    if (gone.kind === 'stored') removedPhotoIds.push(gone.photo.id);
+    for (const photo of await pickPhotos()) entryDraft.addPhoto(photo);
   }
 
   /* The journal rejects an empty entry outright; this guard only turns that
      rejection into a toast instead of an unhandled throw. */
-  let draftEmpty = $derived(
-    entryIsEmpty({
-      mood: draft.mood,
-      note: draft.note,
-      dimCount: Object.keys(draft.dims).length,
-      tagCount: draft.tags.length,
-      photoCount: photos.length
-    })
-  );
+  let draftEmpty = $derived(entryDraft.isEmpty);
 
   async function saveEntry() {
     if (draftEmpty) {
@@ -110,14 +76,7 @@
     if (saving) return; // a second tap while the worker is writing
     saving = true;
     try {
-      await journal.entries.upsertEntry({
-        id: existing?.id,
-        ...draft,
-        timestamp: draft.timestamp || undefined,
-        attachPhotos: photos.filter((p) => p.kind === 'picked').map((p) => p.photo),
-        removePhotoIds: removedPhotoIds
-      });
-      removedPhotoIds = [];
+      await journal.entries.upsertEntry(entryDraft.toUpsert());
       goto('/');
       toast(m.saved());
     } catch (error) {
@@ -159,7 +118,7 @@
   {:else}
   <section class="card editor-section">
     <h2 class="editor-heading">{m.mood()}</h2>
-    <MoodPicker value={draft.mood} onPick={(v) => (draft.mood = v)} />
+    <MoodPicker value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
   </section>
 
   <section class="card editor-section">
@@ -169,7 +128,7 @@
     </div>
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.gender_hint()}</p>
     {#each dims as { dim, inPreset } (dim.key)}
-      <DimensionSlider {dim} value={draft.dims[dim.key] ?? null} onInput={(v) => (draft.dims[dim.key] = v)} />
+      <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
       {#if !inPreset}
         <p class="muted small" style="margin-top:calc(var(--space-2) * -1);margin-bottom:var(--space-3)">
           {m.not_in_preset()}
@@ -182,29 +141,28 @@
     <h2 class="editor-heading">{m.tags_label()}</h2>
     <TagPicker
       groups={vocabulary.visibleTagGroups}
-      selected={draft.tags}
-      onToggle={(id) =>
-        (draft.tags = draft.tags.includes(id) ? draft.tags.filter((x) => x !== id) : [...draft.tags, id])}
+      selected={entryDraft.tags}
+      onToggle={(id) => entryDraft.toggleTag(id)}
     />
   </section>
 
   <section class="card editor-section">
     <h2 class="editor-heading">{m.note_label()}</h2>
-    <textarea class="input" id="ed-note" name="note" rows="4" placeholder={m.note_placeholder()} bind:value={draft.note}
+    <textarea class="input" id="ed-note" name="note" rows="4" placeholder={m.note_placeholder()} bind:value={entryDraft.note}
     ></textarea>
   </section>
 
   <section class="card editor-section">
     <h2 class="editor-heading">{m.photos_label()}</h2>
     <div class="photo-row">
-      {#each photos as p, i (p)}
+      {#each entryDraft.photos as p, i (p)}
         <div class="photo-wrap">
           {#if p.kind === 'stored'}
             <PhotoThumb photo={p.photo} size={72} />
           {:else}
             <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
           {/if}
-          <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => removePhoto(i)}>
+          <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
             <Icon name="x" size={14} />
           </button>
         </div>

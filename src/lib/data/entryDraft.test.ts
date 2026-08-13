@@ -1,0 +1,175 @@
+/* entryDraft's transition rules (ticket 29): draft edits, photo add/remove
+   with removed-stored-id tracking, isEmpty and toUpsert() - all rune-free,
+   so EntryEditor.svelte only needs a thin $state wrapper around this. */
+
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
+import { createEntryDraft } from './entryDraft.ts';
+import type { Entry } from './types.ts';
+import type { NormalizedPhoto } from './journal/photos.ts';
+
+const photo = (n: number): NormalizedPhoto => ({ full: new Uint8Array([n]), thumb: new Uint8Array([n]) });
+
+const existingEntry = (): Entry => ({
+  id: 7,
+  epochDay: 20_000,
+  timestamp: 123,
+  mood: 3,
+  note: 'ok day',
+  dims: { masculinity: 40 },
+  tags: ['e-happy'],
+  photos: [{ id: 'p1', fileName: 'p1.jpg' }]
+});
+
+test('a fresh draft with no existing entry starts empty on the given day', () => {
+  const draft = createEntryDraft(20_001);
+  assert.equal(draft.isEmpty, true);
+  assert.equal(draft.epochDay, 20_001);
+  assert.deepEqual(draft.dims, {});
+  assert.deepEqual(draft.tags, []);
+  assert.deepEqual(draft.photos, []);
+});
+
+test('a draft hydrated from an existing entry copies its fields and stored photos', () => {
+  const draft = createEntryDraft(20_001, existingEntry());
+  assert.equal(draft.isEmpty, false);
+  assert.equal(draft.epochDay, 20_000);
+  assert.equal(draft.timestamp, 123);
+  assert.equal(draft.mood, 3);
+  assert.equal(draft.note, 'ok day');
+  assert.deepEqual(draft.dims, { masculinity: 40 });
+  assert.deepEqual(draft.tags, ['e-happy']);
+  assert.deepEqual(draft.photos, [{ kind: 'stored', photo: { id: 'p1', fileName: 'p1.jpg' } }]);
+});
+
+test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty', () => {
+  assert.equal(createEntryDraft(1).isEmpty, true);
+
+  const byMood = createEntryDraft(1);
+  byMood.setMood(2);
+  assert.equal(byMood.isEmpty, false);
+
+  const byNote = createEntryDraft(1);
+  byNote.setNote('  ');
+  assert.equal(byNote.isEmpty, true, 'a blank note stays empty, matching entryIsEmpty');
+  byNote.setNote('hi');
+  assert.equal(byNote.isEmpty, false);
+
+  const byDim = createEntryDraft(1);
+  byDim.setDim('masculinity', 50);
+  assert.equal(byDim.isEmpty, false);
+  assert.deepEqual(byDim.dims, { masculinity: 50 });
+
+  const byTag = createEntryDraft(1);
+  byTag.toggleTag('e-happy');
+  assert.equal(byTag.isEmpty, false);
+  assert.deepEqual(byTag.tags, ['e-happy']);
+});
+
+test('setDim merges into the existing dims without clobbering the others', () => {
+  const draft = createEntryDraft(1, existingEntry());
+  draft.setDim('femininity', 60);
+  assert.deepEqual(draft.dims, { masculinity: 40, femininity: 60 });
+});
+
+test('toggleTag adds an absent tag and removes a present one', () => {
+  const draft = createEntryDraft(1);
+  draft.toggleTag('e-happy');
+  draft.toggleTag('e-sad');
+  assert.deepEqual(draft.tags, ['e-happy', 'e-sad']);
+
+  draft.toggleTag('e-happy');
+  assert.deepEqual(draft.tags, ['e-sad']);
+});
+
+test('addPhoto stages a picked photo; removing it drops it without marking it removed', () => {
+  const draft = createEntryDraft(1);
+  draft.addPhoto(photo(1));
+  assert.equal(draft.isEmpty, false);
+  assert.equal(draft.photos.length, 1);
+  assert.equal(draft.photos[0].kind, 'picked');
+
+  draft.removePhoto(0);
+  assert.deepEqual(draft.photos, []);
+  assert.deepEqual(draft.removedPhotoIds, []);
+});
+
+test('removing a stored photo tracks its id for removal but a re-visit does not discard it twice', () => {
+  const draft = createEntryDraft(1, existingEntry());
+  draft.removePhoto(0);
+  assert.deepEqual(draft.photos, []);
+  assert.deepEqual(draft.removedPhotoIds, ['p1']);
+});
+
+test('toUpsert() produces the exact upsertEntry payload for a new entry', () => {
+  const draft = createEntryDraft(20_005);
+  draft.setMood(4);
+  draft.setNote('a note');
+  draft.setDim('masculinity', 30);
+  draft.toggleTag('e-happy');
+  draft.addPhoto(photo(9));
+
+  assert.deepEqual(draft.toUpsert(), {
+    id: undefined,
+    epochDay: 20_005,
+    timestamp: undefined,
+    mood: 4,
+    note: 'a note',
+    dims: { masculinity: 30 },
+    tags: ['e-happy'],
+    attachPhotos: [photo(9)],
+    removePhotoIds: []
+  });
+});
+
+test('toUpsert() for an existing entry carries its id, drops a falsy timestamp and lists both photo changes', () => {
+  const draft = createEntryDraft(1, existingEntry());
+  draft.addPhoto(photo(2));
+  draft.removePhoto(0); // the one stored photo from existingEntry()
+
+  assert.deepEqual(draft.toUpsert(), {
+    id: 7,
+    epochDay: 20_000,
+    timestamp: 123,
+    mood: 3,
+    note: 'ok day',
+    dims: { masculinity: 40 },
+    tags: ['e-happy'],
+    attachPhotos: [photo(2)],
+    removePhotoIds: ['p1']
+  });
+});
+
+test('hydrating copies the existing entry, so a later mutation of it cannot discard a typed edit', () => {
+  /* This is the case EntryEditor.svelte's onFirstResult guard exists for
+     (journal.svelte.ts: "calls fill with a query's first result and never
+     again"): the live query for an existing entry is deliberately never
+     re-run (its invalidation key list is `[]`), and even if it were,
+     onFirstResult would not call back a second time - so nothing should
+     ever call createEntryDraft twice for the same editor. What this proves
+     at this module's own seam is the property that guarantee rests on:
+     hydration takes a one-time copy rather than a live reference, so even a
+     mutated or re-delivered `existing` object cannot reach back into an
+     already-built draft and clobber what the user typed since. */
+  const original = existingEntry();
+  const draft = createEntryDraft(1, original);
+
+  draft.setNote('typed after load');
+  draft.toggleTag('e-sad');
+
+  original.note = 'clobbered';
+  original.dims.masculinity = 999;
+  original.tags.push('should-not-appear');
+  original.photos.push({ id: 'p2', fileName: 'p2.jpg' });
+
+  assert.equal(draft.note, 'typed after load');
+  assert.deepEqual(draft.dims, { masculinity: 40 });
+  assert.deepEqual(draft.tags, ['e-happy', 'e-sad']);
+  assert.equal(draft.photos.length, 1);
+});
+
+test('toUpsert() drops a zero timestamp, matching upsertEntry\'s own fallback', () => {
+  const draft = createEntryDraft(1);
+  draft.setMood(1);
+  assert.equal(draft.toUpsert().timestamp, undefined);
+});
