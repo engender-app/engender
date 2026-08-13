@@ -1,5 +1,5 @@
-/* The built-in vocabulary every install gets: five gender dimensions, two
-   presets, three tag groups and eight milestone templates.
+/* The built-in vocabulary every install gets: five gender dimensions, eight
+  presets, three tag groups and eight milestone templates.
 
    Keys only, no display text. A built-in is the same concept on any
    device, so it is identified by a stable key and its name is looked up at
@@ -27,6 +27,12 @@ export type BuiltInDimensionKey = (typeof BUILT_IN_DIMENSIONS)[number]['key'];
 
 export const BUILT_IN_PRESETS = [
   { key: 'p-btw', dims: ['euphoria_dysphoria', 'femininity'] },
+  { key: 'p-masc', dims: ['euphoria_dysphoria', 'masculinity'] },
+  { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] },
+  { key: 'p-fluid', dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary'] },
+  { key: 'p-agender', dims: ['euphoria_dysphoria', 'agender_gendered'] },
+  { key: 'p-demi-fem', dims: ['euphoria_dysphoria', 'femininity', 'agender_gendered'] },
+  { key: 'p-demi-masc', dims: ['euphoria_dysphoria', 'masculinity', 'agender_gendered'] },
   {
     key: 'p-nb',
     dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary', 'agender_gendered']
