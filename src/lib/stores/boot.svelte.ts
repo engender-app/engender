@@ -27,7 +27,7 @@ import {
 import { isAndroid } from '../platform';
 import { InterruptedRestoreError, SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
 import { markJournalBusy } from '../data/journal-busy';
-import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
+import { openJournal, type PhotoFileStore } from '../data/journal/journal';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { hydrateReference } from '../data/live/reference.svelte';
@@ -53,8 +53,6 @@ import {
   finishRetirement,
   prepareConversion,
   runConversion,
-  type ConversionProgress,
-  type ConversionRefusal,
   type JournalSurvey
 } from '../data/conversion/conversion';
 import { opfsConversionMarker } from '../data/conversion/marker-file';
@@ -72,73 +70,18 @@ import { wipeLocalData } from '../data/reset';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
 import { markUnlocked } from './lock.svelte';
-import { openAndroidDataKey, type AndroidKeyRefusal, type UnlockRequest } from '../lock/android-key';
+import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { toast } from './toasts.svelte';
 import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
+import { bootStates, bootTransitions, type BootState } from './boot-state';
 
-export const bootState = $state<{
-  /** The passphrase states come before the database exists for this
-      session (ticket 09): `needs-setup` on a first run, `needs-unlock` on
-      every later cold start. The layout renders the passphrase gate for
-      those, for `converting` and for `conversion-refused`, and
-      submitPassphraseSetup/-Unlock below are what move on. */
-  /** `schema-too-new` is the rollback direction of ticket 04: this build met
-      a Journal a newer one has already migrated, and refuses it rather than
-      guessing (ADR-0006). Its own status rather than an `error`, because the
-      journal is intact and the screen has something to say about what to do. */
-  /** `needs-authentication` is the Android shape of the same moment
-      (ticket 13): there is a data key on this device, Android Keystore is
-      holding it, and it will not hand it over until somebody authenticates.
-      Nothing is typed, so it is a screen with a prompt behind it rather than
-      a form. */
-  status:
-    | 'booting'
-    | 'needs-setup'
-    | 'needs-unlock'
-    | 'needs-authentication'
-    | 'needs-device-recovery'
-    | 'converting'
-    | 'conversion-refused'
-    | 'ready'
-    | 'schema-too-new'
-    | 'error';
-  error: string | null;
-  persistDenied: boolean;
-  /** Set when a migration failed and the copy ADR-0006 took beforehand is
-      still on disk, so the failure screen can offer to put it back
-      (ticket 04). */
-  recoverable: boolean;
-  /** The one journal instance the UI reads (ADR-0017), for anything that
-      needs the handle itself rather than the reactive layer over it. */
-  journal: Journal | null;
-  /** Set when the Journal on this device is a plaintext one (ticket 10):
-      the gate says so, and the passphrase submitted runs the conversion
-      before the app opens rather than opening one. Whether this is a first
-      attempt or a resume is already in `status` - needs-setup against
-      needs-unlock - so it is not repeated here. */
-  conversion: { progress: ConversionProgress | null } | null;
-  /** Why a conversion cannot even start. The gate owns the wording. */
-  conversionRefusal: ConversionRefusal | null;
-  /** Why the last attempt at the Android data key did not produce one
-      (ticket 13). Null before the first attempt, which is what tells the
-      gate to make one rather than to sit there explaining a refusal that has
-      not happened. A successful attempt never lands here: the key goes
-      straight into the driver and stays out of anything a screen reads. */
-  androidKey: AndroidKeyRefusal | null;
-  accessMode: JournalAccessMode;
-}>({
-  status: 'booting',
-  error: null,
-  persistDenied: false,
-  recoverable: false,
-  journal: null,
-  conversion: null,
-  conversionRefusal: null,
-  androidKey: null,
-  accessMode: null
-});
+export const bootState = $state<BootState>(bootStates.booting());
+
+function applyBootState(next: BootState): void {
+  Object.assign(bootState, next);
+}
 
 let started = false;
 /* Kept for the reset below, which has to close the database before OPFS
@@ -240,7 +183,12 @@ export function startBoot() {
   (async () => {
     const passphraseKeystoreExists = await journalKeystoreExists();
     const deviceBoundKeystoreExists = await deviceBoundJournalExists();
-    bootState.accessMode = chooseJournalAccessMode({ passphraseKeystoreExists, deviceBoundKeystoreExists });
+    applyBootState(
+      bootTransitions.setAccessMode(
+        bootState,
+        chooseJournalAccessMode({ passphraseKeystoreExists, deviceBoundKeystoreExists })
+      )
+    );
 
     let state = describeJournalState({
       keystoreExists: passphraseKeystoreExists || deviceBoundKeystoreExists,
@@ -277,7 +225,7 @@ export function startBoot() {
         try {
           continueBoot(await unlockJournalPassphrase(DEMO_PASSPHRASE), 'passphrase');
         } catch {
-          bootState.status = 'needs-unlock';
+          applyBootState(bootTransitions.toNeedsUnlock(bootState));
         }
         return;
       }
@@ -292,17 +240,18 @@ export function startBoot() {
          Journal exactly as it was. */
       const precheck = await prepareConversion(webConversionPrecheckPorts(), LATEST_SCHEMA_VERSION);
       if (!precheck.ok) {
-        bootState.conversionRefusal = precheck;
-        bootState.status = 'conversion-refused';
+        applyBootState(bootTransitions.toConversionRefused(bootState, precheck));
         return;
       }
       /* A keystore already there means an earlier attempt got past the
          passphrase screen, so ask for that passphrase again rather than
          for a new one - the one they saved is still the one. */
       const resuming = await journalKeystoreExists();
-      bootState.accessMode = 'passphrase';
-      bootState.conversion = { progress: null };
-      bootState.status = resuming ? 'needs-unlock' : 'needs-setup';
+      applyBootState(
+        resuming
+          ? bootTransitions.toNeedsUnlock(bootState, { accessMode: 'passphrase', conversionRequired: true })
+          : bootTransitions.toNeedsSetup(bootState, { accessMode: 'passphrase', conversionRequired: true })
+      );
       return;
     }
 
@@ -318,7 +267,7 @@ export function startBoot() {
         continueBoot(await unlockDeviceBoundJournal(), 'device-bound');
       } catch (error) {
         if (error instanceof DeviceBoundKeyUnavailableError) {
-          bootState.status = 'needs-device-recovery';
+          applyBootState(bootTransitions.toNeedsDeviceRecovery(bootState));
           return;
         }
         throw error;
@@ -326,7 +275,11 @@ export function startBoot() {
       return;
     }
 
-    bootState.status = plan === 'needs-unlock' ? 'needs-unlock' : 'needs-setup';
+    applyBootState(
+      plan === 'needs-unlock'
+        ? bootTransitions.toNeedsUnlock(bootState)
+        : bootTransitions.toNeedsSetup(bootState)
+    );
   })().catch(failBoot);
 }
 
@@ -390,7 +343,7 @@ export async function submitSkipSetup(): Promise<SkipSetupResult> {
 export async function upgradeJournalToPassphrase(passphrase: string): Promise<void> {
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
   await addJournalPassphrase(sessionDataKey, passphrase);
-  bootState.accessMode = 'passphrase';
+  applyBootState(bootTransitions.setAccessMode(bootState, 'passphrase'));
   if (isAndroid()) {
     await androidKeystore.erase().catch((error) => {
       console.warn('could not erase the Android device-bound key after adding a passphrase', error);
@@ -418,7 +371,7 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>, accessMode: Jou
     return;
   }
 
-  bootState.status = 'converting';
+  applyBootState(bootTransitions.toConverting(bootState));
   /* The longest of the four windows an update must not land in (ticket 04):
      a whole Journal and every photo, rewritten on a phone. The conversion
      survives being killed and resumes, but code replaced under it mid-write
@@ -426,23 +379,21 @@ async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>, accessMode: Jou
   const converting = markJournalBusy();
   try {
     await runConversion(webConversionPorts(dataKey), (progress) => {
-      bootState.conversion = { progress };
+      applyBootState(bootTransitions.updateConversionProgress(bootState, progress));
     });
   } catch (error) {
-    bootState.status = 'error';
-    bootState.error = String((error as Error)?.message ?? error);
+    failBoot(error);
     return;
   } finally {
     converting();
   }
 
-  bootState.conversion = null;
   continueBoot(dataKey, accessMode);
 }
 
 function continueBoot(dataKey: Uint8Array<ArrayBuffer>, accessMode: JournalAccessMode) {
   sessionDataKey = dataKey;
-  bootState.accessMode = accessMode;
+  applyBootState(bootTransitions.setAccessMode(bootState, accessMode));
   // The PRD asks for navigator.storage.persist() on first save, not on
   // boot - but persist() is safe to call more than once and asking here
   // covers every save path at once. Worth revisiting when the PWA ticket
@@ -481,10 +432,15 @@ function continueBootOnAndroid() {
   void (async () => {
     const passphraseKeystoreExists = await journalKeystoreExists();
     const { hasKey } = await androidKeystore.status();
-    bootState.accessMode = chooseJournalAccessMode({
-      passphraseKeystoreExists,
-      deviceBoundKeystoreExists: hasKey
-    });
+    applyBootState(
+      bootTransitions.setAccessMode(
+        bootState,
+        chooseJournalAccessMode({
+          passphraseKeystoreExists,
+          deviceBoundKeystoreExists: hasKey
+        })
+      )
+    );
 
     const plan = describeAndroidBootPlan({
       passphraseKeystoreExists,
@@ -493,24 +449,23 @@ function continueBootOnAndroid() {
     });
 
     if (plan === 'plaintext-error') {
-      bootState.status = 'error';
       /* Rendered through i18n in +layout: this path is expected and needs a
          user sentence, not a raw SQLite failure string. */
-      bootState.error = 'android-plaintext-journal';
+      applyBootState(bootTransitions.toError(bootState, 'android-plaintext-journal'));
       return;
     }
 
     if (plan === 'needs-unlock') {
-      bootState.status = 'needs-unlock';
+      applyBootState(bootTransitions.toNeedsUnlock(bootState));
       return;
     }
 
     if (plan === 'needs-authentication') {
-      bootState.status = 'needs-authentication';
+      applyBootState(bootTransitions.toNeedsAuthentication(bootState));
       return;
     }
 
-    bootState.status = 'needs-setup';
+    applyBootState(bootTransitions.toNeedsSetup(bootState));
   })().catch(failBoot);
 }
 
@@ -534,12 +489,10 @@ export async function openAndroidJournal(request: UnlockRequest): Promise<void> 
   }
 
   if (result.kind !== 'key') {
-    bootState.androidKey = result;
-    bootState.status = 'needs-authentication';
+    applyBootState(bootTransitions.toNeedsAuthentication(bootState, result));
     return;
   }
 
-  bootState.androidKey = null;
   /* The authentication that unwrapped the key satisfies the casual-access
      gate too, the same way a typed passphrase does on the web: this is the
      strong case the spec allows app lock to stand down for. */
@@ -548,8 +501,7 @@ export async function openAndroidJournal(request: UnlockRequest): Promise<void> 
 }
 
 function failBoot(error: unknown) {
-  bootState.status = 'error';
-  bootState.error = String((error as Error)?.message ?? error);
+  applyBootState(bootTransitions.toError(bootState, String((error as Error)?.message ?? error)));
 }
 
 /** Everything both platforms do once they have a driver: the journal is
@@ -557,7 +509,7 @@ function failBoot(error: unknown) {
     result. Nothing below this point knows which platform it is on, which is
     ADR-0017's seam doing its job. */
 function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
-  bootState.status = 'booting';
+  applyBootState(bootTransitions.toBooting(bootState));
 
   const { driver, fileOps, requestPersistentStorage } = sqlite;
   openDriver = driver;
@@ -595,7 +547,7 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
          it - the screen says which, in the person's language, rather than
          printing the exception. */
       if (result.error instanceof SchemaTooNewError) {
-        bootState.status = 'schema-too-new';
+        applyBootState(bootTransitions.toSchemaTooNew(bootState));
         return;
       }
 
@@ -610,13 +562,17 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
         return;
       }
 
-      bootState.status = 'error';
-      bootState.error = String((result.error as Error)?.message ?? result.error);
+      applyBootState(bootTransitions.toError(bootState, String((result.error as Error)?.message ?? result.error)));
       /* Whether the failure screen can offer a way back. Asked of the disk
          rather than assumed from the failure: a copy is there only if this
          boot or an earlier one got as far as taking one, and a driver too
          broken to answer is a driver that cannot restore either. */
-      bootState.recoverable = await Promise.resolve(fileOps.preMigrationCopyIsUsable()).catch(() => false);
+      applyBootState(
+        bootTransitions.markErrorRecoverable(
+          bootState,
+          await Promise.resolve(fileOps.preMigrationCopyIsUsable()).catch(() => false)
+        )
+      );
       return;
     }
 
@@ -650,9 +606,12 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
        seeded entry. */
     journalIsOpen();
 
-    bootState.status = 'ready';
-    bootState.persistDenied = result.persistDenied;
-    bootState.journal = journal;
+    applyBootState(
+      bootTransitions.toReady(bootState, {
+        persistDenied: result.persistDenied,
+        journal
+      })
+    );
 
     // Raised here rather than from an $effect in +layout.svelte, where it
     // used to live: toast() pushes onto a $state array, and reading that

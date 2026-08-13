@@ -15,6 +15,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
+  import { bootGate, isErrorState, isReadyState } from '$lib/stores/boot-state';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
@@ -68,24 +69,20 @@
      two states belong to the same gate - a conversion running, and one
      that could not start - because both are the same "there is no journal
      open yet, and here is why". */
-  let needsPassphrase = $derived(
-    bootState.status === 'needs-setup' ||
-      bootState.status === 'needs-unlock' ||
-      bootState.status === 'converting' ||
-      bootState.status === 'conversion-refused'
-  );
+  let gate = $derived(bootGate(bootState));
+  let needsPassphrase = $derived(gate === 'passphrase');
 
   /* The same moment on Android, where nothing is typed: Keystore is holding
      the data key and wants the platform's word for who is here first
      (ticket 13). Its own gate rather than a branch inside the passphrase
      one - they share the job and none of the words. */
-  let needsAuthentication = $derived(bootState.status === 'needs-authentication');
+  let needsAuthentication = $derived(gate === 'authentication');
 
-  let needsDeviceRecovery = $derived(bootState.status === 'needs-device-recovery');
+  let needsDeviceRecovery = $derived(gate === 'device-recovery');
   /* Older code against a newer Journal (ticket 04). Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
-  let schemaTooNew = $derived(bootState.status === 'schema-too-new');
+  let schemaTooNew = $derived(gate === 'schema-too-new');
 
   let path = $derived(page.url.pathname);
   let chromeless = $derived(
@@ -151,12 +148,12 @@
      database opens it reads as its default, which would send every
      returning user through onboarding again. */
   $effect(() => {
-    if (bootState.status !== 'ready' || locked) return;
+    if (!isReadyState(bootState) || locked) return;
     if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
   });
 
   $effect(() => {
-    if (bootState.status === 'ready' && !locked) {
+    if (isReadyState(bootState) && !locked) {
       startAutoExportScheduler();
       return () => stopAutoExportScheduler();
     }
@@ -186,7 +183,7 @@
   let reminderSyncQueued = false;
 
   async function syncAndroidReminderSchedules() {
-    if (!isAndroid() || bootState.status !== 'ready') return;
+    if (!isAndroid() || !isReadyState(bootState)) return;
     if (reminderSyncRunning) {
       reminderSyncQueued = true;
       return;
@@ -224,7 +221,7 @@
   }
 
   async function consumeReminderLaunchRoute() {
-    if (!isAndroid() || bootState.status !== 'ready') return;
+    if (!isAndroid() || !isReadyState(bootState)) return;
     try {
       const { route } = await androidReminders.consumeLaunchRoute();
       if (!route || !isValidReminderLaunchRoute(route) || route === page.url.pathname) return;
@@ -250,7 +247,7 @@
   }
 
   $effect(() => {
-    if (!isAndroid() || bootState.status !== 'ready' || remindersListenerAttached) return;
+    if (!isAndroid() || !isReadyState(bootState) || remindersListenerAttached) return;
     remindersListenerAttached = true;
     onTablesWritten((tables) => {
       if (tables.includes('reminder') || tables.includes('entry')) void syncAndroidReminderSchedules();
@@ -260,7 +257,7 @@
   });
 
   $effect(() => {
-    if (!isAndroid() || bootState.status !== 'ready') return;
+    if (!isAndroid() || !isReadyState(bootState)) return;
     void prefs.checkInEnabled;
     void prefs.checkInTime;
     void prefs.hideNotificationTitles;
@@ -268,7 +265,7 @@
   });
 
   $effect(() => {
-    if (!isAndroid() || bootState.status !== 'ready') return;
+    if (!isAndroid() || !isReadyState(bootState)) return;
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
       void syncAndroidReminderSchedules();
@@ -289,7 +286,7 @@
      boot-time run that finds the alias already correct is a no-op, not a
      restart nobody asked for. */
   $effect(() => {
-    if (!isAndroid() || bootState.status !== 'ready') return;
+    if (!isAndroid() || !isReadyState(bootState)) return;
     void androidDisguise.setDisguised({ disguised: prefs.disguise });
   });
 
@@ -297,7 +294,7 @@
      SharedPreferences mirror rather than asking the WebView, so this keeps
      it in step with the real preference. */
   $effect(() => {
-    if (!isAndroid() || bootState.status !== 'ready') return;
+    if (!isAndroid() || !isReadyState(bootState)) return;
     void androidQuickExit.setEnabled({ enabled: prefs.quickExit });
   });
 </script>
@@ -319,7 +316,7 @@
        finish before it clears storage, or it interrupts the very writes it
        then asserts against (tests/walkthrough.test.mjs). -->
   <div class="app" class:disguised={prefs.disguise} data-boot={bootState.status}>
-    {#if bootState.status === 'error'}
+    {#if isErrorState(bootState)}
       <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">
@@ -344,7 +341,7 @@
     <!-- Only over a Journal that is open and unlocked. The notice is not
          urgent enough to sit above a passphrase gate or a lock screen, and
          those two screens have one job each. -->
-    {#if bootState.status === 'ready' && !locked}
+    {#if isReadyState(bootState) && !locked}
       <UpdateNotice />
     {/if}
     {#if !chromeless}
