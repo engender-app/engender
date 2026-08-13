@@ -5,29 +5,18 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { liveQuery } from '$lib/data/live/journal.svelte';
-  import { metricKey } from '$lib/data/prefs/catalogue';
-  import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let epochDay = $derived(page.params.day === 'today' ? todayEpochDay() : Number(page.params.day));
-  let metric = $derived(metricKey(prefs));
-  let metricName = $derived(vocabulary.metricName);
   let isToday = $derived(epochDay === todayEpochDay());
 
-  /* Both queries read `epochDay` (and the average also `metric`) before their
-     first await, which is what makes them re-run on navigation and on a
-     metric change - see liveQuery's contract. */
+  /* The query reads `epochDay` before its first await, which is what makes it
+     re-run on navigation - see liveQuery's contract. */
   let dayEntries = liveQuery(['entry'], (j) => j.entries.entriesForDay(epochDay));
   let entries = $derived(dayEntries.value ?? []);
-
-  // A one-day range: the day average is the same aggregate the stats charts
-  // plot, asked for one day (ADR-0012), rather than a second implementation.
-  let average = liveQuery(['entry'], (j) => j.stats.dayAverages(metric, epochDay, epochDay));
-  let avg = $derived(average.value?.[0]?.value ?? null);
 </script>
 
 <div class="screen">
@@ -41,13 +30,7 @@
   {#if dayEntries.loading}
     <Skeleton variant="card" count={2} />
   {:else if entries.length}
-    <div class="card day-avg">
-      <div>
-        <!-- The day average arrives in native units (ADR-0012); the /20
-             that used to be here undid a x20 that no longer happens. -->
-        <span class="chip-value">{avg == null ? '—' : Math.round(avg * 10) / 10}</span>
-        <span class="muted small">{m.day_avg({ metric: metricName })}{metric === 'mood' ? ' (1–5)' : ''}</span>
-      </div>
+    <div class="card">
       <span class="muted small">{m.entries_this_day({ count: entries.length })}</span>
     </div>
     <div class="stack-3" style="margin-top:var(--space-4)">
