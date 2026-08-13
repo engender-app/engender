@@ -1,11 +1,11 @@
 package dev.barankiewicz.genderdiary.disguise;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -77,6 +77,12 @@ public class DisguiseAliasTest {
 
         assertFalse(changedAgain);
         assertTrue(isEnabled(DisguiseAlias.DISGUISED));
+    }
+
+    @Test
+    public void mainActivityIsExcludedFromRecents() throws Exception {
+        ActivityInfo info = pm.getActivityInfo(new ComponentName(context, "dev.barankiewicz.genderdiary.MainActivity"), 0);
+        assertTrue((info.flags & ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS) != 0);
     }
 
     private boolean isEnabled(String alias) {

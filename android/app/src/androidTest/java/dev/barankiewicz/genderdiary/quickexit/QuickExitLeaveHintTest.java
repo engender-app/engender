@@ -1,6 +1,7 @@
 package dev.barankiewicz.genderdiary.quickexit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
@@ -51,9 +52,11 @@ public class QuickExitLeaveHintTest {
             awaitTrue(scenario, "typeof window.__quickExitFromNative === 'function'");
             installCounter(scenario);
 
+            long startedAt = System.nanoTime();
             scenario.onActivity(MainActivity::onUserLeaveHint);
-
             assertEquals("1", awaitJs(scenario, "String(window.__quickExitCalls || 0)", "1"));
+            long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
+            assertTrue("quick exit took too long: " + elapsedMs + "ms", elapsedMs < 1500);
         }
     }
 
