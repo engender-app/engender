@@ -13,5 +13,5 @@ to the version before cutting the tag.
 
 - Schema changes: none
 - Archive format changes: none
-- Security migrations: none
+- Security migrations: F-Droid signs rebuilt APKs with a different key than the GitHub/Play release pipeline, so cross-channel updates are reinstall + Archive restore, not in-place signature-compatible updates
 - Minimum supported version: none, there is no earlier release to update from
