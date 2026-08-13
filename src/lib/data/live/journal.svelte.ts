@@ -9,8 +9,8 @@
      - `journal` is the handle screens read and write through. Same shape as
        the journal itself, so a call site looks like it did when it was calling
        a repository function.
-     - every write announces its tables (writes.ts), which bumps a version per
-       table.
+     - every write announces its tables (writes.ts); tableVersions.svelte.ts
+       turns that into a version bump per table and a notify.
      - `liveQuery` re-runs when a table it named bumps, and holds the result in
        `$state` so a template can read it synchronously.
 
@@ -20,26 +20,25 @@
    is one integer and the scoping falls out of it.
 
    The mirrored half - reference data read synchronously - is
-   reference.svelte.ts, which registers itself with `onTablesWritten` below.
+   reference.svelte.ts, which registers itself with `onTablesWritten`,
+   re-exported here from tableVersions.
 
    Nothing here is tested in the Node tier: `$state` is not defined there
-   (ADR-0017), which is exactly why writes.ts holds the part with a rule in
-   it. What this file adds beyond that is covered by
+   (ADR-0017), which is why the parts with a rule in them live rune-free
+   elsewhere - writes.ts for the table mapping, tableVersions.notify.ts for the
+   write-announcement notify. What this file adds beyond that is covered by
    `tests/walkthrough.test.mjs` driving the real screens. */
 
-import { observeWrites, TABLE_NAMES, type TableName } from './writes';
+import { observeWrites, type TableName } from './writes';
 import type { Journal } from '../journal/journal';
+import { bump, versionOf } from './tableVersions.svelte';
 
-const versions = $state<Record<TableName, number>>(
-  Object.fromEntries(TABLE_NAMES.map((table) => [table, 0])) as Record<TableName, number>
-);
+export { onTablesWritten } from './tableVersions.svelte';
 
 /* Held in an object rather than as a bare `let`: a module-level `$state`
    reassignment does not reach readers in other modules, and every reader of
    the journal is in another module. */
 const open = $state<{ journal: Journal | null }>({ journal: null });
-
-const listeners = new Set<(tables: TableName[]) => void>();
 
 /* Same value as `open.journal`, reachable without a reactive read, plus the
    promise everything queues on until it lands. A screen that rendered during
@@ -55,13 +54,6 @@ const opened = new Promise<Journal>((resolve) => {
 
 let wrapped: Journal | null = null;
 
-/** Called after every journal write, with the tables it wrote. The mirror uses
-    this to re-read what it holds; queries need nothing, because the version
-    bump reaches them through `$state`. */
-export function onTablesWritten(listener: (tables: TableName[]) => void): void {
-  listeners.add(listener);
-}
-
 /** Boot's job, once: wraps the journal so its writes announce themselves, and
     hands the wrapper back for boot's own use - `loadReferenceData` writes
     through it, so its announcements have to be observed too.
@@ -70,10 +62,7 @@ export function onTablesWritten(listener: (tables: TableName[]) => void): void {
     driver, and the tables do not exist until the migrations have run, which is
     what `journalIsOpen()` reports. */
 export function attachJournal(raw: Journal): Journal {
-  wrapped = observeWrites(raw, (tables) => {
-    for (const table of tables) versions[table] += 1;
-    for (const listener of listeners) listener(tables);
-  });
+  wrapped = observeWrites(raw, bump);
   return wrapped;
 }
 
@@ -151,7 +140,7 @@ export function liveQuery<T>(tables: TableName[], run: (journal: Journal) => Pro
   let latest = 0;
 
   $effect(() => {
-    for (const table of tables) void versions[table];
+    for (const table of tables) void versionOf(table);
     const ready = open.journal;
     if (!ready) return; // still booting; this re-runs when the database opens
 
