@@ -39,6 +39,22 @@ test('every preset names dimensions that exist', () => {
   expect(dangling).toEqual([]);
 });
 
+test('built-in presets map to the exact dimension sets ticket 09 specifies', () => {
+  expect(BUILT_IN_PRESETS).toEqual([
+    { key: 'p-btw', dims: ['euphoria_dysphoria', 'femininity'] },
+    { key: 'p-masc', dims: ['euphoria_dysphoria', 'masculinity'] },
+    { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] },
+    { key: 'p-fluid', dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary'] },
+    { key: 'p-agender', dims: ['euphoria_dysphoria', 'agender_gendered'] },
+    { key: 'p-demi-fem', dims: ['euphoria_dysphoria', 'femininity', 'agender_gendered'] },
+    { key: 'p-demi-masc', dims: ['euphoria_dysphoria', 'masculinity', 'agender_gendered'] },
+    {
+      key: 'p-nb',
+      dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary', 'agender_gendered']
+    }
+  ]);
+});
+
 test('built-in dimensions seed with no display text, because names are resolved by key', () => {
   const seeded = withBuiltInDimensions([]);
 
