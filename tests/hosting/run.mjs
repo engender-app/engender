@@ -107,11 +107,11 @@ try {
     '-p',
     `127.0.0.1:${port}:8080`,
     '-v',
-    `${snippets}:/etc/nginx/snippets:ro`,
+    `${snippets}:/etc/nginx/snippets:ro,z`,
     '-v',
-    `${confd}:/etc/nginx/conf.d:ro`,
+    `${confd}:/etc/nginx/conf.d:ro,z`,
     '-v',
-    `${current}:/srv/current:ro`,
+    `${current}:/srv/current:ro,z`,
     'nginx:1.27-alpine'
   ]);
   containerUp = true;
