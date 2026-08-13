@@ -181,6 +181,23 @@ describe('OCR review helpers', () => {
     expect(validation.firstError).toBe('missing-date');
   });
 
+  test('blocks save when included rows have malformed date', () => {
+    const validation = validateRowsForSave([
+      {
+        include: true,
+        analyte: 'estradiol',
+        value: '123,4',
+        unit: 'pg/mL',
+        date: '2026-99-40',
+        note: '',
+        lowConfidence: false,
+        duplicate: false
+      }
+    ]);
+    expect(validation.ok).toBe(false);
+    expect(validation.firstError).toBe('invalid-date');
+  });
+
   test('permission-denied detection recognizes clear platform errors', () => {
     expect(isPermissionDenied(new Error('camera permission denied'))).toBe(true);
     expect(isPermissionDenied(new Error('user cancelled'))).toBe(false);
