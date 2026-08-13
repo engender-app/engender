@@ -5,15 +5,10 @@ import android.os.Bundle;
 import android.view.WindowManager;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Plugin;
 
-import dev.barankiewicz.genderdiary.backup.AutoExportPlugin;
-import dev.barankiewicz.genderdiary.disguise.DisguisePlugin;
-import dev.barankiewicz.genderdiary.keystore.KeystorePlugin;
-import dev.barankiewicz.genderdiary.photos.PhotosPlugin;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
-import dev.barankiewicz.genderdiary.reminders.RemindersPlugin;
-import dev.barankiewicz.genderdiary.sqlite.SqlitePlugin;
 
 /**
  * The whole Android application. Everything above the driver seam is the same
@@ -32,13 +27,10 @@ public class MainActivity extends BridgeActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         // Before super.onCreate: the bridge is built there, and a plugin
         // registered afterwards is not in the bridge the WebView gets.
-        registerPlugin(SqlitePlugin.class);
-        registerPlugin(KeystorePlugin.class);
-        registerPlugin(PhotosPlugin.class);
-        registerPlugin(RemindersPlugin.class);
-        registerPlugin(AutoExportPlugin.class);
-        registerPlugin(DisguisePlugin.class);
-        registerPlugin(QuickExitPlugin.class);
+        AndroidPluginRegistry.assertRequiredPluginClassesExposeExpectedIds();
+        for (Class<? extends Plugin> pluginClass : AndroidPluginRegistry.requiredPluginClasses()) {
+            registerPlugin(pluginClass);
+        }
         super.onCreate(savedInstanceState);
         captureReminderRoute(getIntent());
     }
