@@ -7,7 +7,6 @@
   import { fmtDay } from '$lib/data/dates';
   import type { Entry } from '$lib/data/types';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { reference } from '$lib/data/live/reference.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
@@ -31,7 +30,7 @@
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
      read; the entry-shaped reads below are the ones that had to become
      queries. */
-  let upcoming = $derived(upcomingMilestones(reference.milestones, today));
+  let upcoming = $derived(upcomingMilestones(vocabulary.milestones, today));
   let landing = $derived(upcoming.find((x) => x.s.type === 'today' || x.s.isAnnivToday));
   let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
 
