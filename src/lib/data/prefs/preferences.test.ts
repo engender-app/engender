@@ -63,6 +63,7 @@ test('round-trips every value shape a preference can hold', async () => {
   await written.set('metricKind', 'dimension');
   await written.set('lastBackupAt', null);
   await written.set('pinHash', null);
+  await written.set('preferredLabUnits', { estradiol: 'pmol/L', testosterone: 'nmol/L' });
 
   const reread = await openPreferences(driver);
 
@@ -71,6 +72,7 @@ test('round-trips every value shape a preference can hold', async () => {
   expect(reread.get('metricKind')).toBe('dimension');
   expect(reread.get('lastBackupAt')).toBe(null);
   expect(reread.get('pinHash')).toBe(null);
+  expect(reread.get('preferredLabUnits')).toEqual({ estradiol: 'pmol/L', testosterone: 'nmol/L' });
 });
 
 test('SQLite wins over the cache, because the cache is only a cache', async () => {

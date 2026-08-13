@@ -2,7 +2,10 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { normalizeUnit, type LabSeries } from '$lib/data/journal/labs';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { createOcrMachine, type OcrSaver } from '$lib/data/labs/ocr-machine';
+  import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, type PreferredUnitAnalyte } from '$lib/data/labs/units';
+  import { defaultUnitForAnalyte, nextUnitAfterAnalyteChange } from '$lib/data/labs/preferred-units';
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
   import {
     parseLabNumeric,
@@ -72,6 +75,7 @@
 
   const ocrSaver: OcrSaver = {
     getExistingResults: (a) => journal.labs.getResults(a),
+    getPreferredUnit: (a) => preferredUnitForAnalyte(a, prefs.preferredLabUnits),
     async saveResult(params) {
       await journal.labs.upsertResult(params);
       analyte = params.analyte;
@@ -158,9 +162,29 @@
           analyte: 'estradiol',
           customAnalyte: '',
           value: '',
-          unit: '',
+          unit: defaultUnitForAnalyte('estradiol', prefs.preferredLabUnits),
           note: ''
         };
+  }
+
+  function setPreferredUnit(analyteName: PreferredUnitAnalyte, unit: string) {
+    const next = { ...prefs.preferredLabUnits };
+    if (unit) next[analyteName] = unit;
+    else delete next[analyteName];
+    prefs.preferredLabUnits = next;
+  }
+
+  function changeEditorAnalyte(next: string) {
+    if (!editor) return;
+    const previousAnalyte = editor.analyte === 'custom' ? editor.customAnalyte : editor.analyte;
+    const nextAnalyte = next === 'custom' ? '' : next;
+    editor.unit = nextUnitAfterAnalyteChange({
+      previousAnalyte,
+      nextAnalyte,
+      currentUnit: editor.unit,
+      preferredUnits: prefs.preferredLabUnits
+    });
+    editor.analyte = next;
   }
 
   async function saveResult() {
@@ -226,6 +250,29 @@
     </div>
   </header>
 
+  <div class="card" style="margin-bottom:var(--space-4)">
+    <h3>{m.labs_preferred_units_title()}</h3>
+    <p class="muted small" style="margin-bottom:var(--space-3)">{m.labs_preferred_units_intro()}</p>
+    <div class="stack-3">
+      {#each PREFERRED_UNIT_ANALYTES as analyteName (analyteName)}
+        <div class="field">
+          <label class="field-label" for={`preferred-unit-${analyteName}`}>{analyteName}</label>
+          <select
+            class="input"
+            id={`preferred-unit-${analyteName}`}
+            value={preferredUnitForAnalyte(analyteName, prefs.preferredLabUnits) ?? ''}
+            onchange={(e) => setPreferredUnit(analyteName, (e.target as HTMLSelectElement).value)}
+          >
+            <option value="">{m.labs_preferred_units_source_default()}</option>
+            {#each ALLOWED_PREFERRED_UNITS[analyteName] as unit (unit)}
+              <option value={unit}>{unit}</option>
+            {/each}
+          </select>
+        </div>
+      {/each}
+    </div>
+  </div>
+
   {#if usedQuery.loading}
     <Skeleton variant="block" count={1} />
   {:else if analytes.length}
@@ -284,7 +331,7 @@
       </div>
       <div class="field">
         <label class="field-label" for="lab-analyte">{m.labs_analyte_label()}</label>
-        <select class="input" id="lab-analyte" bind:value={editor.analyte}>
+        <select class="input" id="lab-analyte" value={editor.analyte} onchange={(e) => changeEditorAnalyte((e.target as HTMLSelectElement).value)}>
           {#each offeredQuery.value ?? [] as a (a)}
             <option value={a}>{a}</option>
           {/each}

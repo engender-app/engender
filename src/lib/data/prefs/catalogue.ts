@@ -47,6 +47,8 @@ export interface PreferenceValues {
   checkInEnabled: boolean;
   /** Wall-clock "HH:MM" in the device's timezone. */
   checkInTime: string;
+  /** Optional per-analyte default units for labs entry/review. */
+  preferredLabUnits: Partial<Record<'estradiol' | 'testosterone' | 'prolactin', string>>;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
@@ -73,6 +75,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hideNotificationTitles: false,
   checkInEnabled: false,
   checkInTime: '21:00',
+  preferredLabUnits: {},
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
@@ -89,7 +92,8 @@ export const PORTABLE_KEYS = [
   'theme',
   'language',
   'checkInEnabled',
-  'checkInTime'
+  'checkInTime',
+  'preferredLabUnits'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
