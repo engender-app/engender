@@ -73,7 +73,8 @@ export interface StatsArea {
   /** How many entries each day in the range holds, oldest first, days with
       none left out. Not the same question as `dayAverages`: the calendar
       shades a day by the metric but links it by whether anything was logged
-      at all, so a day of entries that carry no mood still has entries. */
+      at all, so a day of entries that carry no value for that metric still
+      has entries. */
   entryCountsByDay(fromEpochDay: number, toEpochDay: number): Promise<{ day: number; count: number }[]>;
   /** Tags carrying at least three valued entries in the range, with the
       metric's average across the entries that carry them and across the
