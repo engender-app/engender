@@ -16,12 +16,15 @@
    costs one concatenation and makes the whole plaintext prefix
    tamper-evident rather than just the parts that would have failed anyway.
 
-   Nothing here knows what the body means; pack.ts owns that. Everything is
-   an async iterable of byte pieces, so neither side ever holds more than a
-   chunk plus whatever the caller is holding. */
+  Nothing here knows what the body means; codec.ts owns the versioned body
+  encode/decode contract and pack.ts routes archives through it. Everything
+  is an async iterable of byte pieces, so neither side ever holds more than
+  a chunk plus whatever the caller is holding. */
 
 import { decrypt, encrypt } from '../../crypto/aesGcm';
 import type { Argon2Params } from '../../crypto/params';
+import { currentArchiveFormatVersion } from './codec';
+import { CorruptArchiveError, u32 } from './wire';
 
 /** "GDIARY". Ahead of the version, so a file from a format that changes
     everything after byte 6 is still recognisably one of ours. */
@@ -37,7 +40,7 @@ const MAX_HEADER_JSON = 64 * 1024;
 const NONCE_LENGTH = 12;
 const TAG_LENGTH = 16;
 
-export const ARCHIVE_FORMAT_VERSION = 1;
+export const ARCHIVE_FORMAT_VERSION = currentArchiveFormatVersion();
 
 /** Roughly 1 MB (ADR-0007). Small enough that peak memory stays bounded on
     a phone, large enough that the 28 bytes of nonce and tag per chunk are
@@ -64,15 +67,6 @@ export class UnsupportedArchiveError extends Error {
     super(message);
     this.name = 'UnsupportedArchiveError';
     this.kind = kind;
-  }
-}
-
-/** The file is an archive, and damaged in a way that needs no key to see:
-    a header that will not parse, or fewer bytes than the header says. */
-export class CorruptArchiveError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'CorruptArchiveError';
   }
 }
 
@@ -160,14 +154,6 @@ export function byteReader(source: AsyncIterable<Uint8Array>): ByteReader {
       return buffered.length === 0;
     }
   };
-}
-
-/** A four-byte big-endian length or index: the only numbers this format
-    writes outside its JSON header. */
-export function u32(value: number): Uint8Array<ArrayBuffer> {
-  const bytes = new Uint8Array(4);
-  new DataView(bytes.buffer).setUint32(0, value);
-  return bytes;
 }
 
 /** Everything an async iterable of byte pieces yields, as one array. The
@@ -273,6 +259,8 @@ function concat(a: Uint8Array, b: Uint8Array): Uint8Array<ArrayBuffer> {
 function aadFor(headerBytes: Uint8Array, index: number): Uint8Array<ArrayBuffer> {
   return concat(headerBytes, u32(index));
 }
+
+export { CorruptArchiveError, u32 } from './wire';
 
 /** Re-cuts a stream of arbitrary pieces into pieces of exactly `size`,
     plus whatever is left at the end. */
