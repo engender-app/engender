@@ -15,7 +15,7 @@ import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
 import { milestoneTemplateRows } from './builtins';
-import type { GenderDimension, GenderPreset, MilestoneTemplate, Tag, TagGroup } from '../types';
+import type { GenderDimension, GenderPreset, Milestone, MilestoneTemplate, Tag, TagGroup } from '../types';
 import {
   dimensionHigh,
   dimensionLow,
@@ -75,6 +75,9 @@ export const vocabulary = {
       sees - which is what search matches typed text against (ADR-0005). */
   get tags(): Tag[] {
     return reference.tags.map(localizeTag);
+  },
+  get milestones(): Milestone[] {
+    return reference.milestones;
   },
   get milestoneTemplates(): MilestoneTemplate[] {
     return milestoneTemplates.map(localizeTemplate);
