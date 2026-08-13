@@ -117,6 +117,33 @@ try {
   ok('calendar → day detail → add another');
 } catch (e) { fail('calendar flow', e); }
 
+/* 4b. day detail keeps entries separate and shows no day average */
+try {
+  await fresh('/entry/new/today');
+  await page.locator('.mood-picker .mood-btn[data-mood="2"]').click();
+  await page.locator('#ed-note').fill('Day detail proof A');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('.entry-card .entry-note');
+
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('.mood-picker .mood-btn[data-mood="5"]').click();
+  await page.locator('#ed-note').fill('Day detail proof B');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('.entry-card .entry-note');
+
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
+  const notes = await page.locator('.day-entry-row .entry-note').allTextContents();
+  if (!notes.includes('Day detail proof A') || !notes.includes('Day detail proof B')) {
+    throw new Error('day detail did not keep separate entries');
+  }
+  if (await page.locator('.day-avg').count()) {
+    throw new Error('day detail still shows a day-average block');
+  }
+  ok('day detail keeps separate entries and no average summary');
+} catch (e) { fail('day detail truthfulness', e); }
+
 /* 5. search */
 try {
   await fresh('/search');
