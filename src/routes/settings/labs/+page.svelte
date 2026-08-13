@@ -2,17 +2,10 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { normalizeUnit, type LabSeries } from '$lib/data/journal/labs';
-  import { chooseFiles } from '$lib/data/fileDialog';
-  import { isAndroid } from '$lib/platform';
-  import { androidPhotos } from '$lib/data/photos/android-bridge';
-  import { tesseractLabOcrEngine } from '$lib/data/labs/ocr-engine';
+  import { createOcrMachine, type OcrSaver } from '$lib/data/labs/ocr-machine';
+  import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
   import {
-    buildDuplicateKeys,
-    isPermissionDenied,
-    makeReviewRows,
     parseLabNumeric,
-    parseOcrLabRows,
-    validateRowsForSave,
     type OcrReviewRow
   } from '$lib/data/labs/ocr';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -72,108 +65,81 @@
     note: string;
   } | null>(null);
   let deleteTarget = $state<LabResult | null>(null);
-  let ocrSheet = $state<'pick' | 'review' | 'empty' | 'permission' | null>(null);
-  let ocrBusy = $state(false);
-  let ocrRows = $state<OcrReviewRow[]>([]);
-  let ocrError = $state('');
 
-  async function pickOcrImage(source: 'gallery' | 'camera'): Promise<Uint8Array | null> {
-    if (isAndroid()) {
-      if (source === 'camera') {
-        const { image } = await androidPhotos.captureImage();
-        if (!image) return null;
-        return Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
-      }
-      const { images } = await androidPhotos.pickImages();
-      if (!images.length) return null;
-      return Uint8Array.from(atob(images[0]), (c) => c.charCodeAt(0));
+  // ---------------------------------------------------------------------------
+  // OCR state machine
+  // ---------------------------------------------------------------------------
+
+  const ocrSaver: OcrSaver = {
+    getExistingResults: (a) => journal.labs.getResults(a),
+    async saveResult(params) {
+      await journal.labs.upsertResult(params);
+      analyte = params.analyte;
     }
+  };
 
-    const [file] = await chooseFiles('image/*', {
-      multiple: false,
-      capture: source === 'camera' ? 'environment' : undefined
-    });
-    if (!file) return null;
-    return new Uint8Array(await file.arrayBuffer());
+  const ocrMachineBase = createOcrMachine(
+    platformImageSource(),
+    tesseractOcrRecognizer(),
+    ocrSaver
+  );
+  // Wrap in $state so Svelte tracks reads on .state
+  let ocr = $state(ocrMachineBase);
+
+  // After save succeeds, show a toast and return to idle.
+  $effect(() => {
+    if (ocr.state.tag === 'saved') {
+      toast(m.labs_ocr_saved_toast({ count: String(ocr.state.count) }));
+      ocr.close();
+    }
+  });
+
+  // Derive error message string for the review sheet's notice.
+  let ocrValidationError = $derived(
+    ocr.state.tag === 'save-validation-failed'
+      ? ocr.state.error === 'missing-analyte'
+        ? m.labs_ocr_missing_analyte()
+        : ocr.state.error === 'invalid-value'
+          ? m.labs_ocr_invalid_value()
+          : ocr.state.error === 'missing-date'
+            ? m.labs_ocr_missing_date()
+            : m.labs_ocr_invalid_date()
+      : ocr.state.tag === 'save-failed'
+        ? m.labs_ocr_failed()
+        : ''
+  );
+
+  // The review rows, available from review, save-validation-failed, and save-failed states.
+  let ocrRows = $derived<OcrReviewRow[]>(
+    ocr.state.tag === 'review' ||
+    ocr.state.tag === 'save-validation-failed' ||
+    ocr.state.tag === 'save-failed'
+      ? ocr.state.rows
+      : []
+  );
+
+  // Whether the OCR sheet should be open (any non-idle state).
+  let ocrSheetOpen = $derived(ocr.state.tag !== 'idle' && ocr.state.tag !== 'saved');
+
+  // Title for the sheet header.
+  let ocrSheetTitle = $derived(
+    ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving' || ocr.state.tag === 'save-failed'
+      ? m.labs_ocr_review_sheet()
+      : ocr.state.tag === 'no-rows'
+        ? m.labs_ocr_empty_sheet()
+        : m.labs_ocr_pick_sheet()
+  );
+
+  function openOcrImport() {
+    ocr.open();
   }
 
-  async function startOcrImport(source: 'gallery' | 'camera') {
-    if (ocrBusy) return;
-    ocrError = '';
-    ocrBusy = true;
-    try {
-      const image = await pickOcrImage(source);
-      if (!image) return;
-
-      const recognized = await tesseractLabOcrEngine().recognize(image);
-      const parsed = parseOcrLabRows(recognized.data.text);
-      if (!parsed.length) {
-        ocrRows = [];
-        ocrSheet = 'empty';
-        return;
-      }
-
-      const analytes = [...new Set(parsed.map((row) => row.analyte.trim().toLowerCase()).filter(Boolean))];
-      const existing: Array<{ epochDay: number; analyte: string; value: number; unit: string }> = [];
-      for (const analyte of analytes) {
-        for (const result of await journal.labs.getResults(analyte)) {
-          existing.push({
-            epochDay: result.epochDay,
-            analyte: result.analyte,
-            value: result.value,
-            unit: result.unit
-          });
-        }
-      }
-
-      ocrRows = makeReviewRows(parsed, buildDuplicateKeys(existing));
-      ocrSheet = 'review';
-    } catch (error) {
-      console.error('OCR import failed', error);
-      if (isPermissionDenied(error)) ocrSheet = 'permission';
-      else ocrError = m.labs_ocr_failed();
-    } finally {
-      ocrBusy = false;
-    }
+  function closeOcrSheet() {
+    ocr.close();
   }
 
-  async function saveOcrRows() {
-    const validation = validateRowsForSave(ocrRows);
-    if (!validation.ok) {
-      ocrError =
-        validation.firstError === 'missing-analyte'
-          ? m.labs_ocr_missing_analyte()
-          : validation.firstError === 'invalid-value'
-            ? m.labs_ocr_invalid_value()
-            : validation.firstError === 'missing-date'
-              ? m.labs_ocr_missing_date()
-              : m.labs_ocr_invalid_date();
-      return;
-    }
-
-    let saved = 0;
-    for (const row of ocrRows) {
-      if (!row.include) continue;
-      const epochDay = epochDayFromDateInputValue(row.date);
-      const value = parseLabNumeric(row.value);
-      if (epochDay === null || value === null) continue;
-      const resultAnalyte = row.analyte.trim().toLowerCase();
-      if (!resultAnalyte) continue;
-      await journal.labs.upsertResult({
-        epochDay,
-        analyte: resultAnalyte,
-        value,
-        unit: row.unit,
-        note: row.note
-      });
-      analyte = resultAnalyte;
-      saved += 1;
-    }
-
-    ocrSheet = null;
-    ocrRows = [];
-    ocrError = '';
-    toast(m.labs_ocr_saved_toast({ count: String(saved) }));
+  function handleOcrRowsChange(rows: OcrReviewRow[]) {
+    ocr.updateRows(rows);
   }
 
   function openEditor(result: LabResult | null) {
@@ -251,7 +217,7 @@
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.lab_results()}</h1>
     <div class="header-action">
-      <button class="icon-btn" data-import-lab aria-label={m.labs_ocr_import_aria()} onclick={() => (ocrSheet = 'pick')}>
+      <button class="icon-btn" data-import-lab aria-label={m.labs_ocr_import_aria()} onclick={openOcrImport}>
         <Icon name="camera" size={20} />
       </button>
       <button class="icon-btn" data-add aria-label={m.labs_add_aria()} onclick={() => openEditor(null)}>
@@ -302,8 +268,8 @@
     >
       {#snippet action()}
         <div class="stack-3">
-          <button class="btn btn-primary" onclick={() => openEditor(null)}><span>{m.labs_empty_action()}</span></button>
-          <button class="btn btn-soft" onclick={() => (ocrSheet = 'pick')}><span>{m.labs_ocr_import_aria()}</span></button>
+          <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.labs_empty_action()}</span></button>
+          <button class="btn btn-soft" onclick={openOcrImport}><span>{m.labs_ocr_import_aria()}</span></button>
         </div>
       {/snippet}
     </EmptyState>
@@ -366,52 +332,59 @@
   </Sheet>
 
   <Sheet
-    open={ocrSheet !== null}
-    title={ocrSheet === 'review' ? m.labs_ocr_review_sheet() : ocrSheet === 'empty' ? m.labs_ocr_empty_sheet() : m.labs_ocr_pick_sheet()}
-    onClose={() => {
-      ocrSheet = null;
-      ocrError = '';
-    }}
+    open={ocrSheetOpen}
+    title={ocrSheetTitle}
+    onClose={closeOcrSheet}
   >
-    {#if ocrSheet === 'pick'}
+    {#if ocr.state.tag === 'picking'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_pick_intro()}</p>
       <div class="stack-3">
-        <button class="btn btn-soft" onclick={() => startOcrImport('gallery')} disabled={ocrBusy}>
-          <span>{ocrBusy ? m.labs_ocr_running() : m.labs_ocr_pick_gallery()}</span>
+        <button class="btn btn-soft" onclick={() => ocr.pickSource('gallery')}>
+          <span>{m.labs_ocr_pick_gallery()}</span>
         </button>
-        <button class="btn btn-soft" onclick={() => startOcrImport('camera')} disabled={ocrBusy}>
-          <span>{ocrBusy ? m.labs_ocr_running() : m.labs_ocr_pick_camera()}</span>
+        <button class="btn btn-soft" onclick={() => ocr.pickSource('camera')}>
+          <span>{m.labs_ocr_pick_camera()}</span>
         </button>
       </div>
-    {:else if ocrSheet === 'permission'}
+    {:else if ocr.state.tag === 'recognizing'}
+      <h3>{m.labs_ocr_pick_sheet()}</h3>
+      <p class="muted small">{m.labs_ocr_running()}</p>
+    {:else if ocr.state.tag === 'permission-denied'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_permission_denied()}</div>
       </div>
-      <button class="btn btn-soft" onclick={() => (ocrSheet = 'pick')}><span>{m.labs_ocr_retry()}</span></button>
-    {:else if ocrSheet === 'empty'}
+      <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+    {:else if ocr.state.tag === 'recognition-failed'}
+      <h3>{m.labs_ocr_pick_sheet()}</h3>
+      <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
+        <Icon name="alert" size={20} />
+        <div class="notice-body">{m.labs_ocr_failed()}</div>
+      </div>
+      <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+    {:else if ocr.state.tag === 'no-rows'}
       <h3>{m.labs_ocr_empty_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_no_rows_body()}</p>
       <div class="stack-3">
-        <button class="btn btn-primary" onclick={() => openEditor(null)}><span>{m.labs_ocr_no_rows_manual()}</span></button>
-        <button class="btn btn-soft" onclick={() => (ocrSheet = 'pick')}><span>{m.labs_ocr_retry()}</span></button>
+        <button class="btn btn-primary" onclick={() => { ocr.close(); openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
+        <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
       </div>
-    {:else if ocrSheet === 'review'}
+    {:else if ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving' || ocr.state.tag === 'save-failed'}
       <h3>{m.labs_ocr_review_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-3)">{m.labs_ocr_review_intro()}</p>
-      {#if ocrError}
+      {#if ocrValidationError}
         <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
           <Icon name="alert" size={20} />
-          <div class="notice-body">{ocrError}</div>
+          <div class="notice-body">{ocrValidationError}</div>
         </div>
       {/if}
       <div class="stack-3">
         {#each ocrRows as row, i (i)}
           <div class="card editor-section">
             <label class="small" style="display:flex;gap:8px;align-items:center;margin-bottom:var(--space-2)">
-              <input type="checkbox" bind:checked={row.include} />
+              <input type="checkbox" checked={row.include} onchange={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, include: (e.target as HTMLInputElement).checked } : r); handleOcrRowsChange(updated); }} />
               <span>{m.labs_ocr_row_include()}</span>
               {#if row.duplicate}
                 <span class="notice-warn" style="padding:2px 8px;border-radius:var(--radius-pill);font-size:var(--text-xs)">{m.labs_ocr_duplicate()}</span>
@@ -422,30 +395,30 @@
             {/if}
             <div class="field">
               <label class="field-label" for={`ocr-analyte-${i}`}>{m.labs_analyte_label()}</label>
-              <input class="input" id={`ocr-analyte-${i}`} bind:value={row.analyte} />
+              <input class="input" id={`ocr-analyte-${i}`} value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
             </div>
             <div class="cd-endpoints">
               <div class="field">
                 <label class="field-label" for={`ocr-value-${i}`}>{m.labs_value_label()}</label>
-                <input class="input" id={`ocr-value-${i}`} inputmode="decimal" bind:value={row.value} />
+                <input class="input" id={`ocr-value-${i}`} inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               </div>
               <div class="field">
                 <label class="field-label" for={`ocr-unit-${i}`}>{m.labs_unit_label()}</label>
-                <input class="input" id={`ocr-unit-${i}`} bind:value={row.unit} />
+                <input class="input" id={`ocr-unit-${i}`} value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               </div>
             </div>
             <div class="field">
               <label class="field-label" for={`ocr-date-${i}`}>{m.labs_date_label()}</label>
-              <input class="input" type="date" id={`ocr-date-${i}`} bind:value={row.date} />
+              <input class="input" type="date" id={`ocr-date-${i}`} value={row.date} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
             </div>
             <div class="field">
               <label class="field-label" for={`ocr-note-${i}`}>{m.labs_note_label()}</label>
-              <input class="input" id={`ocr-note-${i}`} bind:value={row.note} />
+              <input class="input" id={`ocr-note-${i}`} value={row.note} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, note: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
             </div>
           </div>
         {/each}
       </div>
-      <button class="btn btn-primary" style="margin-top:var(--space-3)" onclick={saveOcrRows}><span>{m.labs_ocr_save()}</span></button>
+      <button class="btn btn-primary" style="margin-top:var(--space-3)" disabled={ocr.state.tag === 'saving'} onclick={() => ocr.save()}><span>{m.labs_ocr_save()}</span></button>
     {/if}
   </Sheet>
 </div>
