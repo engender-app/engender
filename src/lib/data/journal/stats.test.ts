@@ -99,6 +99,32 @@ test('insights sort by the size of the difference, not its direction', async () 
   assert.equal(rows[0].withoutAvg, 4.5);
 });
 
+/* An entry carrying two tags sits in one tag's "with" set and the other's,
+   and in neither's "without" set. The averages are derived by subtracting
+   each tag's total from the range's, so this is the case that says the
+   subtraction is per tag and not a single split of the range. */
+test('an entry carrying two tags counts towards both, and against neither comparison', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 5, tags: ['a-therapy', 'a-exercise'] });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 5, tags: ['a-therapy'] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['a-therapy'] });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 1, tags: ['a-exercise'] });
+  await journal.entries.upsertEntry({ epochDay: 104, mood: 1, tags: ['a-exercise'] });
+  await journal.entries.upsertEntry({ epochDay: 105, mood: 2 });
+
+  const rows = await journal.stats.tagInsights('mood', 100, 105);
+
+  assert.deepEqual(
+    rows.map((r) => ({ id: r.id, count: r.count, withAvg: r.withAvg, withoutAvg: r.withoutAvg })),
+    [
+      // 5,5,3 against the 1,1,2 that carry no therapy.
+      { id: 'a-therapy', count: 3, withAvg: 13 / 3, withoutAvg: 4 / 3 },
+      // 5,1,1 against the 5,3,2 that carry no exercise.
+      { id: 'a-exercise', count: 3, withAvg: 7 / 3, withoutAvg: 10 / 3 }
+    ]
+  );
+});
+
 test('a tag with fewer than three valued entries in range is too noisy to report', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 100, mood: 5, tags: ['a-therapy'] });
