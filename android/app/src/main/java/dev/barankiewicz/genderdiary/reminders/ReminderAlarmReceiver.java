@@ -60,9 +60,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
     private void postReminderNotification(Context context, JSONObject payload, JSONObject reminder) {
         if (!notificationsAllowed(context)) return;
 
-        JSONObject texts = payload.optJSONObject("texts");
-        String fallbackTitle = texts != null ? texts.optString("channelReminders", "Reminders") : "Reminders";
-        String title = reminder.optString("title", fallbackTitle);
+        String title = resolveNotificationTitle(payload, reminder);
         String id = reminder.optString("id", "");
         String time = reminder.optString("time", "");
 
@@ -110,6 +108,18 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             open,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
+    }
+
+    /** The reminder's own title, unless hideNotificationTitles (ticket 15) is
+        on - then the channel name stands in for it. Not a lock-time check:
+        the app cannot learn whether the screen is locked when an alarm
+        fires, so the preference hides the title unconditionally rather than
+        trusting a guess. */
+    static String resolveNotificationTitle(JSONObject payload, JSONObject reminder) {
+        JSONObject texts = payload.optJSONObject("texts");
+        String fallbackTitle = texts != null ? texts.optString("channelReminders", "Reminders") : "Reminders";
+        if (payload.optBoolean("hideNotificationTitles", false)) return fallbackTitle;
+        return reminder.optString("title", fallbackTitle);
     }
 
     private JSONObject findReminder(JSONArray reminders, String reminderId) {

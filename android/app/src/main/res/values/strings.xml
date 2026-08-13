@@ -1,6 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Gender Diary</string>
+    <!-- Disguise's launcher identity (ticket 15): the label the disguised
+         activity-alias shows in the launcher and recents, matching the
+         web install's neutral manifest (ticket 25) and disguise_app_title's
+         preview in Settings. -->
+    <string name="app_name_disguised">Notes</string>
     <string name="title_activity_main">Gender Diary</string>
     <string name="package_name">dev.barankiewicz.genderdiary</string>
     <string name="custom_url_scheme">dev.barankiewicz.genderdiary</string>

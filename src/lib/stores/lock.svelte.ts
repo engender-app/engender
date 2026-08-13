@@ -105,7 +105,17 @@ export function watchLock(): () => void {
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('blur', onBlur);
 
+  /* The Android equivalent of the two-finger swipe (ticket 15): pressing
+     Home or Recents. MainActivity.onUserLeaveHint calls this straight
+     through evaluateJavascript rather than waiting on onVisibility above,
+     which only runs once the WebView's event loop gets to it - by then the
+     system may already have the recents thumbnail it took at leave time. */
+  if (isAndroid()) {
+    (window as unknown as { __quickExitFromNative?: () => void }).__quickExitFromNative = quickExit;
+  }
+
   return () => {
+    if (isAndroid()) delete (window as unknown as { __quickExitFromNative?: () => void }).__quickExitFromNative;
     window.removeEventListener('touchstart', onTouchStart);
     window.removeEventListener('touchmove', onTouchMove);
     window.removeEventListener('touchend', onTouchEnd);

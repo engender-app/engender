@@ -50,6 +50,11 @@ dependencies {
     // SAF tree/document operations for scheduled backup destinations.
     implementation "androidx.documentfile:documentfile:1.0.1"
     testImplementation "junit:junit:$junitVersion"
+    // Host-side unit tests run against the Android SDK's stub jar, whose
+    // org.json throws on every call. This puts the real implementation
+    // ahead of the stub on the unit-test classpath so JSONObject usage
+    // (ReminderPlannerTest, ReminderAlarmReceiverTest) can actually run.
+    testImplementation "org.json:json:20231013"
     androidTestImplementation "androidx.test:runner:$androidxTestRunnerVersion"
     androidTestImplementation "androidx.test:core:$androidxTestCoreVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

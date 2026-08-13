@@ -39,6 +39,11 @@ export interface PreferenceValues {
   lockOnLeave: boolean;
   disguise: boolean;
   quickExit: boolean;
+  /** Reminder notifications show their real title and body when false; a
+      generic one otherwise, regardless of whether the device is locked at
+      the moment they fire (ticket 15) - the app cannot reliably learn the
+      lock state at post time, so it never trusts one. */
+  hideNotificationTitles: boolean;
   checkInEnabled: boolean;
   /** Wall-clock "HH:MM" in the device's timezone. */
   checkInTime: string;
@@ -65,6 +70,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lockOnLeave: false,
   disguise: false,
   quickExit: false,
+  hideNotificationTitles: false,
   checkInEnabled: false,
   checkInTime: '21:00',
   autoExportEnabled: false,
@@ -94,6 +100,7 @@ export const DEVICE_LOCAL_KEYS = [
   'lockOnLeave',
   'disguise',
   'quickExit',
+  'hideNotificationTitles',
   'autoExportEnabled',
   'autoExportSchedule',
   'lastBackupAt',

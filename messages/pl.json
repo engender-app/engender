@@ -750,6 +750,8 @@
   "rem_capabilities_body": "Android może blokować przypomnienia, dopóki aplikacja nie ma zgody na powiadomienia. W nowszych wersjach system może też odmówić dokładnych alarmów. Kanały przypomnień i codziennego pytania znajdziesz w ustawieniach powiadomień telefonu.",
   "rem_allow_notifications": "Włącz powiadomienia",
   "rem_allow_exact_alarms": "Włącz dokładne alarmy",
+  "rem_hide_titles_title": "Ukryj wrażliwe tytuły",
+  "rem_hide_titles_sub": "powiadomienia pokazują ogólny tytuł i treść zamiast nazwy przypomnienia",
   "tl_intro": "Twoje kamienie milowe do tej pory i to, co przed tobą.",
   "tl_you_are_here": "dziś, tutaj jesteś",
   "tl_gap_aria": "{duration} bez kamieni milowych, skrócone",

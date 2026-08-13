@@ -21,6 +21,8 @@
   import { isAndroid } from '$lib/platform';
   import { androidReminders } from '$lib/reminders/android-bridge';
   import { buildAndroidReminderPayload } from '$lib/reminders/payload';
+  import { androidDisguise } from '$lib/disguise/android-bridge';
+  import { androidQuickExit } from '$lib/lock/quick-exit-bridge';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LockScreen from '$lib/components/LockScreen.svelte';
@@ -201,6 +203,7 @@
           checkInEnabled: prefs.checkInEnabled,
           checkInTime: prefs.checkInTime,
           latestEntryEpochDay: recent[0]?.epochDay ?? null,
+          hideNotificationTitles: prefs.hideNotificationTitles,
           texts: {
             channelReminders: m.reminders(),
             channelCheckIn: m.checkin_title(),
@@ -260,6 +263,7 @@
     if (!isAndroid() || bootState.status !== 'ready') return;
     void prefs.checkInEnabled;
     void prefs.checkInTime;
+    void prefs.hideNotificationTitles;
     void syncAndroidReminderSchedules();
   });
 
@@ -276,6 +280,25 @@
       window.removeEventListener('focus', onVisible);
       document.removeEventListener('visibilitychange', onVisible);
     };
+  });
+
+  /* The launcher alias (ticket 15) follows prefs.disguise on every change,
+     not only the Settings toggle: an Archive restore (restore.ts) can set
+     it too, and the launcher has to match what got restored. The plugin
+     is the one that decides whether anything actually changes - a
+     boot-time run that finds the alias already correct is a no-op, not a
+     restart nobody asked for. */
+  $effect(() => {
+    if (!isAndroid() || bootState.status !== 'ready') return;
+    void androidDisguise.setDisguised({ disguised: prefs.disguise });
+  });
+
+  /* Quick exit's Android leave-hint (MainActivity.onUserLeaveHint) reads a
+     SharedPreferences mirror rather than asking the WebView, so this keeps
+     it in step with the real preference. */
+  $effect(() => {
+    if (!isAndroid() || bootState.status !== 'ready') return;
+    void androidQuickExit.setEnabled({ enabled: prefs.quickExit });
   });
 </script>
 
