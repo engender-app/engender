@@ -84,6 +84,17 @@
   "search_placeholder": "Szukaj w notatkach i tagach…",
   "search_hint": "Notatki i tagi, z polskimi znakami lub bez. „lozko” znajdzie „łóżko”.",
   "search_try": "Spróbuj „euforia”, „kawa” albo tagu „terapia”.",
+  "search_filters": "Filtry",
+  "search_filter_moods_aria": "Filtry nastroju",
+  "search_filter_tags_label": "Tagi",
+  "search_filter_start_label": "Od dnia",
+  "search_filter_end_label": "Do dnia",
+  "search_filter_has_note": "Ma notatkę",
+  "search_filter_has_photo": "Ma zdjęcie",
+  "search_filter_mood_chip": "Nastrój: {mood}",
+  "search_filter_start_chip": "Od: {date}",
+  "search_filter_end_chip": "Do: {date}",
+  "search_filters_clear_all": "Wyczyść wszystko",
   "results_count": [
     {
       "declarations": [
@@ -103,6 +114,7 @@
   ],
   "no_results": "Nic nie znaleziono",
   "no_results_body": "Żaden wpis nie pasuje do „{query}”. Spróbuj krótszego słowa. Początki słów też działają.",
+  "search_no_results_filtered": "Żaden wpis nie pasuje jeszcze do tych filtrów.",
   "stats_title": "Statystyki · ostatnie {days} dni",
   "range_days": "{days} dni",
   "not_enough_data": "Za mało danych w tym zakresie.",
@@ -746,6 +758,7 @@
   "ph_later": "Późniejsze zdjęcie",
   "ph_from_entry": "wpis w dzienniku",
   "ph_back_to_all": "Wróć do wszystkich zdjęć",
+  "ph_compare_reset": "Jedno z wybranych zdjęć już nie jest dostępne. Wybierz ponownie dwa punkty.",
   "ph_pick_two": "Wszystkie zdjęcia z dziennika, od najstarszego. Wybierz dwa, żeby je porównać.",
   "ph_one_selected": "Jedno wybrane. Wybierz drugie, żeby porównać.",
   "ph_two_selected": "Dwa wybrane.",

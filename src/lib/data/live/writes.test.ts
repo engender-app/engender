@@ -63,7 +63,7 @@ test('a milestone save announces photos because it can preserve, remove or repla
 test('a write that reaches into another area announces both', async () => {
   const { journal, announced } = await observed();
   const tag = await journal.tags.addTag('gender', 'voice practice');
-  await journal.entries.upsertEntry({ epochDay: 100, tags: [tag.id] });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: [tag.id] });
   announced.length = 0;
 
   // Deleting a custom tag unlinks it from every entry carrying it, so an

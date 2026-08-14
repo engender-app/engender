@@ -35,7 +35,7 @@ test('a dimension reports in its own range, whatever that range is', async () =>
     min: 0,
     max: 10
   });
-  await journal.entries.upsertEntry({ epochDay: 100, dims: { femininity: 70, [voice.key]: 3 } });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, dims: { femininity: 70, [voice.key]: 3 } });
 
   assert.deepEqual(await journal.stats.dayAverages('femininity', 100, 100), [{ day: 100, value: 70, count: 1 }]);
   assert.deepEqual(await journal.stats.dayAverages(voice.key, 100, 100), [{ day: 100, value: 3, count: 1 }]);
@@ -55,15 +55,15 @@ test("a multi-entry day averages, and says how many entries it averaged", async 
 
 test('an entry without the metric contributes nothing, and neither does a day outside the range', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 99, mood: 1 });
-  await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
-  await journal.entries.upsertEntry({ epochDay: 101, note: 'no mood on this one' });
-  await journal.entries.upsertEntry({ epochDay: 102, mood: 5 });
-  await journal.entries.upsertEntry({ epochDay: 103, mood: 1 });
+  await journal.entries.upsertEntry({ epochDay: 99, mood: 1, dims: { femininity: 10 } });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, dims: { femininity: 20 } });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 2, note: 'no femininity value on this one' });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 5, dims: { femininity: 30 } });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 1, dims: { femininity: 40 } });
 
   // Both ends of the range are inclusive.
   assert.deepEqual(
-    (await journal.stats.dayAverages('mood', 100, 102)).map((p) => p.day),
+    (await journal.stats.dayAverages('femininity', 100, 102)).map((p) => p.day),
     [100, 102]
   );
 });
@@ -127,18 +127,18 @@ test('an entry carrying two tags counts towards both, and against neither compar
 
 test('a tag with fewer than three valued entries in range is too noisy to report', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, mood: 5, tags: ['a-therapy'] });
-  await journal.entries.upsertEntry({ epochDay: 101, mood: 5, tags: ['a-therapy'] });
-  await journal.entries.upsertEntry({ epochDay: 102, mood: 1, tags: ['e-sad'] });
-  await journal.entries.upsertEntry({ epochDay: 103, mood: 1, tags: ['e-sad'] });
-  await journal.entries.upsertEntry({ epochDay: 104, mood: 1, tags: ['e-sad'] });
-  await journal.entries.upsertEntry({ epochDay: 105, mood: 3 });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, dims: { femininity: 90 }, tags: ['a-therapy'] });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, dims: { femininity: 90 }, tags: ['a-therapy'] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 3, dims: { femininity: 10 }, tags: ['e-sad'] });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 3, dims: { femininity: 10 }, tags: ['e-sad'] });
+  await journal.entries.upsertEntry({ epochDay: 104, mood: 3, dims: { femininity: 10 }, tags: ['e-sad'] });
+  await journal.entries.upsertEntry({ epochDay: 105, mood: 3, dims: { femininity: 50 } });
 
-  assert.deepEqual((await journal.stats.tagInsights('mood', 100, 105)).map((r) => r.id), ['e-sad']);
+  assert.deepEqual((await journal.stats.tagInsights('femininity', 100, 105)).map((r) => r.id), ['e-sad']);
 
-  // A tagged entry with no mood on it does not count towards the three.
-  await journal.entries.upsertEntry({ epochDay: 106, note: 'session', tags: ['a-therapy'] });
-  assert.deepEqual((await journal.stats.tagInsights('mood', 100, 106)).map((r) => r.id), ['e-sad']);
+  // A tagged entry with no femininity value does not count towards the three.
+  await journal.entries.upsertEntry({ epochDay: 106, mood: 3, note: 'session', tags: ['a-therapy'] });
+  assert.deepEqual((await journal.stats.tagInsights('femininity', 100, 106)).map((r) => r.id), ['e-sad']);
 });
 
 test('a tag on every valued entry in range has nothing to compare against', async () => {
@@ -267,8 +267,8 @@ test('the biggest dimension change is picked across ranges but reported in nativ
   // Euphoria moves 20 points of 100; voice moves 3 points of 10. The bigger
   // native number is the smaller move, which is what the normalized
   // comparison is for - and the answer still reads in native units.
-  await journal.entries.upsertEntry({ epochDay: 100, dims: { euphoria_dysphoria: 40, [voice.key]: 2 } });
-  await journal.entries.upsertEntry({ epochDay: 110, dims: { euphoria_dysphoria: 60, [voice.key]: 5 } });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, dims: { euphoria_dysphoria: 40, [voice.key]: 2 } });
+  await journal.entries.upsertEntry({ epochDay: 110, mood: 3, dims: { euphoria_dysphoria: 60, [voice.key]: 5 } });
 
   assert.deepEqual((await journal.stats.recap(100, 129)).biggestDimensionChange, {
     key: voice.key,
@@ -280,18 +280,18 @@ test('the biggest dimension change is picked across ranges but reported in nativ
 
 test('a dimension logged once in the range has not changed', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, dims: { femininity: 40 } });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, dims: { femininity: 40 } });
 
   assert.equal((await journal.stats.recap(100, 129)).biggestDimensionChange, null);
 });
 
 test('the change runs first to last within the range, by day and then by time of day', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 90, dims: { femininity: 10 } }); // before the range
-  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 20, dims: { femininity: 30 } });
-  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 10, dims: { femininity: 50 } });
-  await journal.entries.upsertEntry({ epochDay: 110, dims: { femininity: 80 } });
-  await journal.entries.upsertEntry({ epochDay: 200, dims: { femininity: 5 } }); // after it
+  await journal.entries.upsertEntry({ epochDay: 90, mood: 3, dims: { femininity: 10 } }); // before the range
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, timestamp: 20, dims: { femininity: 30 } });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, timestamp: 10, dims: { femininity: 50 } });
+  await journal.entries.upsertEntry({ epochDay: 110, mood: 3, dims: { femininity: 80 } });
+  await journal.entries.upsertEntry({ epochDay: 200, mood: 3, dims: { femininity: 5 } }); // after it
 
   assert.deepEqual((await journal.stats.recap(100, 129)).biggestDimensionChange, {
     key: 'femininity',
@@ -303,8 +303,8 @@ test('the change runs first to last within the range, by day and then by time of
 
 test('a hidden dimension is not the one a recap volunteers', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, dims: { masculinity: 10, femininity: 40 } });
-  await journal.entries.upsertEntry({ epochDay: 110, dims: { masculinity: 90, femininity: 50 } });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, dims: { masculinity: 10, femininity: 40 } });
+  await journal.entries.upsertEntry({ epochDay: 110, mood: 3, dims: { masculinity: 90, femininity: 50 } });
 
   await journal.dimensions.setDimensionHidden('masculinity', true);
 
@@ -318,15 +318,15 @@ test('a hidden dimension is not the one a recap volunteers', async () => {
 
 /* Entries per day, which is not the same question as the metric's day
    average: the calendar shades a day by the metric but links it by whether
-   anything was logged at all, so a day with entries that carry no mood is
-   still a day with entries (ticket 08). */
+   anything was logged at all, so a day with entries that carry no value for
+   the metric charted is still a day with entries (ticket 08). */
 
 test('entryCountsByDay counts every entry on a day, metric or no metric', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 99, mood: 3 }); // before the range
   await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
   await journal.entries.upsertEntry({ epochDay: 100, mood: 5 });
-  await journal.entries.upsertEntry({ epochDay: 101, note: 'no mood on this one' });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 2, note: 'no dimension value on this one' });
   await journal.entries.upsertEntry({ epochDay: 131, mood: 1 }); // after it
 
   assert.deepEqual(await journal.stats.entryCountsByDay(100, 130), [

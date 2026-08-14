@@ -3,6 +3,12 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import { calendarDuration } from '$lib/data/epochDay';
+  import {
+    orderAnchorsByJourney,
+    stepCompareAnchor,
+    toComparePair,
+    toggleCompareAnchor
+  } from '$lib/data/photos/compare-state';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -15,28 +21,24 @@
   let photosQuery = liveQuery(['photo', 'entry', 'milestone'], (j) => j.photos.inJournal());
   let photos = $derived(photosQuery.value ?? []);
 
-  let selected = $state<number[]>([]);
+  let selected = $state<string[]>([]);
   let comparing = $state(false);
 
-  let pair = $derived.by(() => {
-    if (selected.length !== 2) return null;
-    const [ia, ib] = [...selected].sort((a, b) => photos[a].epochDay - photos[b].epochDay);
-    return { ia, ib };
-  });
+  let orderedSelected = $derived(orderAnchorsByJourney(selected, photos));
+  let pair = $derived(toComparePair(selected, photos));
 
   let gapLabel = $derived.by(() => {
     if (!pair) return '';
-    const duration = calendarDuration(photos[pair.ia].epochDay, photos[pair.ib].epochDay);
+    const duration = calendarDuration(photos[pair.left].epochDay, photos[pair.right].epochDay);
     return `${fmtDuration(duration)} ${m.apart_suffix()}`;
   });
 
-  function toggle(i: number) {
-    selected = selected.includes(i) ? selected.filter((x) => x !== i) : [...selected, i].slice(-2);
+  function toggle(id: string) {
+    selected = toggleCompareAnchor(selected, id, photos);
   }
 
-  function step(which: 'a' | 'b', delta: number) {
-    if (!pair) return;
-    selected = which === 'a' ? [pair.ia + delta, pair.ib] : [pair.ia, pair.ib + delta];
+  function step(which: 'left' | 'right', delta: -1 | 1) {
+    selected = stepCompareAnchor(selected, which, delta, photos);
   }
 </script>
 
@@ -49,7 +51,7 @@
     </header>
     <p class="compare-gap">{gapLabel}</p>
     <div class="compare-wrap">
-      {#each [{ i: pair.ia, which: 'a' as const, canPrev: pair.ia > 0, canNext: pair.ia < pair.ib - 1 }, { i: pair.ib, which: 'b' as const, canPrev: pair.ib > pair.ia + 1, canNext: pair.ib < photos.length - 1 }] as side (side.which)}
+      {#each [{ i: pair.left, which: 'left' as const, canPrev: pair.left > 0, canNext: pair.left < pair.right - 1 }, { i: pair.right, which: 'right' as const, canPrev: pair.right > pair.left + 1, canNext: pair.right < photos.length - 1 }] as side (side.which)}
         <div class="compare-side">
           <PhotoThumb photo={photos[side.i]} size={150} />
           <div class="compare-nav">
@@ -77,25 +79,28 @@
     {#if photosQuery.loading}
       <Skeleton variant="card" count={2} />
     {:else if photos.length}
+      {#if comparing && !pair}
+        <p class="muted small" style="margin-bottom:var(--space-2)">{m.ph_compare_reset()}</p>
+      {/if}
       <p class="muted small" style="margin-bottom:var(--space-4)">
-        {selected.length === 0
+        {orderedSelected.length === 0
           ? m.ph_pick_two()
-          : selected.length === 1
+          : orderedSelected.length === 1
             ? m.ph_one_selected()
             : m.ph_two_selected()}
       </p>
       <div class="photo-grid">
         {#each photos as p, i (p.id + String(p.epochDay))}
-          <button class="photo-cell" class:is-selected={selected.includes(i)} aria-pressed={selected.includes(i)}
+          <button class="photo-cell" class:is-selected={orderedSelected.includes(p.id)} aria-pressed={orderedSelected.includes(p.id)}
             aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-            onclick={() => toggle(i)}>
+            onclick={() => toggle(p.id)}>
             <PhotoThumb photo={p} size={104} />
             <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
-            {#if selected.includes(i)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+            {#if orderedSelected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
           </button>
         {/each}
       </div>
-      {#if selected.length === 2}
+      {#if pair}
         <div class="editor-savebar">
           <button class="btn btn-primary" data-compare onclick={() => (comparing = true)}>
             <Icon name="columns" size={20} /><span>{m.ph_compare()}</span>
