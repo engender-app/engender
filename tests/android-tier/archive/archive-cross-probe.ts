@@ -280,19 +280,19 @@ async function runDirection(
   marker: string
 ) {
   const source = await openHandle(sourceKind, sourceEncrypted, `${marker}-source.sqlite3`, `${marker}-source-photos`);
-  const targetReplace = await openHandle(targetKind, targetEncrypted, `${marker}-replace.sqlite3`, `${marker}-replace-photos`);
-  const targetMerge = await openHandle(targetKind, targetEncrypted, `${marker}-merge.sqlite3`, `${marker}-merge-photos`);
+  let targetReplace: Handle | null = null;
+  let targetMerge: Handle | null = null;
 
   try {
     const sourceMeta = await seedSource(source.journal, source.files, marker);
-    await seedTargetLocalState(targetReplace.driver, targetReplace.journal, marker);
-    await seedTargetLocalState(targetMerge.driver, targetMerge.journal, marker);
-
-    const localBeforeReplace = await readLocalPrefs(targetReplace.driver);
-    const localBeforeMerge = await readLocalPrefs(targetMerge.driver);
-
     const portableExpected = portableWith(marker);
     const archive = await pack(source.journal, portableExpected);
+
+    // The Android bridge is a single native connection. Keeping two target
+    // handles open at once lets one open() replace the other's database.
+    targetReplace = await openHandle(targetKind, targetEncrypted, `${marker}-replace.sqlite3`, `${marker}-replace-photos`);
+    await seedTargetLocalState(targetReplace.driver, targetReplace.journal, marker);
+    const localBeforeReplace = await readLocalPrefs(targetReplace.driver);
 
     const portableOnReplace = await importInto(archive, 'replace', targetReplace.journal);
     const replaceState = await verifyImportedState(targetReplace, marker, sourceMeta);
@@ -326,6 +326,13 @@ async function runDirection(
       JSON.stringify(localBeforeReplace) === JSON.stringify(localAfterReplace),
       JSON.stringify({ before: localBeforeReplace, after: localAfterReplace })
     );
+
+    await targetReplace.close();
+    targetReplace = null;
+
+    targetMerge = await openHandle(targetKind, targetEncrypted, `${marker}-merge.sqlite3`, `${marker}-merge-photos`);
+    await seedTargetLocalState(targetMerge.driver, targetMerge.journal, marker);
+    const localBeforeMerge = await readLocalPrefs(targetMerge.driver);
 
     await importInto(archive, 'merge', targetMerge.journal);
     const afterMerge = await verifyImportedState(targetMerge, marker, sourceMeta);
@@ -364,8 +371,8 @@ async function runDirection(
     );
   } finally {
     await source.close();
-    await targetReplace.close();
-    await targetMerge.close();
+    if (targetReplace) await targetReplace.close();
+    if (targetMerge) await targetMerge.close();
   }
 }
 
