@@ -24,14 +24,18 @@
                           measurement attached; optimization is not this
                           ticket's job.
 
-   Memory is recorded and printed, and deliberately not gated on the web:
-   two runs over the identical fixture put the Archive export's heap delta
-   at 58.4MB and then 7.5MB, because a delta measures where the collector
-   happened to be rather than what the operation needs. A gate on that is
-   noise, and a noisy gate gets switched off. `heapBudgetBytes` is null
-   here for that reason and the check below still honours one, so a
-   platform that answers more steadily - Android, once ticket 11 lands -
-   can set one without this changing.
+  Memory is intentionally not watched here.
+
+  The desktop probe can be launched with flags that expose gc() and
+  performance.memory, but Android WebView does not expose those in this
+  harness. That leaves one platform sampling and one not, and the sampled
+  deltas swing with collector timing enough to be noisy (the same fixture
+  produced 58.4MB and then 7.5MB for Archive export). A noisy gate gets
+  switched off, and a one-platform gate gives false confidence.
+
+  If this suite starts watching memory again, it needs one stable
+  measurement API that works in both harnesses without launch-only flags,
+  then a rerun on device to set real baselines.
 
    A measurement with no entry here is a breach rather than a pass. The
    alternative fails open: adding a measurement to measure.ts and
@@ -45,8 +49,6 @@ import { readFileSync } from 'node:fs';
  * @property {number} baselineMs
  * @property {number} budgetMs
  * @property {number} targetMs
- * @property {number | null} heapBaselineBytes
- * @property {number | null} heapBudgetBytes
  */
 
 /**
@@ -62,7 +64,7 @@ export const budgets = JSON.parse(readFileSync(new URL('./budgets.json', import.
 /**
  * Everything the run exceeded, one line each, ready to print.
  *
- * @param {{ name: string, ms: number, heapBytes: number | null }[]} measurements
+ * @param {{ name: string, ms: number }[]} measurements
  * @param {Record<string, Budget>} [table] the budgets to judge against,
  *   defaulting to the recorded ones. Only the tests pass their own.
  * @returns {string[]}
@@ -79,11 +81,6 @@ export function breaches(measurements, table = budgets.measurements) {
     }
     if (m.ms > budget.budgetMs) {
       found.push(`${m.name}: ${Math.round(m.ms)}ms over a budget of ${budget.budgetMs}ms (baseline ${budget.baselineMs}ms)`);
-    }
-    if (budget.heapBudgetBytes !== null && m.heapBytes !== null && m.heapBytes > budget.heapBudgetBytes) {
-      found.push(
-        `${m.name}: ${mb(m.heapBytes)} of heap over a budget of ${mb(budget.heapBudgetBytes)} (baseline ${mb(budget.heapBaselineBytes ?? 0)})`
-      );
     }
   }
 

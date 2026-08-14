@@ -118,13 +118,12 @@ public class LongJournalBenchmarkTest {
         return true;
     }
 
-    /** Logs one line per measurement with its time, heap and budget. */
+    /** Logs one line per measurement with its time and budget. */
     private static void logMeasurements(JSONArray measurements, JSONObject budgetTable) throws Exception {
         for (int i = 0; i < measurements.length(); i++) {
             JSONObject m = measurements.getJSONObject(i);
             String name = m.getString("name");
             long ms = Math.round(m.getDouble("ms"));
-            String heap = m.isNull("heapBytes") ? "" : String.format("  heap %.1fMB", m.getDouble("heapBytes") / 1_048_576.0);
             String budget = "";
             if (budgetTable.has(name)) {
                 int budgetMs = budgetTable.getJSONObject(name).getInt("budgetMs");
@@ -132,7 +131,7 @@ public class LongJournalBenchmarkTest {
             } else {
                 budget = "  NO BUDGET";
             }
-            Log.i(TAG, String.format("  %-55s %4dms%s%s", m.getString("what"), ms, heap, budget));
+            Log.i(TAG, String.format("  %-55s %4dms%s", m.getString("what"), ms, budget));
         }
     }
 
@@ -150,13 +149,8 @@ public class LongJournalBenchmarkTest {
             int baselineMs = (int) Math.round(m.getDouble("ms"));
             int budgetMs = Math.max(200, baselineMs * 5);
             int targetMs = budgetTable.has(name) ? budgetTable.getJSONObject(name).getInt("targetMs") : budgetMs;
-            Object heapBudget = JSONObject.NULL;
-            if (budgetTable.has(name) && !budgetTable.getJSONObject(name).isNull("heapBudgetBytes")) {
-                heapBudget = budgetTable.getJSONObject(name).getInt("heapBudgetBytes");
-            }
-            double heapBytes = m.isNull("heapBytes") ? 0 : m.getDouble("heapBytes");
-            sb.append(String.format("    \"%s\": {\"what\":\"%s\",\"baselineMs\":%d,\"budgetMs\":%d,\"targetMs\":%d,\"heapBaselineBytes\":%d,\"heapBudgetBytes\":%s}",
-                name, m.getString("what"), baselineMs, budgetMs, targetMs, (long) heapBytes, heapBudget.toString()));
+            sb.append(String.format("    \"%s\": {\"what\":\"%s\",\"baselineMs\":%d,\"budgetMs\":%d,\"targetMs\":%d}",
+                name, m.getString("what"), baselineMs, budgetMs, targetMs));
             if (i < measurements.length() - 1) sb.append(",");
             sb.append("\n");
         }
@@ -192,15 +186,6 @@ public class LongJournalBenchmarkTest {
             if (ms > budgetMs) {
                 breaches.add(String.format("%s: %dms over a budget of %dms (baseline %dms)",
                     name, ms, budgetMs, budget.getInt("baselineMs")));
-            }
-
-            if (!budget.isNull("heapBudgetBytes") && !m.isNull("heapBytes")) {
-                long heapBytes = Math.round(m.getDouble("heapBytes"));
-                long heapBudget = budget.getLong("heapBudgetBytes");
-                if (heapBytes > heapBudget) {
-                    breaches.add(String.format("%s: %.1fMB of heap over a budget of %.1fMB",
-                        name, heapBytes / 1_048_576.0, heapBudget / 1_048_576.0));
-                }
             }
         }
 
