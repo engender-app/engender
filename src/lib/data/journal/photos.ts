@@ -92,14 +92,29 @@ export async function removeFilesAfterCommit(
   }
 }
 
-/** The owner's photo rows, oldest first. Shared with the entries and
-    milestones areas so a photo is read the same way wherever it is read. */
-export async function photosOfEntry(driver: SqliteDriver, entryId: number): Promise<Photo[]> {
-  const rows = await driver.query<PhotoRow>(
-    'SELECT uuid, file_path FROM photo WHERE entry_id = ? ORDER BY order_index, id',
-    [entryId]
+/** Photo rows by entry, oldest first within each entry - one query for a
+    whole page rather than one per row, the same rule photosByMilestone
+    follows below and for the same reason. Entries with no photos are absent
+    from the map rather than present and empty; the caller supplies the empty
+    list. */
+export async function photosByEntry(
+  driver: SqliteDriver,
+  entryIds: number[]
+): Promise<Map<number, Photo[]>> {
+  const byEntry = new Map<number, Photo[]>();
+  if (entryIds.length === 0) return byEntry;
+  const rows = await driver.query<PhotoRow & { entry_id: number }>(
+    `SELECT entry_id, uuid, file_path FROM photo
+     WHERE entry_id IN (${entryIds.map(() => '?').join(', ')})
+     ORDER BY order_index, id`,
+    entryIds
   );
-  return rows.map(toPhoto);
+  for (const row of rows) {
+    const photos = byEntry.get(row.entry_id);
+    if (photos) photos.push(toPhoto(row));
+    else byEntry.set(row.entry_id, [toPhoto(row)]);
+  }
+  return byEntry;
 }
 
 /** Every milestone's photo, by milestone rowid - one query for the whole

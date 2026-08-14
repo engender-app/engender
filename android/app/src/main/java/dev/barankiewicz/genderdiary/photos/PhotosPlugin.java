@@ -22,7 +22,6 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -153,57 +152,6 @@ public class PhotosPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void readFile(PluginCall call) {
-        String name = call.getString("name");
-        if (name == null) {
-            call.reject("readFile requires name");
-            return;
-        }
-        try {
-            JSObject result = new JSObject();
-            File target = fileFor(call, name);
-            if (!target.exists()) {
-                result.put("base64", JSObject.NULL);
-                call.resolve(result);
-                return;
-            }
-            result.put("base64", encodeBase64(target));
-            call.resolve(result);
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
-    }
-
-    @PluginMethod
-    public void readFiles(PluginCall call) {
-        try {
-            JSArray names = call.getArray("names");
-            if (names == null) {
-                call.reject("readFiles requires names");
-                return;
-            }
-
-            JSArray values = new JSArray();
-            for (int i = 0; i < names.length(); i++) {
-                String name = names.getString(i);
-                if (name == null) throw new IllegalArgumentException("invalid photo file name");
-                File target = fileFor(call, name);
-                if (!target.exists()) {
-                    values.put(JSObject.NULL);
-                } else {
-                    values.put(encodeBase64(target));
-                }
-            }
-
-            JSObject result = new JSObject();
-            result.put("base64", values);
-            call.resolve(result);
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
-    }
-
-    @PluginMethod
     public void sizeFile(PluginCall call) {
         String name = call.getString("name");
         if (name == null) {
@@ -272,6 +220,29 @@ public class PhotosPlugin extends Plugin {
         }
     }
 
+    /**
+     * The absolute path of the photo directory, so the WebView can fetch a
+     * file's bytes over Capacitor's local server instead of taking them
+     * through this bridge as base64.
+     *
+     * <p>A plugin response crosses into the WebView as a JSON string, which
+     * measured at 0.8MB/s on a Pixel 10a - so a decade of photos took seven
+     * minutes to read and the cost was the crossing rather than the disk.
+     * Fetching the same bytes over the local server keeps them binary the
+     * whole way. The path never reaches the journal: android-file-store.ts
+     * turns it into a URL and nothing above that seam sees either.
+     */
+    @PluginMethod
+    public void directoryPath(PluginCall call) {
+        try {
+            JSObject result = new JSObject();
+            result.put("path", photoDirectory(call).getAbsolutePath());
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
     @PluginMethod
     public void listFiles(PluginCall call) {
         try {
@@ -330,14 +301,6 @@ public class PhotosPlugin extends Plugin {
         try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
             if (input == null) throw new IllegalStateException("could not read selected image");
             return encodeBase64(input, 8192);
-        }
-    }
-
-    private static String encodeBase64(File file) throws Exception {
-        long estimate = ((file.length() + 2L) / 3L) * 4L;
-        int initialSize = (int) Math.min(Integer.MAX_VALUE, Math.max(1024L, estimate));
-        try (FileInputStream input = new FileInputStream(file)) {
-            return encodeBase64(input, initialSize);
         }
     }
 
