@@ -33,7 +33,8 @@ export interface WebSqlite {
 
 export function createWebSqlite(databasePath: string): WebSqlite {
   const primary = new SQLocal(databasePath);
-  const backup = new SQLocal(`${databasePath}.pre-migration-backup`);
+  const backupPath = `${databasePath}.pre-migration-backup`;
+  const backup = new SQLocal(backupPath);
   const { sql } = primary;
 
   const driver: SqliteDriver = {
@@ -96,8 +97,10 @@ export function createWebSqlite(databasePath: string): WebSqlite {
       return row.tables > 0;
     },
     async copyDatabaseFile() {
-      const file = await primary.getDatabaseFile();
-      await backup.overwriteDatabaseFile(file);
+      // VACUUM INTO keeps the copy in SQLite space and avoids SQLocal's
+      // worker export messaging path on Android WebView.
+      await backup.deleteDatabaseFile();
+      await sql(`VACUUM INTO '${backupPath.replace(/'/g, "''")}'`);
     },
     async restorePreMigrationCopy() {
       const file = await backup.getDatabaseFile();
