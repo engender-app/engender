@@ -233,8 +233,9 @@ try {
   // The safety property: the sweep deletes everything the store lists, so
   // the store must see only its own directory - never the SAHPool
   // directory holding the database (ticket 09 moved it off the root).
-  const poolDir = r.rootNames.find((n) => n.includes('sahpool'));
-  if (r.rootNames.includes(r.photoDirectory) && poolDir && !r.listed.includes(poolDir))
+  const photoRoot = String(r.photoDirectory).split('/')[0];
+  const poolDir = r.rootNames.find((n) => n.includes('sahpool') || n.includes('mc-pool'));
+  if (r.rootNames.includes(photoRoot) && poolDir && !r.listed.includes(poolDir))
     ok(`photos live in ${r.photoDirectory}/, so the sweep can never see the database pool (${poolDir}/)`);
   else
     fail(

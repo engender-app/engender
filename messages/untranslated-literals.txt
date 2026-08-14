@@ -1,0 +1,16 @@
+# Screens with user-facing text written straight into the markup instead of
+# coming from messages/en.json and messages/pl.json, and how many literals
+# each one still has. Checked on every pull request by scripts/check-copy.mjs:
+# a count may not go up, and one that goes down is recorded here with
+# `node scripts/check-copy.mjs --update`.
+#
+# Phase 0 and phase 1 left these behind, and tickets 19 and 23 work them
+# down. DemoBar.svelte is the one entry that stays: it is compiled out of
+# production builds, so its copy never reaches a reader.
+
+10 src/lib/components/DemoBar.svelte
+1 src/lib/components/MoodPicker.svelte
+4 src/lib/components/PhotoThumb.svelte
+2 src/lib/components/RiveSlot.svelte
+1 src/routes/settings/+page.svelte
+2 src/routes/settings/export/+page.svelte
