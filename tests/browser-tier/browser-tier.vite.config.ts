@@ -79,6 +79,11 @@ interface ServerResponse {
 export default defineConfig({
   root: import.meta.dirname,
   plugins: [sqlocal(), mutableServiceWorker()],
+  resolve: {
+    alias: {
+      $lib: resolve(import.meta.dirname, '../../src/lib')
+    }
+  },
   // Same exclusion the app's own config needs (ticket 09): pre-bundling
   // would inline the sqlite3mc wasm module in a way that breaks its own
   // URL-relative wasm loading inside mc-worker.ts.
