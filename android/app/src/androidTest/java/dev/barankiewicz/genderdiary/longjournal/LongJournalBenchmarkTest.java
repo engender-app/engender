@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <p>Generates 3231 entries over 3653 days, 375 photos, 122 lab results and 12
  * milestones through the same probe generate.ts and measure.ts use on the web, then
- * checks fifteen timing measurements against the budgets in android-budgets.json.
+ * checks nineteen timing measurements against the budgets in android-budgets.json.
  *
  * <p>The probe bundle is built by tests/android-tier/run.mjs (ANDROID_TIER_PROBE=long-journal)
  * and shipped as an androidTest asset under long-journal-probe/. The WebView runs it
