@@ -221,6 +221,47 @@ try {
   ok('search matches note text and built-in tag labels');
 } catch (e) { fail('search', e); }
 
+/* 5b. structured search filters */
+try {
+  const NOTE_HIGH = 'ticket06-high-marker';
+
+  await fresh('/entry/new/today');
+  await page.locator('.mood-picker .mood-btn[data-mood="5"]').click();
+  await page.locator('#ed-note').fill(NOTE_HIGH);
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('.entry-card');
+
+  await fresh('/search');
+  await page.locator('[data-filter-toggle]').click();
+  await page.locator('[data-filter-has-note]').click();
+  await page.waitForSelector('[data-active-filter-chip]');
+  await page.waitForSelector('.entry-card');
+
+  await page.locator('#q').fill('ticket06');
+  await page.waitForSelector('.entry-card');
+  await page.locator('[data-filter-mood="1"]').click();
+  await page.waitForTimeout(200);
+  if ((await page.locator('.entry-card').count()) !== 0) throw new Error('mood mismatch still showed results');
+  await page.locator('[data-filter-mood="1"]').click();
+  await page.locator('[data-filter-mood="5"]').click();
+  await page.waitForSelector('.entry-card');
+  const pageText = (await page.locator('.screen').innerText()).toLowerCase();
+  if (!pageText.includes('ticket06-high-marker')) throw new Error('mood match did not restore the expected result');
+
+  const chipCount = await page.locator('[data-active-filter-chip]').count();
+  if (chipCount < 2) throw new Error('active filter chips not shown');
+
+  await page.locator('[data-filter-clear]').click();
+  await page.locator('#q').fill('');
+  if (await page.locator('[data-active-filter-chip]').count()) throw new Error('clear-all did not clear chips');
+  const hint = await page.locator('.screen').innerText();
+  if (!hint?.toLowerCase().includes('try') && !hint?.toLowerCase().includes('spróbuj')) {
+    throw new Error('empty-criteria hint did not return after clear-all');
+  }
+
+  ok('structured search filters combine with text, show chips and clear-all');
+} catch (e) { fail('structured search filters', e); }
+
 /* 6. stats range + value list */
 try {
   await fresh('/stats');
