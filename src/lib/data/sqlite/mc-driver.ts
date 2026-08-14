@@ -98,7 +98,9 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
   const { post, terminate } = connectWorker();
 
   // Fire-and-queue: every later message waits behind this in the worker's
-  // chain, and its failure resurfaces on the first statement (see above).
+  // chain, and its failure resurfaces on the first statement (mc-worker.ts
+  // rejects every queued statement with this same error once open() has
+  // failed, rather than letting one crash on a null database instead).
   post('open', { path: databasePath, hexKey: toHex(dataKey) }).catch(() => {});
 
   const driver: SqliteDriver = {

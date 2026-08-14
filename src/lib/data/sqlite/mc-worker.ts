@@ -24,7 +24,20 @@
    importDb() insists on the plaintext SQLite magic an encrypted file does
    not carry - VACUUM INTO is the copy mechanism that exists here. SAHPool
    stores opaque pool files, so the cleanup goes through the pool util
-   rather than OPFS paths. */
+   rather than OPFS paths.
+
+   The pool's OPFS directory is namespaced per database name (ticket 11):
+   SAHPool's directory is shared origin-wide by default, and only one
+   worker can hold it at a time - a second encrypted connection open in
+   the same origin fails its first sync access handle with "Access
+   Handles cannot be created if there is another open Access Handle", a
+   failure that then surfaces as a confusing null-database error on
+   whatever statement runs next rather than as itself. Production only
+   ever opens one connection against the fixed Journal filename, so
+   keying the directory off the database name keeps that persistent
+   (ADR-0020's web driver survives reloads) while giving anything that
+   opens more than one connection at once - namely this codebase's own
+   cross-platform archive probe - separate storage instead of a collision. */
 
 import sqlite3InitModule, { type Database, type Sqlite3Static, type SAHPoolUtil } from '@evolu/sqlite-wasm';
 
@@ -36,6 +49,24 @@ let db: Database | null = null;
 let databasePath = '';
 let backupPath = '';
 let hexKey = '';
+// Set when `open`/`convert` fails after the pool attaches, so a later
+// queued statement reports the real cause instead of racing a null `db`.
+let openError: Error | null = null;
+
+// A pool directory name derived from the database's own path: stable
+// across reloads for a given database and distinct across databases, but
+// hashed rather than embedding the path itself - this driver exists to
+// keep the journal's contents unreadable at rest (ADR-0018), and a
+// directory literally named after "gender-diary.sqlite3" would defeat the
+// same closed-app OPFS scan that proves nothing plaintext survives there.
+function poolDirectory(path: string): string {
+  let hash = 2166136261; // FNV-1a, just for a short stable non-identifying tag.
+  for (let i = 0; i < path.length; i++) {
+    hash ^= path.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `mc-pool-${(hash >>> 0).toString(36)}`;
+}
 
 /** Applies the raw data key (ADR-0018: PRAGMA hexkey, not a passphrase
     through sqlite3mc's own KDF - stretching already happened in the
@@ -50,13 +81,16 @@ function keyAndVerify(target: Database, key: string): void {
     opening anything. Split out of `open` because a conversion has to have
     the VFS before there is a database to open through it (ticket 10), and
     because `sqlite3mc_vfs_create` may only wrap the pool once. */
-async function attach(): Promise<Sqlite3Static> {
+async function attach(seedPath: string): Promise<Sqlite3Static> {
   if (sqlite3 && poolUtil) return sqlite3;
   sqlite3 = await sqlite3InitModule();
   /* Slots, not files: the pool holds main database + rollback journal +
      the pre-migration copy + its journal, and does not grow on demand.
      Eight leaves headroom over that worst case. */
-  poolUtil = await sqlite3.installOpfsSAHPoolVfs({ initialCapacity: 8 });
+  poolUtil = await sqlite3.installOpfsSAHPoolVfs({
+    initialCapacity: 8,
+    directory: poolDirectory(seedPath)
+  });
   const namePtr = sqlite3.wasm.allocCString('opfs-sahpool', false);
   const rc = sqlite3.wasm.exports.sqlite3mc_vfs_create(namePtr, 0) as number;
   if (rc !== 0) throw new Error(`sqlite3mc_vfs_create failed: rc=${rc}`);
@@ -69,7 +103,7 @@ const poolPath = (path: string): string => (path.startsWith('/') ? path : `/${pa
 
 const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
   async open(args: { path: string; hexKey: string }) {
-    const api = await attach();
+    const api = await attach(args.path);
     databasePath = poolPath(args.path);
     backupPath = `${databasePath}.pre-migration-backup`;
     hexKey = args.hexKey;
@@ -108,7 +142,7 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
      thrown away rather than reasoned about, which is what lets the caller
      resume by simply calling this again. */
   async convert(args: { path: string; hexKey: string; bytes: Uint8Array }) {
-    const api = await attach();
+    const api = await attach(args.path);
     const target = poolPath(args.path);
     await poolUtil!.unlink(target);
     await poolUtil!.unlink(`${target}-journal`);
@@ -233,6 +267,7 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
        directory, databases included. */
     poolUtil?.pauseVfs();
     poolUtil = null;
+    openError = null;
   }
 };
 
@@ -248,9 +283,15 @@ onmessage = (event: MessageEvent<Request>) => {
   const { id, op, args } = event.data;
   chain = chain.then(async () => {
     try {
+      // `open`/`convert` having already failed leaves `db` null; running a
+      // later handler against it would fail with an unrelated null-reference
+      // error instead of the real cause. Report that cause again instead -
+      // except for `close`, which still has to run to release the pool.
+      if (openError && op !== 'open' && op !== 'convert' && op !== 'close') throw openError;
       const result = await handlers[op](args);
       postMessage({ id, ok: true, result });
     } catch (error) {
+      if (op === 'open' || op === 'convert') openError = error as Error;
       /* The message crosses the worker boundary as a string; the key never
          appears in one - SQLite reports codes ("file is not a database"),
          not the PRAGMA text. */

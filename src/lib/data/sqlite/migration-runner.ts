@@ -71,7 +71,13 @@ export class InterruptedRestoreError extends Error {
     (`entry_fts`); there is no degraded search mode to fall back to. */
 export class Fts5UnavailableError extends Error {
   constructor(cause: unknown) {
-    super('FTS5 is not available in this SQLite build. The schema requires it.');
+    // The cause's own message rides along on this error's message, not just
+    // its `.cause` - callers that only serialize `message`/`stack` (a test
+    // harness reporting a probe failure, say) would otherwise see "FTS5 is
+    // not available" even when the real problem was that the connection
+    // never opened at all (ticket 11).
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    super(`FTS5 is not available in this SQLite build. The schema requires it. (${reason})`);
     this.name = 'Fts5UnavailableError';
     this.cause = cause;
   }
