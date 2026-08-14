@@ -87,26 +87,6 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
   };
 }
 
-/* Bytes of JS heap on this thread. The database runs in a worker
-   (mc-worker.ts), so what this answers is what holding a screen's answer
-   costs where the screen is - which is the question the photo grid and the
-   stats charts raise, and not a claim about the whole process.
-
-   Needs Chromium started with --enable-precise-memory-info and
-   --js-flags=--expose-gc; run.mjs does both. Without them it answers null
-   and the harness records no memory rather than a rounded fiction. */
-async function sampleHeap(): Promise<number | null> {
-  const collect = (globalThis as unknown as { gc?: () => void }).gc;
-  if (!collect) return null;
-  const memory = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
-  if (!memory) return null;
-  collect();
-  // One turn of the loop, so anything released by the collection above has
-  // gone before the reading is taken.
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  return memory.usedJSHeapSize;
-}
-
 async function run() {
   await freshOrigin();
 
@@ -130,12 +110,11 @@ async function run() {
 
   const measurements = await measureLongJournal(journal, files, {
     today: summary.lastEpochDay,
-    summary,
-    sampleHeap
+    summary
   });
 
   await booted.driver.close();
-  publish({ summary, measurements, generatedInMs, photoBytes, heapSampled: (await sampleHeap()) !== null });
+  publish({ summary, measurements, generatedInMs, photoBytes });
 }
 
 run().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));

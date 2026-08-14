@@ -81,20 +81,6 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
   };
 }
 
-/* JS heap on this thread. The SQLite bridge runs natively, so this measures
-   what holding a screen's answer costs on the WebView side - the question
-   the photo grid and the stats charts raise. Works if the WebView exposes
-   performance.memory and gc(); reports null otherwise. */
-async function sampleHeap(): Promise<number | null> {
-  const collect = (globalThis as unknown as { gc?: () => void }).gc;
-  if (!collect) return null;
-  const memory = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
-  if (!memory) return null;
-  collect();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  return memory.usedJSHeapSize;
-}
-
 async function run() {
   /* One fixed name, so LongJournalBenchmarkTest can delete it before launch
      and each run starts from an empty database. */
@@ -116,12 +102,11 @@ async function run() {
 
   const measurements = await measureLongJournal(journal, files, {
     today: summary.lastEpochDay,
-    summary,
-    sampleHeap
+    summary
   });
 
   await booted.driver.close();
-  publish({ summary, measurements, generatedInMs, photoBytes, heapSampled: (await sampleHeap()) !== null });
+  publish({ summary, measurements, generatedInMs, photoBytes });
 }
 
 run().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));

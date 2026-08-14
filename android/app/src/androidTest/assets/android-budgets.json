@@ -6,121 +6,91 @@
       "what": "calendar, one month of heat map",
       "baselineMs": 22,
       "budgetMs": 200,
-      "targetMs": 100,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 100
     },
     "stats-year-streak": {
       "what": "stats screen, the streak",
       "baselineMs": 16,
       "budgetMs": 200,
-      "targetMs": 100,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 100
     },
     "stats-year-series": {
       "what": "stats screen, 365 days of every chart",
       "baselineMs": 280,
       "budgetMs": 1400,
-      "targetMs": 250,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 250
     },
     "stats-month-insights": {
       "what": "stats screen, 30 days of tag insights",
       "baselineMs": 35,
       "budgetMs": 200,
-      "targetMs": 250,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 250
     },
     "stats-year-insights": {
       "what": "stats screen, 365 days of tag insights",
       "baselineMs": 41,
       "budgetMs": 205,
-      "targetMs": 250,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 250
     },
     "stats-year-insights-dimension": {
       "what": "stats screen, 365 days of tag insights on a dimension",
       "baselineMs": 40,
       "budgetMs": 200,
-      "targetMs": 250,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 250
     },
     "stats-recap-year": {
       "what": "recap, one year",
       "baselineMs": 170,
       "budgetMs": 850,
-      "targetMs": 400,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 400
     },
     "stats-decade": {
       "what": "stats, the whole decade in one range",
       "baselineMs": 242,
       "budgetMs": 1210,
-      "targetMs": 600,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 600
     },
     "search-common": {
       "what": "search \"lustro\", one page and the total",
       "baselineMs": 107,
       "budgetMs": 535,
-      "targetMs": 150,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 150
     },
     "search-rare": {
       "what": "search \"endokrynolog\", one page and the total",
       "baselineMs": 72,
       "budgetMs": 360,
-      "targetMs": 150,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 150
     },
     "search-tag-word": {
       "what": "search \"basen\", one page and the total",
       "baselineMs": 94,
       "budgetMs": 470,
-      "targetMs": 150,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 150
     },
     "archive-snapshot": {
       "what": "Archive export, reading the journal out",
       "baselineMs": 2786,
       "budgetMs": 13930,
-      "targetMs": 5000,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 5000
     },
     "archive-pack": {
       "what": "Archive export, encrypting the container",
       "baselineMs": 3070,
       "budgetMs": 15350,
-      "targetMs": 20000,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 20000
     },
     "photo-grid-list": {
       "what": "photo grid, listing every photo",
       "baselineMs": 110,
       "budgetMs": 550,
-      "targetMs": 300,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 300
     },
     "photo-grid-thumbs": {
       "what": "photo grid, reading every thumbnail",
       "baselineMs": 1023,
       "budgetMs": 5115,
-      "targetMs": 3000,
-      "heapBaselineBytes": 0,
-      "heapBudgetBytes": null
+      "targetMs": 3000
     }
   }
 }

@@ -7,12 +7,9 @@
    SQLocal over OPFS today runs against ticket 11's native SQLite driver
    with nothing here reshaped.
 
-   Two things are injected rather than reached for. Heap sampling, because
-   how a platform answers "how much memory is in use" is the one part of
-   this that is not the driver contract. And the clock is not injected at
-   all: `today` arrives as an epoch day, because the journal never reads it
-   for a domain answer and a benchmark whose numbers move with the date is
-   not a baseline.
+  `today` arrives as an epoch day rather than from a clock, because the
+  journal never reads it for a domain answer and a benchmark whose numbers
+  move with the date is not a baseline.
 
    Nothing here optimizes anything, and nothing here decides whether a
    number is acceptable. It reports; budgets.json judges. */
@@ -31,9 +28,6 @@ export interface Measurement {
   /** The screen or action, for whoever reads the run's output. */
   what: string;
   ms: number;
-  /** Bytes of JS heap the result holds on to, or null where the platform
-      will not say. */
-  heapBytes: number | null;
   /** How much work it did, so the milliseconds can be read against
       something. */
   detail: string;
@@ -43,10 +37,6 @@ export interface MeasureOptions {
   /** As an epoch day, never from a clock (ADR-0001). */
   today: number;
   summary: LongJournalSummary;
-  /** Bytes of JS heap in use right now, or null if this platform will not
-      say. Sampled with the result still referenced, so the delta is what
-      holding the answer costs. */
-  sampleHeap: () => Promise<number | null>;
 }
 
 /** Metrics the stats screen charts at once: mood plus every dimension. */
@@ -77,15 +67,15 @@ export async function measureLongJournal(
   files: PhotoFileStore,
   options: MeasureOptions
 ): Promise<Measurement[]> {
-  const { today, summary, sampleHeap } = options;
+  const { today, summary } = options;
   const measurements: Measurement[] = [];
-  /* Keeps every result alive until its heap sample has been taken, and
-     then for the rest of the run. Without it the engine is free to collect
-     the answer before it is measured, which is how a benchmark reports that
-     a decade of stats costs nothing. What each operation hands back is
-     therefore what it wants measured: the Archive export returns a byte
-     total on purpose, because a real export streams and holding the decade
-     in one array would measure an allocation the app never makes. */
+  /* Keeps every result alive for the rest of the run. Without it the engine
+     is free to elide or collect work before the measurement can account for
+     it, which is how a benchmark reports that a decade of stats costs
+     nothing. What each operation hands back is therefore what it wants
+     measured: the Archive export returns a byte total on purpose, because a
+     real export streams and holding the decade in one array would measure an
+     allocation the app never makes. */
   const held: unknown[] = [];
 
   async function measure(
@@ -93,17 +83,14 @@ export async function measureLongJournal(
     what: string,
     operation: () => Promise<{ result: unknown; detail: string }>
   ): Promise<void> {
-    const heapBefore = await sampleHeap();
     const startedAt = performance.now();
     const { result, detail } = await operation();
     const ms = performance.now() - startedAt;
     held.push(result);
-    const heapAfter = await sampleHeap();
     measurements.push({
       name,
       what,
       ms,
-      heapBytes: heapBefore === null || heapAfter === null ? null : Math.max(0, heapAfter - heapBefore),
       detail
     });
   }
@@ -225,10 +212,9 @@ export async function measureLongJournal(
   });
 
   await measure('photo-grid-thumbs', 'photo grid, reading every thumbnail', async () => {
-    /* Kept rather than counted. A mounted grid holds every thumbnail it has
-       decoded (PhotoThumb), so what it costs in memory is the bytes still
-       being held, and returning a total would have the heap sample measure
-       nothing. */
+    /* Kept rather than counted. A mounted grid holds decoded thumbnails
+       (PhotoThumb), so returning only a byte total would let this
+       measurement do less than the screen it claims to represent. */
     const thumbs: Uint8Array[] = [];
     const names = photos.flatMap((photo) => (photo.fileName ? [thumbFileName(photo.fileName)] : []));
     if (files.readMany) {

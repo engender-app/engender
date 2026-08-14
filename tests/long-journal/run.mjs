@@ -32,13 +32,7 @@ const server = await createServer({
 await server.listen();
 const port = server.config.server.port;
 
-/* --enable-precise-memory-info stops performance.memory rounding to the
-   nearest 100KB, and --expose-gc lets the probe collect before it samples.
-   Without both the probe reports no memory rather than a number that means
-   nothing. */
-const browser = await launchChromium({
-  args: ['--enable-precise-memory-info', '--js-flags=--expose-gc']
-});
+const browser = await launchChromium();
 const page = await (await browser.newContext()).newPage();
 page.on('console', (message) => {
   if (message.type() === 'error') console.log('  browser error:', message.text());
@@ -62,7 +56,7 @@ if (result?.error) {
   process.exit(1);
 }
 
-const { summary, measurements, generatedInMs, photoBytes, heapSampled } = result;
+const { summary, measurements, generatedInMs, photoBytes } = result;
 
 console.log(
   `Fixture: ${summary.entries} entries over ${summary.lastEpochDay - summary.firstEpochDay + 1} days ` +
@@ -70,7 +64,6 @@ console.log(
     `${summary.labResults} lab results, ${summary.milestones} milestones. ` +
     `Written in ${(generatedInMs / 1000).toFixed(0)}s.`
 );
-if (!heapSampled) console.log('Note: this browser did not expose heap sampling, so no memory was recorded.');
 console.log('');
 
 const pad = (text, width) => String(text).padEnd(width);
@@ -79,10 +72,7 @@ const widest = Math.max(...measurements.map((m) => m.what.length));
 for (const m of measurements) {
   const budget = budgets.measurements[m.name];
   const against = budget ? `  budget ${budget.budgetMs}ms` : '  NO BUDGET';
-  console.log(
-    `  ${pad(m.what, widest)}  ${pad(`${Math.round(m.ms)}ms`, 9)}` +
-      `${pad(m.heapBytes === null ? '' : `heap ${mb(m.heapBytes)}`, 14)}${recording ? '' : against}`
-  );
+  console.log(`  ${pad(m.what, widest)}  ${pad(`${Math.round(m.ms)}ms`, 9)}${recording ? '' : against}`);
   console.log(`  ${pad('', widest)}  ${m.detail}`);
 }
 console.log('');
@@ -91,9 +81,7 @@ if (recording) {
   /* A 5x time budget with a 200ms floor, for the reason budgets.mjs sets
      out. Computed from the rounded baseline rather than the raw
      measurement, so the file reproduces its own rule when someone checks
-     it. An existing heap budget is carried over rather than cleared: the
-     web sets none, and a re-record must not wipe one a platform that
-     answers more steadily has set. */
+     it. */
   console.log('budgets.json measurements, with a 5x time budget and a 200ms floor:\n');
   console.log(
     JSON.stringify(
@@ -106,9 +94,7 @@ if (recording) {
               what: m.what,
               baselineMs,
               budgetMs: Math.max(200, baselineMs * 5),
-              targetMs: budgets.measurements[m.name]?.targetMs ?? null,
-              heapBaselineBytes: m.heapBytes === null ? null : Math.round(m.heapBytes),
-              heapBudgetBytes: budgets.measurements[m.name]?.heapBudgetBytes ?? null
+              targetMs: budgets.measurements[m.name]?.targetMs ?? null
             }
           ];
         })
