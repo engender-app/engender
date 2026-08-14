@@ -52,7 +52,7 @@ import { foldText } from '../fold';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
 import { reconcileBuiltInsWithin } from './reconcile';
-import { assertChanged, now, rowidByUuid, rowidWhere } from './support';
+import { assertChanged, now, rowidWhere } from './support';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -76,6 +76,74 @@ type Restoring = {
 };
 
 const flag = (value: boolean): number => (value ? 1 : 0);
+const SQLITE_PARAM_LIMIT = 999;
+const ID_CHUNK = 400;
+const FILE_WRITE_CONCURRENCY = 8;
+
+function chunked<T>(rows: readonly T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+  for (let from = 0; from < rows.length; from += chunkSize) {
+    chunks.push(rows.slice(from, from + chunkSize));
+  }
+  return chunks;
+}
+
+async function insertRows(
+  driver: SqliteDriver,
+  insertPrefix: string,
+  rows: ReadonlyArray<ReadonlyArray<unknown>>
+): Promise<void> {
+  if (rows.length === 0) return;
+
+  const valueCount = rows[0].length;
+  const rowsPerChunk = Math.max(1, Math.floor(SQLITE_PARAM_LIMIT / valueCount));
+  const rowPlaceholders = `(${new Array(valueCount).fill('?').join(', ')})`;
+
+  for (const chunk of chunked(rows, rowsPerChunk)) {
+    const values = chunk.map(() => rowPlaceholders).join(', ');
+    const params = chunk.flat();
+    await driver.run(`${insertPrefix} VALUES ${values}`, params);
+  }
+}
+
+async function rowidsByUuid(driver: SqliteDriver, table: 'entry' | 'milestone', uuids: string[]): Promise<Map<string, number>> {
+  const ids = new Map<string, number>();
+  if (uuids.length === 0) return ids;
+
+  for (const uuidChunk of chunked(uuids, ID_CHUNK)) {
+    const placeholders = uuidChunk.map(() => '?').join(', ');
+    const rows = await driver.query<{ id: number; uuid: string }>(
+      `SELECT id, uuid FROM ${table} WHERE uuid IN (${placeholders})`,
+      uuidChunk
+    );
+    for (const row of rows) ids.set(row.uuid, row.id);
+  }
+
+  return ids;
+}
+
+async function writeArchiveFiles(files: PhotoFileStore, source: RestoreContents['files']): Promise<void> {
+  const inFlight = new Set<Promise<void>>();
+
+  const schedule = (name: string, bytes: Uint8Array) => {
+    const op = files.write(name, bytes).finally(() => {
+      inFlight.delete(op);
+    });
+    inFlight.add(op);
+    return op;
+  };
+
+  try {
+    for await (const file of source) {
+      schedule(file.name, file.bytes);
+      if (inFlight.size >= FILE_WRITE_CONCURRENCY) await Promise.race(inFlight);
+    }
+    await Promise.all(inFlight);
+  } catch (error) {
+    await Promise.allSettled(inFlight);
+    throw error;
+  }
+}
 
 export async function restoreArchive(
   driver: SqliteDriver,
@@ -85,7 +153,7 @@ export async function restoreArchive(
 ): Promise<void> {
   assertRestorable(contents.journal);
 
-  for await (const file of contents.files) await files.write(file.name, file.bytes);
+  await writeArchiveFiles(files, contents.files);
 
   await driver.transaction(async () => {
     const restoring: Restoring = { driver, mode, journal: contents.journal, ts: now() };
@@ -314,127 +382,163 @@ async function applyEntries({ driver, journal, ts }: Restoring): Promise<void> {
   // and adding its photos would be a half-merge of one entry.
   const present = await presentIds(driver, 'SELECT uuid AS id FROM entry');
 
-  for (const entry of journal.entries) {
-    if (present.has(entry.uuid)) continue;
+  const inserting = journal.entries.filter((entry) => !present.has(entry.uuid));
+  if (inserting.length === 0) return;
 
-    await driver.run(
-      'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [entry.uuid, entry.epochDay, entry.timestamp, entry.mood, entry.note, ts]
+  await insertRows(
+    driver,
+    'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, updated_at)',
+    inserting.map((entry) => [entry.uuid, entry.epochDay, entry.timestamp, entry.mood, entry.note, ts])
+  );
+
+  const entryIds = await rowidsByUuid(
+    driver,
+    'entry',
+    inserting.map((entry) => entry.uuid)
+  );
+
+  const dimensionKeys = [...new Set(inserting.flatMap((entry) => Object.keys(entry.dims ?? {})))];
+  const dimensionIds = new Map<string, number>();
+  for (const keyChunk of chunked(dimensionKeys, ID_CHUNK)) {
+    const placeholders = keyChunk.map(() => '?').join(', ');
+    const rows = await driver.query<{ id: number; key: string }>(
+      `SELECT id, key FROM gender_dimension WHERE key IN (${placeholders})`,
+      keyChunk
     );
-    const entryId = await rowidByUuid(driver, 'entry', entry.uuid);
+    for (const row of rows) dimensionIds.set(row.key, row.id);
+  }
+  for (const key of dimensionKeys) {
+    if (!dimensionIds.has(key)) throw new Error(`unknown dimension: ${key}`);
+  }
+
+  const tagDomainIds = [...new Set(inserting.flatMap((entry) => entry.tags ?? []))];
+  const tagIds = new Map<string, number>();
+  for (const idChunk of chunked(tagDomainIds, ID_CHUNK)) {
+    const placeholders = idChunk.map(() => '?').join(', ');
+    const rows = await driver.query<{ id: number; key: string | null; uuid: string | null }>(
+      `SELECT id, key, uuid FROM tag WHERE key IN (${placeholders}) OR uuid IN (${placeholders})`,
+      [...idChunk, ...idChunk]
+    );
+    for (const row of rows) {
+      if (row.key !== null) tagIds.set(row.key, row.id);
+      if (row.uuid !== null) tagIds.set(row.uuid, row.id);
+    }
+  }
+  for (const id of tagDomainIds) {
+    if (!tagIds.has(id)) throw new Error(`unknown tag: ${id}`);
+  }
+
+  const ftsRows: unknown[][] = [];
+  const dimensionRows: unknown[][] = [];
+  const tagRows: unknown[][] = [];
+  const photoRows: unknown[][] = [];
+
+  for (const entry of inserting) {
+    const entryId = entryIds.get(entry.uuid);
+    if (entryId === undefined) {
+      throw new Error(`entry row id missing after restore insert: ${entry.uuid}`);
+    }
 
     /* The index is contentless and holds folded text against the entry's
        rowid (ADR-0005), written by the same fold the query uses. A plain
        insert with no delete first: entry.id is AUTOINCREMENT, so a rowid is
        never reused, and a Replace's deletes took the old index rows with
        them. */
-    await driver.run('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)', [entryId, foldText(entry.note)]);
+    ftsRows.push([entryId, foldText(entry.note)]);
 
     /* `?? {}` and `?? []` rather than trusting the types: this shape is read
        off a file someone else wrote, and the interface only describes what
        this app puts in one. */
     for (const [key, value] of Object.entries(entry.dims ?? {})) {
-      const result = await driver.run(
-        `INSERT INTO entry_dimension_value (entry_id, dimension_id, value)
-         SELECT ?, id, ? FROM gender_dimension WHERE key = ?`,
-        [entryId, value, key]
-      );
-      // Loud, like every other unknown id on a write (ADR-0017): quietly
-      // dropping a value is silent data loss in the middle of a restore.
-      assertChanged(result, `dimension ${key} on entry ${entry.uuid}`);
+      dimensionRows.push([entryId, dimensionIds.get(key)!, value]);
     }
 
     for (const id of entry.tags ?? []) {
-      const result = await driver.run(
-        'INSERT INTO entry_tag (entry_id, tag_id) SELECT ?, id FROM tag WHERE key = ? OR uuid = ?',
-        [entryId, id, id]
-      );
-      assertChanged(result, `tag ${id} on entry ${entry.uuid}`);
+      tagRows.push([entryId, tagIds.get(id)!]);
     }
 
-    await insertPhotos(driver, entry.photos ?? [], { entryRowid: entryId }, ts);
+    for (const [orderIndex, photo] of (entry.photos ?? []).entries()) {
+      photoRows.push([photo.id, entryId, null, photo.fileName, orderIndex, ts]);
+    }
   }
+
+  await insertRows(driver, 'INSERT INTO entry_fts (rowid, folded_text)', ftsRows);
+  await insertRows(driver, 'INSERT INTO entry_dimension_value (entry_id, dimension_id, value)', dimensionRows);
+  await insertRows(driver, 'INSERT INTO entry_tag (entry_id, tag_id)', tagRows);
+  await insertRows(
+    driver,
+    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)',
+    photoRows
+  );
 }
 
 async function applyMilestones({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM milestone');
 
-  for (const milestone of journal.milestones) {
-    if (present.has(milestone.id)) continue;
-    await driver.run(
-      'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [milestone.id, milestone.name, milestone.epochDay, milestone.templateKey, ts]
-    );
-    const milestoneId = await rowidByUuid(driver, 'milestone', milestone.id);
-    await insertPhotos(driver, milestone.photo ? [milestone.photo] : [], { milestoneRowid: milestoneId }, ts);
-  }
-}
+  const inserting = journal.milestones.filter((milestone) => !present.has(milestone.id));
+  if (inserting.length === 0) return;
 
-/** Which column a photo row hangs off, by rowid. Not photos.ts's PhotoOwner,
-    which addresses a milestone by uuid because that is what the milestones
-    area speaks: here both owners have just been inserted and their rowids are
-    already in hand. */
-type PhotoOwnerRowid =
-  | { entryRowid: number; milestoneRowid?: never }
-  | { milestoneRowid: number; entryRowid?: never };
+  await insertRows(
+    driver,
+    'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at)',
+    inserting.map((milestone) => [milestone.id, milestone.name, milestone.epochDay, milestone.templateKey, ts])
+  );
 
-/** The rows, in the order they arrived, against whichever owner they hang
-    off - the one photo table both owners share (ADR-0008). The bytes landed
-    before the transaction opened, or were never in the archive: a row whose
-    file was already gone on the exporting device travels anyway
-    (archive.ts), and dropping it here would be the one deletion an import is
-    not allowed to make. */
-async function insertPhotos(
-  driver: SqliteDriver,
-  photos: ArchivePhoto[],
-  owner: PhotoOwnerRowid,
-  ts: number
-): Promise<void> {
-  for (const [orderIndex, photo] of photos.entries()) {
-    await driver.run(
-      `INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [photo.id, owner.entryRowid ?? null, owner.milestoneRowid ?? null, photo.fileName, orderIndex, ts]
-    );
+  const milestoneIds = await rowidsByUuid(
+    driver,
+    'milestone',
+    inserting.map((milestone) => milestone.id)
+  );
+
+  const photoRows: unknown[][] = [];
+  for (const milestone of inserting) {
+    if (!milestone.photo) continue;
+    const milestoneId = milestoneIds.get(milestone.id);
+    if (milestoneId === undefined) {
+      throw new Error(`milestone row id missing after restore insert: ${milestone.id}`);
+    }
+    photoRows.push([milestone.photo.id, null, milestoneId, milestone.photo.fileName, 0, ts]);
   }
+
+  await insertRows(
+    driver,
+    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)',
+    photoRows
+  );
 }
 
 async function applyLabResults({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM lab_result');
 
-  for (const result of journal.labResults) {
-    if (present.has(result.id)) continue;
-    await driver.run(
-      `INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [result.id, result.epochDay, result.analyte, result.value, result.unit, result.note, ts]
-    );
-  }
+  const inserting = journal.labResults.filter((result) => !present.has(result.id));
+  await insertRows(
+    driver,
+    'INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, updated_at)',
+    inserting.map((result) => [result.id, result.epochDay, result.analyte, result.value, result.unit, result.note, ts])
+  );
 }
 
 async function applyReminders({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM reminder');
 
-  for (const reminder of journal.reminders) {
-    if (present.has(reminder.id)) continue;
-    // No rule validation of its own: the schema's recurrence CHECK is the
-    // same rule reminderRule.ts states, and this is inside the transaction.
-    await driver.run(
-      `INSERT INTO reminder
-         (uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        reminder.id,
-        reminder.title,
-        reminder.type,
-        reminder.time,
-        reminder.recurrence,
-        reminder.interval,
-        reminder.anchorEpochDay,
-        reminder.epochDay,
-        flag(reminder.enabled),
-        ts
-      ]
-    );
-  }
+  const inserting = journal.reminders.filter((reminder) => !present.has(reminder.id));
+  // No rule validation of its own: the schema's recurrence CHECK is the
+  // same rule reminderRule.ts states, and this is inside the transaction.
+  await insertRows(
+    driver,
+    `INSERT INTO reminder
+       (uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, updated_at)`,
+    inserting.map((reminder) => [
+      reminder.id,
+      reminder.title,
+      reminder.type,
+      reminder.time,
+      reminder.recurrence,
+      reminder.interval,
+      reminder.anchorEpochDay,
+      reminder.epochDay,
+      flag(reminder.enabled),
+      ts
+    ])
+  );
 }

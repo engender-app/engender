@@ -17,7 +17,9 @@
 import type { Journal, PhotoFileStore } from '../../src/lib/data/journal/journal.ts';
 import { packArchive } from '../../src/lib/data/archive/pack.ts';
 import { portablePreferences } from '../../src/lib/data/archive/payload.ts';
+import { dateInputValueFromEpochDay } from '../../src/lib/data/epochDay.ts';
 import { PREFERENCE_DEFAULTS } from '../../src/lib/data/prefs/catalogue.ts';
+import { normalizePhoto } from '../../src/lib/data/photos/normalize.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
 import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
 import type { LongJournalSummary } from './generate.ts';
@@ -61,6 +63,17 @@ const INSIGHT_DIMENSION = 'femininity';
     ride with it (pack.ts's default), because the KDF is part of what an
     export costs and a cheap one would flatter the number. */
 const EXPORT_PASSWORD = 'benchmark-export-password';
+
+const DAYLIO_HEADER = 'full_date,date,weekday,time,mood,activities,note_title,note';
+
+function daylioCsv(startEpochDay: number, rows: number): string {
+  const csvRows = [DAYLIO_HEADER];
+  for (let i = 0; i < rows; i++) {
+    const date = dateInputValueFromEpochDay(startEpochDay + i);
+    csvRows.push(`${date},,,07:15,Rad,,,daylio benchmark row ${i}`);
+  }
+  return csvRows.join('\n');
+}
 
 export async function measureLongJournal(
   journal: Journal,
@@ -260,6 +273,108 @@ export async function measureLongJournal(
     let bytes = 0;
     for await (const chunk of packArchive(contents, EXPORT_PASSWORD)) bytes += chunk.length;
     return { result: bytes, detail: `${mb(bytes)} archive` };
+  });
+
+  // --- write paths -------------------------------------------------------
+  // Ordered after the read measurements so they cannot move read baselines.
+  const saveDims: Record<string, number> = {};
+  const saveDimensionValues = [63, 74, 41, 58, 69];
+  for (const [index, dimension] of (await journal.dimensions.getDimensions()).slice(0, 5).entries()) {
+    saveDims[dimension.key] = saveDimensionValues[index % saveDimensionValues.length];
+  }
+  const saveTags = knownTags.slice(0, 6).map((tag) => tag.id);
+  const saveEpochDay = summary.lastEpochDay + 1;
+  const saveTimestamp = (saveEpochDay * 24 + 11) * 3_600_000;
+  let savedEntryId = 0;
+
+  await measure('entry-save', 'save button, one entry with realistic dimensions and tags', async () => {
+    savedEntryId = await journal.entries.upsertEntry({
+      epochDay: saveEpochDay,
+      timestamp: saveTimestamp,
+      mood: 4,
+      note: 'entry-save benchmark note',
+      dims: saveDims,
+      tags: saveTags
+    });
+    return {
+      result: savedEntryId,
+      detail: `${Object.keys(saveDims).length} dimensions, ${saveTags.length} tags`
+    };
+  });
+
+  const samplePhotoName = photos.find((photo) => photo.fileName)?.fileName;
+  if (!samplePhotoName) throw new Error('long-journal fixture did not produce a sample photo for photo-add measurement');
+
+  await measure('photo-add', 'save button, normalize and attach one realistic photo', async () => {
+    if (savedEntryId === 0) throw new Error('entry-save did not produce an entry id for photo-add');
+
+    const full = await files.read(samplePhotoName);
+    if (!full) throw new Error(`sample photo is missing: ${samplePhotoName}`);
+
+    const normalized =
+      typeof globalThis.createImageBitmap === 'function'
+        ? await normalizePhoto(full)
+        : {
+            full,
+            thumb: (await files.read(thumbFileName(samplePhotoName))) ?? full
+          };
+
+    await journal.entries.upsertEntry({
+      id: savedEntryId,
+      attachPhotos: [normalized]
+    });
+
+    return {
+      result: normalized,
+      detail: `${mb(normalized.full.length)} full + ${mb(normalized.thumb.length)} thumb`
+    };
+  });
+
+  const snapshotFiles = async function* (): AsyncIterable<{ name: string; bytes: Uint8Array }> {
+    const names = snapshot.files.map((file) => file.name);
+    if (snapshot.readFiles) {
+      const BATCH_SIZE = 16;
+      for (let i = 0; i < names.length; i += BATCH_SIZE) {
+        const batch = names.slice(i, i + BATCH_SIZE);
+        const bytes = await snapshot.readFiles(batch);
+        for (let j = 0; j < batch.length; j++) {
+          const body = bytes[j];
+          if (!body) throw new Error(`archive snapshot file missing while restoring: ${batch[j]}`);
+          yield { name: batch[j], bytes: body };
+        }
+      }
+      return;
+    }
+
+    for (const name of names) {
+      yield { name, bytes: await snapshot.readFile(name) };
+    }
+  };
+
+  await measure('archive-restore', 'Archive import, replacing the decade fixture', async () => {
+    await journal.archive.replace({
+      journal: snapshot.journal,
+      files: snapshotFiles()
+    });
+    return {
+      result: snapshot.journal,
+      detail: `${snapshot.journal.entries.length} entries, ${snapshot.files.length} files`
+    };
+  });
+
+  const daylioPreview = await journal.archive.previewDaylioImport(daylioCsv(summary.lastEpochDay + 30, summary.entries), {
+    tagLabels: () => []
+  });
+  if (daylioPreview.unmappedMoodLabels.length > 0) {
+    throw new Error(`daylio benchmark preview has unmapped moods: ${daylioPreview.unmappedMoodLabels.join(', ')}`);
+  }
+
+  await measure('daylio-import', 'Daylio import, commit preview through merge restore', async () => {
+    const committed = await journal.archive.commitDaylioImport(daylioPreview);
+    return {
+      result: committed,
+      detail: `${daylioPreview.entryCount} rows, ${committed.entriesAdded} entries added`
+    };
   });
 
   return measurements;

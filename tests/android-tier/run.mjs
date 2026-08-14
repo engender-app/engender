@@ -221,7 +221,7 @@ if (!home) {
 const gradleEnv = { JAVA_HOME: home };
 
 /* The long-journal benchmark test: generates ten years of journal data and
-   measures fifteen operations against timing budgets. It takes ten or more
+  measures nineteen operations against timing budgets. It takes ten or more
    minutes on a real device and far longer on an emulator, so it is excluded
    from the regular test:android run. Run it separately on a real device:
      npx cap sync android

@@ -91,6 +91,30 @@
       "baselineMs": 136,
       "budgetMs": 680,
       "targetMs": 3000
+    },
+    "entry-save": {
+      "what": "save button, one entry with realistic dimensions and tags",
+      "baselineMs": 11,
+      "budgetMs": 200,
+      "targetMs": 300
+    },
+    "photo-add": {
+      "what": "save button, normalize and attach one realistic photo",
+      "baselineMs": 47,
+      "budgetMs": 235,
+      "targetMs": 1500
+    },
+    "archive-restore": {
+      "what": "Archive import, replacing the decade fixture",
+      "baselineMs": 1086,
+      "budgetMs": 5430,
+      "targetMs": 30000
+    },
+    "daylio-import": {
+      "what": "Daylio import, commit preview through merge restore",
+      "baselineMs": 347,
+      "budgetMs": 1735,
+      "targetMs": 10000
     }
   }
 }

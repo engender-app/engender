@@ -7,6 +7,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'vitest';
 import { dateInputValueFromEpochDay } from '../epochDay.ts';
+import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
+import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
+import { openJournal } from './journal.ts';
+import { countingDriver } from './test-support.ts';
 import { journalWithBuiltIns } from './test-support.ts';
 
 const fixture = (name: string) => readFile(new URL(`../archive/fixtures/${name}`, import.meta.url), 'utf8');
@@ -16,6 +20,38 @@ const naming = {
     return id === 'a-exercise' ? ['exercise', 'ruch'] : [];
   }
 };
+
+const daylioHeader = 'full_date,date,weekday,time,mood,activities,note_title,note';
+
+function daylioCsv(entryCount: number): string {
+  const start = Date.UTC(2026, 0, 1, 7, 15);
+  const rows: string[] = [];
+
+  for (let i = 0; i < entryCount; i += 1) {
+    const at = new Date(start + i * 86_400_000);
+    const fullDate = `${at.getUTCFullYear()}-${String(at.getUTCMonth() + 1).padStart(2, '0')}-${String(at.getUTCDate()).padStart(2, '0')}`;
+    const day = `${at.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })} ${at.getUTCDate()}`;
+    const weekday = at.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    rows.push(`${fullDate},${day},${weekday},07:15,Rad,,,daylio fixture ${i}`);
+  }
+
+  return [daylioHeader, ...rows].join('\n');
+}
+
+async function daylioCommitRoundTrips(entryCount: number) {
+  const db = await migratedDb();
+  const counting = countingDriver(db);
+  const journal = openJournal(counting.driver, fakeFileStore());
+  await journal.reconcileBuiltIns();
+
+  const preview = await journal.archive.previewDaylioImport(daylioCsv(entryCount), naming);
+  assert.equal(preview.unmappedMoodLabels.length, 0);
+  assert.equal(preview.entryCount, entryCount);
+
+  counting.resetRoundTrips();
+  await journal.archive.commitDaylioImport(preview);
+  return counting.roundTrips();
+}
 
 test('preview counts equal the merge, and importing the same Daylio CSV twice is a no-op', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -119,4 +155,18 @@ test('a malformed Daylio CSV is rejected during preview, before anything is writ
 
   await assert.rejects(journal.archive.previewDaylioImport(await fixture('daylio-malformed.csv'), naming), /CSV.*quoted field/i);
   assert.deepEqual((await journal.archive.snapshot()).journal, before);
+});
+
+test('Daylio commit does not scale round trips per imported row', async () => {
+  const smallCount = 20;
+  const largeCount = 140;
+
+  const small = await daylioCommitRoundTrips(smallCount);
+  const large = await daylioCommitRoundTrips(largeCount);
+
+  assert.deepEqual(
+    large,
+    small,
+    `Daylio commit scaled with imported rows: ${smallCount} rows cost ${JSON.stringify(small)}, ${largeCount} rows cost ${JSON.stringify(large)}`
+  );
 });
