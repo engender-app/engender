@@ -176,6 +176,11 @@ try {
   await cold.locator('[data-finish]').click();
   await cold.waitForSelector('.home-hello');
   await cold.locator('.quicklog .mood-btn[data-mood="4"]').click();
+  // Quick Log now seeds the editor route; save once to create the entry
+  // this offline-start check is meant to read back.
+  await cold.waitForSelector('#ed-note');
+  await cold.locator('[data-save]').click();
+  await cold.waitForSelector('.home-hello');
   await cold.waitForSelector('.entry-card');
 
   const cdp = await installed.newCDPSession(cold);
