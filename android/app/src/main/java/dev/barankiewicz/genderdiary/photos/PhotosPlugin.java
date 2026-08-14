@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.os.Build;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.util.Base64OutputStream;
 
 import androidx.activity.result.ActivityResult;
 
@@ -21,7 +22,6 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -152,28 +152,6 @@ public class PhotosPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void readFile(PluginCall call) {
-        String name = call.getString("name");
-        if (name == null) {
-            call.reject("readFile requires name");
-            return;
-        }
-        try {
-            JSObject result = new JSObject();
-            File target = fileFor(call, name);
-            if (!target.exists()) {
-                result.put("base64", JSObject.NULL);
-                call.resolve(result);
-                return;
-            }
-            result.put("base64", Base64.encodeToString(readBytes(target), Base64.NO_WRAP));
-            call.resolve(result);
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
-    }
-
-    @PluginMethod
     public void sizeFile(PluginCall call) {
         String name = call.getString("name");
         if (name == null) {
@@ -195,6 +173,35 @@ public class PhotosPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void sizeFiles(PluginCall call) {
+        try {
+            JSArray names = call.getArray("names");
+            if (names == null) {
+                call.reject("sizeFiles requires names");
+                return;
+            }
+
+            JSArray values = new JSArray();
+            for (int i = 0; i < names.length(); i++) {
+                String name = names.getString(i);
+                if (name == null) throw new IllegalArgumentException("invalid photo file name");
+                File target = fileFor(call, name);
+                if (!target.exists()) {
+                    values.put(JSObject.NULL);
+                } else {
+                    values.put(target.length());
+                }
+            }
+
+            JSObject result = new JSObject();
+            result.put("sizes", values);
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    @PluginMethod
     public void removeFile(PluginCall call) {
         String name = call.getString("name");
         if (name == null) {
@@ -208,6 +215,29 @@ public class PhotosPlugin extends Plugin {
                 return;
             }
             call.reject("could not delete " + target.getName());
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    /**
+     * The absolute path of the photo directory, so the WebView can fetch a
+     * file's bytes over Capacitor's local server instead of taking them
+     * through this bridge as base64.
+     *
+     * <p>A plugin response crosses into the WebView as a JSON string, which
+     * measured at 0.8MB/s on a Pixel 10a - so a decade of photos took seven
+     * minutes to read and the cost was the crossing rather than the disk.
+     * Fetching the same bytes over the local server keeps them binary the
+     * whole way. The path never reaches the journal: android-file-store.ts
+     * turns it into a URL and nothing above that seam sees either.
+     */
+    @PluginMethod
+    public void directoryPath(PluginCall call) {
+        try {
+            JSObject result = new JSObject();
+            result.put("path", photoDirectory(call).getAbsolutePath());
+            call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
         }
@@ -270,22 +300,18 @@ public class PhotosPlugin extends Plugin {
     private String readBase64(Uri uri) throws Exception {
         try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
             if (input == null) throw new IllegalStateException("could not read selected image");
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
-            return Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
+            return encodeBase64(input, 8192);
         }
     }
 
-    private static byte[] readBytes(File file) throws Exception {
-        try (FileInputStream in = new FileInputStream(file);
-             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+    private static String encodeBase64(InputStream input, int initialSize) throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream(initialSize);
+        try (Base64OutputStream encoded = new Base64OutputStream(output, Base64.NO_WRAP)) {
             byte[] buffer = new byte[8192];
             int read;
-            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
-            return out.toByteArray();
+            while ((read = input.read(buffer)) != -1) encoded.write(buffer, 0, read);
         }
+        return output.toString("US-ASCII");
     }
 
     private static String message(Exception e) {

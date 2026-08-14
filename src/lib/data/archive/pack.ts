@@ -36,6 +36,8 @@ export interface ArchiveContents {
   preferences: PortablePreferences;
   files: ArchiveFile[];
   readFile(name: string): Promise<Uint8Array>;
+  /** Optional batched read. Results align with `names`; null means missing. */
+  readFiles?(names: string[]): Promise<(Uint8Array | null)[]>;
 }
 
 export interface OpenedArchive {
