@@ -18,6 +18,7 @@
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
     "deploy:list": "node scripts/journal-release.mjs list",
+    "release:tag": "node scripts/cut-release-tag.mjs",
     "check:copy": "node scripts/check-copy.mjs",
     "check:licences": "node scripts/check-licences.mjs",
     "check:progressive-release": "node scripts/check-progressive-release.mjs",
