@@ -188,7 +188,7 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
      the failure screen must not offer a restore it cannot perform. */
   async preMigrationCopyIsUsable() {
     if (!poolUtil!.getFileNames().includes(backupPath)) return false;
-    const api = await attach();
+    const api = await attach(databasePath);
     const copy = new api.oo1.DB({ filename: backupPath, flags: 'c', vfs: MC_VFS });
     try {
       keyAndVerify(copy, hexKey);
@@ -239,7 +239,7 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     db?.close();
     db = null;
 
-    const api = await attach();
+    const api = await attach(databasePath);
     const copy = new api.oo1.DB({ filename: backupPath, flags: 'c', vfs: MC_VFS });
     try {
       /* Before anything is unlinked: keyAndVerify reads sqlite_master, so a

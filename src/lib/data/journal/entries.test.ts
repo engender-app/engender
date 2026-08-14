@@ -8,7 +8,19 @@ import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
-import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
+import { countingDriver, journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
+
+async function countingJournalWithBuiltIns() {
+  const db = await migratedDb();
+  const counting = countingDriver(db);
+  const journal = openJournal(counting.driver, fakeFileStore());
+  await journal.reconcileBuiltIns();
+  return {
+    journal,
+    roundTrips: counting.roundTrips,
+    resetRoundTrips: counting.resetRoundTrips
+  };
+}
 
 test('an entry round-trips with mood, note, dimension values and tags', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -129,6 +141,76 @@ test('deleting an entry takes its dimension values, tag links, photo rows and fi
   assert.deepEqual(files.names(), [], 'the thumbnail goes with the photo');
 
   await journal.entries.deleteEntry(id); // idempotent
+});
+
+test('creating an entry costs fixed round trips however many tags and dimension values it carries', async () => {
+  const { journal, roundTrips, resetRoundTrips } = await countingJournalWithBuiltIns();
+
+  resetRoundTrips();
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    dims: { femininity: 55 },
+    tags: ['e-happy']
+  });
+  const oneEach = roundTrips();
+
+  resetRoundTrips();
+  await journal.entries.upsertEntry({
+    epochDay: 101,
+    mood: 3,
+    dims: {
+      euphoria_dysphoria: 10,
+      femininity: 20,
+      masculinity: 30,
+      binary_nonbinary: 40,
+      agender_gendered: 50
+    },
+    tags: ['e-happy', 'e-calm', 'e-hopeful', 'a-exercise', 'g-body-eu']
+  });
+  const manyEach = roundTrips();
+
+  assert.deepEqual(
+    manyEach,
+    oneEach,
+    `create scaled by value count: one=${JSON.stringify(oneEach)} many=${JSON.stringify(manyEach)}`
+  );
+});
+
+test('updating an entry costs fixed round trips however many tags and dimension values it rewrites', async () => {
+  const { journal, roundTrips, resetRoundTrips } = await countingJournalWithBuiltIns();
+  const oneId = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, note: 'one' });
+  const manyId = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: 'many' });
+
+  resetRoundTrips();
+  await journal.entries.upsertEntry({
+    id: oneId,
+    mood: 4,
+    dims: { femininity: 55 },
+    tags: ['e-happy']
+  });
+  const oneEach = roundTrips();
+
+  resetRoundTrips();
+  await journal.entries.upsertEntry({
+    id: manyId,
+    mood: 4,
+    dims: {
+      euphoria_dysphoria: 10,
+      femininity: 20,
+      masculinity: 30,
+      binary_nonbinary: 40,
+      agender_gendered: 50
+    },
+    tags: ['e-happy', 'e-calm', 'e-hopeful', 'a-exercise', 'g-body-eu']
+  });
+  const manyEach = roundTrips();
+
+  assert.deepEqual(
+    manyEach,
+    oneEach,
+    `update scaled by value count: one=${JSON.stringify(oneEach)} many=${JSON.stringify(manyEach)}`
+  );
 });
 
 /* The bounded reads the screens use (ticket 08). A screen renders a
