@@ -21,6 +21,7 @@ test('saving an entry commits its fields, added photos and removed photos togeth
   const { files, journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({
     epochDay: 20_000,
+    mood: 3,
     note: 'before',
     attachPhotos: [shot('old-full', 'old-thumb')]
   });
@@ -44,11 +45,13 @@ test('an entry save rejects a removed photo owned by another entry before writin
   const { files, journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({
     epochDay: 20_000,
+    mood: 3,
     note: 'unchanged',
     attachPhotos: [shot('mine', 'mine-thumb')]
   });
   const otherId = await journal.entries.upsertEntry({
     epochDay: 20_001,
+    mood: 3,
     attachPhotos: [shot('theirs', 'theirs-thumb')]
   });
   const otherPhoto = (await journal.entries.getEntry(otherId))!.photos[0];
@@ -92,6 +95,7 @@ test('a new entry rejects photo removals because no photo can belong to it yet',
   const { files, journal } = await journalWithFiles();
   const ownerId = await journal.entries.upsertEntry({
     epochDay: 20_000,
+    mood: 3,
     attachPhotos: [shot('owned', 'owned-thumb')]
   });
   const ownedPhoto = (await journal.entries.getEntry(ownerId))!.photos[0];
@@ -115,13 +119,17 @@ test('the empty-entry check uses the final photo state and writes nothing when i
   const { files, journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({
     epochDay: 20_000,
+    mood: 3,
     attachPhotos: [shot('only', 'only-thumb')]
   });
   const before = (await journal.entries.getEntry(entryId))!;
   const beforeFiles = files.names();
 
+  // Clearing the mood alongside removing the only photo leaves the final
+  // state with nothing at all - the check has to see that combined state,
+  // not just the photo half of it.
   await assert.rejects(
-    journal.entries.upsertEntry({ id: entryId, removePhotoIds: [before.photos[0].id] }),
+    journal.entries.upsertEntry({ id: entryId, mood: null, removePhotoIds: [before.photos[0].id] }),
     /needs a mood/
   );
 
@@ -133,6 +141,7 @@ test('a photo file-write failure leaves the previous entry and photos visible', 
   const { files, journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({
     epochDay: 20_000,
+    mood: 3,
     note: 'before',
     attachPhotos: [shot('old', 'old-thumb')]
   });
@@ -157,6 +166,7 @@ test('a transaction failure leaves new files loose but preserves the previous en
   const { db, files, journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({
     epochDay: 20_000,
+    mood: 3,
     note: 'before',
     attachPhotos: [shot('old', 'old-thumb')]
   });
@@ -184,6 +194,7 @@ test('post-commit file cleanup failure does not make a completed entry save fail
   const { files, journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({
     epochDay: 20_000,
+    mood: 3,
     note: 'before',
     attachPhotos: [shot('old', 'old-thumb')]
   });

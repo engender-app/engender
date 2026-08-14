@@ -93,7 +93,7 @@ test('typed FTS5 syntax is searched for as words rather than obeyed or thrown', 
 
 test('entries carrying a matched tag come back alongside the note matches', async () => {
   const { journal } = await journalWithBuiltIns();
-  const tagged = await journal.entries.upsertEntry({ epochDay: 100, mood: 2, tags: ['e-happy'] });
+  const tagged = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-happy'] });
   const noted = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: 'a happy note' });
 
   const hits = await journal.entries.searchEntries('happy', ['e-happy']);
