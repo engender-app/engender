@@ -8,9 +8,8 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import type { SqliteDriver } from '../sqlite/driver.ts';
 import { openJournal } from './journal.ts';
-import { journalWithBuiltIns } from './test-support.ts';
+import { countingDriver, journalWithBuiltIns } from './test-support.ts';
 
 /** Notes land on distinct days so newest-first is unambiguous. `found` is the
     note text of the hits, which is what most of these tests assert on. */
@@ -283,17 +282,15 @@ test('pagination and total count stay accurate with structured filters', async (
    device costs a half-hour benchmark run. */
 async function countingJournal() {
   const db = await migratedDb();
-  let queries = 0;
-  const counting: SqliteDriver = {
-    ...db,
-    query: (sql, params) => {
-      queries += 1;
-      return db.query(sql, params);
-    }
-  };
-  const journal = openJournal(counting, fakeFileStore());
+  const counting = countingDriver(db);
+  const journal = openJournal(counting.driver, fakeFileStore());
   await journal.reconcileBuiltIns();
-  return { journal, db, roundTrips: () => queries, reset: () => (queries = 0) };
+  return {
+    journal,
+    db,
+    roundTrips: () => counting.roundTrips().query,
+    reset: counting.resetRoundTrips
+  };
 }
 
 test('a page of search costs the same round trips however many hits it holds', async () => {

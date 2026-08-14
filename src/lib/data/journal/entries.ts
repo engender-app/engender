@@ -113,16 +113,64 @@ type EntryRow = {
 type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: string };
 
 export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): EntriesArea {
-  const dimensionIdByKey = async (key: string): Promise<number> => {
-    const rows = await driver.query<{ id: number }>('SELECT id FROM gender_dimension WHERE key = ?', [key]);
-    if (rows.length === 0) throw new Error(`unknown dimension: ${key}`);
-    return rows[0].id;
+  const resolveDimensionIds = async (dims: Record<string, number>): Promise<readonly (readonly [number, number])[]> => {
+    const entries = Object.entries(dims);
+    if (entries.length === 0) return [];
+
+    const keys = [...new Set(entries.map(([key]) => key))];
+    const placeholders = keys.map(() => '?').join(', ');
+    const rows = await driver.query<{ id: number; key: string }>(
+      `SELECT id, key FROM gender_dimension WHERE key IN (${placeholders})`,
+      keys
+    );
+
+    const byKey = new Map(rows.map((row) => [row.key, row.id]));
+    for (const key of keys) {
+      if (!byKey.has(key)) throw new Error(`unknown dimension: ${key}`);
+    }
+
+    return entries.map(([key, value]) => [byKey.get(key)!, value] as const);
   };
 
-  const tagRowidByDomainId = async (id: string): Promise<number> => {
-    const rows = await driver.query<{ id: number }>('SELECT id FROM tag WHERE key = ? OR uuid = ?', [id, id]);
-    if (rows.length === 0) throw new Error(`unknown tag: ${id}`);
-    return rows[0].id;
+  const resolveTagIds = async (tagDomainIds: string[]): Promise<number[]> => {
+    if (tagDomainIds.length === 0) return [];
+
+    const unique = [...new Set(tagDomainIds)];
+    const placeholders = unique.map(() => '?').join(', ');
+    const rows = await driver.query<{ id: number; key: string | null; uuid: string | null }>(
+      `SELECT id, key, uuid FROM tag WHERE key IN (${placeholders}) OR uuid IN (${placeholders})`,
+      [...unique, ...unique]
+    );
+
+    const byDomainId = new Map<string, number>();
+    for (const row of rows) byDomainId.set(domainIdOf(row, 'tag'), row.id);
+    for (const tagId of unique) {
+      if (!byDomainId.has(tagId)) throw new Error(`unknown tag: ${tagId}`);
+    }
+
+    return tagDomainIds.map((tagId) => byDomainId.get(tagId)!);
+  };
+
+  const upsertDimensionValues = async (
+    entryId: number,
+    dimensionValues: readonly (readonly [number, number])[]
+  ): Promise<void> => {
+    if (dimensionValues.length === 0) return;
+    const values = dimensionValues.map(() => '(?, ?, ?)').join(', ');
+    const params = dimensionValues.flatMap(([dimensionId, value]) => [entryId, dimensionId, value]);
+
+    await driver.run(
+      `INSERT INTO entry_dimension_value (entry_id, dimension_id, value) VALUES ${values}
+       ON CONFLICT (entry_id, dimension_id) DO UPDATE SET value = excluded.value`,
+      params
+    );
+  };
+
+  const insertEntryTags = async (entryId: number, tagIds: readonly number[]): Promise<void> => {
+    if (tagIds.length === 0) return;
+    const values = tagIds.map(() => '(?, ?)').join(', ');
+    const params = tagIds.flatMap((tagId) => [entryId, tagId]);
+    await driver.run(`INSERT INTO entry_tag (entry_id, tag_id) VALUES ${values}`, params);
   };
 
   const dimsOf = async (entryId: number): Promise<Record<string, number>> => {
@@ -432,10 +480,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         });
 
         // Resolved before the transaction so an unknown key aborts cleanly.
-        const dimIds = await Promise.all(
-          Object.entries(input.dims ?? {}).map(async ([key, value]) => [await dimensionIdByKey(key), value] as const)
-        );
-        const tagIds = input.tags && (await Promise.all(input.tags.map(tagRowidByDomainId)));
+        const dimIds = await resolveDimensionIds(input.dims ?? {});
+        const tagIds = input.tags && (await resolveTagIds(input.tags));
         // The note that will be stored, whether this edit supplied one or
         // not - reindexing on input.note alone would blank the index for an
         // edit that only touched the mood.
@@ -456,18 +502,10 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
             ]
           );
           await indexEntry(current.id, note);
-          for (const [dimensionId, value] of dimIds) {
-            await driver.run(
-              `INSERT INTO entry_dimension_value (entry_id, dimension_id, value) VALUES (?, ?, ?)
-               ON CONFLICT (entry_id, dimension_id) DO UPDATE SET value = excluded.value`,
-              [current.id, dimensionId, value]
-            );
-          }
+          await upsertDimensionValues(current.id, dimIds);
           if (tagIds) {
             await driver.run('DELETE FROM entry_tag WHERE entry_id = ?', [current.id]);
-            for (const tagId of tagIds) {
-              await driver.run('INSERT INTO entry_tag (entry_id, tag_id) VALUES (?, ?)', [current.id, tagId]);
-            }
+            await insertEntryTags(current.id, tagIds);
           }
           for (const photo of removedPhotos) {
             await driver.run('DELETE FROM photo WHERE uuid = ? AND entry_id = ?', [photo.uuid, current.id]);
@@ -494,10 +532,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         tagCount: tags.length,
         photoCount: attachingNew.length
       });
-      const dimIds = await Promise.all(
-        Object.entries(dims).map(async ([key, value]) => [await dimensionIdByKey(key), value] as const)
-      );
-      const tagIds = await Promise.all(tags.map(tagRowidByDomainId));
+      const dimIds = await resolveDimensionIds(dims);
+      const tagIds = await resolveTagIds(tags);
       const stagedPhotos: StagedPhoto[] = [];
       for (const photo of attachingNew) stagedPhotos.push(await stagePhoto(files, photo));
 
@@ -509,16 +545,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         );
         const entryId = await rowidByUuid(driver, 'entry', uuid);
         await indexEntry(entryId, input.note ?? '');
-        for (const [dimensionId, value] of dimIds) {
-          await driver.run('INSERT INTO entry_dimension_value (entry_id, dimension_id, value) VALUES (?, ?, ?)', [
-            entryId,
-            dimensionId,
-            value
-          ]);
-        }
-        for (const tagId of tagIds) {
-          await driver.run('INSERT INTO entry_tag (entry_id, tag_id) VALUES (?, ?)', [entryId, tagId]);
-        }
+        await upsertDimensionValues(entryId, dimIds);
+        await insertEntryTags(entryId, tagIds);
         for (const photo of stagedPhotos) {
           await insertStagedPhoto(driver, { entryId, milestoneId: null }, photo);
         }
