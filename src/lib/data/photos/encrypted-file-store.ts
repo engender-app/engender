@@ -24,6 +24,24 @@ const GCM_TAG_LENGTH = 16;
 
 export function encryptedFileStore(inner: PhotoFileStore, dataKey: Uint8Array<ArrayBuffer>): PhotoFileStore {
   const nameBytes = (name: string) => new TextEncoder().encode(name) as Uint8Array<ArrayBuffer>;
+  const readOne = async (name: string): Promise<Uint8Array<ArrayBuffer> | null> => {
+    const stored = await inner.read(name);
+    if (stored === null) return null;
+    return decryptOne(name, stored as Uint8Array<ArrayBuffer>);
+  };
+  const sizeOne = async (name: string): Promise<number | null> => {
+    const stored = await inner.size(name);
+    return stored === null ? null : stored - NONCE_LENGTH - GCM_TAG_LENGTH;
+  };
+  const decryptOne = async (name: string, stored: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> => {
+    // subarray keeps views over the same buffer, avoiding per-file copies.
+    const nonce = stored.subarray(0, NONCE_LENGTH) as Uint8Array<ArrayBuffer>;
+    const ciphertext = stored.subarray(NONCE_LENGTH) as Uint8Array<ArrayBuffer>;
+    // A tampered or foreign file throws DecryptionFailedError rather than
+    // returning bytes that aren't a photo - loud, like the journal's own
+    // failures (ADR-0017).
+    return decrypt(dataKey, nonce, ciphertext, nameBytes(name));
+  };
 
   return {
     async write(name, bytes) {
@@ -35,19 +53,30 @@ export function encryptedFileStore(inner: PhotoFileStore, dataKey: Uint8Array<Ar
     },
 
     async read(name) {
-      const stored = await inner.read(name);
-      if (stored === null) return null;
-      const nonce = stored.slice(0, NONCE_LENGTH) as Uint8Array<ArrayBuffer>;
-      const ciphertext = stored.slice(NONCE_LENGTH) as Uint8Array<ArrayBuffer>;
-      // A tampered or foreign file throws DecryptionFailedError rather than
-      // returning bytes that aren't a photo - loud, like the journal's own
-      // failures (ADR-0017).
-      return decrypt(dataKey, nonce, ciphertext, nameBytes(name));
+      return readOne(name);
+    },
+
+    async readMany(names) {
+      if (names.length === 0) return [];
+      if (!inner.readMany) return Promise.all(names.map(readOne));
+
+      const stored = await inner.readMany(names);
+      return Promise.all(
+        stored.map((value, i) =>
+          value === null ? null : decryptOne(names[i], value as Uint8Array<ArrayBuffer>)
+        )
+      );
     },
 
     async size(name) {
-      const stored = await inner.size(name);
-      return stored === null ? null : stored - NONCE_LENGTH - GCM_TAG_LENGTH;
+      return sizeOne(name);
+    },
+
+    async sizeMany(names) {
+      if (names.length === 0) return [];
+      if (!inner.sizeMany) return Promise.all(names.map(sizeOne));
+      const stored = await inner.sizeMany(names);
+      return stored.map((size) => (size === null ? null : size - NONCE_LENGTH - GCM_TAG_LENGTH));
     },
 
     remove: (name) => inner.remove(name),

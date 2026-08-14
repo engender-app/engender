@@ -1,18 +1,18 @@
 {
-  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026080501:user/release-keys. One real-device run, recorded from the long-journal benchmark logcat after the 60-minute timeout was raised.",
+  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026080501:user/release-keys. One real-device run on 2026-08-14, recorded from the long-journal benchmark logcat after ticket 07 batched entry hydration and moved photo reads off the bridge.",
   "fixture": "seed 1, 3653 days ending epoch day 20676: 3231 entries over 2589 days with entries, 375 photos, 122 lab results, 12 milestones, 24 tags. Encryption on: SQLCipher under the Android Keystore data key, photos through app-private file storage.",
   "measurements": {
     "calendar-month": {
       "what": "calendar, one month of heat map",
-      "baselineMs": 49,
-      "budgetMs": 245,
+      "baselineMs": 22,
+      "budgetMs": 200,
       "targetMs": 100,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "stats-year-streak": {
       "what": "stats screen, the streak",
-      "baselineMs": 29,
+      "baselineMs": 16,
       "budgetMs": 200,
       "targetMs": 100,
       "heapBaselineBytes": 0,
@@ -20,15 +20,15 @@
     },
     "stats-year-series": {
       "what": "stats screen, 365 days of every chart",
-      "baselineMs": 217,
-      "budgetMs": 1085,
+      "baselineMs": 280,
+      "budgetMs": 1400,
       "targetMs": 250,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "stats-month-insights": {
       "what": "stats screen, 30 days of tag insights",
-      "baselineMs": 18,
+      "baselineMs": 35,
       "budgetMs": 200,
       "targetMs": 250,
       "heapBaselineBytes": 0,
@@ -36,15 +36,15 @@
     },
     "stats-year-insights": {
       "what": "stats screen, 365 days of tag insights",
-      "baselineMs": 18,
-      "budgetMs": 200,
+      "baselineMs": 41,
+      "budgetMs": 205,
       "targetMs": 250,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "stats-year-insights-dimension": {
       "what": "stats screen, 365 days of tag insights on a dimension",
-      "baselineMs": 25,
+      "baselineMs": 40,
       "budgetMs": 200,
       "targetMs": 250,
       "heapBaselineBytes": 0,
@@ -52,72 +52,72 @@
     },
     "stats-recap-year": {
       "what": "recap, one year",
-      "baselineMs": 69,
-      "budgetMs": 345,
+      "baselineMs": 170,
+      "budgetMs": 850,
       "targetMs": 400,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "stats-decade": {
       "what": "stats, the whole decade in one range",
-      "baselineMs": 161,
-      "budgetMs": 805,
+      "baselineMs": 242,
+      "budgetMs": 1210,
       "targetMs": 600,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "search-common": {
       "what": "search \"lustro\", one page and the total",
-      "baselineMs": 1021,
-      "budgetMs": 5105,
+      "baselineMs": 107,
+      "budgetMs": 535,
       "targetMs": 150,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "search-rare": {
       "what": "search \"endokrynolog\", one page and the total",
-      "baselineMs": 1206,
-      "budgetMs": 6030,
+      "baselineMs": 72,
+      "budgetMs": 360,
       "targetMs": 150,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "search-tag-word": {
       "what": "search \"basen\", one page and the total",
-      "baselineMs": 1131,
-      "budgetMs": 5655,
+      "baselineMs": 94,
+      "budgetMs": 470,
       "targetMs": 150,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "archive-snapshot": {
       "what": "Archive export, reading the journal out",
-      "baselineMs": 11351,
-      "budgetMs": 56755,
+      "baselineMs": 2786,
+      "budgetMs": 13930,
       "targetMs": 5000,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "archive-pack": {
       "what": "Archive export, encrypting the container",
-      "baselineMs": 446795,
-      "budgetMs": 2233975,
+      "baselineMs": 3070,
+      "budgetMs": 15350,
       "targetMs": 20000,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "photo-grid-list": {
       "what": "photo grid, listing every photo",
-      "baselineMs": 76,
-      "budgetMs": 380,
+      "baselineMs": 110,
+      "budgetMs": 550,
       "targetMs": 300,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null
     },
     "photo-grid-thumbs": {
       "what": "photo grid, reading every thumbnail",
-      "baselineMs": 20516,
-      "budgetMs": 102580,
+      "baselineMs": 1023,
+      "budgetMs": 5115,
       "targetMs": 3000,
       "heapBaselineBytes": 0,
       "heapBudgetBytes": null

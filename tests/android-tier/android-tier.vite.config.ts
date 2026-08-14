@@ -44,6 +44,11 @@ const repo = join(import.meta.dirname, '../..');
 export default defineConfig({
   root: join(import.meta.dirname, probe.root),
   base: './',
+  resolve: {
+    alias: {
+      $lib: join(repo, 'src/lib')
+    }
+  },
   plugins: [sqlocal()],
   optimizeDeps: {
     exclude: ['@evolu/sqlite-wasm']

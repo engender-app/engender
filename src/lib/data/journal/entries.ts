@@ -17,11 +17,11 @@ import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryCont
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Entry } from '../types';
+import type { Entry, Photo } from '../types';
 import type { PhotoFileStore } from './journal';
 import {
   insertStagedPhoto,
-  photosOfEntry,
+  photosByEntry,
   removeFilesAfterCommit,
   removeFilesOf,
   stagePhoto,
@@ -161,16 +161,69 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       })
     );
 
-  const toEntry = async (row: EntryRow): Promise<Entry> => ({
-    id: row.id,
-    epochDay: row.epoch_day,
-    timestamp: row.timestamp,
-    mood: row.mood,
-    note: row.note ?? '',
-    dims: await dimsOf(row.id),
-    tags: await tagsOf(row.id),
-    photos: await photosOfEntry(driver, row.id)
-  });
+  /* A page of entries in a fixed number of queries rather than three per
+     row. Every driver call is one serialized crossing of the Android bridge
+     (android-driver.ts) costing tens of milliseconds whatever SQL sits
+     behind it, so a thirty-hit search hydrated row by row spent about
+     ninety crossings on work that four answer. Promise.all did not save it:
+     the driver queues, so those were ninety in a row.
+
+     Chunked because the ids go in as bound parameters and SQLite caps how
+     many a statement may carry - 999 on the oldest build in play. Callers
+     that take a limit stay inside one chunk; searchEntries without one, and
+     recentDays over a long journal, do not. */
+  const ID_CHUNK = 400;
+
+  const hydrate = async (rows: EntryRow[]): Promise<Entry[]> => {
+    if (rows.length === 0) return [];
+
+    const dims = new Map<number, Record<string, number>>();
+    const tags = new Map<number, string[]>();
+    const photos = new Map<number, Photo[]>();
+
+    for (let from = 0; from < rows.length; from += ID_CHUNK) {
+      const ids = rows.slice(from, from + ID_CHUNK).map((row) => row.id);
+      const placeholders = ids.map(() => '?').join(', ');
+
+      const dimRows = await driver.query<{ entry_id: number; key: string; value: number }>(
+        `SELECT edv.entry_id, gd.key, edv.value FROM entry_dimension_value edv
+         JOIN gender_dimension gd ON gd.id = edv.dimension_id
+         WHERE edv.entry_id IN (${placeholders})`,
+        ids
+      );
+      for (const row of dimRows) {
+        const forEntry = dims.get(row.entry_id) ?? {};
+        forEntry[row.key] = row.value;
+        dims.set(row.entry_id, forEntry);
+      }
+
+      // ORDER BY t.id, as tagsOf has it: the order a tag list arrives in is
+      // what the entry editor renders.
+      const tagRows = await driver.query<{ entry_id: number; key: string | null; uuid: string | null }>(
+        `SELECT et.entry_id, t.key, t.uuid FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+         WHERE et.entry_id IN (${placeholders}) ORDER BY t.id`,
+        ids
+      );
+      for (const row of tagRows) {
+        const forEntry = tags.get(row.entry_id) ?? [];
+        forEntry.push(domainIdOf(row, 'tag'));
+        tags.set(row.entry_id, forEntry);
+      }
+
+      for (const [entryId, forEntry] of await photosByEntry(driver, ids)) photos.set(entryId, forEntry);
+    }
+
+    return rows.map((row) => ({
+      id: row.id,
+      epochDay: row.epoch_day,
+      timestamp: row.timestamp,
+      mood: row.mood,
+      note: row.note ?? '',
+      dims: dims.get(row.id) ?? {},
+      tags: tags.get(row.id) ?? [],
+      photos: photos.get(row.id) ?? []
+    }));
+  };
 
   function assertHasContent(e: EntryContent) {
     if (entryIsEmpty(e)) throw new Error(EMPTY_ENTRY_ERROR);
@@ -290,7 +343,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         'SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE id = ?',
         [id]
       );
-      return rows[0] && toEntry(rows[0]);
+      return rows[0] && (await hydrate(rows))[0];
     },
 
     async entriesForDay(epochDay) {
@@ -298,7 +351,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         'SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE epoch_day = ? ORDER BY timestamp, id',
         [epochDay]
       );
-      return Promise.all(rows.map(toEntry));
+      return hydrate(rows);
     },
 
     async recentDays(dayCount) {
@@ -311,7 +364,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
          ORDER BY epoch_day DESC, timestamp DESC, id DESC`,
         [dayCount]
       );
-      return Promise.all(rows.map(toEntry));
+      return hydrate(rows);
     },
 
     async entriesWithTag(tagId, limit) {
@@ -326,7 +379,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
          LIMIT ?`,
         [tagId, limit]
       );
-      return Promise.all(rows.map(toEntry));
+      return hydrate(rows);
     },
 
     async searchEntries(query, matchingTagIds, filtersOrLimit, limit) {
@@ -341,7 +394,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
          ${args.limit == null ? '' : 'LIMIT ?'}`,
         args.limit == null ? matches.params : [...matches.params, args.limit]
       );
-      return Promise.all(rows.map(toEntry));
+      return hydrate(rows);
     },
 
     async countSearchMatches(query, matchingTagIds, filters = {}) {
