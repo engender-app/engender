@@ -727,6 +727,7 @@
   "ph_later": "Późniejsze zdjęcie",
   "ph_from_entry": "wpis w dzienniku",
   "ph_back_to_all": "Wróć do wszystkich zdjęć",
+  "ph_compare_reset": "Jedno z wybranych zdjęć już nie jest dostępne. Wybierz ponownie dwa punkty.",
   "ph_pick_two": "Wszystkie zdjęcia z dziennika, od najstarszego. Wybierz dwa, żeby je porównać.",
   "ph_one_selected": "Jedno wybrane. Wybierz drugie, żeby porównać.",
   "ph_two_selected": "Dwa wybrane.",
