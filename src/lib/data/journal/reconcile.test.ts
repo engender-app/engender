@@ -5,11 +5,11 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import type { SqliteDriver } from '../sqlite/driver.ts';
 import { BUILT_IN_DIMENSIONS, BUILT_IN_PRESETS, BUILT_IN_TAG_GROUPS } from '../vocabulary/builtins.ts';
 import type { TableName } from '../live/writes.ts';
 import { openJournal } from './journal.ts';
 import { RECONCILE_TABLES, reconcileBuiltIns } from './reconcile.ts';
+import { countingDriver } from './test-support.ts';
 
 const count = (db: Awaited<ReturnType<typeof migratedDb>>, table: string): number =>
   (db.raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
@@ -82,20 +82,18 @@ const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
 test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async () => {
   const db = await migratedDb();
   const written = new Set<TableName>();
-  const spyingDriver: SqliteDriver = {
-    ...db,
-    async run(sql, params) {
+  const counting = countingDriver(db, {
+    onRun(sql) {
       const table = /INSERT INTO\s+(\w+)/i.exec(sql)?.[1];
       if (table) {
         const logical = PHYSICAL_TO_LOGICAL[table];
         assert.ok(logical, `reconcileBuiltIns writes ${table}, which no logical table covers`);
         written.add(logical);
       }
-      return db.run(sql, params);
     }
-  };
+  });
 
-  await reconcileBuiltIns(spyingDriver);
+  await reconcileBuiltIns(counting.driver);
 
   assert.deepEqual([...written].toSorted(), [...RECONCILE_TABLES].toSorted());
 });
