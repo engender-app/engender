@@ -256,12 +256,9 @@ export async function generateLongJournal(
       }
       if (tags.includes(tagWordId)) summary.tagWordEntries++;
 
-      /* An entry has to carry at least one of mood, dimensions, tags, note
-         or a photo or it does not exist (CONTEXT: Entry). A quarter carry
-         no mood, which is what makes entryCountsByDay a different question
-         from dayAverages - but only where something else is there. */
-      const bare = note === '' && Object.keys(dims).length === 0 && tags.length === 0;
-      const mood = bare || random() < 0.75 ? between(1, 5) : null;
+      /* An entry has to carry a mood (CONTEXT: Entry); dimensions, tags,
+         note and photo are all still optional on top of it. */
+      const mood = between(1, 5);
 
       const attachPhotos = random() < 0.12 ? [await makePhoto(summary.photos)] : undefined;
       if (attachPhotos) summary.photos++;
