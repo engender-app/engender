@@ -13,6 +13,7 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
 import { openJournal, type Journal } from './journal.ts';
+import { countingDriver } from './test-support.ts';
 import type { RestoreContents } from './restore.ts';
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
@@ -99,6 +100,45 @@ async function exported(journal: Journal): Promise<RestoreContents> {
 
 const rowCount = async (db: Awaited<ReturnType<typeof migratedDb>>, sql: string): Promise<number> =>
   (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${sql}`))[0].n;
+
+const SMALL_RESTORE_FIXTURE_ENTRIES = 20;
+const LARGE_RESTORE_FIXTURE_ENTRIES = 140;
+
+async function countingDevice() {
+  const db = await migratedDb();
+  const counting = countingDriver(db);
+  const files = fakeFileStore();
+  const journal = openJournal(counting.driver, files);
+  await journal.reconcileBuiltIns();
+  return {
+    journal,
+    roundTrips: counting.roundTrips,
+    resetRoundTrips: counting.resetRoundTrips
+  };
+}
+
+async function sourceWithManyEntries(entryCount: number): Promise<Journal> {
+  const { journal } = await device();
+  for (let i = 0; i < entryCount; i += 1) {
+    const id = await journal.entries.upsertEntry({
+      epochDay: 25_000 + i,
+      timestamp: 1_700_000_000_000 + i * 1000,
+      mood: (i % 5) + 1,
+      note: `restore fixture ${i}`,
+      dims: { femininity: (i % 100) + 1 },
+      tags: ['e-happy']
+    });
+    await journal.photos.attach({ entryId: id }, { full: bytes(`full-${i}`), thumb: bytes(`thumb-${i}`) });
+  }
+  return journal;
+}
+
+async function restoreRoundTrips(mode: 'replace' | 'merge', source: Journal) {
+  const target = await countingDevice();
+  target.resetRoundTrips();
+  await target.journal.archive[mode](await exported(source));
+  return target.roundTrips();
+}
 
 test('merge adds what this device does not have and leaves what it has alone', async () => {
   const source = await populated();
@@ -347,6 +387,24 @@ test('a failure after the files are written and before the commit leaves the jou
   assert.deepEqual(await target.files.read(`${source.photo}.jpg`), bytes('full-photo'));
 });
 
+test('a schema-refused row rolls the whole restore back in both replace and merge', async () => {
+  const source = await populated();
+
+  for (const mode of ['replace', 'merge'] as const) {
+    const target = await populated();
+    const before = await target.journal.archive.snapshot();
+    const contents = await exported(source.journal);
+    contents.journal.reminders = [
+      ...contents.journal.reminders,
+      { ...contents.journal.reminders[0], id: `a-reminder-of-no-known-type-${mode}`, type: 'nonsense' }
+    ];
+
+    await assert.rejects(target.journal.archive[mode](contents));
+    const after = await target.journal.archive.snapshot();
+    assert.deepEqual(after.journal, before.journal, `${mode} applied part of a refused restore`);
+  }
+});
+
 test('a failed import into a journal that has never been seeded leaves it empty, not half-seeded', async () => {
   const source = await populated();
   const db = await migratedDb();
@@ -425,4 +483,55 @@ test('an empty journal restores over a populated one, which is what a Replace me
   assert.deepEqual(await target.journal.entries.searchEntries('good', []), []);
   // The vocabulary a screen needs to render is still there.
   assert.equal((await target.journal.dimensions.getDimensions()).length, 5);
+});
+
+test('restore does not scale round trips per row for either replace or merge', async () => {
+  const smallSource = await sourceWithManyEntries(SMALL_RESTORE_FIXTURE_ENTRIES);
+  const largeSource = await sourceWithManyEntries(LARGE_RESTORE_FIXTURE_ENTRIES);
+
+  for (const mode of ['replace', 'merge'] as const) {
+    const small = await restoreRoundTrips(mode, smallSource);
+    const large = await restoreRoundTrips(mode, largeSource);
+    assert.deepEqual(
+      large,
+      small,
+      `${mode} scaled with fixture size: ${SMALL_RESTORE_FIXTURE_ENTRIES} entries cost ${JSON.stringify(small)}, ${LARGE_RESTORE_FIXTURE_ENTRIES} entries cost ${JSON.stringify(large)}`
+    );
+  }
+});
+
+test('restore overlaps photo file writes rather than waiting on each one', async () => {
+  const base = fakeFileStore();
+  let activeWrites = 0;
+  let maxActiveWrites = 0;
+
+  const delayedFiles = {
+    ...base,
+    async write(name: string, bytes: Uint8Array) {
+      activeWrites += 1;
+      maxActiveWrites = Math.max(maxActiveWrites, activeWrites);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        await base.write(name, bytes);
+      } finally {
+        activeWrites -= 1;
+      }
+    }
+  };
+
+  const db = await migratedDb();
+  const journal = openJournal(db, delayedFiles);
+  await journal.reconcileBuiltIns();
+  const empty = await (await device()).journal.archive.snapshot();
+
+  await journal.archive.replace({
+    journal: empty.journal,
+    files: (async function* () {
+      for (let i = 0; i < 6; i += 1) {
+        yield { name: `orphan-${i}.jpg`, bytes: bytes(`image-${i}`) };
+      }
+    })()
+  });
+
+  assert.ok(maxActiveWrites > 1, `writes were sequential (max overlap ${maxActiveWrites})`);
 });
