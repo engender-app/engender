@@ -711,6 +711,7 @@
   "ph_later": "Later photo",
   "ph_from_entry": "journal entry",
   "ph_back_to_all": "Back to all photos",
+  "ph_compare_reset": "One selected photo is no longer available. Pick two anchors again.",
   "ph_pick_two": "Every photo in your journal, oldest first. Select two to compare.",
   "ph_one_selected": "One selected. Pick a second to compare.",
   "ph_two_selected": "Two selected.",
