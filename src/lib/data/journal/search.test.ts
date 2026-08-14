@@ -6,6 +6,10 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
+import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
+import type { SqliteDriver } from '../sqlite/driver.ts';
+import { openJournal } from './journal.ts';
 import { journalWithBuiltIns } from './test-support.ts';
 
 /** Notes land on distinct days so newest-first is unambiguous. `found` is the
@@ -268,4 +272,58 @@ test('pagination and total count stay accurate with structured filters', async (
     [ids[2], ids[1]]
   );
   assert.equal(total, 3);
+});
+
+/* Round trips, not milliseconds (ticket 07). Every driver call is one
+   serialized bridge crossing on Android (android-driver.ts), and a crossing
+   costs tens of milliseconds whatever the SQL behind it does - so what makes
+   search slow on a real phone is how many calls a page of hits takes, and
+   that is a number the Node tier can hold to account. Counting them here
+   catches a hydration regression in a second, where noticing it on the
+   device costs a half-hour benchmark run. */
+async function countingJournal() {
+  const db = await migratedDb();
+  let queries = 0;
+  const counting: SqliteDriver = {
+    ...db,
+    query: (sql, params) => {
+      queries += 1;
+      return db.query(sql, params);
+    }
+  };
+  const journal = openJournal(counting, fakeFileStore());
+  await journal.reconcileBuiltIns();
+  return { journal, db, roundTrips: () => queries, reset: () => (queries = 0) };
+}
+
+test('a page of search costs the same round trips however many hits it holds', async () => {
+  const { journal, db, roundTrips, reset } = await countingJournal();
+  for (let i = 0; i < 40; i += 1) {
+    const id = await journal.entries.upsertEntry({
+      epochDay: 100 + i,
+      mood: 3,
+      note: 'coffee with Marta',
+      tags: ['e-happy', 'e-calm'],
+      dims: { femininity: 4 }
+    });
+    db.raw
+      .prepare('INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES (?, ?, ?, 0)')
+      .run(`p-${i}`, id, `${i}.jpg`);
+  }
+
+  reset();
+  const ten = await journal.entries.searchEntries('coffee', [], 10);
+  const forTen = roundTrips();
+
+  reset();
+  const thirty = await journal.entries.searchEntries('coffee', [], 30);
+  const forThirty = roundTrips();
+
+  assert.equal(ten.length, 10);
+  assert.equal(thirty.length, 30);
+  assert.equal(
+    forThirty,
+    forTen,
+    `a 30-hit page took ${forThirty} round trips and a 10-hit page ${forTen}: hydration is per-row`
+  );
 });
