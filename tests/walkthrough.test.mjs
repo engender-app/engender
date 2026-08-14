@@ -131,14 +131,18 @@ try {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
 
-  const toastCountBeforeNudge = await page.locator('.toast').count();
   await page.locator('.quicklog .mood-btn[data-mood="2"]').click();
   await page.waitForSelector('#ed-note');
   await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="1"]').click();
   await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="2"]').click();
   await page.locator('[data-save]').click();
-  await page.waitForFunction((before) => document.querySelectorAll('.toast').length > before, toastCountBeforeNudge);
-  if ((await page.locator('.toast').last().locator('.toast-action').count()) === 0) {
+  // Waits for a toast whose own text is the save confirmation, not just
+  // any new toast: the no-persistent-storage boot warning (boot.svelte.ts)
+  // can already be on screen, so counting toasts or taking ".last()" before
+  // the save toast lands can pick that one up instead and see no action.
+  await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('Saved')));
+  const nudgeToast = page.locator('.toast', { hasText: 'Saved' }).last();
+  if ((await nudgeToast.locator('.toast-action').count()) === 0) {
     throw new Error('nudge action missing while nudges are enabled');
   }
 
@@ -155,7 +159,8 @@ try {
   await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="3"]').click();
   await page.locator('[data-save]').click();
   await page.waitForFunction((before) => document.querySelectorAll('.toast').length > before, toastCountBeforeQuietSave);
-  const hasAction = await page.locator('.toast').last().locator('.toast-action').count();
+  const quietToast = page.locator('.toast', { hasText: 'Saved' }).last();
+  const hasAction = await quietToast.locator('.toast-action').count();
   if (hasAction !== 0) throw new Error('nudge action still visible after opt-out');
   ok('mood-only save nudges when enabled and stays quiet when disabled');
 } catch (e) { fail('nudge flow', e); }
@@ -220,6 +225,47 @@ try {
   await page.waitForSelector('.entry-card');
   ok('search matches note text and built-in tag labels');
 } catch (e) { fail('search', e); }
+
+/* 5b. structured search filters */
+try {
+  const NOTE_HIGH = 'ticket06-high-marker';
+
+  await fresh('/entry/new/today');
+  await page.locator('.mood-picker .mood-btn[data-mood="5"]').click();
+  await page.locator('#ed-note').fill(NOTE_HIGH);
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('.entry-card');
+
+  await fresh('/search');
+  await page.locator('[data-filter-toggle]').click();
+  await page.locator('[data-filter-has-note]').click();
+  await page.waitForSelector('[data-active-filter-chip]');
+  await page.waitForSelector('.entry-card');
+
+  await page.locator('#q').fill('ticket06');
+  await page.waitForSelector('.entry-card');
+  await page.locator('[data-filter-mood="1"]').click();
+  await page.waitForTimeout(200);
+  if ((await page.locator('.entry-card').count()) !== 0) throw new Error('mood mismatch still showed results');
+  await page.locator('[data-filter-mood="1"]').click();
+  await page.locator('[data-filter-mood="5"]').click();
+  await page.waitForSelector('.entry-card');
+  const pageText = (await page.locator('.screen').innerText()).toLowerCase();
+  if (!pageText.includes('ticket06-high-marker')) throw new Error('mood match did not restore the expected result');
+
+  const chipCount = await page.locator('[data-active-filter-chip]').count();
+  if (chipCount < 2) throw new Error('active filter chips not shown');
+
+  await page.locator('[data-filter-clear]').click();
+  await page.locator('#q').fill('');
+  if (await page.locator('[data-active-filter-chip]').count()) throw new Error('clear-all did not clear chips');
+  const hint = await page.locator('.screen').innerText();
+  if (!hint?.toLowerCase().includes('try') && !hint?.toLowerCase().includes('spróbuj')) {
+    throw new Error('empty-criteria hint did not return after clear-all');
+  }
+
+  ok('structured search filters combine with text, show chips and clear-all');
+} catch (e) { fail('structured search filters', e); }
 
 /* 6. stats range + value list */
 try {
@@ -500,6 +546,9 @@ try {
   const NOTE = 'Told them my name, out loud.\nShe said "finally".';
 
   await fresh('/entry/new/today');
+  // Mood is required to save (ticket 04): the fixture picks one before the
+  // note, same as any real entry would need to.
+  await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="3"]').click();
   await page.locator('#ed-note').fill(NOTE);
   await page.locator('[data-save]').click();
   await page.waitForSelector('.entry-card');

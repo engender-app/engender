@@ -82,6 +82,17 @@
   "search_placeholder": "Search notes and tags…",
   "search_hint": "Notes and tags, with or without diacritics. “lozko” finds “łóżko”.",
   "search_try": "Try “euphoria”, “coffee”, or a tag like “therapy”.",
+  "search_filters": "Filters",
+  "search_filter_moods_aria": "Mood filters",
+  "search_filter_tags_label": "Tags",
+  "search_filter_start_label": "From day",
+  "search_filter_end_label": "To day",
+  "search_filter_has_note": "Has note",
+  "search_filter_has_photo": "Has photo",
+  "search_filter_mood_chip": "Mood: {mood}",
+  "search_filter_start_chip": "From: {date}",
+  "search_filter_end_chip": "To: {date}",
+  "search_filters_clear_all": "Clear all",
   "results_count": [
     {
       "declarations": [
@@ -99,6 +110,7 @@
   ],
   "no_results": "Nothing found",
   "no_results_body": "No entries match “{query}”. Try a shorter word: prefixes match too.",
+  "search_no_results_filtered": "No entries match these filters yet.",
   "stats_title": "Stats · last {days} days",
   "range_days": "{days}d",
   "not_enough_data": "Not enough data in this range yet.",
@@ -730,6 +742,7 @@
   "ph_later": "Later photo",
   "ph_from_entry": "journal entry",
   "ph_back_to_all": "Back to all photos",
+  "ph_compare_reset": "One selected photo is no longer available. Pick two anchors again.",
   "ph_pick_two": "Every photo in your journal, oldest first. Select two to compare.",
   "ph_one_selected": "One selected. Pick a second to compare.",
   "ph_two_selected": "Two selected.",

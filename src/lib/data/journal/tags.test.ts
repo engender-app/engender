@@ -33,7 +33,7 @@ test('rename and hide address a tag by id and throw on an unknown one', async ()
 
 test('hiding a built-in tag preserves the entries that carry it', async () => {
   const { journal } = await journalWithBuiltIns();
-  const entryId = await journal.entries.upsertEntry({ epochDay: 100, tags: ['e-happy'] });
+  const entryId = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-happy'] });
 
   await journal.tags.setTagHidden('e-happy', true);
 

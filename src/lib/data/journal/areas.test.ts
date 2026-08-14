@@ -50,7 +50,7 @@ test('a custom preset holds its dimensions in order; an unknown key aborts it wh
 
 test('dimensions hide rather than delete, and their logged values survive hiding', async () => {
   const { journal } = await journalWithBuiltIns();
-  const entryId = await journal.entries.upsertEntry({ epochDay: 1, dims: { masculinity: 30 } });
+  const entryId = await journal.entries.upsertEntry({ epochDay: 1, mood: 3, dims: { masculinity: 30 } });
 
   await journal.dimensions.setDimensionHidden('masculinity', true);
 
