@@ -35,11 +35,11 @@ async function run() {
   const journal = openJournal(result.driver, opfsPhotoFiles());
   await journal.reconcileBuiltIns();
 
-  const bed = await journal.entries.upsertEntry({ epochDay: 100, note: 'spałem w łóżko' });
-  const gesla = await journal.entries.upsertEntry({ epochDay: 101, note: 'zażółć gęślą jaźń' });
-  const cwiczenia = await journal.entries.upsertEntry({ epochDay: 102, note: 'ćwiczenia rano' });
-  const tagged = await journal.entries.upsertEntry({ epochDay: 103, tags: ['e-happy'] });
-  const muller = await journal.entries.upsertEntry({ epochDay: 104, note: 'Müller kupił bilet' });
+  const bed = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, note: 'spałem w łóżko' });
+  const gesla = await journal.entries.upsertEntry({ epochDay: 101, mood: 2, note: 'zażółć gęślą jaźń' });
+  const cwiczenia = await journal.entries.upsertEntry({ epochDay: 102, mood: 4, note: 'ćwiczenia rano' });
+  const tagged = await journal.entries.upsertEntry({ epochDay: 103, mood: 5, tags: ['e-happy'] });
+  const muller = await journal.entries.upsertEntry({ epochDay: 104, mood: 1, note: 'Müller kupił bilet' });
 
   const ids = async (q: string, tagIds: string[] = []) =>
     (await journal.entries.searchEntries(q, tagIds)).map((e) => e.id);
