@@ -1,96 +1,144 @@
 {
-  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026080501:user/release-keys. One real-device run on 2026-08-14, recorded from the long-journal benchmark logcat after ticket 07 batched entry hydration and moved photo reads off the bridge.",
+  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026080501:user/release-keys. One real-device run on 2026-08-14, recorded from LongJournalBenchmarkTest logcat after ticket 15 write-path measurements and ticket 16 cold-start split measurements were added.",
   "fixture": "seed 1, 3653 days ending epoch day 20676: 3231 entries over 2589 days with entries, 375 photos, 122 lab results, 12 milestones, 24 tags. Encryption on: SQLCipher under the Android Keystore data key, photos through app-private file storage.",
   "measurements": {
+    "unlock": {
+      "what": "cold start, passphrase unlock (Argon2id + data key unwrap)",
+      "baselineMs": 168,
+      "budgetMs": 840,
+      "targetMs": 1500
+    },
+    "boot-migrations": {
+      "what": "cold start, open driver and run migrations",
+      "baselineMs": 68,
+      "budgetMs": 340,
+      "targetMs": 500
+    },
+    "boot-sweep": {
+      "what": "cold start, orphan photo sweep over fixture storage",
+      "baselineMs": 118,
+      "budgetMs": 590,
+      "targetMs": 800
+    },
+    "first-paint": {
+      "what": "cold start, boot reference reads + Home queries before first usable screen",
+      "baselineMs": 148,
+      "budgetMs": 740,
+      "targetMs": 1000
+    },
     "calendar-month": {
       "what": "calendar, one month of heat map",
-      "baselineMs": 22,
+      "baselineMs": 40,
       "budgetMs": 200,
       "targetMs": 100
     },
     "stats-year-streak": {
       "what": "stats screen, the streak",
-      "baselineMs": 16,
+      "baselineMs": 21,
       "budgetMs": 200,
       "targetMs": 100
     },
     "stats-year-series": {
       "what": "stats screen, 365 days of every chart",
-      "baselineMs": 280,
-      "budgetMs": 1400,
+      "baselineMs": 253,
+      "budgetMs": 1265,
       "targetMs": 250
     },
     "stats-month-insights": {
       "what": "stats screen, 30 days of tag insights",
-      "baselineMs": 35,
+      "baselineMs": 19,
       "budgetMs": 200,
       "targetMs": 250
     },
     "stats-year-insights": {
       "what": "stats screen, 365 days of tag insights",
-      "baselineMs": 41,
-      "budgetMs": 205,
+      "baselineMs": 19,
+      "budgetMs": 200,
       "targetMs": 250
     },
     "stats-year-insights-dimension": {
       "what": "stats screen, 365 days of tag insights on a dimension",
-      "baselineMs": 40,
+      "baselineMs": 28,
       "budgetMs": 200,
       "targetMs": 250
     },
     "stats-recap-year": {
       "what": "recap, one year",
-      "baselineMs": 170,
-      "budgetMs": 850,
+      "baselineMs": 89,
+      "budgetMs": 445,
       "targetMs": 400
     },
     "stats-decade": {
       "what": "stats, the whole decade in one range",
-      "baselineMs": 242,
-      "budgetMs": 1210,
+      "baselineMs": 209,
+      "budgetMs": 1045,
       "targetMs": 600
     },
     "search-common": {
       "what": "search \"lustro\", one page and the total",
-      "baselineMs": 107,
-      "budgetMs": 535,
+      "baselineMs": 118,
+      "budgetMs": 590,
       "targetMs": 150
     },
     "search-rare": {
       "what": "search \"endokrynolog\", one page and the total",
-      "baselineMs": 72,
-      "budgetMs": 360,
+      "baselineMs": 108,
+      "budgetMs": 540,
       "targetMs": 150
     },
     "search-tag-word": {
       "what": "search \"basen\", one page and the total",
-      "baselineMs": 94,
-      "budgetMs": 470,
+      "baselineMs": 124,
+      "budgetMs": 620,
       "targetMs": 150
     },
     "archive-snapshot": {
       "what": "Archive export, reading the journal out",
-      "baselineMs": 2786,
-      "budgetMs": 13930,
+      "baselineMs": 2773,
+      "budgetMs": 13865,
       "targetMs": 5000
     },
     "archive-pack": {
       "what": "Archive export, encrypting the container",
-      "baselineMs": 3070,
-      "budgetMs": 15350,
+      "baselineMs": 3357,
+      "budgetMs": 16785,
       "targetMs": 20000
     },
     "photo-grid-list": {
       "what": "photo grid, listing every photo",
-      "baselineMs": 110,
-      "budgetMs": 550,
+      "baselineMs": 88,
+      "budgetMs": 440,
       "targetMs": 300
     },
     "photo-grid-thumbs": {
       "what": "photo grid, reading every thumbnail",
-      "baselineMs": 1023,
-      "budgetMs": 5115,
+      "baselineMs": 628,
+      "budgetMs": 3140,
       "targetMs": 3000
+    },
+    "entry-save": {
+      "what": "save button, one entry with realistic dimensions and tags",
+      "baselineMs": 93,
+      "budgetMs": 465,
+      "targetMs": 500
+    },
+    "photo-add": {
+      "what": "save button, normalize and attach one realistic photo",
+      "baselineMs": 1458,
+      "budgetMs": 7290,
+      "targetMs": 2000
+    },
+    "archive-restore": {
+      "what": "Archive import, replacing the decade fixture",
+      "baselineMs": 416965,
+      "budgetMs": 2084825,
+      "targetMs": 450000
+    },
+    "daylio-import": {
+      "what": "Daylio import, commit preview through merge restore",
+      "baselineMs": 11331,
+      "budgetMs": 56655,
+      "targetMs": 30000
     }
   }
 }

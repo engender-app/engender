@@ -47,6 +47,24 @@
      step too late and briefly undo what app.html's pre-paint script did. */
   startBoot();
 
+  interface AndroidAppBackButtonListenerHandle {
+    remove(): Promise<void>;
+  }
+
+  interface AndroidAppPlugin {
+    addListener(
+      eventName: 'backButton',
+      listener: () => void
+    ): Promise<AndroidAppBackButtonListenerHandle>;
+    minimizeApp(): Promise<void>;
+  }
+
+  function androidAppPlugin(): AndroidAppPlugin | null {
+    if (typeof window === 'undefined') return null;
+    const capacitor = (window as { Capacitor?: { Plugins?: { App?: AndroidAppPlugin } } }).Capacitor;
+    return capacitor?.Plugins?.App ?? null;
+  }
+
   const NAV = [
     { href: '/', key: 'home', icon: 'home', label: () => m.nav_home() },
     { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_calendar() },
@@ -292,6 +310,51 @@
     return () => {
       window.removeEventListener('focus', onVisible);
       document.removeEventListener('visibilitychange', onVisible);
+    };
+  });
+
+  /* Android's back gesture should walk in-app screens before leaving to the
+     launcher. Capacitor's default native back stack does not track SvelteKit
+     client routing, so this listener maps the gesture onto browser history. */
+  $effect(() => {
+    if (!isAndroid()) return;
+    const app = androidAppPlugin();
+    if (!app) return;
+
+    let tornDown = false;
+    let removeListener: (() => void) | null = null;
+
+    void app
+      .addListener('backButton', () => {
+        const currentPath = window.location.pathname;
+        if (currentPath === '/' || currentPath === '') {
+          void app.minimizeApp();
+          return;
+        }
+
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+
+        void goto('/', { replaceState: true });
+      })
+      .then((handle) => {
+        if (tornDown) {
+          void handle.remove();
+          return;
+        }
+        removeListener = () => {
+          void handle.remove();
+        };
+      })
+      .catch((error) => {
+        console.error('Could not attach Android back-button handler', error);
+      });
+
+    return () => {
+      tornDown = true;
+      removeListener?.();
     };
   });
 

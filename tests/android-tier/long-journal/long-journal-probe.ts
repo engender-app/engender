@@ -14,9 +14,13 @@ import { createAndroidSqlite } from '../../../src/lib/data/sqlite/android-driver
 import { openJournal } from '../../../src/lib/data/journal/journal.ts';
 import { encryptedFileStore } from '../../../src/lib/data/photos/encrypted-file-store.ts';
 import { appPrivatePhotoFiles } from '../../../src/lib/data/photos/android-file-store.ts';
+import { thumbFileName } from '../../../src/lib/data/photos/names.ts';
+import { addJournalPassphrase, unlockJournalPassphrase } from '../../../src/lib/data/journal-passphrase.ts';
+import { sweepOrphanPhotos } from '../../../src/lib/data/journal/photos.ts';
 import { generateLongJournal, TEN_YEARS_IN_DAYS } from '../../long-journal/generate.ts';
 import { measureLongJournal } from '../../long-journal/measure.ts';
 import type { NormalizedPhoto } from '../../../src/lib/data/journal/photos.ts';
+import type { Measurement } from '../../long-journal/measure.ts';
 
 declare global {
   interface Window {
@@ -25,6 +29,8 @@ declare global {
 }
 
 const PROBE_DATA_KEY = new Uint8Array(32).fill(7);
+const PROBE_PASSPHRASE = 'android-long-journal-benchmark-passphrase';
+const RECENT_DAYS = 5;
 
 const publish = (value: unknown) => {
   window.__longJournalResult = value;
@@ -97,16 +103,83 @@ async function run() {
   const summary = await generateLongJournal(journal, { days: TEN_YEARS_IN_DAYS, makePhoto: photoMaker() });
   const generatedInMs = Math.round(performance.now() - startedAt);
 
-  let photoBytes = 0;
-  for (const name of await files.list()) photoBytes += (await files.size(name)) ?? 0;
+  await addJournalPassphrase(PROBE_DATA_KEY, PROBE_PASSPHRASE);
+  await booted.driver.close();
 
-  const measurements = await measureLongJournal(journal, files, {
+  const startupState =
+    `cold start after fixture generation; decade fixture already present; ` +
+    `boot-migrations includes any schema work this build still needs`;
+  const startup: Measurement[] = [];
+
+  const unlockStartedAt = performance.now();
+  const unlockedDataKey = await unlockJournalPassphrase(PROBE_PASSPHRASE);
+  startup.push({
+    name: 'unlock',
+    what: 'cold start, passphrase unlock (Argon2id + data key unwrap)',
+    ms: performance.now() - unlockStartedAt,
+    detail: `${startupState}; key bytes ${unlockedDataKey.length}`
+  });
+
+  const reopenedSqlite = createAndroidSqlite('long-journal-benchmark.sqlite3', unlockedDataKey);
+  const reopenedFiles = encryptedFileStore(appPrivatePhotoFiles('long-journal-photos'), unlockedDataKey);
+
+  const bootStartedAt = performance.now();
+  const reopened = await boot({ createDriver: () => reopenedSqlite.driver, fileOps: reopenedSqlite.fileOps });
+  if (reopened.phase === 'error') throw reopened.error;
+  startup.push({
+    name: 'boot-migrations',
+    what: 'cold start, open driver and run migrations',
+    ms: performance.now() - bootStartedAt,
+    detail: `${startupState}; fixture ${summary.entries} entries across ${summary.daysWithEntries} days`
+  });
+
+  const reopenedJournal = openJournal(reopened.driver, reopenedFiles);
+  const rowsBeforeSweep = await reopenedJournal.photos.inJournal();
+  const fileNames = await reopenedFiles.list();
+  const fullNames = new Set(rowsBeforeSweep.flatMap((row) => (row.fileName ? [row.fileName] : [])));
+  const thumbNames = new Set(rowsBeforeSweep.flatMap((row) => (row.fileName ? [thumbFileName(row.fileName)] : [])));
+  const referenced = fileNames.filter((name) => fullNames.has(name) || thumbNames.has(name)).length;
+  const orphanCandidates = fileNames.length - referenced;
+
+  const sweepStartedAt = performance.now();
+  await sweepOrphanPhotos(reopened.driver, reopenedFiles);
+  startup.push({
+    name: 'boot-sweep',
+    what: 'cold start, orphan photo sweep over fixture storage',
+    ms: performance.now() - sweepStartedAt,
+    detail: `${startupState}; ${fileNames.length} files scanned, ${orphanCandidates} orphan candidate(s)`
+  });
+
+  const firstPaintStartedAt = performance.now();
+  const [dimensions, presets, tagGroups, milestones, streak, recent, week] = await Promise.all([
+    reopenedJournal.dimensions.getDimensions(),
+    reopenedJournal.dimensions.getPresets(),
+    reopenedJournal.tags.getTagGroups(),
+    reopenedJournal.milestones.getMilestones(),
+    reopenedJournal.stats.streak(summary.lastEpochDay),
+    reopenedJournal.entries.recentDays(RECENT_DAYS),
+    reopenedJournal.stats.dayAverages('mood', summary.lastEpochDay - 6, summary.lastEpochDay)
+  ]);
+  startup.push({
+    name: 'first-paint',
+    what: 'cold start, boot reference reads + Home queries before first usable screen',
+    ms: performance.now() - firstPaintStartedAt,
+    detail:
+      `${startupState}; ${dimensions.length} dimensions, ${presets.length} presets, ` +
+      `${tagGroups.length} tag groups, ${milestones.length} milestones, ` +
+      `streak ${streak}, ${recent.length} recent entries, ${week.length} week points`
+  });
+
+  let photoBytes = 0;
+  for (const name of await reopenedFiles.list()) photoBytes += (await reopenedFiles.size(name)) ?? 0;
+
+  const measurements = await measureLongJournal(reopenedJournal, reopenedFiles, {
     today: summary.lastEpochDay,
     summary
   });
 
-  await booted.driver.close();
-  publish({ summary, measurements, generatedInMs, photoBytes });
+  await reopened.driver.close();
+  publish({ summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes });
 }
 
 run().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));

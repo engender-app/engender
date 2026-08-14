@@ -143,6 +143,17 @@ publishes a web bundle, a source archive, signed Android artifacts and
 checksums. The App Bundle upload to Play internal runs in that same protected
 environment.
 
+Cut release tags through the script below instead of creating GitHub releases
+manually. It enforces a clean `main`, requires a workflow-triggering
+`v<semver>` tag, checks that `CHANGELOG.md` has notes for that version, creates
+an annotated signed tag, and pushes it so the release workflow can publish the
+signed APK Obtainium expects.
+
+```
+npm run release:tag -- 1.2.3-alpha.1 --dry-run
+npm run release:tag -- 1.2.3-alpha.1
+```
+
 ```
 node scripts/release-notes.mjs [version]   # what the release would say
 node scripts/package-release.mjs           # bundle, source archive, checksums

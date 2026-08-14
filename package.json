@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "test:browser": "node tests/browser-tier/run.mjs",
+    "test:browser": "svelte-kit sync && node tests/browser-tier/run.mjs",
     "test:android": "node tests/android-tier/run.mjs",
     "test:walkthrough": "node scripts/prepare-tesseract-assets.mjs && GENDER_DIARY_VERSION=9.9.9-walkthrough VITE_DEMO=1 npm run build && node tests/walkthrough.test.mjs",
     "verify:build": "node scripts/prepare-tesseract-assets.mjs && npm run build && node tests/browser-tier/verify-build.mjs",
@@ -18,11 +18,12 @@
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
     "deploy:list": "node scripts/journal-release.mjs list",
+    "release:tag": "node scripts/cut-release-tag.mjs",
     "check:copy": "node scripts/check-copy.mjs",
     "check:licences": "node scripts/check-licences.mjs",
     "check:progressive-release": "node scripts/check-progressive-release.mjs",
     "benchmark:argon2": "node scripts/benchmark-argon2.mjs",
-    "benchmark:long-journal": "node tests/long-journal/run.mjs"
+    "benchmark:long-journal": "svelte-kit sync && node tests/long-journal/run.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.0",
