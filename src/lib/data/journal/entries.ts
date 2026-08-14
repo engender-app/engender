@@ -52,6 +52,15 @@ export interface EntryInput {
   removePhotoIds?: string[];
 }
 
+export interface EntrySearchFilters {
+  tagIds?: string[];
+  moods?: number[];
+  startEpochDay?: number | null;
+  endEpochDay?: number | null;
+  hasNote?: boolean;
+  hasPhoto?: boolean;
+}
+
 export interface EntriesArea {
   getEntry(id: number): Promise<Entry | undefined>;
   entriesForDay(epochDay: number): Promise<Entry[]>;
@@ -71,13 +80,18 @@ export interface EntriesArea {
       Matching labels to ids is the caller's half, for the reason
       searchQuery.ts sets out: pass `tagIdsMatching(query, tags)` over the
       mirrored vocabulary, or `[]` to mean "notes alone". */
-  searchEntries(query: string, matchingTagIds: string[], limit?: number): Promise<Entry[]>;
+  searchEntries(
+    query: string,
+    matchingTagIds: string[],
+    filtersOrLimit?: EntrySearchFilters | number,
+    limit?: number
+  ): Promise<Entry[]>;
   /** How many entries the same query matches in total. Its own call because
       the search screen shows a page of hits and a count of all of them, and
       the count must not become the page size - it said "30 results" for a
       query with fifty. An aggregate, so it transfers one row however many
       match. */
-  countSearchMatches(query: string, matchingTagIds: string[]): Promise<number>;
+  countSearchMatches(query: string, matchingTagIds: string[], filters?: EntrySearchFilters): Promise<number>;
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
@@ -193,14 +207,16 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
      SQLite builds. */
   const searchMatches = (
     query: string,
-    matchingTagIds: string[]
+    matchingTagIds: string[],
+    filters: EntrySearchFilters
   ): { where: string; params: (string | number)[] } | null => {
     const clauses: string[] = [];
     const params: (string | number)[] = [];
 
+    const textOrLabel: string[] = [];
     const match = ftsMatchExpression(query);
     if (match) {
-      clauses.push('e.id IN (SELECT rowid FROM entry_fts WHERE entry_fts MATCH ?)');
+      textOrLabel.push('e.id IN (SELECT rowid FROM entry_fts WHERE entry_fts MATCH ?)');
       params.push(match);
     }
 
@@ -209,7 +225,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       // a custom row has the uuid (ADR-0002), which is the same rule
       // domainIdOf() applies when reading one back out.
       const placeholders = matchingTagIds.map(() => '?').join(', ');
-      clauses.push(
+      textOrLabel.push(
         `e.id IN (
            SELECT et.entry_id FROM entry_tag et JOIN tag t ON t.id = et.tag_id
            WHERE COALESCE(t.key, t.uuid) IN (${placeholders})
@@ -218,7 +234,49 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       params.push(...matchingTagIds);
     }
 
-    return clauses.length === 0 ? null : { where: clauses.join(' OR '), params };
+    if (textOrLabel.length > 0) clauses.push(`(${textOrLabel.join(' OR ')})`);
+
+    if ((filters.tagIds ?? []).length > 0) {
+      const placeholders = filters.tagIds!.map(() => '?').join(', ');
+      clauses.push(
+        `e.id IN (
+           SELECT et.entry_id FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+           WHERE COALESCE(t.key, t.uuid) IN (${placeholders})
+         )`
+      );
+      params.push(...filters.tagIds!);
+    }
+
+    if ((filters.moods ?? []).length > 0) {
+      const placeholders = filters.moods!.map(() => '?').join(', ');
+      clauses.push(`e.mood IN (${placeholders})`);
+      params.push(...filters.moods!);
+    }
+
+    if (filters.startEpochDay != null) {
+      clauses.push('e.epoch_day >= ?');
+      params.push(filters.startEpochDay);
+    }
+    if (filters.endEpochDay != null) {
+      clauses.push('e.epoch_day <= ?');
+      params.push(filters.endEpochDay);
+    }
+    if (filters.hasNote) {
+      clauses.push("TRIM(COALESCE(e.note, '')) <> ''");
+    }
+    if (filters.hasPhoto) {
+      clauses.push('EXISTS (SELECT 1 FROM photo p WHERE p.entry_id = e.id)');
+    }
+
+    return clauses.length === 0 ? null : { where: clauses.join(' AND '), params };
+  };
+
+  const searchArgs = (
+    filtersOrLimit?: EntrySearchFilters | number,
+    limit?: number
+  ): { filters: EntrySearchFilters; limit?: number } => {
+    if (typeof filtersOrLimit === 'number') return { filters: {}, limit: filtersOrLimit };
+    return { filters: filtersOrLimit ?? {}, limit };
   };
 
   const indexEntry = async (entryId: number, note: string) => {
@@ -271,22 +329,23 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       return Promise.all(rows.map(toEntry));
     },
 
-    async searchEntries(query, matchingTagIds, limit) {
-      const matches = searchMatches(query, matchingTagIds);
+    async searchEntries(query, matchingTagIds, filtersOrLimit, limit) {
+      const args = searchArgs(filtersOrLimit, limit);
+      const matches = searchMatches(query, matchingTagIds, args.filters);
       if (!matches) return [];
 
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note FROM entry e
          WHERE ${matches.where}
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
-         ${limit == null ? '' : 'LIMIT ?'}`,
-        limit == null ? matches.params : [...matches.params, limit]
+         ${args.limit == null ? '' : 'LIMIT ?'}`,
+        args.limit == null ? matches.params : [...matches.params, args.limit]
       );
       return Promise.all(rows.map(toEntry));
     },
 
-    async countSearchMatches(query, matchingTagIds) {
-      const matches = searchMatches(query, matchingTagIds);
+    async countSearchMatches(query, matchingTagIds, filters = {}) {
+      const matches = searchMatches(query, matchingTagIds, filters);
       if (!matches) return 0;
       const rows = await driver.query<{ n: number }>(
         `SELECT COUNT(*) AS n FROM entry e WHERE ${matches.where}`,
