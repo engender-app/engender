@@ -109,7 +109,6 @@
       {/if}
     {:else}
       <EmptyState
-        riveLabel={m.rive_empty_photos()}
         title={m.ph_empty_title()}
         text={m.ph_empty_body()}
       />

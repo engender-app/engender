@@ -52,9 +52,11 @@
   "dismiss": "Dismiss",
   "empty_home_title": "Your story starts with one entry",
   "empty_home_body": "Log how today felt. A mood is enough, and you can add more later.",
+  "home_milestones_empty_title": "No milestones yet",
+  "home_milestones_empty_body": "Add a coming-out date, a start date, or anything else worth marking.",
   "colour_days_by": "Colour days by",
   "metric_note": "The same colour choice drives the calendar heat-map.",
-  "change_on_home": "change it on Home",
+  "change_metric": "change it",
   "prev_month": "Previous month",
   "next_month": "Next month",
   "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. Days with several entries show the day’s average. Tap a filled day to see its entries.",
@@ -167,21 +169,6 @@
   "off": "off",
   "try_it": "try it",
   "footer_note": "nothing leaves this device",
-  "scales_count": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "{count} scale",
-        "countPlural=other": "{count} scales"
-      }
-    }
-  ],
   "custom_suffix": "custom",
   "add_custom": "Custom…",
   "add_custom_sub": "add your own scale",
@@ -316,18 +303,6 @@
   "ob_done_title": "You’re all set",
   "ob_done_title_named": "You’re all set, {name}",
   "ob_done_body": "Everything you write stays here, with you. One short entry a day is plenty.",
-  "rive_welcome": "Welcome: gentle flag-coloured waves",
-  "rive_journey_start": "A path unfolding in flag colours",
-  "rive_celebration": "Celebration: confetti in flag colours",
-  "rive_recap_open": "Recap opener: calendar pages turning",
-  "rive_recap_finale": "Recap finale: celebration in flag colours",
-  "rive_empty_home": "A small sprout in flag colours",
-  "rive_empty_labs": "A friendly test tube",
-  "rive_empty_photos": "A polaroid frame waiting",
-  "rive_empty_timeline": "A winding path",
-  "rive_no_results": "A magnifying glass over gentle waves",
-  "rive_reminders_web": "A bell with a gentle z-z-z",
-  "rive_quiet_day": "A quiet day",
   "pin_choose_title": "Choose a PIN",
   "pin_again_title": "Type it once more",
   "pin_greeting": "Hi",
@@ -573,6 +548,12 @@
   "palette_pansexual": "Pansexual",
   "palette_rainbow": "Rainbow",
   "palette_agender": "Agender",
+  "mood_colours": "Mood colours",
+  "mood_colours_note": "Kept separate from the palette above, so a mood dot never looks like a gender colour.",
+  "mood_preset_amber": "Amber",
+  "mood_preset_teal": "Teal",
+  "mood_preset_plum": "Plum",
+  "mood_preset_moss": "Moss",
   "settings_taggroup_switch": "{group} group",
   "settings_reminders_sub": "{count} active · daily check-in {state}",
   "settings_milestones_sub": [
@@ -914,6 +895,5 @@
   "mood_none": "no mood",
   "entry_mood_aria": "mood: {name}",
   "entry_day_count": "{count} that day",
-  "rive_aria": "{label} (animated illustration)",
   "tags_group_aria": "{group} tags"
 }

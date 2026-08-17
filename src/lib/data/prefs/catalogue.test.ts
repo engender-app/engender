@@ -35,7 +35,7 @@ test('the allowlists name only real preferences', () => {
 
 test('the boot set is exactly the pre-database preferences, and never the PIN hash', () => {
   expect([...BOOT_KEYS].sort()).toEqual(
-    ['disguise', 'language', 'lockOnLeave', 'palette', 'theme', 'a11yTextSizeBoost', 'a11yLegibilityBoost', 'a11yMotionReduce'].sort()
+    ['disguise', 'language', 'lockOnLeave', 'palette', 'moodPreset', 'theme', 'a11yTextSizeBoost', 'a11yLegibilityBoost', 'a11yMotionReduce'].sort()
   );
   // The mirror is plaintext localStorage. The hash of a 4-digit PIN in it
   // would be an offline-guessable secret sitting beside the encrypted
@@ -46,7 +46,7 @@ test('the boot set is exactly the pre-database preferences, and never the PIN ha
 test('the boot set cuts across the portable split rather than following it', () => {
   const portable = new Set<string>(PORTABLE_KEYS);
 
-  expect(BOOT_KEYS.filter((key) => portable.has(key))).toEqual(['theme', 'palette', 'language']);
+  expect(BOOT_KEYS.filter((key) => portable.has(key))).toEqual(['theme', 'palette', 'moodPreset', 'language']);
   expect(BOOT_KEYS.filter((key) => !portable.has(key))).toEqual([
     'a11yTextSizeBoost',
     'a11yLegibilityBoost',

@@ -21,6 +21,13 @@
     ['rainbow', m.palette_rainbow], ['agender', m.palette_agender],
   ];
 
+  /* COL-001: mood's own fixed 5-step scale, picked independently of the
+     gender palette above - see ADR-0025. */
+  const MOOD_PRESETS: [string, () => string][] = [
+    ['amber', m.mood_preset_amber], ['teal', m.mood_preset_teal],
+    ['plum', m.mood_preset_plum], ['moss', m.mood_preset_moss],
+  ];
+
   let isWeb = $derived(!isAndroid());
   let preset = $derived(vocabulary.activePreset);
   let metricName = $derived(vocabulary.metricName);
@@ -46,6 +53,10 @@
   function pickPalette(key: string) {
     prefs.palette = key;
   }
+
+  function pickMoodPreset(key: string) {
+    prefs.moodPreset = key;
+  }
 </script>
 
 <div class="screen">
@@ -65,6 +76,24 @@
           onclick={() => pickPalette(key)}
         >
           <span class="swatch-preview" data-swatch={key}></span>
+          <span class="swatch-name">{label()}</span>
+        </button>
+      {/each}
+    </div>
+    <div class="hr"></div>
+    <p class="field-label" style="margin-bottom:var(--space-3)">{m.mood_colours()}</p>
+    <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.mood_colours_note()}</p>
+    <div class="mood-preset-grid" role="radiogroup" aria-label={m.mood_colours()}>
+      {#each MOOD_PRESETS as [key, label] (key)}
+        <button
+          class="palette-swatch"
+          class:is-active={prefs.moodPreset === key}
+          role="radio"
+          aria-checked={prefs.moodPreset === key}
+          data-mood-preset-pick={key}
+          onclick={() => pickMoodPreset(key)}
+        >
+          <span class="swatch-preview" data-mood-swatch={key}></span>
           <span class="swatch-name">{label()}</span>
         </button>
       {/each}
@@ -149,7 +178,10 @@
         <span class="row-title">{m.gender_preset()}</span>
         <span class="row-subtitle" data-active-preset-name>{preset.name}</span>
       </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+      <!-- SH-103: chevronDown ("opens in place") rather than chevronRight
+           ("navigates away"), so a sheet-opening row no longer looks
+           identical to the <a> rows around it. -->
+      <span class="row-trailing"><Icon name="chevronDown" size={20} /></span>
     </button>
     <a class="list-row" href="/settings/dimension">
       <span class="row-icon"><Icon name="stats" size={22} /></span>
@@ -196,7 +228,7 @@
         <span class="row-title">{m.home_cal_colour()}</span>
         <span class="row-subtitle">{m.coloured_by()} {metricName}</span>
       </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+      <span class="row-trailing"><Icon name="chevronDown" size={20} /></span>
     </button>
   </div>
 
@@ -261,11 +293,17 @@
         <span class="row-title">{m.app_lock()}</span>
         <span class="row-subtitle">
           {#if prefs.appLock}
-            {m.on()} · {isAndroid() ? m.settings_lock_on_pin_bio() : m.settings_lock_on_pin()} ·
-            <a href="/settings/lock" style="color:var(--accent)">{m.try_it()}</a>
+            {m.on()} · {isAndroid() ? m.settings_lock_on_pin_bio() : m.settings_lock_on_pin()}
           {:else}{m.off()}{/if}
         </span>
       </span>
+      {#if prefs.appLock}
+        <!-- SH-104: this used to be the only route to the lock screen, a
+             plain-text link inside 14px subtitle copy. It is now a proper
+             row action next to the switch it does not overlap with in
+             purpose: the switch turns the lock off, this opens it. -->
+        <a class="icon-btn" href="/settings/lock" aria-label={m.try_it()}><Icon name="chevronRight" size={20} /></a>
+      {/if}
       <Switch
         checked={prefs.appLock}
         label={m.app_lock()}
@@ -289,7 +327,7 @@
         <span class="row-title">{m.disguise_row()}</span>
         <span class="row-subtitle">{prefs.disguise ? m.settings_disguise_on() : m.off()}</span>
       </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+      <span class="row-trailing"><Icon name="chevronDown" size={20} /></span>
     </button>
     <a class="list-row" href="/settings/export">
       <span class="row-icon"><Icon name="download" size={22} /></span>
@@ -307,7 +345,7 @@
         <span class="row-title">{m.about()}</span>
         <span class="row-subtitle">{m.settings_about_sub()}</span>
       </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+      <span class="row-trailing"><Icon name="chevronDown" size={20} /></span>
     </button>
   </div>
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
@@ -330,7 +368,7 @@
         >
           <span class="row-text">
             <span class="row-title">{p.name}</span>
-            <span class="row-subtitle">{m.scales_count({ count: p.dims.length })}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
+            <span class="row-subtitle">{vocabulary.presetDimensionNames(p.dims)}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
           </span>
           {#if prefs.activePreset === p.id}<Icon name="check" size={20} />{/if}
         </button>

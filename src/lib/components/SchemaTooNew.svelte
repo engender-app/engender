@@ -49,7 +49,9 @@
         <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>
       </button>
       {#if nothingNewer}
-        <p class="ob-text small" style="text-align:center" data-nothing-newer>
+        <!-- SF-004: this result used to appear with no announcement - a
+             silent content swap for anyone not looking at the screen. -->
+        <p class="ob-text small" style="text-align:center" role="status" data-nothing-newer>
           {m.boot_schema_too_new_still_old()}
         </p>
       {/if}

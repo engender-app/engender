@@ -410,6 +410,23 @@ try {
   ok('palette switch recolours app');
 } catch (e) { fail('palette', e); }
 
+/* 7b. mood preset switch (COL-001/ADR-0025): mood's own scale is picked
+   independently of the palette above, and persists across a reload the
+   same way the palette does. */
+try {
+  await fresh('/settings');
+  const before = await page.evaluate(() => document.documentElement.dataset.moodPreset);
+  if (before !== 'amber') throw new Error('default mood preset is not amber: ' + before);
+  await page.locator('[data-mood-preset-pick="teal"]').click();
+  await page.waitForFunction(() => document.documentElement.dataset.moodPreset === 'teal');
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  if ((await page.evaluate(() => document.documentElement.dataset.moodPreset)) !== 'teal') {
+    throw new Error('mood preset did not survive a reload');
+  }
+  ok('mood preset switch persists independently of the palette');
+} catch (e) { fail('mood preset', e); }
+
 /* 8. language swap EN→PL (paraglide reload) */
 try {
   await fresh('/settings');

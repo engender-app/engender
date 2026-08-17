@@ -153,7 +153,7 @@
           ? m.recap_your({ month: period?.name ?? '' })
           : m.recap_range_title({ period: period?.name ?? '' }),
       body: isYear ? m.recap_open_year() : isMonth ? m.recap_open_month() : m.recap_open_range(),
-      rive: m.rive_recap_open(),
+      rive: true,
       confetti: false
     },
     {
@@ -165,7 +165,7 @@
           : isMonth
             ? m.recap_entries_quiet_month()
             : m.recap_entries_quiet_range(),
-      rive: null,
+      rive: false,
       confetti: false
     },
     {
@@ -181,13 +181,13 @@
           : isMonth
             ? m.recap_mood_none_month()
             : m.recap_mood_none_range(),
-      rive: null,
+      rive: false,
       confetti: false
     },
     {
       title: m.recap_streak_title({ days: m.n_days({ n: recap?.bestStreak ?? 0 }) }),
       body: m.recap_streak_body(),
-      rive: null,
+      rive: false,
       confetti: false
     },
     {
@@ -199,7 +199,7 @@
           : isMonth
             ? m.recap_tags_none_month()
             : m.recap_tags_none_range(),
-      rive: null,
+      rive: false,
       confetti: false
     },
     {
@@ -213,7 +213,7 @@
           : isMonth
             ? m.recap_ms_none_month()
             : m.recap_ms_none_range(),
-      rive: null,
+      rive: false,
       confetti: false
     },
     {
@@ -234,13 +234,13 @@
           : isMonth
             ? m.recap_scale_none_month()
             : m.recap_scale_none_range(),
-      rive: null,
+      rive: false,
       confetti: false
     },
     {
       title: m.recap_end_title({ period: period?.name ?? '' }),
       body: m.recap_end_body(),
-      rive: m.rive_recap_finale(),
+      rive: true,
       confetti: true
     },
   ]);
@@ -330,9 +330,9 @@
   {:else if recapQuery.loading || moodTrendQuery.loading}
     <Skeleton variant="block" count={1} />
   {:else}
-    <div class="recap-stage">
+    <div class="recap-stage" aria-live="polite">
       {#if s.rive}
-        <RiveSlot label={s.rive} height={150} variant={s.confetti ? 'confetti' : 'bloom'} />
+        <RiveSlot height={150} variant={s.confetti ? 'confetti' : 'bloom'} />
       {/if}
       <h2 class="recap-title">{s.title}</h2>
       <p class="recap-body">{s.body}</p>

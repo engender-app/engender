@@ -32,6 +32,10 @@ export interface PreferenceValues {
   metricDimension: string | null;
   theme: 'system' | 'light' | 'dark';
   palette: string;
+  /** Mood's own fixed 5-step scale (ADR-0025), independent of `palette` -
+      selectable on its own so a mood dot never has to double as a gender
+      colour. */
+  moodPreset: string;
   language: 'system' | 'en' | 'pl';
   a11yTextSizeBoost: boolean;
   a11yLegibilityBoost: boolean;
@@ -71,6 +75,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   metricDimension: null,
   theme: 'system',
   palette: 'trans',
+  moodPreset: 'amber',
   language: 'system',
   a11yTextSizeBoost: false,
   a11yLegibilityBoost: false,
@@ -98,6 +103,7 @@ export const PORTABLE_KEYS = [
   'metricKind',
   'metricDimension',
   'palette',
+  'moodPreset',
   'theme',
   'language',
   'checkInEnabled',
@@ -133,6 +139,7 @@ export const DEVICE_LOCAL_KEYS = [
 export const BOOT_KEYS = [
   'theme',
   'palette',
+  'moodPreset',
   'language',
   'a11yTextSizeBoost',
   'a11yLegibilityBoost',

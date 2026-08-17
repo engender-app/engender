@@ -309,7 +309,6 @@
     </div>
   {:else}
     <EmptyState
-      riveLabel={m.rive_empty_labs()}
       title={m.labs_empty_title()}
       text={m.labs_empty_body()}
     >

@@ -1,15 +1,19 @@
 <script lang="ts">
-  import { m } from '$lib/paraglide/messages';
   import Icon from './Icon.svelte';
 
   let {
-    label,
     height = 120,
     variant = 'bloom',
-  }: { label: string; height?: number; variant?: 'bloom' | 'confetti' } = $props();
+  }: { height?: number; variant?: 'bloom' | 'confetti' } = $props();
 </script>
 
-<div class="rive-stage" style:height="{height}px" role="img" aria-label={m.rive_aria({ label })}>
+<!-- RV-002: this used to announce a description of an intended Rive asset
+     ("confetti in flag colours") that never existed; the CSS fallback is
+     now the only thing that ever rendered here (ticket 09). Every call site
+     already states the same thing in an adjacent heading/body, so the
+     accessible name was redundant on top of being wrong - dropped to
+     decoration rather than rewritten. -->
+<div class="rive-stage" style:height="{height}px" aria-hidden="true">
   {#if variant === 'confetti'}
     <div class="confetti" aria-hidden="true">
       {#each Array.from({ length: 14 }) as _, i (i)}

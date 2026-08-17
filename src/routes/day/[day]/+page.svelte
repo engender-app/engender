@@ -2,6 +2,7 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import { smartBack } from '$lib/navigation/smart-back';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { liveQuery } from '$lib/data/live/journal.svelte';
@@ -21,7 +22,7 @@
 
 <div class="screen">
   <header class="screen-header">
-    <a class="icon-btn" href="/calendar" aria-label={m.back()}><Icon name="arrowLeft" /></a>
+    <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/calendar')}><Icon name="arrowLeft" /></button>
     <h1 class="screen-title">{isToday ? m.today() : fmtDay(epochDay, { weekday: 'long' })}</h1>
     <div class="header-action"></div>
   </header>
@@ -42,7 +43,7 @@
       {/each}
     </div>
   {:else}
-    <EmptyState riveLabel={m.rive_quiet_day()} title={m.nothing_logged()} text={m.nothing_logged_body()} />
+    <EmptyState title={m.nothing_logged()} text={m.nothing_logged_body()} />
   {/if}
 
   <div style="margin-top:var(--space-6)">

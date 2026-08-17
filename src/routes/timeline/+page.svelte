@@ -89,7 +89,6 @@
     </div>
   {:else}
     <EmptyState
-      riveLabel={m.rive_empty_timeline()}
       title={m.tl_empty_title()}
       text={m.tl_empty_body()}
     >

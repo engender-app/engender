@@ -132,6 +132,7 @@
   $effect(() => {
     const root = document.documentElement;
     root.dataset.palette = prefs.palette;
+    root.dataset.moodPreset = prefs.moodPreset;
     root.dataset.theme = prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : prefs.theme;
     root.dataset.a11yTextSize = prefs.a11yTextSizeBoost ? 'boost' : 'normal';
     root.dataset.a11yLegibility = prefs.a11yLegibilityBoost ? 'boost' : 'normal';

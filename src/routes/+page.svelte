@@ -73,7 +73,7 @@
 
   {#if celebrate}
     <div class="celebration card" role="status">
-      <RiveSlot label={m.rive_celebration()} height={90} variant="confetti" />
+      <RiveSlot height={90} variant="confetti" />
       <p class="celebration-text">
         {landing?.s.years
           ? m.home_anniv_years({
@@ -107,15 +107,23 @@
     <MoodPicker compact onPick={onQuickLog} />
   </div>
 
+  <!-- NAV-003: this section used to disappear entirely with no milestones,
+       which also meant Timeline - only linked from here - was structurally
+       unreachable exactly when its own empty state most needed to be seen. -->
+  <SectionTitle text={m.milestones()}>
+    {#snippet aside()}<a href="/timeline">{m.timeline()} <Icon name="chevronRight" size={14} /></a>{/snippet}
+  </SectionTitle>
   {#if upcoming.length}
-    <SectionTitle text={m.milestones()}>
-      {#snippet aside()}<a href="/timeline">{m.timeline()} <Icon name="chevronRight" size={14} /></a>{/snippet}
-    </SectionTitle>
     <div class="milestone-scroller">
       {#each upcoming.slice(0, 4) as x (x.m.id)}
         <MilestoneCard milestone={x.m} s={x.s} />
       {/each}
     </div>
+  {:else}
+    <a class="card" style="display:block;color:inherit;text-decoration:none" href="/settings/milestones">
+      <span class="row-title">{m.home_milestones_empty_title()}</span>
+      <p class="row-subtitle" style="margin-top:2px">{m.home_milestones_empty_body()}</p>
+    </a>
   {/if}
 
   <SectionTitle text={m.last_seven()}>
@@ -140,7 +148,6 @@
     {/each}
   {:else}
     <EmptyState
-      riveLabel={m.rive_empty_home()}
       title={m.empty_home_title()}
       text={m.empty_home_body()}
     >

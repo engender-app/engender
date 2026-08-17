@@ -3,6 +3,8 @@
   import { fmtMonthYear } from '$lib/data/dates';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
+  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const now = new Date();
@@ -12,6 +14,11 @@
   let metricName = $derived(vocabulary.metricName);
   let legend = $derived(vocabulary.metricLegend);
   let monthLabel = $derived(fmtMonthYear(year, month));
+  /* NAV-007: this hint used to send people to Home just to reach the same
+     picker Settings offers in a sheet - two different destinations for one
+     setting, on the one screen actually showing the colours it changes.
+     Calendar now opens the same kind of sheet in place. */
+  let metricSheetOpen = $state(false);
 
   function step(delta: number) {
     let mo = month + delta;
@@ -41,7 +48,8 @@
     <button class="icon-btn" aria-label={m.next_month()} onclick={() => step(1)}><Icon name="chevronRight" size={22} /></button>
   </div>
   <p class="muted small" style="text-align:center;margin-bottom:var(--space-4)">
-    {m.coloured_by()} <strong>{metricName}</strong> — <a href="/" style="color:var(--accent)">{m.change_on_home()}</a>
+    {m.coloured_by()} <strong>{metricName}</strong> —
+    <button class="metric-chip" style="display:inline-flex;padding:0" onclick={() => (metricSheetOpen = true)}>{m.change_metric()}</button>
   </p>
 
   <div class="card">
@@ -57,4 +65,23 @@
     </div>
   </div>
   <p class="muted small" style="margin-top:var(--space-4)">{m.heat_hint({ metric: metricName })}</p>
+
+  <Sheet bind:open={metricSheetOpen} title={m.colour_days_by()}>
+    <h3>{m.colour_days_by()}</h3>
+    <div class="list-group" style="box-shadow:none">
+      {#each [{ key: null, name: m.mood() }, ...vocabulary.activeDimensions] as d (d.key ?? 'mood')}
+        <button
+          class="list-row"
+          onclick={() => {
+            selectMetric(d.key);
+            metricSheetOpen = false;
+          }}
+        >
+          <span class="row-text"><span class="row-title">{d.name}</span></span>
+          {#if prefs.metricDimension === d.key}<Icon name="check" size={20} />{/if}
+        </button>
+      {/each}
+    </div>
+    <p class="muted small" style="margin-top:var(--space-3)">{m.metric_note()}</p>
+  </Sheet>
 </div>
