@@ -9,7 +9,7 @@ import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 4);
+  assert.equal(db.getUserVersion(), 5);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -24,6 +24,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'gender_dimension',
     'gender_preset',
     'lab_result',
+    'measurement',
     'milestone',
     'photo',
     'pref',
@@ -114,7 +115,7 @@ test('milestone drops kind, order_index and photo_path; reminder drops trigger_t
 
 test('user-owned tables carry uuid and updated_at', async () => {
   const db = await migratedDb();
-  for (const table of ['entry', 'photo', 'milestone', 'lab_result', 'reminder']) {
+  for (const table of ['entry', 'photo', 'milestone', 'lab_result', 'measurement', 'reminder']) {
     const columns = (db.raw.prepare(`PRAGMA table_info(${table})`).all() as Array<{
       name: string;
       notnull: number;
@@ -184,6 +185,21 @@ test('reminder shape: one-off needs epoch_day, EVERY_N_DAYS needs interval and a
   // Neither a recurrence nor a one-off day.
   assert.throws(() =>
     insert("INSERT INTO reminder (uuid, title, type, time, updated_at) VALUES ('r5', 'Nothing', 'other', '20:00', 1000)")
+  );
+});
+
+test('v5 measurement carries no episode reference and rejects a type outside the fixed four', async () => {
+  const db = await migratedDb();
+  const columns = (db.raw.prepare('PRAGMA table_info(measurement)').all() as Array<{ name: string }>).map(
+    (c) => c.name
+  );
+  assert.ok(!columns.some((name) => name.includes('episode')), 'measurement must not reference a regimen episode');
+
+  assert.doesNotThrow(() =>
+    db.raw.exec("INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m1', 100, 'waist', 79, 'cm', 1000)")
+  );
+  assert.throws(() =>
+    db.raw.exec("INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m2', 100, 'thigh', 50, 'cm', 1000)")
   );
 });
 

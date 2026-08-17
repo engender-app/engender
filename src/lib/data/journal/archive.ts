@@ -33,6 +33,7 @@ import type {
   ArchiveFile,
   ArchiveJournal,
   ArchiveLabResult,
+  ArchiveMeasurement,
   ArchiveMilestone,
   ArchivePhoto,
   ArchivePreset,
@@ -232,6 +233,23 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     }));
   };
 
+  const measurements = async (): Promise<ArchiveMeasurement[]> => {
+    const rows = await driver.query<{
+      uuid: string;
+      type: string;
+      epoch_day: number;
+      value: number;
+      unit: string;
+    }>('SELECT uuid, type, epoch_day, value, unit FROM measurement ORDER BY epoch_day, id');
+    return rows.map((r) => ({
+      id: r.uuid,
+      type: r.type,
+      epochDay: r.epoch_day,
+      value: r.value,
+      unit: r.unit
+    }));
+  };
+
   const reminders = async (): Promise<ArchiveReminder[]> => {
     const rows = await driver.query<{
       uuid: string;
@@ -330,6 +348,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           entries: await entries(photos),
           milestones: await milestones(photos),
           labResults: await labResults(),
+          measurements: await measurements(),
           reminders: await reminders()
         },
         files: archivedFiles,

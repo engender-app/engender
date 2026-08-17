@@ -33,7 +33,7 @@ import { RECONCILE_TABLES } from '../journal/reconcile';
     and its dimension values, tag links, body-region values and search
     index. Finer would be precision no screen can use: nothing reads
     `entry_tag` without reading the entry it belongs to. */
-export type TableName = 'entry' | 'tag' | 'dimension' | 'preset' | 'milestone' | 'photo' | 'lab' | 'reminder';
+export type TableName = 'entry' | 'tag' | 'dimension' | 'preset' | 'milestone' | 'photo' | 'lab' | 'measurement' | 'reminder';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -45,6 +45,7 @@ export const TABLE_NAMES: TableName[] = [
   'milestone',
   'photo',
   'lab',
+  'measurement',
   'reminder'
 ];
 
@@ -112,6 +113,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   labs: {
     writes: { upsertResult: ['lab'], deleteResult: ['lab'] },
     reads: ['getAnalytes', 'getUsedAnalytes', 'getResults', 'getSeries']
+  },
+  measurements: {
+    writes: { upsertMeasurement: ['measurement'], deleteMeasurement: ['measurement'] },
+    reads: ['getMeasurements', 'getSeries', 'getMeasurementsInRange']
   },
   reminders: {
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },

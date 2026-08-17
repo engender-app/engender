@@ -109,6 +109,16 @@ export interface LabResult {
   note: string;
 }
 
+/* No episode reference (ticket 08 scope): a measurement stands alone and
+   has to work whether or not a regimen episode exists. */
+export interface Measurement {
+  id: string;
+  type: 'waist' | 'hips' | 'chest' | 'underbust';
+  epochDay: number;
+  value: number;
+  unit: string;
+}
+
 /* Preferences are not here: they live in SQLite's `pref` table and are
    described by prefs/catalogue.ts (ticket 06). Neither is a whole-journal
    type: the `DB` object the demo store held went with it in ticket 08, and

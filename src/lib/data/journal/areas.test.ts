@@ -188,6 +188,76 @@ test('lab results update by id, throw on unknown ids and delete idempotently', a
   assert.deepEqual(await journal.labs.getResults('estradiol'), []);
 });
 
+/* measurements */
+
+test('a measurement round-trips with no episode reference, ordered by day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 200, value: 79, unit: 'cm' });
+  const id = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
+
+  const measurements = await journal.measurements.getMeasurements('waist');
+  assert.deepEqual(measurements.map((r) => r.epochDay), [100, 200]);
+  assert.deepEqual(measurements[0], { id, type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
+});
+
+test('each type keeps its own measurements; another type is not returned', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 80, unit: 'cm' });
+  await journal.measurements.upsertMeasurement({ type: 'hips', epochDay: 100, value: 95, unit: 'cm' });
+
+  assert.equal((await journal.measurements.getMeasurements('waist')).length, 1);
+  assert.equal((await journal.measurements.getMeasurements('hips')).length, 1);
+  assert.deepEqual(await journal.measurements.getMeasurements('chest'), []);
+});
+
+test('two units on one type are two series, drawn from the values as logged', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 200, value: 79, unit: 'cm' });
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 300, value: 31, unit: 'in' });
+
+  const series = await journal.measurements.getSeries('waist');
+  assert.deepEqual(
+    series.map((s) => [s.unit, s.measurements.map((r) => r.value)]),
+    [
+      ['cm', [82, 79]],
+      ['in', [31]]
+    ]
+  );
+  // The whole point: 31 in is about 79 cm, and nothing here says so.
+  assert.deepEqual((await journal.measurements.getMeasurements('waist')).map((r) => r.value), [82, 79, 31]);
+});
+
+test('a range read returns every type within the days it was asked for', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
+  await journal.measurements.upsertMeasurement({ type: 'hips', epochDay: 150, value: 96, unit: 'cm' });
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 200, value: 79, unit: 'cm' });
+
+  const inRange = await journal.measurements.getMeasurementsInRange(120, 180);
+  assert.deepEqual(
+    inRange.map((r) => [r.type, r.epochDay]),
+    [['hips', 150]]
+  );
+});
+
+test('measurements update by id, throw on unknown ids and delete idempotently', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
+
+  await journal.measurements.upsertMeasurement({ id, type: 'waist', epochDay: 100, value: 81, unit: 'cm' });
+  assert.equal((await journal.measurements.getMeasurements('waist'))[0].value, 81);
+
+  await assert.rejects(
+    journal.measurements.upsertMeasurement({ id: 'nope', type: 'waist', epochDay: 1, value: 1, unit: 'cm' }),
+    /unknown measurement/
+  );
+
+  await journal.measurements.deleteMeasurement(id);
+  await journal.measurements.deleteMeasurement(id); // idempotent
+  assert.deepEqual(await journal.measurements.getMeasurements('waist'), []);
+});
+
 /* reminders */
 
 test('every rule shape written by the journal passes the schema recurrence CHECK', async () => {

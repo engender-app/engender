@@ -12,6 +12,7 @@ const emptySnapshot: ArchiveSnapshot = {
     entries: [],
     milestones: [],
     labResults: [],
+    measurements: [],
     reminders: []
   },
   files: [],

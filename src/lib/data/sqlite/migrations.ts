@@ -72,11 +72,30 @@ CREATE TABLE entry_body_region (
 CREATE INDEX idx_ebr_region ON entry_body_region(region);
 `;
 
+/* v5: body measurements (phase 4 ticket 08). Four fixed types - waist,
+   hips, chest/bust and underbust - each a dated value in whatever unit the
+   person measures in (ADR-0012, never converted). No regimen-episode
+   reference: a measurement has to work whether or not an episode exists,
+   the same reason ticket 06's side_effect stands alone. */
+const SCHEMA_V5 = `
+CREATE TABLE measurement (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  type       TEXT NOT NULL CHECK (type IN ('waist','hips','chest','underbust')),
+  value      REAL NOT NULL,
+  unit       TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_measurement_type ON measurement(type, epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
   { version: 3, sql: SCHEMA_V3 },
-  { version: 4, sql: SCHEMA_V4 }
+  { version: 4, sql: SCHEMA_V4 },
+  { version: 5, sql: SCHEMA_V5 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database
