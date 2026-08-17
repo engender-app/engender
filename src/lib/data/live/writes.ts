@@ -33,7 +33,7 @@ import { RECONCILE_TABLES } from '../journal/reconcile';
     and its dimension values, tag links and search index. Finer would be
     precision no screen can use: nothing reads `entry_tag` without reading
     the entry it belongs to. */
-export type TableName = 'entry' | 'tag' | 'dimension' | 'preset' | 'milestone' | 'photo' | 'lab' | 'reminder';
+export type TableName = 'entry' | 'tag' | 'dimension' | 'preset' | 'milestone' | 'photo' | 'lab' | 'reminder' | 'regimen';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -45,7 +45,8 @@ export const TABLE_NAMES: TableName[] = [
   'milestone',
   'photo',
   'lab',
-  'reminder'
+  'reminder',
+  'regimen'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -116,6 +117,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   reminders: {
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },
     reads: ['getReminders']
+  },
+  regimen: {
+    writes: { upsertEpisode: ['regimen'], setEpisodeHidden: ['regimen'] },
+    reads: ['getEpisodes']
   },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {

@@ -17,6 +17,7 @@ import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePhotosArea, type PhotosArea } from './photos';
+import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeTagsArea, type TagsArea } from './tags';
@@ -56,6 +57,7 @@ export interface Journal {
   photos: PhotosArea;
   labs: LabsArea;
   reminders: RemindersArea;
+  regimen: RegimenArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -79,6 +81,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     photos: makePhotosArea(driver, files),
     labs: makeLabsArea(driver),
     reminders: makeRemindersArea(driver),
+    regimen: makeRegimenArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

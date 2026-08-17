@@ -216,7 +216,8 @@ const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]):
   entries,
   milestones: [],
   labResults: [],
-  reminders: []
+  reminders: [],
+  regimenEpisodes: []
 });
 
 export async function daylioPreview(

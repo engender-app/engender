@@ -81,8 +81,17 @@ async function populated() {
     epochDay: null,
     enabled: true
   });
+  const episode = await journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'every 2 weeks',
+    startEpochDay: 19000
+  });
 
-  return { ...made, voice, preset, group, tag, sharedGroupTag, photo, milestone, milestonePhoto };
+  return { ...made, voice, preset, group, tag, sharedGroupTag, photo, milestone, milestonePhoto, episode };
 }
 
 /** What an export hands an import: the rows, and the photo files as a
@@ -157,6 +166,21 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal((await target.journal.milestones.getMilestones()).length, 1);
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
   assert.equal((await target.journal.reminders.getReminders()).length, 1);
+  const episodes = await target.journal.regimen.getEpisodes();
+  assert.equal(episodes.length, 1);
+  assert.equal(episodes[0].drug, 'estradiol valerate');
+});
+
+test('merging the same archive twice does not duplicate a regimen episode', async () => {
+  const source = await populated();
+  const target = await device();
+
+  await target.journal.archive.merge(await exported(source.journal));
+  await target.journal.archive.merge(await exported(source.journal));
+
+  const episodes = await target.journal.regimen.getEpisodes();
+  assert.equal(episodes.length, 1);
+  assert.equal(episodes[0].id, source.episode);
 });
 
 test("a merged entry's note is in the search index, not just in the table", async () => {
@@ -478,6 +502,7 @@ test('an empty journal restores over a populated one, which is what a Replace me
 
   assert.deepEqual(await target.journal.entries.recentDays(400), []);
   assert.deepEqual(await target.journal.milestones.getMilestones(), []);
+  assert.deepEqual(await target.journal.regimen.getEpisodes(), []);
   assert.equal(await rowCount(target.db, 'photo'), 0);
   // The index went with the entries, through the trigger migration v3 added.
   assert.deepEqual(await target.journal.entries.searchEntries('good', []), []);

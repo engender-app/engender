@@ -170,6 +170,7 @@ export async function restoreArchive(
     await applyMilestones(restoring);
     await applyLabResults(restoring);
     await applyReminders(restoring);
+    await applyRegimenEpisodes(restoring);
   });
 }
 
@@ -180,7 +181,8 @@ const COLLECTIONS = [
   'entries',
   'milestones',
   'labResults',
-  'reminders'
+  'reminders',
+  'regimenEpisodes'
 ] as const;
 
 function assertRestorable(journal: ArchiveJournal): void {
@@ -210,6 +212,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM milestone',
     'DELETE FROM lab_result',
     'DELETE FROM reminder',
+    'DELETE FROM regimen_episode',
     /* Only the custom presets' links. A built-in preset the archive does not
        carry keeps the dimensions reconciling gave it: emptying the table
        wholesale left one with none at all, permanently, because reconciling
@@ -515,6 +518,29 @@ async function applyLabResults({ driver, journal, ts }: Restoring): Promise<void
     driver,
     'INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, updated_at)',
     inserting.map((result) => [result.id, result.epochDay, result.analyte, result.value, result.unit, result.note, ts])
+  );
+}
+
+async function applyRegimenEpisodes({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM regimen_episode');
+
+  const inserting = journal.regimenEpisodes.filter((episode) => !present.has(episode.id));
+  await insertRows(
+    driver,
+    `INSERT INTO regimen_episode
+       (uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, hidden, updated_at)`,
+    inserting.map((episode) => [
+      episode.id,
+      episode.drug,
+      episode.ester,
+      episode.dose,
+      episode.doseUnit,
+      episode.route,
+      episode.interval,
+      episode.startEpochDay,
+      flag(episode.hidden),
+      ts
+    ])
   );
 }
 

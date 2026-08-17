@@ -36,6 +36,7 @@ import type {
   ArchiveMilestone,
   ArchivePhoto,
   ArchivePreset,
+  ArchiveRegimenEpisode,
   ArchiveReminder,
   ArchiveTag,
   ArchiveTagGroup
@@ -255,6 +256,34 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     }));
   };
 
+  const regimenEpisodes = async (): Promise<ArchiveRegimenEpisode[]> => {
+    const rows = await driver.query<{
+      uuid: string;
+      drug: string;
+      ester: string | null;
+      dose: number;
+      dose_unit: string;
+      route: string;
+      interval: string;
+      start_epoch_day: number;
+      hidden: number;
+    }>(
+      `SELECT uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, hidden
+       FROM regimen_episode ORDER BY start_epoch_day, id`
+    );
+    return rows.map((r) => ({
+      id: r.uuid,
+      drug: r.drug,
+      ester: r.ester,
+      dose: r.dose,
+      doseUnit: r.dose_unit,
+      route: r.route,
+      interval: r.interval,
+      startEpochDay: r.start_epoch_day,
+      hidden: bool(r.hidden)
+    }));
+  };
+
   /** The manifest: every file the photo rows name, in the order the rows
       name them, minus whatever the store no longer holds. A row whose
       file is gone still travels - the photo is missing on this device
@@ -325,7 +354,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           entries: await entries(photos),
           milestones: await milestones(photos),
           labResults: await labResults(),
-          reminders: await reminders()
+          reminders: await reminders(),
+          regimenEpisodes: await regimenEpisodes()
         },
         files: archivedFiles,
         async readFile(name) {

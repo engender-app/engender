@@ -121,6 +121,18 @@ export interface ArchiveReminder {
   enabled: boolean;
 }
 
+export interface ArchiveRegimenEpisode {
+  id: string;
+  drug: string;
+  ester: string | null;
+  dose: number;
+  doseUnit: string;
+  route: string;
+  interval: string;
+  startEpochDay: number;
+  hidden: boolean;
+}
+
 /** Everything the journal holds (CONTEXT: "Journal"). */
 export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
@@ -130,6 +142,7 @@ export interface ArchiveJournal {
   milestones: ArchiveMilestone[];
   labResults: ArchiveLabResult[];
   reminders: ArchiveReminder[];
+  regimenEpisodes: ArchiveRegimenEpisode[];
 }
 
 /** A photo file travelling in the body, and how many bytes of it there

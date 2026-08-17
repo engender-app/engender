@@ -45,8 +45,17 @@ async function populated() {
     epochDay: null,
     enabled: true
   });
+  const episode = await journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'every 2 weeks',
+    startEpochDay: 19000
+  });
 
-  return { db, files, journal, voice, preset, group, tag, entry, second, photo, milestone, milestonePhoto, lab, reminder };
+  return { db, files, journal, voice, preset, group, tag, entry, second, photo, milestone, milestonePhoto, lab, reminder, episode };
 }
 
 test('entries travel by uuid, with their dimension values, tags and photos', async () => {
@@ -117,8 +126,8 @@ test('the state a user put on a built-in row travels with it', async () => {
   assert.equal(activities.tags.find((t) => t.id === 'a-therapy')!.label, 'therapy session');
 });
 
-test('milestones, lab results and reminders travel whole', async () => {
-  const { journal, milestone, milestonePhoto, lab, reminder } = await populated();
+test('milestones, lab results, reminders and regimen episodes travel whole', async () => {
+  const { journal, milestone, milestonePhoto, lab, reminder, episode } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -145,6 +154,19 @@ test('milestones, lab results and reminders travel whole', async () => {
       anchorEpochDay: 20000,
       epochDay: null,
       enabled: true
+    }
+  ]);
+  assert.deepEqual(snapshot.journal.regimenEpisodes, [
+    {
+      id: episode,
+      drug: 'estradiol valerate',
+      ester: 'valerate',
+      dose: 4,
+      doseUnit: 'mg',
+      route: 'im',
+      interval: 'every 2 weeks',
+      startEpochDay: 19000,
+      hidden: false
     }
   ]);
 });
@@ -192,6 +214,7 @@ const CARRIED: Record<string, string[]> = {
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
   reminder: ['uuid', 'title', 'type', 'time', 'recurrence', 'interval', 'anchor_epoch_day', 'epoch_day', 'enabled'],
   lab_result: ['uuid', 'epoch_day', 'analyte', 'value', 'unit', 'note'],
+  regimen_episode: ['uuid', 'drug', 'ester', 'dose', 'dose_unit', 'route', 'interval', 'start_epoch_day', 'hidden'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

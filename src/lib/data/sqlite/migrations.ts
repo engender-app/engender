@@ -51,10 +51,38 @@ CREATE TRIGGER entry_fts_after_delete AFTER DELETE ON entry BEGIN
 END;
 `;
 
+/* v4: the regimen episode area (phase 4 ticket 01, CONTEXT: "Regimen
+   episode"). Greenfield - no regimen/dose/medication table existed before
+   this. uuid-only identity (ADR-0002): every regimen episode is a user's
+   own row, with no built-in counterpart to key by.
+
+   No `end_epoch_day` column: an episode's end is derived from the next
+   episode's start, never stored (ADR-0010), which is what lets a
+   retroactive correction (a new episode inserted with a past start date)
+   change every affected record's attribution without a migration or a
+   stored link to rewrite. */
+const SCHEMA_V4 = `
+CREATE TABLE regimen_episode (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  drug            TEXT NOT NULL,
+  ester           TEXT,
+  dose            REAL NOT NULL,
+  dose_unit       TEXT NOT NULL,
+  route           TEXT NOT NULL,
+  interval        TEXT NOT NULL,
+  start_epoch_day INTEGER NOT NULL,
+  hidden          INTEGER NOT NULL DEFAULT 0,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX idx_regimen_episode_start ON regimen_episode(start_epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
-  { version: 3, sql: SCHEMA_V3 }
+  { version: 3, sql: SCHEMA_V3 },
+  { version: 4, sql: SCHEMA_V4 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database
