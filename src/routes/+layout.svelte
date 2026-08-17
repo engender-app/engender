@@ -36,6 +36,10 @@
   import Toasts from '$lib/components/Toasts.svelte';
   import UpdateNotice from '$lib/components/UpdateNotice.svelte';
   import { startAutoExportScheduler, stopAutoExportScheduler } from '$lib/data/archive/auto-export-scheduler';
+  import {
+    startRetrospectiveNotificationsScheduler,
+    stopRetrospectiveNotificationsScheduler
+  } from '$lib/data/retrospective-notifications-scheduler';
 
   let { children } = $props();
 
@@ -187,6 +191,14 @@
     }
     stopAutoExportScheduler();
   });
+
+  $effect(() => {
+    if (isReadyState(bootState) && !locked) {
+      startRetrospectiveNotificationsScheduler();
+      return () => stopRetrospectiveNotificationsScheduler();
+    }
+    stopRetrospectiveNotificationsScheduler();
+  });
   /* Putting the pre-migration copy back (ticket 04). Only reachable from the
      boot-failure notice, and only when boot found a copy to put back. */
   let restoring = $state(false);
@@ -252,15 +264,25 @@
     if (!isAndroid() || !isReadyState(bootState)) return;
     try {
       const { route } = await androidReminders.consumeLaunchRoute();
-      if (!route || !isValidReminderLaunchRoute(route) || route === page.url.pathname) return;
+      if (!route || !isValidAndroidLaunchRoute(route) || route === page.url.pathname) return;
       await goto(route);
     } catch (error) {
       console.error('Could not consume reminder launch route', error);
     }
   }
 
-  function isValidReminderLaunchRoute(route: string) {
-    return /^\/settings\/reminders(?:\/[^/]+)?$/.test(route) || /^\/entry\/new\/\d+$/.test(route);
+  /* Named for what it now validates, not for where the route came from: this
+     mechanism (androidReminders.consumeLaunchRoute) is shared by reminders,
+     check-in, and - as of phase 4 features ticket 04 - wrapped and
+     on-this-day notifications, mirroring the native allowlist in
+     ReminderScheduler.sanitizeLaunchRoute. */
+  function isValidAndroidLaunchRoute(route: string) {
+    return (
+      /^\/settings\/reminders(?:\/[^/]+)?$/.test(route) ||
+      /^\/entry\/new\/\d+$/.test(route) ||
+      /^\/wrapped\/(?:week|month|year)$/.test(route) ||
+      /^\/on-this-day(?:\?lookback=(?:month|sixMonths|year))?$/.test(route)
+    );
   }
 
   function chooseToday() {

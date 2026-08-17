@@ -6,6 +6,7 @@ export const androidPluginOwners = {
   photos: 'data/photos/android-bridge',
   reminders: 'reminders/android-bridge',
   autoExport: 'data/archive/android-auto-export-bridge',
+  retrospectiveNotifications: 'retrospective/android-bridge',
   disguise: 'disguise/android-bridge',
   quickExit: 'lock/quick-exit-bridge',
   // Official @capacitor/app plugin, not one of ours - imported directly
@@ -28,6 +29,7 @@ export const androidPluginRegistry = [
   { name: 'Photos', owner: androidPluginOwners.photos },
   { name: 'Reminders', owner: androidPluginOwners.reminders },
   { name: 'AutoExport', owner: androidPluginOwners.autoExport },
+  { name: 'RetrospectiveNotifications', owner: androidPluginOwners.retrospectiveNotifications },
   { name: 'Disguise', owner: androidPluginOwners.disguise },
   { name: 'QuickExit', owner: androidPluginOwners.quickExit },
   { name: 'App', owner: androidPluginOwners.backNavigation },

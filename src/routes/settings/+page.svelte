@@ -11,6 +11,10 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import { isAndroid } from '$lib/platform';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import {
+    androidRetrospectiveNotifications,
+    type AndroidRetrospectiveNotificationStatus
+  } from '$lib/retrospective/android-bridge';
 
   /* Keyed, not worded, so the swatch names translate with everything else. */
   const PALETTES: [string, () => string][] = [
@@ -41,6 +45,34 @@
   let metricSheet = $state(false);
   let disguiseSheet = $state(false);
   let aboutSheet = $state(false);
+
+  /* Wrapped/on-this-day notifications (phase 4 features ticket 04) share one
+     Android permission, so one status/request pair covers both toggles below
+     - the same "Allow notifications" flow reminders/+page.svelte already
+     uses for its own, separate POST_NOTIFICATIONS check. */
+  let retroNotifyStatus = $state<AndroidRetrospectiveNotificationStatus>({ notifications: 'not-required' });
+
+  async function refreshRetroNotifyStatus() {
+    if (isWeb) return;
+    try {
+      retroNotifyStatus = await androidRetrospectiveNotifications.getStatus();
+    } catch (error) {
+      console.error('Could not read retrospective notification status', error);
+    }
+  }
+
+  async function requestRetroNotifications() {
+    try {
+      retroNotifyStatus = await androidRetrospectiveNotifications.requestNotificationPermission();
+    } catch (error) {
+      console.error('Could not request notification permission', error);
+    }
+  }
+
+  $effect(() => {
+    if (isWeb) return;
+    void refreshRetroNotifyStatus();
+  });
 
   function setLanguage(v: string) {
     prefs.language = v as typeof prefs.language;
@@ -231,9 +263,28 @@
           label={m.wrapped()}
           onChange={(v) => {
             prefs.wrappedEnabled = v;
+            // Cascading disablement (ticket 04): the notification toggle
+            // below is not just hidden when wrapped is off, it is turned
+            // off too, so there is no second switch left on to remember.
+            if (!v) prefs.wrappedNotificationsEnabled = false;
           }}
         />
       </div>
+      {#if !isWeb && prefs.wrappedEnabled}
+        <div class="spread" style="margin-top:var(--space-3)" data-wrapped-notify-toggle>
+          <span class="row-text">
+            <span class="row-title">{m.retro_notify_title()}</span>
+            <span class="row-subtitle">{m.wrapped_notify_sub()}</span>
+          </span>
+          <Switch
+            checked={prefs.wrappedNotificationsEnabled}
+            label={m.retro_notify_title()}
+            onChange={(v) => {
+              prefs.wrappedNotificationsEnabled = v;
+            }}
+          />
+        </div>
+      {/if}
     </div>
     <div class="card" style="margin-top:var(--space-3)">
       <div class="spread" data-on-this-day-toggle>
@@ -246,10 +297,38 @@
           label={m.on_this_day()}
           onChange={(v) => {
             prefs.onThisDayEnabled = v;
+            if (!v) prefs.onThisDayNotificationsEnabled = false;
           }}
         />
       </div>
+      {#if !isWeb && prefs.onThisDayEnabled}
+        <div class="spread" style="margin-top:var(--space-3)" data-on-this-day-notify-toggle>
+          <span class="row-text">
+            <span class="row-title">{m.retro_notify_title()}</span>
+            <span class="row-subtitle">{m.on_this_day_notify_sub()}</span>
+          </span>
+          <Switch
+            checked={prefs.onThisDayNotificationsEnabled}
+            label={m.retro_notify_title()}
+            onChange={(v) => {
+              prefs.onThisDayNotificationsEnabled = v;
+            }}
+          />
+        </div>
+      {/if}
     </div>
+    {#if !isWeb && (prefs.wrappedNotificationsEnabled || prefs.onThisDayNotificationsEnabled) && retroNotifyStatus.notifications === 'denied'}
+      <div class="notice notice-warning" style="margin-top:var(--space-3)">
+        <Icon name="alert" size={20} />
+        <div class="notice-body">
+          <span class="notice-title">{m.retro_notify_capabilities_title()}</span>
+          {m.retro_notify_capabilities_body()}
+          <button class="btn btn-soft" style="margin-top:var(--space-2)" onclick={requestRetroNotifications}>
+            {m.rem_allow_notifications()}
+          </button>
+        </div>
+      </div>
+    {/if}
     <button class="list-row" onclick={() => (metricSheet = true)}>
       <span class="row-icon"><Icon name="palette" size={22} /></span>
       <span class="row-text">

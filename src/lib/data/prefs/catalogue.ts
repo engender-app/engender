@@ -83,6 +83,28 @@ export interface PreferenceValues {
       for the same reason `wrappedEnabled` is - a yes/no about one
       installation's Home screen. */
   onThisDayEnabled: boolean;
+  /** Whether wrapped also fires a local notification when a fresh period is
+      ready (phase 4 features ticket 04). Its own switch, independent of
+      `wrappedEnabled`'s Home-card toggle - wanting the card is not the same
+      as wanting to be pinged about it. Off by default, since notifications
+      are opt-in, and forced back to false whenever `wrappedEnabled` is
+      turned off, so there is no second toggle to remember to also find.
+      Device-local for the same reason `wrappedEnabled` is. */
+  wrappedNotificationsEnabled: boolean;
+  /** Whether on-this-day also fires a local notification for a qualifying
+      day (phase 4 features ticket 04). Same shape as
+      `wrappedNotificationsEnabled`, and for the same reasons. */
+  onThisDayNotificationsEnabled: boolean;
+  /** The wrapped period (`cadence:start`) last notified about, so the
+      scheduler does not repeat itself on every check while the same period
+      is still fresh (phase 4 features ticket 04). Device-local: it
+      describes this installation's notification history, not the journal. */
+  lastWrappedNotifiedPeriodKey: string | null;
+  /** The epoch day on-this-day last notified about (phase 4 features ticket
+      04) - at most one on-this-day notification per day, even when more
+      than one lookback qualifies. Device-local for the same reason
+      `lastWrappedNotifiedPeriodKey` is. */
+  lastOnThisDayNotifiedEpochDay: number | null;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone' | 'prolactin', string>>;
   /** Which measurement types have had their capture-protocol guidance
@@ -123,6 +145,10 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   entryNudges: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
+  wrappedNotificationsEnabled: false,
+  onThisDayNotificationsEnabled: false,
+  lastWrappedNotifiedPeriodKey: null,
+  lastOnThisDayNotifiedEpochDay: null,
   preferredLabUnits: {},
   measurementProtocolDismissed: {},
   autoExportEnabled: false,
@@ -162,6 +188,10 @@ export const DEVICE_LOCAL_KEYS = [
   'entryNudges',
   'wrappedEnabled',
   'onThisDayEnabled',
+  'wrappedNotificationsEnabled',
+  'onThisDayNotificationsEnabled',
+  'lastWrappedNotifiedPeriodKey',
+  'lastOnThisDayNotifiedEpochDay',
   'autoExportEnabled',
   'autoExportSchedule',
   'lastBackupAt',
