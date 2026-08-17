@@ -55,6 +55,10 @@
         </span>
       </span>
       {#if prefs.appLock}
+        <!-- SH-104: this used to be the only route to the lock screen, a
+             plain-text link inside 14px subtitle copy. It is now a proper
+             row action next to the switch it does not overlap with in
+             purpose: the switch turns the lock off, this opens it. -->
         <a class="icon-btn" href="/settings/lock" aria-label={m.try_it()}><Icon name="chevronRight" size={20} /></a>
       {/if}
       <Switch

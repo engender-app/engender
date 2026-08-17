@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';

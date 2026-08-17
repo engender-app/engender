@@ -635,6 +635,17 @@ try {
   await fresh('/settings');
   await page.locator('a[href="/settings/security"]').click();
   await page.waitForSelector('.list-group');
+
+  /* Biometrics is Android-only (ticket 18) - a desktop browser has no
+     platform prompt behind it, so the toggle must not exist here at all
+     rather than sit there doing nothing. This is also as much of the
+     consent-flow gating as this suite can reach: the ask itself lives
+     behind AndroidKeyGate and LockScreen's `android` checks, which nothing
+     in this browser tier can become true for. */
+  if (await page.getByRole('switch', { name: 'Biometrics' }).count()) {
+    throw new Error('a biometrics toggle rendered on a build with no Android platform behind it');
+  }
+
   await page.getByRole('switch', { name: 'App lock' }).click();
   await page.waitForSelector('.pin-pad');
 

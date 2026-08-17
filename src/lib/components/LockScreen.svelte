@@ -63,6 +63,11 @@
     if (bioDecision === 'ask') bioConsentOpen = true;
   });
 
+  function answerBioConsent(optIn: boolean) {
+    prefs.bioOptIn = optIn;
+    bioConsentOpen = false;
+  }
+
   /* These write `waitMs` and never read it. An effect that reads it would
      re-run on every tick of the interval it started, tear that interval
      down and, holding a handle it no longer owns, decline to start
@@ -322,24 +327,10 @@
   <h3>{m.bio_ask_pin_title()}</h3>
   <p class="ob-text">{m.bio_ask_pin_body()}</p>
   <div class="stack-3" style="margin-top:var(--space-4)">
-    <button
-      class="btn btn-primary"
-      data-bio-consent-yes
-      onclick={() => {
-        prefs.bioOptIn = true;
-        bioConsentOpen = false;
-      }}
-    >
+    <button class="btn btn-primary" data-bio-consent-yes onclick={() => answerBioConsent(true)}>
       <span>{m.bio_ask_pin_yes()}</span>
     </button>
-    <button
-      class="btn btn-ghost"
-      data-bio-consent-no
-      onclick={() => {
-        prefs.bioOptIn = false;
-        bioConsentOpen = false;
-      }}
-    >
+    <button class="btn btn-ghost" data-bio-consent-no onclick={() => answerBioConsent(false)}>
       <span>{m.not_now()}</span>
     </button>
   </div>
