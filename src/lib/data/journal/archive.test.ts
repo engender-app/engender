@@ -35,6 +35,7 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
+  const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   const reminder = await journal.reminders.upsertReminder({
     title: 'injection',
     type: 'injection',
@@ -46,7 +47,7 @@ async function populated() {
     enabled: true
   });
 
-  return { db, files, journal, voice, preset, group, tag, entry, second, photo, milestone, milestonePhoto, lab, reminder };
+  return { db, files, journal, voice, preset, group, tag, entry, second, photo, milestone, milestonePhoto, lab, sideEffect, reminder };
 }
 
 test('entries travel by uuid, with their dimension values, tags and photos', async () => {
@@ -117,8 +118,8 @@ test('the state a user put on a built-in row travels with it', async () => {
   assert.equal(activities.tags.find((t) => t.id === 'a-therapy')!.label, 'therapy session');
 });
 
-test('milestones, lab results and reminders travel whole', async () => {
-  const { journal, milestone, milestonePhoto, lab, reminder } = await populated();
+test('milestones, lab results, side effects and reminders travel whole', async () => {
+  const { journal, milestone, milestonePhoto, lab, sideEffect, reminder } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -133,6 +134,9 @@ test('milestones, lab results and reminders travel whole', async () => {
   ]);
   assert.deepEqual(snapshot.journal.labResults, [
     { id: lab, epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' }
+  ]);
+  assert.deepEqual(snapshot.journal.sideEffects, [
+    { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000 }
   ]);
   assert.deepEqual(snapshot.journal.reminders, [
     {
@@ -192,6 +196,7 @@ const CARRIED: Record<string, string[]> = {
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
   reminder: ['uuid', 'title', 'type', 'time', 'recurrence', 'interval', 'anchor_epoch_day', 'epoch_day', 'enabled'],
   lab_result: ['uuid', 'epoch_day', 'analyte', 'value', 'unit', 'note'],
+  side_effect: ['uuid', 'name', 'severity', 'epoch_day'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

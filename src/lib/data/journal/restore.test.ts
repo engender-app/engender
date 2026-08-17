@@ -71,6 +71,7 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L' });
+  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   await journal.reminders.upsertReminder({
     title: 'injection',
     type: 'injection',
@@ -156,6 +157,7 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal(restored[0].note, 'a good day, zażółć');
   assert.equal((await target.journal.milestones.getMilestones()).length, 1);
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
+  assert.equal((await target.journal.sideEffects.getSideEffects()).length, 1);
   assert.equal((await target.journal.reminders.getReminders()).length, 1);
 });
 

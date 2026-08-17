@@ -37,6 +37,7 @@ import type {
   ArchivePhoto,
   ArchivePreset,
   ArchiveReminder,
+  ArchiveSideEffect,
   ArchiveTag,
   ArchiveTagGroup
 } from '../archive/payload';
@@ -227,6 +228,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     }));
   };
 
+  const sideEffects = async (): Promise<ArchiveSideEffect[]> => {
+    const rows = await driver.query<{ uuid: string; name: string; severity: number; epoch_day: number }>(
+      'SELECT uuid, name, severity, epoch_day FROM side_effect ORDER BY epoch_day, id'
+    );
+    return rows.map((r) => ({ id: r.uuid, name: r.name, severity: r.severity, epochDay: r.epoch_day }));
+  };
+
   const reminders = async (): Promise<ArchiveReminder[]> => {
     const rows = await driver.query<{
       uuid: string;
@@ -325,6 +333,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           entries: await entries(photos),
           milestones: await milestones(photos),
           labResults: await labResults(),
+          sideEffects: await sideEffects(),
           reminders: await reminders()
         },
         files: archivedFiles,

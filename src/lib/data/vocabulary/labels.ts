@@ -56,6 +56,14 @@ const MOOD_NAME: Message[] = [m.mood_1, m.mood_2, m.mood_3, m.mood_4, m.mood_5];
 /** The name of a mood, 1 to 5. */
 export const moodName = (value: number): string => MOOD_NAME[value - 1]?.() ?? String(value);
 
+/* A side effect's severity (phase 4 ticket 06, CONTEXT: "Side effect") is a
+   1-5 ordered scale like mood, and its five names are vocabulary the same
+   way: purely descriptive wording, never a recommendation or a warning. */
+const SEVERITY_NAME: Message[] = [m.severity_1, m.severity_2, m.severity_3, m.severity_4, m.severity_5];
+
+/** The name of a severity, 1 to 5. */
+export const severityName = (value: number): string => SEVERITY_NAME[value - 1]?.() ?? String(value);
+
 const PRESET_NAME: Record<BuiltInPresetKey, Message> = {
   'p-btw': m.preset_p_btw,
   'p-masc': m.preset_p_masc,

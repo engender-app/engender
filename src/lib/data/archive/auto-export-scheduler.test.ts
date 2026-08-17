@@ -65,7 +65,7 @@ describe('auto-export scheduler', () => {
       lastFailureReason: null
     });
     revealPassword.mockResolvedValue({ password: 'secret' });
-    snapshot.mockResolvedValue({ journal: { entries: [], dimensions: [], presets: [], tagGroups: [], milestones: [], labResults: [], reminders: [] }, files: [], readFile: async () => new Uint8Array() });
+    snapshot.mockResolvedValue({ journal: { entries: [], dimensions: [], presets: [], tagGroups: [], milestones: [], labResults: [], sideEffects: [], reminders: [] }, files: [], readFile: async () => new Uint8Array() });
     vi.mocked(isDue).mockReturnValue(true);
     runAndroidAutoExport.mockResolvedValue({ outcome: 'ok', writtenAt: 10 });
     prefs.lastBackupAt = null;

@@ -105,6 +105,16 @@ export interface LabResult {
   note: string;
 }
 
+/* No episode reference (CONTEXT: "Side effect"): this record stands alone
+   and has to work before a regimen episode exists. */
+export interface SideEffect {
+  id: string;
+  name: string;
+  /** 1 (barely noticeable) to 5 (severe). */
+  severity: number;
+  epochDay: number;
+}
+
 /* Preferences are not here: they live in SQLite's `pref` table and are
    described by prefs/catalogue.ts (ticket 06). Neither is a whole-journal
    type: the `DB` object the demo store held went with it in ticket 08, and

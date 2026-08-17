@@ -109,6 +109,13 @@ export interface ArchiveLabResult {
   note: string;
 }
 
+export interface ArchiveSideEffect {
+  id: string;
+  name: string;
+  severity: number;
+  epochDay: number;
+}
+
 export interface ArchiveReminder {
   id: string;
   title: string;
@@ -129,6 +136,7 @@ export interface ArchiveJournal {
   entries: ArchiveEntry[];
   milestones: ArchiveMilestone[];
   labResults: ArchiveLabResult[];
+  sideEffects: ArchiveSideEffect[];
   reminders: ArchiveReminder[];
 }
 

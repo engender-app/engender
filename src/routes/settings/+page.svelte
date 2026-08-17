@@ -271,6 +271,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/side-effects">
+      <span class="row-icon"><Icon name="zap" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.side_effects()}</span>
+        <span class="row-subtitle">{m.side_effects_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
   </div>
 
   <SectionTitle text={m.settings_privacy()} />

@@ -258,7 +258,7 @@ function bigContents(): { contents: ArchiveContents; reads: string[] } {
   return {
     reads,
     contents: {
-      journal: { dimensions: [], presets: [], tagGroups: [], entries: [], milestones: [], labResults: [], reminders: [] },
+      journal: { dimensions: [], presets: [], tagGroups: [], entries: [], milestones: [], labResults: [], sideEffects: [], reminders: [] },
       preferences: portablePreferences(PREFERENCE_DEFAULTS),
       files,
       async readFile(name) {

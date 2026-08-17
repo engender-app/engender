@@ -188,6 +188,61 @@ test('lab results update by id, throw on unknown ids and delete idempotently', a
   assert.deepEqual(await journal.labs.getResults('estradiol'), []);
 });
 
+/* side effects */
+
+test('a side effect round-trips with no episode reference, ordered by day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 200 });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 4, epochDay: 100 });
+
+  const effects = await journal.sideEffects.getSideEffects();
+  assert.deepEqual(effects.map((e) => e.epochDay), [100, 200]);
+  assert.deepEqual(effects[0], { id, name: 'hot flashes', severity: 4, epochDay: 100 });
+});
+
+test('a range read returns only the days it was asked for', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100 });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 1, epochDay: 150 });
+  await journal.sideEffects.upsertSideEffect({ name: 'fatigue', severity: 3, epochDay: 200 });
+
+  const inRange = await journal.sideEffects.getSideEffectsInRange(120, 180);
+  assert.deepEqual(inRange.map((e) => e.name), ['headache']);
+});
+
+test('side effects update by id, throw on unknown ids and delete idempotently', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100 });
+
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 3, epochDay: 100 });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].severity, 3);
+
+  await assert.rejects(
+    journal.sideEffects.upsertSideEffect({ id: 'nope', name: 'x', severity: 1, epochDay: 1 }),
+    /unknown side effect/
+  );
+
+  await journal.sideEffects.deleteSideEffect(id);
+  await journal.sideEffects.deleteSideEffect(id); // idempotent
+  assert.deepEqual(await journal.sideEffects.getSideEffects(), []);
+});
+
+test('a severity outside the 1-5 scale is refused before it reaches the schema', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 0, epochDay: 100 }),
+    /invalid severity/
+  );
+  await assert.rejects(
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 6, epochDay: 100 }),
+    /invalid severity/
+  );
+  await assert.rejects(
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2.5, epochDay: 100 }),
+    /invalid severity/
+  );
+});
+
 /* reminders */
 
 test('every rule shape written by the journal passes the schema recurrence CHECK', async () => {

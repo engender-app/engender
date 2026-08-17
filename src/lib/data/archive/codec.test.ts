@@ -7,7 +7,7 @@ import type { ArchiveContents } from './pack.ts';
 import { u32 } from './wire.ts';
 
 const payload = (name: string): ArchivePayload =>
-  ({ journal: { dimensions: [], presets: [], tagGroups: [], entries: [], milestones: [], labResults: [], reminders: [] }, preferences: { name }, files: [] }) as unknown as ArchivePayload;
+  ({ journal: { dimensions: [], presets: [], tagGroups: [], entries: [], milestones: [], labResults: [], sideEffects: [], reminders: [] }, preferences: { name }, files: [] }) as unknown as ArchivePayload;
 
 const emptyContents: ArchiveContents = {
   journal: payload('source').journal,

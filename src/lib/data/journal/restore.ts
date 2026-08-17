@@ -177,6 +177,7 @@ export async function restoreArchive(
     await applyEntries(restoring);
     await applyMilestones(restoring);
     await applyLabResults(restoring);
+    await applySideEffects(restoring);
     await applyReminders(restoring);
   });
 }
@@ -188,6 +189,7 @@ const COLLECTIONS = [
   'entries',
   'milestones',
   'labResults',
+  'sideEffects',
   'reminders'
 ] as const;
 
@@ -217,6 +219,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM entry',
     'DELETE FROM milestone',
     'DELETE FROM lab_result',
+    'DELETE FROM side_effect',
     'DELETE FROM reminder',
     /* Only the custom presets' links. A built-in preset the archive does not
        carry keeps the dimensions reconciling gave it: emptying the table
@@ -523,6 +526,17 @@ async function applyLabResults({ driver, journal, ts }: Restoring): Promise<void
     driver,
     'INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, updated_at)',
     inserting.map((result) => [result.id, result.epochDay, result.analyte, result.value, result.unit, result.note, ts])
+  );
+}
+
+async function applySideEffects({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM side_effect');
+
+  const inserting = journal.sideEffects.filter((effect) => !present.has(effect.id));
+  await insertRows(
+    driver,
+    'INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at)',
+    inserting.map((effect) => [effect.id, effect.name, effect.severity, effect.epochDay, ts])
   );
 }
 

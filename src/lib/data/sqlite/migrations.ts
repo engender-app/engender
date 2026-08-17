@@ -51,10 +51,34 @@ CREATE TRIGGER entry_fts_after_delete AFTER DELETE ON entry BEGIN
 END;
 `;
 
+/* v4: the side-effect log (phase 4 ticket 06). A first-class symptom
+   record - name/type, severity, a day - structurally independent of the
+   regimen episode model: it carries no episode reference, so it works
+   whether or not ticket 01's regimen_episode table exists yet.
+
+   Not modeled as, or alongside, entry: it carries no mood, dimension
+   values, tags or note (CONTEXT: "Side effect"). severity is an ordered
+   1-5 scale, backed by a CHECK the same way reminder's recurrence is - the
+   area validates it before the write, and the schema is the backstop.
+   epoch_day rather than a timestamp (ADR-0001): a side effect is something
+   noticed on a day, with none of a dose event's intraday timing to keep. */
+const SCHEMA_V4 = `
+CREATE TABLE side_effect (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL,
+  severity   INTEGER NOT NULL CHECK (severity BETWEEN 1 AND 5),
+  epoch_day  INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
-  { version: 3, sql: SCHEMA_V3 }
+  { version: 3, sql: SCHEMA_V3 },
+  { version: 4, sql: SCHEMA_V4 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database
