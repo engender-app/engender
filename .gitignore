@@ -20,7 +20,9 @@ ci-logs/
 .scratch/
 .claude/
 CLAUDE.md
-docs/agents/
+
+# Docs stay out of the repo entirely.
+docs/
 
 # The same rule for the other assistants, listed ahead of anyone using one, since
 # the repo is public and these files carry working notes rather than product
