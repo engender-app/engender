@@ -5,7 +5,6 @@
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { bootState } from '$lib/stores/boot.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -277,50 +276,14 @@
 
   <SectionTitle text={m.settings_privacy()} />
   <div class="list-group">
-    <a class="list-row" href="/settings/passphrase">
+    <a class="list-row" href="/settings/security">
       <span class="row-icon"><Icon name="shield" size={22} /></span>
       <span class="row-text">
-        <span class="row-title">{m.settings_passphrase_row()}</span>
-        <span class="row-subtitle">
-          {bootState.accessMode === 'device-bound' ? m.settings_passphrase_sub_device() : m.settings_passphrase_sub_portable()}
-        </span>
+        <span class="row-title">{m.settings_security_row()}</span>
+        <span class="row-subtitle">{m.settings_security_sub()}</span>
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
-    <div class="list-row" style="cursor:default">
-      <span class="row-icon"><Icon name="lock" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.app_lock()}</span>
-        <span class="row-subtitle">
-          {#if prefs.appLock}
-            {m.on()} · {isAndroid() ? m.settings_lock_on_pin_bio() : m.settings_lock_on_pin()}
-          {:else}{m.off()}{/if}
-        </span>
-      </span>
-      {#if prefs.appLock}
-        <!-- SH-104: this used to be the only route to the lock screen, a
-             plain-text link inside 14px subtitle copy. It is now a proper
-             row action next to the switch it does not overlap with in
-             purpose: the switch turns the lock off, this opens it. -->
-        <a class="icon-btn" href="/settings/lock" aria-label={m.try_it()}><Icon name="chevronRight" size={20} /></a>
-      {/if}
-      <Switch
-        checked={prefs.appLock}
-        label={m.app_lock()}
-        onChange={(v) => {
-          /* Turning it on is the setup screen's job to finish: it writes
-             both the hash and the flag once a PIN has been typed twice, so
-             the flag is never on without a PIN behind it. Turning it off
-             drops the hash, because the hash is what the gate reads. */
-          if (v) {
-            goto('/settings/lock?setup=1');
-            return;
-          }
-          prefs.appLock = false;
-          prefs.pinHash = null;
-        }}
-      />
-    </div>
     <button class="list-row" onclick={() => (disguiseSheet = true)}>
       <span class="row-icon"><Icon name="shield" size={22} /></span>
       <span class="row-text">

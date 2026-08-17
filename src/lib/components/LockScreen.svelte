@@ -17,6 +17,7 @@
   import { resetApp } from '$lib/stores/boot.svelte';
   import { confirmWithBiometrics } from '$lib/lock/android-key';
   import { androidKeystore } from '$lib/lock/keystore-bridge';
+  import { bioGateDecision } from '$lib/lock/bio-consent';
   import { isAndroid } from '$lib/platform';
   import Icon from './Icon.svelte';
   import PrideAurora from './PrideAurora.svelte';
@@ -41,12 +42,26 @@
   let resetOpen = $state(false);
   let resetting = $state(false);
   let waitMs = $state(0);
+  let bioConsentOpen = $state(false);
 
   const throttle = createAttemptThrottle(localStorageAttempts());
   let countdown: ReturnType<typeof setInterval> | null = null;
 
   let confirming = $derived(mode === 'setup' && chosen !== '');
   let android = $derived(isAndroid());
+  let bioDecision = $derived(bioGateDecision(prefs.bioOptIn));
+
+  /* First time this gate shows on Android with a PIN already set, whether
+     that PIN was just chosen or has existed since before this ticket - the
+     rule is "first encounter", not "right after setup", so an existing
+     PIN-lock user meets the ask on their next lock rather than never (ticket
+     18). Once only per mount, same reasoning as AndroidKeyGate's own guard. */
+  let bioAsked = false;
+  $effect(() => {
+    if (bioAsked || mode !== 'unlock' || !android) return;
+    bioAsked = true;
+    if (bioDecision === 'ask') bioConsentOpen = true;
+  });
 
   /* These write `waitMs` and never read it. An effect that reads it would
      re-run on every tick of the interval it started, tear that interval
@@ -227,11 +242,14 @@
       {#each ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as n (n)}
         <button class="pin-key" data-key={n} disabled={waitMs > 0} onclick={() => press(n)}>{n}</button>
       {/each}
-      {#if android && mode === 'unlock'}
+      {#if android && mode === 'unlock' && bioDecision === 'auto'}
         <!-- Only on Android, where there is a prompt behind it (ticket 13);
              on web there is nothing, so it stays out of the tab order
              entirely. Throttled with the digits: a wait the PIN earned is not
-             one a fingerprint gets to skip. -->
+             one a fingerprint gets to skip. Gone entirely rather than merely
+             inert when consent is missing (ticket 18) - unlike the boot
+             gate, a PIN always works underneath, so there is nothing this
+             key needs to wait behind. -->
         <button
           class="pin-key is-ghost"
           data-bio
@@ -296,6 +314,33 @@
     </button>
     <button class="btn btn-ghost" disabled={resetting} onclick={() => (resetOpen = false)}>
       <span>{m.reset_keep_trying()}</span>
+    </button>
+  </div>
+</Sheet>
+
+<Sheet bind:open={bioConsentOpen} title={m.bio_ask_pin_title()}>
+  <h3>{m.bio_ask_pin_title()}</h3>
+  <p class="ob-text">{m.bio_ask_pin_body()}</p>
+  <div class="stack-3" style="margin-top:var(--space-4)">
+    <button
+      class="btn btn-primary"
+      data-bio-consent-yes
+      onclick={() => {
+        prefs.bioOptIn = true;
+        bioConsentOpen = false;
+      }}
+    >
+      <span>{m.bio_ask_pin_yes()}</span>
+    </button>
+    <button
+      class="btn btn-ghost"
+      data-bio-consent-no
+      onclick={() => {
+        prefs.bioOptIn = false;
+        bioConsentOpen = false;
+      }}
+    >
+      <span>{m.not_now()}</span>
     </button>
   </div>
 </Sheet>

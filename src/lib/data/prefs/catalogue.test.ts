@@ -35,7 +35,7 @@ test('the allowlists name only real preferences', () => {
 
 test('the boot set is exactly the pre-database preferences, and never the PIN hash', () => {
   expect([...BOOT_KEYS].sort()).toEqual(
-    ['disguise', 'language', 'lockOnLeave', 'palette', 'moodPreset', 'theme', 'a11yTextSizeBoost', 'a11yLegibilityBoost', 'a11yMotionReduce'].sort()
+    ['disguise', 'language', 'lockOnLeave', 'palette', 'moodPreset', 'theme', 'a11yTextSizeBoost', 'a11yLegibilityBoost', 'a11yMotionReduce', 'bioOptIn'].sort()
   );
   // The mirror is plaintext localStorage. The hash of a 4-digit PIN in it
   // would be an offline-guessable secret sitting beside the encrypted
@@ -52,7 +52,8 @@ test('the boot set cuts across the portable split rather than following it', () 
     'a11yLegibilityBoost',
     'a11yMotionReduce',
     'lockOnLeave',
-    'disguise'
+    'disguise',
+    'bioOptIn'
   ]);
 });
 

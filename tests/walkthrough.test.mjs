@@ -626,9 +626,15 @@ try {
   ok(`plain CSV export behind the warning, ${entries.length} rows, notes intact`);
 } catch (e) { fail('plain export', e); }
 
-/* 12. app lock: the gate, the throttle, and the PIN that opens it (ticket 17) */
+/* 12. app lock: the gate, the throttle, and the PIN that opens it (ticket 17).
+   Passphrase, PIN and biometrics moved onto one screen in ticket 18, reached
+   from a single Security row rather than being set up straight off /settings -
+   so this flow goes through that row rather than assuming the switch is on
+   the page it lands on. */
 try {
   await fresh('/settings');
+  await page.locator('a[href="/settings/security"]').click();
+  await page.waitForSelector('.list-group');
   await page.getByRole('switch', { name: 'App lock' }).click();
   await page.waitForSelector('.pin-pad');
 
@@ -694,6 +700,7 @@ try {
   /* Off again, or every flow after this one meets the gate. In-app, not
      page.goto: a fresh load is a cold start, and a cold start locks. */
   await page.locator('.nav-item[href="/settings"]').click();
+  await page.locator('a[href="/settings/security"]').click();
   await page.getByRole('switch', { name: 'App lock' }).click();
   /* The switch reads back off, and the hash may never appear in the
      localStorage mirror at all - ticket 09 moved it behind encryption, so
