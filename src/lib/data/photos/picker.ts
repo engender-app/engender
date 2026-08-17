@@ -19,12 +19,18 @@ export interface PhotoPicker {
   pick(): Promise<Uint8Array[]>;
 }
 
+// What the Android bridge hands back for a photo: base64, because that is
+// what crosses the bridge as JSON.
+function base64ToBytes(base64: string): Uint8Array {
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+}
+
 export function filePhotoPicker(): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
         const { images } = await androidPhotos.pickImages();
-        return images.map((base64) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
+        return images.map(base64ToBytes);
       }
 
       // Whatever the OS decides matches "image/*", HEIC included: the bytes
@@ -50,7 +56,7 @@ export function cameraPhotoPicker(): PhotoPicker {
     async pick() {
       if (isAndroid()) {
         const { image } = await androidPhotos.captureImage();
-        return image ? [Uint8Array.from(atob(image), (c) => c.charCodeAt(0))] : [];
+        return image ? [base64ToBytes(image)] : [];
       }
 
       const [file] = await chooseFiles('image/*', { capture: 'environment' });
