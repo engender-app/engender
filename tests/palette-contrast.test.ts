@@ -117,14 +117,25 @@ function colorMixOklab(hexA: string, pctA: number, hexB: string) {
   return toHex(oklabToRgb([0, 1, 2].map((i) => a[i] * t + b[i] * (1 - t))));
 }
 
+/** The accent percentage in `--heat-N: color-mix(in oklab, var(--accent)
+    N%, var(--surface-2))`, read out of :root rather than hardcoded - so a
+    ramp change in the CSS is a ramp change here too, not a silently stale
+    assumption. */
+function heatStepPercent(step: 1 | 2 | 3) {
+  const raw = rawDeclaration(blockBody(':root'), `heat-${step}`)!;
+  const match = /var\(--accent\)\s*(\d+)%/.exec(raw);
+  if (!match) throw new Error(`Could not read the accent percentage out of --heat-${step}: ${raw}`);
+  return Number(match[1]);
+}
+
 /** heat-0..4 hex for a palette/theme, matching palettes.css's formulas. */
 function heatRamp(palette: string, theme: (typeof THEMES)[number]) {
   const t = tokenMap(palette, theme);
   return [
     t['surface-2'],
-    colorMixOklab(t.accent, 22, t['surface-2']),
-    colorMixOklab(t.accent, 45, t['surface-2']),
-    colorMixOklab(t.accent, 70, t['surface-2']),
+    colorMixOklab(t.accent, heatStepPercent(1), t['surface-2']),
+    colorMixOklab(t.accent, heatStepPercent(2), t['surface-2']),
+    colorMixOklab(t.accent, heatStepPercent(3), t['surface-2']),
     t.accent
   ];
 }

@@ -549,7 +549,7 @@
   "palette_rainbow": "Rainbow",
   "palette_agender": "Agender",
   "mood_colours": "Mood colours",
-  "mood_colours_note": "Its own scale, separate from the palette above - so a mood dot never looks like a gender colour.",
+  "mood_colours_note": "Kept separate from the palette above, so a mood dot never looks like a gender colour.",
   "mood_preset_amber": "Amber",
   "mood_preset_teal": "Teal",
   "mood_preset_plum": "Plum",

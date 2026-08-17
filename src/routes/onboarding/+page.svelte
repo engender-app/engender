@@ -14,12 +14,6 @@
   let step = $state(0);
   let name = $state('');
   let preset = $state('p-btw');
-  /* PR-001: same fix as Settings' preset sheet - name the dimensions a
-     preset turns on, not just how many. */
-  let dimNameByKey = $derived(new Map(vocabulary.dimensions.map((d) => [d.key, d.name])));
-  function presetDimNames(dims: readonly string[]): string {
-    return dims.map((k) => dimNameByKey.get(k) ?? k).join(', ');
-  }
   let milestoneTemplate = $state<string | null>(null);
   let milestoneDate = $state('');
   let appLock = $state(false);
@@ -88,7 +82,7 @@
             <button class="list-row" data-preset={p.id} onclick={() => (preset = p.id)}>
               <span class="row-text">
                 <span class="row-title">{p.name}</span>
-                <span class="row-subtitle">{presetDimNames(p.dims)}</span>
+                <span class="row-subtitle">{vocabulary.presetDimensionNames(p.dims)}</span>
               </span>
               {#if preset === p.id}<Icon name="check" size={20} />{/if}
             </button>

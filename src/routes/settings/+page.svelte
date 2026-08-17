@@ -31,13 +31,6 @@
   let isWeb = $derived(!isAndroid());
   let preset = $derived(vocabulary.activePreset);
   let metricName = $derived(vocabulary.metricName);
-  /* PR-001: a preset used to show only its identity-flavoured name plus a
-     scale count ("3 scales"). The dimensions it actually turns on say more
-     than the count did. */
-  let dimNameByKey = $derived(new Map(vocabulary.dimensions.map((d) => [d.key, d.name])));
-  function presetDimNames(dims: readonly string[]): string {
-    return dims.map((k) => dimNameByKey.get(k) ?? k).join(', ');
-  }
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
 
   /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
@@ -375,7 +368,7 @@
         >
           <span class="row-text">
             <span class="row-title">{p.name}</span>
-            <span class="row-subtitle">{presetDimNames(p.dims)}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
+            <span class="row-subtitle">{vocabulary.presetDimensionNames(p.dims)}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
           </span>
           {#if prefs.activePreset === p.id}<Icon name="check" size={20} />{/if}
         </button>

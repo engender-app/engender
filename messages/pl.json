@@ -561,7 +561,7 @@
   "palette_rainbow": "Tęczowa",
   "palette_agender": "Agender",
   "mood_colours": "Kolory nastroju",
-  "mood_colours_note": "Osobna skala barw, niezależna od palety powyżej - dzięki temu kropka nastroju nigdy nie wygląda jak kolor płci.",
+  "mood_colours_note": "Niezależne od palety powyżej, żeby kropka nastroju nigdy nie wyglądała jak kolor płci.",
   "mood_preset_amber": "Bursztynowy",
   "mood_preset_teal": "Turkusowy",
   "mood_preset_plum": "Śliwkowy",

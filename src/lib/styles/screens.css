@@ -195,15 +195,21 @@
   font-size: var(--text-sm); font-weight: var(--weight-bold);
   padding: var(--space-2) 0; min-height: var(--touch-target); align-items: center;
 }
+/* P10-007/probe 2: whole-element opacity 0.6 for the "off" state computed
+   to 4.04-6.13:1, failing 8/16 combinations - blending everything inside
+   toward the page background shrinks the contrast between them. --text-2
+   (inherited by the plain "Notes" text) gives the same quieter, inactive
+   look at a contrast the token layer already guarantees; the nested
+   .muted.small line already used --text-2 regardless. */
 .disguise-preview {
   display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border: 1.5px dashed var(--border);
   border-radius: var(--radius-md);
-  opacity: 0.6;
-  transition: opacity var(--dur-med);
+  color: var(--text-2);
+  transition: color var(--dur-med), border-color var(--dur-med);
 }
-.disguise-preview.is-on { opacity: 1; border-color: var(--accent-border); }
+.disguise-preview.is-on { color: var(--text); border-color: var(--accent-border); }
 .disguise-icon {
   width: 44px; height: 44px; border-radius: 11px;
   background: var(--surface-2); color: var(--text-2);
@@ -218,7 +224,11 @@
   border-bottom: 1px solid var(--border);
 }
 .managed-tag:last-child { border-bottom: none; }
-.managed-tag.is-hidden .managed-label { opacity: 0.45; text-decoration: line-through; }
+/* P10-007/probe 2: opacity 0.45 on the ambient (full-strength) text colour
+   computed to 2.66-4.05:1, failing 16/16 combinations. The strikethrough
+   already carries the "hidden" meaning; --text-2 gives the same
+   de-emphasised look at a contrast the token layer already guarantees. */
+.managed-tag.is-hidden .managed-label { color: var(--text-2); text-decoration: line-through; }
 .drag-dots { color: var(--text-2); opacity: 0.5; cursor: grab; }
 .managed-label { flex: 1; font-size: var(--text-sm); }
 /* SH-105: was 36px with no gap between two adjacent targets, one of them

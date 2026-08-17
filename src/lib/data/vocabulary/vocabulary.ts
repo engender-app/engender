@@ -115,6 +115,13 @@ export const vocabulary = {
     const found = reference.tag(id);
     return found && localizeTag(found);
   },
+  /** PR-001: names the dimensions a preset turns on, in place of a scale
+      count - "3 scales" said less than the identity-flavoured preset name
+      already did. Shared by the Settings and onboarding preset pickers. */
+  presetDimensionNames(dims: readonly string[]): string {
+    const byKey = new Map(this.dimensions.map((d) => [d.key, d.name]));
+    return dims.map((k) => byKey.get(k) ?? k).join(', ');
+  },
   /** A few templates to offer, picked at random so the suggestions differ
       between visits and the shuffle button has something to do (PRD F6). */
   randomTemplates(n = 3): MilestoneTemplate[] {

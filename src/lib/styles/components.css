@@ -294,7 +294,9 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   padding: 2px 9px; min-height: 22px; font-size: var(--text-xs);
   background: var(--surface-2); border: none; color: var(--text-2); cursor: inherit;
 }
-.tag-chip.is-more { opacity: 0.7; }
+/* P10-007/probe 2: the extra opacity on top of an already-passing --text-2
+   on --surface-2 computed to 2.89-4.50:1, failing 16/16 palette/theme
+   combinations. --text-2 alone already clears 4.5:1. */
 
 /* ---------- entry card ---------- */
 .entry-card {
