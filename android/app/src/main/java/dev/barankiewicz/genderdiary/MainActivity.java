@@ -7,6 +7,7 @@ import android.view.WindowManager;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
 
+import dev.barankiewicz.genderdiary.photos.PhotoWriteChannel;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
 
@@ -17,6 +18,10 @@ import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
  * Access Framework bridge for backup destinations.
  */
 public class MainActivity extends BridgeActivity {
+    // Matches capacitor.config.ts's server.androidScheme/hostname, which is
+    // fixed for the reason that file's header comment gives.
+    private static final String APP_ORIGIN = "https://localhost";
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Unconditional, not toggled with lock state: a recents thumbnail
@@ -32,6 +37,11 @@ public class MainActivity extends BridgeActivity {
             registerPlugin(pluginClass);
         }
         super.onCreate(savedInstanceState);
+        // After super.onCreate, not before: the WebView this needs does not
+        // exist until the bridge builds it there (ticket 19).
+        if (bridge != null && bridge.getWebView() != null) {
+            PhotoWriteChannel.registerIfSupported(this, bridge.getWebView(), APP_ORIGIN);
+        }
         captureReminderRoute(getIntent());
     }
 

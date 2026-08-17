@@ -260,41 +260,11 @@ public class PhotosPlugin extends Plugin {
     }
 
     private File photoDirectory(PluginCall call) {
-        String directoryName = call.getString("directory", "photos");
-        if (directoryName == null) directoryName = "photos";
-        if (directoryName.trim().isEmpty() || directoryName.contains("/") || directoryName.contains("\\")
-            || directoryName.contains("..")) {
-            throw new IllegalArgumentException("invalid photo directory name");
-        }
-
-        File directory = new File(getContext().getFilesDir(), directoryName);
-        if (!directory.exists() && !directory.mkdirs()) {
-            throw new IllegalStateException("could not create photo directory " + directory);
-        }
-        if (!directory.isDirectory()) {
-            throw new IllegalStateException(directory + " is not a directory");
-        }
-
-        File noMedia = new File(directory, ".nomedia");
-        if (!noMedia.exists()) {
-            try {
-                if (!noMedia.createNewFile()) {
-                    throw new IllegalStateException("could not create " + noMedia);
-                }
-            } catch (Exception e) {
-                throw new IllegalStateException("could not create " + noMedia, e);
-            }
-        }
-
-        return directory;
+        return PhotoFiles.directory(getContext(), call.getString("directory", "photos"));
     }
 
     private File fileFor(PluginCall call, String name) {
-        String trimmed = name.trim();
-        if (trimmed.isEmpty() || trimmed.contains("/") || trimmed.contains("\\") || trimmed.contains("..")) {
-            throw new IllegalArgumentException("invalid photo file name");
-        }
-        return new File(photoDirectory(call), trimmed);
+        return PhotoFiles.fileFor(getContext(), call.getString("directory", "photos"), name);
     }
 
     private String readBase64(Uri uri) throws Exception {

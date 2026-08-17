@@ -80,6 +80,10 @@ dependencies {
     implementation "androidx.biometric:biometric:$androidxBiometricVersion"
     // SAF tree/document operations for scheduled backup destinations.
     implementation "androidx.documentfile:documentfile:1.0.1"
+    // WebMessageListener/ArrayBuffer transfer for the photo write channel
+    // (ticket 19) - lets bytes cross into native as a structured clone
+    // instead of a JSON string.
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion"
     testImplementation "junit:junit:$junitVersion"
     // Host-side unit tests run against the Android SDK's stub jar, whose
     // org.json throws on every call. This puts the real implementation

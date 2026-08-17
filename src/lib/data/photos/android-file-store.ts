@@ -1,22 +1,27 @@
 /* The Android PhotoFileStore (ticket 12): app-private files through the
    local Photos plugin. Names stay opaque and relative exactly as on web.
 
-   Writes go through the bridge as base64; reads do not. A plugin response
-   crosses into the WebView as a JSON string, and on a Pixel 10a that
-   crossing moved photo bytes at 0.8MB/s however they were batched - which
-   is what made a decade of photos take seven minutes to read for an Archive
-   export and ten seconds to fill the photo grid (ticket 07). Reads fetch
-   the file from Capacitor's local server instead, which keeps the bytes
-   binary from disk to Uint8Array and is bound by the disk rather than by
-   the bridge.
+   Reads fetch from Capacitor's local server, which keeps the bytes binary
+   from disk to Uint8Array and is bound by the disk rather than by the
+   bridge (ticket 07) - a plugin response crosses into the WebView as a JSON
+   string, and on a Pixel 10a that crossing moved photo bytes at 0.8MB/s
+   however they were batched, which made a decade of photos take seven
+   minutes to read for an Archive export.
 
-   Only the reads moved. A write is one photo at a time at human pace, where
-   0.8MB/s is a few milliseconds nobody waits on, and leaving it alone keeps
-   the path that creates a file the one the plugin already tests. */
+   Writes measured the same 0.8MB/s (ticket 17: an archive restore writing
+   750 files spent 97% of its time in this call), because the local server
+   only serves files - it has no matching path for the WebView to hand bytes
+   back in. `writeOverChannel` is that path's own fix: a WebMessageListener
+   carries the bytes across as a structured-clone ArrayBuffer, which never
+   becomes a JSON string (ticket 19). Below the WebView versions that carry
+   it, `window.androidPhotoWriteChannel` does not exist and this falls back
+   to the base64 bridge call exactly as it always has - the same shape as
+   `Object.hasOwn` and `crypto.randomUUID`'s fallbacks (ADR-0023). */
 
 import { Capacitor } from '@capacitor/core';
 import type { PhotoFileStore } from '../journal/journal';
 import { androidPhotos } from './android-bridge';
+import { writeOverChannel } from './android-write-channel';
 
 const BASE64_CHUNK = 0x8000;
 
@@ -59,6 +64,11 @@ export function appPrivatePhotoFiles(directory = 'photos'): PhotoFileStore {
 
   return {
     async write(name, bytes) {
+      const viaChannel = writeOverChannel(name, directory, bytes);
+      if (viaChannel) {
+        await viaChannel;
+        return;
+      }
       await androidPhotos.writeFile({ name, base64: toBase64(bytes), directory });
     },
     async read(name) {
