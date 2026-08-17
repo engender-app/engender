@@ -90,12 +90,32 @@ CREATE TABLE measurement (
 CREATE INDEX idx_measurement_type ON measurement(type, epoch_day);
 `;
 
+/* v6: the misgendering/correct-gendering tally (ticket 10). A tally event is
+   its own record type, not entry content like a body region - it carries no
+   mood, dimension values, tags or note, only which of the two counters was
+   tapped and an optional free-text context, so it gets a table of its own
+   rather than a join table off entry. `kind` is a fixed two-value CHECK, the
+   same treatment reminder.type already gets, because the two counters are
+   never extended or user-defined. */
+const SCHEMA_V6 = `
+CREATE TABLE tally_event (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  kind       TEXT NOT NULL CHECK (kind IN ('misgendered', 'correctly_gendered')),
+  context    TEXT,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_tally_kind_day ON tally_event(kind, epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
   { version: 3, sql: SCHEMA_V3 },
   { version: 4, sql: SCHEMA_V4 },
-  { version: 5, sql: SCHEMA_V5 }
+  { version: 5, sql: SCHEMA_V5 },
+  { version: 6, sql: SCHEMA_V6 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

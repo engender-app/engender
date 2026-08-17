@@ -47,6 +47,9 @@ export async function clearJournal(journal: Journal): Promise<void> {
   for (const analyte of await journal.labs.getUsedAnalytes()) {
     for (const result of await journal.labs.getResults(analyte)) await journal.labs.deleteResult(result.id);
   }
+  for (const kind of ['misgendered', 'correctly_gendered'] as const) {
+    for (const event of await journal.tally.getEvents(kind)) await journal.tally.deleteEvent(event.id);
+  }
   // Custom tags and groups: built-ins stay, because reconciling them is what
   // every boot does anyway and a demo without a vocabulary is not a demo.
   for (const group of await journal.tags.getTagGroups()) {
@@ -55,7 +58,7 @@ export async function clearJournal(journal: Journal): Promise<void> {
 }
 
 export async function seedPersonaJournal(journal: Journal): Promise<void> {
-  const { customTag, entries, milestones, reminders, labResults } = persona();
+  const { customTag, entries, milestones, reminders, labResults, tallyEvents } = persona();
 
   await journal.tags.addTag(customTag.groupKey, customTag.label);
 
@@ -73,6 +76,7 @@ export async function seedPersonaJournal(journal: Journal): Promise<void> {
 
   for (const reminder of reminders) await journal.reminders.upsertReminder(reminder);
   for (const result of labResults) await journal.labs.upsertResult(result);
+  for (const event of tallyEvents) await journal.tally.log(event);
 }
 
 /* A real JPEG rather than a row pointing at a file that is not there.

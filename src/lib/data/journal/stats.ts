@@ -19,7 +19,7 @@
 
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Photo } from '../types';
+import type { Photo, TallyKind } from '../types';
 
 export interface DayAverage {
   day: number;
@@ -125,6 +125,12 @@ export interface StatsArea {
       either. Never both conditions read as a caveat - this is a plain
       yes/no, the way the rule itself is absolute. */
   isGoodDay(epochDay: number): Promise<boolean>;
+  /** One point per day a tally kind was logged at least once in the range,
+      oldest first, both ends inclusive - the same DayAverage shape as
+      dayAverages and bodyRegionTrend, so the tally trend reuses the same
+      chart (ticket 10). `value` and `count` are both the day's tap count:
+      there is nothing to average, only how many times it happened. */
+  tallyTrend(kind: TallyKind, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
 }
 
 /** The mood scale is 1 to 5 (CONTEXT: Mood); 3 is its midpoint and the bar
@@ -210,6 +216,16 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
     async bodyRegionTrend(region, fromEpochDay, toEpochDay) {
       return averageByDay(bodyRegionValues(region), fromEpochDay, toEpochDay);
+    },
+
+    async tallyTrend(kind, fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ day: number; n: number }>(
+        `SELECT epoch_day AS day, COUNT(*) AS n FROM tally_event
+         WHERE kind = ? AND epoch_day BETWEEN ? AND ?
+         GROUP BY epoch_day ORDER BY epoch_day`,
+        [kind, fromEpochDay, toEpochDay]
+      );
+      return rows.map((r) => ({ day: r.day, value: r.n, count: r.n }));
     },
 
     async entryCountsByDay(fromEpochDay, toEpochDay) {

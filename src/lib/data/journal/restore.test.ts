@@ -73,6 +73,7 @@ async function populated() {
 
   await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L' });
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
+  await journal.tally.log({ epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' });
   await journal.reminders.upsertReminder({
     title: 'injection',
     type: 'injection',
@@ -160,6 +161,7 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal((await target.journal.milestones.getMilestones()).length, 1);
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
   assert.equal((await target.journal.measurements.getMeasurements('waist')).length, 1);
+  assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1);
   assert.equal((await target.journal.reminders.getReminders()).length, 1);
 });
 
@@ -221,11 +223,14 @@ test("replace installs the archive's journal and discards this device's", async 
     max: 5
   });
   const myMilestone = await target.journal.milestones.upsertMilestone({ name: 'mine', epochDay: 19500 });
+  await target.journal.tally.log({ epochDay: 19500, kind: 'correctly_gendered' });
 
   await target.journal.archive.replace(await exported(source.journal));
 
   assert.equal(await target.journal.entries.getEntry(mine), undefined);
   assert.equal((await target.journal.milestones.getMilestones()).map((m) => m.name).includes('mine'), false);
+  assert.equal((await target.journal.tally.getEvents('correctly_gendered')).length, 0, "this device's tally event is gone");
+  assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1, "the archive's tally event is here");
   const tags = (await target.journal.tags.getTagGroups()).flatMap((g) => g.tags);
   assert.equal(tags.some((t) => t.id === myTag.id), false, 'a custom tag this device had is gone');
   assert.ok(tags.some((t) => t.id === source.tag.id), "the archive's custom tag is here");

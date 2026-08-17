@@ -21,6 +21,7 @@ import { makePhotosArea, type PhotosArea } from './photos';
 import { makeRemindersArea, type RemindersArea } from './reminders';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeTagsArea, type TagsArea } from './tags';
+import { makeTallyArea, type TallyArea } from './tally';
 import { reconcileBuiltIns } from './reconcile';
 
 /** Where photo files live. The journal owns the rows; whoever owns the
@@ -58,6 +59,9 @@ export interface Journal {
   labs: LabsArea;
   measurements: MeasurementsArea;
   reminders: RemindersArea;
+  /** Misgendering and correct-gendering events (CONTEXT: "Tally event").
+      Its own record type, never an Entry or a quick log. */
+  tally: TallyArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -82,6 +86,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     labs: makeLabsArea(driver),
     measurements: makeMeasurementsArea(driver),
     reminders: makeRemindersArea(driver),
+    tally: makeTallyArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

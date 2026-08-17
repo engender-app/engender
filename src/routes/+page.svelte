@@ -5,8 +5,8 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { fmtDay } from '$lib/data/dates';
-  import type { Entry } from '$lib/data/types';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import type { Entry, TallyKind } from '$lib/data/types';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
@@ -60,6 +60,30 @@
   function onQuickLog(v: number | null) {
     if (v == null) return;
     goto(`/entry/new/today?seedMood=${v}`);
+  }
+
+  /* The tap itself logs the counter, with no context, so it never waits on
+     anything after it: the sheet that follows is an optional way to attach
+     context to that same event, and dismissing it (Escape, tapping the
+     scrim) leaves the tap logged rather than discarding it (CONTEXT: "Tally
+     event"). */
+  let tallyKind = $state<TallyKind | null>(null);
+  let tallyEventId = $state<string | null>(null);
+  let tallyContext = $state('');
+  const tallyLabel = (kind: TallyKind) => (kind === 'misgendered' ? m.tally_misgendered() : m.tally_correctly_gendered());
+
+  async function tapTally(kind: TallyKind) {
+    tallyContext = '';
+    tallyKind = kind;
+    tallyEventId = await journal.tally.log({ epochDay: today, kind });
+  }
+
+  async function saveTallyContext() {
+    if (!tallyEventId) return;
+    const context = tallyContext.trim();
+    if (context) await journal.tally.setContext(tallyEventId, context);
+    tallyKind = null;
+    tallyEventId = null;
   }
 </script>
 
@@ -122,6 +146,18 @@
   {#if prefs.onThisDayEnabled}
     <OnThisDayHomeCard />
   {/if}
+
+  <div class="card">
+    <p class="quicklog-title">{m.tally_card_title()}</p>
+    <div class="tally-buttons">
+      <button class="btn btn-soft" onclick={() => tapTally('misgendered')}>
+        <Icon name="x" size={18} /> <span>{m.tally_misgendered()}</span>
+      </button>
+      <button class="btn btn-soft" onclick={() => tapTally('correctly_gendered')}>
+        <Icon name="check" size={18} /> <span>{m.tally_correctly_gendered()}</span>
+      </button>
+    </div>
+  </div>
 
   <!-- NAV-003: this section used to disappear entirely with no milestones,
        which also meant Timeline - only linked from here - was structurally
@@ -190,5 +226,27 @@
       {/each}
     </div>
     <p class="muted small" style="margin-top:var(--space-3)">{m.metric_note()}</p>
+  </Sheet>
+
+  <Sheet
+    open={tallyKind !== null}
+    title={tallyKind ? tallyLabel(tallyKind) : ''}
+    onClose={() => {
+      tallyKind = null;
+      tallyEventId = null;
+    }}
+  >
+    {#if tallyKind}
+      <h3>{tallyLabel(tallyKind)}</h3>
+      <textarea
+        class="input"
+        rows="3"
+        placeholder={m.tally_context_placeholder()}
+        bind:value={tallyContext}
+      ></textarea>
+      <button class="btn btn-primary btn-block" style="margin-top:var(--space-3)" onclick={saveTallyContext}>
+        <span>{m.tally_add_context_button()}</span>
+      </button>
+    {/if}
   </Sheet>
 </div>

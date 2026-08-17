@@ -13,7 +13,8 @@ const emptySnapshot: ArchiveSnapshot = {
     milestones: [],
     labResults: [],
     measurements: [],
-    reminders: []
+    reminders: [],
+    tallyEvents: []
   },
   files: [],
   readFile: async () => {

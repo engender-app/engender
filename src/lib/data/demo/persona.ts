@@ -14,6 +14,7 @@
 
 import type { PreferenceValues } from '../prefs/catalogue';
 import type { LabResultInput } from '../journal/labs';
+import type { TallyEventInput } from '../journal/tally';
 import type { EntryInput } from '../journal/entries';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
@@ -43,6 +44,7 @@ export interface Persona {
   milestones: PersonaMilestone[];
   reminders: ReminderInput[];
   labResults: LabResultInput[];
+  tallyEvents: TallyEventInput[];
 }
 
 function rng(seed: number) {
@@ -170,6 +172,16 @@ export function persona(): Persona {
       { epochDay: today - 70, analyte: 'testosterone', value: 27, unit: 'ng/dL', note: '' },
       { epochDay: today - 430, analyte: 'prolactin', value: 14, unit: 'ng/mL', note: '' },
       { epochDay: today - 70, analyte: 'prolactin', value: 17, unit: 'ng/mL', note: '' },
+    ],
+    tallyEvents: [
+      { epochDay: today - 60, kind: 'misgendered', context: 'at the pharmacy' },
+      { epochDay: today - 60, kind: 'misgendered' },
+      { epochDay: today - 45, kind: 'misgendered', context: 'phone call with the bank' },
+      { epochDay: today - 20, kind: 'misgendered' },
+      { epochDay: today - 55, kind: 'correctly_gendered', context: 'new barista, first try' },
+      { epochDay: today - 30, kind: 'correctly_gendered' },
+      { epochDay: today - 30, kind: 'correctly_gendered' },
+      { epochDay: today - 10, kind: 'correctly_gendered', context: 'whole family dinner' },
     ],
   };
 }

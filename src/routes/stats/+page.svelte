@@ -159,6 +159,15 @@
     <Icon name="chevronRight" size={20} />
   </a>
 
+  <SectionTitle text={m.tally_trend_title()} />
+  <a class="card spread recap-cta" href="/tally">
+    <span class="row-text">
+      <span class="row-title">{m.tally_trend_title()}</span>
+      <span class="row-subtitle">{m.tally_trend_sub()}</span>
+    </span>
+    <Icon name="chevronRight" size={20} />
+  </a>
+
   <SectionTitle text={m.recap()} />
   <a class="card spread recap-cta" href="/recap">
     <span class="row-text">

@@ -9,7 +9,7 @@ import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 5);
+  assert.equal(db.getUserVersion(), 6);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -31,7 +31,8 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'preset_dimension',
     'reminder',
     'tag',
-    'tag_group'
+    'tag_group',
+    'tally_event'
   ]) {
     assert.ok(tables.includes(expected), `expected table ${expected} to exist`);
   }
@@ -201,6 +202,16 @@ test('v5 measurement carries no episode reference and rejects a type outside the
   assert.throws(() =>
     db.raw.exec("INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m2', 100, 'thigh', 50, 'cm', 1000)")
   );
+});
+
+test('tally_event.kind accepts only the two counters', async () => {
+  const db = await migratedDb();
+  const insert = (kind: string) =>
+    db.raw.exec(`INSERT INTO tally_event (uuid, epoch_day, kind, updated_at) VALUES ('t-${kind}', 100, '${kind}', 1000)`);
+
+  assert.doesNotThrow(() => insert('misgendered'));
+  assert.doesNotThrow(() => insert('correctly_gendered'));
+  assert.throws(() => insert('confused'));
 });
 
 test('deleting an entry cascades to its photos, dimension values, tag links and body regions', async () => {

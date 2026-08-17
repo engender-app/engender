@@ -28,6 +28,7 @@
   background: linear-gradient(150deg, var(--accent-2-soft), var(--surface) 45%);
 }
 .quicklog-title { font-weight: var(--weight-bold); margin-bottom: var(--space-3); }
+.tally-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 .milestone-scroller {
   display: flex; gap: var(--space-3);
   overflow-x: auto; padding-bottom: var(--space-2);

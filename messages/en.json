@@ -1055,5 +1055,12 @@
   "on_this_day_year_title": "A year ago",
   "retro_notify_title": "Notify me",
   "retro_notify_capabilities_title": "Notifications are blocked",
-  "retro_notify_capabilities_body": "Allow notifications to hear about wrapped and on-this-day. Their channels live in system notification settings."
+  "retro_notify_capabilities_body": "Allow notifications to hear about wrapped and on-this-day. Their channels live in system notification settings.",
+  "tally_card_title": "Log the moment",
+  "tally_misgendered": "Misgendered",
+  "tally_correctly_gendered": "Correctly gendered",
+  "tally_context_placeholder": "Add context (optional)",
+  "tally_add_context_button": "Add",
+  "tally_trend_title": "Tally",
+  "tally_trend_sub": "misgendering and correct gendering, over time"
 }

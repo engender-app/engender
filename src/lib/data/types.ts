@@ -123,6 +123,17 @@ export interface Measurement {
   unit: string;
 }
 
+/** The two counters ticket 10 tracks. Fixed rather than user-defined, so it
+    is a plain union rather than a keyed reference-data row. */
+export type TallyKind = 'misgendered' | 'correctly_gendered';
+
+export interface TallyEvent {
+  id: string;
+  epochDay: number;
+  kind: TallyKind;
+  context: string;
+}
+
 /* Preferences are not here: they live in SQLite's `pref` table and are
    described by prefs/catalogue.ts (ticket 06). Neither is a whole-journal
    type: the `DB` object the demo store held went with it in ticket 08, and

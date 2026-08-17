@@ -1079,5 +1079,12 @@
   "on_this_day_year_title": "Rok temu",
   "retro_notify_title": "Powiadamiaj mnie",
   "retro_notify_capabilities_title": "Powiadomienia są zablokowane",
-  "retro_notify_capabilities_body": "Włącz powiadomienia, żeby dostawać wiadomości o bilansie i wspomnieniach. Ich kanały znajdziesz w ustawieniach powiadomień telefonu."
+  "retro_notify_capabilities_body": "Włącz powiadomienia, żeby dostawać wiadomości o bilansie i wspomnieniach. Ich kanały znajdziesz w ustawieniach powiadomień telefonu.",
+  "tally_card_title": "Zapisz ten moment",
+  "tally_misgendered": "Zmisgenderowano mnie",
+  "tally_correctly_gendered": "Zwrócono się do mnie dobrze",
+  "tally_context_placeholder": "Dodaj kontekst (opcjonalnie)",
+  "tally_add_context_button": "Dodaj",
+  "tally_trend_title": "Licznik",
+  "tally_trend_sub": "misgenderowanie i poprawne zwracanie się, w czasie"
 }

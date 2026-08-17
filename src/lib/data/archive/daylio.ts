@@ -217,7 +217,8 @@ const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]):
   milestones: [],
   labResults: [],
   measurements: [],
-  reminders: []
+  reminders: [],
+  tallyEvents: []
 });
 
 export async function daylioPreview(
