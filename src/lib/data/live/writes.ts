@@ -33,7 +33,21 @@ import { RECONCILE_TABLES } from '../journal/reconcile';
     and its dimension values, tag links and search index. Finer would be
     precision no screen can use: nothing reads `entry_tag` without reading
     the entry it belongs to. */
-export type TableName = 'entry' | 'tag' | 'dimension' | 'preset' | 'milestone' | 'photo' | 'lab' | 'reminder' | 'regimen';
+export type TableName =
+  | 'entry'
+  | 'tag'
+  | 'dimension'
+  | 'preset'
+  | 'milestone'
+  | 'photo'
+  | 'lab'
+  | 'reminder'
+  | 'regimen'
+  /* One name for dose events, schedules and pauses alike. Nothing reads a
+     schedule or a pause without the doses they are compared against - the
+     adherence view needs all three - so splitting them would be precision
+     no screen can use. */
+  | 'dose';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -46,7 +60,8 @@ export const TABLE_NAMES: TableName[] = [
   'photo',
   'lab',
   'reminder',
-  'regimen'
+  'regimen',
+  'dose'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -121,6 +136,17 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   regimen: {
     writes: { upsertEpisode: ['regimen'], setEpisodeHidden: ['regimen'] },
     reads: ['getEpisodes']
+  },
+  doses: {
+    writes: {
+      upsertDose: ['dose'],
+      deleteDose: ['dose'],
+      upsertSchedule: ['dose'],
+      deleteSchedule: ['dose'],
+      upsertPause: ['dose'],
+      deletePause: ['dose']
+    },
+    reads: ['getDoses', 'getSchedules', 'getPauses']
   },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {

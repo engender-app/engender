@@ -12,6 +12,7 @@ import { thumbFileName } from '../photos/names.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
+import { resolveEpisodeAt } from '../regimenEpisode.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
 import type { RestoreContents } from './restore.ts';
@@ -91,7 +92,37 @@ async function populated() {
     startEpochDay: 19000
   });
 
-  return { ...made, voice, preset, group, tag, sharedGroupTag, photo, milestone, milestonePhoto, episode };
+  const dose = await journal.doses.upsertDose({
+    timestamp: 1_700_000_000_000,
+    route: 'im',
+    dose: 4,
+    doseUnit: 'mg',
+    injectionSite: 'ventrogluteal-left',
+    vehicle: 'oil'
+  });
+  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, everyNDays: 14, dosesPerDay: 1 });
+  const dosePause = await journal.doses.upsertPause({
+    episodeId: episode,
+    startEpochDay: 19100,
+    endEpochDay: null,
+    reason: 'planned'
+  });
+
+  return {
+    ...made,
+    voice,
+    preset,
+    group,
+    tag,
+    sharedGroupTag,
+    photo,
+    milestone,
+    milestonePhoto,
+    episode,
+    dose,
+    schedule,
+    dosePause
+  };
 }
 
 /** What an export hands an import: the rows, and the photo files as a
@@ -169,6 +200,62 @@ test('merge adds what this device does not have and leaves what it has alone', a
   const episodes = await target.journal.regimen.getEpisodes();
   assert.equal(episodes.length, 1);
   assert.equal(episodes[0].drug, 'estradiol valerate');
+});
+
+test('a dose log travels with its schedule and pauses, still hung off the right episode', async () => {
+  const source = await populated();
+  const target = await device();
+
+  await target.journal.archive.merge(await exported(source.journal));
+
+  const [dose] = await target.journal.doses.getDoses(19000, 20500);
+  assert.equal(dose.id, source.dose);
+  assert.equal(dose.route, 'im');
+  assert.equal(dose.route === 'im' ? dose.injectionSite : null, 'ventrogluteal-left');
+  assert.equal(dose.route === 'im' ? dose.vehicle : null, 'oil');
+
+  assert.deepEqual(await target.journal.doses.getSchedules(), [
+    { id: source.schedule, episodeId: source.episode, everyNDays: 14, dosesPerDay: 1 }
+  ]);
+  assert.deepEqual(await target.journal.doses.getPauses(), [
+    { id: source.dosePause, episodeId: source.episode, startEpochDay: 19100, endEpochDay: null, reason: 'planned' }
+  ]);
+});
+
+test('merging the same archive twice duplicates neither a dose, a schedule nor a pause', async () => {
+  const source = await populated();
+  const target = await device();
+
+  await target.journal.archive.merge(await exported(source.journal));
+  await target.journal.archive.merge(await exported(source.journal));
+
+  assert.equal((await target.journal.doses.getDoses(19000, 20500)).length, 1);
+  assert.equal((await target.journal.doses.getSchedules()).length, 1);
+  assert.equal((await target.journal.doses.getPauses()).length, 1);
+});
+
+test('a restored dose resolves its episode from its own timestamp, having carried no episode link', async () => {
+  const source = await populated();
+  const target = await device();
+
+  await target.journal.archive.merge(await exported(source.journal));
+
+  const [dose] = await target.journal.doses.getDoses(19000, 20500);
+  const episodes = await target.journal.regimen.getEpisodes();
+  assert.equal(resolveEpisodeAt(episodes, dose.timestamp)?.id, source.episode);
+
+  // A corrective episode added on the importing device moves the attribution
+  // with no stored link to have got stale in transit.
+  await target.journal.regimen.upsertEpisode({
+    drug: 'estradiol enanthate',
+    ester: 'enanthate',
+    dose: 8,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'every 10 days',
+    startEpochDay: 19500
+  });
+  assert.equal(resolveEpisodeAt(await target.journal.regimen.getEpisodes(), dose.timestamp)?.drug, 'estradiol enanthate');
 });
 
 test('merging the same archive twice does not duplicate a regimen episode', async () => {

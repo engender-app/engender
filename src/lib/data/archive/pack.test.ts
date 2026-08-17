@@ -266,7 +266,10 @@ function bigContents(): { contents: ArchiveContents; reads: string[] } {
         milestones: [],
         labResults: [],
         reminders: [],
-        regimenEpisodes: []
+        regimenEpisodes: [],
+        doseEvents: [],
+        doseSchedules: [],
+        dosePauses: []
       },
       preferences: portablePreferences(PREFERENCE_DEFAULTS),
       files,

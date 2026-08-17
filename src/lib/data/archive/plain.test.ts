@@ -63,7 +63,10 @@ function journalOf(entries: ArchiveEntry[]): ArchiveJournal {
     milestones: [],
     labResults: [],
     reminders: [],
-    regimenEpisodes: []
+    regimenEpisodes: [],
+    doseEvents: [],
+    doseSchedules: [],
+    dosePauses: []
   };
 }
 
@@ -136,12 +139,15 @@ test('the JSON reads as a file, indented, version first', () => {
     milestones: [],
     labResults: [],
     reminders: [],
-    regimenEpisodes: []
+    regimenEpisodes: [],
+    doseEvents: [],
+    doseSchedules: [],
+    dosePauses: []
   };
   const written = journalJson(empty, portablePreferences({ ...PREFERENCE_DEFAULTS, name: 'Ola', palette: 'lesbian' }));
 
   assert.equal(
-    written.split('\n').slice(0, 13).join('\n'),
+    written.split('\n').slice(0, 16).join('\n'),
     `{
   "formatVersion": 1,
   "journal": {
@@ -152,7 +158,10 @@ test('the JSON reads as a file, indented, version first', () => {
     "milestones": [],
     "labResults": [],
     "reminders": [],
-    "regimenEpisodes": []
+    "regimenEpisodes": [],
+    "doseEvents": [],
+    "doseSchedules": [],
+    "dosePauses": []
   },
   "preferences": {`
   );
