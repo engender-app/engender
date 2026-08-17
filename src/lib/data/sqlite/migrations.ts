@@ -51,10 +51,32 @@ CREATE TRIGGER entry_fts_after_delete AFTER DELETE ON entry BEGIN
 END;
 `;
 
+/* v4: body regions (ticket 09). A region is a fixed, built-in key
+   (bodyMap.ts) rather than a stored reference-data row like
+   gender_dimension - there is no per-install customisation to persist, so
+   the column is plain TEXT with no table to join against and no CHECK: the
+   allowlist lives in application code, the same free-text treatment
+   lab_result.analyte already gets.
+
+   Whole-set replace on write, like entry_tag rather than
+   entry_dimension_value: the picker shows every region every time, so a
+   region missing from a save is the user deselecting it, not a preset
+   narrowing what is on screen. */
+const SCHEMA_V4 = `
+CREATE TABLE entry_body_region (
+  entry_id  INTEGER NOT NULL REFERENCES entry(id) ON DELETE CASCADE,
+  region    TEXT NOT NULL,
+  intensity INTEGER NOT NULL,
+  PRIMARY KEY (entry_id, region)
+);
+CREATE INDEX idx_ebr_region ON entry_body_region(region);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
-  { version: 3, sql: SCHEMA_V3 }
+  { version: 3, sql: SCHEMA_V3 },
+  { version: 4, sql: SCHEMA_V4 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

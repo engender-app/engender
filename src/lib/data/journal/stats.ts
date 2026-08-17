@@ -87,6 +87,13 @@ export interface StatsArea {
       until today is over, and backdating into a gap repairs the run. */
   streak(todayEpochDay: number): Promise<number>;
   recap(fromEpochDay: number, toEpochDay: number): Promise<Recap>;
+  /** One point per day a body region (bodyMap.ts) carried an intensity in
+      the range, oldest first, both ends inclusive - the same shape as
+      `dayAverages`, so a body-map trend reuses the same chart (ticket 09).
+      Not folded into `dayAverages` itself: a region key and a dimension
+      key share no namespace, and a garbage region should read as "nothing
+      logged" rather than risk colliding with a real dimension's key. */
+  bodyRegionTrend(region: string, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
 }
 
 /* Which rows carry "the metric", as a subquery plus its parameters. Mood
@@ -116,7 +123,38 @@ function metricValues(metric: string): { sql: string; params: (string | number)[
   };
 }
 
+/* A body region is a plain TEXT column, not a row to join against
+   (bodyMap.ts), so this needs no dimension-style key resolution - just the
+   entry_body_region rows for one region key. */
+function bodyRegionValues(region: string): { sql: string; params: (string | number)[] } {
+  return {
+    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.intensity AS value
+          FROM entry e
+          JOIN entry_body_region ebr ON ebr.entry_id = e.id
+          WHERE ebr.region = ?`,
+    params: [region]
+  };
+}
+
 export function makeStatsArea(driver: SqliteDriver): StatsArea {
+  const averageByDay = async (
+    values: { sql: string; params: (string | number)[] },
+    fromEpochDay: number,
+    toEpochDay: number
+  ): Promise<DayAverage[]> => {
+    const rows = await driver.query<{ day: number; value: number; entries: number }>(
+      `WITH metric_value AS (${values.sql})
+       SELECT epoch_day AS day, AVG(value) AS value, COUNT(*) AS entries FROM metric_value
+       WHERE epoch_day BETWEEN ? AND ?
+       GROUP BY epoch_day ORDER BY epoch_day`,
+      [...values.params, fromEpochDay, toEpochDay]
+    );
+    // Rebuilt rather than returned: a driver row is not a plain object
+    // (node:sqlite hands back null-prototype ones), and nothing past this
+    // seam should have to know that.
+    return rows.map((r) => ({ day: r.day, value: r.value, count: r.entries }));
+  };
+
   const bestStreakIn = async (fromEpochDay: number, toEpochDay: number): Promise<number> => {
     /* Gaps and islands: number the days in order and group by day - rn.
        Consecutive days share that difference, a gap starts a new group, so
@@ -132,18 +170,11 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
   return {
     async dayAverages(metric, fromEpochDay, toEpochDay) {
-      const values = metricValues(metric);
-      const rows = await driver.query<{ day: number; value: number; entries: number }>(
-        `WITH metric_value AS (${values.sql})
-         SELECT epoch_day AS day, AVG(value) AS value, COUNT(*) AS entries FROM metric_value
-         WHERE epoch_day BETWEEN ? AND ?
-         GROUP BY epoch_day ORDER BY epoch_day`,
-        [...values.params, fromEpochDay, toEpochDay]
-      );
-      // Rebuilt rather than returned: a driver row is not a plain object
-      // (node:sqlite hands back null-prototype ones), and nothing past this
-      // seam should have to know that.
-      return rows.map((r) => ({ day: r.day, value: r.value, count: r.entries }));
+      return averageByDay(metricValues(metric), fromEpochDay, toEpochDay);
+    },
+
+    async bodyRegionTrend(region, fromEpochDay, toEpochDay) {
+      return averageByDay(bodyRegionValues(region), fromEpochDay, toEpochDay);
     },
 
     async entryCountsByDay(fromEpochDay, toEpochDay) {

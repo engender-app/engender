@@ -9,7 +9,7 @@ import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 3);
+  assert.equal(db.getUserVersion(), 4);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -18,6 +18,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
 
   for (const expected of [
     'entry',
+    'entry_body_region',
     'entry_dimension_value',
     'entry_tag',
     'gender_dimension',
@@ -186,7 +187,7 @@ test('reminder shape: one-off needs epoch_day, EVERY_N_DAYS needs interval and a
   );
 });
 
-test('deleting an entry cascades to its photos, dimension values and tag links', async () => {
+test('deleting an entry cascades to its photos, dimension values, tag links and body regions', async () => {
   const db = await migratedDb();
   const exec = (sql: string) => db.raw.exec(sql);
 
@@ -199,6 +200,7 @@ test('deleting an entry cascades to its photos, dimension values and tag links',
   exec("INSERT INTO tag (group_id, label, updated_at) VALUES (1, 'joy', 1000)");
   exec('INSERT INTO entry_tag (entry_id, tag_id) VALUES (1, 1)');
   exec("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', 1, 'a.jpg', 1000)");
+  exec("INSERT INTO entry_body_region (entry_id, region, intensity) VALUES (1, 'chest', 40)");
 
   // Foreign keys are off by default per connection in SQLite.
   exec('PRAGMA foreign_keys = ON');
@@ -207,6 +209,7 @@ test('deleting an entry cascades to its photos, dimension values and tag links',
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get()?.['n'], 0);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM entry_dimension_value').get()?.['n'], 0);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM entry_tag').get()?.['n'], 0);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM entry_body_region').get()?.['n'], 0);
   // The tag and dimension themselves are reference data and must survive.
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM tag').get()?.['n'], 1);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM gender_dimension').get()?.['n'], 1);

@@ -30,9 +30,9 @@ import { RECONCILE_TABLES } from '../journal/reconcile';
 
 /** The tables a query can depend on. Coarser than the schema - one name
     covers a row and everything hanging off it, so `entry` means the entry
-    and its dimension values, tag links and search index. Finer would be
-    precision no screen can use: nothing reads `entry_tag` without reading
-    the entry it belongs to. */
+    and its dimension values, tag links, body-region values and search
+    index. Finer would be precision no screen can use: nothing reads
+    `entry_tag` without reading the entry it belongs to. */
 export type TableName = 'entry' | 'tag' | 'dimension' | 'preset' | 'milestone' | 'photo' | 'lab' | 'reminder';
 
 /** Every table there is, in one place: what an import rewrites, and what
@@ -120,7 +120,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {
     writes: {},
-    reads: ['dayAverages', 'entryCountsByDay', 'tagInsights', 'streak', 'recap']
+    reads: ['dayAverages', 'bodyRegionTrend', 'entryCountsByDay', 'tagInsights', 'streak', 'recap']
   },
   /* An import rewrites the journal (ticket 14), so it invalidates all of it -
      every query and every mirrored slice. Naming the tables one at a time

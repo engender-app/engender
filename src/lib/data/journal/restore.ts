@@ -214,6 +214,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM photo',
     'DELETE FROM entry_dimension_value',
     'DELETE FROM entry_tag',
+    'DELETE FROM entry_body_region',
     'DELETE FROM entry',
     'DELETE FROM milestone',
     'DELETE FROM lab_result',
@@ -440,6 +441,7 @@ async function applyEntries({ driver, journal, ts }: Restoring): Promise<void> {
   const dimensionRows: unknown[][] = [];
   const tagRows: unknown[][] = [];
   const photoRows: unknown[][] = [];
+  const bodyRegionRows: unknown[][] = [];
 
   for (const entry of inserting) {
     const entryId = entryIds.get(entry.uuid);
@@ -468,11 +470,21 @@ async function applyEntries({ driver, journal, ts }: Restoring): Promise<void> {
     for (const [orderIndex, photo] of (entry.photos ?? []).entries()) {
       photoRows.push([photo.id, entryId, null, photo.fileName, orderIndex, ts]);
     }
+
+    // Unlike dims and tags, a region key is not resolved against a stored
+    // row - there is none (bodyMap.ts) - so it travels straight through,
+    // the same forward-compatible treatment lab_result.analyte gets: an
+    // archive from a build that knows a region this one does not still
+    // restores rather than failing the whole import.
+    for (const [region, intensity] of Object.entries(entry.bodyRegions ?? {})) {
+      bodyRegionRows.push([entryId, region, intensity]);
+    }
   }
 
   await insertRows(driver, 'INSERT INTO entry_fts (rowid, folded_text)', ftsRows);
   await insertRows(driver, 'INSERT INTO entry_dimension_value (entry_id, dimension_id, value)', dimensionRows);
   await insertRows(driver, 'INSERT INTO entry_tag (entry_id, tag_id)', tagRows);
+  await insertRows(driver, 'INSERT INTO entry_body_region (entry_id, region, intensity)', bodyRegionRows);
   await insertRows(
     driver,
     'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)',

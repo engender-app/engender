@@ -174,9 +174,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       `SELECT et.entry_id, t.key, t.uuid FROM entry_tag et
        JOIN tag t ON t.id = et.tag_id ORDER BY et.entry_id, t.id`
     );
+    const bodyRegionValues = await driver.query<{ entry_id: number; region: string; intensity: number }>(
+      'SELECT entry_id, region, intensity FROM entry_body_region ORDER BY entry_id, region'
+    );
 
     const dims = groupBy(dimensionValues, (v) => v.entry_id, (v) => [v.key, v.value] as const);
     const tags = groupBy(tagLinks, (t) => t.entry_id, (t) => domainIdOf(t, 'tag'));
+    const bodyRegions = groupBy(bodyRegionValues, (v) => v.entry_id, (v) => [v.region, v.intensity] as const);
     const byEntry = groupBy(photos.filter((p) => p.entry_id !== null), (p) => p.entry_id!, toArchivePhoto);
 
     return rows.map((r) => ({
@@ -187,7 +191,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       note: r.note ?? '',
       dims: Object.fromEntries(dims.get(r.id) ?? []),
       tags: tags.get(r.id) ?? [],
-      photos: byEntry.get(r.id) ?? []
+      photos: byEntry.get(r.id) ?? [],
+      bodyRegions: Object.fromEntries(bodyRegions.get(r.id) ?? [])
     }));
   };
 

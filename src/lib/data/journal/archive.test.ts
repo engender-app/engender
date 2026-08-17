@@ -26,7 +26,8 @@ async function populated() {
     mood: 4,
     note: 'a good day',
     dims: { [voice.key]: 7, femininity: 60 },
-    tags: [tag.id, 'e-happy']
+    tags: [tag.id, 'e-happy'],
+    bodyRegions: { chest: 40 }
   });
   const photo = await journal.photos.attach({ entryId: entry }, { full: bytes('full-photo'), thumb: bytes('thumb') });
   const second = await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
@@ -67,7 +68,8 @@ test('entries travel by uuid, with their dimension values, tags and photos', asy
     // rows are in - an entry's tags are a set, so it is the ids that
     // matter, not which of them the seed happened to create first.
     tags: ['e-happy', tag.id],
-    photos: [{ id: photo, fileName: `${photo}.jpg` }]
+    photos: [{ id: photo, fileName: `${photo}.jpg` }],
+    bodyRegions: { chest: 40 }
   });
   assert.equal(snapshot.journal.entries.length, 2);
 });
@@ -82,6 +84,7 @@ test('an entry with nothing but a mood carries empty collections, not missing on
   assert.deepEqual(entry.dims, {});
   assert.deepEqual(entry.tags, []);
   assert.deepEqual(entry.photos, []);
+  assert.deepEqual(entry.bodyRegions, {});
   assert.equal(entry.note, '');
 });
 
@@ -183,6 +186,7 @@ const CARRIED: Record<string, string[]> = {
   entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note'],
   entry_dimension_value: ['entry_id', 'dimension_id', 'value'],
   entry_tag: ['entry_id', 'tag_id'],
+  entry_body_region: ['entry_id', 'region', 'intensity'],
   photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index'],
   milestone: ['uuid', 'name', 'epoch_day', 'template_key'],
   gender_dimension: ['uuid', 'key', 'name', 'low_label', 'high_label', 'min_value', 'max_value', 'is_built_in', 'hidden'],

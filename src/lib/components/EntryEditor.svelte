@@ -13,6 +13,7 @@
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
+  import BodyRegionPicker from '$lib/components/BodyRegionPicker.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -146,6 +147,17 @@
       groups={vocabulary.visibleTagGroups}
       selected={entryDraft.tags}
       onToggle={(id) => entryDraft.toggleTag(id)}
+    />
+  </section>
+
+  <section class="card editor-section">
+    <h2 class="editor-heading">{m.body_map_label()}</h2>
+    <p class="muted small" style="margin-bottom:var(--space-4)">{m.body_map_hint()}</p>
+    <BodyRegionPicker
+      regions={vocabulary.bodyRegions}
+      values={entryDraft.bodyRegions}
+      onToggle={(key) => entryDraft.toggleBodyRegion(key)}
+      onIntensityInput={(key, v) => entryDraft.setBodyRegionIntensity(key, v)}
     />
   </section>
 

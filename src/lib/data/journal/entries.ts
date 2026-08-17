@@ -1,18 +1,21 @@
 /* The entries area (PRD F1). Two rules carry this module:
 
    An entry holds at least one of mood, a dimension value, a tag, a
-   non-blank note, a photo - or it does not exist (CONTEXT: "Entry").
-   Enforced here so no path bypasses it.
+   non-blank note, a photo, a body-region intensity - or it does not exist
+   (CONTEXT: "Entry"). Enforced here so no path bypasses it.
 
    Dimension values write per dimension, never as a whole object: a value
    belongs to the entry, not to the preset that happened to be active when
    it was logged, so editing under a narrower preset must leave the other
-   dimensions' rows alone. Tags, by contrast, arrive as the whole set the editor
-   showed, and replace.
+   dimensions' rows alone. Tags and body regions (ticket 09), by contrast,
+   arrive as the whole set the editor showed, and replace - each picker
+   shows every option every time, so an id or region key missing from a
+   save is the user deselecting it.
 
    Photos become writable in ticket 11; their rows are already cleaned up
    on delete here, files included, via the injected store. */
 
+import { BODY_REGION_KEYS } from '../bodyMap';
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
@@ -38,6 +41,9 @@ export interface EntryInput {
   note?: string;
   dims?: Record<string, number>;
   tags?: string[];
+  /** By body-region key (bodyMap.ts). Arrives as the whole set the picker
+      showed, and replaces - same rule as `tags`, not `dims`. */
+  bodyRegions?: Record<string, number>;
   /** Photos picked in this edit, normalized and ready to store (ADR-0008).
       They arrive with the save rather than in a call after it, for two
       reasons: an entry is committed as one action (PRD F1), and a photo on
@@ -95,8 +101,8 @@ export interface EntriesArea {
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
-  /** Idempotent. Takes the entry's dimension values, tag links, photo
-      rows and photo files with it. */
+  /** Idempotent. Takes the entry's dimension values, tag links, body-region
+      values, photo rows and photo files with it. */
   deleteEntry(id: number): Promise<void>;
 }
 
@@ -173,6 +179,25 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     await driver.run(`INSERT INTO entry_tag (entry_id, tag_id) VALUES ${values}`, params);
   };
 
+  // A region is a fixed, built-in key rather than a stored row (bodyMap.ts),
+  // so there is no table to resolve against - just this allowlist, checked
+  // against live input the way resolveDimensionIds and resolveTagIds are.
+  const KNOWN_BODY_REGIONS = new Set<string>(BODY_REGION_KEYS);
+
+  const assertKnownBodyRegions = (bodyRegions: Record<string, number>): void => {
+    for (const key of Object.keys(bodyRegions)) {
+      if (!KNOWN_BODY_REGIONS.has(key)) throw new Error(`unknown body region: ${key}`);
+    }
+  };
+
+  const insertBodyRegions = async (entryId: number, bodyRegions: Record<string, number>): Promise<void> => {
+    const entries = Object.entries(bodyRegions);
+    if (entries.length === 0) return;
+    const values = entries.map(() => '(?, ?, ?)').join(', ');
+    const params = entries.flatMap(([region, intensity]) => [entryId, region, intensity]);
+    await driver.run(`INSERT INTO entry_body_region (entry_id, region, intensity) VALUES ${values}`, params);
+  };
+
   const dimsOf = async (entryId: number): Promise<Record<string, number>> => {
     const rows = await driver.query<{ key: string; value: number }>(
       `SELECT gd.key, edv.value FROM entry_dimension_value edv
@@ -188,6 +213,14 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       [entryId]
     );
     return rows.map((r) => domainIdOf(r, 'tag'));
+  };
+
+  const bodyRegionsOf = async (entryId: number): Promise<Record<string, number>> => {
+    const rows = await driver.query<{ region: string; intensity: number }>(
+      'SELECT region, intensity FROM entry_body_region WHERE entry_id = ?',
+      [entryId]
+    );
+    return Object.fromEntries(rows.map((r) => [r.region, r.intensity]));
   };
 
   const photoCountOf = async (entryId: number): Promise<number> => {
@@ -228,6 +261,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     const dims = new Map<number, Record<string, number>>();
     const tags = new Map<number, string[]>();
     const photos = new Map<number, Photo[]>();
+    const bodyRegions = new Map<number, Record<string, number>>();
 
     for (let from = 0; from < rows.length; from += ID_CHUNK) {
       const ids = rows.slice(from, from + ID_CHUNK).map((row) => row.id);
@@ -259,6 +293,16 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       }
 
       for (const [entryId, forEntry] of await photosByEntry(driver, ids)) photos.set(entryId, forEntry);
+
+      const bodyRegionRows = await driver.query<{ entry_id: number; region: string; intensity: number }>(
+        `SELECT entry_id, region, intensity FROM entry_body_region WHERE entry_id IN (${placeholders})`,
+        ids
+      );
+      for (const row of bodyRegionRows) {
+        const forEntry = bodyRegions.get(row.entry_id) ?? {};
+        forEntry[row.region] = row.intensity;
+        bodyRegions.set(row.entry_id, forEntry);
+      }
     }
 
     return rows.map((row) => ({
@@ -269,7 +313,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       note: row.note ?? '',
       dims: dims.get(row.id) ?? {},
       tags: tags.get(row.id) ?? [],
-      photos: photos.get(row.id) ?? []
+      photos: photos.get(row.id) ?? [],
+      bodyRegions: bodyRegions.get(row.id) ?? {}
     }));
   };
 
@@ -469,6 +514,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const currentDims = await dimsOf(current.id);
         const mergedDims = { ...currentDims, ...input.dims };
         const tags = input.tags ?? (await tagsOf(current.id));
+        const bodyRegions = input.bodyRegions ?? (await bodyRegionsOf(current.id));
         const attaching = input.attachPhotos ?? [];
         const removedPhotos = await photosToRemove(current.id, input.removePhotoIds ?? []);
         assertHasContent({
@@ -476,12 +522,14 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           note: input.note ?? current.note ?? '',
           dimCount: Object.keys(mergedDims).length,
           tagCount: tags.length,
-          photoCount: (await photoCountOf(current.id)) - removedPhotos.length + attaching.length
+          photoCount: (await photoCountOf(current.id)) - removedPhotos.length + attaching.length,
+          bodyRegionCount: Object.keys(bodyRegions).length
         });
 
         // Resolved before the transaction so an unknown key aborts cleanly.
         const dimIds = await resolveDimensionIds(input.dims ?? {});
         const tagIds = input.tags && (await resolveTagIds(input.tags));
+        if (input.bodyRegions) assertKnownBodyRegions(input.bodyRegions);
         // The note that will be stored, whether this edit supplied one or
         // not - reindexing on input.note alone would blank the index for an
         // edit that only touched the mood.
@@ -507,6 +555,10 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
             await driver.run('DELETE FROM entry_tag WHERE entry_id = ?', [current.id]);
             await insertEntryTags(current.id, tagIds);
           }
+          if (input.bodyRegions) {
+            await driver.run('DELETE FROM entry_body_region WHERE entry_id = ?', [current.id]);
+            await insertBodyRegions(current.id, input.bodyRegions);
+          }
           for (const photo of removedPhotos) {
             await driver.run('DELETE FROM photo WHERE uuid = ? AND entry_id = ?', [photo.uuid, current.id]);
           }
@@ -521,6 +573,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       if (input.epochDay == null) throw new Error('a new entry needs an epochDay');
       const dims = input.dims ?? {};
       const tags = input.tags ?? [];
+      const bodyRegions = input.bodyRegions ?? {};
       const attachingNew = input.attachPhotos ?? [];
       const mood = input.mood;
       if (mood == null) throw new Error('an entry needs a mood');
@@ -530,10 +583,12 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         note: input.note ?? '',
         dimCount: Object.keys(dims).length,
         tagCount: tags.length,
-        photoCount: attachingNew.length
+        photoCount: attachingNew.length,
+        bodyRegionCount: Object.keys(bodyRegions).length
       });
       const dimIds = await resolveDimensionIds(dims);
       const tagIds = await resolveTagIds(tags);
+      assertKnownBodyRegions(bodyRegions);
       const stagedPhotos: StagedPhoto[] = [];
       for (const photo of attachingNew) stagedPhotos.push(await stagePhoto(files, photo));
 
@@ -547,6 +602,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         await indexEntry(entryId, input.note ?? '');
         await upsertDimensionValues(entryId, dimIds);
         await insertEntryTags(entryId, tagIds);
+        await insertBodyRegions(entryId, bodyRegions);
         for (const photo of stagedPhotos) {
           await insertStagedPhoto(driver, { entryId, milestoneId: null }, photo);
         }
@@ -562,6 +618,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         await driver.run('DELETE FROM photo WHERE entry_id = ?', [id]);
         await driver.run('DELETE FROM entry_dimension_value WHERE entry_id = ?', [id]);
         await driver.run('DELETE FROM entry_tag WHERE entry_id = ?', [id]);
+        await driver.run('DELETE FROM entry_body_region WHERE entry_id = ?', [id]);
         await driver.run('DELETE FROM entry WHERE id = ?', [id]);
       });
       // After the commit: a failed file removal must not resurrect rows,
