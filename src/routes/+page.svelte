@@ -22,6 +22,7 @@
   import RiveSlot from '$lib/components/RiveSlot.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
@@ -106,6 +107,14 @@
     <p class="quicklog-title">{m.how_feeling()}</p>
     <MoodPicker compact onPick={onQuickLog} />
   </div>
+
+  <!-- Gated on the preference here rather than inside the card, so that
+       turning wrapped off unmounts it and the recap read behind it never
+       runs (phase 4 features ticket 01). The card decides for itself whether
+       the offered period clears the entry floor. -->
+  {#if prefs.wrappedEnabled}
+    <WrappedHomeCard />
+  {/if}
 
   <!-- NAV-003: this section used to disappear entirely with no milestones,
        which also meant Timeline - only linked from here - was structurally

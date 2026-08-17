@@ -908,5 +908,68 @@
   "mood_none": "no mood",
   "entry_mood_aria": "mood: {name}",
   "entry_day_count": "{count} that day",
-  "tags_group_aria": "{group} tags"
+  "tags_group_aria": "{group} tags",
+  "wrapped": "Wrapped",
+  "wrapped_settings_sub": "Look back on a week, a month or a year once it has ended.",
+  "wrapped_off_title": "Wrapped is off",
+  "wrapped_off_body": "Turn it on in Settings and finished weeks, months and years show up on Home.",
+  "wrapped_unknown_title": "Nothing to wrap here",
+  "wrapped_unknown_body": "A wrapped covers a finished week, month or year. Open one from Home.",
+  "wrapped_home_week": "Your week, wrapped",
+  "wrapped_home_month": "Your {month}, wrapped",
+  "wrapped_home_year": "Your {year}, wrapped",
+  "wrapped_home_sub": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} entry to look back on",
+        "countPlural=other": "{count} entries to look back on"
+      }
+    }
+  ],
+  "wrapped_week_title": "Your week",
+  "wrapped_week_range": "{from} to {to}",
+  "wrapped_month_title": "Your {month}",
+  "wrapped_year_title": "Your {year}",
+  "wrapped_month_intro": "One month, as you logged it.",
+  "wrapped_year_intro": "Twelve months, as you logged them.",
+  "wrapped_thin_title": "Not much to look back on yet",
+  "wrapped_thin_body": [
+    {
+      "declarations": [
+        "input count",
+        "input floor",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} entry in this period, and a wrapped starts at {floor}.",
+        "countPlural=other": "{count} entries in this period, and a wrapped starts at {floor}."
+      }
+    }
+  ],
+  "wrapped_stat_entries": "Entries",
+  "wrapped_stat_streak": "Best streak",
+  "wrapped_stat_mood": "Average mood",
+  "wrapped_mood_arc": "Mood, day by day",
+  "wrapped_scale_arc": "The scale that moved furthest",
+  "wrapped_scale_arc_body": "{name}, {from} to {to}",
+  "wrapped_tags": "What you tagged",
+  "wrapped_milestones": "Milestones reached",
+  "wrapped_photos": "Photos from the period",
+  "wrapped_year_months": "Month by month",
+  "wrapped_year_figures": "The year in figures",
+  "wrapped_year_close": "That was {year}, in your own words.",
+  "wrapped_cadence_group": "Wrapped period",
+  "wrapped_cadence_week": "Last week",
+  "wrapped_cadence_month": "Last month",
+  "wrapped_cadence_year": "Last year"
 }

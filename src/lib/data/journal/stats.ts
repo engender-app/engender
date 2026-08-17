@@ -19,6 +19,7 @@
 
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
+import type { Photo } from '../types';
 
 export interface DayAverage {
   day: number;
@@ -52,6 +53,26 @@ export interface DimensionChange {
   change: number;
 }
 
+/** A photo from the range, with the day it belongs to so a screen can date
+    it. Enough to draw a thumbnail (PhotoThumb takes id and fileName) and no
+    more - the bytes stay in the file store.
+
+    Nearly `photos.DatedPhoto`, minus the milestone name that screen needs,
+    and photos live on the recap rather than behind a range read of their own
+    on purpose: a wrapped is one recomputation of one period, and every
+    figure on it coming back from one call is what stops two of them
+    disagreeing about the same range. The cost is that `/recap` runs the
+    query below without rendering it - one bounded read, four rows. */
+export interface RecapPhoto extends Photo {
+  epochDay: number;
+}
+
+/** How many photos a recap picks out of the range. Four fills a thumbnail
+    row on the narrowest screen the app supports and reads as a handful
+    rather than a gallery; the photo grid (settings/photos) is where every
+    photo lives. */
+export const RECAP_PHOTO_HIGHLIGHTS = 4;
+
 export interface Recap {
   entryCount: number;
   /** 1 to 5, or null when nothing in the range carried a mood. */
@@ -62,6 +83,10 @@ export interface Recap {
   topTags: { id: string; count: number }[];
   milestones: RecapMilestone[];
   biggestDimensionChange: DimensionChange | null;
+  /** Up to RECAP_PHOTO_HIGHLIGHTS photos spread across the range, oldest
+      first. Spread rather than taken from the top, because the oldest four
+      photos of a year are all from January. */
+  photoHighlights: RecapPhoto[];
 }
 
 export interface StatsArea {
@@ -301,6 +326,47 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         range
       );
 
+      /* One photo from each quarter of the range's photos, so a wrapped
+         shows the period's arc instead of its opening days. NTILE does the
+         spreading in SQL and the row number inside each bucket picks that
+         bucket's earliest photo, which keeps the answer bounded at four
+         rows - a decade fixture holds hundreds of photos, and reading them
+         all back to drop all but four would be the work this avoids.
+
+         Two left joins and a COALESCE for the same reason photos.inJournal
+         has them: exactly one owner column is set (the photo table's
+         CHECK), so a milestone's photo dates itself off the milestone and an
+         entry's off the entry, in one query rather than two. */
+      const photoRows = await driver.query<{ uuid: string; file_path: string; epoch_day: number }>(
+        `WITH dated AS (
+           SELECT p.uuid AS uuid, p.file_path AS file_path,
+                  COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
+                  p.order_index AS order_index, p.id AS id
+           FROM photo p
+           LEFT JOIN entry e ON e.id = p.entry_id
+           LEFT JOIN milestone m ON m.id = p.milestone_id
+           WHERE COALESCE(e.epoch_day, m.epoch_day) BETWEEN ? AND ?
+         ),
+         bucketed AS (
+           SELECT uuid, file_path, epoch_day, order_index, id,
+                  NTILE(?) OVER (ORDER BY epoch_day, order_index, id) AS bucket
+           FROM dated
+         ),
+         picked AS (
+           SELECT uuid, file_path, epoch_day, order_index, id,
+                  ROW_NUMBER() OVER (PARTITION BY bucket ORDER BY epoch_day, order_index, id) AS rn
+           FROM bucketed
+         )
+         SELECT uuid, file_path, epoch_day FROM picked
+         WHERE rn = 1
+         -- The same tie-break the bucketing and the pick used, so "oldest
+         -- first" means one order throughout: sorting the survivors by uuid
+         -- instead would reshuffle two highlights from the same day into an
+         -- order nothing else in the journal agrees with.
+         ORDER BY epoch_day, order_index, id`,
+        [...range, RECAP_PHOTO_HIGHLIGHTS]
+      );
+
       /* Ranked by how far the value moved through its own range, because a
          20-point move on a 0-100 dimension and a 3-point move on a 0-10
          one are not comparable as numbers - and then reported in native units,
@@ -326,7 +392,8 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         bestStreak: await bestStreakIn(fromEpochDay, toEpochDay),
         topTags: topTagRows.map((t) => ({ id: t.id, count: t.entries })),
         milestones: milestoneRows.map((r) => ({ id: r.id, name: r.name, epochDay: r.epoch_day })),
-        biggestDimensionChange
+        biggestDimensionChange,
+        photoHighlights: photoRows.map((r) => ({ id: r.uuid, fileName: r.file_path, epochDay: r.epoch_day }))
       };
     }
   };
