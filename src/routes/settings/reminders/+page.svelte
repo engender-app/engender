@@ -68,7 +68,6 @@
 
   {#if isWeb}
     <EmptyState
-      riveLabel={m.rive_reminders_web()}
       title={m.rem_web_title()}
       text={m.rem_web_body()}
     />

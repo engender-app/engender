@@ -52,9 +52,11 @@
   "dismiss": "Zamknij",
   "empty_home_title": "Twoja historia zaczyna się od jednego wpisu",
   "empty_home_body": "Zapisz, jaki był dzisiejszy dzień. Sam nastrój wystarczy, resztę możesz dodać później.",
+  "home_milestones_empty_title": "Brak kamieni milowych",
+  "home_milestones_empty_body": "Dodaj datę coming outu, początku terapii albo coś innego, co warto zapamiętać.",
   "colour_days_by": "Koloruj dni według",
   "metric_note": "Ten sam wybór koloruje mapę w kalendarzu.",
-  "change_on_home": "zmień na ekranie startowym",
+  "change_metric": "zmień",
   "prev_month": "Poprzedni miesiąc",
   "next_month": "Następny miesiąc",
   "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dni z kilkoma wpisami pokazują średnią. Dotknij wypełnionego dnia, żeby zobaczyć wpisy.",
@@ -171,23 +173,6 @@
   "off": "wył.",
   "try_it": "wypróbuj",
   "footer_note": "nic nie opuszcza tego urządzenia",
-  "scales_count": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "{count} skala",
-        "countPlural=few": "Skale: {count}",
-        "countPlural=many": "Skale: {count}",
-        "countPlural=other": "Skale: {count}"
-      }
-    }
-  ],
   "custom_suffix": "własny",
   "add_custom": "Własna…",
   "add_custom_sub": "dodaj własną skalę",
@@ -328,18 +313,6 @@
   "ob_done_title": "Wszystko gotowe",
   "ob_done_title_named": "Wszystko gotowe, {name}",
   "ob_done_body": "Wszystko, co zapiszesz, zostaje tutaj, przy tobie. Jeden krótki wpis dziennie w zupełności wystarczy.",
-  "rive_welcome": "Powitanie: łagodne fale w kolorach flagi",
-  "rive_journey_start": "Ścieżka rozwijająca się w kolorach flagi",
-  "rive_celebration": "Świętowanie: confetti w kolorach flagi",
-  "rive_recap_open": "Początek podsumowania: przewracane kartki kalendarza",
-  "rive_recap_finale": "Koniec podsumowania: świętowanie w kolorach flagi",
-  "rive_empty_home": "Mały kiełek w kolorach flagi",
-  "rive_empty_labs": "Przyjazna probówka",
-  "rive_empty_photos": "Czekająca ramka polaroidu",
-  "rive_empty_timeline": "Wijąca się ścieżka",
-  "rive_no_results": "Lupa nad łagodnymi falami",
-  "rive_reminders_web": "Dzwonek i ciche z-z-z",
-  "rive_quiet_day": "Spokojny dzień",
   "pin_choose_title": "Wybierz PIN",
   "pin_again_title": "Wpisz go jeszcze raz",
   "pin_greeting": "Cześć",
@@ -587,6 +560,12 @@
   "palette_pansexual": "Panseksualna",
   "palette_rainbow": "Tęczowa",
   "palette_agender": "Agender",
+  "mood_colours": "Kolory nastroju",
+  "mood_colours_note": "Osobna skala barw, niezależna od palety powyżej - dzięki temu kropka nastroju nigdy nie wygląda jak kolor płci.",
+  "mood_preset_amber": "Bursztynowy",
+  "mood_preset_teal": "Turkusowy",
+  "mood_preset_plum": "Śliwkowy",
+  "mood_preset_moss": "Mszysty",
   "settings_taggroup_switch": "Grupa {group}",
   "settings_reminders_sub": "aktywne: {count} · codzienne pytanie {state}",
   "settings_milestones_sub": [
@@ -936,6 +915,5 @@
   "mood_none": "bez nastroju",
   "entry_mood_aria": "nastrój: {name}",
   "entry_day_count": "{count} tego dnia",
-  "rive_aria": "{label} (animowana ilustracja)",
   "tags_group_aria": "tagi: {group}"
 }

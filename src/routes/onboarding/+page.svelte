@@ -14,6 +14,12 @@
   let step = $state(0);
   let name = $state('');
   let preset = $state('p-btw');
+  /* PR-001: same fix as Settings' preset sheet - name the dimensions a
+     preset turns on, not just how many. */
+  let dimNameByKey = $derived(new Map(vocabulary.dimensions.map((d) => [d.key, d.name])));
+  function presetDimNames(dims: readonly string[]): string {
+    return dims.map((k) => dimNameByKey.get(k) ?? k).join(', ');
+  }
   let milestoneTemplate = $state<string | null>(null);
   let milestoneDate = $state('');
   let appLock = $state(false);
@@ -39,12 +45,20 @@
 <div class="screen">
   <PrideAurora />
   <div class="onboarding">
+    <!-- NAV-006: onboarding had no way back between steps at all - a typo in
+         the name step, for example, could only be finished past rather than
+         corrected. -->
+    {#if step > 0 && step < STEPS - 1}
+      <button class="icon-btn" style="position:absolute;top:var(--space-4);left:var(--space-4)" aria-label={m.back()} onclick={() => step--}>
+        <Icon name="arrowLeft" />
+      </button>
+    {/if}
     <div class="onboarding-progress" aria-label={m.ob_step_of({ step: String(step + 1), total: String(STEPS) })}>
       {#each Array.from({ length: STEPS }) as _, i (i)}<span class="ob-dot" class:is-done={i <= step}></span>{/each}
     </div>
     <div class="onboarding-body">
       {#if step === 0}
-        <RiveSlot label={m.rive_welcome()} height={160} />
+        <RiveSlot height={160} />
         <h1 class="ob-title">{m.ob_welcome_title()}</h1>
         <p class="ob-text">{m.ob_welcome_body()}</p>
         <div class="ob-actions">
@@ -74,7 +88,7 @@
             <button class="list-row" data-preset={p.id} onclick={() => (preset = p.id)}>
               <span class="row-text">
                 <span class="row-title">{p.name}</span>
-                <span class="row-subtitle">{m.scales_count({ count: p.dims.length })}</span>
+                <span class="row-subtitle">{presetDimNames(p.dims)}</span>
               </span>
               {#if preset === p.id}<Icon name="check" size={20} />{/if}
             </button>
@@ -127,7 +141,7 @@
           <button class="btn btn-primary" data-next onclick={() => step++}><span>{m.continue()}</span></button>
         </div>
       {:else}
-        <RiveSlot label={m.rive_journey_start()} height={140} />
+        <RiveSlot height={140} />
         <h1 class="ob-title">{name ? m.ob_done_title_named({ name }) : m.ob_done_title()}</h1>
         <p class="ob-text">{m.ob_done_body()}</p>
         <div class="ob-actions">

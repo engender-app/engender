@@ -154,7 +154,10 @@
     <div class="applock">
       <div class="applock-badge"><Icon name="lock" size={30} /></div>
       <h1 class="ob-title" style="text-align:center">{m.pp_converting_title()}</h1>
-      <p class="ob-text" style="text-align:center" data-conversion-progress>{progressLine}</p>
+      <!-- SF-004: conversion used to advance through stages with no
+           announcement - a silent content swap for anyone not watching
+           the screen during a process that can take a while. -->
+      <p class="ob-text" style="text-align:center" role="status" data-conversion-progress>{progressLine}</p>
       <!-- True, and worth saying: every step is written down before it
            happens, so a closed tab or a dead battery resumes rather than
            starts over (conversion.ts). -->

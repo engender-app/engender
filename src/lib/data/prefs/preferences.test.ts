@@ -90,6 +90,7 @@ test('SQLite wins over the cache, because the cache is only a cache', async () =
   cache.write({
     theme: 'system',
     palette: 'stale-from-a-past-session',
+    moodPreset: 'amber',
     language: 'system',
     a11yTextSizeBoost: false,
     a11yLegibilityBoost: false,

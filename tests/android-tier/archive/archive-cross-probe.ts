@@ -194,6 +194,7 @@ function portableWith(marker: string) {
     metricKind: values.metricKind,
     metricDimension: values.metricDimension,
     palette: values.palette,
+    moodPreset: values.moodPreset,
     theme: values.theme,
     language: values.language,
     checkInEnabled: values.checkInEnabled,

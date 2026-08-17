@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="%paraglide.locale%" data-palette="trans" data-theme="light" data-a11y-text-size="normal" data-a11y-legibility="normal" data-a11y-motion="normal">
+<html lang="%paraglide.locale%" data-palette="trans" data-mood-preset="amber" data-theme="light" data-a11y-text-size="normal" data-a11y-legibility="normal" data-a11y-motion="normal">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -31,6 +31,7 @@
         const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
         const root = document.documentElement;
         if (boot.palette) root.dataset.palette = boot.palette;
+        if (boot.moodPreset) root.dataset.moodPreset = boot.moodPreset;
         root.dataset.theme =
           !boot.theme || boot.theme === 'system'
             ? matchMedia('(prefers-color-scheme: dark)').matches

@@ -6,11 +6,15 @@
    - Each palette×theme block sets the SEMANTIC tokens:
      bg, surface, surface-2, text, text-2, border, accent,
      accent-2, and the flag's motif stripes.
-   - Everything else (containers, heat-map ramp, mood intensity,
-     charts, focus ring) is DERIVED from those via color-mix, so
-     switching palette recolours the whole app for free.
-   - Colour never judges: mood and the heat-map use a single-hue
-     intensity ramp of the palette accent, never red→green.
+   - Everything else (containers, heat-map ramp, charts, focus ring) is
+     DERIVED from those via color-mix, so switching palette recolours the
+     whole app for free.
+   - Colour never judges: the heat-map uses a single-hue intensity ramp of
+     the palette accent, never red→green. Mood (ADR-0025) is the one
+     exception to "derived from the palette": it keeps its own fixed
+     5-step intensity ramp, selected independently via [data-mood-preset]
+     at the bottom of this file, so a mood dot is never the same colour
+     system as a gender heat cell.
    ============================================================ */
 
 /* ---------- Transgender (default) ---------- */
@@ -36,6 +40,7 @@
   --bg: #F8F6FB; --surface: #FFFFFF; --surface-2: #EFEAF6;
   --text: #241B2F; --text-2: #635C70; --border: #E0D8EA;
   --accent: #7A3EB1; --accent-2: #8A7500;
+  --on-heat-3: #000000; /* ADR-0025: --text computes to 4.4985:1 here - inside rounding distance of 4.5:1, not comfortably clear of it */
 }
 [data-palette="nonbinary"][data-theme="dark"] {
   --bg: #131019; --surface: #1C1725; --surface-2: #251F30;
@@ -56,6 +61,7 @@
   --bg: #171019; --surface: #211826; --surface-2: #2B2032;
   --text: #F5EBF4; --text-2: #B5A3B4; --border: #443349;
   --accent: #E289F2; --accent-2: #93A0F2;
+  --on-heat-3: #000000; /* ADR-0025: neither --text (3.47:1) nor --on-accent (4.44:1) clears 4.5:1 here */
 }
 
 /* ---------- Bisexual ---------- */
@@ -66,11 +72,13 @@
   --bg: #FAF6F9; --surface: #FFFFFF; --surface-2: #F2E9F0;
   --text: #291B27; --text-2: #6C5B69; --border: #E5D8E2;
   --accent: #B7025F; --accent-2: #2447B0;
+  --on-heat-3: #000000; /* ADR-0025: neither --text (4.46:1) nor --on-accent (3.68:1) clears 4.5:1 here */
 }
 [data-palette="bisexual"][data-theme="dark"] {
   --bg: #160F17; --surface: #201723; --surface-2: #2A1F2E;
   --text: #F4EAF2; --text-2: #B3A2B1; --border: #443347;
   --accent: #F272AE; --accent-2: #8FA4F0;
+  --on-heat-3: #000000; /* ADR-0025: neither --text (3.89:1) nor --on-accent (3.92:1) clears 4.5:1 here */
 }
 
 /* ---------- Lesbian ---------- */
@@ -101,6 +109,7 @@
   --bg: #170F14; --surface: #21171D; --surface-2: #2B1F27;
   --text: #F4EAF0; --text-2: #B4A2AD; --border: #453342;
   --accent: #FF74B8; --accent-2: #67C6FF;
+  --on-heat-3: #000000; /* ADR-0025: neither --text (3.64:1) nor --on-accent (4.19:1) clears 4.5:1 here */
 }
 
 /* ---------- Rainbow ---------- */
@@ -111,11 +120,13 @@
   --bg: #F8F7FB; --surface: #FFFFFF; --surface-2: #EEEDF6;
   --text: #211E30; --text-2: #605C72; --border: #DDDAEA;
   --accent: #63348F; --accent-2: #0A7A3C;
+  --on-heat-3: #000000; /* ADR-0025: neither --text (3.71:1) nor --on-accent (4.37:1) clears 4.5:1 here */
 }
 [data-palette="rainbow"][data-theme="dark"] {
   --bg: #121017; --surface: #1B1822; --surface-2: #24202D;
   --text: #EDEBF5; --text-2: #A9A4BA; --border: #3B3648;
   --accent: #C09EE8; --accent-2: #74D99B;
+  --on-heat-3: #000000; /* ADR-0025: neither --text (3.38:1) nor --on-accent (4.49:1) clears 4.5:1 here */
 }
 
 /* ---------- Agender ---------- */
@@ -131,6 +142,10 @@
   --bg: #11150E; --surface: #1A1F17; --surface-2: #232920;
   --text: #EDF3E8; --text-2: #A7B3A0; --border: #37402F;
   --accent: #AEEB76; --accent-2: #A6B1BC;
+  /* ADR-0025: the generic --on-heat-2 default (--text) computes to 4.28:1
+     here - agender's own accent is unusually light for a dark theme, which
+     pulls heat-2 lighter than the other seven palettes' heat-2 too. */
+  --on-heat-2: #FFFFFF;
 }
 
 /* ============================================================
@@ -149,6 +164,10 @@
   --danger-soft: #F6E7E2;
   --warn-soft: #F7EEDA;
   --on-warn-soft: #6B542A;
+  /* ADR-0025: heat-3 (70% accent) sits in a contrast dead zone for two
+     palettes - neither --text nor --on-accent clears 4.5:1 against it - so
+     the generic default is overridden below for those two. */
+  --on-heat-3: var(--text);
 }
 [data-theme="dark"] {
   --on-accent: #101820;
@@ -165,6 +184,11 @@
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 8px rgb(0 0 0 / 0.25);
   --shadow-2: 0 2px 4px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.35);
   --shadow-3: 0 4px 8px rgb(0 0 0 / 0.4), 0 16px 48px rgb(0 0 0 / 0.5);
+  /* Dark theme's --on-accent is a near-black tone built for the fully
+     saturated accent (heat-4); heat-3 is lighter than that, so the generic
+     default here is the opposite pick from light theme's. Four palettes
+     still land in the dead zone and are overridden below. */
+  --on-heat-3: var(--on-accent);
 }
 
 :root {
@@ -176,14 +200,17 @@
   --heat-3: color-mix(in oklab, var(--accent) 70%, var(--surface-2));
   --heat-4: var(--accent);
 
-  /* Mood 1–5 (awful → great): a blend between the flag's two accents.
-     Both ends are flag colours at full warmth — colour never judges,
-     it just travels across the flag. */
-  --mood-1: color-mix(in oklab, var(--accent-2) 85%, var(--surface-2));
-  --mood-2: color-mix(in oklab, var(--accent) 28%, var(--accent-2));
-  --mood-3: color-mix(in oklab, var(--accent) 52%, var(--accent-2));
-  --mood-4: color-mix(in oklab, var(--accent) 76%, var(--accent-2));
-  --mood-5: var(--accent);
+  /* Text drawn on top of a heat cell (COL-002): computed per step rather
+     than a blend-mode trick, because the ramp crosses from "close to
+     surface" to "close to accent" and one text colour cannot read on both
+     ends. heat-0..2 are light/desaturated enough for body text; heat-4 is
+     always the fully saturated accent, which --on-accent is built for.
+     heat-3 sits in between and needs a per-theme (and sometimes
+     per-palette) call - see the --on-heat-3 overrides above. */
+  --on-heat-0: var(--text);
+  --on-heat-1: var(--text);
+  --on-heat-2: var(--text);
+  --on-heat-4: var(--on-accent);
 
   /* Charts */
   --chart-line: var(--accent);
@@ -196,4 +223,47 @@
   --grad-accent: linear-gradient(120deg, var(--accent-2), var(--accent) 65%);
 
   --focus-ring: color-mix(in oklab, var(--accent) 70%, var(--text));
+}
+
+/* ============================================================
+   Mood presets (ADR-0025, COL-001) — mood's own fixed 5-step scale,
+   selected via [data-mood-preset] and completely independent of
+   [data-palette]. Each preset is a single-hue intensity ramp (never
+   red→green, per this file's header rule), so mood keeps reading as "how
+   much" rather than "good or bad" - it simply no longer borrows the two
+   hues the active flag uses for gender data, so a mood dot and a heat cell
+   never collide into one system by sharing a scale.
+
+   Every step is a literal colour, not a color-mix() formula: the ramp has
+   to hold its own contrast promise (--text on top, at 4.5:1) regardless of
+   which of the 8 gender palettes is active, so it cannot be derived from
+   the palette the way the heat-map ramp is. Light-theme steps stay light
+   (luminance >= 0.33, comfortably above the 0.2752 floor the darkest
+   palette text needs); dark-theme steps stay dark (luminance <= 0.12,
+   comfortably under the 0.1474 ceiling the lightest palette text needs).
+   See docs/adr/0025-mood-gets-its-own-colour-scale.md for the full contrast
+   derivation and the hue-clash review against all 8 palettes. */
+[data-mood-preset="amber"][data-theme="light"] {
+  --mood-1: #EAE7E1; --mood-2: #E0D6C4; --mood-3: #DAC39A; --mood-4: #D5AB61; --mood-5: #CD9027;
+}
+[data-mood-preset="amber"][data-theme="dark"] {
+  --mood-1: #705F41; --mood-2: #69532F; --mood-3: #5F4720; --mood-4: #4E3812; --mood-5: #3A290A;
+}
+[data-mood-preset="teal"][data-theme="light"] {
+  --mood-1: #E0E9EA; --mood-2: #C2DCE0; --mood-3: #94CFD7; --mood-4: #4DC0D0; --mood-5: #24ABBC;
+}
+[data-mood-preset="teal"][data-theme="dark"] {
+  --mood-1: #40686D; --mood-2: #2D5E65; --mood-3: #1D5258; --mood-4: #114249; --mood-5: #093136;
+}
+[data-mood-preset="plum"][data-theme="light"] {
+  --mood-1: #ECE5ED; --mood-2: #E5D1E7; --mood-3: #E0B9E5; --mood-4: #DD9AE4; --mood-5: #D975E5;
+}
+[data-mood-preset="plum"][data-theme="dark"] {
+  --mood-1: #814F86; --mood-2: #7F3D87; --mood-3: #752A7E; --mood-4: #64196D; --mood-5: #4D0E53;
+}
+[data-mood-preset="moss"][data-theme="light"] {
+  --mood-1: #E3E9E0; --mood-2: #C8DEBE; --mood-3: #A1D389; --mood-4: #66C835; --mood-5: #51B022;
+}
+[data-mood-preset="moss"][data-theme="dark"] {
+  --mood-1: #4C6A3E; --mood-2: #3C602B; --mood-3: #2E531C; --mood-4: #224410; --mood-5: #163308;
 }

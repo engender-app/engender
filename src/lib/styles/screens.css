@@ -56,12 +56,21 @@
 .editor-savebar .btn { width: 100%; box-shadow: var(--shadow-2); }
 .photo-row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 .photo-wrap { position: relative; }
+/* SH-107: the visible badge stays 24px (::before), but the button itself -
+   the smallest interactive control in the app, and a destructive one - now
+   has a 44px hit area centred on the same spot. */
 .photo-remove {
-  position: absolute; top: -6px; right: -6px;
-  width: 24px; height: 24px; border-radius: 50%;
+  position: absolute; top: -16px; right: -16px;
+  width: var(--touch-target); height: var(--touch-target);
   border: none; cursor: pointer;
-  background: var(--text); color: var(--bg);
+  background: none; color: var(--bg);
   display: flex; align-items: center; justify-content: center;
+}
+.photo-remove::before {
+  content: '';
+  position: absolute; inset: 0; margin: auto;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--text);
 }
 .photo-add {
   width: 72px; height: 72px;
@@ -133,6 +142,7 @@
 
 /* ---------- Settings ---------- */
 .palette-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
+.mood-preset-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
 .palette-swatch {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   border: none; background: none; cursor: pointer;
@@ -150,7 +160,9 @@
 }
 .palette-swatch.is-active .swatch-preview { outline: 2px solid var(--accent); outline-offset: 2px; }
 .swatch-name {
-  font-size: 10.5px; color: var(--text-2);
+  /* SH-108: was 10.5px, below the skill's 12px floor and off the --text-*
+     scale, so the accessibility text-size boost never reached it. */
+  font-size: var(--text-xs); color: var(--text-2);
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .palette-swatch.is-active .swatch-name { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
@@ -163,6 +175,15 @@
 [data-swatch="pansexual"] { background: linear-gradient(135deg, #FF218C 33%, #FFD800 33% 66%, #21B1FF 66%); }
 [data-swatch="rainbow"] { background: linear-gradient(135deg, #E40303 17%, #FF8C00 17% 33%, #FFED00 33% 50%, #008026 50% 66%, #004CFF 66% 83%, #732982 83%); }
 [data-swatch="agender"] { background: linear-gradient(135deg, #1A1A1A 15%, #B9B9B9 15% 30%, #FFF 30% 45%, #B9F484 45% 60%, #FFF 60% 75%, #B9B9B9 75% 90%, #1A1A1A 90%); }
+
+/* Mood preset previews (COL-001): the light-theme step values, shown as a
+   static swatch regardless of the app's active theme - the same convention
+   the flag swatches above use, so a preset still reads as "this one" after
+   a theme switch. */
+[data-mood-swatch="amber"] { background: linear-gradient(90deg, #EAE7E1, #E0D6C4, #DAC39A, #D5AB61, #CD9027); }
+[data-mood-swatch="teal"] { background: linear-gradient(90deg, #E0E9EA, #C2DCE0, #94CFD7, #4DC0D0, #24ABBC); }
+[data-mood-swatch="plum"] { background: linear-gradient(90deg, #ECE5ED, #E5D1E7, #E0B9E5, #DD9AE4, #D975E5); }
+[data-mood-swatch="moss"] { background: linear-gradient(90deg, #E3E9E0, #C8DEBE, #A1D389, #66C835, #51B022); }
 
 .pref-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-bottom: var(--space-4); }
 .pref-row:last-child { margin-bottom: 0; }
@@ -200,8 +221,11 @@
 .managed-tag.is-hidden .managed-label { opacity: 0.45; text-decoration: line-through; }
 .drag-dots { color: var(--text-2); opacity: 0.5; cursor: grab; }
 .managed-label { flex: 1; font-size: var(--text-sm); }
-.managed-actions { display: flex; }
-.managed-actions .icon-btn { width: 36px; height: 36px; color: var(--text-2); }
+/* SH-105: was 36px with no gap between two adjacent targets, one of them
+   destructive (delete). Falls back to .icon-btn's 44px default; the gap
+   gives them the 8px touch-spacing floor. */
+.managed-actions { display: flex; gap: var(--space-2); }
+.managed-actions .icon-btn { color: var(--text-2); }
 .managed-actions .icon-btn:hover { color: var(--text); }
 [data-up] svg { transform: rotate(90deg); }
 
@@ -248,7 +272,7 @@
 .compare-side { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
 .compare-side .photo-thumb { width: 100% !important; aspect-ratio: 3/4; height: auto !important; }
 .compare-nav { display: flex; align-items: center; gap: var(--space-1); }
-.compare-nav .icon-btn { width: 36px; height: 36px; }
+/* SH-106: was 36px; falls back to .icon-btn's 44px default. */
 
 /* ---------- Timeline ---------- */
 .timeline { position: relative; padding-left: 22px; }

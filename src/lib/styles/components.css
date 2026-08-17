@@ -100,7 +100,11 @@
   border: none; background: none; width: 100%; text-align: left;
   font: inherit;
 }
-.list-row:hover { background: var(--surface-2); }
+/* SH-103: an inert row (style="cursor:default") used to still hover-highlight
+   like the navigating/sheet-opening rows either side of it, which is the
+   visual half of "three row idioms look identical". Scoping to a/button
+   leaves the inert <div> flat. */
+a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 .list-row + .list-row { border-top: 1px solid var(--border); }
 .row-icon { color: var(--accent); display: flex; }
 .row-text { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -170,7 +174,10 @@
 }
 .input:focus { border-color: var(--accent); outline: none; }
 textarea.input { resize: vertical; line-height: var(--leading-body); }
-.input::placeholder { color: var(--text-2); opacity: 0.7; }
+/* SF-003: opacity 0.7 on top of --text-2 computed to 2.89-4.50:1 across
+   palettes - --text-2 itself already clears 4.5:1 (probe 1), so the extra
+   opacity was the only thing failing here. */
+.input::placeholder { color: var(--text-2); }
 
 /* ---------- mood picker ---------- */
 .mood-picker { position: relative; }
@@ -364,10 +371,10 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 }
 .hm-cell.is-blank { background: none; }
 .hm-num { font-size: var(--text-xs); color: var(--text-2); font-weight: var(--weight-medium); }
-.hm-cell.has-entries .hm-num { color: var(--on-accent); mix-blend-mode: luminosity; font-weight: var(--weight-bold); }
-[data-theme="light"] .hm-cell.has-entries .hm-num { color: var(--text); mix-blend-mode: normal; }
-[data-theme="light"] .hm-cell[style*="--heat-3"] .hm-num,
-[data-theme="light"] .hm-cell[style*="--heat-4"] .hm-num { color: var(--on-accent); }
+/* COL-002: an explicit --on-heat-N token per ramp step (palettes.css) reads
+   as currentColor here, replacing a mix-blend-mode + [style*="--heat-3"]
+   substring hack that approximated contrast rather than computing it. */
+.hm-cell.has-entries .hm-num { color: inherit; font-weight: var(--weight-bold); }
 .hm-cell.has-entries { cursor: pointer; transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur-fast); }
 .hm-cell.has-entries:hover { transform: scale(1.08); box-shadow: var(--shadow-1); z-index: 1; }
 .hm-cell.is-today { outline: 2.5px solid var(--focus-ring); outline-offset: 1.5px; }
@@ -430,7 +437,10 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   font-size: var(--text-sm); font-weight: var(--weight-medium);
   box-shadow: var(--shadow-3);
   opacity: 0; transition: opacity var(--dur-med), transform var(--dur-med) var(--ease-out);
-  z-index: 50; white-space: nowrap;
+  z-index: 50;
+  /* SF-002: nowrap let a longer translated string (Polish routinely runs
+     longer than English) push past the viewport edge instead of wrapping. */
+  max-width: min(92vw, 420px);
 }
 .toast.is-open { opacity: 1; transform: translate(-50%, 0); }
 .toast-action {
@@ -531,7 +541,9 @@ html[data-a11y-motion='reduce'] .confetti .cf {
 .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .photo-label {
   position: absolute; bottom: 0; left: 0; right: 0;
-  font-size: 10px; text-align: center; padding: 2px;
+  /* SH-108: was 10px, below the skill's 12px floor and off the --text-*
+     scale, so the accessibility text-size boost never reached it. */
+  font-size: var(--text-xs); text-align: center; padding: 2px;
   background: rgb(0 0 0 / 0.35);
 }
 

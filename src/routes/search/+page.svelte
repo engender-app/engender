@@ -1,5 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
+  import { smartBack } from '$lib/navigation/smart-back';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
@@ -124,7 +125,7 @@
 
 <div class="screen">
   <header class="screen-header">
-    <a class="icon-btn" href="/calendar" aria-label={m.back()}><Icon name="arrowLeft" /></a>
+    <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/calendar')}><Icon name="arrowLeft" /></button>
     <h1 class="screen-title">{m.search()}</h1>
     <button
       class="icon-btn"
@@ -249,7 +250,6 @@
       {/each}
     {:else}
       <EmptyState
-        riveLabel={m.rive_no_results()}
         title={m.no_results()}
         text={query.trim() ? m.no_results_body({ query }) : m.search_no_results_filtered()}
       />
