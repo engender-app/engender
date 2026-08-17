@@ -57,6 +57,10 @@ export interface Tag {
   label: string;
   builtIn: boolean;
   hidden: boolean;
+  /** Built-in only: what this category means, for tags whose name alone
+      does not say (CONTEXT: Dysphoria type). Surfaced via an info
+      affordance rather than shown inline. */
+  description?: string;
 }
 
 export interface TagGroup {

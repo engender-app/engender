@@ -1098,6 +1098,79 @@ try {
   ok('wrapped: Home card, both presentations, the entry floor and the toggle');
 } catch (e) { fail('wrapped', e); }
 
+/* 21. typed dysphoria and euphoria logging (phase 4 features ticket 02): all
+   seven confirmed categories render as bare names under their own heading,
+   an info affordance tells "social" apart from "societal" - the exact pair
+   CONTEXT.md's glossary calls out as not self-explanatory - hiding one
+   follows the same built-in mechanic as any other tag, and the euphoria tag
+   stays selectable independently of a dysphoria type on the same entry.
+
+   Never run as part of the implementation loop, per this ticket's
+   merge-time note: append here rather than before flow 20 (ticket 01's,
+   which must stay last on its own branch), and run `npx svelte-kit sync`
+   first or the build this file drives dies on ENOENT for
+   .svelte-kit/output/client/service-worker.js. */
+try {
+  await fresh('/entry/new/today');
+  const dysphoriaGroup = page.locator('.tag-group', {
+    has: page.locator('.tag-group-name', { hasText: 'Dysphoria type' })
+  });
+  await dysphoriaGroup.waitFor();
+  const labels = (await dysphoriaGroup.locator('.tag-chip').allTextContents()).map((t) => t.trim());
+  const expected = ['physical', 'biochemical', 'social', 'societal', 'sexual', 'presentational', 'existential'];
+  if (JSON.stringify(labels) !== JSON.stringify(expected)) {
+    throw new Error('dysphoria type chips read: ' + JSON.stringify(labels));
+  }
+
+  await page.getByRole('button', { name: 'About societal', exact: true }).click();
+  await page.waitForSelector('.sheet');
+  const societalBody = (await page.locator('.sheet p').textContent())?.trim() ?? '';
+  if (!/society/i.test(societalBody)) throw new Error('societal description read: ' + societalBody);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.sheet', { state: 'detached' });
+
+  await page.getByRole('button', { name: 'About social', exact: true }).click();
+  await page.waitForSelector('.sheet');
+  const socialBody = (await page.locator('.sheet p').textContent())?.trim() ?? '';
+  if (socialBody === societalBody) throw new Error('social and societal show the same description');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.sheet', { state: 'detached' });
+
+  /* Picking a dysphoria type and the euphoria tag leaves both selected -
+     the euphoria capture is not tied to, or cleared by, picking a type
+     (ticket scope: "usable independently of any dysphoria type tag, on the
+     same entry or a different one"). */
+  await page.getByRole('button', { name: 'physical', exact: true }).click();
+  await page.getByRole('button', { name: 'euphoria', exact: true }).click();
+  if ((await page.getByRole('button', { name: 'physical', exact: true }).getAttribute('aria-pressed')) !== 'true') {
+    throw new Error('physical dysphoria type was deselected by picking euphoria');
+  }
+  if ((await page.getByRole('button', { name: 'euphoria', exact: true }).getAttribute('aria-pressed')) !== 'true') {
+    throw new Error('euphoria did not select');
+  }
+  await page.locator('#ed-note').fill('Playwright: physical and euphoria together.');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('.entry-card .entry-note');
+
+  await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Hide existential', exact: true }).click();
+
+  const tomorrow = await page.evaluate(() => {
+    const d = new Date();
+    return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + 1) / 86400000);
+  });
+  await page.goto(BASE + `/entry/new/${tomorrow}`, { waitUntil: 'networkidle' });
+  await booted();
+  const afterHide = (await dysphoriaGroup.locator('.tag-chip').allTextContents()).map((t) => t.trim());
+  if (afterHide.includes('existential')) throw new Error('hidden dysphoria type still offered');
+  if (afterHide.length !== 6) throw new Error('hiding one type should leave six, found ' + afterHide.length);
+
+  await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Show existential', exact: true }).click();
+
+  ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
+} catch (e) { fail('typed dysphoria and euphoria logging', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');

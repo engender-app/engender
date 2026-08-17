@@ -73,6 +73,35 @@ test('reorder takes the whole order and rejects anything that is not a permutati
   await assert.rejects(journal.tags.reorder('nope', reversed), /unknown tag group/);
 });
 
+test('the dysphoria type group is seeded built-in, and hides like any other built-in tag', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  const dysphoriaType = (await journal.tags.getTagGroups()).find((g) => g.key === 'dysphoria_type')!;
+  assert.equal(dysphoriaType.builtIn, true);
+  assert.deepEqual(
+    dysphoriaType.tags.map((t) => t.id),
+    ['dt-physical', 'dt-biochemical', 'dt-social', 'dt-societal', 'dt-sexual', 'dt-presentational', 'dt-existential']
+  );
+  assert.ok(dysphoriaType.tags.every((t) => t.builtIn && !t.hidden));
+
+  await journal.tags.setTagHidden('dt-social', true);
+  const afterHide = (await journal.tags.getTagGroups()).find((g) => g.key === 'dysphoria_type')!;
+  assert.equal(afterHide.tags.find((t) => t.id === 'dt-social')?.hidden, true);
+  await assert.rejects(journal.tags.deleteTag('dt-social'), /hide, not delete/);
+});
+
+test('the euphoria tag is usable on its own, on the same entry as a dysphoria type, or on neither', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  const euphoriaOnly = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['g-euphoria'] });
+  const dysphoriaOnly = await journal.entries.upsertEntry({ epochDay: 101, mood: 2, tags: ['dt-existential'] });
+  const both = await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['g-euphoria', 'dt-social'] });
+
+  assert.deepEqual((await journal.entries.getEntry(euphoriaOnly))?.tags, ['g-euphoria']);
+  assert.deepEqual((await journal.entries.getEntry(dysphoriaOnly))?.tags, ['dt-existential']);
+  assert.deepEqual((await journal.entries.getEntry(both))?.tags, ['g-euphoria', 'dt-social']);
+});
+
 test('a custom group is created enabled, keyed by its minted uuid', async () => {
   const { journal } = await journalWithBuiltIns();
   const group = await journal.tags.addGroup('Hobbies');
