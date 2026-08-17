@@ -5,7 +5,7 @@
      target range, no threshold, no comparison: every figure below is
      shown exactly as journal.exposure.getCounters returns it. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { routeLabel } from '$lib/data/vocabulary/doseLabels';
   import Icon from '$lib/components/Icon.svelte';
@@ -70,6 +70,10 @@
       {#each counters.routeDays as r (r.route)}
         <div class="list-row">
           <span class="row-text">
+            <!-- A regimen episode's own route is free text (types.ts), unlike
+                 a dose event's closed route union - shown raw here the same
+                 way settings/regimen already shows it, not run through
+                 routeLabel. -->
             <span class="row-title">{r.route}</span>
           </span>
           <span class="muted small">{m.exposure_days_count({ days: String(r.days) })}</span>
