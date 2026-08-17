@@ -39,7 +39,8 @@ import type {
   ArchivePreset,
   ArchiveReminder,
   ArchiveTag,
-  ArchiveTagGroup
+  ArchiveTagGroup,
+  ArchiveTallyEvent
 } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
@@ -250,6 +251,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     }));
   };
 
+  const tallyEvents = async (): Promise<ArchiveTallyEvent[]> => {
+    const rows = await driver.query<{ uuid: string; epoch_day: number; kind: string; context: string | null }>(
+      'SELECT uuid, epoch_day, kind, context FROM tally_event ORDER BY epoch_day, id'
+    );
+    return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, kind: r.kind, context: r.context ?? '' }));
+  };
+
   const reminders = async (): Promise<ArchiveReminder[]> => {
     const rows = await driver.query<{
       uuid: string;
@@ -349,7 +357,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           milestones: await milestones(photos),
           labResults: await labResults(),
           measurements: await measurements(),
-          reminders: await reminders()
+          reminders: await reminders(),
+          tallyEvents: await tallyEvents()
         },
         files: archivedFiles,
         async readFile(name) {

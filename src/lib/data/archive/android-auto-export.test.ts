@@ -27,7 +27,8 @@ const snapshot: ArchiveSnapshot = {
     milestones: [],
     labResults: [],
     measurements: [],
-    reminders: []
+    reminders: [],
+    tallyEvents: []
   },
   files: [],
   readFile: async () => {

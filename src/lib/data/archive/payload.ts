@@ -125,6 +125,13 @@ export interface ArchiveMeasurement {
   unit: string;
 }
 
+export interface ArchiveTallyEvent {
+  id: string;
+  epochDay: number;
+  kind: string;
+  context: string;
+}
+
 export interface ArchiveReminder {
   id: string;
   title: string;
@@ -147,6 +154,7 @@ export interface ArchiveJournal {
   labResults: ArchiveLabResult[];
   measurements: ArchiveMeasurement[];
   reminders: ArchiveReminder[];
+  tallyEvents: ArchiveTallyEvent[];
 }
 
 /** A photo file travelling in the body, and how many bytes of it there

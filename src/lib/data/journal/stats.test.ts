@@ -100,6 +100,30 @@ test('a region nothing was ever logged against comes back empty rather than thro
   assert.deepEqual(await journal.stats.bodyRegionTrend('genitals', 100, 100), []);
 });
 
+/* tally trend (ticket 10) */
+
+test('a tally trend counts taps per day, the two kinds kept apart', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
+  await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
+  await journal.tally.log({ epochDay: 101, kind: 'misgendered' });
+  await journal.tally.log({ epochDay: 100, kind: 'correctly_gendered' });
+  await journal.tally.log({ epochDay: 102, kind: 'misgendered' }); // outside the queried range
+
+  assert.deepEqual(await journal.stats.tallyTrend('misgendered', 100, 101), [
+    { day: 100, value: 2, count: 2 },
+    { day: 101, value: 1, count: 1 }
+  ]);
+  assert.deepEqual(await journal.stats.tallyTrend('correctly_gendered', 100, 101), [{ day: 100, value: 1, count: 1 }]);
+});
+
+test('a kind with no events in range comes back empty rather than throwing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
+
+  assert.deepEqual(await journal.stats.tallyTrend('correctly_gendered', 100, 100), []);
+});
+
 test('a metric key nothing was ever logged against comes back empty rather than throwing', async () => {
   // The metric is a preference, and a dimension can be hidden after it was
   // chosen. A stats screen with nothing to draw is the right answer; an
