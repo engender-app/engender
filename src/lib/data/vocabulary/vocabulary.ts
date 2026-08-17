@@ -35,8 +35,9 @@ function localizeDimension(d: GenderDimension): GenderDimension {
 
 function localizeTag(t: Tag): Tag {
   if (!t.builtIn) return t;
+  const label = tagLabel(t.id);
   const description = tagDescription(t.id);
-  return description ? { ...t, label: tagLabel(t.id), description } : { ...t, label: tagLabel(t.id) };
+  return description ? { ...t, label, description } : { ...t, label };
 }
 
 function localizeGroup(g: TagGroup): TagGroup {
