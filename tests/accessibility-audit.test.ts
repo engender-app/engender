@@ -33,6 +33,31 @@ describe('phase 2 accessibility seams', () => {
     expect(components).toContain('@media (prefers-reduced-motion: reduce)');
   });
 
+  /* MO-001/MO-002 (ticket 09): the assertion above only checked that both
+     reduced-motion selectors appear *somewhere* in each file, which stayed
+     true whether the five decorative loops below were stopped or clamped to
+     a 1ms flicker - the actual regression a beta tester could have hit.
+     This checks the fix itself: each animation is turned off under both
+     selectors, not just slowed down. */
+  it('stops decorative infinite loops under both reduced-motion paths instead of clamping them', () => {
+    const components = read('src/lib/styles/components.css');
+    const reduceBlocks = [
+      ...(components.match(/html\[data-a11y-motion='reduce'\][^{]*\{[^}]*\}/g) ?? []),
+      ...(components.match(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g) ?? [])
+    ].join('\n');
+
+    for (const selector of ['.mood-face-ink', '.bloom i', '.bloom-core', '.confetti .cf']) {
+      const escaped = selector.replace(/[.[\]]/g, '\\$&');
+      const stopped = new RegExp(`${escaped}[^{]*\\{[^}]*animation:\\s*none`);
+      expect(reduceBlocks, `${selector} should stop under reduced motion, not clamp to 1ms`).toMatch(stopped);
+    }
+  });
+
+  it('applies the skeleton sweep escape to the in-app reduce toggle as well as the OS setting', () => {
+    const components = read('src/lib/styles/components.css');
+    expect(components).toMatch(/html\[data-a11y-motion='reduce'\]\s+\.skeleton::after\s*\{\s*display:\s*none;/);
+  });
+
   it('keeps accessibility tuning controls and document wiring in place', () => {
     const settings = read('src/routes/settings/+page.svelte');
     const layout = read('src/routes/+layout.svelte');

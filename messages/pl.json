@@ -464,6 +464,7 @@
   "boot_restore_failed": "Nie udało się. Kopia nadal jest na urządzeniu.",
   "quick_exit_back": "Powrót do aplikacji",
   "nav_main": "Główna",
+  "skip_to_content": "Przejdź do treści",
   "exp_title": "Eksport i import",
   "exp_last_backup": "Ostatnia kopia",
   "exp_last_backup_never": "nigdy, więc dziennik istnieje tylko na tym urządzeniu",

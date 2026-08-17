@@ -152,16 +152,22 @@ try {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
 
-  const toastCountBeforeQuietSave = await page.locator('.toast').count();
   await page.locator('.quicklog .mood-btn[data-mood="3"]').click();
   await page.waitForSelector('#ed-note');
   await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="1"]').click();
   await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="3"]').click();
   await page.locator('[data-save]').click();
-  await page.waitForFunction((before) => document.querySelectorAll('.toast').length > before, toastCountBeforeQuietSave);
-  const quietToast = page.locator('.toast', { hasText: 'Saved' }).last();
-  const hasAction = await quietToast.locator('.toast-action').count();
-  if (hasAction !== 0) throw new Error('nudge action still visible after opt-out');
+  /* Ticket 09: counting toasts before/after used to race the earlier save's
+     toast, which auto-dismisses on its own 4-second timer - whether it was
+     still on screen when "before" was captured depended on exactly how much
+     wall-clock time the preceding steps happened to take, not on nudges
+     actually being quiet. Waiting for a Saved toast with no action present
+     asserts the actual behavior under test instead of a timing accident. */
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('.toast')].some(
+      (t) => t.textContent.includes('Saved') && !t.querySelector('.toast-action')
+    )
+  );
   ok('mood-only save nudges when enabled and stays quiet when disabled');
 } catch (e) { fail('nudge flow', e); }
 
@@ -408,7 +414,7 @@ try {
 try {
   await fresh('/settings');
   await page.locator('.segment:has-text("Polski")').click();
-  await page.waitForFunction(() => document.querySelector('.nav-item span')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('.nav-item .nav-label')?.textContent === 'Start', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
 
@@ -866,7 +872,7 @@ try {
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('.segment:has-text("Polski")').click();
-  await page.waitForFunction(() => document.querySelector('.nav-item span')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('.nav-item .nav-label')?.textContent === 'Start', null, { timeout: 8000 });
 
   /* Same seeded tag, same row, different language - which only works if
      what was stored was the key and not the word. */

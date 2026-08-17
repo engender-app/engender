@@ -58,17 +58,20 @@ body {
   to { opacity: 1; transform: none; }
 }
 
-/* staggered list entrance, pure CSS */
+/* staggered list entrance, pure CSS. Delays are multiples of the same
+   --stagger-step token .stagger-in (components.css) uses, rather than each
+   picking its own numbers (MO-004: two hand-tuned stagger systems used to
+   drift out of step with each other). */
 .screen > .entry-card, .screen > .card, .screen > .list-group, .milestone-scroller > * {
   animation: card-in var(--dur-slow) var(--ease-out) both;
 }
-.screen > :nth-child(3) { animation-delay: 40ms; }
-.screen > :nth-child(4) { animation-delay: 80ms; }
-.screen > :nth-child(5) { animation-delay: 120ms; }
-.screen > :nth-child(6) { animation-delay: 160ms; }
-.screen > :nth-child(n+7) { animation-delay: 200ms; }
-.milestone-scroller > :nth-child(2) { animation-delay: 60ms; }
-.milestone-scroller > :nth-child(n+3) { animation-delay: 120ms; }
+.screen > :nth-child(3) { animation-delay: var(--stagger-step); }
+.screen > :nth-child(4) { animation-delay: calc(var(--stagger-step) * 2); }
+.screen > :nth-child(5) { animation-delay: calc(var(--stagger-step) * 3); }
+.screen > :nth-child(6) { animation-delay: calc(var(--stagger-step) * 4); }
+.screen > :nth-child(n+7) { animation-delay: calc(var(--stagger-step) * 5); }
+.milestone-scroller > :nth-child(2) { animation-delay: var(--stagger-step); }
+.milestone-scroller > :nth-child(n+3) { animation-delay: calc(var(--stagger-step) * 2); }
 
 /* ---------- phone: bottom tab bar + FAB ---------- */
 .app-nav {
@@ -89,6 +92,15 @@ body {
 }
 .nav-item.is-active { color: var(--accent); font-weight: var(--weight-bold); }
 .nav-item:hover { color: var(--text); }
+/* SH-003: colour alone marked the active tab. The pill is a shape cue behind
+   the icon, so the active state still reads with colour vision deficiency
+   or on a screen turned all the way down. */
+.nav-icon {
+  display: flex; align-items: center; justify-content: center;
+  padding: 3px 16px; border-radius: var(--radius-pill);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.nav-item.is-active .nav-icon { background: var(--accent-soft); }
 .nav-fab-slot { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
 .nav-fab {
   position: absolute; top: -24px;
@@ -99,7 +111,10 @@ body {
   box-shadow: var(--shadow-2), 0 0 0 5px color-mix(in oklab, var(--accent) 16%, transparent);
   transition: transform var(--dur-med) var(--ease-spring), box-shadow var(--dur-fast);
 }
-.nav-fab:hover { transform: scale(1.08) rotate(90deg); box-shadow: var(--shadow-3), 0 0 0 7px color-mix(in oklab, var(--accent) 20%, transparent); }
+/* SH-002: the 90deg spin was decorative-only on the app's primary action,
+   and hover-only, so phone users never saw it - a scale/elevation response
+   is the part that reads as a press response on Android. */
+.nav-fab:hover { transform: scale(1.08); box-shadow: var(--shadow-3), 0 0 0 7px color-mix(in oklab, var(--accent) 20%, transparent); }
 .nav-fab:active { transform: scale(0.97); }
 
 /* ---------- desktop: left rail + centred column ---------- */
@@ -143,6 +158,19 @@ body {
 .rail-item.is-active { background: var(--accent-soft); color: var(--on-accent-soft); font-weight: var(--weight-bold); }
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+/* SH-004: a desktop keyboard user had to tab through the whole rail before
+   reaching content. Hidden the same way a native skip link is, off-screen
+   until it is the focused element. */
+.skip-link {
+  position: absolute; top: -48px; left: var(--space-3); z-index: 100;
+  background: var(--accent); color: var(--on-accent);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  text-decoration: none; font-weight: var(--weight-bold);
+  transition: top var(--dur-fast) var(--ease-out);
+}
+.skip-link:focus { top: var(--space-3); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
