@@ -17,7 +17,12 @@
      used to be here for the pre-database lock screen, and moved back
      behind encryption when the passphrase gate took that slot - a 4-digit
      hash beside the ciphertext is an offline-guessable secret (ADR-0018
-     names sensitive boot preferences as covered).
+     names sensitive boot preferences as covered). `bioOptIn` (ticket 18) is
+     also in the boot set for the same "needed before the database opens"
+     reason - the Android device-bound gate has to decide whether to auto-fire
+     the platform prompt before there is a database to read the answer from -
+     but it is a plain yes/no/unasked flag rather than a secret, so plaintext
+     costs nothing the way a PIN hash would.
 
    catalogue.test.ts fails if a preference lands in neither of the first
    two lists. */
@@ -43,6 +48,11 @@ export interface PreferenceValues {
   appLock: boolean;
   /** Argon2id-derived, from ticket 17. Null until a PIN is set. */
   pinHash: string | null;
+  /** Null until the person has answered the biometric ask (ticket 18) - the
+      boot gate and the PIN pad both read it to decide whether to offer
+      biometrics at all, so it has to distinguish "never asked" from
+      "declined" rather than defaulting either way. */
+  bioOptIn: boolean | null;
   lockOnLeave: boolean;
   disguise: boolean;
   quickExit: boolean;
@@ -82,6 +92,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   a11yMotionReduce: false,
   appLock: false,
   pinHash: null,
+  bioOptIn: null,
   lockOnLeave: false,
   disguise: false,
   quickExit: false,
@@ -119,6 +130,7 @@ export const DEVICE_LOCAL_KEYS = [
   'a11yMotionReduce',
   'appLock',
   'pinHash',
+  'bioOptIn',
   'lockOnLeave',
   'disguise',
   'quickExit',
@@ -145,7 +157,8 @@ export const BOOT_KEYS = [
   'a11yLegibilityBoost',
   'a11yMotionReduce',
   'lockOnLeave',
-  'disguise'
+  'disguise',
+  'bioOptIn'
 ] as const satisfies readonly PreferenceKey[];
 
 export type BootKey = (typeof BOOT_KEYS)[number];

@@ -14,10 +14,20 @@
      Copy rules, same as the passphrase gate's: this key IS the wall in front
      of the data, so the copy may say so. The lost-key screen is a risk screen
      (docs/ui-copy.md) and states the whole consequence before offering the
-     one action there is. */
+     one action there is.
+
+     The prompt firing by itself used to be unconditional (ticket 18's first
+     finding: nobody was ever asked). It still has to fire eventually - a
+     device-bound key can only be unwrapped by the platform saying who is
+     here, and that stays true whatever `bioOptIn` says (out of scope: the
+     crypto). Consent only decides whether it fires the moment this screen
+     mounts, or waits behind the primary button below, which already existed
+     and was simply redundant with the auto-fire before this. */
 
   import { m } from '$lib/paraglide/messages';
   import { bootState, openAndroidJournal, resetApp } from '$lib/stores/boot.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { bioGateDecision } from '$lib/lock/bio-consent';
   import Icon from './Icon.svelte';
   import PrideAurora from './PrideAurora.svelte';
   import Sheet from './Sheet.svelte';
@@ -26,6 +36,7 @@
   let resetOpen = $state(false);
   let resetting = $state(false);
   let resetError = $state('');
+  let consentOpen = $state(false);
 
   let refusal = $derived(bootState.androidKey?.kind === 'refused' ? bootState.androidKey.authentication : null);
   let invalidated = $derived(bootState.androidKey?.kind === 'invalidated');
@@ -45,16 +56,24 @@
     }
   }
 
-  /* The prompt goes up by itself when the gate first appears, so the common
-     case is one gesture rather than a tap and then a gesture. Once only, and
-     guarded by a plain variable rather than by reading `busy`: an effect that
-     reads what it writes re-runs itself until Svelte gives up, which is a
-     mistake this codebase has already made once (boot.svelte.ts). */
+  function answerConsent(optIn: boolean) {
+    prefs.bioOptIn = optIn;
+    consentOpen = false;
+    if (optIn) void authenticate(false);
+  }
+
+  /* Once only, and guarded by a plain variable rather than by reading
+     `busy`: an effect that reads what it writes re-runs itself until Svelte
+     gives up, which is a mistake this codebase has already made once
+     (boot.svelte.ts). Never answered asks first, rather than firing or
+     waiting - answering is what the other two decisions are for. */
   let asked = false;
   $effect(() => {
     if (asked) return;
     asked = true;
-    void authenticate(false);
+    const decision = bioGateDecision(prefs.bioOptIn);
+    if (decision === 'auto') void authenticate(false);
+    else if (decision === 'ask') consentOpen = true;
   });
 
   let explanation = $derived(
@@ -184,6 +203,19 @@
     </button>
     <button class="btn btn-ghost" disabled={resetting} onclick={() => (resetOpen = false)}>
       <span>{m.reset_keep_trying()}</span>
+    </button>
+  </div>
+</Sheet>
+
+<Sheet bind:open={consentOpen} title={m.bio_ask_boot_title()}>
+  <h3>{m.bio_ask_boot_title()}</h3>
+  <p class="ob-text">{m.bio_ask_boot_body()}</p>
+  <div class="stack-3" style="margin-top:var(--space-4)">
+    <button class="btn btn-primary" data-bio-consent-yes onclick={() => answerConsent(true)}>
+      <span>{m.bio_ask_boot_yes()}</span>
+    </button>
+    <button class="btn btn-ghost" data-bio-consent-no onclick={() => answerConsent(false)}>
+      <span>{m.bio_ask_boot_no()}</span>
     </button>
   </div>
 </Sheet>
