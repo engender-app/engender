@@ -40,7 +40,9 @@
     pointLabel?: (index: number) => string;
   } = $props();
 
-  let interactive = $derived(onSelect !== undefined && pointLabel !== undefined);
+  /* Tied to showDots: the hit areas are invisible, so without the dots under
+     them a caller would ship targets nobody can see they can tap. */
+  let interactive = $derived(showDots && onSelect !== undefined && pointLabel !== undefined);
 
   const P = 8;
 

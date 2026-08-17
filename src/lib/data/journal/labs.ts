@@ -201,13 +201,15 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
             [input.id]
           )
         )[0];
-        /* An id nothing matches falls through to assertChanged below, which
-           owns that error for every write in the journal. */
-        const moved =
-          existing !== undefined && (existing.epoch_day !== draw.epochDay || existing.draw_time !== draw.drawTime);
+        /* Worded exactly as assertChanged words it, because a caller cannot
+           tell the two apart: whether the id was missing at the read below or
+           at the write, it named a result that is not there. */
+        if (!existing) throw new Error(`unknown lab result: ${input.id}`);
+
+        const moved = existing.epoch_day !== draw.epochDay || existing.draw_time !== draw.drawTime;
         const timing = moved
           ? timingColumns(await deriveTiming(draw))
-          : ([existing?.timing_route ?? null, existing?.timing_hours ?? null, existing?.timing_day_of_interval ?? null] as const);
+          : ([existing.timing_route, existing.timing_hours, existing.timing_day_of_interval] as const);
 
         const result = await driver.run(
           `UPDATE lab_result

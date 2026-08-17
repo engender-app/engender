@@ -67,8 +67,18 @@ export function drawUpperBound(draw: LabDraw): number {
 export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming | null {
   if (!dose) return null;
 
+  /* An untimed draw sharing its day with the dose is the one case where the
+     order of the two events is not recorded anywhere, and guessing it is not
+     a rounding error: for an injection the two answers are "day 1" and "day
+     15", which is the entire meaning of the figure. The common pattern is a
+     morning trough draw followed by that day's injection, where assuming the
+     dose came first would report a trough as though it were a peak.
+     `drawUpperBound` deliberately admits the dose so a caller does not have
+     to know this rule to select one; this is where it is refused. */
+  if (draw.drawTime === null && epochDayFromTimestamp(dose.timestamp) === draw.epochDay) return null;
+
   /* Day-of-interval is a count of calendar days and needs no draw time,
-     which is why an untimed draw still gets a figure here.
+     which is why an untimed draw on a later day still gets a figure here.
 
      The count comes from the dose log alone - the gap from the last
      injection to the draw, with the injection day as day 1. Not from the
@@ -90,10 +100,15 @@ export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming 
 /** The axes a lab series' points can disagree on. A **Lab series**
     (CONTEXT.md) folds results into one line by matching unit and nothing
     else, so one line can hold readings taken at opposite ends of an
-    injection interval, on different routes, or by different labs. */
-export type ComparabilityAxis = 'position' | 'route' | 'provider';
+    injection interval, on different routes, or by different labs.
 
-const AXES: readonly ComparabilityAxis[] = ['position', 'route', 'provider'];
+    The union is derived from the list rather than written out beside it, the
+    rule labels.ts sets out: an axis added here without a message for it is
+    then a typecheck failure (labContextLabel.ts) instead of an axis that
+    silently never reports. */
+export const COMPARABILITY_AXES = ['position', 'route', 'provider'] as const;
+
+export type ComparabilityAxis = (typeof COMPARABILITY_AXES)[number];
 
 /** A position two draws either count as the same or they do not. Hours are
     rounded to the whole hour first: comparing the raw fraction would find a
@@ -130,5 +145,5 @@ export function seriesComparability(results: readonly LabResult[]): Comparabilit
     if (provider) values.provider.add(provider);
   }
 
-  return AXES.filter((axis) => values[axis].size > 1);
+  return COMPARABILITY_AXES.filter((axis) => values[axis].size > 1);
 }

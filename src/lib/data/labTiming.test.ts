@@ -64,6 +64,21 @@ test('an untimed draw still places an injection in its interval', () => {
   });
 });
 
+/* The trough-then-inject pattern: blood drawn in the morning, the injection
+   given later the same day. With no draw time nothing records which came
+   first, and the two readings are not a rounding apart - they are "day 1"
+   and "day 15", which is the whole meaning of the figure. */
+test('an untimed draw sharing its day with the dose has no figure to give', () => {
+  assert.equal(labTimingFor({ epochDay: DAY, drawTime: null }, { timestamp: at(DAY, '19:00'), route: 'im' }), null);
+});
+
+test('a timed draw is ordered against a same-day dose normally', () => {
+  assert.deepEqual(labTimingFor({ epochDay: DAY, drawTime: '20:00' }, { timestamp: at(DAY, '19:00'), route: 'im' }), {
+    route: 'im',
+    dayOfInterval: 1
+  });
+});
+
 test('an untimed draw has no hours figure rather than a made-up one', () => {
   assert.equal(labTimingFor({ epochDay: DAY, drawTime: null }, { timestamp: at(DAY, '07:00'), route: 'oral' }), null);
 });

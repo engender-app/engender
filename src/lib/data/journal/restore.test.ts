@@ -584,6 +584,27 @@ test('a payload that is not a journal is refused before anything is written', as
   assert.deepEqual((await target.journal.archive.snapshot()).journal, before.journal);
 });
 
+/* A lab row written before ticket 03 has no draw time, no provider and no
+   timing columns. The payload type says otherwise, but it is a cast over
+   JSON.parse output, so the importer has to survive the fields being absent
+   rather than binding undefined at the driver. */
+test('a lab result from an archive written before the dosing context existed still imports', async () => {
+  const source = await populated();
+  const contents = await exported(source.journal);
+  const older = contents.journal.labResults.map((result) => {
+    const { drawTime, provider, timingRoute, timingHours, timingDayOfInterval, ...rest } = result;
+    return rest as typeof result;
+  });
+
+  const target = await device();
+  await target.journal.archive.merge({ ...contents, journal: { ...contents.journal, labResults: older } });
+
+  const [restored] = await target.journal.labs.getResults('estradiol');
+  assert.equal(restored.provider, '');
+  assert.equal(restored.drawTime, null);
+  assert.equal(restored.timing, null);
+});
+
 test('importing into a journal that has never been through a boot works', async () => {
   const source = await populated();
   // No reconcileBuiltIns() and no preferences: a fresh install, before

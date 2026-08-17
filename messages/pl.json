@@ -751,7 +751,7 @@
   "labs_provider_placeholder": "np. Diagnostyka",
   "labs_context_title": "Kontekst dawkowania",
   "labs_context_none": "Do tego pobrania nie zapisano kontekstu dawkowania.",
-  "labs_context_needs_time": "Liczba godzin od dawki wymaga godziny pobrania. Numer dnia odstępu, przy zastrzykach, nie.",
+  "labs_context_needs_time": "Liczba godzin od dawki wymaga godziny pobrania. Przy zastrzykach numer dnia odstępu obywa się bez niej.",
   "labs_context_frozen": "Zapisane razem z wynikiem, na podstawie dawek z tamtego momentu. Późniejsza poprawka dawki tego nie rusza.",
   "labs_timing_hours": "{hours} godz. od dawki",
   "labs_timing_day": "{day}. dzień odstępu",

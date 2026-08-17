@@ -62,11 +62,12 @@
 
   /* Which point is picked out on which chart, keyed by the series unit, so
      each line keeps its own selection instead of the charts fighting over one
-     index they number differently. */
-  let picked = $state<Record<string, number>>({});
+     index they number differently. Null is "none", the absence LineChart's
+     `selected` is spelled with; tapping the picked point again clears it. */
+  let picked = $state<Record<string, number | null>>({});
 
-  function pickPoint(unit: string, index: number) {
-    picked = picked[unit] === index ? { ...picked, [unit]: -1 } : { ...picked, [unit]: index };
+  function pickPoint(unit: string, index: number | null) {
+    picked = { ...picked, [unit]: picked[unit] === index ? null : index };
   }
 
   /** What a point's readout says: the value, when it was drawn, and the
@@ -323,7 +324,8 @@
     {#each series as s (s.unit)}
       {@const chart = chartFor(s)}
       {@const mixed = comparabilityLabels(seriesComparability(s.results))}
-      {@const point = s.results[picked[s.unit] ?? -1]}
+      {@const pickedIndex = picked[s.unit] ?? null}
+      {@const point = pickedIndex === null ? undefined : s.results[pickedIndex]}
       <div class="card" data-lab-series={s.unit} style="margin-top:var(--space-4)">
         <div class="spread" style="margin-bottom:var(--space-2)">
           <span class="chart-title">{analyte}</span>
@@ -335,7 +337,7 @@
             min={chart.min}
             max={chart.max}
             showDots
-            selected={picked[s.unit] ?? null}
+            selected={pickedIndex}
             onSelect={(i) => pickPoint(s.unit, i)}
             pointLabel={(i) => pointAria(s.results[i])}
           />
@@ -343,11 +345,14 @@
                floating bubble: on a 390px screen a bubble over the point
                covers the neighbours you are comparing it against, and it has
                nowhere to go at either edge. -->
+          <!-- aria-live, because the readout appears somewhere other than the
+               point that was activated: without it a screen reader announces
+               nothing after the press. -->
           {#if point}
-            <div class="lab-point" data-lab-point={point.id}>
+            <div class="lab-point" data-lab-point={point.id} aria-live="polite">
               <div class="spread">
                 <span class="row-title">{point.value} <span class="muted small">{point.unit}</span></span>
-                <button class="icon-btn" aria-label={m.labs_point_clear()} onclick={() => pickPoint(s.unit, picked[s.unit])}>
+                <button class="icon-btn" aria-label={m.labs_point_clear()} onclick={() => pickPoint(s.unit, null)}>
                   <Icon name="x" size={18} />
                 </button>
               </div>
