@@ -35,3 +35,26 @@ export function filePhotoPicker(): PhotoPicker {
     }
   };
 }
+
+/** Bytes straight from the device camera rather than the gallery, one shot
+    at a time. Same PhotoPicker shape as above, so photoPicking.ts's
+    normalize step doesn't need to know which one supplied the bytes.
+
+    On Android this is android-bridge.ts's captureImage(), which opens the
+    camera app through an implicit intent with no output URI - nothing is
+    ever written to MediaStore, so there is no gallery write to undo. On the
+    web, the file input's `capture` hint opens the device camera instead of
+    the usual chooser (ticket 12). */
+export function cameraPhotoPicker(): PhotoPicker {
+  return {
+    async pick() {
+      if (isAndroid()) {
+        const { image } = await androidPhotos.captureImage();
+        return image ? [Uint8Array.from(atob(image), (c) => c.charCodeAt(0))] : [];
+      }
+
+      const [file] = await chooseFiles('image/*', { capture: 'environment' });
+      return file ? [new Uint8Array(await file.arrayBuffer())] : [];
+    }
+  };
+}

@@ -5,7 +5,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
-  import { pickPhotos } from '$lib/stores/photoPicking';
+  import { capturePhoto, pickPhotos } from '$lib/stores/photoPicking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import type { GenderDimension } from '$lib/data/types';
@@ -64,6 +64,11 @@
   // back several (photoPicking.ts).
   async function addPhoto() {
     for (const photo of await pickPhotos()) entryDraft.addPhoto(photo);
+  }
+
+  async function takePhoto() {
+    const photo = await capturePhoto();
+    if (photo) entryDraft.addPhoto(photo);
   }
 
   let moodMissing = $derived(entryDraft.mood == null);
@@ -183,7 +188,10 @@
         </div>
       {/each}
       <button class="photo-add" aria-label={m.add_photo()} onclick={addPhoto}>
-        <Icon name="camera" size={22} /><span>{m.add_photo()}</span>
+        <Icon name="image" size={22} /><span>{m.add_photo()}</span>
+      </button>
+      <button class="photo-add" aria-label={m.add_photo_camera()} onclick={takePhoto}>
+        <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
       </button>
     </div>
   </section>

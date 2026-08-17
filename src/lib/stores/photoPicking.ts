@@ -11,7 +11,7 @@
    that one does: it reports failures by raising a toast, which is an app-level
    concern the data layer has no business knowing about. */
 
-import { filePhotoPicker } from '../data/photos/picker';
+import { cameraPhotoPicker, filePhotoPicker } from '../data/photos/picker';
 import { m } from '$lib/paraglide/messages';
 import { normalizePhoto, UnsupportedImageError } from '../data/photos/normalize';
 import type { NormalizedPhoto } from '../data/journal/photos';
@@ -25,26 +25,15 @@ export type EditorPhoto =
   | { kind: 'picked'; photo: NormalizedPhoto };
 
 const picker = filePhotoPicker();
+const camera = cameraPhotoPicker();
 
-/** Whatever the user chose, normalized and ready to store. Empty if they
-    backed out, which is an ordinary outcome and not an error (picker.ts).
-    Anything unreadable is reported to the user and left out of the result, so
-    picking four photos of which one is a HEIC still returns the other three.
-
-    `limit` caps how many are kept, for the one owner that holds a single
-    photo: a milestone. */
-export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
-  let picked: Uint8Array[];
-  try {
-    picked = await picker.pick();
-  } catch (error) {
-    console.error('the photo picker failed', error);
-    toast(m.photo_picker_failed());
-    return [];
-  }
-
+/** Normalizes whatever bytes a picker returned, dropping and reporting
+    anything unreadable so picking four photos of which one is a HEIC still
+    returns the other three. Shared by pickPhotos and capturePhoto - both
+    hand off to the same seam once bytes exist, regardless of source. */
+async function normalizeAll(picked: Uint8Array[]): Promise<NormalizedPhoto[]> {
   const normalized: NormalizedPhoto[] = [];
-  for (const bytes of limit == null ? picked : picked.slice(0, limit)) {
+  for (const bytes of picked) {
     try {
       normalized.push(await normalizePhoto(bytes));
     } catch (error) {
@@ -61,4 +50,39 @@ export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
     }
   }
   return normalized;
+}
+
+/** Whatever the user chose, normalized and ready to store. Empty if they
+    backed out, which is an ordinary outcome and not an error (picker.ts).
+
+    `limit` caps how many are kept, for the one owner that holds a single
+    photo: a milestone. */
+export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
+  let picked: Uint8Array[];
+  try {
+    picked = await picker.pick();
+  } catch (error) {
+    console.error('the photo picker failed', error);
+    toast(m.photo_picker_failed());
+    return [];
+  }
+
+  return normalizeAll(limit == null ? picked : picked.slice(0, limit));
+}
+
+/** One shot from the device camera, normalized and ready to store. Null if
+    the user backed out of the camera app, which is an ordinary outcome and
+    not an error - same as an empty pickPhotos() result. */
+export async function capturePhoto(): Promise<NormalizedPhoto | null> {
+  let picked: Uint8Array[];
+  try {
+    picked = await camera.pick();
+  } catch (error) {
+    console.error('the camera failed', error);
+    toast(m.photo_picker_failed());
+    return null;
+  }
+
+  const [photo] = await normalizeAll(picked);
+  return photo ?? null;
 }
