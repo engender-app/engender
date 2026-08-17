@@ -1,5 +1,5 @@
 {
-  "measuredOn": "AMD Ryzen 7 9800X3D, 16 threads, Fedora 44, headless Chrome for Testing 151.0.7922.34. One run on a quiet desktop, and a fast one. Small measurements wobble by tens of percent between runs, which is what the five-times budget in budgets.mjs absorbs. Re-record on the hardware a release is judged against before treating these as the last word: `npm run benchmark:long-journal -- --record` prints this block.",
+  "measuredOn": "AMD Ryzen 7 9800X3D, 16 threads, Fedora 44, headless Chrome for Testing 151.0.7922.34. One run on a quiet desktop, and a fast one. The archive-restore family is from a second run, on the same machine, when ticket 17 added the three phase measurements: the parent was re-recorded with them rather than left behind, because archive-restore-db is derived as the parent minus the streaming window and phases from one run under a total from another would not add up. Small measurements wobble by tens of percent between runs, which is what the five-times budget in budgets.mjs absorbs. Re-record on the hardware a release is judged against before treating these as the last word: `npm run benchmark:long-journal -- --record` prints this block.",
   "fixture": "seed 1, 3653 days ending epoch day 20676: 3231 entries over 2589 days with entries, 375 photos (339MB on disk), 122 lab results, 12 milestones, 24 tags. Encryption on: SQLite3MultipleCiphers under a data key, photos through the encrypting file store.",
   "measurements": {
     "calendar-month": {
@@ -106,8 +106,8 @@
     },
     "archive-restore": {
       "what": "Archive import, replacing the decade fixture",
-      "baselineMs": 1086,
-      "budgetMs": 5430,
+      "baselineMs": 1046,
+      "budgetMs": 5230,
       "targetMs": 30000
     },
     "archive-restore-read": {

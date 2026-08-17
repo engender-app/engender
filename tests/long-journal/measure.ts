@@ -355,14 +355,29 @@ export async function measureLongJournal(
                the window itself is a wall-clock figure.
        -db     what is left, which is the transaction.
 
-     `-db` also carries whatever writes were still in flight when the stream
-     ended, because restore.ts awaits them before opening the transaction and
-     this side cannot see that await. At eight of several hundred files that
-     is under a percent, and it errs towards making the SQL half look worse
-     rather than better. */
+     Two things neither number can see, both of which err the same safe way.
+     `-db` carries whatever writes were still in flight when the stream ended,
+     because restore.ts awaits them before opening the transaction and this
+     side cannot see that await. And `-read` is wall clock around the read
+     while up to eight writes contend with it, on the same event loop and, on
+     Android, the same bridge - so it is the cost of reading under load rather
+     than the cost of reading. Both inflate the cheap half at the expensive
+     half's expense: `-db` looks worse than it is, `-read` looks worse than it
+     is, and the write cost the whole floor argument rests on is therefore
+     understated rather than flattered. At eight of several hundred files each
+     is around a percent. */
   let restoreStartedAt = 0;
   let streamEndedAt = 0;
   let fileReadMs = 0;
+
+  /** Reads, timed into `fileReadMs`. Both branches below need this and the
+      subtraction is easy to get subtly wrong twice. */
+  const timingRead = async <T>(read: () => Promise<T>): Promise<T> => {
+    const startedAt = performance.now();
+    const value = await read();
+    fileReadMs += performance.now() - startedAt;
+    return value;
+  };
 
   const snapshotFiles = async function* (): AsyncIterable<{ name: string; bytes: Uint8Array }> {
     try {
@@ -371,9 +386,7 @@ export async function measureLongJournal(
         const BATCH_SIZE = 16;
         for (let i = 0; i < names.length; i += BATCH_SIZE) {
           const batch = names.slice(i, i + BATCH_SIZE);
-          const readStartedAt = performance.now();
-          const bytes = await snapshot.readFiles(batch);
-          fileReadMs += performance.now() - readStartedAt;
+          const bytes = await timingRead(() => snapshot.readFiles!(batch));
           for (let j = 0; j < batch.length; j++) {
             const body = bytes[j];
             if (!body) throw new Error(`archive snapshot file missing while restoring: ${batch[j]}`);
@@ -384,10 +397,7 @@ export async function measureLongJournal(
       }
 
       for (const name of names) {
-        const readStartedAt = performance.now();
-        const bytes = await snapshot.readFile(name);
-        fileReadMs += performance.now() - readStartedAt;
-        yield { name, bytes };
+        yield { name, bytes: await timingRead(() => snapshot.readFile(name)) };
       }
     } finally {
       // In a finally so both branches and an early break are covered: this is
@@ -409,9 +419,17 @@ export async function measureLongJournal(
   });
 
   /* Derived rather than timed: these three divide the measurement above, so
-     they are pushed from its numbers instead of re-running any of it. */
+     they are pushed from its numbers instead of re-running any of it.
+
+     Loudly rather than quietly, if the stream never ran: `streamEndedAt`
+     would still be zero, `-files` would come out as minus the page's uptime
+     and `-db` would swallow the lot. That is a wrong baseline rather than a
+     missing one, and budgets.mjs's rule is that this suite fails closed. */
+  if (streamEndedAt === 0) {
+    throw new Error('archive-restore never streamed a file, so its phases cannot be attributed');
+  }
   const streamMs = streamEndedAt - restoreStartedAt;
-  const share = (part: number) => (restoreMs > 0 ? `${((part / restoreMs) * 100).toFixed(0)}%` : 'n/a');
+  const share = (part: number) => `${((part / restoreMs) * 100).toFixed(0)}%`;
 
   measurements.push(
     {
