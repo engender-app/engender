@@ -53,6 +53,31 @@ test('the harness covers all five places a decade of Journal is read', async () 
   expect(names.some((n) => n.startsWith('photo-grid'))).toBe(true);
 });
 
+test("archive-restore's phases account for the whole of it", async () => {
+  const measurements = await measureSmallJournal();
+  const at = (name: string): Measurement => {
+    const found = measurements.find((m) => m.name === name);
+    if (!found) throw new Error(`${name} is missing from the harness`);
+    return found;
+  };
+
+  const total = at('archive-restore').ms;
+  const files = at('archive-restore-files').ms;
+  const db = at('archive-restore-db').ms;
+
+  /* `db` is `total` minus `files`, so checking that they sum back to `total`
+     would prove nothing. What is worth asserting is that the streaming window
+     is real: it has to start and end inside the restore, and both halves have
+     to have done some work. A `files` of zero or less is the failure that
+     matters, because it means the generator's timestamp never landed and the
+     whole breakdown would be attributing everything to the transaction. */
+  expect(files).toBeGreaterThan(0);
+  expect(files).toBeLessThan(total);
+  expect(db).toBeGreaterThan(0);
+  // And the read is inside the streaming window, not beside it.
+  expect(at('archive-restore-read').ms).toBeLessThanOrEqual(files);
+});
+
 test('budgets.json covers exactly what the harness measures', async () => {
   const measured = (await measureSmallJournal()).map((m) => m.name).sort();
   expect(Object.keys(budgets.measurements).sort()).toEqual(measured);

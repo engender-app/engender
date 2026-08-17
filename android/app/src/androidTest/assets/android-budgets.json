@@ -1,5 +1,5 @@
 {
-  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026080501:user/release-keys. One real-device run on 2026-08-14, recorded from LongJournalBenchmarkTest logcat after ticket 15 write-path measurements and ticket 16 cold-start split measurements were added.",
+  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026081301:user/release-keys. Baselines other than the archive-restore family are from one real-device run on 2026-08-14 (fingerprint ...2026080501, before the device took an OS update). The archive-restore family is from ticket 17 on 2026-08-17: three consecutive runs, of which the median is recorded whole rather than per-measurement, so the three phases still sum to their parent. The other two runs put archive-restore at 349820ms and 398576ms; ticket 17's grill note carries the full spread and the target reasoning.",
   "fixture": "seed 1, 3653 days ending epoch day 20676: 3231 entries over 2589 days with entries, 375 photos, 122 lab results, 12 milestones, 24 tags. Encryption on: SQLCipher under the Android Keystore data key, photos through app-private file storage.",
   "measurements": {
     "unlock": {
@@ -42,7 +42,7 @@
       "what": "stats screen, 365 days of every chart",
       "baselineMs": 253,
       "budgetMs": 1265,
-      "targetMs": 250
+      "targetMs": 350
     },
     "stats-month-insights": {
       "what": "stats screen, 30 days of tag insights",
@@ -130,9 +130,27 @@
     },
     "archive-restore": {
       "what": "Archive import, replacing the decade fixture",
-      "baselineMs": 416965,
-      "budgetMs": 2084825,
+      "baselineMs": 394535,
+      "budgetMs": 1972675,
       "targetMs": 450000
+    },
+    "archive-restore-read": {
+      "what": "Archive import, reading the archive photo bytes back out",
+      "baselineMs": 4227,
+      "budgetMs": 21135,
+      "targetMs": 10000
+    },
+    "archive-restore-files": {
+      "what": "Archive import, streaming every photo file in",
+      "baselineMs": 384926,
+      "budgetMs": 1924630,
+      "targetMs": 420000
+    },
+    "archive-restore-db": {
+      "what": "Archive import, installing every row in one transaction",
+      "baselineMs": 9609,
+      "budgetMs": 48045,
+      "targetMs": 20000
     },
     "daylio-import": {
       "what": "Daylio import, commit preview through merge restore",

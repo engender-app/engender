@@ -91,11 +91,13 @@ export async function measureLongJournal(
      allocation the app never makes. */
   const held: unknown[] = [];
 
+  /** Returns what it recorded, which only archive-restore uses: its phases
+      are derived from the total rather than timed separately. */
   async function measure(
     name: string,
     what: string,
     operation: () => Promise<{ result: unknown; detail: string }>
-  ): Promise<void> {
+  ): Promise<number> {
     const startedAt = performance.now();
     const { result, detail } = await operation();
     const ms = performance.now() - startedAt;
@@ -106,6 +108,7 @@ export async function measureLongJournal(
       ms,
       detail
     });
+    return ms;
   }
 
   // --- calendar -----------------------------------------------------------
@@ -330,28 +333,81 @@ export async function measureLongJournal(
     };
   });
 
-  const snapshotFiles = async function* (): AsyncIterable<{ name: string; bytes: Uint8Array }> {
-    const names = snapshot.files.map((file) => file.name);
-    if (snapshot.readFiles) {
-      const BATCH_SIZE = 16;
-      for (let i = 0; i < names.length; i += BATCH_SIZE) {
-        const batch = names.slice(i, i + BATCH_SIZE);
-        const bytes = await snapshot.readFiles(batch);
-        for (let j = 0; j < batch.length; j++) {
-          const body = bytes[j];
-          if (!body) throw new Error(`archive snapshot file missing while restoring: ${batch[j]}`);
-          yield { name: batch[j], bytes: body };
-        }
-      }
-      return;
-    }
+  /* --- archive-restore, and where its time goes (ticket 17) ---------------
 
-    for (const name of names) {
-      yield { name, bytes: await snapshot.readFile(name) };
+     `replace` does two things in sequence and nothing else (restore.ts): it
+     drains the photo stream, writing every file, and then it installs every
+     row in one transaction. Nothing runs after the commit, so those two
+     account for the whole number. There is no post-restore settle inside
+     `replace` to attribute; what the app does after a restore is a re-read,
+     which `first-paint` already measures.
+
+     The stream is instrumented from here rather than from restore.ts, because
+     this side owns the async iterable it hands over and production code
+     should not grow a timing hook to be benchmarked. Three numbers come out,
+     and the first is nested inside the second rather than beside it:
+
+       -read   time inside the snapshot's `readFiles`, accumulated: the photo
+               bytes coming back out of the store.
+       -files  the whole streaming window - those reads and the writes they
+               feed, interleaved eight at a time (restore.ts's
+               FILE_WRITE_CONCURRENCY), so read and write overlap and only
+               the window itself is a wall-clock figure.
+       -db     what is left, which is the transaction.
+
+     Two things neither number can see, both of which err the same safe way.
+     `-db` carries whatever writes were still in flight when the stream ended,
+     because restore.ts awaits them before opening the transaction and this
+     side cannot see that await. And `-read` is wall clock around the read
+     while up to eight writes contend with it, on the same event loop and, on
+     Android, the same bridge - so it is the cost of reading under load rather
+     than the cost of reading. Both inflate the cheap half at the expensive
+     half's expense: `-db` looks worse than it is, `-read` looks worse than it
+     is, and the write cost the whole floor argument rests on is therefore
+     understated rather than flattered. At eight of several hundred files each
+     is around a percent. */
+  let restoreStartedAt = 0;
+  let streamEndedAt = 0;
+  let fileReadMs = 0;
+
+  /** Reads, timed into `fileReadMs`. Both branches below need this and the
+      subtraction is easy to get subtly wrong twice. */
+  const timingRead = async <T>(read: () => Promise<T>): Promise<T> => {
+    const startedAt = performance.now();
+    const value = await read();
+    fileReadMs += performance.now() - startedAt;
+    return value;
+  };
+
+  const snapshotFiles = async function* (): AsyncIterable<{ name: string; bytes: Uint8Array }> {
+    try {
+      const names = snapshot.files.map((file) => file.name);
+      if (snapshot.readFiles) {
+        const BATCH_SIZE = 16;
+        for (let i = 0; i < names.length; i += BATCH_SIZE) {
+          const batch = names.slice(i, i + BATCH_SIZE);
+          const bytes = await timingRead(() => snapshot.readFiles!(batch));
+          for (let j = 0; j < batch.length; j++) {
+            const body = bytes[j];
+            if (!body) throw new Error(`archive snapshot file missing while restoring: ${batch[j]}`);
+            yield { name: batch[j], bytes: body };
+          }
+        }
+        return;
+      }
+
+      for (const name of names) {
+        yield { name, bytes: await timingRead(() => snapshot.readFile(name)) };
+      }
+    } finally {
+      // In a finally so both branches and an early break are covered: this is
+      // the moment restore.ts stops streaming and starts the transaction.
+      streamEndedAt = performance.now();
     }
   };
 
-  await measure('archive-restore', 'Archive import, replacing the decade fixture', async () => {
+  const restoreMs = await measure('archive-restore', 'Archive import, replacing the decade fixture', async () => {
+    restoreStartedAt = performance.now();
     await journal.archive.replace({
       journal: snapshot.journal,
       files: snapshotFiles()
@@ -361,6 +417,40 @@ export async function measureLongJournal(
       detail: `${snapshot.journal.entries.length} entries, ${snapshot.files.length} files`
     };
   });
+
+  /* Derived rather than timed: these three divide the measurement above, so
+     they are pushed from its numbers instead of re-running any of it.
+
+     Loudly rather than quietly, if the stream never ran: `streamEndedAt`
+     would still be zero, `-files` would come out as minus the page's uptime
+     and `-db` would swallow the lot. That is a wrong baseline rather than a
+     missing one, and budgets.mjs's rule is that this suite fails closed. */
+  if (streamEndedAt === 0) {
+    throw new Error('archive-restore never streamed a file, so its phases cannot be attributed');
+  }
+  const streamMs = streamEndedAt - restoreStartedAt;
+  const share = (part: number) => `${((part / restoreMs) * 100).toFixed(0)}%`;
+
+  measurements.push(
+    {
+      name: 'archive-restore-read',
+      what: 'Archive import, reading the archive photo bytes back out',
+      ms: fileReadMs,
+      detail: `${snapshot.files.length} files, ${share(fileReadMs)} of archive-restore, inside its streaming window`
+    },
+    {
+      name: 'archive-restore-files',
+      what: 'Archive import, streaming every photo file in',
+      ms: streamMs,
+      detail: `${snapshot.files.length} files read out and written back, ${share(streamMs)} of archive-restore`
+    },
+    {
+      name: 'archive-restore-db',
+      what: 'Archive import, installing every row in one transaction',
+      ms: restoreMs - streamMs,
+      detail: `${snapshot.journal.entries.length} entries, ${share(restoreMs - streamMs)} of archive-restore`
+    }
+  );
 
   const daylioPreview = await journal.archive.previewDaylioImport(daylioCsv(summary.lastEpochDay + 30, summary.entries), {
     tagLabels: () => []
