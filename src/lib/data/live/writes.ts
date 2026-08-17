@@ -124,7 +124,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     reads: ['getReminders']
   },
   tally: {
-    writes: { log: ['tally'], deleteEvent: ['tally'] },
+    writes: { log: ['tally'], setContext: ['tally'], deleteEvent: ['tally'] },
     reads: ['getEvents']
   },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).

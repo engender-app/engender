@@ -62,21 +62,28 @@
     goto(`/entry/new/today?seedMood=${v}`);
   }
 
-  /* One tap logs the counter; the sheet that opens is for the optional
-     context field only, never a full entry (CONTEXT: "Tally event"). */
+  /* The tap itself logs the counter, with no context, so it never waits on
+     anything after it: the sheet that follows is an optional way to attach
+     context to that same event, and dismissing it (Escape, tapping the
+     scrim) leaves the tap logged rather than discarding it (CONTEXT: "Tally
+     event"). */
   let tallyKind = $state<TallyKind | null>(null);
+  let tallyEventId = $state<string | null>(null);
   let tallyContext = $state('');
   const tallyLabel = (kind: TallyKind) => (kind === 'misgendered' ? m.tally_misgendered() : m.tally_correctly_gendered());
 
-  function openTally(kind: TallyKind) {
+  async function tapTally(kind: TallyKind) {
     tallyContext = '';
     tallyKind = kind;
+    tallyEventId = await journal.tally.log({ epochDay: today, kind });
   }
 
-  async function confirmTally() {
-    if (!tallyKind) return;
-    await journal.tally.log({ epochDay: today, kind: tallyKind, context: tallyContext.trim() });
+  async function saveTallyContext() {
+    if (!tallyEventId) return;
+    const context = tallyContext.trim();
+    if (context) await journal.tally.setContext(tallyEventId, context);
     tallyKind = null;
+    tallyEventId = null;
   }
 </script>
 
@@ -143,10 +150,10 @@
   <div class="card">
     <p class="quicklog-title">{m.tally_card_title()}</p>
     <div class="tally-buttons">
-      <button class="btn btn-soft" onclick={() => openTally('misgendered')}>
+      <button class="btn btn-soft" onclick={() => tapTally('misgendered')}>
         <Icon name="x" size={18} /> <span>{m.tally_misgendered()}</span>
       </button>
-      <button class="btn btn-soft" onclick={() => openTally('correctly_gendered')}>
+      <button class="btn btn-soft" onclick={() => tapTally('correctly_gendered')}>
         <Icon name="check" size={18} /> <span>{m.tally_correctly_gendered()}</span>
       </button>
     </div>
@@ -221,7 +228,14 @@
     <p class="muted small" style="margin-top:var(--space-3)">{m.metric_note()}</p>
   </Sheet>
 
-  <Sheet open={tallyKind !== null} title={tallyKind ? tallyLabel(tallyKind) : ''} onClose={() => (tallyKind = null)}>
+  <Sheet
+    open={tallyKind !== null}
+    title={tallyKind ? tallyLabel(tallyKind) : ''}
+    onClose={() => {
+      tallyKind = null;
+      tallyEventId = null;
+    }}
+  >
     {#if tallyKind}
       <h3>{tallyLabel(tallyKind)}</h3>
       <textarea
@@ -230,8 +244,8 @@
         placeholder={m.tally_context_placeholder()}
         bind:value={tallyContext}
       ></textarea>
-      <button class="btn btn-primary btn-block" style="margin-top:var(--space-3)" onclick={confirmTally}>
-        <span>{m.tally_log_button()}</span>
+      <button class="btn btn-primary btn-block" style="margin-top:var(--space-3)" onclick={saveTallyContext}>
+        <span>{m.tally_add_context_button()}</span>
       </button>
     {/if}
   </Sheet>

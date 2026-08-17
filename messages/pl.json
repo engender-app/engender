@@ -1084,7 +1084,7 @@
   "tally_misgendered": "Zmisgenderowano mnie",
   "tally_correctly_gendered": "Zwrócono się do mnie dobrze",
   "tally_context_placeholder": "Dodaj kontekst (opcjonalnie)",
-  "tally_log_button": "Zapisz",
+  "tally_add_context_button": "Dodaj",
   "tally_trend_title": "Licznik",
   "tally_trend_sub": "misgenderowanie i poprawne zwracanie się, w czasie"
 }

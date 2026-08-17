@@ -46,6 +46,18 @@ test('an unknown kind is refused by the schema before it ever reaches a screen',
   await assert.rejects(journal.tally.log({ epochDay: 100, kind: 'confused' as never }));
 });
 
+test('context can be attached after the tap, since the one-tap log must not wait on it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
+
+  await journal.tally.setContext(id, 'at the pharmacy');
+
+  assert.deepEqual(await journal.tally.getEvents('misgendered'), [
+    { id, epochDay: 100, kind: 'misgendered', context: 'at the pharmacy' }
+  ]);
+  await assert.rejects(journal.tally.setContext('nope', 'x'), /unknown tally/);
+});
+
 test('deleting a tally event is idempotent', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.tally.log({ epochDay: 100, kind: 'misgendered' });

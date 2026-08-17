@@ -4,7 +4,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { TallyEvent, TallyKind } from '../types';
-import { mintUuid, now } from './support';
+import { assertChanged, mintUuid, now } from './support';
 
 export interface TallyEventInput {
   kind: TallyKind;
@@ -13,8 +13,13 @@ export interface TallyEventInput {
 }
 
 export interface TallyArea {
-  /** Returns the event's id. */
+  /** Returns the event's id. The one-tap counter calls this alone, with no
+      context, so the tap itself is never gated on anything after it. */
   log(input: TallyEventInput): Promise<string>;
+  /** Attaches context to an already-logged event - the sheet that follows a
+      tap is optional, so the tap must not wait on it. Throws on an unknown
+      id. */
+  setContext(id: string, context: string): Promise<void>;
   /** One kind's events, oldest first. */
   getEvents(kind: TallyKind): Promise<TallyEvent[]>;
   /** Idempotent. */
@@ -30,6 +35,15 @@ export function makeTallyArea(driver: SqliteDriver): TallyArea {
         [uuid, input.epochDay, input.kind, input.context ?? '', now()]
       );
       return uuid;
+    },
+
+    async setContext(id, context) {
+      const result = await driver.run('UPDATE tally_event SET context = ?, updated_at = ? WHERE uuid = ?', [
+        context,
+        now(),
+        id
+      ]);
+      assertChanged(result, `tally event: ${id}`);
     },
 
     async getEvents(kind) {

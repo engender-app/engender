@@ -1060,7 +1060,7 @@
   "tally_misgendered": "Misgendered",
   "tally_correctly_gendered": "Correctly gendered",
   "tally_context_placeholder": "Add context (optional)",
-  "tally_log_button": "Log",
+  "tally_add_context_button": "Add",
   "tally_trend_title": "Tally",
   "tally_trend_sub": "misgendering and correct gendering, over time"
 }
