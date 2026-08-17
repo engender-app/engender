@@ -179,6 +179,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/exposure">
+      <span class="row-icon"><Icon name="stats" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.regimen_exposure_link()}</span>
+        <span class="row-subtitle">{m.regimen_exposure_link_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
   </div>
 
   {#if episodesQuery.loading}

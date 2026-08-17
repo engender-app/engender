@@ -163,6 +163,12 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     },
     reads: ['getEntries', 'getProjections']
   },
+  // Read-only, like stats below: exposure counters never write (phase 4
+  // ticket 05).
+  exposure: {
+    writes: {},
+    reads: ['getCounters']
+  },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {
     writes: {},
