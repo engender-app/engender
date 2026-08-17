@@ -196,7 +196,7 @@ npm run check:progressive-release -- --file docs/progressive-release-record.json
 ```
 
 See `docs/progressive-release.md` and start from
-`docs/progressive-release-record.template.json`.
+`scripts/progressive-release-record.template.json`.
 
 The DNS record, deployment access, store account and signing key behind all of
 this are steps a person has to take, on one particular machine, so the wizard
