@@ -34,6 +34,7 @@
   "note_placeholder": "What happened? How did it feel?",
   "photos_label": "Photos",
   "add_photo": "Add",
+  "add_photo_camera": "Camera",
   "gender_label": "Gender",
   "gender_hint": "However it feels right now. There are no wrong answers.",
   "preset_prefix": "preset:",

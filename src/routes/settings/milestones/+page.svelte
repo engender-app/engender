@@ -5,7 +5,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
-  import { pickPhotos, type EditorPhoto } from '$lib/stores/photoPicking';
+  import { capturePhoto, pickPhotos, type EditorPhoto } from '$lib/stores/photoPicking';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -59,6 +59,11 @@
 
   async function pickPhoto() {
     const [photo] = await pickPhotos(1); // a milestone shows one
+    if (photo && editor) editor.photo = { kind: 'picked', photo };
+  }
+
+  async function takePhoto() {
+    const photo = await capturePhoto();
     if (photo && editor) editor.photo = { kind: 'picked', photo };
   }
 
@@ -166,7 +171,10 @@
             </div>
           {:else}
             <button class="photo-add" aria-label={m.add_photo()} onclick={pickPhoto}>
-              <Icon name="camera" size={20} /><span>{m.add_photo()}</span>
+              <Icon name="image" size={20} /><span>{m.add_photo()}</span>
+            </button>
+            <button class="photo-add" aria-label={m.add_photo_camera()} onclick={takePhoto}>
+              <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
             </button>
           {/if}
         </div>
