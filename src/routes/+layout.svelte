@@ -264,17 +264,19 @@
     if (!isAndroid() || !isReadyState(bootState)) return;
     try {
       const { route } = await androidReminders.consumeLaunchRoute();
-      if (!route || !isValidReminderLaunchRoute(route) || route === page.url.pathname) return;
+      if (!route || !isValidAndroidLaunchRoute(route) || route === page.url.pathname) return;
       await goto(route);
     } catch (error) {
       console.error('Could not consume reminder launch route', error);
     }
   }
 
-  function isValidReminderLaunchRoute(route: string) {
-    // Phase 4 features ticket 04: wrapped and on-this-day notifications
-    // deep-link through this same launch-route mechanism, mirroring the
-    // native allowlist in ReminderScheduler.sanitizeLaunchRoute.
+  /* Named for what it now validates, not for where the route came from: this
+     mechanism (androidReminders.consumeLaunchRoute) is shared by reminders,
+     check-in, and - as of phase 4 features ticket 04 - wrapped and
+     on-this-day notifications, mirroring the native allowlist in
+     ReminderScheduler.sanitizeLaunchRoute. */
+  function isValidAndroidLaunchRoute(route: string) {
     return (
       /^\/settings\/reminders(?:\/[^/]+)?$/.test(route) ||
       /^\/entry\/new\/\d+$/.test(route) ||
