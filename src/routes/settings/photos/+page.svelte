@@ -9,6 +9,9 @@
     toComparePair,
     toggleCompareAnchor
   } from '$lib/data/photos/compare-state';
+  import { MEASUREMENT_TYPES } from '$lib/data/journal/measurements';
+  import { measurementTypeName } from '$lib/data/vocabulary/labels';
+  import type { Measurement } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -31,6 +34,27 @@
     if (!pair) return '';
     const duration = calendarDuration(photos[pair.left].epochDay, photos[pair.right].epochDay);
     return `${fmtDuration(duration)} ${m.apart_suffix()}`;
+  });
+
+  /* The measurement combined view (ticket 08): the same date range the two
+     anchor photos span, so a number and an image answer "what changed"
+     side by side. */
+  let rangeQuery = liveQuery(['measurement'], (j) =>
+    pair ? j.measurements.getMeasurementsInRange(photos[pair.left].epochDay, photos[pair.right].epochDay) : Promise.resolve([])
+  );
+  let rangeMeasurements = $derived(rangeQuery.value ?? []);
+
+  let rangeSummaries = $derived.by(() => {
+    const byType = new Map<Measurement['type'], Measurement[]>();
+    for (const measurement of rangeMeasurements) {
+      const list = byType.get(measurement.type) ?? [];
+      list.push(measurement);
+      byType.set(measurement.type, list);
+    }
+    return MEASUREMENT_TYPES.filter((t) => byType.has(t)).map((t) => {
+      const list = byType.get(t)!;
+      return { type: t, first: list[0], last: list[list.length - 1] };
+    });
   });
 
   function toggle(id: string) {
@@ -65,6 +89,28 @@
         </div>
       {/each}
     </div>
+    {#if rangeSummaries.length}
+      <div class="card" style="margin-top:var(--space-4)">
+        <h3>{m.ph_measurements_title()}</h3>
+        <div class="list-group">
+          {#each rangeSummaries as s (s.type)}
+            <div class="list-row" data-range-measurement={s.type}>
+              <span class="row-text">
+                <span class="row-title">{measurementTypeName(s.type)}</span>
+                <span class="row-subtitle">
+                  {#if s.first.id === s.last.id}
+                    {s.first.value} {s.first.unit}
+                  {:else}
+                    {s.first.value} {s.first.unit} → {s.last.value} {s.last.unit}
+                  {/if}
+                </span>
+              </span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     <div style="margin-top:var(--space-6)">
       <button class="btn btn-soft" onclick={() => { comparing = false; selected = []; }}>
         <span>{m.ph_back_to_all()}</span>

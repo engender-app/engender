@@ -271,6 +271,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/measurements">
+      <span class="row-icon"><Icon name="ruler" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.body_measurements()}</span>
+        <span class="row-subtitle">{m.body_measurements_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
   </div>
 
   <SectionTitle text={m.settings_privacy()} />

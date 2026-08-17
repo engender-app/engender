@@ -68,6 +68,10 @@ export interface PreferenceValues {
   entryNudges: boolean;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone' | 'prolactin', string>>;
+  /** Which measurement types have had their capture-protocol guidance
+      dismissed (ticket 08). Guidance is opt-in, never required to save a
+      measurement, so this only ever hides a card - it blocks nothing. */
+  measurementProtocolDismissed: Partial<Record<'waist' | 'hips' | 'chest' | 'underbust', boolean>>;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
@@ -101,6 +105,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   checkInTime: '21:00',
   entryNudges: true,
   preferredLabUnits: {},
+  measurementProtocolDismissed: {},
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
@@ -139,7 +144,8 @@ export const DEVICE_LOCAL_KEYS = [
   'autoExportEnabled',
   'autoExportSchedule',
   'lastBackupAt',
-  'backupNoticeDismissed'
+  'backupNoticeDismissed',
+  'measurementProtocolDismissed'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Mirrored outside SQLite because it is needed before the database opens

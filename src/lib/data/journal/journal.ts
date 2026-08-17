@@ -15,6 +15,7 @@ import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeLabsArea, type LabsArea } from './labs';
+import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePhotosArea, type PhotosArea } from './photos';
 import { makeRemindersArea, type RemindersArea } from './reminders';
@@ -55,6 +56,7 @@ export interface Journal {
   milestones: MilestonesArea;
   photos: PhotosArea;
   labs: LabsArea;
+  measurements: MeasurementsArea;
   reminders: RemindersArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
@@ -78,6 +80,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     milestones: makeMilestonesArea(driver, files),
     photos: makePhotosArea(driver, files),
     labs: makeLabsArea(driver),
+    measurements: makeMeasurementsArea(driver),
     reminders: makeRemindersArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),

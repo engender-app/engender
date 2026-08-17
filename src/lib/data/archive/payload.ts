@@ -109,6 +109,15 @@ export interface ArchiveLabResult {
   note: string;
 }
 
+export interface ArchiveMeasurement {
+  id: string;
+  type: 'waist' | 'hips' | 'chest' | 'underbust';
+  epochDay: number;
+  value: number;
+  unit: string;
+  note: string;
+}
+
 export interface ArchiveReminder {
   id: string;
   title: string;
@@ -129,6 +138,7 @@ export interface ArchiveJournal {
   entries: ArchiveEntry[];
   milestones: ArchiveMilestone[];
   labResults: ArchiveLabResult[];
+  measurements: ArchiveMeasurement[];
   reminders: ArchiveReminder[];
 }
 

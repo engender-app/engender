@@ -216,6 +216,7 @@ const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]):
   entries,
   milestones: [],
   labResults: [],
+  measurements: [],
   reminders: []
 });
 
