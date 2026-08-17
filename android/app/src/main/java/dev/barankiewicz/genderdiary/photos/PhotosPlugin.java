@@ -260,11 +260,11 @@ public class PhotosPlugin extends Plugin {
     }
 
     private File photoDirectory(PluginCall call) {
-        return PhotoFiles.directory(getContext(), call.getString("directory", "photos"));
+        return PhotoFiles.directory(getContext(), call.getString("directory", PhotoFiles.DEFAULT_DIRECTORY));
     }
 
     private File fileFor(PluginCall call, String name) {
-        return PhotoFiles.fileFor(getContext(), call.getString("directory", "photos"), name);
+        return PhotoFiles.fileFor(getContext(), call.getString("directory", PhotoFiles.DEFAULT_DIRECTORY), name);
     }
 
     private String readBase64(Uri uri) throws Exception {
@@ -285,7 +285,6 @@ public class PhotosPlugin extends Plugin {
     }
 
     private static String message(Exception e) {
-        String detail = e.getMessage();
-        return detail == null || detail.isEmpty() ? e.getClass().getName() : detail;
+        return PhotoFiles.message(e);
     }
 }

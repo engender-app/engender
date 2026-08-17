@@ -13,10 +13,12 @@ import java.io.IOException;
  * rather than twice.
  */
 final class PhotoFiles {
+    static final String DEFAULT_DIRECTORY = "photos";
+
     private PhotoFiles() {}
 
     static File directory(Context context, String directoryName) {
-        if (directoryName == null) directoryName = "photos";
+        if (directoryName == null) directoryName = DEFAULT_DIRECTORY;
         if (directoryName.trim().isEmpty() || directoryName.contains("/") || directoryName.contains("\\")
             || directoryName.contains("..")) {
             throw new IllegalArgumentException("invalid photo directory name");
@@ -50,5 +52,13 @@ final class PhotoFiles {
             throw new IllegalArgumentException("invalid photo file name");
         }
         return new File(directory(context, directoryName), trimmed);
+    }
+
+    /** Shared by both transports so a failure looks the same to either
+        caller: a message when the exception has one, the exception's own
+        class name when it does not. */
+    static String message(Exception e) {
+        String detail = e.getMessage();
+        return detail == null || detail.isEmpty() ? e.getClass().getName() : detail;
     }
 }

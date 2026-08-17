@@ -64,6 +64,11 @@ public final class PhotoWriteChannel {
     private static final String CHANNEL_NAME = "androidPhotoWriteChannel";
 
     private final Context appContext;
+    /** Matches restore.ts's FILE_WRITE_CONCURRENCY, the only caller that puts
+        more than one write in flight at a time - a bigger pool here would let
+        it queue writes restore.ts itself never sends concurrently, and a
+        smaller one would reintroduce the queuing this channel exists to
+        remove. If that constant moves, move this with it. */
     private final ExecutorService writes = Executors.newFixedThreadPool(8);
 
     private PhotoWriteChannel(Context context) {
@@ -104,7 +109,7 @@ public final class PhotoWriteChannel {
         try {
             JSONObject header = new JSONObject(message.getData());
             name = header.getString("name");
-            directory = header.optString("directory", "photos");
+            directory = header.optString("directory", PhotoFiles.DEFAULT_DIRECTORY);
         } catch (JSONException e) {
             replyError(port, "invalid write header");
             return;
@@ -135,7 +140,7 @@ public final class PhotoWriteChannel {
             }
             port.postMessage(new WebMessageCompat("{\"ok\":true}"));
         } catch (Exception e) {
-            replyError(port, e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+            replyError(port, PhotoFiles.message(e));
         }
     }
 
