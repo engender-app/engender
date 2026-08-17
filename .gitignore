@@ -69,3 +69,8 @@ static/tesseract/
 # branch tracks its sources and is unaffected: ignoring a path does not untrack
 # what is already committed under it.
 prototype/
+
+# Phase 0's throwaway static mockup, already committed under this path - same
+# note as prototype/ above applies: ignoring it here stops new/changed files
+# in it from showing up, not what git already tracks there.
+mockup/
