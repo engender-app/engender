@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
+  import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
+  import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { pickPhotos } from '$lib/stores/photoPicking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -40,9 +43,36 @@
   // svelte-ignore state_referenced_locally
   let entryDraft = $state<EntryDraft>(createEntryDraft(epochDay ?? todayEpochDay(), undefined, seedMood));
 
+  /* Survives an Android process death (ticket 14): mirrored to localStorage
+     on every change below and cleared the moment this editor unmounts, so
+     only a killed-while-backgrounded process ever leaves it to be found on
+     the next mount. A same-process background/resume never unmounts this
+     component at all, so its in-memory state alone already handles that
+     case - this only ever restores after a real process death. */
+  const draftStore = localStorageEntryDraft();
+
+  function restoreIfPersisted(target: EntryDraft) {
+    const persisted = draftStore.read();
+    if (!persisted) return;
+    if (draftMatchesRoute(persisted, entryId, target.epochDay)) applyPersistedDraft(target, persisted);
+    else draftStore.clear(); // a different editor's leftovers - not this one's to resume
+  }
+
+  // svelte-ignore state_referenced_locally
+  restoreIfPersisted(entryDraft);
+
   onFirstResult(loaded, (entry) => {
-    if (entry) entryDraft = createEntryDraft(entry.epochDay, entry);
+    if (!entry) return;
+    const fresh = createEntryDraft(entry.epochDay, entry);
+    restoreIfPersisted(fresh);
+    entryDraft = fresh;
   });
+
+  $effect(() => {
+    draftStore.write(serializeDraft(entryDraft));
+  });
+
+  onDestroy(() => draftStore.clear());
 
   let deleteOpen = $state(false);
   let saving = $state(false);
