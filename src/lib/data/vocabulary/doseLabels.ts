@@ -1,18 +1,23 @@
-/* Message lookups for the dose log's closed vocabularies (phase 4 ticket
-   02). Here rather than in each screen because the map and the log list
-   name the same sites, and here rather than in doseSchedule.ts because that
-   file is the pure domain layer and knows nothing about locales.
+/* Display wording for the dose log's closed vocabularies (phase 4 ticket
+   02), alongside reminderLabel.ts for the same reason it is there: the
+   wording speaks paraglide, and nothing the Node tier touches may import
+   that (ADR-0016). doseSchedule.ts holds the vocabularies themselves and
+   stays free of it; this is where they get their words.
 
-   Every vocabulary is keyed one message per member rather than composed from
-   parts. Polish inflects a side with its region's gender ("udo lewe" but
-   "pośladek lewy"), so a "{region}, {side}" template would be wrong in half
-   the injection sites, and the same trap waits in any language with
-   agreement. */
+   Each record is typed against a union derived from those `as const` lists,
+   the rule labels.ts sets out: adding a site or a route without adding its
+   message is then a typecheck failure rather than a raw key on screen.
+
+   Keyed one message per member rather than composed from parts. Polish
+   inflects a side with its region's gender ("udo lewe" but "pośladek lewy"),
+   so a "{region}, {side}" template would be wrong in half the injection
+   sites, and the same trap waits in any language with agreement. */
 
 import { m } from '$lib/paraglide/messages';
+import type { ApplicationSiteKey, InjectionSiteKey } from '$lib/data/doseSchedule';
 import type { DoseRoute, DoseStatus, InjectionVehicle, PauseReason } from '$lib/data/types';
 
-const INJECTION_SITE_LABELS: Record<string, () => string> = {
+const INJECTION_SITE_LABELS: Record<InjectionSiteKey, () => string> = {
   'ventrogluteal-left': m.dose_site_ventrogluteal_left,
   'ventrogluteal-right': m.dose_site_ventrogluteal_right,
   'dorsogluteal-left': m.dose_site_dorsogluteal_left,
@@ -27,7 +32,7 @@ const INJECTION_SITE_LABELS: Record<string, () => string> = {
   'loveHandle-right': m.dose_site_loveHandle_right
 };
 
-const APPLICATION_SITE_LABELS: Record<string, () => string> = {
+const APPLICATION_SITE_LABELS: Record<ApplicationSiteKey, () => string> = {
   abdomen: m.dose_app_site_abdomen,
   upperArm: m.dose_app_site_upperArm,
   innerArm: m.dose_app_site_innerArm,
@@ -62,11 +67,15 @@ const PAUSE_REASON_LABELS: Record<PauseReason, () => string> = {
   accidental: m.pause_reason_accidental
 };
 
-/* A site read back from an older archive could name a region this build's
-   map no longer has, so the raw key is the fallback rather than a crash: a
-   site nobody can read is still better than a dose nobody can open. */
-export const injectionSiteLabel = (site: string): string => INJECTION_SITE_LABELS[site]?.() ?? site;
-export const applicationSiteLabel = (site: string): string => APPLICATION_SITE_LABELS[site]?.() ?? site;
+/* Both take a plain string, not the key union: a site read back from an
+   older archive could name a region this build's map no longer has, and the
+   raw key is a better fallback than a crash - a site nobody can read still
+   beats a dose nobody can open. The records above are exhaustive over the
+   current keys, which is what the typecheck guards. */
+export const injectionSiteLabel = (site: string): string =>
+  INJECTION_SITE_LABELS[site as InjectionSiteKey]?.() ?? site;
+export const applicationSiteLabel = (site: string): string =>
+  APPLICATION_SITE_LABELS[site as ApplicationSiteKey]?.() ?? site;
 export const routeLabel = (route: DoseRoute): string => ROUTE_LABELS[route]?.() ?? route;
 export const statusLabel = (status: DoseStatus): string => STATUS_LABELS[status]?.() ?? status;
 export const vehicleLabel = (vehicle: InjectionVehicle): string => VEHICLE_LABELS[vehicle]?.() ?? vehicle;

@@ -206,12 +206,33 @@ test('changing a dose from injection to oral drops the site and vehicle it no lo
   assert.ok(!('vehicle' in dose));
 });
 
+test('an injection row with no vehicle reads back as unknown, not as oil', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  // The shape an archive from another build could carry: route says injection,
+  // the vehicle column says nothing.
+  await db.run(
+    `INSERT INTO dose_event (uuid, timestamp, route, dose, dose_unit, status, updated_at)
+     VALUES ('imported', ?, 'im', 4, 'mg', 'taken', 0)`,
+    [at(100)]
+  );
+
+  const [dose] = await journal.doses.getDoses(100, 100);
+  assert.equal(dose.route, 'im');
+  assert.equal(dose.route === 'im' ? dose.vehicle : 'set', null, 'a missing vehicle must not become oil');
+  assert.equal(dose.route === 'im' ? dose.injectionSite : 'set', null);
+});
+
 test('updating or deleting an unknown dose id throws rather than silently doing nothing', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(
     journal.doses.upsertDose({ id: 'nope', timestamp: at(100), route: 'oral', dose: 2, doseUnit: 'mg' }),
     /unknown dose event/
   );
+});
+
+test('no schedule delete exists: an episode\'s rhythm is edited, and a pause is what suppresses it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.ok(!('deleteSchedule' in journal.doses), 'no schedule delete operation exists');
 });
 
 test('a schedule belongs to an episode, one per episode, and an update replaces it', async () => {

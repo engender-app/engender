@@ -13,27 +13,34 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseStatus, InjectionVehicle, ScheduledDose } from '../types';
+import { isInjectionDose, isTopicalDose, type ApplicationSiteKey, type InjectionSiteKey } from '../doseSchedule';
 import { startOfDayTimestamp } from '../epochDay';
 import { assertChanged, mintUuid, now } from './support';
 
-/** A dose to write. The route-conditional fields mirror the domain union
-    (types.ts): passing a site for an oral dose is a type error, and a route
-    change on an update drops whatever the new route does not have.
+interface DoseInputFields {
+  id?: string;
+  timestamp: number;
+  dose: number;
+  doseUnit: string;
+  /** Defaults to `taken`. */
+  status?: DoseStatus;
+  /** `changed` doses only. */
+  scheduled?: ScheduledDose | null;
+}
 
-    Written as a distributive conditional (`T extends unknown ? … : never`)
-    because a plain `Omit` over a union keeps only the keys every arm shares,
-    which would have quietly dropped every site and vehicle field here. */
-type DoseInputOf<T> = T extends unknown
-  ? Omit<T, 'id' | 'status' | 'scheduled'> & {
-      id?: string;
-      /** Defaults to `taken`. */
-      status?: DoseStatus;
-      /** `changed` doses only. */
-      scheduled?: ScheduledDose | null;
-    }
-  : never;
+/** A dose to write. Arms mirror the domain union (types.ts), so passing a
+    site for an oral dose is a type error and a route change on an update
+    drops whatever the new route does not have.
 
-export type DoseEventInput = DoseInputOf<DoseEvent>;
+    Stricter than what comes back out, deliberately: a write must name a site
+    the pickers actually offer, while a read admits that a row imported from
+    another build might not (DoseEvent). Spelled out arm by arm rather than
+    derived from DoseEvent, because deriving it would have inherited that
+    nullability and let a new dose be saved with no site at all. */
+export type DoseEventInput =
+  | (DoseInputFields & { route: 'oral' | 'sublingual' })
+  | (DoseInputFields & { route: 'im' | 'sc'; injectionSite: InjectionSiteKey; vehicle: InjectionVehicle })
+  | (DoseInputFields & { route: 'patch' | 'gel'; applicationSite: ApplicationSiteKey });
 
 export interface DoseScheduleInput {
   episodeId: string;
@@ -58,9 +65,9 @@ export interface DosesArea {
       episode, and the adherence view needs the episode's alongside it. */
   getSchedules(): Promise<DoseSchedule[]>;
   /** One schedule per episode: writing a second replaces the first.
-      Refuses an unknown episode. */
+      Refuses an unknown episode. No delete: an episode's rhythm is edited,
+      and an episode that should expect nothing gets a pause instead. */
   upsertSchedule(input: DoseScheduleInput): Promise<string>;
-  deleteSchedule(id: string): Promise<void>;
   /** Every pause, oldest start first. Refuses an unknown episode on write. */
   getPauses(): Promise<DosePause[]>;
   upsertPause(input: DosePauseInput): Promise<string>;
@@ -101,16 +108,23 @@ export function toDoseEvent(row: DoseRow): DoseEvent {
   };
   const route = row.route as DoseRoute;
 
+  /* A direct comparison rather than isInjectionDose: there is no record to
+     narrow yet, this is the code building one.
+
+     The columns are passed through as stored, never defaulted. A null vehicle
+     read back as "oil" would be this module inventing a fact about someone's
+     medication, and the whole point of a `changed` dose is that what was
+     actually used is what gets recorded. */
   if (route === 'im' || route === 'sc') {
     return {
       ...common,
       route,
-      injectionSite: row.injection_site ?? '',
-      vehicle: (row.vehicle as InjectionVehicle | null) ?? 'oil'
+      injectionSite: row.injection_site,
+      vehicle: row.vehicle as InjectionVehicle | null
     };
   }
   if (route === 'patch' || route === 'gel') {
-    return { ...common, route, applicationSite: row.application_site ?? '' };
+    return { ...common, route, applicationSite: row.application_site };
   }
   return { ...common, route };
 }
@@ -123,10 +137,10 @@ function routeColumns(input: DoseEventInput): {
   vehicle: string | null;
   applicationSite: string | null;
 } {
-  if (input.route === 'im' || input.route === 'sc') {
+  if (isInjectionDose(input)) {
     return { injectionSite: input.injectionSite, vehicle: input.vehicle, applicationSite: null };
   }
-  if (input.route === 'patch' || input.route === 'gel') {
+  if (isTopicalDose(input)) {
     return { injectionSite: null, vehicle: null, applicationSite: input.applicationSite };
   }
   return { injectionSite: null, vehicle: null, applicationSite: null };
@@ -249,11 +263,6 @@ export function makeDosesArea(driver: SqliteDriver): DosesArea {
         [uuid, episodeId, input.everyNDays, input.dosesPerDay, now()]
       );
       return uuid;
-    },
-
-    async deleteSchedule(id) {
-      const result = await driver.run('DELETE FROM dose_schedule WHERE uuid = ?', [id]);
-      assertChanged(result, `dose schedule: ${id}`);
     },
 
     async getPauses() {

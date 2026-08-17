@@ -9,39 +9,73 @@
    good/bad. The comparison is the feature (ticket 02, out of scope). */
 
 import { epochDayFromTimestamp } from './epochDay';
-import type { DoseEvent, DosePause, DoseSchedule } from './types';
+import type { DoseEvent, DosePause, DoseRoute, DoseSchedule } from './types';
+
+/** Which routes carry a rotated injection site and a vehicle, and which
+    carry a plain application site.
+
+    Guards over the whole record, not over its `route` field, and generic in
+    that record: a predicate on the field would have answered the question
+    without narrowing the union, so every caller would then have needed a cast
+    to reach the site it had just proved was there. Generic because the same
+    question gets asked of three shapes - a stored DoseEvent, a DoseEventInput
+    on its way in, and the editor's own draft - and `T & { route: … }` narrows
+    each of them to the right arm. */
+export const isInjectionDose = <T extends { route: DoseRoute }>(dose: T): dose is T & { route: 'im' | 'sc' } =>
+  dose.route === 'im' || dose.route === 'sc';
+
+export const isTopicalDose = <T extends { route: DoseRoute }>(dose: T): dose is T & { route: 'patch' | 'gel' } =>
+  dose.route === 'patch' || dose.route === 'gel';
+
+/** The rotation map's regions. Covers both injection routes: the first
+    three are the usual IM sites, the last three the usual SC ones, and
+    plenty of people use a route the "wrong" list would have hidden.
+
+    `as const` so the key union below is derived from this list rather than
+    written out again. labels.ts documents why that matters: a record typed
+    against a derived union makes adding a region without adding its message
+    a typecheck failure instead of a raw key on screen. */
+export const INJECTION_SITE_REGIONS = [
+  'ventrogluteal',
+  'dorsogluteal',
+  'thigh',
+  'deltoid',
+  'abdomen',
+  'loveHandle'
+] as const;
+
+export type InjectionSiteRegion = (typeof INJECTION_SITE_REGIONS)[number];
+export type InjectionSiteSide = 'left' | 'right';
+export type InjectionSiteKey = `${InjectionSiteRegion}-${InjectionSiteSide}`;
 
 /** One region of the injection rotation body map. Sided, because rotating
     is mostly alternating sides, and a map that could not say which side
     would not support the rotation it exists for. */
 export interface InjectionSite {
-  key: string;
-  /** Which muscle or layer, as a message-key suffix. */
-  region: 'ventrogluteal' | 'dorsogluteal' | 'thigh' | 'deltoid' | 'abdomen' | 'loveHandle';
-  side: 'left' | 'right';
+  key: InjectionSiteKey;
+  region: InjectionSiteRegion;
+  side: InjectionSiteSide;
 }
 
-const sided = (region: InjectionSite['region']): InjectionSite[] => [
-  { key: `${region}-left`, region, side: 'left' },
-  { key: `${region}-right`, region, side: 'right' }
-];
-
-/** The rotation map's regions. Covers both injection routes: the upper
-    three are the usual IM sites, the lower three the usual SC ones, and
-    plenty of people use a route the "wrong" list would have hidden. */
-export const INJECTION_SITES: InjectionSite[] = [
-  ...sided('ventrogluteal'),
-  ...sided('dorsogluteal'),
-  ...sided('thigh'),
-  ...sided('deltoid'),
-  ...sided('abdomen'),
-  ...sided('loveHandle')
-];
+export const INJECTION_SITES: InjectionSite[] = INJECTION_SITE_REGIONS.flatMap((region) => [
+  { key: `${region}-left` as const, region, side: 'left' as const },
+  { key: `${region}-right` as const, region, side: 'right' as const }
+]);
 
 /** Where a patch or gel went. A flat list, not the rotation map: a patch
     site is not rotated on an injection site's schedule, so sides and
     muscle layers are precision nobody applying a gel needs. */
-export const APPLICATION_SITES = ['abdomen', 'upperArm', 'innerArm', 'thigh', 'buttock', 'shoulder', 'back'];
+export const APPLICATION_SITES = [
+  'abdomen',
+  'upperArm',
+  'innerArm',
+  'thigh',
+  'buttock',
+  'shoulder',
+  'back'
+] as const;
+
+export type ApplicationSiteKey = (typeof APPLICATION_SITES)[number];
 
 /** One dose the schedule expects. `indexInDay` numbers a multi-dose day's
     slots in order (twice-daily oral is 0 and 1); it is a position, not a
@@ -106,7 +140,14 @@ export interface Adherence {
 /** Pairs doses to slots by position within their day: a day's doses, oldest
     first, fill that day's slots in order. Positional rather than nearest-time
     because the schedule holds no times of day to be near - "twice daily" says
-    two, not 8am and 8pm. */
+    two, not 8am and 8pm.
+
+    `doses` must already be scoped to the same episode whose schedule produced
+    `slots` - resolveEpisodeAt is how a caller does that (regimenEpisode.ts).
+    Handing in a whole window's worth instead puts every earlier episode's
+    doses in `unmatched`, where they read as extras or as taken during a pause,
+    and neither is true. This function cannot check it: it is given slots and
+    doses, and knows nothing about episodes. */
 export function adherence(
   slots: readonly DoseSlot[],
   doses: readonly DoseEvent[],

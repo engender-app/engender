@@ -10,7 +10,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { resolveEpisodeAt } from '$lib/data/regimenEpisode';
-  import { adherence, expectedSlots, pauseCoversDay, APPLICATION_SITES } from '$lib/data/doseSchedule';
+  import { adherence, expectedSlots, isInjectionDose, isTopicalDose, APPLICATION_SITES } from '$lib/data/doseSchedule';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import {
     dateInputValueFromEpochDay,
@@ -28,7 +28,8 @@
     routeLabel,
     statusLabel,
     vehicleLabel
-  } from '$lib/components/doseLabels';
+  } from '$lib/data/vocabulary/doseLabels';
+  import type { ApplicationSiteKey, InjectionSiteKey } from '$lib/data/doseSchedule';
   import type { DoseEvent, DoseRoute, DoseStatus, InjectionVehicle } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -61,12 +62,21 @@
   let activeSchedule = $derived(schedules.find((s) => s.episodeId === activeEpisode?.id) ?? null);
   let activePauses = $derived(pauses.filter((p) => p.episodeId === activeEpisode?.id));
 
+  /* Only the doses this episode is responsible for. Comparing every dose in
+     the window against one episode's slots put each earlier episode's doses
+     in the unmatched list, where the wording says they were extras or fell in
+     a pause - neither of which was true. Resolved rather than filtered by
+     date so the split is the same one every other screen makes. */
+  let episodeDoses = $derived(
+    activeEpisode ? doses.filter((dose) => resolveEpisodeAt(episodes, dose.timestamp)?.id === activeEpisode.id) : []
+  );
+
   /* The comparison runs from the episode's own start day, so a schedule's
      slots line up with the episode rather than with the window's edge. */
   let comparison = $derived.by(() => {
     if (!activeEpisode || !activeSchedule) return null;
     const slots = expectedSlots(activeSchedule, activeEpisode.startEpochDay, from, today);
-    return adherence(slots, doses, activePauses);
+    return adherence(slots, episodeDoses, activePauses);
   });
 
   /** The last injection before `timestamp`, so the site map can mark what to
@@ -76,14 +86,16 @@
     for (let i = doses.length - 1; i >= 0; i--) {
       const dose = doses[i];
       if (dose.timestamp >= before || dose.id === exceptId) continue;
-      if (dose.route === 'im' || dose.route === 'sc') return dose.injectionSite;
+      if (isInjectionDose(dose)) return dose.injectionSite;
     }
     return null;
   }
 
+  /* Null when the row has no site rather than when the route has none: a
+     dose imported without one shows no site line instead of a blank bullet. */
   const siteOf = (dose: DoseEvent): string | null => {
-    if (dose.route === 'im' || dose.route === 'sc') return injectionSiteLabel(dose.injectionSite);
-    if (dose.route === 'patch' || dose.route === 'gel') return applicationSiteLabel(dose.applicationSite);
+    if (isInjectionDose(dose)) return dose.injectionSite ? injectionSiteLabel(dose.injectionSite) : null;
+    if (isTopicalDose(dose)) return dose.applicationSite ? applicationSiteLabel(dose.applicationSite) : null;
     return null;
   };
 
@@ -112,9 +124,10 @@
     route: DoseRoute;
     dose: string;
     doseUnit: string;
-    injectionSite: string;
+    /** `''` until the picker is tapped; the save guard below refuses that. */
+    injectionSite: InjectionSiteKey | '';
     vehicle: InjectionVehicle;
-    applicationSite: string;
+    applicationSite: ApplicationSiteKey | '';
     status: DoseStatus;
     scheduledDose: string;
     scheduledRoute: DoseRoute;
@@ -153,9 +166,9 @@
       route: dose.route,
       dose: String(dose.dose),
       doseUnit: dose.doseUnit,
-      injectionSite: dose.route === 'im' || dose.route === 'sc' ? dose.injectionSite : '',
-      vehicle: dose.route === 'im' || dose.route === 'sc' ? dose.vehicle : 'oil',
-      applicationSite: dose.route === 'patch' || dose.route === 'gel' ? dose.applicationSite : '',
+      injectionSite: isInjectionDose(dose) ? ((dose.injectionSite ?? '') as InjectionSiteKey | '') : '',
+      vehicle: (isInjectionDose(dose) ? dose.vehicle : null) ?? 'oil',
+      applicationSite: isTopicalDose(dose) ? ((dose.applicationSite ?? '') as ApplicationSiteKey | '') : '',
       status: dose.status,
       scheduledDose: dose.scheduled ? String(dose.scheduled.dose) : String(dose.dose),
       scheduledRoute: dose.scheduled?.route ?? dose.route,
@@ -163,8 +176,8 @@
     };
   }
 
-  let editorIsInjection = $derived(editor?.route === 'im' || editor?.route === 'sc');
-  let editorIsTopical = $derived(editor?.route === 'patch' || editor?.route === 'gel');
+  let editorIsInjection = $derived(editor !== null && isInjectionDose(editor));
+  let editorIsTopical = $derived(editor !== null && isTopicalDose(editor));
   /* An injection with no site picked yet cannot be saved: a rotation map
      nobody tapped would store an empty site and quietly break the rotation
      it exists for. */
@@ -190,8 +203,12 @@
         : null;
 
     /* Split by route so each call carries exactly the fields its arm has,
-       which is what stops an oral dose from arriving with a site (types.ts). */
-    if (editor.route === 'im' || editor.route === 'sc') {
+       which is what stops an oral dose from arriving with a site (types.ts).
+       Each branch refuses an untapped picker outright rather than falling
+       through to the next, which would have written an injection as though
+       it had no site to record. */
+    if (isInjectionDose(editor)) {
+      if (editor.injectionSite === '') return;
       await journal.doses.upsertDose({
         id: editor.id,
         timestamp,
@@ -203,7 +220,8 @@
         status: editor.status,
         scheduled
       });
-    } else if (editor.route === 'patch' || editor.route === 'gel') {
+    } else if (isTopicalDose(editor)) {
+      if (editor.applicationSite === '') return;
       await journal.doses.upsertDose({
         id: editor.id,
         timestamp,
@@ -214,7 +232,10 @@
         status: editor.status,
         scheduled
       });
-    } else {
+    } else if (editor.route === 'oral' || editor.route === 'sublingual') {
+      /* Spelled out rather than left as a bare `else`: the editor's draft is a
+         plain record, not the union, so nothing subtracts the other four
+         routes from it here. The three branches cover all six between them. */
       await journal.doses.upsertDose({
         id: editor.id,
         timestamp,
@@ -282,7 +303,7 @@
               <span class="row-subtitle">
                 {whenOf(dose)}
                 {#if site}· {site}{/if}
-                {#if dose.route === 'im' || dose.route === 'sc'}· {vehicleLabel(dose.vehicle)}{/if}
+                {#if isInjectionDose(dose) && dose.vehicle}· {vehicleLabel(dose.vehicle)}{/if}
               </span>
               <span class="row-subtitle">
                 {episode ? m.doses_under_episode({ drug: episode.drug }) : m.doses_no_episode()}

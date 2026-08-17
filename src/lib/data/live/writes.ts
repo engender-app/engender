@@ -142,7 +142,6 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       upsertDose: ['dose'],
       deleteDose: ['dose'],
       upsertSchedule: ['dose'],
-      deleteSchedule: ['dose'],
       upsertPause: ['dose'],
       deletePause: ['dose']
     },

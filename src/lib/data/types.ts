@@ -181,18 +181,21 @@ export type DoseEvent =
   | (DoseEventFields & { route: 'oral' | 'sublingual' })
   | (DoseEventFields & {
       route: 'im' | 'sc';
-      /** A key from INJECTION_SITES (doseSchedule.ts): the rotation body
-          map's regions, which is a different vocabulary from where a patch
-          goes. */
-      injectionSite: string;
-      vehicle: InjectionVehicle;
+      /** Normally a key from INJECTION_SITES (doseSchedule.ts): the rotation
+          body map's regions, a different vocabulary from where a patch goes.
+          Nullable on the way out, not on the way in - a write must name a
+          site the map knows (DoseEventInput), but an archive from another
+          build could hold a row that does not, and reading it back as a made-
+          up site would be worse than reading it back as unknown. */
+      injectionSite: string | null;
+      vehicle: InjectionVehicle | null;
     })
   | (DoseEventFields & {
       route: 'patch' | 'gel';
-      /** A key from APPLICATION_SITES (doseSchedule.ts). A patch or gel
-          site is not rotated on an injection site's schedule, so the two
-          are not one field. */
-      applicationSite: string;
+      /** A key from APPLICATION_SITES (doseSchedule.ts), nullable on read for
+          the same reason. A patch or gel site is not rotated on an injection
+          site's schedule, so the two are not one field. */
+      applicationSite: string | null;
     });
 
 /** How often an episode expects a dose, structured enough to generate

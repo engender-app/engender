@@ -4,7 +4,7 @@
   import { resolveEpisodeAt, episodeEndEpochDay } from '$lib/data/regimenEpisode';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { pauseReasonLabel } from '$lib/components/doseLabels';
+  import { pauseReasonLabel } from '$lib/data/vocabulary/doseLabels';
   import type { PauseReason, RegimenEpisode } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -107,12 +107,21 @@
     newPause = null;
   });
 
+  /* Both fields have to be at least 1: a schedule of "every 0 days" describes
+     no rhythm, and expectedSlots would generate nothing from it. Checked here
+     so the button can go dead rather than accepting a tap and doing nothing. */
+  let scheduleValues = $derived(
+    schedule
+      ? { everyNDays: parseInt(schedule.everyNDays, 10), dosesPerDay: parseInt(schedule.dosesPerDay, 10) }
+      : null
+  );
+  let scheduleCanSave = $derived(
+    scheduleValues !== null && scheduleValues.everyNDays >= 1 && scheduleValues.dosesPerDay >= 1
+  );
+
   async function saveSchedule() {
-    if (!editor?.id || !schedule) return;
-    const everyNDays = parseInt(schedule.everyNDays, 10);
-    const dosesPerDay = parseInt(schedule.dosesPerDay, 10);
-    if (!(everyNDays >= 1) || !(dosesPerDay >= 1)) return;
-    await journal.doses.upsertSchedule({ episodeId: editor.id, everyNDays, dosesPerDay });
+    if (!editor?.id || !scheduleValues || !scheduleCanSave) return;
+    await journal.doses.upsertSchedule({ episodeId: editor.id, ...scheduleValues });
   }
 
   async function addPause() {
@@ -263,7 +272,7 @@
               />
             </div>
           </div>
-          <button class="btn btn-soft" data-save-schedule onclick={saveSchedule}>
+          <button class="btn btn-soft" data-save-schedule disabled={!scheduleCanSave} onclick={saveSchedule}>
             <span>{m.regimen_schedule_save()}</span>
           </button>
         {/if}
@@ -330,7 +339,14 @@
               {/each}
             </div>
           </div>
-          <button class="btn btn-soft" data-add-pause onclick={addPause}><span>{m.regimen_pause_add()}</span></button>
+          <button
+            class="btn btn-soft"
+            data-add-pause
+            disabled={epochDayFromDateInputValue(newPause.start) === null}
+            onclick={addPause}
+          >
+            <span>{m.regimen_pause_add()}</span>
+          </button>
         {:else}
           <button
             class="btn btn-ghost"

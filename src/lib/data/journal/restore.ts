@@ -596,7 +596,10 @@ async function applyDoseEvents({ driver, journal, ts }: Restoring): Promise<void
    allowed to carry only part of another device's history. */
 async function applyDoseSchedules({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM dose_schedule');
-  const scheduled = await presentIds(driver, 'SELECT e.uuid AS id FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id');
+  const episodesWithSchedule = await presentIds(
+    driver,
+    'SELECT e.uuid AS id FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id'
+  );
   const episodeIds = await rowidsByUuid(
     driver,
     'regimen_episode',
@@ -609,8 +612,8 @@ async function applyDoseSchedules({ driver, journal, ts }: Restoring): Promise<v
     const episodeId = episodeIds.get(schedule.episodeId);
     // One schedule per episode (migration v5): a merge must not bring a
     // second one for an episode that already has its own.
-    if (episodeId === undefined || scheduled.has(schedule.episodeId)) continue;
-    scheduled.add(schedule.episodeId);
+    if (episodeId === undefined || episodesWithSchedule.has(schedule.episodeId)) continue;
+    episodesWithSchedule.add(schedule.episodeId);
     rows.push([schedule.id, episodeId, schedule.everyNDays, schedule.dosesPerDay, ts]);
   }
 

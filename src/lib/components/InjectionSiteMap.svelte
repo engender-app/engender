@@ -9,19 +9,21 @@
      accessible name for free, and the silhouette is then just a picture. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { INJECTION_SITES } from '$lib/data/doseSchedule';
-  import { injectionSiteLabel } from './doseLabels';
+  import { INJECTION_SITES, type InjectionSiteKey, type InjectionSiteRegion } from '$lib/data/doseSchedule';
+  import { injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
 
   let {
     value,
     lastUsed = null,
     onChange
   }: {
-    value: string;
+    /** `''` before anything is tapped. */
+    value: InjectionSiteKey | '';
     /** The site the most recent injection went to, marked so the next one
-        can be rotated away from it. Null when there is no history yet. */
+        can be rotated away from it. Null when there is no history yet, or
+        when that injection was imported with a site this build cannot place. */
     lastUsed?: string | null;
-    onChange: (site: string) => void;
+    onChange: (site: InjectionSiteKey) => void;
   } = $props();
 
   /** Where each region sits on the silhouette, as percentages of the box.
@@ -33,7 +35,7 @@
       Kept far enough apart that two neighbouring dots never overlap at the
       map's narrowest - six sided regions on one small figure is the tightest
       this layout gets. */
-  const PLACEMENT: Record<string, { top: number; inset: number }> = {
+  const PLACEMENT: Record<InjectionSiteRegion, { top: number; inset: number }> = {
     deltoid: { top: 19, inset: 25 },
     abdomen: { top: 32, inset: 42 },
     loveHandle: { top: 39, inset: 35 },
