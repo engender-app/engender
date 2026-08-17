@@ -235,6 +235,21 @@
         />
       </div>
     </div>
+    <div class="card" style="margin-top:var(--space-3)">
+      <div class="spread" data-on-this-day-toggle>
+        <span class="row-text">
+          <span class="row-title">{m.on_this_day()}</span>
+          <span class="row-subtitle">{m.on_this_day_settings_sub()}</span>
+        </span>
+        <Switch
+          checked={prefs.onThisDayEnabled}
+          label={m.on_this_day()}
+          onChange={(v) => {
+            prefs.onThisDayEnabled = v;
+          }}
+        />
+      </div>
+    </div>
     <button class="list-row" onclick={() => (metricSheet = true)}>
       <span class="row-icon"><Icon name="palette" size={22} /></span>
       <span class="row-text">

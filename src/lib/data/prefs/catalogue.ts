@@ -76,6 +76,13 @@ export interface PreferenceValues {
       screen. Weighed rather than defaulted - ADR-0003's rule would have
       landed it here either way. */
   wrappedEnabled: boolean;
+  /** Whether on-this-day is offered at all (phase 4 features ticket 03).
+      Its own toggle, independent of `wrappedEnabled`: on-this-day reuses
+      wrapped's presentation components but answers a different question,
+      and turning one off must not silently turn off the other. Device-local
+      for the same reason `wrappedEnabled` is - a yes/no about one
+      installation's Home screen. */
+  onThisDayEnabled: boolean;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone' | 'prolactin', string>>;
   /** Which measurement types have had their capture-protocol guidance
@@ -115,6 +122,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   checkInTime: '21:00',
   entryNudges: true,
   wrappedEnabled: true,
+  onThisDayEnabled: true,
   preferredLabUnits: {},
   measurementProtocolDismissed: {},
   autoExportEnabled: false,
@@ -153,6 +161,7 @@ export const DEVICE_LOCAL_KEYS = [
   'hideNotificationTitles',
   'entryNudges',
   'wrappedEnabled',
+  'onThisDayEnabled',
   'autoExportEnabled',
   'autoExportSchedule',
   'lastBackupAt',

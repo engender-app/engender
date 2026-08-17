@@ -119,7 +119,17 @@ export interface StatsArea {
       key share no namespace, and a garbage region should read as "nothing
       logged" rather than risk colliding with a real dimension's key. */
   bodyRegionTrend(region: string, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
+  /** Whether `epochDay` clears on-this-day's good-day bar (CONTEXT: Good
+      day, phase 4 features ticket 03): its day average mood at or above
+      the mood scale's midpoint, a euphoria capture logged that day, or
+      either. Never both conditions read as a caveat - this is a plain
+      yes/no, the way the rule itself is absolute. */
+  isGoodDay(epochDay: number): Promise<boolean>;
 }
+
+/** The mood scale is 1 to 5 (CONTEXT: Mood); 3 is its midpoint and the bar
+    a day's average mood has to clear for on-this-day (CONTEXT: Good day). */
+export const GOOD_DAY_MOOD_FLOOR = 3;
 
 /* Which rows carry "the metric", as a subquery plus its parameters. Mood
    is a column on the entry and a dimension value is a row in a join table,
@@ -426,6 +436,30 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         biggestDimensionChange,
         photoHighlights: photoRows.map((r) => ({ id: r.uuid, fileName: r.file_path, epochDay: r.epoch_day }))
       };
+    },
+
+    async isGoodDay(epochDay) {
+      // Two independent EXISTS checks, OR'd rather than read back as two
+      // round trips: a day either clears the mood average or carries the
+      // euphoria tag, and the rule only needs to know that one of them did.
+      // COALESCE(key, uuid) is a tag's domain id (ADR-0002); 'g-euphoria' is
+      // the built-in euphoria capture tag (ticket 02, CONTEXT: Euphoria
+      // capture).
+      const rows = await driver.query<{ good: number }>(
+        `SELECT
+           EXISTS (
+             SELECT 1 FROM entry WHERE epoch_day = ? AND mood IS NOT NULL
+             GROUP BY epoch_day HAVING AVG(mood) >= ?
+           )
+           OR EXISTS (
+             SELECT 1 FROM entry e
+             JOIN entry_tag et ON et.entry_id = e.id
+             JOIN tag t ON t.id = et.tag_id
+             WHERE e.epoch_day = ? AND COALESCE(t.key, t.uuid) = ?
+           ) AS good`,
+        [epochDay, GOOD_DAY_MOOD_FLOOR, epochDay, 'g-euphoria']
+      );
+      return Boolean(rows[0]?.good);
     }
   };
 }

@@ -1171,6 +1171,89 @@ try {
   ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
 } catch (e) { fail('typed dysphoria and euphoria logging', e); }
 
+/* 22. on-this-day (phase 4 features ticket 03): the absolute good-day rule,
+   the Home card, and the Settings toggle - independent of wrapped's own.
+
+   The six-month lookback is where this flow writes: the demo persona only
+   seeds the last 150 days (persona.ts), so ~182 days back is guaranteed
+   empty before this flow touches it, and asserting on that one lookback's
+   heading text ("Six months ago") isolates the check from whatever the
+   persona and flow 20's manual June entries happen to do at the month and
+   year marks. Never run as part of the implementation loop, per ticket
+   02's flow above: append here, run `npx svelte-kit sync` first. */
+try {
+  await fresh('/on-this-day');
+  if (!(await page.locator('.screen-title', { hasText: 'On this day' }).count())) {
+    throw new Error('the route did not render');
+  }
+
+  // Same clamped "N calendar months back" arithmetic as epochDayMonthsAgo
+  // (src/lib/data/epochDay.ts), duplicated here rather than imported: this
+  // script is plain Node ESM with no TS loader.
+  const sixMonthsAgo = await page.evaluate(() => {
+    const today = new Date();
+    const totalMonths = today.getFullYear() * 12 + today.getMonth() - 6;
+    const year = Math.floor(totalMonths / 12);
+    const month = ((totalMonths % 12) + 12) % 12;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const day = Math.min(today.getDate(), daysInMonth);
+    return Math.floor(Date.UTC(year, month, day) / 86400000);
+  });
+
+  // A low mood with no euphoria capture: below the good-day bar, so this
+  // day must not surface, not even as its own section.
+  await fresh(`/entry/new/${sixMonthsAgo}`);
+  await page.locator('.mood-picker .mood-btn[data-mood="1"]').click();
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('.home-hello', { timeout: 10000 });
+
+  await fresh('/on-this-day');
+  if (await page.locator('.wrapped-title', { hasText: 'Six months ago' }).count()) {
+    throw new Error('a day below the good-day bar surfaced anyway');
+  }
+
+  // The euphoria capture on a second entry the same day is enough on its
+  // own, regardless of the day's mood average.
+  await fresh(`/entry/new/${sixMonthsAgo}`);
+  await page.locator('.mood-picker .mood-btn[data-mood="1"]').click();
+  await page.getByRole('button', { name: 'euphoria', exact: true }).click();
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('.home-hello', { timeout: 10000 });
+
+  await fresh('/on-this-day');
+  const sixMonthSection = page.locator('.wrapped-title', { hasText: 'Six months ago' });
+  if (!(await sixMonthSection.count())) throw new Error('a euphoria capture should have qualified this day');
+
+  await fresh('/');
+  const hadWrappedCard = await page.locator('[data-wrapped-card]').count();
+  const card = page.locator('[data-on-this-day-card]');
+  if ((await card.count()) !== 1) throw new Error('Home should offer the on-this-day card now, found ' + (await card.count()));
+  await card.click();
+  await page.waitForSelector('.wrapped-title');
+
+  /* The toggle turns the feature off entirely, and leaves wrapped's own
+     toggle and card untouched (CONTEXT/ticket scope: independent toggles). */
+  await fresh('/settings');
+  await page.locator('[data-on-this-day-toggle]').getByRole('switch').click();
+  await fresh('/');
+  if (await page.locator('[data-on-this-day-card]').count()) throw new Error('the card survived the toggle');
+  if ((await page.locator('[data-wrapped-card]').count()) !== hadWrappedCard) {
+    throw new Error("turning on-this-day off changed wrapped's own card");
+  }
+  await fresh('/on-this-day');
+  if (await page.locator('.wrapped-stats, .wrapped-title').count()) {
+    throw new Error('on-this-day still rendered a day with the feature turned off');
+  }
+  if (!(await page.locator('.notice-title').count())) throw new Error('the off state explains nothing');
+
+  await fresh('/settings');
+  await page.locator('[data-on-this-day-toggle]').getByRole('switch').click();
+  await fresh('/');
+  if (!(await page.locator('[data-on-this-day-card]').count())) throw new Error('the card did not come back');
+
+  ok('on-this-day: the good-day rule, the Home card, and its own Settings toggle');
+} catch (e) { fail('on-this-day', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');

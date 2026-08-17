@@ -1061,5 +1061,15 @@
   "wrapped_cadence_group": "Okres bilansu",
   "wrapped_cadence_week": "Miniony tydzień",
   "wrapped_cadence_month": "Miniony miesiąc",
-  "wrapped_cadence_year": "Miniony rok"
+  "wrapped_cadence_year": "Miniony rok",
+  "on_this_day": "Wspomnienia",
+  "on_this_day_settings_sub": "Przypomina dobry dzień sprzed miesiąca, pół roku albo roku.",
+  "on_this_day_off_title": "Wspomnienia są wyłączone",
+  "on_this_day_off_body": "Włącz je w ustawieniach, a dobry dzień z przeszłości znowu pojawi się na ekranie głównym.",
+  "on_this_day_home_sub": "Dobry dzień z przeszłości",
+  "on_this_day_none_title": "Nie ma dziś takiego wspomnienia",
+  "on_this_day_none_body": "Wspomnienia pokazują dobry dzień sprzed miesiąca, pół roku albo roku. Dziś żaden taki dzień się nie trafił.",
+  "on_this_day_month_title": "Miesiąc temu",
+  "on_this_day_six_months_title": "Pół roku temu",
+  "on_this_day_year_title": "Rok temu"
 }

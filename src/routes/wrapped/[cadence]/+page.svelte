@@ -22,7 +22,7 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
   import {
     WRAPPED_CADENCES,
     WRAPPED_ENTRY_FLOOR,
@@ -99,18 +99,8 @@
   /* Both templates take the dimension and the tags already named, so neither
      of them has to know that a built-in tag stores a key and takes its
      wording from the catalogue at display time (ticket 05). */
-  let dimChange = $derived.by(() => {
-    const change = recap?.biggestDimensionChange;
-    if (!change) return null;
-    return {
-      name: vocabulary.dimensions.find((d) => d.key === change.key)?.name ?? change.key,
-      from: change.from,
-      to: change.to
-    };
-  });
-  let topTags = $derived(
-    (recap?.topTags ?? []).map((t) => ({ label: vocabulary.tag(t.id)?.label ?? t.id, count: t.count }))
-  );
+  let dimChange = $derived(recap ? recapDimChange(recap) : null);
+  let topTags = $derived(recap ? recapTopTags(recap) : []);
 </script>
 
 <div class="screen">

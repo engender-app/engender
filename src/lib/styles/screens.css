@@ -222,6 +222,23 @@
   position: relative; z-index: 1;
 }
 
+/* ---------- On-this-day ----------
+   Same card shape and gradient as wrapped's (phase 4 features ticket 03),
+   so the two read as siblings on Home rather than as two unrelated offers -
+   only the icon tells them apart at a glance. The body below the header is
+   WrappedCompact's own `.wrapped-*` styling, reused rather than duplicated;
+   this file only adds the divider between more than one qualifying day. */
+.on-this-day-home-card {
+  color: var(--text); text-decoration: none;
+  margin-bottom: var(--space-4);
+  background: linear-gradient(150deg, var(--accent-soft), var(--surface) 55%);
+}
+.on-this-day-home-mark { color: var(--accent); display: flex; }
+.on-this-day-day + .on-this-day-day {
+  margin-top: var(--space-7); padding-top: var(--space-7);
+  border-top: 1px solid var(--border);
+}
+
 /* ---------- Calendar & day detail ---------- */
 .cal-monthbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
 .cal-month { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; }
