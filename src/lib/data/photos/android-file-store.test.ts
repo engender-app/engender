@@ -90,6 +90,25 @@ describe('appPrivatePhotoFiles', () => {
     ]);
   });
 
+  /* Ticket 19: when the fast channel exists, a write must use it instead of
+     the base64 bridge call - otherwise every device that can carry the
+     channel still pays the cost the channel exists to avoid. */
+  test('writes over the channel instead of the bridge when the channel exists', async () => {
+    servedFiles({});
+    vi.stubGlobal('androidPhotoWriteChannel', {
+      postMessage(_data: string, transfer: Transferable[]) {
+        const port = transfer[0] as MessagePort;
+        port.onmessage = () => port.postMessage('{"ok":true}');
+      }
+    });
+
+    const files = appPrivatePhotoFiles('probe-dir');
+    await files.write('a.jpg', new Uint8Array([1, 2, 3]));
+
+    expect(vi.mocked(androidPhotos.writeFile)).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   /* One bridge call for the directory however many files are read - asking per
      read would put a crossing back in front of every photo. */
   test('asks for the directory once and reuses it', async () => {

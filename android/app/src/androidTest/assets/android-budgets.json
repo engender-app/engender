@@ -1,161 +1,161 @@
 {
-  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026081301:user/release-keys. Baselines other than the archive-restore family are from one real-device run on 2026-08-14 (fingerprint ...2026080501, before the device took an OS update). The archive-restore family is from ticket 17 on 2026-08-17: three consecutive runs, of which the median is recorded whole rather than per-measurement, so the three phases still sum to their parent. The other two runs put archive-restore at 349820ms and 398576ms; ticket 17's grill note carries the full spread and the target reasoning.",
+  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026081301:user/release-keys. All twenty-three baselines are from one real-device run on 2026-08-17, the run that recorded ticket 19's write-channel fix - superseding the previous file, whose non-archive-restore numbers predated a device OS update and whose archive-restore family was a median of three ticket-17 runs. One run rather than several: unlike ticket 17, nothing here is close enough to its target to need run-to-run spread to defend, and the write-path change moved its two headline numbers by more than an order of magnitude, which no plausible noise band would explain away. targetMs for photo-add, archive-restore and archive-restore-files carries extra headroom over this baseline precisely because it is one run instead of several; see ticket 19's verification note for the reasoning per number.",
   "fixture": "seed 1, 3653 days ending epoch day 20676: 3231 entries over 2589 days with entries, 375 photos, 122 lab results, 12 milestones, 24 tags. Encryption on: SQLCipher under the Android Keystore data key, photos through app-private file storage.",
   "measurements": {
     "unlock": {
       "what": "cold start, passphrase unlock (Argon2id + data key unwrap)",
-      "baselineMs": 168,
-      "budgetMs": 840,
+      "baselineMs": 200,
+      "budgetMs": 1000,
       "targetMs": 1500
     },
     "boot-migrations": {
       "what": "cold start, open driver and run migrations",
-      "baselineMs": 68,
-      "budgetMs": 340,
+      "baselineMs": 75,
+      "budgetMs": 375,
       "targetMs": 500
     },
     "boot-sweep": {
       "what": "cold start, orphan photo sweep over fixture storage",
-      "baselineMs": 118,
-      "budgetMs": 590,
+      "baselineMs": 90,
+      "budgetMs": 450,
       "targetMs": 800
     },
     "first-paint": {
       "what": "cold start, boot reference reads + Home queries before first usable screen",
-      "baselineMs": 148,
-      "budgetMs": 740,
+      "baselineMs": 128,
+      "budgetMs": 640,
       "targetMs": 1000
     },
     "calendar-month": {
       "what": "calendar, one month of heat map",
-      "baselineMs": 40,
+      "baselineMs": 33,
       "budgetMs": 200,
       "targetMs": 100
     },
     "stats-year-streak": {
       "what": "stats screen, the streak",
-      "baselineMs": 21,
+      "baselineMs": 30,
       "budgetMs": 200,
       "targetMs": 100
     },
     "stats-year-series": {
       "what": "stats screen, 365 days of every chart",
-      "baselineMs": 253,
-      "budgetMs": 1265,
+      "baselineMs": 181,
+      "budgetMs": 905,
       "targetMs": 350
     },
     "stats-month-insights": {
       "what": "stats screen, 30 days of tag insights",
-      "baselineMs": 19,
+      "baselineMs": 15,
       "budgetMs": 200,
       "targetMs": 250
     },
     "stats-year-insights": {
       "what": "stats screen, 365 days of tag insights",
-      "baselineMs": 19,
+      "baselineMs": 14,
       "budgetMs": 200,
       "targetMs": 250
     },
     "stats-year-insights-dimension": {
       "what": "stats screen, 365 days of tag insights on a dimension",
-      "baselineMs": 28,
+      "baselineMs": 18,
       "budgetMs": 200,
       "targetMs": 250
     },
     "stats-recap-year": {
       "what": "recap, one year",
-      "baselineMs": 89,
-      "budgetMs": 445,
+      "baselineMs": 75,
+      "budgetMs": 375,
       "targetMs": 400
     },
     "stats-decade": {
       "what": "stats, the whole decade in one range",
-      "baselineMs": 209,
-      "budgetMs": 1045,
+      "baselineMs": 184,
+      "budgetMs": 920,
       "targetMs": 600
     },
     "search-common": {
       "what": "search \"lustro\", one page and the total",
-      "baselineMs": 118,
-      "budgetMs": 590,
+      "baselineMs": 91,
+      "budgetMs": 455,
       "targetMs": 150
     },
     "search-rare": {
       "what": "search \"endokrynolog\", one page and the total",
-      "baselineMs": 108,
-      "budgetMs": 540,
+      "baselineMs": 83,
+      "budgetMs": 415,
       "targetMs": 150
     },
     "search-tag-word": {
       "what": "search \"basen\", one page and the total",
-      "baselineMs": 124,
-      "budgetMs": 620,
+      "baselineMs": 112,
+      "budgetMs": 560,
       "targetMs": 150
     },
     "archive-snapshot": {
       "what": "Archive export, reading the journal out",
-      "baselineMs": 2773,
-      "budgetMs": 13865,
+      "baselineMs": 2647,
+      "budgetMs": 13235,
       "targetMs": 5000
     },
     "archive-pack": {
       "what": "Archive export, encrypting the container",
-      "baselineMs": 3357,
-      "budgetMs": 16785,
+      "baselineMs": 2881,
+      "budgetMs": 14405,
       "targetMs": 20000
     },
     "photo-grid-list": {
       "what": "photo grid, listing every photo",
-      "baselineMs": 88,
-      "budgetMs": 440,
+      "baselineMs": 82,
+      "budgetMs": 410,
       "targetMs": 300
     },
     "photo-grid-thumbs": {
       "what": "photo grid, reading every thumbnail",
-      "baselineMs": 628,
-      "budgetMs": 3140,
+      "baselineMs": 640,
+      "budgetMs": 3200,
       "targetMs": 3000
     },
     "entry-save": {
       "what": "save button, one entry with realistic dimensions and tags",
-      "baselineMs": 93,
-      "budgetMs": 465,
+      "baselineMs": 72,
+      "budgetMs": 360,
       "targetMs": 500
     },
     "photo-add": {
       "what": "save button, normalize and attach one realistic photo",
-      "baselineMs": 1458,
-      "budgetMs": 7290,
-      "targetMs": 2000
+      "baselineMs": 443,
+      "budgetMs": 2215,
+      "targetMs": 900
     },
     "archive-restore": {
       "what": "Archive import, replacing the decade fixture",
-      "baselineMs": 394535,
-      "budgetMs": 1972675,
-      "targetMs": 450000
+      "baselineMs": 11324,
+      "budgetMs": 56620,
+      "targetMs": 40000
     },
     "archive-restore-read": {
       "what": "Archive import, reading the archive photo bytes back out",
-      "baselineMs": 4227,
-      "budgetMs": 21135,
+      "baselineMs": 3129,
+      "budgetMs": 15645,
       "targetMs": 10000
     },
     "archive-restore-files": {
       "what": "Archive import, streaming every photo file in",
-      "baselineMs": 384926,
-      "budgetMs": 1924630,
-      "targetMs": 420000
+      "baselineMs": 4683,
+      "budgetMs": 23415,
+      "targetMs": 16000
     },
     "archive-restore-db": {
       "what": "Archive import, installing every row in one transaction",
-      "baselineMs": 9609,
-      "budgetMs": 48045,
+      "baselineMs": 6641,
+      "budgetMs": 33205,
       "targetMs": 20000
     },
     "daylio-import": {
       "what": "Daylio import, commit preview through merge restore",
-      "baselineMs": 11331,
-      "budgetMs": 56655,
+      "baselineMs": 13450,
+      "budgetMs": 67250,
       "targetMs": 30000
     }
   }
