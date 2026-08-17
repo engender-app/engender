@@ -928,6 +928,8 @@
   "tags_group_aria": "{group} tags",
   "wrapped": "Wrapped",
   "wrapped_settings_sub": "Look back on a week, a month or a year once it has ended.",
+  "wrapped_notify_sub": "A notification when a new wrapped is ready, independent of the card above.",
+  "wrapped_notification_body": "Open the app to look back.",
   "wrapped_off_title": "Wrapped is off",
   "wrapped_off_body": "Turn it on in Settings and finished weeks, months and years show up on Home.",
   "wrapped_unknown_title": "Nothing to wrap here",
@@ -991,6 +993,8 @@
   "wrapped_cadence_year": "Last year",
   "on_this_day": "On this day",
   "on_this_day_settings_sub": "Look back on a good day from a month, six months or a year ago.",
+  "on_this_day_notify_sub": "A notification when a good day resurfaces, independent of the card above.",
+  "on_this_day_notification_body": "Open the app to look back on a good day.",
   "on_this_day_off_title": "On this day is off",
   "on_this_day_off_body": "Turn it on in Settings and a good day from the past can show up on Home again.",
   "on_this_day_home_sub": "A good day from your past",
@@ -998,5 +1002,8 @@
   "on_this_day_none_body": "On this day only shows a good day from a month, six months or a year ago. None of today's three line up.",
   "on_this_day_month_title": "A month ago",
   "on_this_day_six_months_title": "Six months ago",
-  "on_this_day_year_title": "A year ago"
+  "on_this_day_year_title": "A year ago",
+  "retro_notify_title": "Notify me",
+  "retro_notify_capabilities_title": "Notifications are blocked",
+  "retro_notify_capabilities_body": "Allow notifications to hear about wrapped and on-this-day. Their channels live in system notification settings."
 }

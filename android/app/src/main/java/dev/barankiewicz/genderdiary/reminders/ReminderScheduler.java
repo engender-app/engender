@@ -131,6 +131,18 @@ public final class ReminderScheduler {
             String reminderId = suffix.substring(1);
             return reminderId.isBlank() || reminderId.contains("/") ? null : route;
         }
+        // Phase 4 features ticket 04: wrapped and on-this-day notifications
+        // deep-link through this same allowlist, not a route-specific one of
+        // their own - see RetrospectiveNotificationsPlugin.
+        if (route.equals("/wrapped/week") || route.equals("/wrapped/month") || route.equals("/wrapped/year")) {
+            return route;
+        }
+        if (route.equals("/on-this-day")) return route;
+        if (route.startsWith("/on-this-day?lookback=")) {
+            String lookback = route.substring("/on-this-day?lookback=".length());
+            boolean known = "month".equals(lookback) || "sixMonths".equals(lookback) || "year".equals(lookback);
+            return known ? route : null;
+        }
         if (!route.startsWith("/entry/new/")) return null;
         String epochDay = route.substring("/entry/new/".length());
         if (epochDay.isBlank() || epochDay.contains("/")) return null;

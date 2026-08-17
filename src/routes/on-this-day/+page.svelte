@@ -13,6 +13,7 @@
      carrying entries the same day to say anything - and WrappedCompact
      already leaves an empty section out rather than rendering it hollow,
      which is exactly the right behaviour here too. */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -73,6 +74,18 @@
       topTags: recapTopTags(d.recap)
     }))
   );
+
+  /* A wrapped/on-this-day notification (phase 4 features ticket 04) deep-links
+     here with ?lookback= naming the card that triggered it, since this route
+     otherwise has no way to point at one of several qualifying lookbacks.
+     Scrolled to rather than the only thing shown - the other qualifying
+     lookbacks stay on the page, the same as opening this route any other way. */
+  $effect(() => {
+    if (!days.length) return;
+    const lookback = page.url.searchParams.get('lookback');
+    if (!lookback) return;
+    document.getElementById(`on-this-day-${lookback}`)?.scrollIntoView({ block: 'start' });
+  });
 </script>
 
 <div class="screen">
@@ -103,7 +116,7 @@
     </div>
   {:else}
     {#each days as d (d.key)}
-      <section class="on-this-day-day">
+      <section class="on-this-day-day" id="on-this-day-{d.key}">
         <WrappedCompact
           title={d.title}
           subtitle={d.subtitle}

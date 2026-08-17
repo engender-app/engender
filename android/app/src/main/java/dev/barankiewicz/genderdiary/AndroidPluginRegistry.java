@@ -16,6 +16,7 @@ import dev.barankiewicz.genderdiary.keystore.KeystorePlugin;
 import dev.barankiewicz.genderdiary.photos.PhotosPlugin;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
 import dev.barankiewicz.genderdiary.reminders.RemindersPlugin;
+import dev.barankiewicz.genderdiary.retrospective.RetrospectiveNotificationsPlugin;
 import dev.barankiewicz.genderdiary.sqlite.SqlitePlugin;
 
 /**
@@ -31,6 +32,7 @@ public final class AndroidPluginRegistry {
         new PluginEntry("Photos", PhotosPlugin.class),
         new PluginEntry("Reminders", RemindersPlugin.class),
         new PluginEntry("AutoExport", AutoExportPlugin.class),
+        new PluginEntry("RetrospectiveNotifications", RetrospectiveNotificationsPlugin.class),
         new PluginEntry("Disguise", DisguisePlugin.class),
         new PluginEntry("QuickExit", QuickExitPlugin.class),
         // NAV-001/NAV-002: the official @capacitor/app plugin, registered
