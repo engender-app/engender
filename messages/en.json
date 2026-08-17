@@ -988,5 +988,15 @@
   "wrapped_cadence_group": "Wrapped period",
   "wrapped_cadence_week": "Last week",
   "wrapped_cadence_month": "Last month",
-  "wrapped_cadence_year": "Last year"
+  "wrapped_cadence_year": "Last year",
+  "on_this_day": "On this day",
+  "on_this_day_settings_sub": "Look back on a good day from a month, six months or a year ago.",
+  "on_this_day_off_title": "On this day is off",
+  "on_this_day_off_body": "Turn it on in Settings and a good day from the past can show up on Home again.",
+  "on_this_day_home_sub": "A good day from your past",
+  "on_this_day_none_title": "Nothing to look back on today",
+  "on_this_day_none_body": "On this day only shows a good day from a month, six months or a year ago. None of today's three line up.",
+  "on_this_day_month_title": "A month ago",
+  "on_this_day_six_months_title": "Six months ago",
+  "on_this_day_year_title": "A year ago"
 }

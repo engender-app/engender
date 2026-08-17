@@ -23,6 +23,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
+  import OnThisDayHomeCard from '$lib/components/OnThisDayHomeCard.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
@@ -114,6 +115,12 @@
        the offered period clears the entry floor. -->
   {#if prefs.wrappedEnabled}
     <WrappedHomeCard />
+  {/if}
+
+  <!-- Same gating, and its own preference (ticket 03): turning wrapped off
+       must not turn this off, and vice versa. -->
+  {#if prefs.onThisDayEnabled}
+    <OnThisDayHomeCard />
   {/if}
 
   <!-- NAV-003: this section used to disappear entirely with no milestones,

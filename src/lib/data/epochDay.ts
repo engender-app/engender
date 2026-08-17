@@ -81,16 +81,22 @@ export function calendarDuration(fromEpochDay: number, toEpochDay: number): Cale
   return { years, months, days };
 }
 
+/** A year/month/day clamped to the target month's length before becoming an
+    epoch day - `new Date(2025, 1, 29)` is 1 March, a different day of a
+    different month, so this is what keeps a 29 February anniversary in
+    February and a 31 October lookback in September rather than rolling
+    into the next month. */
+function clampedEpochDay(year: number, month: number, day: number): number {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return epochDayFromLocalDate(new Date(year, month, Math.min(day, daysInMonth)));
+}
+
 /** A milestone's calendar month/day in a given year, with 29 February
     falling back to the 28th in a common year rather than rolling into
-    March. `new Date(2025, 1, 29)` is 1 March, which is a different day of
-    a different month; clamping keeps the anniversary in February, where
-    the milestone happened, and means it is never skipped. */
+    March: clamping keeps the anniversary in February, where the milestone
+    happened, and means it is never skipped. */
 function anniversaryInYear(milestoneDate: Date, year: number): number {
-  const daysInMonth = new Date(year, milestoneDate.getMonth() + 1, 0).getDate();
-  return epochDayFromLocalDate(
-    new Date(year, milestoneDate.getMonth(), Math.min(milestoneDate.getDate(), daysInMonth))
-  );
+  return clampedEpochDay(year, milestoneDate.getMonth(), milestoneDate.getDate());
 }
 
 /** The next occurrence of a milestone's calendar month/day that falls on
@@ -116,6 +122,19 @@ export function anniversaryYears(milestoneEpochDay: number, onEpochDay: number):
   const m = localDateFromEpochDay(milestoneEpochDay);
   const refYear = localDateFromEpochDay(onEpochDay).getFullYear();
   return refYear - m.getFullYear() - (anniversaryInYear(m, refYear) > onEpochDay ? 1 : 0);
+}
+
+/** The epoch day this many calendar months before `epochDay`, clamped the
+    same way `anniversaryInYear` clamps a year back - 31 October minus one
+    month lands on 30 September, not 1 November via rollover. On-this-day
+    (ticket 03) is the caller: a month, six months and a year are all "this
+    many calendar months back" once a year is written as twelve. */
+export function epochDayMonthsAgo(epochDay: number, months: number): number {
+  const d = localDateFromEpochDay(epochDay);
+  const totalMonths = d.getFullYear() * 12 + d.getMonth() - months;
+  const year = Math.floor(totalMonths / 12);
+  const month = ((totalMonths % 12) + 12) % 12;
+  return clampedEpochDay(year, month, d.getDate());
 }
 
 export interface CalendarWeekRange {

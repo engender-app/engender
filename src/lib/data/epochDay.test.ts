@@ -19,6 +19,7 @@ import {
   calendarDuration,
   anniversaryYears,
   customInclusiveRange,
+  epochDayMonthsAgo,
   nextAnniversaryEpochDay,
   ongoingWindowRange,
   previousCalendarMonthRange,
@@ -180,6 +181,24 @@ test(`a 29 February milestone reads as a whole year old on its 28 February anniv
   expect(calendarDuration(milestone, feb28).years).toBe(0);
   expect(anniversaryYears(milestone, feb28)).toBe(1);
   expect(anniversaryYears(milestone, feb28 - 1)).toBe(0);
+});
+
+test(`epochDayMonthsAgo steps back whole calendar months under TZ=${tz}`, () => {
+  const today = epochDayFromLocalDate(new Date(2026, 7, 20)); // 20 August 2026
+
+  expect(epochDayMonthsAgo(today, 1)).toBe(epochDayFromLocalDate(new Date(2026, 6, 20)));
+  expect(epochDayMonthsAgo(today, 6)).toBe(epochDayFromLocalDate(new Date(2026, 1, 20)));
+  expect(epochDayMonthsAgo(today, 12)).toBe(epochDayFromLocalDate(new Date(2025, 7, 20)));
+});
+
+test(`epochDayMonthsAgo clamps a day-of-month that doesn't exist in the target month, under TZ=${tz}`, () => {
+  // 31 October minus one month is 30 September, not 1 November via rollover.
+  const oct31 = epochDayFromLocalDate(new Date(2026, 9, 31));
+  expect(epochDayMonthsAgo(oct31, 1)).toBe(epochDayFromLocalDate(new Date(2026, 8, 30)));
+
+  // A year back from 29 February in a leap year lands on 28 February.
+  const feb29 = epochDayFromLocalDate(new Date(2024, 1, 29));
+  expect(epochDayMonthsAgo(feb29, 12)).toBe(epochDayFromLocalDate(new Date(2023, 1, 28)));
 });
 
 test(`previousCalendarMonthRange covers a leap February under TZ=${tz}`, () => {

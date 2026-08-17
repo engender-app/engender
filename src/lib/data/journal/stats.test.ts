@@ -415,3 +415,43 @@ test('entryCountsByDay over a range with nothing in it is empty', async () => {
   await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
   assert.deepEqual(await journal.stats.entryCountsByDay(200, 230), []);
 });
+
+/* On-this-day's good-day rule (ticket 03, CONTEXT: Good day): a day average
+   mood at or above the mood scale's midpoint, a euphoria capture, or
+   either - and nothing else ever qualifies a day. */
+
+test('a day averaging at or above the mood midpoint is a good day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 2 });
+
+  assert.equal(await journal.stats.isGoodDay(100), true);
+  assert.equal(await journal.stats.isGoodDay(101), false);
+});
+
+test('a euphoria capture makes a day good regardless of its mood', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 1, tags: ['g-euphoria'] });
+
+  assert.equal(await journal.stats.isGoodDay(100), true);
+});
+
+test('a day averaging below the midpoint with no euphoria capture is not a good day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 2, tags: ['dt-social'] });
+
+  assert.equal(await journal.stats.isGoodDay(100), false);
+});
+
+test('a euphoria capture on one of several entries is enough, even with a low day average', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 1 });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 1, tags: ['g-euphoria'] });
+
+  assert.equal(await journal.stats.isGoodDay(100), true);
+});
+
+test('a day with nothing logged on it is not a good day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.stats.isGoodDay(100), false);
+});
