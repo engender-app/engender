@@ -1,13 +1,24 @@
 <script lang="ts">
   import { Slider } from 'melt/builders';
   import { m } from '$lib/paraglide/messages';
-  import type { GenderDimension } from '$lib/data/types';
+
+  /** A gender dimension satisfies this structurally; so does anything else
+      with a name, two endpoint labels and a range - a body-region
+      intensity (BodyRegionPicker.svelte), say - without having to carry
+      builtIn/hidden fields that mean nothing for it. */
+  export interface SliderScale {
+    name: string;
+    low: string;
+    high: string;
+    min: number;
+    max: number;
+  }
 
   let {
     dim,
     value = null,
     onInput,
-  }: { dim: GenderDimension; value?: number | null; onInput: (v: number) => void } = $props();
+  }: { dim: SliderScale; value?: number | null; onInput: (v: number) => void } = $props();
 
   // Melt UI slider (headless behaviour, our tokens do the styling).
   const slider = new Slider({

@@ -33,14 +33,11 @@
   {#each regions.filter((r) => r.key in values) as r (r.key)}
     <DimensionSlider
       dim={{
-        key: r.key,
         name: r.name,
         low: m.body_region_intensity_low(),
         high: m.body_region_intensity_high(),
         min: BODY_REGION_INTENSITY_MIN,
-        max: BODY_REGION_INTENSITY_MAX,
-        builtIn: true,
-        hidden: false
+        max: BODY_REGION_INTENSITY_MAX
       }}
       value={values[r.key]}
       onInput={(v) => onIntensityInput(r.key, v)}
