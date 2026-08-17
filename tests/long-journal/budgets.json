@@ -110,6 +110,24 @@
       "budgetMs": 5430,
       "targetMs": 30000
     },
+    "archive-restore-read": {
+      "what": "Archive import, reading the archive photo bytes back out",
+      "baselineMs": 366,
+      "budgetMs": 1830,
+      "targetMs": 12000
+    },
+    "archive-restore-files": {
+      "what": "Archive import, streaming every photo file in",
+      "baselineMs": 837,
+      "budgetMs": 4185,
+      "targetMs": 24000
+    },
+    "archive-restore-db": {
+      "what": "Archive import, installing every row in one transaction",
+      "baselineMs": 208,
+      "budgetMs": 1040,
+      "targetMs": 6000
+    },
     "daylio-import": {
       "what": "Daylio import, commit preview through merge restore",
       "baselineMs": 347,
