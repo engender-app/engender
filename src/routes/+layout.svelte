@@ -380,7 +380,7 @@
        so it can be waited for: the walkthrough suite has to let a cold start
        finish before it clears storage, or it interrupts the very writes it
        then asserts against (tests/walkthrough.test.mjs). -->
-  <div class="app" class:disguised={prefs.disguise} data-boot={bootState.status}>
+  <div class="app" data-app-root class:disguised={prefs.disguise} data-boot={bootState.status}>
     {#if isErrorState(bootState)}
       <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
         <Icon name="alert" size={20} />
@@ -435,7 +435,7 @@
       </nav>
     {/if}
 
-    <main class="app-main" id="app-main" tabindex="-1">
+    <main class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
       {#if schemaTooNew}
         <SchemaTooNew />
       {:else if needsPassphrase}

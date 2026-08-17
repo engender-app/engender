@@ -34,15 +34,18 @@
 
   /* SF-001: every confirmation in the app is a sheet, and without this the
      background stayed reachable behind an open dialog - Tab walked straight
-     out of it, and closing dropped focus to the document. `inert` on `.app`'s
-     other children keeps assistive tech and Tab out of the background
-     regardless of how deep in that subtree the sheet itself lives (the
-     `.contains` check below skips whichever child holds it); the scroll
-     lock stops `.app-main` moving underneath a sheet that does not cover it
-     edge to edge; focus returns to whatever opened the sheet on close. */
+     out of it, and closing dropped focus to the document. `inert` on the app
+     shell's other children keeps assistive tech and Tab out of the
+     background regardless of how deep in that subtree the sheet itself
+     lives (the `.contains` check below skips whichever child holds it); the
+     scroll lock stops the scroll region moving underneath a sheet that does
+     not cover it edge to edge; focus returns to whatever opened the sheet on
+     close. Queries `data-app-root`/`data-app-scroll-region` rather than
+     `.app`/`.app-main` so this stays wired to the shell even if those
+     presentational class names ever change. */
   function lockBackground(scrimNode: HTMLElement) {
     const previouslyFocused = document.activeElement as HTMLElement | null;
-    const root = document.querySelector('.app');
+    const root = document.querySelector('[data-app-root]');
     const restoreInert: HTMLElement[] = [];
     if (root) {
       for (const child of Array.from(root.children) as HTMLElement[]) {
@@ -51,7 +54,7 @@
         restoreInert.push(child);
       }
     }
-    const mainEl = document.querySelector<HTMLElement>('.app-main');
+    const mainEl = document.querySelector<HTMLElement>('[data-app-scroll-region]');
     const previousOverflow = mainEl?.style.overflow ?? '';
     if (mainEl) mainEl.style.overflow = 'hidden';
 
