@@ -87,7 +87,8 @@ const TAG_GROUP_NAME: Record<BuiltInTagGroupKey, Message> = {
   gender: m.taggroup_gender,
   emotions: m.taggroup_emotions,
   activities: m.taggroup_activities,
-  imported: m.taggroup_imported
+  imported: m.taggroup_imported,
+  dysphoria_type: m.taggroup_dysphoria_type
 };
 
 const TAG_LABEL: Record<BuiltInTagKey, Message> = {
@@ -95,6 +96,7 @@ const TAG_LABEL: Record<BuiltInTagKey, Message> = {
   'g-body-dys': m.tag_g_body_dys,
   'g-soc-eu': m.tag_g_soc_eu,
   'g-body-eu': m.tag_g_body_eu,
+  'g-euphoria': m.tag_g_euphoria,
   'g-transphobia': m.tag_g_transphobia,
   'g-gendered-ok': m.tag_g_gendered_ok,
   'g-misgendered': m.tag_g_misgendered,
@@ -110,7 +112,30 @@ const TAG_LABEL: Record<BuiltInTagKey, Message> = {
   'a-exercise': m.tag_a_exercise,
   'a-therapy': m.tag_a_therapy,
   'a-shopping': m.tag_a_shopping,
-  'a-selfcare': m.tag_a_selfcare
+  'a-selfcare': m.tag_a_selfcare,
+  'dt-physical': m.tag_dt_physical,
+  'dt-biochemical': m.tag_dt_biochemical,
+  'dt-social': m.tag_dt_social,
+  'dt-societal': m.tag_dt_societal,
+  'dt-sexual': m.tag_dt_sexual,
+  'dt-presentational': m.tag_dt_presentational,
+  'dt-existential': m.tag_dt_existential
+};
+
+/* Dysphoria types only: the seven category names are not self-explanatory
+   on their own (CONTEXT: Dysphoria type - "societal" vs "social"), so each
+   carries a longer description an info affordance surfaces on demand.
+   Nothing else has one, so this is a partial map rather than a Record over
+   the full tag key union, and tagDescription() returns null rather than
+   falling back to the key the way tagLabel() does. */
+const TAG_DESCRIPTION: Partial<Record<BuiltInTagKey, Message>> = {
+  'dt-physical': m.tagdesc_dt_physical,
+  'dt-biochemical': m.tagdesc_dt_biochemical,
+  'dt-social': m.tagdesc_dt_social,
+  'dt-societal': m.tagdesc_dt_societal,
+  'dt-sexual': m.tagdesc_dt_sexual,
+  'dt-presentational': m.tagdesc_dt_presentational,
+  'dt-existential': m.tagdesc_dt_existential
 };
 
 const BODY_REGION_NAME: Record<BodyRegionKey, Message> = {
@@ -149,6 +174,12 @@ export const dimensionHigh = (key: string) => lookup(DIMENSION_HIGH, key);
 export const presetName = (key: string) => lookup(PRESET_NAME, key);
 export const tagGroupName = (key: string) => lookup(TAG_GROUP_NAME, key);
 export const tagLabel = (key: string) => lookup(TAG_LABEL, key);
+/** The longer explanation a dysphoria type tag carries, or null for every
+    other tag - built-in or custom - which has none. */
+export const tagDescription = (key: string): string | null => {
+  const message = (TAG_DESCRIPTION as Record<string, Message | undefined>)[key];
+  return message ? message() : null;
+};
 /** All supported wordings of a built-in tag, so a Daylio export matches
     the stored key whichever app language is active during import. */
 export const tagLabels = (key: string): string[] => {

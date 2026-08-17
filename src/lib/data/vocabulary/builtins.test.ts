@@ -124,6 +124,30 @@ test('seeding preserves a group the user turned off and a tag they hid', () => {
   expect(seeded.find((g) => g.key === 'gender')!.tags.find((t) => t.id === 'g-misgendered')!.hidden).toBe(true);
 });
 
+test('dysphoria type seeds with exactly the seven confirmed categories', () => {
+  const groups = withBuiltInTagGroups([]);
+  const dysphoriaType = groups.find((g) => g.key === 'dysphoria_type')!;
+
+  expect(dysphoriaType.tags.map((t) => t.id)).toEqual([
+    'dt-physical',
+    'dt-biochemical',
+    'dt-social',
+    'dt-societal',
+    'dt-sexual',
+    'dt-presentational',
+    'dt-existential'
+  ]);
+});
+
+test('the euphoria tag lives in the gender group, separate from every dysphoria type key', () => {
+  const groups = withBuiltInTagGroups([]);
+  const gender = groups.find((g) => g.key === 'gender')!;
+  const dysphoriaTypeKeys = new Set(groups.find((g) => g.key === 'dysphoria_type')!.tags.map((t) => t.id));
+
+  expect(gender.tags.map((t) => t.id)).toContain('g-euphoria');
+  expect(dysphoriaTypeKeys.has('g-euphoria')).toBe(false);
+});
+
 test('a custom group survives seeding', () => {
   const custom: TagGroup = {
     key: 'custom-rituals',

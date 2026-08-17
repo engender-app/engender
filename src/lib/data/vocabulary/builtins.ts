@@ -1,5 +1,5 @@
 /* The built-in vocabulary every install gets: five gender dimensions, eight
-  presets, three tag groups and eight milestone templates.
+  presets, five tag groups and eight milestone templates.
 
    Keys only, no display text. A built-in is the same concept on any
    device, so it is identified by a stable key and its name is looked up at
@@ -49,6 +49,7 @@ export const BUILT_IN_TAG_GROUPS = [
       'g-body-dys',
       'g-soc-eu',
       'g-body-eu',
+      'g-euphoria',
       'g-transphobia',
       'g-gendered-ok',
       'g-misgendered'
@@ -68,6 +69,18 @@ export const BUILT_IN_TAG_GROUPS = [
     // converge on one group rather than minting one each (PRD F28).
     key: 'imported',
     tags: []
+  },
+  {
+    // Named types of a hard day (CONTEXT: Dysphoria type), distinct from the
+    // `euphoria_dysphoria` gender dimension above - a scale, not a tag group,
+    // and never the same control. Bare category names, no "dysphoria" suffix,
+    // matching how the emotions/activities groups above leave their own
+    // group name off each tag; the group heading supplies it. That also
+    // keeps "social" here from reading as a duplicate of the existing
+    // g-soc-dys tag, which is a plain "this was a hard day, socially" flag
+    // rather than a named category.
+    key: 'dysphoria_type',
+    tags: ['dt-physical', 'dt-biochemical', 'dt-social', 'dt-societal', 'dt-sexual', 'dt-presentational', 'dt-existential']
   }
 ] as const;
 
