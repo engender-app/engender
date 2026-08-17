@@ -22,6 +22,7 @@ import {
   nextAnniversaryEpochDay,
   ongoingWindowRange,
   previousCalendarMonthRange,
+  previousCalendarWeekRange,
   previousCalendarYearRange,
   yearToDateRange
 } from './epochDay.ts';
@@ -195,6 +196,66 @@ test(`previousCalendarMonthRange crosses the year boundary in January under TZ=$
   expect(range.month).toBe(11);
   expect(range.start).toBe(epochDayFromLocalDate(new Date(2023, 11, 1)));
   expect(range.end).toBe(epochDayFromLocalDate(new Date(2023, 11, 31)));
+});
+
+/* Monday-first, because the calendar heat-map already is (HeatMap.svelte
+   pads its grid with `(getUTCDay() + 6) % 7`), and a weekly wrapped that
+   started its week on a Sunday would cover a different seven days than the
+   strip the same person reads on Home. */
+test(`previousCalendarWeekRange is the Monday-to-Sunday week before this one, asked from midweek, under TZ=${tz}`, () => {
+  // Thursday 13 August 2026.
+  const range = previousCalendarWeekRange(epochDayFromLocalDate(new Date(2026, 7, 13)));
+  expect(range.start).toBe(epochDayFromLocalDate(new Date(2026, 7, 3))); // Monday
+  expect(range.end).toBe(epochDayFromLocalDate(new Date(2026, 7, 9))); // Sunday
+});
+
+test(`previousCalendarWeekRange asked on a Monday gives the week that ended yesterday under TZ=${tz}`, () => {
+  // Monday 10 August 2026: the week just ended, so it is the whole answer.
+  const monday = epochDayFromLocalDate(new Date(2026, 7, 10));
+  const range = previousCalendarWeekRange(monday);
+  expect(range.start).toBe(monday - 7);
+  expect(range.end).toBe(monday - 1);
+});
+
+test(`previousCalendarWeekRange asked on a Sunday does not swallow the week it is in under TZ=${tz}`, () => {
+  /* Sunday is the last day of its own week under Monday-first, and the
+     off-by-one that a `getDay()`-based version makes: Sunday reads as day 0,
+     which would put the week boundary a day late and hand back the six days
+     the person is still living through. */
+  const sunday = epochDayFromLocalDate(new Date(2026, 7, 9));
+  const range = previousCalendarWeekRange(sunday);
+  expect(range.start).toBe(sunday - 13);
+  expect(range.end).toBe(sunday - 7);
+});
+
+/* Negative epoch days: a single `%` keeps the sign of its left operand, so
+   before 1969-12-29 it returns a negative remainder and the range comes back
+   as the week the day is still in. Unreachable through the app, which only
+   ever asks about today - but this module is where every caller gets its
+   epoch-day arithmetic, so the helper answers for its whole domain. */
+test(`previousCalendarWeekRange still looks backwards on a pre-1970 Sunday under TZ=${tz}`, () => {
+  const sunday = epochDayFromLocalDate(new Date(1969, 11, 28));
+  const range = previousCalendarWeekRange(sunday);
+  expect(range.end).toBeLessThan(sunday);
+  expect(range.start).toBe(epochDayFromLocalDate(new Date(1969, 11, 15)));
+  expect(range.end).toBe(epochDayFromLocalDate(new Date(1969, 11, 21)));
+});
+
+test(`previousCalendarWeekRange never covers the day it was asked about, over four years of days, under TZ=${tz}`, () => {
+  const start = epochDayFromLocalDate(new Date(1968, 0, 1));
+  for (let day = start; day < start + 1461; day++) {
+    const range = previousCalendarWeekRange(day);
+    expect(range.end).toBeLessThan(day);
+    expect(range.end - range.start).toBe(6);
+  }
+});
+
+test(`previousCalendarWeekRange spans seven days and crosses a year boundary under TZ=${tz}`, () => {
+  // Friday 2 January 2026; the week before it starts in December.
+  const range = previousCalendarWeekRange(epochDayFromLocalDate(new Date(2026, 0, 2)));
+  expect(range.start).toBe(epochDayFromLocalDate(new Date(2025, 11, 22)));
+  expect(range.end).toBe(epochDayFromLocalDate(new Date(2025, 11, 28)));
+  expect(range.end - range.start).toBe(6);
 });
 
 test(`previousCalendarYearRange covers the leap year offered by a January recap under TZ=${tz}`, () => {

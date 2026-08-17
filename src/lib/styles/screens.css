@@ -104,6 +104,124 @@
   text-align: left;
 }
 
+/* ---------- Wrapped ----------
+   Two presentations, deliberately unalike (phase 4 features ticket 01). The
+   weekly/monthly one is a stack of the same small cards the rest of the app
+   uses; the yearly one is a cover plus full-width sections, so a year does
+   not read as a longer week. Everything below the first block belongs to one
+   or the other, never to both. */
+.wrapped-home-card {
+  color: var(--text); text-decoration: none;
+  margin-bottom: var(--space-4);
+  background: linear-gradient(150deg, var(--accent-soft), var(--surface) 55%);
+}
+.wrapped-home-mark { color: var(--accent); display: flex; }
+/* The cadence switcher's segments are links, not the buttons .segment was
+   written for, so they need the anchor's underline off and the text centred
+   inside the 44px minimum height rather than sitting at its top. */
+.wrapped-cadences { margin-bottom: var(--space-3); position: relative; z-index: 1; }
+.wrapped-cadences .segment { display: inline-flex; align-items: center; text-decoration: none; }
+
+/* Weekly and monthly. */
+.wrapped-head { position: relative; z-index: 1; padding: var(--space-4) 0 var(--space-5); text-align: center; }
+.wrapped-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; line-height: var(--leading-display); }
+.wrapped-sub { color: var(--text-2); font-size: var(--text-sm); margin-top: var(--space-2); }
+.wrapped-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.wrapped-stat {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-4) var(--space-3);
+  text-align: center;
+}
+.wrapped-stat strong { display: block; font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; }
+.wrapped-stat span { display: block; font-size: var(--text-xs); color: var(--text-2); margin-top: 2px; }
+.wrapped-block + .wrapped-block { margin-top: var(--space-3); }
+.wrapped-milestones { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+.wrapped-milestone { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.wrapped-milestone > span:nth-of-type(1) { flex: 1; min-width: 0; }
+.wrapped-milestone svg { color: var(--accent); flex-shrink: 0; }
+.wrapped-photos { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.wrapped-thin { text-align: center; padding: var(--space-8) var(--space-4); position: relative; z-index: 1; }
+.wrapped-thin .muted { margin-top: var(--space-2); }
+
+/* Yearly. */
+.wrapped-cover { position: relative; z-index: 1; text-align: center; padding: var(--space-4) 0 var(--space-7); }
+.wrapped-cover-label {
+  font-size: var(--text-xs); font-weight: var(--weight-bold);
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--text-2);
+}
+.wrapped-cover-year {
+  font-family: var(--font-display);
+  font-size: 4rem; font-weight: 700; line-height: 1;
+  margin: var(--space-2) 0 var(--space-3);
+  background: linear-gradient(105deg, var(--accent) 20%, var(--accent-2) 60%, var(--accent));
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.wrapped-cover-intro { color: var(--text-2); max-width: 30ch; margin: 0 auto; }
+.wrapped-year-section { margin-bottom: var(--space-7); position: relative; z-index: 1; }
+.wrapped-year-heading {
+  font-size: var(--text-xs); font-weight: var(--weight-bold);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-2);
+  margin-bottom: var(--space-3);
+}
+.wrapped-months { display: flex; flex-direction: column; gap: var(--space-2); }
+.wrapped-month {
+  display: grid; grid-template-columns: 5.5rem 1fr 2.5rem;
+  align-items: center; gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+.wrapped-month-name { color: var(--text-2); }
+.wrapped-month-bar { height: 10px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.wrapped-month-fill {
+  display: block; height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+}
+.wrapped-month-value { text-align: right; font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
+.wrapped-figures {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+.wrapped-figure { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); padding: var(--space-4); }
+.wrapped-figure + .wrapped-figure { border-top: 1px solid var(--border); }
+.wrapped-figure dt { font-size: var(--text-sm); color: var(--text-2); }
+.wrapped-figure dd { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; text-align: right; }
+.wrapped-photo-strip {
+  display: flex; gap: var(--space-3);
+  overflow-x: auto; padding-bottom: var(--space-2);
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--space-5)); padding-left: var(--space-5); padding-right: var(--space-5);
+}
+.wrapped-year-timeline { display: flex; flex-direction: column; }
+.wrapped-year-milestone {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) 0;
+  font-size: var(--text-sm);
+}
+.wrapped-year-milestone + .wrapped-year-milestone { border-top: 1px solid var(--border); }
+.wrapped-year-dot {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent);
+}
+.wrapped-year-milestone-name { flex: 1; min-width: 0; font-weight: var(--weight-medium); }
+.wrapped-year-close {
+  text-align: center; color: var(--text-2); font-size: var(--text-sm);
+  padding-bottom: var(--space-7);
+  position: relative; z-index: 1;
+}
+
 /* ---------- Calendar & day detail ---------- */
 .cal-monthbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
 .cal-month { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; }

@@ -66,6 +66,16 @@ export interface PreferenceValues {
   checkInTime: string;
   /** Optional entry nudges that suggest adding detail after a mood-only save. */
   entryNudges: boolean;
+  /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
+      stops the Home card and the recap read behind it, rather than hiding a
+      card over work that still runs.
+
+      Device-local, deliberately, and unlike `checkInEnabled`: the check-in is
+      a ritual with a time attached that a person would have to set up again
+      on a new device, while this is a yes/no about one installation's Home
+      screen. Weighed rather than defaulted - ADR-0003's rule would have
+      landed it here either way. */
+  wrappedEnabled: boolean;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone' | 'prolactin', string>>;
   /** Which measurement types have had their capture-protocol guidance
@@ -104,6 +114,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   checkInEnabled: false,
   checkInTime: '21:00',
   entryNudges: true,
+  wrappedEnabled: true,
   preferredLabUnits: {},
   measurementProtocolDismissed: {},
   autoExportEnabled: false,
@@ -141,6 +152,7 @@ export const DEVICE_LOCAL_KEYS = [
   'quickExit',
   'hideNotificationTitles',
   'entryNudges',
+  'wrappedEnabled',
   'autoExportEnabled',
   'autoExportSchedule',
   'lastBackupAt',

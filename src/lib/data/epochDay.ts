@@ -118,6 +118,35 @@ export function anniversaryYears(milestoneEpochDay: number, onEpochDay: number):
   return refYear - m.getFullYear() - (anniversaryInYear(m, refYear) > onEpochDay ? 1 : 0);
 }
 
+export interface CalendarWeekRange {
+  start: number;
+  end: number;
+}
+
+/** The Monday-to-Sunday week before the one `epochDay` falls in.
+
+    Monday-first because the calendar heat-map already is, and because a
+    weekly wrapped covering a different seven days than Home's own week
+    strip would be reading back a week the person never saw. Computed from
+    the epoch day's own arithmetic rather than `getDay()`: epoch day 0 was a
+    Thursday, so `+ 3` lands the modulo on Monday, and Sunday comes out as 6
+    - the last day of its week - instead of the 0 that `getDay()` reports
+    and that would push the boundary a day late.
+
+    The modulo is taken twice because JavaScript's `%` keeps the sign of its
+    left operand: a day before 1969-12-29 is a negative epoch day, and one
+    `%` alone hands back a negative remainder, which puts "this Monday"
+    *after* the day asked about and returns the week the day is still in.
+    Nothing calls this with a date that old today - it is only ever asked
+    about today - but this file is the one every module takes its epoch-day
+    arithmetic from, and a helper here that is wrong for a whole range of
+    inputs is a trap for the next caller rather than a saving. */
+export function previousCalendarWeekRange(epochDay: number): CalendarWeekRange {
+  const daysSinceMonday = (((epochDay + 3) % 7) + 7) % 7;
+  const thisMonday = epochDay - daysSinceMonday;
+  return { start: thisMonday - 7, end: thisMonday - 1 };
+}
+
 export interface CalendarMonthRange {
   start: number;
   end: number;

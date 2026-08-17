@@ -1005,6 +1005,99 @@ try {
   ok('About shows the exact version the build was given');
 } catch (e) { fail('the version the build was given', e); }
 
+/* 20. wrapped (phase 4 features ticket 01): the Home card, both
+   presentations, the entry floor and the Settings toggle.
+
+   Last, and after the reset in flow 18 has put the persona back, because it
+   writes five backdated entries into last June. The persona only covers the
+   last 150 days, so without them the previous calendar year is below the
+   entry floor and the yearly presentation has nothing to render - which is
+   itself worth asserting first, since it is the floor doing its job. */
+try {
+  await fresh('/wrapped/year');
+  if (!(await page.locator('.wrapped-thin').count())) {
+    throw new Error('a year the persona never logged should be below the entry floor');
+  }
+  if (await page.locator('.wrapped-cover').count()) throw new Error('a suppressed year still drew its cover');
+
+  const lastJune = await page.evaluate(() => Math.floor(Date.UTC(new Date().getFullYear() - 1, 5, 10) / 86400000));
+  for (let offset = 0; offset < 5; offset++) {
+    await fresh(`/entry/new/${lastJune + offset}`);
+    await page.locator(`.mood-picker .mood-btn[data-mood="${2 + (offset % 3)}"]`).click();
+    await page.locator('#ed-note').fill(`Last June, day ${offset + 1}`);
+    await page.locator('[data-save]').click();
+    // The editor lands on Home on every successful save.
+    await page.waitForSelector('.home-hello', { timeout: 10000 });
+  }
+
+  /* The yearly presentation: a cover, the year read month by month, and the
+     figures as one run rather than the compact template's separate cards. */
+  await fresh('/wrapped/year');
+  await page.waitForSelector('.wrapped-cover-year');
+  const coverYear = (await page.locator('.wrapped-cover-year').textContent())?.trim();
+  const previousYear = await page.evaluate(() => String(new Date().getFullYear() - 1));
+  if (coverYear !== previousYear) throw new Error('yearly wrapped cover shows ' + coverYear);
+  if ((await page.locator('.wrapped-month').count()) !== 12) {
+    throw new Error('the year should read as twelve months, silent ones included');
+  }
+  const juneValue = (await page.locator('.wrapped-month').nth(5).locator('.wrapped-month-value').textContent())?.trim();
+  if (!juneValue) throw new Error('the month the entries went into has no average');
+  if (!(await page.locator('.wrapped-figures .wrapped-figure').count())) throw new Error('the year has no figures');
+  /* Structurally distinct, not the compact template scaled up: the stat
+     tiles and per-question cards belong to the other presentation. */
+  if (await page.locator('.wrapped-stat').count()) throw new Error('yearly wrapped reused the compact stat tiles');
+
+  /* The monthly presentation, on the same data seam and deliberately
+     unalike: stat tiles and a card per question, no cover. */
+  await fresh('/wrapped/month');
+  await page.waitForSelector('.wrapped-stats');
+  if ((await page.locator('.wrapped-stat').count()) < 2) throw new Error('the compact template has no stat tiles');
+  if (await page.locator('.wrapped-cover').count()) throw new Error('monthly wrapped reused the yearly cover');
+  if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('wrapped is not view-only');
+
+  /* All three cadences reachable without typing a URL: Home offers one, and
+     the switcher is what makes the other two anything but orphans (SH-001). */
+  const tabs = page.locator('.wrapped-cadences .segment');
+  if ((await tabs.count()) !== 3) throw new Error('the cadence switcher offers ' + (await tabs.count()));
+  await tabs.nth(2).click();
+  await page.waitForSelector('.wrapped-cover-year', { timeout: 15000 });
+  const activeTab = await page.locator('.wrapped-cadences .segment.is-active').getAttribute('href');
+  if (activeTab !== '/wrapped/year') throw new Error('the switcher marks ' + activeTab + ' as current');
+
+  await fresh('/wrapped/nonsense');
+  if (!(await page.locator('.notice').count())) throw new Error('an unknown cadence should say so');
+  if (await page.locator('.wrapped-cadences').count()) throw new Error('an unknown cadence still drew a switcher');
+
+  /* Home offers exactly one card, for whichever cadence is freshest today,
+     and it links to that cadence's screen. */
+  await fresh('/');
+  const card = page.locator('[data-wrapped-card]');
+  if ((await card.count()) !== 1) throw new Error('Home should offer one wrapped card, found ' + (await card.count()));
+  const href = await card.getAttribute('href');
+  if (!/^\/wrapped\/(week|month|year)$/.test(href ?? '')) throw new Error('the card links to ' + href);
+  await card.click();
+  await page.waitForSelector('.wrapped-title, .wrapped-cover-year');
+
+  /* The toggle turns the feature off rather than hiding the card: Home stops
+     offering it, and the screen itself says so instead of rendering a
+     wrapped nobody asked to keep computing. */
+  await fresh('/settings');
+  await page.locator('[data-wrapped-toggle]').getByRole('switch').click();
+  await fresh('/');
+  if (await page.locator('[data-wrapped-card]').count()) throw new Error('the card survived the toggle');
+  await fresh('/wrapped/week');
+  if (await page.locator('.wrapped-stats, .wrapped-cover').count()) {
+    throw new Error('a wrapped still rendered with the feature turned off');
+  }
+  if (!(await page.locator('.notice-title').count())) throw new Error('the off state explains nothing');
+
+  await fresh('/settings');
+  await page.locator('[data-wrapped-toggle]').getByRole('switch').click();
+  await fresh('/');
+  if (!(await page.locator('[data-wrapped-card]').count())) throw new Error('the card did not come back');
+  ok('wrapped: Home card, both presentations, the entry floor and the toggle');
+} catch (e) { fail('wrapped', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');

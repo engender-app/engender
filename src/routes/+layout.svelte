@@ -106,8 +106,14 @@
     : path.startsWith('/calendar') || path.startsWith('/day') || path.startsWith('/search') ? 'calendar'
     /* SH-001: Timeline used to light no tab at all, which read as having
        left the app's structure. It groups with Stats/Recap as a look-back
-       view over the same journal, rather than getting IA a new tab. */
-    : path.startsWith('/stats') || path.startsWith('/recap') || path.startsWith('/timeline') ? 'stats'
+       view over the same journal, rather than getting IA a new tab. A
+       wrapped joins that group for the same reason, even though Home is
+       where it is offered from. */
+    : path.startsWith('/stats') ||
+        path.startsWith('/recap') ||
+        path.startsWith('/timeline') ||
+        path.startsWith('/wrapped')
+      ? 'stats'
     : path.startsWith('/settings') ? 'settings'
     : ''
   );

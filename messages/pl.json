@@ -977,5 +977,72 @@
   "mood_none": "bez nastroju",
   "entry_mood_aria": "nastrój: {name}",
   "entry_day_count": "{count} tego dnia",
-  "tags_group_aria": "tagi: {group}"
+  "tags_group_aria": "tagi: {group}",
+  "wrapped": "Bilans",
+  "wrapped_settings_sub": "Spojrzenie na miniony tydzień, miesiąc albo rok, kiedy już się zamknie.",
+  "wrapped_off_title": "Bilans jest wyłączony",
+  "wrapped_off_body": "Włącz go w ustawieniach, a zamknięte tygodnie, miesiące i lata pojawią się na ekranie głównym.",
+  "wrapped_unknown_title": "Nie ma takiego bilansu",
+  "wrapped_unknown_body": "Bilans obejmuje zamknięty tydzień, miesiąc albo rok. Otwórz któryś z ekranu głównego.",
+  "wrapped_home_week": "Bilans tygodnia",
+  "wrapped_home_month": "Bilans miesiąca: {month}",
+  "wrapped_home_year": "Bilans roku {year}",
+  "wrapped_home_sub": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} wpis do przejrzenia",
+        "countPlural=few": "Wpisów do przejrzenia: {count}",
+        "countPlural=many": "Wpisów do przejrzenia: {count}",
+        "countPlural=other": "Wpisów do przejrzenia: {count}"
+      }
+    }
+  ],
+  "wrapped_week_title": "Twój tydzień",
+  "wrapped_week_range": "od {from} do {to}",
+  "wrapped_month_title": "Twój {month}",
+  "wrapped_year_title": "Twój {year}",
+  "wrapped_month_intro": "Miesiąc dokładnie tak, jak trafił do dziennika.",
+  "wrapped_year_intro": "Dwanaście miesięcy dokładnie tak, jak trafiły do dziennika.",
+  "wrapped_thin_title": "Za mało, żeby było co przeglądać",
+  "wrapped_thin_body": [
+    {
+      "declarations": [
+        "input count",
+        "input floor",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} wpis w tym okresie, a bilans zaczyna się od {floor}.",
+        "countPlural=few": "Wpisów w tym okresie: {count}, a bilans zaczyna się od {floor}.",
+        "countPlural=many": "Wpisów w tym okresie: {count}, a bilans zaczyna się od {floor}.",
+        "countPlural=other": "Wpisów w tym okresie: {count}, a bilans zaczyna się od {floor}."
+      }
+    }
+  ],
+  "wrapped_stat_entries": "Wpisy",
+  "wrapped_stat_streak": "Najdłuższa seria",
+  "wrapped_stat_mood": "Średni nastrój",
+  "wrapped_mood_arc": "Nastrój dzień po dniu",
+  "wrapped_scale_arc": "Skala, która ruszyła się najbardziej",
+  "wrapped_scale_arc_body": "{name}, z {from} na {to}",
+  "wrapped_tags": "Tagi tego okresu",
+  "wrapped_milestones": "Osiągnięte kamienie milowe",
+  "wrapped_photos": "Zdjęcia z tego okresu",
+  "wrapped_year_months": "Miesiąc po miesiącu",
+  "wrapped_year_figures": "Rok w liczbach",
+  "wrapped_year_close": "To był {year}, zapisany twoimi słowami.",
+  "wrapped_cadence_group": "Okres bilansu",
+  "wrapped_cadence_week": "Miniony tydzień",
+  "wrapped_cadence_month": "Miniony miesiąc",
+  "wrapped_cadence_year": "Miniony rok"
 }

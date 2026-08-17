@@ -8,6 +8,13 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './test-support.ts';
 
+/* Photo bytes only have to be distinguishable here - normalize() is the
+   browser's job and the journal stores what it is handed (ADR-0008). */
+const shot = (full: string, thumb: string) => ({
+  full: new Uint8Array([...full].map((c) => c.charCodeAt(0))),
+  thumb: new Uint8Array([...thumb].map((c) => c.charCodeAt(0)))
+});
+
 test('one metric, one number: every aggregate reports mood on the 1-to-5 range it was logged on', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 100, mood: 2, tags: ['e-tired'] });
@@ -276,8 +283,76 @@ test('a recap of an empty month says so rather than dividing by zero', async () 
     bestStreak: 0,
     topTags: [],
     milestones: [],
-    biggestDimensionChange: null
+    biggestDimensionChange: null,
+    photoHighlights: []
   });
+});
+
+/* Photo highlights (phase 4 features ticket 01). A wrapped shows pictures
+   from the period it covers, and it reads them off this seam like every
+   other number in it - so there is still one range, one recomputation, and
+   nothing stored. */
+
+test('photo highlights are spread across the range rather than taken from its first days', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (let offset = 0; offset < 8; offset++) {
+    const entryId = await journal.entries.upsertEntry({ epochDay: 100 + offset, mood: 3 });
+    await journal.photos.attach({ entryId }, shot(`full-${offset}`, `thumb-${offset}`));
+  }
+
+  const { photoHighlights } = await journal.stats.recap(100, 129);
+
+  /* Four out of eight, one from each quarter of the period's photos. Taking
+     the oldest four instead would answer "what did this year look like" with
+     January, which is the failure this spread exists to avoid. */
+  assert.deepEqual(
+    photoHighlights.map((p) => p.epochDay),
+    [100, 102, 104, 106]
+  );
+});
+
+test('a range with fewer photos than the highlight count keeps all of them, oldest first', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const later = await journal.entries.upsertEntry({ epochDay: 120, mood: 3 });
+  const earlier = await journal.entries.upsertEntry({ epochDay: 105, mood: 3 });
+  const second = await journal.photos.attach({ entryId: later }, shot('b', 'B'));
+  const first = await journal.photos.attach({ entryId: earlier }, shot('a', 'A'));
+
+  const { photoHighlights } = await journal.stats.recap(100, 129);
+
+  assert.deepEqual(photoHighlights, [
+    { id: first, fileName: `${first}.jpg`, epochDay: 105 },
+    { id: second, fileName: `${second}.jpg`, epochDay: 120 }
+  ]);
+});
+
+/* "Oldest first" has to decide two photos taken the same day too, and the
+   answer is the order they were attached in - the same order the entry
+   editor shows them in - rather than whatever their uuids sort to. */
+test('two highlights from one day keep the order the photos were attached in', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 110, mood: 3 });
+  const first = await journal.photos.attach({ entryId }, shot('a', 'A'));
+  const second = await journal.photos.attach({ entryId }, shot('b', 'B'));
+
+  const { photoHighlights } = await journal.stats.recap(100, 129);
+
+  assert.deepEqual(
+    photoHighlights.map((p) => p.id),
+    [first, second]
+  );
+});
+
+test("a milestone's photo is a highlight too, and a photo outside the range is not", async () => {
+  const { journal } = await journalWithBuiltIns();
+  const inside = await journal.milestones.upsertMilestone({ epochDay: 110, name: 'HRT start' });
+  const milestonePhoto = await journal.photos.attach({ milestoneId: inside }, shot('m', 'M'));
+  const outside = await journal.entries.upsertEntry({ epochDay: 200, mood: 3 });
+  await journal.photos.attach({ entryId: outside }, shot('x', 'X'));
+
+  const { photoHighlights } = await journal.stats.recap(100, 129);
+
+  assert.deepEqual(photoHighlights, [{ id: milestonePhoto, fileName: `${milestonePhoto}.jpg`, epochDay: 110 }]);
 });
 
 test('the biggest dimension change is picked across ranges but reported in native units', async () => {
