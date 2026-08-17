@@ -47,7 +47,12 @@ export type TableName =
      schedule or a pause without the doses they are compared against - the
      adherence view needs all three - so splitting them would be precision
      no screen can use. */
-  | 'dose';
+  | 'dose'
+  /* Medication stock (phase 4 ticket 04). Its projection reads doses and
+     regimen episodes too, but those are announced under their own names
+     already - a stock-only screen re-running on a dose write is exactly
+     the point. */
+  | 'stock';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -61,7 +66,8 @@ export const TABLE_NAMES: TableName[] = [
   'lab',
   'reminder',
   'regimen',
-  'dose'
+  'dose',
+  'stock'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -146,6 +152,16 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       deletePause: ['dose']
     },
     reads: ['getDoses', 'getSchedules', 'getPauses']
+  },
+  stock: {
+    writes: {
+      upsertEntry: ['stock'],
+      deleteEntry: ['stock', 'reminder'],
+      // Box 4: reconciling can create, move or clear the drug's run-out
+      // Reminder as well as this drug's own bookkeeping.
+      reconcileRunOutReminders: ['stock', 'reminder']
+    },
+    reads: ['getEntries', 'getProjections']
   },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {

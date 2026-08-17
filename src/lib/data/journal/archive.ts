@@ -36,6 +36,7 @@ import type {
   ArchiveDoseEvent,
   ArchiveDosePause,
   ArchiveDoseSchedule,
+  ArchiveMedicationStock,
   ArchiveMilestone,
   ArchivePhoto,
   ArchivePreset,
@@ -256,8 +257,9 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       anchor_epoch_day: number | null;
       epoch_day: number | null;
       enabled: number;
+      auto_source: string | null;
     }>(
-      `SELECT uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled
+      `SELECT uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source
        FROM reminder ORDER BY id`
     );
     return rows.map((r) => ({
@@ -269,7 +271,32 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       interval: r.interval,
       anchorEpochDay: r.anchor_epoch_day,
       epochDay: r.epoch_day,
-      enabled: bool(r.enabled)
+      enabled: bool(r.enabled),
+      autoSource: r.auto_source
+    }));
+  };
+
+  const medicationStock = async (): Promise<ArchiveMedicationStock[]> => {
+    const rows = await driver.query<{
+      uuid: string;
+      drug: string;
+      quantity: number;
+      unit: string;
+      recorded_epoch_day: number;
+      reminder_ever_created: number;
+      reminder_dismissed: number;
+    }>(
+      `SELECT uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed
+       FROM medication_stock ORDER BY drug`
+    );
+    return rows.map((r) => ({
+      id: r.uuid,
+      drug: r.drug,
+      quantity: r.quantity,
+      unit: r.unit,
+      recordedEpochDay: r.recorded_epoch_day,
+      reminderEverCreated: bool(r.reminder_ever_created),
+      reminderDismissed: bool(r.reminder_dismissed)
     }));
   };
 
@@ -453,7 +480,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           regimenEpisodes: await regimenEpisodes(),
           doseEvents: await doseEvents(),
           doseSchedules: await doseSchedules(),
-          dosePauses: await dosePauses()
+          dosePauses: await dosePauses(),
+          medicationStock: await medicationStock()
         },
         files: archivedFiles,
         async readFile(name) {

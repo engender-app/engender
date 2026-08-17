@@ -204,6 +204,38 @@
   let reminderSyncRunning = false;
   let reminderSyncQueued = false;
 
+  /* Box 4's run-out reminder (phase 4 ticket 04, journal.stock). Android
+     only: Reminder never fires on web (CONTEXT: "Reminder"), so there is
+     nothing for stock.ts's reconciliation to schedule there - the stock
+     screen surfaces the same projection directly instead (box 5). Reacts
+     to 'dose' and 'stock' writes, the two that can move a projection;
+     reconcileRunOutReminders' own write to 'reminder' is what feeds
+     syncAndroidReminderSchedules above, the same way any other reminder
+     edit does. */
+  let stockReminderListenerAttached = false;
+  let stockReminderSyncRunning = false;
+  let stockReminderSyncQueued = false;
+
+  async function reconcileStockRunOutReminders() {
+    if (!isAndroid() || !isReadyState(bootState)) return;
+    if (stockReminderSyncRunning) {
+      stockReminderSyncQueued = true;
+      return;
+    }
+    stockReminderSyncRunning = true;
+    try {
+      await journal.stock.reconcileRunOutReminders(todayEpochDay());
+    } catch (error) {
+      console.error('Could not reconcile the medication stock run-out reminder', error);
+    } finally {
+      stockReminderSyncRunning = false;
+      if (stockReminderSyncQueued) {
+        stockReminderSyncQueued = false;
+        void reconcileStockRunOutReminders();
+      }
+    }
+  }
+
   async function syncAndroidReminderSchedules() {
     if (!isAndroid() || !isReadyState(bootState)) return;
     if (reminderSyncRunning) {
@@ -276,6 +308,15 @@
     });
     void syncAndroidReminderSchedules();
     void consumeReminderLaunchRoute();
+  });
+
+  $effect(() => {
+    if (!isAndroid() || !isReadyState(bootState) || stockReminderListenerAttached) return;
+    stockReminderListenerAttached = true;
+    onTablesWritten((tables) => {
+      if (tables.includes('dose') || tables.includes('stock')) void reconcileStockRunOutReminders();
+    });
+    void reconcileStockRunOutReminders();
   });
 
   $effect(() => {

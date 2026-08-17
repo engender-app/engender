@@ -16,7 +16,8 @@ const emptySnapshot: ArchiveSnapshot = {
     regimenEpisodes: [],
     doseEvents: [],
     doseSchedules: [],
-    dosePauses: []
+    dosePauses: [],
+    medicationStock: []
   },
   files: [],
   readFile: async () => {

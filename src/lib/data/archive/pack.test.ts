@@ -269,7 +269,8 @@ function bigContents(): { contents: ArchiveContents; reads: string[] } {
         regimenEpisodes: [],
         doseEvents: [],
         doseSchedules: [],
-        dosePauses: []
+        dosePauses: [],
+        medicationStock: []
       },
       preferences: portablePreferences(PREFERENCE_DEFAULTS),
       files,
