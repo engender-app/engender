@@ -18,7 +18,9 @@
   import { bootGate, isErrorState, isReadyState } from '$lib/stores/boot-state';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
+  import { App as AndroidAppPlugin } from '@capacitor/app';
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
+  import { resolveAndroidBackAction } from '$lib/android/back-navigation';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import { androidReminders } from '$lib/reminders/android-bridge';
@@ -46,24 +48,6 @@
      effect below stamps them on <html>. From an effect it would land one
      step too late and briefly undo what app.html's pre-paint script did. */
   startBoot();
-
-  interface AndroidAppBackButtonListenerHandle {
-    remove(): Promise<void>;
-  }
-
-  interface AndroidAppPlugin {
-    addListener(
-      eventName: 'backButton',
-      listener: () => void
-    ): Promise<AndroidAppBackButtonListenerHandle>;
-    minimizeApp(): Promise<void>;
-  }
-
-  function androidAppPlugin(): AndroidAppPlugin | null {
-    if (typeof window === 'undefined') return null;
-    const capacitor = (window as { Capacitor?: { Plugins?: { App?: AndroidAppPlugin } } }).Capacitor;
-    return capacitor?.Plugins?.App ?? null;
-  }
 
   const NAV = [
     { href: '/', key: 'home', icon: 'home', label: () => m.nav_home() },
@@ -120,7 +104,10 @@
   let activeKey = $derived(
     path === '/' ? 'home'
     : path.startsWith('/calendar') || path.startsWith('/day') || path.startsWith('/search') ? 'calendar'
-    : path.startsWith('/stats') || path.startsWith('/recap') ? 'stats'
+    /* SH-001: Timeline used to light no tab at all, which read as having
+       left the app's structure. It groups with Stats/Recap as a look-back
+       view over the same journal, rather than getting IA a new tab. */
+    : path.startsWith('/stats') || path.startsWith('/recap') || path.startsWith('/timeline') ? 'stats'
     : path.startsWith('/settings') ? 'settings'
     : ''
   );
@@ -315,30 +302,29 @@
 
   /* Android's back gesture should walk in-app screens before leaving to the
      launcher. Capacitor's default native back stack does not track SvelteKit
-     client routing, so this listener maps the gesture onto browser history. */
+     client routing, so this listener maps the gesture onto browser history
+     (NAV-001/NAV-002): $lib/android/back-navigation holds the routing
+     decision as a pure, unit-tested function; @capacitor/app is now a real
+     dependency, registered in AndroidPluginRegistry.java, so the plugin this
+     listener attaches to actually exists at runtime. */
   $effect(() => {
     if (!isAndroid()) return;
-    const app = androidAppPlugin();
-    if (!app) return;
 
     let tornDown = false;
     let removeListener: (() => void) | null = null;
 
-    void app
-      .addListener('backButton', () => {
-        const currentPath = window.location.pathname;
-        if (currentPath === '/' || currentPath === '') {
-          void app.minimizeApp();
+    void AndroidAppPlugin.addListener('backButton', () => {
+      switch (resolveAndroidBackAction(window.location.pathname, window.history.length)) {
+        case 'minimize':
+          void AndroidAppPlugin.minimizeApp();
           return;
-        }
-
-        if (window.history.length > 1) {
+        case 'history-back':
           window.history.back();
           return;
-        }
-
-        void goto('/', { replaceState: true });
-      })
+        case 'go-home':
+          void goto('/', { replaceState: true });
+      }
+    })
       .then((handle) => {
         if (tornDown) {
           void handle.remove();
@@ -394,7 +380,7 @@
        so it can be waited for: the walkthrough suite has to let a cold start
        finish before it clears storage, or it interrupts the very writes it
        then asserts against (tests/walkthrough.test.mjs). -->
-  <div class="app" class:disguised={prefs.disguise} data-boot={bootState.status}>
+  <div class="app" data-app-root class:disguised={prefs.disguise} data-boot={bootState.status}>
     {#if isErrorState(bootState)}
       <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
         <Icon name="alert" size={20} />
@@ -423,6 +409,9 @@
     {#if isReadyState(bootState) && !locked}
       <UpdateNotice />
     {/if}
+    <!-- SH-004: without this, a keyboard user tabbed through the whole rail
+         before reaching content on desktop. -->
+    <a href="#app-main" class="skip-link">{m.skip_to_content()}</a>
     {#if !chromeless}
       <nav class="app-rail" aria-label={m.nav_main()}>
         <div class="rail-brand">
@@ -446,7 +435,7 @@
       </nav>
     {/if}
 
-    <main class="app-main">
+    <main class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
       {#if schemaTooNew}
         <SchemaTooNew />
       {:else if needsPassphrase}
@@ -473,7 +462,7 @@
             href={item.href}
             aria-current={activeKey === item.key ? 'page' : undefined}
           >
-            <Icon name={item.icon} size={24} /><span>{item.label()}</span>
+            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label">{item.label()}</span>
           </a>
         {/each}
         <div class="nav-fab-slot">
@@ -488,7 +477,7 @@
             href={item.href}
             aria-current={activeKey === item.key ? 'page' : undefined}
           >
-            <Icon name={item.icon} size={24} /><span>{item.label()}</span>
+            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label">{item.label()}</span>
           </a>
         {/each}
       </nav>

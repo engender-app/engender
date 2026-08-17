@@ -452,6 +452,7 @@
   "boot_restore_failed": "That did not work. The copy is still on the device.",
   "quick_exit_back": "Back to the app",
   "nav_main": "Main",
+  "skip_to_content": "Skip to content",
   "exp_title": "Export & import",
   "exp_last_backup": "Last backup",
   "exp_last_backup_never": "never, so your journal exists only on this device",

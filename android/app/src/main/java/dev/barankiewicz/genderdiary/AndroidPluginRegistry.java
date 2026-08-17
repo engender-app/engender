@@ -1,5 +1,6 @@
 package dev.barankiewicz.genderdiary;
 
+import com.capacitorjs.plugins.app.AppPlugin;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
@@ -31,7 +32,11 @@ public final class AndroidPluginRegistry {
         new PluginEntry("Reminders", RemindersPlugin.class),
         new PluginEntry("AutoExport", AutoExportPlugin.class),
         new PluginEntry("Disguise", DisguisePlugin.class),
-        new PluginEntry("QuickExit", QuickExitPlugin.class)
+        new PluginEntry("QuickExit", QuickExitPlugin.class),
+        // NAV-001/NAV-002: the official @capacitor/app plugin, registered
+        // the same way as our own plugins so the Android back gesture
+        // (src/lib/android/back-navigation.ts) has something real to call.
+        new PluginEntry("App", AppPlugin.class)
     );
 
     public static List<Class<? extends Plugin>> requiredPluginClasses() {

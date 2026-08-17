@@ -8,6 +8,11 @@ export const androidPluginOwners = {
   autoExport: 'data/archive/android-auto-export-bridge',
   disguise: 'disguise/android-bridge',
   quickExit: 'lock/quick-exit-bridge',
+  // Official @capacitor/app plugin, not one of ours - imported directly
+  // from that package rather than through registerAndroidPlugin() below,
+  // but still asserted at startup like every other required plugin
+  // (NAV-002).
+  backNavigation: 'android/back-navigation',
 } as const;
 
 type AndroidPluginOwner = (typeof androidPluginOwners)[keyof typeof androidPluginOwners];
@@ -25,6 +30,7 @@ export const androidPluginRegistry = [
   { name: 'AutoExport', owner: androidPluginOwners.autoExport },
   { name: 'Disguise', owner: androidPluginOwners.disguise },
   { name: 'QuickExit', owner: androidPluginOwners.quickExit },
+  { name: 'App', owner: androidPluginOwners.backNavigation },
 ] as const satisfies readonly AndroidPluginRegistryEntry[];
 
 export const requiredAndroidPluginNames = androidPluginRegistry.map((entry) => entry.name);

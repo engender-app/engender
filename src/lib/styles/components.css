@@ -109,7 +109,10 @@
 .row-trailing { display: flex; align-items: center; gap: var(--space-2); color: var(--text-2); font-size: var(--text-sm); }
 
 /* ---------- switch ---------- */
-.switch { display: inline-flex; cursor: pointer; }
+/* SH-101: the visible track is 28px tall, under the 44px minimum, and it is
+   the most repeated control in Settings. The hit area grows to 44px without
+   the track itself growing. */
+.switch { display: inline-flex; align-items: center; justify-content: center; min-height: var(--touch-target); cursor: pointer; }
 .switch input { position: absolute; opacity: 0; width: 44px; height: 28px; cursor: pointer; }
 .switch-track {
   width: 44px; height: 28px; border-radius: var(--radius-pill);
@@ -128,7 +131,7 @@
 
 /* ---------- segmented ---------- */
 .segmented {
-  display: inline-flex; gap: 2px;
+  display: inline-flex; gap: var(--space-2);
   background: var(--surface-2);
   border-radius: var(--radius-pill);
   padding: 3px;
@@ -137,9 +140,12 @@
   scrollbar-width: none;
 }
 .segmented::-webkit-scrollbar { display: none; }
+/* SH-102: 34px min-height and a 2px gap were under both the 44px touch
+   target and the 8px touch spacing minimums, on the control theme,
+   language, stats range and several pickers all repeat. */
 .segment {
   border: none; background: none; cursor: pointer;
-  padding: 6px 14px; min-height: 34px;
+  padding: 6px 14px; min-height: var(--touch-target);
   border-radius: var(--radius-pill);
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--text-2);
@@ -190,6 +196,16 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   0%, 92%, 100% { transform: scaleY(1); }
   95% { transform: scaleY(0.12); }
 }
+/* MO-001: the global reduce rule below clamps every animation's duration to
+   1ms, which turns an infinite loop into a restart-every-millisecond
+   flicker rather than stillness - a photosensitivity hazard, not a comfort
+   feature. These five decorative loops stop outright instead; each rests on
+   a frame already inside its own keyframes (open eyes is face-blink's
+   resting frame with no transform applied at all). */
+html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .mood-face-ink { animation: none; }
+}
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
 .mood-btn:not(.is-selected) .mood-face { opacity: 0.55; }
 .mood-picker:not(:has(.is-selected)) .mood-face { opacity: 1; }
@@ -204,18 +220,6 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 .mood-label { font-size: var(--text-xs); color: var(--text-2); font-weight: var(--weight-medium); }
 .mood-btn.is-selected .mood-label { color: var(--text); font-weight: var(--weight-bold); }
 .mood-picker.is-compact .mood-face { width: 38px; height: 38px; }
-
-.rive-note {
-  position: absolute; top: -9px; right: 0;
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10px; color: var(--text-2);
-  border: 1px dashed var(--accent-border);
-  border-radius: var(--radius-pill);
-  padding: 1px 7px;
-  opacity: 0.85;
-  background: var(--surface);
-  z-index: 1;
-}
 
 /* ---------- dimension slider ---------- */
 .dim-slider { margin-bottom: var(--space-5); }
@@ -435,7 +439,8 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   text-decoration: underline; padding: 4px;
 }
 
-/* ---------- animated Rive stand-ins ---------- */
+/* ---------- decorative motion stage (ticket 09: RiveSlot's CSS fallback is
+   now its only content - see RiveSlot.svelte) ---------- */
 .rive-stage {
   position: relative;
   border-radius: var(--radius-lg);
@@ -443,14 +448,6 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
   width: 100%;
-}
-.rive-chip {
-  position: absolute; top: 6px; right: 8px;
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10px; font-weight: var(--weight-bold);
-  color: var(--text-2); opacity: 0.55;
-  border: 1px dashed currentColor; border-radius: var(--radius-pill);
-  padding: 1px 7px;
 }
 .bloom { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .bloom i {
@@ -478,6 +475,16 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   12% { transform: scale(1.18); }
   24% { transform: scale(1); }
 }
+/* MO-001: both rings and the beat rest at their own 0%/100% frame - the
+   rings' resting opacity is 0 (a static bloom-core icon, no rings), the
+   beat's is scale(1) - rather than restarting every millisecond. */
+html[data-a11y-motion='reduce'] .bloom i,
+html[data-a11y-motion='reduce'] .bloom-core {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bloom i, .bloom-core { animation: none; }
+}
 .confetti { position: absolute; inset: 0; pointer-events: none; }
 .confetti .cf {
   position: absolute; top: -12px;
@@ -503,6 +510,14 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   0% { transform: translateY(-12px) rotate(0deg); opacity: 0; }
   10% { opacity: 1; }
   100% { transform: translateY(170px) rotate(340deg); opacity: 0; }
+}
+/* MO-001: stopped rather than clamped to a 1ms restart loop. cf-fall's own
+   0% frame (just above the visible area, invisible) is the resting state. */
+html[data-a11y-motion='reduce'] .confetti .cf {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti .cf { animation: none; }
 }
 
 .photo-thumb {
@@ -532,7 +547,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 /* ---------- staggered list entrance ---------- */
 .stagger-in {
   animation: card-in var(--dur-slow) var(--ease-out) both;
-  animation-delay: calc(var(--stagger-i, 0) * 50ms);
+  animation-delay: calc(var(--stagger-i, 0) * var(--stagger-step));
 }
 @keyframes card-in {
   from { opacity: 0; transform: translateY(12px) scale(0.985); }
@@ -551,7 +566,10 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 .notice-danger { background: var(--danger-soft); color: var(--danger); }
 .notice .notice-body { flex: 1; }
 .notice .notice-title { font-weight: var(--weight-bold); display: block; margin-bottom: 2px; }
-.notice .icon-btn { width: 32px; height: 32px; color: inherit; }
+/* SH-005: was 32x32, under the 44px minimum, on the backup-stale dismiss and
+   UpdateNotice - two dismiss buttons people actually reach for. The icon
+   glyph itself keeps its size; this only grows the surrounding hit area. */
+.notice .icon-btn { width: var(--touch-target); height: var(--touch-target); color: inherit; }
 
 /* ---------- pride aurora motif ---------- */
 .pride-aurora {
@@ -565,7 +583,11 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   z-index: 0;
   mask-image: linear-gradient(to bottom, black 25%, transparent 92%);
   -webkit-mask-image: linear-gradient(to bottom, black 25%, transparent 92%);
-  animation: aurora-drift 16s ease-in-out infinite alternate;
+  /* MO-005: used to drift back and forth forever - the largest permanently
+     animating element in the app, and the likeliest motion cost against the
+     Android performance guardrail. Plays once on entry and rests on its
+     final frame. */
+  animation: aurora-drift var(--dur-slow) var(--ease-out) both;
 }
 [data-theme="dark"] .pride-aurora { opacity: 0.42; }
 @keyframes aurora-drift {
@@ -676,7 +698,13 @@ button.switch { border: none; background: none; padding: 0; cursor: pointer; dis
   to { transform: translateX(100%); }
 }
 /* The global reduce rule clamps every animation to 1ms, which would turn an
-   infinite sweep into a strobe. It is decoration, so it goes entirely. */
+   infinite sweep into a strobe. It is decoration, so it goes entirely.
+   MO-002: this used to guard only the OS-level media query, so the in-app
+   reduce-motion toggle (html[data-a11y-motion='reduce']) left the sweep
+   running with the OS setting off - both paths are covered now. */
+html[data-a11y-motion='reduce'] .skeleton::after {
+  display: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after { display: none; }
 }

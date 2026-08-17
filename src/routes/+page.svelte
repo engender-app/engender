@@ -73,7 +73,7 @@
 
   {#if celebrate}
     <div class="celebration card" role="status">
-      <RiveSlot label={m.rive_celebration()} height={90} variant="confetti" src="/rive/celebration.riv" />
+      <RiveSlot label={m.rive_celebration()} height={90} variant="confetti" />
       <p class="celebration-text">
         {landing?.s.years
           ? m.home_anniv_years({

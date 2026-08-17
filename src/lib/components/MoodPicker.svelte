@@ -1,6 +1,5 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import Icon from './Icon.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
 
   let {
@@ -19,10 +18,7 @@
   let moods = $derived([1, 2, 3, 4, 5].map((v) => ({ value: v, label: moodName(v) })));
 </script>
 
-<!-- The face row is the static fallback + placeholder for the Rive mood
-     state machine (F2); each mood stays a real focusable control. -->
 <div class="mood-picker" class:is-compact={compact} role="radiogroup" aria-label={m.mood()}>
-  <div class="rive-note" aria-hidden="true"><Icon name="zap" size={12} /> Rive: mood faces state machine</div>
   <div class="mood-row">
     {#each moods as mood (mood.value)}
       <button
