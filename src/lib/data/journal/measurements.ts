@@ -16,7 +16,6 @@ export interface MeasurementInput {
   epochDay: number;
   value: number;
   unit: string;
-  note?: string;
 }
 
 /** One chart line: the measurements of one type that share a unit, oldest
@@ -49,7 +48,6 @@ type MeasurementRow = {
   type: Measurement['type'];
   value: number;
   unit: string;
-  note: string | null;
 };
 
 const toMeasurement = (row: MeasurementRow): Measurement => ({
@@ -57,14 +55,13 @@ const toMeasurement = (row: MeasurementRow): Measurement => ({
   type: row.type,
   epochDay: row.epoch_day,
   value: row.value,
-  unit: row.unit,
-  note: row.note ?? ''
+  unit: row.unit
 });
 
 export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
   const measurementsFor = async (type: Measurement['type']): Promise<Measurement[]> => {
     const rows = await driver.query<MeasurementRow>(
-      'SELECT uuid, epoch_day, type, value, unit, note FROM measurement WHERE type = ? ORDER BY epoch_day, id',
+      'SELECT uuid, epoch_day, type, value, unit FROM measurement WHERE type = ? ORDER BY epoch_day, id',
       [type]
     );
     return rows.map(toMeasurement);
@@ -88,7 +85,7 @@ export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
 
     async getMeasurementsInRange(fromEpochDay, toEpochDay) {
       const rows = await driver.query<MeasurementRow>(
-        'SELECT uuid, epoch_day, type, value, unit, note FROM measurement WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id',
+        'SELECT uuid, epoch_day, type, value, unit FROM measurement WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id',
         [fromEpochDay, toEpochDay]
       );
       return rows.map(toMeasurement);
@@ -97,16 +94,16 @@ export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
     async upsertMeasurement(input) {
       if (input.id) {
         const result = await driver.run(
-          'UPDATE measurement SET epoch_day = ?, type = ?, value = ?, unit = ?, note = ?, updated_at = ? WHERE uuid = ?',
-          [input.epochDay, input.type, input.value, input.unit, input.note ?? '', now(), input.id]
+          'UPDATE measurement SET epoch_day = ?, type = ?, value = ?, unit = ?, updated_at = ? WHERE uuid = ?',
+          [input.epochDay, input.type, input.value, input.unit, now(), input.id]
         );
         assertChanged(result, `measurement: ${input.id}`);
         return input.id;
       }
       const uuid = mintUuid();
       await driver.run(
-        'INSERT INTO measurement (uuid, epoch_day, type, value, unit, note, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [uuid, input.epochDay, input.type, input.value, input.unit, input.note ?? '', now()]
+        'INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [uuid, input.epochDay, input.type, input.value, input.unit, now()]
       );
       return uuid;
     },

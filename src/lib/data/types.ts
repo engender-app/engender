@@ -113,7 +113,6 @@ export interface Measurement {
   epochDay: number;
   value: number;
   unit: string;
-  note: string;
 }
 
 /* Preferences are not here: they live in SQLite's `pref` table and are

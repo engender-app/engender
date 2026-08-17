@@ -111,11 +111,13 @@ export interface ArchiveLabResult {
 
 export interface ArchiveMeasurement {
   id: string;
-  type: 'waist' | 'hips' | 'chest' | 'underbust';
+  /** Loosened from Measurement['type'], the way ArchiveReminder loosens
+      `type` and `recurrence`: the schema's CHECK is what enforces this on
+      the way back in (restore.ts), not this boundary type. */
+  type: string;
   epochDay: number;
   value: number;
   unit: string;
-  note: string;
 }
 
 export interface ArchiveReminder {

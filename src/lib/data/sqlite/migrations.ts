@@ -64,7 +64,6 @@ CREATE TABLE measurement (
   type       TEXT NOT NULL CHECK (type IN ('waist','hips','chest','underbust')),
   value      REAL NOT NULL,
   unit       TEXT NOT NULL,
-  note       TEXT,
   updated_at INTEGER NOT NULL
 );
 CREATE INDEX idx_measurement_type ON measurement(type, epoch_day);

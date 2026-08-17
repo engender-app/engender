@@ -754,8 +754,6 @@
   "measurement_unit_label": "Unit",
   "measurement_unit_cm": "cm",
   "measurement_unit_in": "in",
-  "measurement_note_label": "Note (optional)",
-  "measurement_note_placeholder": "e.g. after breakfast",
   "measurement_save": "Save measurement",
   "measurement_delete": "Delete measurement",
   "measurement_delete_sheet": "Delete measurement",

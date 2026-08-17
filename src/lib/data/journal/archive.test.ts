@@ -35,7 +35,7 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
-  const measurement = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm', note: 'after breakfast' });
+  const measurement = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
   const reminder = await journal.reminders.upsertReminder({
     title: 'injection',
     type: 'injection',
@@ -136,7 +136,7 @@ test('milestones, lab results, measurements and reminders travel whole', async (
     { id: lab, epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' }
   ]);
   assert.deepEqual(snapshot.journal.measurements, [
-    { id: measurement, type: 'waist', epochDay: 20000, value: 79, unit: 'cm', note: 'after breakfast' }
+    { id: measurement, type: 'waist', epochDay: 20000, value: 79, unit: 'cm' }
   ]);
   assert.deepEqual(snapshot.journal.reminders, [
     {
@@ -196,7 +196,7 @@ const CARRIED: Record<string, string[]> = {
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
   reminder: ['uuid', 'title', 'type', 'time', 'recurrence', 'interval', 'anchor_epoch_day', 'epoch_day', 'enabled'],
   lab_result: ['uuid', 'epoch_day', 'analyte', 'value', 'unit', 'note'],
-  measurement: ['uuid', 'epoch_day', 'type', 'value', 'unit', 'note'],
+  measurement: ['uuid', 'epoch_day', 'type', 'value', 'unit'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

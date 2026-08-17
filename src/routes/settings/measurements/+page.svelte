@@ -47,9 +47,7 @@
     return measurements.at(-1)?.unit ?? 'cm';
   }
 
-  let editor = $state<{ id?: string; date: string; type: Measurement['type']; value: string; unit: string; note: string } | null>(
-    null
-  );
+  let editor = $state<{ id?: string; date: string; type: Measurement['type']; value: string; unit: string } | null>(null);
   let deleteTarget = $state<Measurement | null>(null);
 
   function openEditor(measurement: Measurement | null) {
@@ -59,15 +57,13 @@
           date: dateInputValueFromEpochDay(measurement.epochDay),
           type: measurement.type,
           value: String(measurement.value),
-          unit: measurement.unit,
-          note: measurement.note
+          unit: measurement.unit
         }
       : {
           date: dateInputValueFromEpochDay(todayEpochDay()),
           type,
           value: '',
-          unit: lastUnit(),
-          note: ''
+          unit: lastUnit()
         };
   }
 
@@ -81,8 +77,7 @@
       epochDay: epochDayFromDateInputValue(editor.date) ?? todayEpochDay(),
       type: editor.type,
       value,
-      unit: editor.unit,
-      note: editor.note
+      unit: editor.unit
     });
     type = editor.type;
     editor = null;
@@ -161,7 +156,7 @@
           <span class="row-text">
             <span class="row-title">{r.value} <span class="muted small">{r.unit}</span></span>
             <span class="row-subtitle">
-              {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
+              {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
           </span>
           <Icon name="pencil" size={18} />
@@ -204,10 +199,6 @@
             onChange={(v) => (editor!.unit = v)}
           />
         </div>
-      </div>
-      <div class="field">
-        <label class="field-label" for="measurement-note">{m.measurement_note_label()}</label>
-        <input class="input" id="measurement-note" name="measurement-note" placeholder={m.measurement_note_placeholder()} bind:value={editor.note} />
       </div>
       <div class="stack-3">
         <button class="btn btn-primary" data-save-measurement onclick={saveMeasurement}><span>{m.measurement_save()}</span></button>

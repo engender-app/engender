@@ -197,7 +197,7 @@ test('a measurement round-trips with no episode reference, ordered by day', asyn
 
   const measurements = await journal.measurements.getMeasurements('waist');
   assert.deepEqual(measurements.map((r) => r.epochDay), [100, 200]);
-  assert.deepEqual(measurements[0], { id, type: 'waist', epochDay: 100, value: 82, unit: 'cm', note: '' });
+  assert.deepEqual(measurements[0], { id, type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
 });
 
 test('each type keeps its own measurements; another type is not returned', async () => {
@@ -245,7 +245,7 @@ test('measurements update by id, throw on unknown ids and delete idempotently', 
   const { journal } = await journalWithBuiltIns();
   const id = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
 
-  await journal.measurements.upsertMeasurement({ id, type: 'waist', epochDay: 100, value: 81, unit: 'cm', note: 'after breakfast' });
+  await journal.measurements.upsertMeasurement({ id, type: 'waist', epochDay: 100, value: 81, unit: 'cm' });
   assert.equal((await journal.measurements.getMeasurements('waist'))[0].value, 81);
 
   await assert.rejects(

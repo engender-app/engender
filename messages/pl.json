@@ -768,8 +768,6 @@
   "measurement_unit_label": "Jednostka",
   "measurement_unit_cm": "cm",
   "measurement_unit_in": "cale",
-  "measurement_note_label": "Notatka (opcjonalnie)",
-  "measurement_note_placeholder": "np. po śniadaniu",
   "measurement_save": "Zapisz pomiar",
   "measurement_delete": "Usuń pomiar",
   "measurement_delete_sheet": "Usuń pomiar",

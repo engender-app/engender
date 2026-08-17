@@ -19,6 +19,7 @@ import type {
   BuiltInTagKey,
   MilestoneTemplateKey
 } from './builtins';
+import type { Measurement } from '../types';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -60,7 +61,7 @@ export const moodName = (value: number): string => MOOD_NAME[value - 1]?.() ?? S
    built-in row - there is nothing to seed and nothing to hide - but the
    name is still wording that changes with the language, so it lives here
    like severity's does. */
-const MEASUREMENT_TYPE_NAME: Record<'waist' | 'hips' | 'chest' | 'underbust', Message> = {
+const MEASUREMENT_TYPE_NAME: Record<Measurement['type'], Message> = {
   waist: m.measurement_type_waist,
   hips: m.measurement_type_hips,
   chest: m.measurement_type_chest,
@@ -68,8 +69,7 @@ const MEASUREMENT_TYPE_NAME: Record<'waist' | 'hips' | 'chest' | 'underbust', Me
 };
 
 /** The name of a measurement type. */
-export const measurementTypeName = (type: 'waist' | 'hips' | 'chest' | 'underbust'): string =>
-  MEASUREMENT_TYPE_NAME[type]();
+export const measurementTypeName = (type: Measurement['type']): string => MEASUREMENT_TYPE_NAME[type]();
 
 const PRESET_NAME: Record<BuiltInPresetKey, Message> = {
   'p-btw': m.preset_p_btw,

@@ -535,14 +535,13 @@ async function applyMeasurements({ driver, journal, ts }: Restoring): Promise<vo
   const inserting = journal.measurements.filter((measurement) => !present.has(measurement.id));
   await insertRows(
     driver,
-    'INSERT INTO measurement (uuid, epoch_day, type, value, unit, note, updated_at)',
+    'INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at)',
     inserting.map((measurement) => [
       measurement.id,
       measurement.epochDay,
       measurement.type,
       measurement.value,
       measurement.unit,
-      measurement.note,
       ts
     ])
   );
