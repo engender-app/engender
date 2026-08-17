@@ -13,6 +13,7 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
 import { resolveEpisodeAt } from '../regimenEpisode.ts';
+import { epochDayFromTimestamp } from '../epochDay.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
 import type { RestoreContents } from './restore.ts';
@@ -71,7 +72,6 @@ async function populated() {
   });
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
-  await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L' });
   await journal.reminders.upsertReminder({
     title: 'injection',
     type: 'injection',
@@ -100,6 +100,19 @@ async function populated() {
     injectionSite: 'ventrogluteal-left',
     vehicle: 'oil'
   });
+  /* Saved after the injection above, so it carries a frozen day-of-interval
+     the importing device could not work out for itself: the result travels
+     without any promise that the dose log it was measured against travels
+     with it, or ever existed there (ticket 03). */
+  await journal.labs.upsertResult({
+    epochDay: epochDayFromTimestamp(1_700_000_000_000) + 4,
+    analyte: 'estradiol',
+    value: 412.5,
+    unit: 'pmol/L',
+    drawTime: '07:40',
+    provider: 'Diagnostyka'
+  });
+
   const schedule = await journal.doses.upsertSchedule({ episodeId: episode, everyNDays: 14, dosesPerDay: 1 });
   const dosePause = await journal.doses.upsertPause({
     episodeId: episode,
@@ -196,6 +209,12 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal(restored[0].note, 'a good day, zażółć');
   assert.equal((await target.journal.milestones.getMilestones()).length, 1);
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
+  /* The dosing context comes across as it was recorded, not re-derived
+     against this device's dose log (ticket 03). */
+  const [restoredLab] = await target.journal.labs.getResults('estradiol');
+  assert.equal(restoredLab.drawTime, '07:40');
+  assert.equal(restoredLab.provider, 'Diagnostyka');
+  assert.deepEqual(restoredLab.timing, { route: 'im', dayOfInterval: 5 });
   assert.equal((await target.journal.reminders.getReminders()).length, 1);
   const episodes = await target.journal.regimen.getEpisodes();
   assert.equal(episodes.length, 1);

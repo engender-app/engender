@@ -249,6 +249,20 @@
   padding: var(--space-2) var(--space-3);
 }
 
+/* ---------- Lab results ---------- */
+/* The dosing context, wherever a value appears. Set apart from the date
+   beside it without competing with the value itself. */
+.lab-context { font-size: var(--text-sm); color: var(--on-accent-soft); }
+/* The chart's point readout, under the line rather than floating over it. */
+.lab-point {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+.lab-mixed-list { margin: var(--space-1) 0 0; padding-left: var(--space-4); }
+
 /* ---------- Custom dimension ---------- */
 .cd-endpoints { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 

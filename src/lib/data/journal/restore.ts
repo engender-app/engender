@@ -534,8 +534,26 @@ async function applyLabResults({ driver, journal, ts }: Restoring): Promise<void
   const inserting = journal.labResults.filter((result) => !present.has(result.id));
   await insertRows(
     driver,
-    'INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, updated_at)',
-    inserting.map((result) => [result.id, result.epochDay, result.analyte, result.value, result.unit, result.note, ts])
+    `INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, draw_time, provider,
+                             timing_route, timing_hours, timing_day_of_interval, updated_at)`,
+    /* The dosing context comes across as it was written, never re-derived
+       against this device's dose log: the log it was measured on is not the
+       one being imported into (ticket 03, and the argument at migrations.ts
+       v6). */
+    inserting.map((result) => [
+      result.id,
+      result.epochDay,
+      result.analyte,
+      result.value,
+      result.unit,
+      result.note,
+      result.drawTime,
+      result.provider,
+      result.timingRoute,
+      result.timingHours,
+      result.timingDayOfInterval,
+      ts
+    ])
   );
 }
 

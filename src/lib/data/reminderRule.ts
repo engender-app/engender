@@ -9,7 +9,7 @@
    and the notification scheduler share; that is the only way the two stay
    in agreement. */
 
-import { epochDayFromLocalDate, localDateFromEpochDay } from './epochDay';
+import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay';
 
 export type Recurrence = 'DAILY' | 'WEEKLY' | 'EVERY_N_DAYS';
 
@@ -46,10 +46,7 @@ export function assertValidRule(r: ReminderRule) {
 
 /** The rule's occurrence on a given epoch day, as a local Date. */
 function occurrenceOn(epochDay: number, time: string): Date {
-  const [h, mi] = time.split(':').map(Number);
-  const d = localDateFromEpochDay(epochDay);
-  d.setHours(h, mi, 0, 0);
-  return d;
+  return new Date(timestampAtLocalTime(epochDay, time));
 }
 
 /** When the rule fires next, strictly after `now` - except for a one-off,

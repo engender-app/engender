@@ -140,12 +140,65 @@ CREATE TABLE dose_pause (
 CREATE INDEX idx_dose_pause_episode ON dose_pause(episode_id);
 `;
 
+/* v6: lab draw context (phase 4 ticket 03, CONTEXT: "Lab draw context").
+
+   `provider` is free text with no list behind it, exactly as free as an
+   analyte's `unit`: normalizing it would mean deciding that two spellings
+   name one lab, and the step after that is deciding which lab's numbers
+   are comparable with which (CONTEXT: "Analyte").
+
+   `draw_time` is a local wall-clock 'HH:MM' like `reminder.time`, not a
+   timestamp. `epoch_day` already says which day the result belongs to, and
+   a second column that could disagree with it is the ambiguity CONTEXT.md
+   keeps out of an Entry's Timestamp. Nullable because a lab slip often
+   carries no time, and because day-of-interval does not need one.
+
+   The timing columns are the route-conditional pair, nullable here the way
+   dose_event's site columns are: SQLite has no union type, the domain type
+   is a union on route (types.ts), and the labs area is what turns one into
+   the other. `timing_hours` is REAL and keeps its fraction, since
+   sublingual estradiol peaks inside two hours.
+
+   THESE COLUMNS STORE A DERIVED FIGURE, WHICH ADR-0010 FORBIDS. The
+   exception is deliberate, and the acceptance criteria pin it (ticket 03,
+   box 6), so read this before removing it in ADR-0010's name.
+
+   ADR-0010's case is about columns that drift out of agreement with the
+   rows they were computed from: `milestone.kind` goes stale the day its
+   date passes, `reminder.trigger_time` shifts by an hour across a DST
+   boundary. Both have inputs that are still there to be recomputed from,
+   which is exactly why the stored copy is the wrong one.
+
+   This figure has no such input. It is measured against the dose log as it
+   stood when the draw was recorded, and that log is not recoverable later:
+   a dose corrected in November changes what a recomputation would say
+   about a draw in August, silently rewriting the context on a result
+   someone has already taken to an appointment and discussed. So the stored
+   figure cannot drift out of agreement with anything - it is a recorded
+   observation about a moment, in the same category as the value beside it,
+   not a cache of a live computation. Ticket 01's derived episode end and
+   ticket 02's absent episode link are still the rule; this is the one
+   place the rule would destroy the data it was protecting.
+
+   What follows from it: editing a dose event never touches a saved
+   context. Correcting the draw's own day or time does recompute it, since
+   that voids the figure outright rather than adjusting its input
+   (labs.ts). */
+const SCHEMA_V6 = `
+ALTER TABLE lab_result ADD COLUMN provider TEXT NOT NULL DEFAULT '';
+ALTER TABLE lab_result ADD COLUMN draw_time TEXT;
+ALTER TABLE lab_result ADD COLUMN timing_route TEXT;
+ALTER TABLE lab_result ADD COLUMN timing_hours REAL;
+ALTER TABLE lab_result ADD COLUMN timing_day_of_interval INTEGER;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
   { version: 3, sql: SCHEMA_V3 },
   { version: 4, sql: SCHEMA_V4 },
-  { version: 5, sql: SCHEMA_V5 }
+  { version: 5, sql: SCHEMA_V5 },
+  { version: 6, sql: SCHEMA_V6 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

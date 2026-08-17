@@ -38,6 +38,19 @@ export function startOfDayTimestamp(epochDay: number): number {
   return localDateFromEpochDay(epochDay).getTime();
 }
 
+/** The instant a local wall-clock time falls at on an epoch day, from the
+    'HH:MM' text such times are stored as (reminder.time, lab_result
+    .draw_time). Built by setting the hours on the day's local Date rather
+    than by adding an offset to startOfDayTimestamp: 09:00 is 09:00 on both
+    sides of a DST transition, which a fixed millisecond offset from local
+    midnight is not. */
+export function timestampAtLocalTime(epochDay: number, time: string): number {
+  const [h, mi] = time.split(':').map(Number);
+  const d = localDateFromEpochDay(epochDay);
+  d.setHours(h, mi, 0, 0);
+  return d.getTime();
+}
+
 /** `<input type="date">` value → epoch day, or null for the empty string.
     The single place that guard lives; callers fall back with `?? …`. */
 export function epochDayFromDateInputValue(value: string): number | null {
