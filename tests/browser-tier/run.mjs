@@ -63,7 +63,7 @@ try {
   const first = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
   if (first.error) throw new Error(first.error);
 
-  if (first.userVersion === 3) ok('boot() opens the database and migrates it to the current schema');
+  if (first.userVersion === 4) ok('boot() opens the database and migrates it to the current schema');
   else fail('boot() opens the database and migrates it to the current schema', `user_version is ${first.userVersion}`);
 
   if (first.markerExisted === false) ok('boot() runs against a fresh database on first load');

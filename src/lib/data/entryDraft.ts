@@ -9,6 +9,7 @@
    Nothing here is a Svelte rune, so it runs and is tested under the Node
    tier the same way entryContent.ts and entries.ts already are. */
 
+import { BODY_REGION_INTENSITY_DEFAULT } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
 import type { Entry } from './types';
 import type { EntryInput } from './journal/entries';
@@ -25,6 +26,7 @@ export interface EntryDraft {
   note: string;
   dims: Record<string, number>;
   tags: string[];
+  bodyRegions: Record<string, number>;
   photos: EditorPhoto[];
   /** Stored photo ids taken off in this edit, removed on save rather than
       on the tap: nothing is committed until Save, so a removal the user
@@ -36,6 +38,8 @@ export interface EntryDraft {
   setNote(note: string): void;
   setDim(key: string, value: number): void;
   toggleTag(id: string): void;
+  toggleBodyRegion(key: string): void;
+  setBodyRegionIntensity(key: string, intensity: number): void;
   addPhoto(photo: NormalizedPhoto): void;
   removePhoto(index: number): void;
   /** The exact upsertEntry payload for the draft as it stands, including
@@ -55,6 +59,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     note: existing?.note ?? '',
     dims: existing ? { ...existing.dims } : {},
     tags: existing ? [...existing.tags] : [],
+    bodyRegions: existing ? { ...existing.bodyRegions } : {},
     photos: existing ? existing.photos.map((photo) => ({ kind: 'stored' as const, photo })) : [],
     removedPhotoIds: [],
 
@@ -64,12 +69,20 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         note: this.note,
         dimCount: Object.keys(this.dims).length,
         tagCount: this.tags.length,
-        photoCount: this.photos.length
+        photoCount: this.photos.length,
+        bodyRegionCount: Object.keys(this.bodyRegions).length
       });
     },
 
     get hasMoodOnlyContent() {
-      return this.mood != null && !this.note.trim() && Object.keys(this.dims).length === 0 && this.tags.length === 0 && this.photos.length === 0;
+      return (
+        this.mood != null &&
+        !this.note.trim() &&
+        Object.keys(this.dims).length === 0 &&
+        this.tags.length === 0 &&
+        this.photos.length === 0 &&
+        Object.keys(this.bodyRegions).length === 0
+      );
     },
 
     setMood(mood) {
@@ -86,6 +99,19 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
 
     toggleTag(id) {
       this.tags = this.tags.includes(id) ? this.tags.filter((x: string) => x !== id) : [...this.tags, id];
+    },
+
+    toggleBodyRegion(key) {
+      if (key in this.bodyRegions) {
+        const { [key]: _removed, ...rest } = this.bodyRegions;
+        this.bodyRegions = rest;
+      } else {
+        this.bodyRegions = { ...this.bodyRegions, [key]: BODY_REGION_INTENSITY_DEFAULT };
+      }
+    },
+
+    setBodyRegionIntensity(key, intensity) {
+      this.bodyRegions[key] = intensity;
     },
 
     addPhoto(photo) {
@@ -106,6 +132,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         note: this.note,
         dims: this.dims,
         tags: this.tags,
+        bodyRegions: this.bodyRegions,
         attachPhotos: this.photos.filter((p: EditorPhoto) => p.kind === 'picked').map((p) => p.photo),
         removePhotoIds: this.removedPhotoIds
       };

@@ -29,6 +29,10 @@ export interface Entry {
   dims: Record<string, number>;
   tags: string[];
   photos: Photo[];
+  /** By body-region key (bodyMap.ts), independent of dims and tags -
+      ticket 09 does not require ticket 02's "physical" dysphoria tag to be
+      present to log a region. */
+  bodyRegions: Record<string, number>;
 }
 
 export interface GenderDimension {

@@ -22,7 +22,7 @@ async function countingJournalWithBuiltIns() {
   };
 }
 
-test('an entry round-trips with mood, note, dimension values and tags', async () => {
+test('an entry round-trips with mood, note, dimension values, tags and body regions', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.entries.upsertEntry({
     epochDay: 100,
@@ -30,7 +30,8 @@ test('an entry round-trips with mood, note, dimension values and tags', async ()
     mood: 4,
     note: 'łóżko',
     dims: { euphoria_dysphoria: 70, femininity: 55 },
-    tags: ['e-happy', 'g-soc-eu']
+    tags: ['e-happy', 'g-soc-eu'],
+    bodyRegions: { chest: 60, voice_throat: 30 }
   });
 
   const entry = await journal.entries.getEntry(id);
@@ -45,13 +46,37 @@ test('an entry round-trips with mood, note, dimension values and tags', async ()
       note: 'łóżko',
       dims: { euphoria_dysphoria: 70, femininity: 55 },
       tags: ['e-happy', 'g-soc-eu'],
-      photos: []
+      photos: [],
+      bodyRegions: { chest: 60, voice_throat: 30 }
     }
   );
 
   const forDay = await journal.entries.entriesForDay(100);
   assert.deepEqual(forDay.map((e) => e.id), [id]);
 });
+
+test('body regions replace as a whole set on update, unlike dimension values', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    bodyRegions: { chest: 40, hairline: 70 }
+  });
+
+  await journal.entries.upsertEntry({ id, mood: 3, bodyRegions: { chest: 90 } });
+
+  assert.deepEqual((await journal.entries.getEntry(id))?.bodyRegions, { chest: 90 });
+});
+
+test('an entry can log body regions with no dysphoria tag and independently of one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: 55 } });
+
+  const entry = await journal.entries.getEntry(id);
+  assert.deepEqual(entry?.bodyRegions, { chest: 55 });
+  assert.deepEqual(entry?.tags, []);
+});
+
 
 test('rows carry a minted uuid and inserts never read lastInsertRowid blind', async () => {
   const { journal, db } = await journalWithBuiltIns();
@@ -111,14 +136,21 @@ test('saving without a mood is rejected, moodful edits keep their mood, and mood
   await assert.rejects(journal.entries.upsertEntry({ id: moodlessId.id, note: 'cannot save yet' }), /needs a mood/);
 });
 
-test('unknown write ids throw: entry id, dimension key, tag id', async () => {
+test('unknown write ids throw: entry id, dimension key, tag id, body region', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(journal.entries.upsertEntry({ id: 999, mood: 4 }), /unknown entry/);
   await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, mood: 4, dims: { nope: 1 } }), /unknown dimension/);
   await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, mood: 4, tags: ['nope'] }), /unknown tag/);
+  await assert.rejects(
+    journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { nope: 1 } }),
+    /unknown body region/
+  );
+
+  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { chest: 1 } });
+  await assert.rejects(journal.entries.upsertEntry({ id, bodyRegions: { nope: 1 } }), /unknown body region/);
 });
 
-test('deleting an entry takes its dimension values, tag links, photo rows and files; twice is success', async () => {
+test('deleting an entry takes its dimension values, tag links, body regions, photo rows and files; twice is success', async () => {
   const db = await migratedDb();
   const files = fakeFileStore(['p1.jpg', 'p1-thumb.jpg']);
   const journal = openJournal(db, files);
@@ -128,14 +160,15 @@ test('deleting an entry takes its dimension values, tag links, photo rows and fi
     epochDay: 100,
     mood: 4,
     dims: { femininity: 60 },
-    tags: ['e-happy']
+    tags: ['e-happy'],
+    bodyRegions: { chest: 30 }
   });
   db.raw.prepare("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', ?, 'p1.jpg', 0)").run(id);
 
   await journal.entries.deleteEntry(id);
 
   assert.equal(await journal.entries.getEntry(id), undefined);
-  for (const table of ['entry_dimension_value', 'entry_tag', 'photo']) {
+  for (const table of ['entry_dimension_value', 'entry_tag', 'entry_body_region', 'photo']) {
     assert.equal((db.raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n, 0, table);
   }
   assert.deepEqual(files.names(), [], 'the thumbnail goes with the photo');

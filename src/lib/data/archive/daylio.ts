@@ -250,10 +250,14 @@ export async function daylioPreview(
       note,
       dims: {},
       tags: [],
-      photos: []
+      photos: [],
+      bodyRegions: {}
     };
 
-    if (!moodLabel && entryIsEmpty({ mood, note, dimCount: 0, tagCount: activities.length, photoCount: 0 })) {
+    if (
+      !moodLabel &&
+      entryIsEmpty({ mood, note, dimCount: 0, tagCount: activities.length, photoCount: 0, bodyRegionCount: 0 })
+    ) {
       throw new DaylioCsvError(`row ${rowNumber} has no mood, activities or note`);
     }
     if (!existingEntries.has(uuid) && !seenEntries.has(uuid)) {

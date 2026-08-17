@@ -150,6 +150,15 @@
     <p class="muted small">{m.insights_empty()}</p>
   {/if}
 
+  <SectionTitle text={m.body_map_title()} />
+  <a class="card spread recap-cta" href="/body-map">
+    <span class="row-text">
+      <span class="row-title">{m.body_map_title()}</span>
+      <span class="row-subtitle">{m.body_map_sub()}</span>
+    </span>
+    <Icon name="chevronRight" size={20} />
+  </a>
+
   <SectionTitle text={m.recap()} />
   <a class="card spread recap-cta" href="/recap">
     <span class="row-text">

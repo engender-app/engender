@@ -4,6 +4,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { BODY_REGION_INTENSITY_DEFAULT } from './bodyMap.ts';
 import { createEntryDraft } from './entryDraft.ts';
 import type { Entry } from './types.ts';
 import type { NormalizedPhoto } from './journal/photos.ts';
@@ -18,7 +19,8 @@ const existingEntry = (): Entry => ({
   note: 'ok day',
   dims: { masculinity: 40 },
   tags: ['e-happy'],
-  photos: [{ id: 'p1', fileName: 'p1.jpg' }]
+  photos: [{ id: 'p1', fileName: 'p1.jpg' }],
+  bodyRegions: { chest: 60 }
 });
 
 test('a fresh draft with no existing entry starts empty on the given day', () => {
@@ -29,6 +31,7 @@ test('a fresh draft with no existing entry starts empty on the given day', () =>
   assert.deepEqual(draft.dims, {});
   assert.deepEqual(draft.tags, []);
   assert.deepEqual(draft.photos, []);
+  assert.deepEqual(draft.bodyRegions, {});
 });
 
 test('a draft hydrated from an existing entry copies its fields and stored photos', () => {
@@ -42,6 +45,7 @@ test('a draft hydrated from an existing entry copies its fields and stored photo
   assert.deepEqual(draft.dims, { masculinity: 40 });
   assert.deepEqual(draft.tags, ['e-happy']);
   assert.deepEqual(draft.photos, [{ kind: 'stored', photo: { id: 'p1', fileName: 'p1.jpg' } }]);
+  assert.deepEqual(draft.bodyRegions, { chest: 60 });
 });
 
 test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty', () => {
@@ -70,6 +74,12 @@ test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty'
   assert.equal(byTag.isEmpty, false);
   assert.equal(byTag.hasMoodOnlyContent, false);
   assert.deepEqual(byTag.tags, ['e-happy']);
+
+  const byBodyRegion = createEntryDraft(1);
+  byBodyRegion.toggleBodyRegion('chest');
+  assert.equal(byBodyRegion.isEmpty, false);
+  assert.equal(byBodyRegion.hasMoodOnlyContent, false);
+  assert.deepEqual(byBodyRegion.bodyRegions, { chest: BODY_REGION_INTENSITY_DEFAULT });
 });
 
 test('setDim merges into the existing dims without clobbering the others', () => {
@@ -86,6 +96,18 @@ test('toggleTag adds an absent tag and removes a present one', () => {
 
   draft.toggleTag('e-happy');
   assert.deepEqual(draft.tags, ['e-sad']);
+});
+
+test('toggleBodyRegion adds a region at the default intensity and removes it again', () => {
+  const draft = createEntryDraft(1);
+  draft.toggleBodyRegion('chest');
+  assert.deepEqual(draft.bodyRegions, { chest: BODY_REGION_INTENSITY_DEFAULT });
+
+  draft.setBodyRegionIntensity('chest', 80);
+  assert.deepEqual(draft.bodyRegions, { chest: 80 });
+
+  draft.toggleBodyRegion('chest');
+  assert.deepEqual(draft.bodyRegions, {});
 });
 
 test('addPhoto stages a picked photo; removing it drops it without marking it removed', () => {
@@ -123,6 +145,7 @@ test('toUpsert() produces the exact upsertEntry payload for a new entry', () => 
     note: 'a note',
     dims: { masculinity: 30 },
     tags: ['e-happy'],
+    bodyRegions: {},
     attachPhotos: [photo(9)],
     removePhotoIds: []
   });
@@ -141,6 +164,7 @@ test('toUpsert() for an existing entry carries its id, drops a falsy timestamp a
     note: 'ok day',
     dims: { masculinity: 40 },
     tags: ['e-happy'],
+    bodyRegions: { chest: 60 },
     attachPhotos: [photo(2)],
     removePhotoIds: ['p1']
   });
@@ -167,11 +191,13 @@ test('hydrating copies the existing entry, so a later mutation of it cannot disc
   original.dims.masculinity = 999;
   original.tags.push('should-not-appear');
   original.photos.push({ id: 'p2', fileName: 'p2.jpg' });
+  original.bodyRegions.chest = 999;
 
   assert.equal(draft.note, 'typed after load');
   assert.deepEqual(draft.dims, { masculinity: 40 });
   assert.deepEqual(draft.tags, ['e-happy', 'e-sad']);
   assert.equal(draft.photos.length, 1);
+  assert.deepEqual(draft.bodyRegions, { chest: 60 });
 });
 
 test('a fresh draft can be seeded with a mood and the seed survives hydration', () => {

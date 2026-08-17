@@ -34,6 +34,7 @@ function entry(fields: Partial<ArchiveEntry>): ArchiveEntry {
     dims: {},
     tags: [],
     photos: [],
+    bodyRegions: {},
     ...fields
   };
 }

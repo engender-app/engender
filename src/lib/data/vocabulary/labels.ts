@@ -12,6 +12,7 @@
    wording, and vocabulary.ts joins them for the screens. */
 
 import { m } from '$lib/paraglide/messages';
+import type { BodyRegionKey } from '../bodyMap';
 import type {
   BuiltInDimensionKey,
   BuiltInPresetKey,
@@ -97,6 +98,17 @@ const TAG_LABEL: Record<BuiltInTagKey, Message> = {
   'a-selfcare': m.tag_a_selfcare
 };
 
+const BODY_REGION_NAME: Record<BodyRegionKey, Message> = {
+  face_jaw: m.region_face_jaw,
+  voice_throat: m.region_voice_throat,
+  chest: m.region_chest,
+  body_facial_hair: m.region_body_facial_hair,
+  hands_feet: m.region_hands_feet,
+  hips_waist: m.region_hips_waist,
+  genitals: m.region_genitals,
+  hairline: m.region_hairline
+};
+
 const TEMPLATE_NAME: Record<MilestoneTemplateKey, Message> = {
   hrt_start: m.tpl_hrt_start,
   transition_start: m.tpl_transition_start,
@@ -129,3 +141,4 @@ export const tagLabels = (key: string): string[] => {
   return message ? [message({}, { locale: 'en' }), message({}, { locale: 'pl' })] : [key];
 };
 export const milestoneTemplateName = (key: string) => lookup(TEMPLATE_NAME, key);
+export const bodyRegionName = (key: string) => lookup(BODY_REGION_NAME, key);

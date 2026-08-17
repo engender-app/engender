@@ -55,6 +55,11 @@ export interface ArchiveEntry {
   /** Tag ids: the key of a built-in, the uuid of a custom. */
   tags: string[];
   photos: ArchivePhoto[];
+  /** By body-region key (bodyMap.ts). Free-standing TEXT, not a row to
+      resolve against a built-in table, so restore.ts writes it back
+      unvalidated - the same forward-compatible treatment lab_result.analyte
+      already gets. */
+  bodyRegions: Record<string, number>;
 }
 
 export interface ArchiveDimension {

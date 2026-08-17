@@ -68,6 +68,31 @@ test('an entry without the metric contributes nothing, and neither does a day ou
   );
 });
 
+/* body region trend (ticket 09) */
+
+test('a body-region trend reports per-day averages the same way dayAverages does', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, bodyRegions: { chest: 20 } });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 3, bodyRegions: { chest: 40 } });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, bodyRegions: { chest: 60, hairline: 10 } });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 3 }); // no body regions at all
+
+  assert.deepEqual(await journal.stats.bodyRegionTrend('chest', 100, 102), [
+    { day: 100, value: 30, count: 2 },
+    { day: 101, value: 60, count: 1 }
+  ]);
+  assert.deepEqual(await journal.stats.bodyRegionTrend('hairline', 100, 102), [
+    { day: 101, value: 10, count: 1 }
+  ]);
+});
+
+test('a region nothing was ever logged against comes back empty rather than throwing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: 50 } });
+
+  assert.deepEqual(await journal.stats.bodyRegionTrend('genitals', 100, 100), []);
+});
+
 test('a metric key nothing was ever logged against comes back empty rather than throwing', async () => {
   // The metric is a preference, and a dimension can be hidden after it was
   // chosen. A stats screen with nothing to draw is the right answer; an
