@@ -60,8 +60,11 @@
 
   // Native units both ways (ADR-0012): mood arrives on 1 to 5 and only
   // needs a decimal place, a dimension arrives in its own range. The /20
-  // that used to be here undid a x20 that no longer happens.
-  const fmtMetric = (v: number) => (prefs.metricKind === 'mood' ? v.toFixed(1) : String(Math.round(v)));
+  // that used to be here undid a x20 that no longer happens. Keyed off a
+  // metric key rather than hard-wired to the selected preference, so a
+  // correlation card spanning several metrics can call it too.
+  const fmtNativeValue = (metric: string, v: number) => (metric === 'mood' ? v.toFixed(1) : String(Math.round(v)));
+  const fmtMetric = (v: number) => fmtNativeValue(prefs.metricKind, v);
 
   let insightEntriesQuery = liveQuery(['entry', 'tag'], (j) => {
     const sheet = insightSheet;
@@ -80,11 +83,6 @@
   let correlationCards = $derived(correlationCardsQuery.value ?? []);
 
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
-
-  // Native units both ways (ADR-0012), keyed off the card's own metric -
-  // fmtMetric above reads the *selected* metric preference, which a
-  // correlation card spanning several metrics cannot assume it shares.
-  const fmtCardValue = (metric: string, v: number) => (metric === 'mood' ? v.toFixed(1) : String(Math.round(v)));
 
   const occurrenceLabel = (card: CorrelationCard) =>
     card.occurrence.kind === 'doseDay' ? m.correlation_card_dose_day() : vocabulary.tag(card.occurrence.id)?.label ?? card.occurrence.id;
@@ -192,8 +190,8 @@
             <span class="row-subtitle">
               {m.insight_row_sub({
                 count: String(c.count),
-                with: fmtCardValue(c.metric, c.withAvg),
-                without: fmtCardValue(c.metric, c.withoutAvg)
+                with: fmtNativeValue(c.metric, c.withAvg),
+                without: fmtNativeValue(c.metric, c.withoutAvg)
               })}
             </span>
           </span>
