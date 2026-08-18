@@ -992,6 +992,8 @@ try {
   if (await page.locator('[data-blank]').count()) throw new Error('the blank showed alongside the decoy');
   if ((await page.title()) !== 'Notes') throw new Error('tab title over the decoy: ' + (await page.title()));
   const decoyText = await page.locator('[data-decoy]').innerText();
+  /* A cut of decoy-copy.test.ts's GIVEAWAYS list, over the rendered screen
+     rather than the catalogues - keep the two in step. */
   if (/gender|trans|journal|diary|dziennik|płe|tranzyc/i.test(decoyText)) {
     throw new Error('the decoy screen leaks the journal: ' + decoyText);
   }

@@ -12,7 +12,10 @@ const decoyEntries = (file: string): [string, string][] =>
   Object.entries(catalogue(file)).filter(([key]) => key.startsWith('decoy_'));
 
 /* Journal-revealing vocabulary in either language. Stems, not words, so
-   inflected Polish forms ("płci", "tranzycji") are caught too. */
+   inflected Polish forms ("płci", "tranzycji") are caught too. Walkthrough
+   flow 18 runs a shorter cut of this list over the rendered screen - the
+   tiers cannot share an import - so a stem added here that could plausibly
+   reach the DOM belongs there too. */
 const GIVEAWAYS =
   /gender|trans|journal|diary|dysphor|euphor|hormon|pronoun|milestone|płe[cć]|płci|tranzyc|dziennik|dysfor|eufor|zaimk/i;
 
