@@ -404,6 +404,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/effects">
+      <span class="row-icon"><Icon name="sparkle" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.effects_timeline()}</span>
+        <span class="row-subtitle">{m.effects_timeline_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
   </div>
 
   <SectionTitle text={m.settings_privacy()} />

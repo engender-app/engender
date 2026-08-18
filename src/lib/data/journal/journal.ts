@@ -19,6 +19,7 @@ import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
+import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
 import { makePhotosArea, type PhotosArea } from './photos';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
@@ -82,6 +83,11 @@ export interface Journal {
       `regimen` own, not a third owner for either one. */
   exposure: ExposureArea;
   sideEffects: SideEffectsArea;
+  /** The four fixed "first noticed" markers (phase 4 ticket 07), read
+      against the earliest regimen episode's start day above this seam
+      (regimenEpisode.ts's earliestEpisodeStartEpochDay). No episode
+      reference of its own, the same reason sideEffects has none. */
+  personalEffects: PersonalEffectsArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -116,6 +122,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     stock: makeStockArea(driver, doses, regimen, reminders),
     exposure: makeExposureArea(doses, regimen),
     sideEffects: makeSideEffectsArea(driver),
+    personalEffects: makePersonalEffectsArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

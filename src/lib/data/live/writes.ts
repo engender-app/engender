@@ -55,7 +55,8 @@ export type TableName =
      already - a stock-only screen re-running on a dose write is exactly
      the point. */
   | 'stock'
-  | 'sideEffect';
+  | 'sideEffect'
+  | 'personalEffect';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -73,7 +74,8 @@ export const TABLE_NAMES: TableName[] = [
   'regimen',
   'dose',
   'stock',
-  'sideEffect'
+  'sideEffect',
+  'personalEffect'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -148,6 +150,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   sideEffects: {
     writes: { upsertSideEffect: ['sideEffect'], deleteSideEffect: ['sideEffect'] },
     reads: ['getSideEffects', 'getSideEffectsInRange']
+  },
+  personalEffects: {
+    writes: { upsertMarker: ['personalEffect'], clearMarker: ['personalEffect'] },
+    reads: ['getMarkers']
   },
   reminders: {
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },

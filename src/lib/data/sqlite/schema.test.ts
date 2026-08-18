@@ -9,7 +9,7 @@ import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 11);
+  assert.equal(db.getUserVersion(), 12);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -27,6 +27,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'measurement',
     'medication_stock',
     'milestone',
+    'personal_effect',
     'photo',
     'pref',
     'preset_dimension',

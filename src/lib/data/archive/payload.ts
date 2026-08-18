@@ -163,6 +163,16 @@ export interface ArchiveSideEffect {
   epochDay: number;
 }
 
+/** One of the four fixed "first noticed" markers (phase 4 ticket 07).
+    `effect` is loosened from PersonalEffectType, the way ArchiveMeasurement
+    loosens `type`: the schema's CHECK enforces it on the way back in
+    (restore.ts), not this boundary type. */
+export interface ArchivePersonalEffect {
+  id: string;
+  effect: string;
+  firstNoticedEpochDay: number;
+}
+
 export interface ArchiveReminder {
   id: string;
   title: string;
@@ -256,6 +266,7 @@ export interface ArchiveJournal {
   labResults: ArchiveLabResult[];
   measurements: ArchiveMeasurement[];
   sideEffects: ArchiveSideEffect[];
+  personalEffects: ArchivePersonalEffect[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
   regimenEpisodes: ArchiveRegimenEpisode[];

@@ -42,3 +42,14 @@ export function episodeEndEpochDay(episodes: readonly RegimenEpisode[], index: n
   const next = episodes[index + 1];
   return next ? next.startEpochDay - 1 : null;
 }
+
+/** The start day of HRT overall - the first episode there has ever been -
+    not of whichever episode is active right now. Ticket 07's personal
+    effects timeline anchors against this and nothing else, so it does not
+    shift when a second, different episode starts later. `episodes` must be
+    in the same sorted order resolveEpisodeAt expects; hidden episodes
+    still count, the same as they still resolve. Null when there is no
+    episode at all yet. */
+export function earliestEpisodeStartEpochDay(episodes: readonly RegimenEpisode[]): number | null {
+  return episodes[0]?.startEpochDay ?? null;
+}
