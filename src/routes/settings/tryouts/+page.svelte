@@ -6,6 +6,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
 
   let tryoutsQuery = liveQuery(['tryout'], (j) => j.tryouts.getTryouts());
   let tryouts = $derived(tryoutsQuery.value ?? []);
@@ -36,7 +37,9 @@
   </header>
   <p class="muted small" style="margin-bottom:var(--space-4)">{m.tryout_intro()}</p>
 
-  {#if tryouts.length === 0}
+  {#if tryoutsQuery.loading}
+    <Skeleton variant="line" count={3} />
+  {:else if tryouts.length === 0}
     <EmptyState title={m.tryout_none()} text={m.tryout_intro()} />
   {:else}
     <div class="list-group">

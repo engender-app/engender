@@ -13,6 +13,7 @@
   import EmptyState from '$lib/components/EmptyState.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
 
   const KINDS = [
     { value: 'name', label: m.tryout_kind_name() },
@@ -41,14 +42,20 @@
   });
 
   async function saveTryout() {
-    const id = await journal.tryouts.upsertTryout({
+    await journal.tryouts.upsertTryout({
       id: existing?.id,
       kind: draft.kind,
       label: draft.label,
       startEpochDay: epochDayFromDateInputValue(draft.start) ?? todayEpochDay(),
       endEpochDay: draft.end ? epochDayFromDateInputValue(draft.end) : null
     });
-    if (isNew) await goto(`/settings/tryouts/${id}`);
+    /* Back to the list rather than to this tryout's own new id: navigating
+       within the same [id] route would reuse this component instance
+       without `isNew`/`tryoutId` - captured once at the top - ever
+       updating, leaving the felt-sense section permanently hidden after a
+       create. Reopening the row is one extra tap, the same shape
+       reminders' own create flow already has. */
+    if (isNew) await goto('/settings/tryouts');
   }
 
   const HISTORY_LIMIT = 50;
@@ -141,7 +148,9 @@
         <span>{m.tryout_feeling_save()}</span>
       </button>
     </div>
-    {#if feeling.length}
+    {#if feelingQuery.loading}
+      <Skeleton variant="line" count={2} />
+    {:else if feeling.length}
       <div class="list-group" style="margin-top:var(--space-3)">
         {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
           <div class="list-row">
@@ -160,7 +169,9 @@
     {/if}
 
     <SectionTitle text={m.tryout_entries_title()} />
-    {#if entriesInRange.length}
+    {#if entriesQuery.loading}
+      <Skeleton variant="card" count={2} />
+    {:else if entriesInRange.length}
       {#each entriesInRange as e (e.id)}
         <EntryCard entry={e} />
       {/each}
