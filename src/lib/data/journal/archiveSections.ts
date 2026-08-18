@@ -7,13 +7,13 @@
    (restore.ts) - plus once more in every test that builds an empty journal.
    Nothing checked the four against each other, so a new area that got three
    of them and missed the fourth simply did not travel, and no test failed:
-   the archive was short a table and every expectation was built from the
+   the archive was short an area and every expectation was built from the
    same code that had just forgotten it.
 
    One entry here is now what makes an area travel. What it declares:
 
-     name      the collection's key in ArchiveJournal, which is also its key
-               on the wire
+     name      the section's key in ArchiveJournal, which is also its key on
+               the wire
      after     the sections whose rows must already be in the tables before
                this one's can be written, because this one resolves a rowid
                against them. Not "children go last" as a general rule -
@@ -45,8 +45,8 @@ export type { Restoring } from './archiveApply';
 
 export type ArchiveSectionName = keyof ArchiveJournal;
 
-/** One area's declaration that it travels. Erased over the collection type,
-    because the list holds all of them at once and because a test registers
+/** One area's declaration that it travels. Erased over the row type, because
+    the list holds every section at once and because a test registers
     sections `ArchiveJournal` has never heard of. */
 export interface ArchiveSection {
   name: string;
@@ -56,8 +56,8 @@ export interface ArchiveSection {
   apply(restoring: Restoring): Promise<void>;
 }
 
-/** Keeps the collection type honest at the declaration site: `read` has to
-    return what `ArchiveJournal` says the section holds. */
+/** Keeps the row type honest at the declaration site: `read` has to return
+    what `ArchiveJournal` says the section holds. */
 function section<Name extends ArchiveSectionName>(declared: {
   name: Name;
   after?: readonly ArchiveSectionName[];
@@ -117,9 +117,9 @@ const SECTIONS = [
   })
 ] as const;
 
-/* A collection on the wire type with no entry above would be written into
-   every archive as an absent key and read back as nothing, silently. This
-   line makes that a compile error instead. */
+/* A section on the wire type with no entry above would be written into every
+   archive as an absent key and read back as nothing, silently. This line
+   makes that a compile error instead. */
 type Unregistered = Exclude<ArchiveSectionName, (typeof SECTIONS)[number]['name']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
 export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;

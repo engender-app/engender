@@ -3,7 +3,7 @@
 
    It exists because the wiring that decides which sections travel is spread
    across a snapshot, a restore and a wire type, and a section dropped from
-   one of them fails silently - the archive is simply short a table and
+   one of them fails silently - the archive is simply short that area and
    everything still passes. Reading a fixture that was packed once and never
    again is the only check that notices, because nothing in this test can
    change what the fixture says an archive of that journal looks like.
@@ -219,6 +219,40 @@ test('the golden archive restores section by section into an empty journal', asy
   for (const section of SECTIONS) {
     assert.ok(golden[section].length > 0, `the golden archive carries no ${section}`);
     assert.deepEqual(restored[section], golden[section], `${section} did not survive the restore`);
+  }
+});
+
+/* The keys and their order, not just the rows under them: a section renamed
+   or moved changes what is in the file, and a per-section comparison cannot
+   see either. The fixture's own key order is what today's code wrote, so
+   this is the half of "nothing was reordered" the loop above misses. */
+test('the golden archive names its sections in the order a snapshot writes them', async () => {
+  const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
+
+  assert.deepEqual(Object.keys(opened.payload.journal), [...SECTIONS]);
+
+  const target = await emptyDevice();
+  await target.archive.replace({ journal: opened.payload.journal, files: opened.files });
+
+  assert.deepEqual(Object.keys((await target.archive.snapshot()).journal), [...SECTIONS]);
+});
+
+/* Over a device that already has rows of its own, so a Replace that fails to
+   clear a section shows up as the target's leftovers surviving. Restoring
+   into an empty journal cannot see that: the section registry says what
+   travels, but the list of tables Replace empties first is still written out
+   by hand (restore.ts's discardJournalRows), and a table missed there keeps
+   stale rows through the most destructive path in the app. */
+test('replacing a populated journal leaves exactly the golden archive behind', async () => {
+  const golden: ArchiveJournal = JSON.parse(readFileSync(journalPath, 'utf8'));
+  const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
+
+  const target = await everySection();
+  await target.archive.replace({ journal: opened.payload.journal, files: opened.files });
+  const restored = (await target.archive.snapshot()).journal;
+
+  for (const section of SECTIONS) {
+    assert.deepEqual(restored[section], golden[section], `${section} kept rows the replace should have discarded`);
   }
 });
 

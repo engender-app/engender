@@ -45,7 +45,7 @@
    is why every insert is inside the transaction: a value the columns refuse -
    a reminder with no rule, an entry with no day - rolls the whole import back
    and leaves the journal as it was. Only the payload's shape is checked up
-   front, because a collection that is not an array would otherwise fail as a
+   front, because a section that is not an array would otherwise fail as a
    TypeError that reads like a bug in this file rather than like a damaged
    file on disk. */
 
@@ -138,9 +138,9 @@ export async function verifyArchive(source: AsyncIterable<Uint8Array>, password:
 }
 
 /** Only the payload's shape, and only the sections the registry says an
-    archive carries: a collection that is not an array would otherwise fail
-    deep inside an apply function as a TypeError that reads like a bug here
-    rather than like a damaged file on disk. */
+    archive carries: a section that is not an array would otherwise fail deep
+    inside an apply function as a TypeError that reads like a bug here rather
+    than like a damaged file on disk. */
 function assertRestorable(journal: ArchiveJournal): void {
   for (const section of ARCHIVE_SECTION_NAMES) {
     if (!Array.isArray(journal?.[section])) {
@@ -151,7 +151,15 @@ function assertRestorable(journal: ArchiveJournal): void {
 
 /* Everything the archive is about to install, children before parents so it
    holds whether or not this connection enforces foreign keys - the same
-   assumption the demo's clearJournal() makes. Built-in rows survive: the
+   assumption the demo's clearJournal() makes.
+
+   The one list around here the section registry does not derive (ADR-0027),
+   and deliberately: it names child tables no section owns on its own, some
+   of its statements are conditional on a row being custom rather than
+   built-in, and its order is the reverse of the insert order. A table missed
+   here keeps stale rows through a Replace, which is why the golden fixture
+   restores over a journal that already has rows in every section
+   (archive-golden.test.ts) rather than only into an empty one. Built-in rows survive: the
    archive's entries reference dimensions and tags by key, and deleting them
    would leave those references nothing to resolve against. What the user put
    on a built-in is overwritten row by row afterwards.

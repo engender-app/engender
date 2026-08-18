@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { collect } from '../archive/container.ts';
 import { openArchive, packArchive } from '../archive/pack.ts';
-import { portablePreferences } from '../archive/payload.ts';
+import { portablePreferences, type ArchiveJournal } from '../archive/payload.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { readRowContext } from './archiveRead.ts';
@@ -75,6 +75,35 @@ test('every section the wire type declares is registered, once', () => {
   assert.equal(new Set(ARCHIVE_SECTION_NAMES).size, ARCHIVE_SECTION_NAMES.length);
   assert.deepEqual([...ARCHIVE_SECTION_NAMES].sort(), Object.keys(emptyArchiveJournal()).sort());
 });
+
+/* The constraints are not decoration. Felt-sense rows resolve their tryout's
+   rowid against the rows applyTryouts just inserted, and a row whose tryout
+   is not there yet is dropped rather than guessed at (archiveApply.ts) - so
+   getting the order wrong loses data silently, which is exactly the failure
+   `after` exists to make impossible. */
+test('the tryouts constraint is what keeps felt-sense rows from being dropped', async () => {
+  const journal: ArchiveJournal = {
+    ...emptyArchiveJournal(),
+    tryouts: [{ id: 't-1', kind: 'name', label: 'Alex', startEpochDay: 19900, endEpochDay: null }],
+    feltSenseEntries: [{ id: 'f-1', tryoutId: 't-1', epochDay: 19910, mood: 4, note: null }]
+  };
+  const tryouts = ARCHIVE_SECTIONS.find((s) => s.name === 'tryouts')!;
+  const feltSense = ARCHIVE_SECTIONS.find((s) => s.name === 'feltSenseEntries')!;
+
+  const survives = await applied([feltSense, tryouts], journal);
+  const lost = await applied([{ ...feltSense, after: [] }, tryouts], journal);
+
+  assert.equal(survives, 1, 'the declared constraint moved the felt-sense rows after their tryouts');
+  assert.equal(lost, 0, 'without it they are applied first and dropped for want of a tryout');
+});
+
+/** How many felt-sense rows survive applying these sections, in this order. */
+async function applied(sections: readonly ArchiveSection[], journal: ArchiveJournal): Promise<number> {
+  const driver = await migratedDb();
+  await driver.transaction(() => applyArchiveJournal({ driver, mode: 'replace', journal, ts: 1 }, sections));
+  const rows = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM tryout_felt_sense');
+  return rows[0].n;
+}
 
 /* One entry, and an area travels. The throwaway below owns a table nothing
    else in the app knows about, and it is packed, encrypted, reopened and

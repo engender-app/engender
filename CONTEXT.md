@@ -503,8 +503,8 @@ One area's rows as they travel in an archive, named by its key on the wire.
 An area travels because it registers a section, which declares how its rows
 are read out, how they are written back, and what has to be written before
 them. An area with no section does not travel.
-_Avoid_: Table (the sections and the tables do not correspond one to one),
-collection
+_Avoid_: Table (a section and a table do not correspond one to one - one
+section can carry a row and its children)
 
 **Backup**:
 The habit and result of keeping an archive outside the current installation so the
