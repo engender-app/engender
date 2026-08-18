@@ -66,7 +66,10 @@
     return start != null && end != null && start <= end ? { start, end } : null;
   });
 
-  let inRange = $derived(range ? photos.filter((p) => p.epochDay >= range.start && p.epochDay <= range.end) : []);
+  /* The grid shows everything in the range and the export takes what has not
+     been tapped out, so both go through journeySelection() rather than one of
+     them repeating the range test. */
+  let inRange = $derived(range ? journeySelection(photos, range, []) : []);
   let selected = $derived(range ? journeySelection(photos, range, excluded) : []);
   let seconds = $derived(Math.max(1, Math.round(timelapseDurationMs(selected.length) / 1000)));
 
