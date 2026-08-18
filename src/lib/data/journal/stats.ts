@@ -113,7 +113,7 @@ export interface StatsArea {
   streak(todayEpochDay: number): Promise<number>;
   /** The longest run in the journal's whole history (CONTEXT: Best streak),
       not just the one ending today - a goal's gentle achievements (phase 4
-      features ticket 17) read this rather than `streak()` so that a badge
+      features ticket 20) read this rather than `streak()` so that a badge
       earned once stays earned through a later gap. Entries dated in the
       future are excluded, the same rule `streak()` applies. */
   bestStreakEver(todayEpochDay: number): Promise<number>;

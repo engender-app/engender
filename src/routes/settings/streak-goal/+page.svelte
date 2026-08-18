@@ -1,9 +1,16 @@
 <script lang="ts">
+  /* Streak goals and gentle achievements (phase 4 features ticket 20).
+     Both numbers on this screen - the live streak and the all-time best
+     streak - come straight off journal.stats, so a backdated entry that
+     repairs a gap (CONTEXT: Streak) updates this screen the same instant
+     it updates Home's streak line. There is deliberately no red state and
+     no "you broke it" copy anywhere below: a gap is framed as just a gap,
+     never a failure. */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { GOAL_MILESTONE_DAYS, GOAL_TARGET_PRESETS, goalProgress, reachedMilestones } from '$lib/data/streakGoal';
+  import { GOAL_ACHIEVEMENT_DAYS, GOAL_TARGET_PRESETS, goalProgress, reachedAchievements } from '$lib/data/streakGoal';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -23,7 +30,7 @@
   let progress = $derived(
     prefs.streakGoalTargetDays !== null ? goalProgress(currentStreak, prefs.streakGoalTargetDays) : null
   );
-  let reached = $derived(new Set(reachedMilestones(bestStreakEver)));
+  let reached = $derived(new Set(reachedAchievements(bestStreakEver)));
 
   function toggleGoal(on: boolean) {
     prefs.streakGoalHabit = on ? 'journaling' : null;
@@ -80,7 +87,7 @@
   <SectionTitle text={m.streak_goal_achievements_title()} />
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.streak_goal_achievements_intro()}</p>
   <div class="list-group">
-    {#each GOAL_MILESTONE_DAYS as days (days)}
+    {#each GOAL_ACHIEVEMENT_DAYS as days (days)}
       <div class="list-row">
         <span class="row-icon">
           {#if reached.has(days)}<Icon name="sparkle" size={20} />{/if}

@@ -128,7 +128,7 @@ export interface PreferenceValues {
       they ask for rather than a thing that happens to them. Not portable -
       it says how one device draws a chart, not anything about the journal. */
   hormoneCurveFitToOwnLabs: boolean;
-  /** The habit a streak goal (phase 4 features ticket 17) is set against,
+  /** The habit a streak goal (phase 4 features ticket 20) is set against,
       or null when no goal is set. Mirrors streakGoal.ts's
       `StreakGoalHabit` as an inline literal rather than importing it - this
       file stays import-free so both tiers and the pre-database boot path
