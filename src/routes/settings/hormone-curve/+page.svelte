@@ -129,12 +129,20 @@
 
   {#if curvesQuery.loading || !view}
     <Skeleton variant="block" count={2} />
-  {:else if view.curves.length === 0 && view.unmodelledEsters.length === 0}
+  {:else if view.curves.length === 0}
+    <!-- One empty state for every way of having no curve, because they are
+         all the same answer to the reader: nothing in the log is an ester
+         this app draws, in a unit it can read. Saying "no injections logged
+         yet" here would have been false for anyone on an ester it does not
+         draw, or logging by volume. -->
     <EmptyState title={m.curve_empty_title()} text={m.curve_empty_body()}>
       {#snippet action()}
         <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
       {/snippet}
     </EmptyState>
+    {#if view.dosesWithoutMilligrams > 0}
+      <p class="muted small curve-note">{m.curve_volume_note({ count: String(view.dosesWithoutMilligrams) })}</p>
+    {/if}
   {:else}
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.curve_intro()}</p>
 
@@ -152,18 +160,12 @@
       {@const points = pointsFor(curve)}
       {@const selected = picked[curve.ester] ?? null}
       <div class="card curve-card">
-        <div class="curve-heading">
-          <h2 class="curve-ester">{esterLabel(curve.ester)}</h2>
-          {#if curve.hypothetical}
-            <span class="curve-tag">{m.curve_hypothetical_tag()}</span>
-          {/if}
-        </div>
+        <h2 class="curve-ester">{esterLabel(curve.ester)}</h2>
 
         <HormoneBandChart
           band={curve.band}
           labPoints={points}
           max={axisMax}
-          hypothetical={curve.hypothetical}
           formatValue={round}
           unitLabel={CURVE_UNIT}
           ariaLabel={m.curve_chart_aria({
@@ -187,10 +189,7 @@
         />
 
         <div class="curve-legend">
-          <span class="legend-item">
-            <span class="legend-band" class:is-hypothetical={curve.hypothetical}></span>
-            {m.curve_legend_band()}
-          </span>
+          <span class="legend-item"><span class="legend-band"></span>{m.curve_legend_band()}</span>
           <span class="legend-item"><span class="legend-result"></span>{m.curve_legend_results()}</span>
         </div>
 
@@ -225,27 +224,9 @@
           {/if}
         </div>
 
-        {#if curve.hypothetical}
-          <div class="notice notice-info curve-notice">
-            <Icon name="info" size={18} />
-            <div>
-              <strong>{m.curve_hypothetical_tag()}</strong>
-              <p class="small">{m.curve_hypothetical_body()}</p>
-            </div>
-          </div>
-        {/if}
       </div>
     {/each}
 
-    {#each view.unmodelledEsters as ester (ester)}
-      <div class="notice notice-info">
-        <Icon name="info" size={18} />
-        <div>
-          <strong>{m.curve_no_model_title()}</strong>
-          <p class="small">{m.curve_no_model_body({ ester: esterLabel(ester) })}</p>
-        </div>
-      </div>
-    {/each}
 
     {#if view.curves.length > 0}
       <p class="muted small curve-note">{m.curve_band_note()}</p>
@@ -266,7 +247,7 @@
         <p class="muted small curve-note" data-fit-status aria-live="polite">
           {#if view.scaleFactor !== null}
             {m.curve_fit_applied({ count: String(view.fitPointCount), factor: view.scaleFactor.toFixed(2) })}
-          {:else if view.dosesWithoutMilligrams > 0 || view.unmodelledEsters.length > 0}
+          {:else if view.dosesWithoutMilligrams > 0}
             {m.curve_fit_incomplete()}
           {:else}
             {m.curve_fit_no_points()}
@@ -294,25 +275,9 @@
     margin-bottom: var(--space-4);
   }
 
-  .curve-heading {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-    flex-wrap: wrap;
-  }
-
   .curve-ester {
     font-size: var(--text-md);
-    margin: 0;
-  }
-
-  .curve-tag {
-    font-size: var(--text-xs);
-    padding: 2px var(--space-2);
-    border-radius: var(--radius-sm);
-    border: 1px dashed var(--chart-line);
-    color: var(--text-2);
+    margin: 0 0 var(--space-3);
   }
 
   .curve-legend {
@@ -338,11 +303,6 @@
     border: 1px solid var(--chart-line);
   }
 
-  .legend-band.is-hypothetical {
-    background: none;
-    border-style: dashed;
-  }
-
   .legend-result {
     width: 9px;
     height: 9px;
@@ -363,10 +323,6 @@
   .readout-value {
     font-size: var(--text-md);
     margin: 2px 0 0;
-  }
-
-  .curve-notice {
-    margin-top: var(--space-3);
   }
 
   .curve-note {

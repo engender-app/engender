@@ -1,21 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import type { RegimenEpisode } from './types.ts';
-import { INJECTABLE_ESTERS, isHypotheticalEster, resolveInjectableEster } from './hormoneEster.ts';
+import { INJECTABLE_ESTERS, resolveInjectableEster } from './hormoneEster.ts';
 
 function episode(drug: string, ester: string | null): RegimenEpisode {
   return { id: 'e', drug, ester, dose: 5, doseUnit: 'mg', route: 'IM', interval: 'every 7 days', startEpochDay: 0, hidden: false };
 }
 
-test('the six esters this app has a name for, and only those', () => {
-  assert.deepEqual(INJECTABLE_ESTERS, [
-    'benzoate',
-    'valerate',
-    'cypionate',
-    'enanthate',
-    'polyestradiol-phosphate',
-    'undecylate'
-  ]);
+test('the four esters this app draws, and only those', () => {
+  assert.deepEqual(INJECTABLE_ESTERS, ['benzoate', 'valerate', 'cypionate', 'enanthate']);
 });
 
 test('an ester named in English resolves from the ester field', () => {
@@ -23,7 +16,6 @@ test('an ester named in English resolves from the ester field', () => {
   assert.equal(resolveInjectableEster(episode('estradiol', 'valerate')), 'valerate');
   assert.equal(resolveInjectableEster(episode('estradiol', 'cypionate')), 'cypionate');
   assert.equal(resolveInjectableEster(episode('estradiol', 'enanthate')), 'enanthate');
-  assert.equal(resolveInjectableEster(episode('estradiol', 'undecylate')), 'undecylate');
 });
 
 test('an ester named in Polish resolves too, because both fields are free text a user types in their own language', () => {
@@ -31,7 +23,6 @@ test('an ester named in Polish resolves too, because both fields are free text a
   assert.equal(resolveInjectableEster(episode('estradiol', 'walerianian')), 'valerate');
   assert.equal(resolveInjectableEster(episode('estradiol', 'cypionian')), 'cypionate');
   assert.equal(resolveInjectableEster(episode('estradiol', 'enantan')), 'enanthate');
-  assert.equal(resolveInjectableEster(episode('estradiol', 'undecylan')), 'undecylate');
   assert.equal(resolveInjectableEster(episode('walerianian estradiolu', null)), 'valerate');
 });
 
@@ -48,11 +39,16 @@ test('the ester falls back to the drug field, which is where a full name usually
   assert.equal(resolveInjectableEster(episode('estradiol cypionate', '')), 'cypionate');
 });
 
-test('polyestradiol phosphate is one name, not an ester word beside a drug word', () => {
-  assert.equal(resolveInjectableEster(episode('polyestradiol phosphate', null)), 'polyestradiol-phosphate');
-  assert.equal(resolveInjectableEster(episode('Polyestradiol Phosphate', null)), 'polyestradiol-phosphate');
-  assert.equal(resolveInjectableEster(episode('estradiol', 'PEP')), 'polyestradiol-phosphate');
-  assert.equal(resolveInjectableEster(episode('fosforan poliestradiolu', null)), 'polyestradiol-phosphate');
+test('the two esters with no curve worth drawing resolve to nothing at all', () => {
+  /* Polyestradiol phosphate has no usable published parameters; undecylate
+     has some, and they were too loose to draw. Neither is in the vocabulary,
+     so both answer the way any unrecognized ester does and neither reaches
+     the model. */
+  assert.equal(resolveInjectableEster(episode('polyestradiol phosphate', null)), null);
+  assert.equal(resolveInjectableEster(episode('estradiol', 'PEP')), null);
+  assert.equal(resolveInjectableEster(episode('fosforan poliestradiolu', null)), null);
+  assert.equal(resolveInjectableEster(episode('estradiol undecylate', 'undecylate')), null);
+  assert.equal(resolveInjectableEster(episode('estradiol', 'undecylan')), null);
 });
 
 test('the ester field wins over the drug field when the two name different esters', () => {
@@ -82,9 +78,3 @@ test('spelling variants of estradiol itself still count as estradiol', () => {
   assert.equal(resolveInjectableEster(episode('Estradiolu walerianian', null)), 'valerate');
 });
 
-test('only undecylate is hypothetical; no other ester in the vocabulary is', () => {
-  assert.equal(isHypotheticalEster('undecylate'), true);
-  for (const ester of INJECTABLE_ESTERS.filter((e) => e !== 'undecylate')) {
-    assert.equal(isHypotheticalEster(ester), false);
-  }
-});

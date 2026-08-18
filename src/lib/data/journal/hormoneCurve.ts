@@ -51,7 +51,6 @@ export interface CurveLabPoint {
 
 export interface HormoneCurveView {
   curves: EsterCurve[];
-  unmodelledEsters: InjectableEster[];
   dosesWithoutMilligrams: number;
   /** Subcutaneous injections drawn against intramuscular parameters, which
       is an assumption the screen has to state (hormoneCurve.ts). */
@@ -140,12 +139,10 @@ export function makeHormoneCurveArea(
       const population = esterCurves({ doses: doseEvents, episodes, fromEpochDay, toEpochDay });
 
       /* A factor is only worth fitting when the model is drawing everything
-         that went in. With an ester it has no parameters for, or an
-         injection logged by volume, the bands are knowingly low, and a fit
-         against them would blame the difference on the person's response and
-         quietly scale the whole curve up. */
-      const modelIsComplete =
-        population.unmodelledEsters.length === 0 && population.dosesWithoutMilligrams === 0;
+         that went in. An injection logged by volume leaves the bands
+         knowingly low, and a fit against them would blame the difference on
+         the person's own response and quietly scale the whole curve up. */
+      const modelIsComplete = population.dosesWithoutMilligrams === 0;
 
       const pairs: FitPair[] = [];
       if (fitToOwnLabs && modelIsComplete) {
@@ -163,7 +160,6 @@ export function makeHormoneCurveArea(
 
       return {
         curves: fit === null ? population.curves : scaleCurves(population.curves, fit.factor),
-        unmodelledEsters: population.unmodelledEsters,
         dosesWithoutMilligrams: population.dosesWithoutMilligrams,
         subcutaneousDoses: population.subcutaneousDoses,
         labPoints,

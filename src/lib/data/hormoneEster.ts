@@ -19,18 +19,18 @@
 
 import type { RegimenEpisode } from './types';
 
-/** The esters this app has a name for. Not all of them have a curve:
-    polyestradiol phosphate is recognized here and has no parameters
-    (hormoneCurveModels.ts), which is how it gets told apart from an ester
-    nobody typed correctly. Order is the order screens list them in. */
-export const INJECTABLE_ESTERS = [
-  'benzoate',
-  'valerate',
-  'cypionate',
-  'enanthate',
-  'polyestradiol-phosphate',
-  'undecylate'
-] as const;
+/** The esters this app draws. Four, and every one of them has a published
+    fit tight enough to be worth drawing (hormoneCurveModels.ts).
+
+    Polyestradiol phosphate and estradiol undecylate are deliberately not
+    here. PEP has no parameters this repository can use at all. Undecylate has
+    some, but they rest on a handful of injections followed for about a
+    fortnight against an ester that acts for months, so the fit constrained
+    almost nothing - its plausible average level spanned more than tenfold
+    where these four span about a third. A curve that loose is not worth
+    drawing even with a label on it, so neither ester resolves and neither
+    gets a curve. Order is the order screens list them in. */
+export const INJECTABLE_ESTERS = ['benzoate', 'valerate', 'cypionate', 'enanthate'] as const;
 
 export type InjectableEster = (typeof INJECTABLE_ESTERS)[number];
 
@@ -46,9 +46,7 @@ const ESTER_NAMES: Record<InjectableEster, EsterNames> = {
   benzoate: { names: ['benzoate', 'benzoesan'], abbreviations: ['eb', 'e2b'] },
   valerate: { names: ['valerate', 'valerianate', 'walerianian'], abbreviations: ['ev', 'e2v'] },
   cypionate: { names: ['cypionate', 'cipionate', 'cypionian'], abbreviations: ['ec', 'e2c'] },
-  enanthate: { names: ['enanthate', 'oenanthate', 'heptanoate', 'enantan'], abbreviations: ['een', 'e2en'] },
-  'polyestradiol-phosphate': { names: ['polyestradiol', 'poliestradiol'], abbreviations: ['pep'] },
-  undecylate: { names: ['undecylate', 'undecanoate', 'undecylan'], abbreviations: ['eun', 'e2u'] }
+  enanthate: { names: ['enanthate', 'oenanthate', 'heptanoate', 'enantan'], abbreviations: ['een', 'e2en'] }
 };
 
 /* The drug has to be estradiol before any ester word is worth reading.
@@ -76,8 +74,8 @@ function esterIn(text: string): InjectableEster | null {
   return INJECTABLE_ESTERS.find((ester) => mentions(text, ESTER_NAMES[ester])) ?? null;
 }
 
-/** Which ester `episode` is on, or null when this app has no name for it:
-    the drug is not estradiol, or the ester is not one of the six. The ester
+/** Which ester `episode` is on, or null when this app draws no curve for it:
+    the drug is not estradiol, or the ester is not one of the four. The ester
     field is read first and the drug field second - someone who corrects the
     ester without retyping the drug means the narrower field. */
 export function resolveInjectableEster(episode: Pick<RegimenEpisode, 'drug' | 'ester'>): InjectableEster | null {
@@ -88,14 +86,3 @@ export function resolveInjectableEster(episode: Pick<RegimenEpisode, 'drug' | 'e
   return esterIn(normalize(episode.ester ?? '')) ?? esterIn(drug);
 }
 
-/** True only for undecylate. It does have a fit of its own, unlike
-    polyestradiol phosphate which has none - but it is fitted to so little
-    data that the fit barely constrains anything, and the posterior says so
-    itself: its plausible average level spans more than tenfold where the
-    other four esters span about a third (hormoneCurveModels.ts, and a test
-    in hormoneCurve.test.ts pins the gap). A curve that loose is an
-    illustration rather than an estimate, and every screen drawing it has to
-    say so. */
-export function isHypotheticalEster(ester: InjectableEster): boolean {
-  return ester === 'undecylate';
-}

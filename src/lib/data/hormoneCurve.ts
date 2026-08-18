@@ -35,7 +35,7 @@
    was checked, so the check is written down here instead. */
 
 import { doseMilligrams } from './hormoneCurveFit';
-import { INJECTABLE_ESTERS, isHypotheticalEster, resolveInjectableEster, type InjectableEster } from './hormoneEster';
+import { INJECTABLE_ESTERS, resolveInjectableEster, type InjectableEster } from './hormoneEster';
 import { ESTER_POSTERIORS, type PkSample } from './hormoneCurveModels';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { resolveEpisodeAt } from './regimenEpisode';
@@ -79,10 +79,6 @@ export interface CurveBandPoint {
 
 export interface EsterCurve {
   ester: InjectableEster;
-  /** True for undecylate, whose fit rests on so little data that it barely
-      constrains anything (isHypotheticalEster). Every screen drawing this
-      has to say so. */
-  hypothetical: boolean;
   band: CurveBandPoint[];
   /** How many logged doses went into it. */
   doseCount: number;
@@ -90,10 +86,6 @@ export interface EsterCurve {
 
 export interface HormoneCurves {
   curves: EsterCurve[];
-  /** Esters that were injected in the window but that this app has no
-      parameters for - polyestradiol phosphate. Named rather than dropped, so
-      a screen can say why there is no curve instead of showing nothing. */
-  unmodelledEsters: InjectableEster[];
   /** Injections left out because their amount was not in milligrams, most
       often logged by volume. Counted so a screen can say the curve is
       missing doses rather than quietly drawing a low one. */
@@ -155,21 +147,17 @@ export function settlingDays([, k1, k2, k3]: PkSample): number {
     be right: an injection before the window opens is most of what the
     window's first days are made of.
 
-    A year, which is comfortably more than the four fitted esters need - the
-    slowest sample any of them has settles in 63 days, and a test pins that.
-    Not derived from the posteriors as a maximum, which is what it looks like
-    it should be: undecylate's posterior runs out to samples whose slowest
-    compartment has a half-life over three years, and taking the maximum
-    across all of them asks for 6302 days of dose log to draw a 90-day chart.
-
-    That gap is not a rounding problem, it is the thing that makes
-    undecylate's curve hypothetical. Its fit rests on a handful of injections
-    followed for about a fortnight, which is nothing next to an ester that
-    acts for months, so almost nothing in the posterior pins its tail down -
-    at the far end of it a dose given two years ago is still two-thirds of
-    its own peak. A year of lookback truncates that tail. The screen already
-    says the curve is hypothetical and this is one more reason it has to. */
-export const CURVE_LOOKBACK_DAYS = 365;
+    Derived from the published posteriors rather than picked, so it follows
+    the data if the data is ever replaced: the slowest sample any of these
+    four esters has settles in 63 days. That only works because every ester
+    here is one whose fit is tight. Estradiol undecylate, dropped for being
+    too loose to draw, had samples whose slowest compartment ran to a
+    half-life past three years - a maximum taken across those asked for 6302
+    days of dose log to draw a 90-day chart, which is how loose that fit
+    really was. */
+export const CURVE_LOOKBACK_DAYS = Math.ceil(
+  Math.max(...Object.values(ESTER_POSTERIORS).flatMap((samples) => samples.map(settlingDays)))
+);
 
 function percentile(sorted: readonly number[], p: number): number {
   const at = ((sorted.length - 1) * p) / 100;
@@ -247,7 +235,6 @@ export function esterCurves(input: CurveInput): HormoneCurves {
   const { doses, episodes, fromEpochDay, toEpochDay } = input;
 
   const injections = new Map<InjectableEster, { day: number; milligrams: number }[]>();
-  const unmodelled = new Set<InjectableEster>();
   let dosesWithoutMilligrams = 0;
   let subcutaneousDoses = 0;
 
@@ -259,11 +246,6 @@ export function esterCurves(input: CurveInput): HormoneCurves {
     if (!episode) continue;
     const ester = resolveInjectableEster(episode);
     if (!ester) continue;
-
-    if (!ESTER_POSTERIORS[ester]) {
-      unmodelled.add(ester);
-      continue;
-    }
 
     const milligrams = doseMilligrams(dose.dose, dose.doseUnit);
     if (milligrams === null) {
@@ -279,19 +261,16 @@ export function esterCurves(input: CurveInput): HormoneCurves {
     else injections.set(ester, [injection]);
   }
 
+  /* Every ester in the vocabulary has parameters, so the lookup is total and
+     the non-null assertion is the type system's gap rather than an
+     assumption: ESTER_POSTERIORS is keyed by the same union. */
   const curves = INJECTABLE_ESTERS.filter((ester) => injections.has(ester)).map((ester) => ({
     ester,
-    hypothetical: isHypotheticalEster(ester),
-    band: bandFor(ESTER_POSTERIORS[ester]!, injections.get(ester)!, fromEpochDay, toEpochDay),
+    band: bandFor(ESTER_POSTERIORS[ester], injections.get(ester)!, fromEpochDay, toEpochDay),
     doseCount: injections.get(ester)!.length
   }));
 
-  return {
-    curves,
-    unmodelledEsters: INJECTABLE_ESTERS.filter((ester) => unmodelled.has(ester)),
-    dosesWithoutMilligrams,
-    subcutaneousDoses
-  };
+  return { curves, dosesWithoutMilligrams, subcutaneousDoses };
 }
 
 /** The same curves with every band multiplied by `factor` - the per-user

@@ -48,7 +48,6 @@ test('a weekly valerate regimen gets one band, drawn from the dose log', async (
   assert.equal(view.curves.length, 1);
   assert.equal(view.curves[0].ester, 'valerate');
   assert.equal(view.curves[0].doseCount, 12);
-  assert.equal(view.curves[0].hypothetical, false);
   assert.ok(view.curves[0].band.some((point) => point.upper > point.lower));
 });
 
@@ -195,35 +194,7 @@ test('an injection before the window still feeds the first days of it', async ()
   assert.ok(view.curves[0].band[0].upper > 0, 'the window should open part-way down the previous injection');
 });
 
-test('polyestradiol phosphate is reported as an ester with no curve', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await episode(journal, FROM - 30, { drug: 'polyestradiol phosphate', ester: null, dose: 80 });
-  await injectWeekly(journal, 4, { dose: 80 });
 
-  const view = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
-
-  assert.deepEqual(view.curves, []);
-  assert.deepEqual(view.unmodelledEsters, ['polyestradiol-phosphate']);
-});
-
-test('undecylate draws, and comes back flagged hypothetical', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await episode(journal, FROM - 30, { drug: 'estradiol undecylate', ester: 'undecylate', dose: 50 });
-  await journal.doses.upsertDose({
-    timestamp: at(FROM + 1),
-    route: 'im',
-    dose: 50,
-    doseUnit: 'mg',
-    injectionSite: 'thigh-left',
-    vehicle: 'oil'
-  });
-
-  const view = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
-
-  assert.equal(view.curves.length, 1);
-  assert.equal(view.curves[0].ester, 'undecylate');
-  assert.equal(view.curves[0].hypothetical, true);
-});
 
 test('nothing injected at all is an empty view rather than a flat line at zero', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -307,4 +278,22 @@ test('an all-intramuscular log has nothing to state about the subcutaneous route
 
   const view = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
   assert.equal(view.subcutaneousDoses, 0);
+});
+
+test('an ester with no curve worth drawing produces no curve and no special case', async () => {
+  // Polyestradiol phosphate and undecylate both land here now: the model has
+  // nothing to say about either, and the screen's one empty state covers it.
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30, { drug: 'polyestradiol phosphate', ester: null, dose: 80 });
+  await injectWeekly(journal, 4, { dose: 80 });
+
+  const pep = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+  assert.deepEqual(pep.curves, []);
+
+  const { journal: second } = await journalWithBuiltIns();
+  await episode(second, FROM - 30, { drug: 'estradiol undecylate', ester: 'undecylate', dose: 50 });
+  await injectWeekly(second, 4, { dose: 50 });
+
+  const undecylate = await second.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+  assert.deepEqual(undecylate.curves, []);
 });
