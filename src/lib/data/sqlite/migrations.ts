@@ -536,7 +536,7 @@ CREATE INDEX idx_letter_epoch_day ON letter(epoch_day);
 `;
 
 /* v17: transition-roadmap progress (phase 4 ticket 23, CONTEXT: "Roadmap
-   goal", "Country pack"). The checklist content itself is not here and
+   goal", "Country pack"). The pack's content itself is not here and
    never will be: a country pack is a bundled content module read
    synchronously off the bundle (roadmap.ts), so what a person is working
    through is a build artifact and what they have ticked off is the only
@@ -549,7 +549,9 @@ CREATE INDEX idx_letter_epoch_day ON letter(epoch_day);
    this ticket's contributable-pack requirement rules out.
 
    No uuid either, unlike letter (v16) or tryout (v15) and for the same
-   reason `tag` identifies a built-in by `key` instead (ADR-0002): a tick
+   reason `tag` identifies a built-in by `key` instead - ADR-0002, whose
+   amendment for this ticket argues the case a tick is neither of its two
+   branches: a tick
    is named by which pack and which goal, and those two strings mean the
    same thing on every device. Two installs that ticked the same goal
    ticked the same goal, so an archive matches on the pair and a merge has

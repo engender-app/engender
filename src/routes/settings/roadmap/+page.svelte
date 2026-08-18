@@ -2,7 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { epochDayFromDateInputValue } from '$lib/data/epochDay';
+  import { epochDayFromLocalDate } from '$lib/data/epochDay';
   import { POLISH_PACK, ROADMAP_TRACKS, goalsInTrack } from '$lib/data/roadmap';
   import {
     roadmapGoalNote,
@@ -24,9 +24,16 @@
   let checkedQuery = liveQuery(['roadmapCheck'], (j) => j.roadmap.getCheckedGoals(pack.key));
   let checked = $derived(new Set(checkedQuery.value ?? []));
 
-  const reviewedOn = epochDayFromDateInputValue(pack.reviewedOn);
-  const reviewedLabel =
-    reviewedOn == null ? pack.reviewedOn : fmtDay(reviewedOn, { day: 'numeric', month: 'long', year: 'numeric' });
+  /* Split by hand rather than run through epochDayFromDateInputValue: the
+     review date is a bundled constant that roadmap.test.ts already asserts
+     is an ISO day, so a nullable parser here would buy nothing but a branch
+     no input can reach. */
+  const [year, month, day] = pack.reviewedOn.split('-').map(Number);
+  const reviewedLabel = fmtDay(epochDayFromLocalDate(new Date(year, month - 1, day)), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 
   const toggle = (goalKey: string) => journal.roadmap.setGoalChecked(pack.key, goalKey, !checked.has(goalKey));
 </script>

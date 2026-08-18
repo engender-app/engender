@@ -111,8 +111,12 @@ export const ROADMAP_PACKS = [POLISH_PACK] as const satisfies readonly RoadmapPa
 
 /** Every goal key any bundled pack holds - what roadmapLabels.ts has to
     cover, so a goal added without wording is a typecheck failure rather
-    than a raw key on screen. */
-export type RoadmapGoalKey = PolishGoalKey;
+    than a raw key on screen. Read off ROADMAP_PACKS rather than written
+    out, so adding a second country's pack widens what the wording layer
+    must cover on its own: the pack list is the single place a new pack is
+    declared, which is what makes it content work and not a schema
+    change. */
+export type RoadmapGoalKey = (typeof ROADMAP_PACKS)[number]['goals'][number]['key'];
 
 export type RoadmapPackKey = (typeof ROADMAP_PACKS)[number]['key'];
 
