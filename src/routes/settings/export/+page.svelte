@@ -35,6 +35,10 @@
   let importing = $state(false);
   let verifying = $state(false);
   let impError = $state('');
+  /* Walkthrough handle for which catalogued sentence impError holds, so the
+     suite can tell import failures apart without matching on the wording
+     itself (ADR: the walkthrough grips handles, never wording). */
+  let impErrorKind = $state('');
   let plainSheet = $state<'csv' | 'json' | null>(null);
   let daylioSheet = $state(false);
   let daylioName = $state('');
@@ -258,6 +262,7 @@
       if (!chosen) return; // backed out
       picked = chosen;
       impError = '';
+      impErrorKind = '';
     } catch (error) {
       console.error('the archive picker failed', error);
       toast(m.imp_picker_failed());
@@ -271,13 +276,16 @@
   async function doImport() {
     if (!picked) {
       impError = m.imp_pick_first();
+      impErrorKind = 'pick-first';
       return;
     }
     if (!impPass) {
       impError = m.imp_password_needed();
+      impErrorKind = 'password-needed';
       return;
     }
     impError = '';
+    impErrorKind = '';
     importing = true;
     try {
       const { payload, files } = await openArchive(picked.bytes(), impPass);
@@ -299,23 +307,27 @@
       }
     } catch (error) {
       console.error('the import failed', error);
-      impError = importFailure(error);
+      ({ message: impError, kind: impErrorKind } = importFailure(error));
     } finally {
       importing = false;
     }
   }
 
-  /* Each branch is a catalogued sentence rather than an error message: the
+  /* One branch per catalogued sentence rather than an error message: the
      archive errors carry English diagnostics for the console, and a Polish
      reader must not get one of those spliced into a Polish paragraph
-     (docs/ui-copy.md). */
-  function importFailure(error: unknown): string {
-    if (error instanceof DecryptionFailedError) return m.imp_wrong_password();
+     (docs/ui-copy.md). The stable `kind` alongside each sentence is a
+     walkthrough handle, not a second copy of the catalogue - the branches
+     stay in one place so the two can't drift apart. */
+  function importFailure(error: unknown): { message: string; kind: string } {
+    if (error instanceof DecryptionFailedError) return { message: m.imp_wrong_password(), kind: 'wrong-password' };
     if (error instanceof UnsupportedArchiveError) {
-      return error.kind === 'newer-version' ? m.imp_newer_version() : m.imp_not_an_archive();
+      return error.kind === 'newer-version'
+        ? { message: m.imp_newer_version(), kind: 'newer-version' }
+        : { message: m.imp_not_an_archive(), kind: 'not-an-archive' };
     }
-    if (error instanceof CorruptArchiveError) return m.imp_corrupt();
-    return m.imp_failed();
+    if (error instanceof CorruptArchiveError) return { message: m.imp_corrupt(), kind: 'corrupt' };
+    return { message: m.imp_failed(), kind: 'failed' };
   }
 
   /* The backup health drill (ticket 28): the same picked file and password
@@ -548,7 +560,7 @@
         value={impMode} onChange={(v) => (impMode = v)} />
     </div>
     {#if impError}
-      <div class="notice notice-danger" style="margin-bottom:var(--space-3)" role="alert">
+      <div class="notice notice-danger" style="margin-bottom:var(--space-3)" role="alert" data-import-error={impErrorKind}>
         <Icon name="alert" size={20} />
         <div class="notice-body">{impError}</div>
       </div>

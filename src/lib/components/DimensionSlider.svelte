@@ -32,10 +32,10 @@
 
 <div class="dim-slider">
   <div class="dim-head">
-    <span class="dim-name">{dim.name}</span>
-    <output class="dim-value">{value ?? '—'}</output>
+    <span class="dim-name" data-dim-name>{dim.name}</span>
+    <output class="dim-value" data-dim-value>{value ?? '—'}</output>
   </div>
-  <div {...slider.root} class="melt-slider" aria-label={m.slider_aria({ name: dim.name, low: dim.low, high: dim.high })}>
+  <div {...slider.root} class="melt-slider" data-melt-slider aria-label={m.slider_aria({ name: dim.name, low: dim.low, high: dim.high })}>
     <div class="melt-track"><div class="melt-range"></div></div>
     <div {...slider.thumb} class="melt-thumb"></div>
   </div>

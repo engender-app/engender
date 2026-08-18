@@ -69,6 +69,7 @@
       <a
         class="hm-cell has-entries"
         class:is-today={c.isToday}
+        data-hm-cell-filled
         style="background:var(--heat-{c.level});color:var(--on-heat-{c.level})"
         href="/day/{c.epochDay}"
         aria-label={c.label}><span class="hm-num">{c.day}</span></a

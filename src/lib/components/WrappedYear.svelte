@@ -82,10 +82,10 @@
   ]);
 </script>
 
-<div class="wrapped-cover">
+<div class="wrapped-cover" data-wrapped-cover>
   <RiveSlot height={140} variant="bloom" />
   <p class="wrapped-cover-label">{m.wrapped()}</p>
-  <h2 class="wrapped-cover-year">{year}</h2>
+  <h2 class="wrapped-cover-year" data-wrapped-cover-year>{year}</h2>
   <p class="wrapped-cover-intro">{intro}</p>
 </div>
 
@@ -93,7 +93,7 @@
   <h3 class="wrapped-year-heading">{m.wrapped_year_months()}</h3>
   <div class="wrapped-months">
     {#each months as row (row.month)}
-      <div class="wrapped-month">
+      <div class="wrapped-month" data-wrapped-month>
         <span class="wrapped-month-name">{row.name}</span>
         <!-- The bar is decoration over a number that is already text: the
              stats screen learned that a chart with no readable values is a
@@ -102,7 +102,7 @@
           <span class="wrapped-month-fill" style:width="{Math.max(row.share * 100, row.average === null ? 0 : 4)}%"
           ></span>
         </span>
-        <span class="wrapped-month-value">{row.average === null ? '' : row.average.toFixed(1)}</span>
+        <span class="wrapped-month-value" data-wrapped-month-value>{row.average === null ? '' : row.average.toFixed(1)}</span>
       </div>
     {/each}
   </div>
@@ -110,9 +110,9 @@
 
 <section class="wrapped-year-section">
   <h3 class="wrapped-year-heading">{m.wrapped_year_figures()}</h3>
-  <dl class="wrapped-figures">
+  <dl class="wrapped-figures" data-wrapped-figures>
     {#each figures as figure (figure.label)}
-      <div class="wrapped-figure">
+      <div class="wrapped-figure" data-wrapped-figure>
         <dt>{figure.label}</dt>
         <dd>{figure.value}</dd>
       </div>

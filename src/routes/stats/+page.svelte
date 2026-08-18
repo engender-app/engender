@@ -97,7 +97,7 @@
 
 <div class="screen">
   <header class="screen-header">
-    <h1 class="screen-title">{m.stats_title({ days: String(range) })}</h1>
+    <h1 class="screen-title" data-screen-title>{m.stats_title({ days: String(range) })}</h1>
   </header>
 
   <div class="segmented" role="radiogroup" aria-label={m.stats_range_group()} style="margin-bottom:var(--space-4)">
@@ -130,6 +130,7 @@
       {@const avg = series.length ? series.reduce((a, p) => a + p.value, 0) / series.length : null}
       <button
         class="card chart-card"
+        data-chart-card
         style={mi % 2 === 1 ? '--chart-line:var(--chart-line-2);--chart-fill:var(--chart-fill-2)' : ''}
         onclick={() => (valueSheet = { name: mt.name, key: mt.key })}
       >
@@ -185,7 +186,7 @@
       {#each correlationCards as c (`${c.occurrence.kind}-${c.occurrence.kind === 'tag' ? c.occurrence.id : ''}-${c.metric}`)}
         <div class="list-row">
           <span class="row-text">
-            <span class="row-title">{occurrenceLabel(c)}</span>
+            <span class="row-title" data-row-title>{occurrenceLabel(c)}</span>
             <span class="row-subtitle">{m.correlation_card_tends({ metric: metricPhrase(c) })}</span>
             <span class="row-subtitle">
               {m.insight_row_sub({
@@ -252,7 +253,7 @@
       <h3>{m.values_title({ name: valueSheet.name })}</h3>
       <div class="value-list">
         {#each seriesFor(valueSheet.key).toReversed() as p (p.day)}
-          <div class="value-row">
+          <div class="value-row" data-value-row>
             <span>{fmtDay(p.day, { day: 'numeric', month: 'short' })}</span>
             <span class="muted small">{p.count > 1 ? m.avg_of({ count: String(p.count) }) : ''}</span>
             <strong>{valueSheet.key === 'mood' ? p.value.toFixed(1) : Math.round(p.value)}</strong>

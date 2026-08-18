@@ -149,10 +149,10 @@
     <div class="card compare-metrics" style="margin-top:var(--space-4)" data-compare-table>
       <div class="compare-metrics-row compare-metrics-header">
         <span></span>
-        <span class="compare-period-label">{periodA.label}</span>
-        <span class="compare-period-label">{periodB.label}</span>
+        <span class="compare-period-label" data-compare-period-label>{periodA.label}</span>
+        <span class="compare-period-label" data-compare-period-label>{periodB.label}</span>
       </div>
-      <div class="compare-metrics-row">
+      <div class="compare-metrics-row" data-compare-metric="entries">
         <span class="row-title">{m.compare_entries_label()}</span>
         <span>{a.entryCount}</span>
         <span>{b.entryCount}</span>
