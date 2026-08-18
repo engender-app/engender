@@ -18,6 +18,7 @@ import { makeLabsArea, type LabsArea } from './labs';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePhotosArea, type PhotosArea } from './photos';
+import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeTagsArea, type TagsArea } from './tags';
@@ -62,6 +63,7 @@ export interface Journal {
   /** Misgendering and correct-gendering events (CONTEXT: "Tally event").
       Its own record type, never an Entry or a quick log. */
   tally: TallyArea;
+  regimen: RegimenArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -87,6 +89,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     measurements: makeMeasurementsArea(driver),
     reminders: makeRemindersArea(driver),
     tally: makeTallyArea(driver),
+    regimen: makeRegimenArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

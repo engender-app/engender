@@ -134,6 +134,27 @@ export interface TallyEvent {
   context: string;
 }
 
+/* No stored end: an episode runs until the next one starts, or is ongoing
+   if it is the latest (ADR-0010, regimenEpisode.ts computes it). Not a
+   preference (ADR-0003) and not a Reminder: it is attributed data every
+   other record resolves against by timestamp, not a device setting and
+   not a prompt to log something. */
+export interface RegimenEpisode {
+  id: string;
+  drug: string;
+  /** Nullable: antiandrogens and some routes have none. */
+  ester: string | null;
+  dose: number;
+  doseUnit: string;
+  route: string;
+  interval: string;
+  startEpochDay: number;
+  /** Hidden episodes leave the picker downstream tickets offer for new
+      records; records already attributed to one keep resolving to it
+      (CONTEXT: "Hidden"). */
+  hidden: boolean;
+}
+
 /* Preferences are not here: they live in SQLite's `pref` table and are
    described by prefs/catalogue.ts (ticket 06). Neither is a whole-journal
    type: the `DB` object the demo store held went with it in ticket 08, and
