@@ -742,7 +742,7 @@ try {
     'Femininity',
     'Masculinity',
     'Fem + masc',
-    'Fluid spectrum',
+    'Fem + masc + nonbinary',
     'Agender axis',
     'Partly feminine',
     'Partly masculine',
@@ -779,7 +779,7 @@ try {
     ['p-btw', 'Femininity'],
     ['p-masc', 'Masculinity'],
     ['p-fem-masc', 'Fem + masc'],
-    ['p-fluid', 'Fluid spectrum'],
+    ['p-fluid', 'Fem + masc + nonbinary'],
     ['p-agender', 'Agender axis'],
     ['p-demi-fem', 'Partly feminine'],
     ['p-demi-masc', 'Partly masculine'],
@@ -1148,6 +1148,7 @@ try {
   if ((await page.getByRole('button', { name: 'euphoria', exact: true }).getAttribute('aria-pressed')) !== 'true') {
     throw new Error('euphoria did not select');
   }
+  await page.locator('.mood-picker .mood-btn[data-mood="3"]').click();
   await page.locator('#ed-note').fill('Playwright: physical and euphoria together.');
   await page.locator('[data-save]').click();
   await page.waitForSelector('.entry-card .entry-note');
