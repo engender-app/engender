@@ -1323,6 +1323,78 @@ try {
   ok('backgrounding and returning in the same process leaves an unsaved edit untouched');
 } catch (e) { fail('same-process background/resume', e); }
 
+/* 24. quick log offers to fill in the active preset's scales too (phase 4
+   features ticket 13, beta B2). The prompt's inputs carry only placeholder
+   text, never a real prefilled value, so there is nothing to delete before
+   typing - and filling them in writes onto the entry the quick log already
+   saved. */
+try {
+  await fresh('/');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  const nudgeSwitch = page.locator('[data-entry-nudges] [role="switch"]');
+  if ((await nudgeSwitch.getAttribute('aria-checked')) !== 'true') {
+    await nudgeSwitch.click();
+    await page.waitForFunction(
+      () => document.querySelector('[data-entry-nudges] [role="switch"]')?.getAttribute('aria-checked') === 'true'
+    );
+  }
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+
+  await page.locator('.quicklog .mood-btn[data-mood="4"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-quick-log-dims]');
+
+  const firstInput = page.locator('[data-qld-input]').first();
+  if (!(await firstInput.getAttribute('placeholder'))) throw new Error('dimension input has no placeholder text');
+  if ((await firstInput.inputValue()) !== '') {
+    throw new Error('dimension input starts with a real value instead of just a placeholder');
+  }
+
+  for (const input of await page.locator('[data-qld-input]').all()) await input.fill('7');
+  await page.locator('[data-qld-add]').click();
+  await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
+
+  await page.locator('.entry-card').first().click();
+  await page.waitForSelector('.dim-value');
+  const values = await page.locator('.dim-value').allTextContents();
+  if (values.some((v) => v.trim() === '—')) throw new Error('a scale value from the prompt did not save');
+  ok('quick log dims prompt saves typed scale values onto the just-saved entry');
+} catch (e) { fail('quick log dims prompt (save)', e); }
+
+/* 24b. declining the prompt must never block or delay the quick log itself
+   - the entry is already saved by the time the prompt appears, so skipping
+   it leaves that entry exactly as it was. */
+try {
+  await fresh('/');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  const nudgeSwitch = page.locator('[data-entry-nudges] [role="switch"]');
+  if ((await nudgeSwitch.getAttribute('aria-checked')) !== 'true') {
+    await nudgeSwitch.click();
+    await page.waitForFunction(
+      () => document.querySelector('[data-entry-nudges] [role="switch"]')?.getAttribute('aria-checked') === 'true'
+    );
+  }
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+
+  await page.locator('.quicklog .mood-btn[data-mood="3"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-quick-log-dims]');
+  await page.locator('[data-qld-skip]').click();
+  await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
+
+  await page.locator('.entry-card').first().click();
+  await page.waitForSelector('.dim-value');
+  const values = await page.locator('.dim-value').allTextContents();
+  if (!values.every((v) => v.trim() === '—')) throw new Error('declining the prompt still wrote a scale value');
+  ok('declining the quick log dims prompt leaves the saved entry untouched');
+} catch (e) { fail('quick log dims prompt (decline)', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');
