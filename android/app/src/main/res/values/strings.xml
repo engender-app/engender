@@ -34,4 +34,9 @@
         <item>Misgendered</item>
         <item>Correctly gendered</item>
     </string-array>
+
+    <!-- Doubt-entry widget (ticket 34). Same non-localization note as the
+         other widgets above. -->
+    <string name="widget_doubt_title">Log a doubt</string>
+    <string name="widget_doubt_description">Open the doubt entry in one tap.</string>
 </resources>

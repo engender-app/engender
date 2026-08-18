@@ -7,6 +7,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import dev.barankiewicz.genderdiary.widgets.DoubtWidgetProvider;
 import dev.barankiewicz.genderdiary.widgets.QuickLogWidgetProvider;
 import dev.barankiewicz.genderdiary.widgets.TallyWidgetProvider;
 
@@ -30,13 +31,14 @@ public class DisguisePlugin extends Plugin {
         // next cold start - disguise_app_sub_android's "the app closes
         // briefly to switch". Only when the alias actually flipped: prefs
         // sync onto every boot, and a restart nobody asked for is its own
-        // kind of leak. Already-placed quick-log and tally widgets (tickets
-        // 26, 33) are the same category of exposure as the launcher icon,
-        // so they get the same immediate refresh rather than waiting on
-        // their own system-scheduled update.
+        // kind of leak. Already-placed quick-log, tally and doubt-entry
+        // widgets (tickets 26, 33, 34) are the same category of exposure as
+        // the launcher icon, so they get the same immediate refresh rather
+        // than waiting on their own system-scheduled update.
         if (changed) {
             QuickLogWidgetProvider.updateAll(getContext());
             TallyWidgetProvider.updateAll(getContext());
+            DoubtWidgetProvider.updateAll(getContext());
             Process.killProcess(Process.myPid());
         }
     }
