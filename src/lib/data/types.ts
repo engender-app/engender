@@ -399,6 +399,27 @@ export interface MilestoneTemplate {
   name: string;
 }
 
+/** A built-in suggestion for an entry (phase 4 features ticket 17): picking
+    one pre-fills `tags` and `dims` on the entry being created, exactly as
+    `MilestoneTemplate` pre-fills a milestone's name. What the user saves
+    from it is an ordinary Entry, and every pre-filled value stays editable
+    up to save - a template only ever seeds the draft, never gates it. */
+export interface EntryTemplate {
+  key: string;
+  name: string;
+  tags: string[];
+  dims: Record<string, number>;
+}
+
+/** A rotating reflection cue offered beside the entry-creation form (phase 4
+    features ticket 17), never written into the note field itself - the
+    entry it sits beside is free-write, and the prompt is only ever a
+    suggestion. Dismissed per-occurrence, in memory, not stored. */
+export interface EntryPrompt {
+  key: string;
+  text: string;
+}
+
 /** The four fixed markers a personal effects timeline tracks (phase 4
     ticket 07). Closed, like TallyKind: not an open-ended, user-extensible
     list of effects. "Hair changes" here is a single first-noticed date

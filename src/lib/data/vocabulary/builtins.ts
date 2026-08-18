@@ -13,7 +13,7 @@
    labels.ts has to cover exhaustively - a built-in added here without a
    message fails the typecheck rather than showing a raw key to someone. */
 
-import type { GenderDimension, GenderPreset, MilestoneTemplate, Tag, TagGroup } from '../types.ts';
+import type { EntryPrompt, EntryTemplate, GenderDimension, GenderPreset, MilestoneTemplate, Tag, TagGroup } from '../types.ts';
 
 export const BUILT_IN_DIMENSIONS = [
   { key: 'euphoria_dysphoria', min: 0, max: 100 },
@@ -100,6 +100,39 @@ export const MILESTONE_TEMPLATE_KEYS = [
 
 export type MilestoneTemplateKey = (typeof MILESTONE_TEMPLATE_KEYS)[number];
 
+/* Entry templates (phase 4 features ticket 17): each names the tags and
+   dimension values it pre-fills, the same "data lives here, wording lives
+   in labels.ts" split BUILT_IN_PRESETS uses for its own `dims`. Values sit
+   on the euphoria_dysphoria scale, the one dimension every built-in preset
+   includes (BUILT_IN_PRESETS above), so a template's dial reading makes
+   sense under any preset a person has chosen. */
+export const ENTRY_TEMPLATES = [
+  { key: 'euphoria_day', tags: ['g-euphoria', 'g-body-eu', 'g-soc-eu'], dims: { euphoria_dysphoria: 85 } },
+  { key: 'dysphoria_day', tags: ['g-body-dys', 'g-soc-dys'], dims: { euphoria_dysphoria: 20 } },
+  { key: 'gendered_correctly', tags: ['g-gendered-ok'], dims: {} },
+  { key: 'misgendered', tags: ['g-misgendered'], dims: {} },
+  { key: 'good_day', tags: ['e-happy', 'e-calm'], dims: { euphoria_dysphoria: 75 } },
+  { key: 'hard_day', tags: ['e-sad', 'e-anxious'], dims: { euphoria_dysphoria: 30 } }
+] as const;
+
+export type EntryTemplateKey = (typeof ENTRY_TEMPLATES)[number]['key'];
+
+/* Guided prompts (phase 4 features ticket 17): keys only, like milestone
+   templates - the reflection text itself is wording, so it lives in
+   labels.ts, not here. */
+export const ENTRY_PROMPT_KEYS = [
+  'euphoria_moment',
+  'dysphoria_moment',
+  'body_feeling',
+  'seen_moment',
+  'self_care',
+  'presentation_feeling',
+  'name_pronouns_feeling',
+  'proud_moment'
+] as const;
+
+export type EntryPromptKey = (typeof ENTRY_PROMPT_KEYS)[number];
+
 /* Presets and milestone templates are not stored rows in Phase 1 - the
    journal holds only what the user added - so these hand back the built-in
    ones in the shape the rest of the code already expects, names left for
@@ -111,6 +144,14 @@ export function builtInPresetRows(): GenderPreset[] {
 
 export function milestoneTemplateRows(): MilestoneTemplate[] {
   return MILESTONE_TEMPLATE_KEYS.map((key) => ({ key, name: '' }));
+}
+
+export function entryTemplateRows(): EntryTemplate[] {
+  return ENTRY_TEMPLATES.map((t) => ({ key: t.key, name: '', tags: [...t.tags], dims: { ...t.dims } }));
+}
+
+export function entryPromptRows(): EntryPrompt[] {
+  return ENTRY_PROMPT_KEYS.map((key) => ({ key, text: '' }));
 }
 
 /* Reconciling, not seeding-if-empty. Both functions add what is missing by

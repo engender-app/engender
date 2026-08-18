@@ -253,6 +253,21 @@
       </div>
     </div>
     <div class="card" style="margin-top:var(--space-3)">
+      <div class="spread" data-guided-prompts>
+        <span class="row-text">
+          <span class="row-title">{m.guided_prompts()}</span>
+          <span class="row-subtitle">{m.guided_prompts_sub()}</span>
+        </span>
+        <Switch
+          checked={prefs.guidedPromptsEnabled}
+          label={m.guided_prompts()}
+          onChange={(v) => {
+            prefs.guidedPromptsEnabled = v;
+          }}
+        />
+      </div>
+    </div>
+    <div class="card" style="margin-top:var(--space-3)">
       <div class="spread" data-wrapped-toggle>
         <span class="row-text">
           <span class="row-title">{m.wrapped()}</span>

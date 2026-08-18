@@ -209,6 +209,37 @@ test('a fresh draft can be seeded with a mood and the seed survives hydration', 
   assert.equal(hydrated.mood, 3);
 });
 
+test('applyTemplate adds its tags without duplicating one already selected', () => {
+  const draft = createEntryDraft(1);
+  draft.toggleTag('g-euphoria');
+
+  draft.applyTemplate(['g-euphoria', 'g-body-eu'], {});
+
+  assert.deepEqual(draft.tags, ['g-euphoria', 'g-body-eu']);
+});
+
+test('applyTemplate sets dims without clobbering a value the draft already had', () => {
+  const draft = createEntryDraft(1);
+  draft.setDim('masculinity', 40);
+
+  draft.applyTemplate([], { euphoria_dysphoria: 85 });
+
+  assert.deepEqual(draft.dims, { masculinity: 40, euphoria_dysphoria: 85 });
+});
+
+test('applyTemplate pre-fills a fresh draft, and every value stays editable afterwards', () => {
+  const draft = createEntryDraft(1);
+
+  draft.applyTemplate(['g-euphoria', 'g-body-eu'], { euphoria_dysphoria: 85 });
+  assert.deepEqual(draft.tags, ['g-euphoria', 'g-body-eu']);
+  assert.deepEqual(draft.dims, { euphoria_dysphoria: 85 });
+
+  draft.toggleTag('g-euphoria');
+  draft.setDim('euphoria_dysphoria', 60);
+  assert.deepEqual(draft.tags, ['g-body-eu']);
+  assert.deepEqual(draft.dims, { euphoria_dysphoria: 60 });
+});
+
 test('toUpsert() drops a zero timestamp, matching upsertEntry\'s own fallback', () => {
   const draft = createEntryDraft(1);
   draft.setMood(1);

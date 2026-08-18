@@ -38,6 +38,13 @@ export interface EntryDraft {
   setNote(note: string): void;
   setDim(key: string, value: number): void;
   toggleTag(id: string): void;
+  /** Merges a template's pre-fill into the draft (ticket 17): tags join the
+      selection already there rather than toggling it, so applying the same
+      template twice cannot flip a tag back off, and dims overwrite by key
+      the way `setDim` does. Every value it sets is a plain field afterwards
+      - `toggleTag`/`setDim` edit it same as anything the person picked
+      themselves. */
+  applyTemplate(tags: string[], dims: Record<string, number>): void;
   toggleBodyRegion(key: string): void;
   setBodyRegionIntensity(key: string, intensity: number): void;
   addPhoto(photo: NormalizedPhoto): void;
@@ -99,6 +106,11 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
 
     toggleTag(id) {
       this.tags = this.tags.includes(id) ? this.tags.filter((x: string) => x !== id) : [...this.tags, id];
+    },
+
+    applyTemplate(tags, dims) {
+      this.tags = [...new Set([...this.tags, ...tags])];
+      this.dims = { ...this.dims, ...dims };
     },
 
     toggleBodyRegion(key) {
