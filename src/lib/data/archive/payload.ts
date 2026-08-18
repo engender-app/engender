@@ -156,6 +156,13 @@ export interface ArchiveTallyEvent {
   context: string;
 }
 
+export interface ArchiveSideEffect {
+  id: string;
+  name: string;
+  severity: number;
+  epochDay: number;
+}
+
 export interface ArchiveReminder {
   id: string;
   title: string;
@@ -248,6 +255,7 @@ export interface ArchiveJournal {
   milestones: ArchiveMilestone[];
   labResults: ArchiveLabResult[];
   measurements: ArchiveMeasurement[];
+  sideEffects: ArchiveSideEffect[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
   regimenEpisodes: ArchiveRegimenEpisode[];

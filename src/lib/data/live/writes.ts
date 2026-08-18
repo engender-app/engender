@@ -54,7 +54,8 @@ export type TableName =
      regimen episodes too, but those are announced under their own names
      already - a stock-only screen re-running on a dose write is exactly
      the point. */
-  | 'stock';
+  | 'stock'
+  | 'sideEffect';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -71,7 +72,8 @@ export const TABLE_NAMES: TableName[] = [
   'tally',
   'regimen',
   'dose',
-  'stock'
+  'stock',
+  'sideEffect'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -142,6 +144,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   measurements: {
     writes: { upsertMeasurement: ['measurement'], deleteMeasurement: ['measurement'] },
     reads: ['getMeasurements', 'getSeries', 'getMeasurementsInRange']
+  },
+  sideEffects: {
+    writes: { upsertSideEffect: ['sideEffect'], deleteSideEffect: ['sideEffect'] },
+    reads: ['getSideEffects', 'getSideEffectsInRange']
   },
   reminders: {
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },

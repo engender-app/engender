@@ -182,6 +182,7 @@ export async function restoreArchive(
     await applyMilestones(restoring);
     await applyLabResults(restoring);
     await applyMeasurements(restoring);
+    await applySideEffects(restoring);
     await applyReminders(restoring);
     await applyTallyEvents(restoring);
     await applyRegimenEpisodes(restoring);
@@ -202,6 +203,7 @@ const COLLECTIONS = [
   'milestones',
   'labResults',
   'measurements',
+  'sideEffects',
   'reminders',
   'tallyEvents',
   'regimenEpisodes',
@@ -239,6 +241,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM milestone',
     'DELETE FROM lab_result',
     'DELETE FROM measurement',
+    'DELETE FROM side_effect',
     'DELETE FROM reminder',
     'DELETE FROM tally_event',
     'DELETE FROM dose_event',
@@ -727,6 +730,17 @@ async function applyDosePauses({ driver, journal, ts }: Restoring): Promise<void
     driver,
     'INSERT INTO dose_pause (uuid, episode_id, start_epoch_day, end_epoch_day, reason, updated_at)',
     rows
+  );
+}
+
+async function applySideEffects({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM side_effect');
+
+  const inserting = journal.sideEffects.filter((effect) => !present.has(effect.id));
+  await insertRows(
+    driver,
+    'INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at)',
+    inserting.map((effect) => [effect.id, effect.name, effect.severity, effect.epochDay, ts])
   );
 }
 

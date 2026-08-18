@@ -13,6 +13,7 @@ const emptySnapshot: ArchiveSnapshot = {
     milestones: [],
     labResults: [],
     measurements: [],
+    sideEffects: [],
     reminders: [],
     tallyEvents: [],
     regimenEpisodes: [],

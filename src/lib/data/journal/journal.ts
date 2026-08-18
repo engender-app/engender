@@ -22,6 +22,7 @@ import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePhotosArea, type PhotosArea } from './photos';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
+import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeStockArea, type StockArea } from './stock';
 import { makeTagsArea, type TagsArea } from './tags';
@@ -80,6 +81,7 @@ export interface Journal {
       purely descriptive (phase 4 ticket 05). A view over rows `doses` and
       `regimen` own, not a third owner for either one. */
   exposure: ExposureArea;
+  sideEffects: SideEffectsArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -113,6 +115,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     doses,
     stock: makeStockArea(driver, doses, regimen, reminders),
     exposure: makeExposureArea(doses, regimen),
+    sideEffects: makeSideEffectsArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

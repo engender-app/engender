@@ -72,6 +72,14 @@ const MEASUREMENT_TYPE_NAME: Record<Measurement['type'], Message> = {
 /** The name of a measurement type. */
 export const measurementTypeName = (type: Measurement['type']): string => MEASUREMENT_TYPE_NAME[type]();
 
+/* A side effect's severity (phase 4 ticket 06, CONTEXT: "Side effect") is a
+   1-5 ordered scale like mood, and its five names are vocabulary the same
+   way: purely descriptive wording, never a recommendation or a warning. */
+const SEVERITY_NAME: Message[] = [m.severity_1, m.severity_2, m.severity_3, m.severity_4, m.severity_5];
+
+/** The name of a severity, 1 to 5. */
+export const severityName = (value: number): string => SEVERITY_NAME[value - 1]?.() ?? String(value);
+
 const PRESET_NAME: Record<BuiltInPresetKey, Message> = {
   'p-btw': m.preset_p_btw,
   'p-masc': m.preset_p_masc,

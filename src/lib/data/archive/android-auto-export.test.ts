@@ -27,6 +27,7 @@ const snapshot: ArchiveSnapshot = {
     milestones: [],
     labResults: [],
     measurements: [],
+    sideEffects: [],
     reminders: [],
     tallyEvents: [],
     regimenEpisodes: [],

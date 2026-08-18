@@ -39,6 +39,7 @@ async function populated() {
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
   const measurement = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
   const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' });
+  const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   const reminder = await journal.reminders.upsertReminder({
     title: 'injection',
     type: 'injection',
@@ -127,7 +128,8 @@ async function populated() {
     changedDose,
     schedule,
     dosePause,
-    stock
+    stock,
+    sideEffect
   };
 }
 
@@ -201,8 +203,8 @@ test('the state a user put on a built-in row travels with it', async () => {
   assert.equal(activities.tags.find((t) => t.id === 'a-therapy')!.label, 'therapy session');
 });
 
-test('milestones, lab results, measurements, tally events, reminders and regimen episodes travel whole', async () => {
-  const { journal, milestone, milestonePhoto, lab, contextLab, measurement, tally, reminder, episode } = await populated();
+test('milestones, lab results, measurements, tally events, side effects, reminders and regimen episodes travel whole', async () => {
+  const { journal, milestone, milestonePhoto, lab, contextLab, measurement, tally, sideEffect, reminder, episode } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -251,6 +253,9 @@ test('milestones, lab results, measurements, tally events, reminders and regimen
   ]);
   assert.deepEqual(snapshot.journal.tallyEvents, [
     { id: tally, epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' }
+  ]);
+  assert.deepEqual(snapshot.journal.sideEffects, [
+    { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000 }
   ]);
   assert.deepEqual(snapshot.journal.reminders, [
     {
@@ -462,6 +467,7 @@ const CARRIED: Record<string, string[]> = {
     'reminder_ever_created',
     'reminder_dismissed'
   ],
+  side_effect: ['uuid', 'name', 'severity', 'epoch_day'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

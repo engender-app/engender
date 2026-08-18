@@ -99,6 +99,7 @@ test('reads announce nothing at all', async () => {
   await journal.tags.getTagGroups();
   await journal.milestones.getMilestones();
   await journal.labs.getAnalytes();
+  await journal.sideEffects.getSideEffects();
   await journal.reminders.getReminders();
   await journal.dimensions.getPresets();
   await journal.photos.inJournal();

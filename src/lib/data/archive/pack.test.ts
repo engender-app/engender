@@ -266,6 +266,7 @@ function bigContents(): { contents: ArchiveContents; reads: string[] } {
         milestones: [],
         labResults: [],
         measurements: [],
+        sideEffects: [],
         reminders: [],
         tallyEvents: [],
         regimenEpisodes: [],
