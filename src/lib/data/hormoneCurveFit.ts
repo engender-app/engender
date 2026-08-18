@@ -65,3 +65,27 @@ export function fitScaleFactor(pairs: readonly FitPair[]): ScaleFit | null {
 
   return denominator > 0 ? { factor: numerator / denominator, pointsUsed } : null;
 }
+
+/** One of the user's own lab results, placed on whatever curve's time axis
+    is being fitted against. The day is all fitting needs - the rest of a lab
+    result (its native value and unit, ADR-0026) is a display concern that
+    stays with the caller. */
+interface LabPointForFit {
+  day: number;
+  value: number;
+}
+
+/** fitScaleFactor's own pairing step, pulled out so a route with no band to
+    read a midpoint from can fit the same way an ester's can: ask `modelledAt`
+    for the curve's own value at each result's day, and hand the pairs to
+    fitScaleFactor unchanged. `modelledAt` is the one thing that differs
+    between an ester's band midpoint and a qualitative curve's own value -
+    everything after it, including the null-for-nothing-to-fit distinction,
+    is this same function either way. */
+export function fitScaleFactorToLabs(
+  labPoints: readonly LabPointForFit[],
+  modelledAt: (day: number) => number
+): ScaleFit | null {
+  const pairs = labPoints.map((point) => ({ modelled: modelledAt(point.day), observed: point.value }));
+  return pairs.length > 0 ? fitScaleFactor(pairs) : null;
+}

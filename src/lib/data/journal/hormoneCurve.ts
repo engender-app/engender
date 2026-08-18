@@ -22,7 +22,7 @@ import {
   scaleCurves,
   type EsterCurve
 } from '../hormoneCurve';
-import { fitScaleFactor, type FitPair } from '../hormoneCurveFit';
+import { fitScaleFactorToLabs } from '../hormoneCurveFit';
 import { resolveInjectableEster, type InjectableEster } from '../hormoneEster';
 import { resolveEpisodeAt } from '../regimenEpisode';
 import { drawInstant } from '../labTiming';
@@ -144,19 +144,12 @@ export function makeHormoneCurveArea(
          the person's own response and quietly scale the whole curve up. */
       const modelIsComplete = population.dosesWithoutMilligrams === 0;
 
-      const pairs: FitPair[] = [];
-      if (fitToOwnLabs && modelIsComplete) {
-        for (const point of labPoints) {
-          /* Summed across the esters drawn, because a lab result measures
-             one bloodstream: someone who changed ester mid-window has both
-             contributing to the number their lab reported. */
-          let modelled = 0;
-          for (const curve of population.curves) modelled += bandMidpointAt(curve, point.day) ?? 0;
-          pairs.push({ modelled, observed: point.value });
-        }
-      }
-
-      const fit = pairs.length > 0 ? fitScaleFactor(pairs) : null;
+      /* Summed across the esters drawn, because a lab result measures one
+         bloodstream: someone who changed ester mid-window has both
+         contributing to the number their lab reported. */
+      const modelledAt = (day: number) =>
+        population.curves.reduce((sum, curve) => sum + (bandMidpointAt(curve, day) ?? 0), 0);
+      const fit = fitToOwnLabs && modelIsComplete ? fitScaleFactorToLabs(labPoints, modelledAt) : null;
 
       return {
         curves: fit === null ? population.curves : scaleCurves(population.curves, fit.factor),
