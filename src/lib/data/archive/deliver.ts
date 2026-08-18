@@ -56,13 +56,18 @@ export async function deliverFile(file: {
 }): Promise<Delivery> {
   const parts: BlobPart[] = [];
   for await (const piece of file.body) parts.push(piece as BlobPart);
-  const blob = new Blob(parts, { type: file.type });
+  return deliverBlob(file.fileName, new Blob(parts, { type: file.type }));
+}
 
+/** The same hand-off for something already whole in memory: ticket 27's
+    collage and timelapse come off a canvas as a Blob, and this is what keeps
+    them on the one share path rather than growing a second one. */
+export async function deliverBlob(fileName: string, blob: Blob): Promise<Delivery> {
   const sharing = navigator as Navigator & Sharing;
-  const shared = new File([blob], file.fileName, { type: blob.type });
+  const shared = new File([blob], fileName, { type: blob.type });
   if (sharing.canShare?.({ files: [shared] }) && sharing.share) {
     try {
-      await sharing.share({ files: [shared], title: file.fileName });
+      await sharing.share({ files: [shared], title: fileName });
       return 'shared';
     } catch (error) {
       // The one error worth reading: the user closed the sheet. Anything
@@ -75,7 +80,7 @@ export async function deliverFile(file: {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = file.fileName;
+  link.download = fileName;
   link.click();
   URL.revokeObjectURL(url);
   return 'downloaded';
