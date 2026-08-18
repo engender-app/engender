@@ -151,6 +151,11 @@ export interface PreferenceValues {
   /** Epoch milliseconds, not an epoch day. */
   lastBackupAt: number | null;
   backupNoticeDismissed: boolean;
+  /** When a dry-run restore drill last decrypted, parsed and validated a
+      chosen archive without error (phase 4 features ticket 28). Epoch
+      milliseconds, like `lastBackupAt`, and just as device-local: it
+      describes what this installation has checked, not the journal. */
+  lastVerifiedAt: number | null;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -195,7 +200,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
-  backupNoticeDismissed: false
+  backupNoticeDismissed: false,
+  lastVerifiedAt: null
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -241,6 +247,7 @@ export const DEVICE_LOCAL_KEYS = [
   'autoExportSchedule',
   'lastBackupAt',
   'backupNoticeDismissed',
+  'lastVerifiedAt',
   'measurementProtocolDismissed',
   'hairPhotoProtocolDismissed',
   'hormoneCurveFitToOwnLabs'

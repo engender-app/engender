@@ -8,6 +8,7 @@
   import { openArchive } from '$lib/data/archive/pack';
   import { CorruptArchiveError, UnsupportedArchiveError } from '$lib/data/archive/container';
   import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
+  import { verifyArchive } from '$lib/data/journal/restore';
   import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
   import { chooseFiles } from '$lib/data/fileDialog';
   import { dimensionName, moodName, tagLabel, tagLabels } from '$lib/data/vocabulary/labels';
@@ -25,12 +26,14 @@
   let android = $derived(isAndroid());
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
   let stale = $derived(backupIsStale(prefs.lastBackupAt));
+  let verifiedAge = $derived(backupAgeDays(prefs.lastVerifiedAt));
 
   let expPass = $state('');
   let impPass = $state('');
   let impMode = $state('merge');
   let picked = $state<PickedArchive | null>(null);
   let importing = $state(false);
+  let verifying = $state(false);
   let impError = $state('');
   let plainSheet = $state<'csv' | 'json' | null>(null);
   let daylioSheet = $state(false);
@@ -315,6 +318,45 @@
     return m.imp_failed();
   }
 
+  /* The backup health drill (ticket 28): the same picked file and password
+     as import, but only decrypting, parsing and validating it - restore.ts's
+     verifyArchive never takes a driver or a file store, so there is nothing
+     here for it to write to. */
+  async function doVerify() {
+    if (!picked) {
+      impError = m.imp_pick_first();
+      return;
+    }
+    if (!impPass) {
+      impError = m.imp_password_needed();
+      return;
+    }
+    impError = '';
+    verifying = true;
+    try {
+      await verifyArchive(picked.bytes(), impPass);
+      prefs.lastVerifiedAt = Date.now();
+      toast(m.verify_ok_toast());
+    } catch (error) {
+      console.error('the verify drill failed', error);
+      impError = verifyFailure(error);
+    } finally {
+      verifying = false;
+    }
+  }
+
+  /* Same catalogued-sentence rule as importFailure, and privacy shape as the
+     scheduled-backup failure notification (AutoExportPlugin.notifyFailure):
+     what went wrong with the file, never the journal or folder it came from. */
+  function verifyFailure(error: unknown): string {
+    if (error instanceof DecryptionFailedError) return m.verify_wrong_password();
+    if (error instanceof UnsupportedArchiveError) {
+      return error.kind === 'newer-version' ? m.verify_newer_version() : m.verify_not_an_archive();
+    }
+    if (error instanceof CorruptArchiveError) return m.verify_corrupt();
+    return m.verify_failed();
+  }
+
   function openDaylio() {
     daylioName = '';
     daylioPreview = null;
@@ -366,22 +408,38 @@
     <div class="header-action"></div>
   </header>
 
-  <div class="card spread" style="margin-bottom:var(--space-4)">
-    <span class="row-text">
-      <span class="row-title">{m.exp_last_backup()}</span>
-      <span class="row-subtitle">
-        {backupAge == null
-          ? m.exp_last_backup_never()
-          : backupAge === 0
-            ? m.exp_last_backup_today()
-            : m.exp_last_backup_days({ days: m.n_days({ n: backupAge }) })}
+  <div class="card" style="margin-bottom:var(--space-4)">
+    <div class="spread">
+      <span class="row-text">
+        <span class="row-title">{m.exp_last_backup()}</span>
+        <span class="row-subtitle">
+          {backupAge == null
+            ? m.exp_last_backup_never()
+            : backupAge === 0
+              ? m.exp_last_backup_today()
+              : m.exp_last_backup_days({ days: m.n_days({ n: backupAge }) })}
+        </span>
       </span>
-    </span>
-    {#if stale}
-      <span class="notice-warn" style="padding:4px 10px;border-radius:var(--radius-pill);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
-    {:else}
-      <Icon name="check" size={20} />
-    {/if}
+      {#if stale}
+        <span class="notice-warn" style="padding:4px 10px;border-radius:var(--radius-pill);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
+      {:else}
+        <Icon name="check" size={20} />
+      {/if}
+    </div>
+    <div class="hr" style="margin:var(--space-3) 0"></div>
+    <div class="spread">
+      <span class="row-text">
+        <span class="row-title">{m.exp_last_verified()}</span>
+        <span class="row-subtitle">
+          {verifiedAge == null
+            ? m.exp_last_verified_never()
+            : verifiedAge === 0
+              ? m.exp_last_verified_today()
+              : m.exp_last_verified_days({ days: m.n_days({ n: verifiedAge }) })}
+        </span>
+      </span>
+      <Icon name="shield" size={20} />
+    </div>
   </div>
 
   <SectionTitle text={m.exp_encrypted_section()} />
@@ -495,9 +553,15 @@
     <p class="muted small" style="margin-bottom:var(--space-3)">
       {impMode === 'replace' ? m.imp_replace_note() : m.imp_merge_note()}
     </p>
-    <button class="btn btn-soft" data-import onclick={doImport} disabled={importing}>
-      <span>{importing ? m.imp_running() : m.imp_run()}</span>
-    </button>
+    <div class="spread">
+      <button class="btn btn-ghost" data-verify onclick={doVerify} disabled={importing || verifying}>
+        <Icon name="shield" size={18} />
+        <span>{verifying ? m.verify_running() : m.verify_run()}</span>
+      </button>
+      <button class="btn btn-soft" data-import onclick={doImport} disabled={importing || verifying}>
+        <span>{importing ? m.imp_running() : m.imp_run()}</span>
+      </button>
+    </div>
     <div class="hr"></div>
     <button class="list-row" data-daylio style="border-radius:var(--radius-md);background:var(--surface-2)"
       onclick={openDaylio}>
