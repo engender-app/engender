@@ -91,3 +91,34 @@ export function canonicalizeLabMeasurement(analyte: string, value: number, unit:
   const converted = convertLabValue(known, value, canonicalUnit, baseUnit);
   return { value: converted ?? value, unit: baseUnit };
 }
+
+/** The same measurement in the analyte's other allowlisted unit, or null
+    when there is no fixed-factor conversion for it - a free-text unit, or an
+    analyte outside the allowlist (ADR-0026). The native value stays where it
+    is; this is the secondary reading shown beside it, never a replacement.
+
+    No new conversion path: this reads ALLOWED_PREFERRED_UNITS for the other
+    unit and hands the arithmetic to convertLabValue above.
+
+    "The other unit" is only a well-posed question because every analyte on
+    the allowlist has exactly two. A third would make this pick whichever
+    came first in the list, which is why it is a fixed pair per analyte in
+    ADR-0026 and not an open set - an analyte with three units needs a
+    caller that says which one it wants, not this function. */
+export function secondaryLabValue(
+  analyte: string,
+  value: number,
+  unit: string
+): { value: number; unit: string } | null {
+  const known = asAnalyte(analyte);
+  if (!known) return null;
+
+  const native = canonicalUnitFor(known, unit);
+  if (!native) return null;
+
+  const other = ALLOWED_PREFERRED_UNITS[known].find((allowed) => allowed !== native);
+  if (!other) return null;
+
+  const converted = convertLabValue(known, value, native, other);
+  return converted === null ? null : { value: converted, unit: other };
+}
