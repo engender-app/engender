@@ -163,6 +163,31 @@ export interface ArchiveSideEffect {
   epochDay: number;
 }
 
+export interface ArchiveDoubtEntry {
+  id: string;
+  epochDay: number;
+  timestamp: number;
+  text: string;
+}
+
+/** One counterevidence entry as it read at the moment its snapshot was
+    saved (phase 4 ticket 11) - copied fields, not a reference to the
+    source entry's id, the same reasoning the snapshot table itself argues
+    (migrations.ts v14). */
+export interface ArchiveCounterevidenceEntry {
+  epochDay: number;
+  mood: number | null;
+  note: string;
+}
+
+export interface ArchiveCounterevidenceSnapshot {
+  id: string;
+  epochDay: number;
+  timestamp: number;
+  /** In the order the composer showed them. */
+  items: ArchiveCounterevidenceEntry[];
+}
+
 /** One of the four fixed "first noticed" markers (phase 4 ticket 07).
     `effect` is loosened from PersonalEffectType, the way ArchiveMeasurement
     loosens `type`: the schema's CHECK enforces it on the way back in
@@ -291,6 +316,8 @@ export interface ArchiveJournal {
   hairPhotos: ArchiveHairPhoto[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
+  doubtEntries: ArchiveDoubtEntry[];
+  counterevidenceSnapshots: ArchiveCounterevidenceSnapshot[];
   regimenEpisodes: ArchiveRegimenEpisode[];
   doseEvents: ArchiveDoseEvent[];
   doseSchedules: ArchiveDoseSchedule[];

@@ -273,6 +273,8 @@ function bigContents(): { contents: ArchiveContents; reads: string[] } {
         reminders: [],
         tallyEvents: [],
         regimenEpisodes: [],
+        doubtEntries: [],
+        counterevidenceSnapshots: [],
         doseEvents: [],
         doseSchedules: [],
         dosePauses: [],

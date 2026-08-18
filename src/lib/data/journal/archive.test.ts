@@ -109,6 +109,11 @@ async function populated() {
     recordedEpochDay: 19000
   });
 
+  const doubtEntry = await journal.doubtJournal.addEntry({ epochDay: 20000, text: 'am I even trans enough for this' });
+  const counterevidenceSnapshot = await journal.doubtJournal.saveSnapshot(20000, [
+    { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
+  ]);
+
   return {
     db,
     files,
@@ -134,7 +139,9 @@ async function populated() {
     dosePause,
     stock,
     sideEffect,
-    personalEffect
+    personalEffect,
+    doubtEntry,
+    counterevidenceSnapshot
   };
 }
 
@@ -291,6 +298,29 @@ test('milestones, lab results, measurements, tally events, side effects, reminde
       interval: 'every 2 weeks',
       startEpochDay: 19000,
       hidden: false
+    }
+  ]);
+});
+
+test('a doubt entry travels whole, and a counterevidence snapshot travels with its items copied in rather than referenced', async () => {
+  const { journal, doubtEntry, counterevidenceSnapshot } = await populated();
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(snapshot.journal.doubtEntries, [
+    {
+      id: doubtEntry,
+      epochDay: 20000,
+      timestamp: snapshot.journal.doubtEntries[0].timestamp,
+      text: 'am I even trans enough for this'
+    }
+  ]);
+  assert.deepEqual(snapshot.journal.counterevidenceSnapshots, [
+    {
+      id: counterevidenceSnapshot,
+      epochDay: 20000,
+      timestamp: snapshot.journal.counterevidenceSnapshots[0].timestamp,
+      items: [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]
     }
   ]);
 });
@@ -480,6 +510,9 @@ const CARRIED: Record<string, string[]> = {
   personal_effect: ['uuid', 'effect', 'first_noticed_epoch_day'],
   hair_stage: ['uuid', 'epoch_day', 'stage'],
   hair_photo: ['uuid', 'epoch_day', 'file_path'],
+  doubt_entry: ['uuid', 'epoch_day', 'timestamp', 'text'],
+  doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
+  doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

@@ -34,6 +34,8 @@ const snapshot: ArchiveSnapshot = {
     reminders: [],
     tallyEvents: [],
     regimenEpisodes: [],
+    doubtEntries: [],
+    counterevidenceSnapshots: [],
     doseEvents: [],
     doseSchedules: [],
     dosePauses: [],

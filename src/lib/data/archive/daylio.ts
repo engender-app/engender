@@ -223,6 +223,8 @@ const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]):
   hairPhotos: [],
   reminders: [],
   tallyEvents: [],
+  doubtEntries: [],
+  counterevidenceSnapshots: [],
   regimenEpisodes: [],
   doseEvents: [],
   doseSchedules: [],
