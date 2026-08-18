@@ -25,4 +25,13 @@
         <item>Good</item>
         <item>Great</item>
     </string-array>
+
+    <!-- Tally widget (ticket 33). Same non-localization note as the
+         quick-log widget above. -->
+    <string name="widget_tally_title">Log the moment</string>
+    <string name="widget_tally_description">Log misgendering or correct gendering in one tap.</string>
+    <string-array name="widget_tally_labels">
+        <item>Misgendered</item>
+        <item>Correctly gendered</item>
+    </string-array>
 </resources>

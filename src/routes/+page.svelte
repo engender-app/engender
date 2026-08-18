@@ -78,6 +78,20 @@
     tallyEventId = await journal.tally.log({ epochDay: today, kind });
   }
 
+  /* The tally widget's two buttons (ticket 33) deep-link here with the kind
+     as a query param, since neither button opens a route of its own. Logs
+     straight through the same journal.tally.log call as tapTally above,
+     but with no follow-up sheet - a widget tap gets no further screen or
+     confirmation - then clears the param the same way quickLogDims does
+     below, so reloading or going back never re-logs it. */
+  $effect(() => {
+    const raw = page.url.searchParams.get('tally');
+    const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
+    if (!kind) return;
+    journal.tally.log({ epochDay: today, kind });
+    goto('/', { replaceState: true, noScroll: true, keepFocus: true });
+  });
+
   async function saveTallyContext() {
     if (!tallyEventId) return;
     const context = tallyContext.trim();
