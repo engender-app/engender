@@ -74,14 +74,22 @@ function esterIn(text: string): InjectableEster | null {
   return INJECTABLE_ESTERS.find((ester) => mentions(text, ESTER_NAMES[ester])) ?? null;
 }
 
+/** Whether `drug` is estradiol at all, regardless of ester - the half of
+    resolveInjectableEster's check that has nothing to do with which ester or
+    which route. Exported for ticket 11's qualitative routes, which have no
+    ester field to read but still need to rule out a non-estradiol drug
+    before drawing anything against its dose log. */
+export function isEstradiolDrug(drug: string): boolean {
+  return mentions(normalize(drug), { names: ESTRADIOL_NAMES, abbreviations: ESTRADIOL_ABBREVIATIONS });
+}
+
 /** Which ester `episode` is on, or null when this app draws no curve for it:
     the drug is not estradiol, or the ester is not one of the four. The ester
     field is read first and the drug field second - someone who corrects the
     ester without retyping the drug means the narrower field. */
 export function resolveInjectableEster(episode: Pick<RegimenEpisode, 'drug' | 'ester'>): InjectableEster | null {
   const drug = normalize(episode.drug);
-  const isEstradiol = mentions(drug, { names: ESTRADIOL_NAMES, abbreviations: ESTRADIOL_ABBREVIATIONS });
-  if (!isEstradiol) return null;
+  if (!mentions(drug, { names: ESTRADIOL_NAMES, abbreviations: ESTRADIOL_ABBREVIATIONS })) return null;
 
   return esterIn(normalize(episode.ester ?? '')) ?? esterIn(drug);
 }

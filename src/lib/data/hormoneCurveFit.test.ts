@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { doseMilligrams, fitScaleFactor } from './hormoneCurveFit.ts';
+import { doseMilligrams, fitScaleFactor, fitScaleFactorToLabs } from './hormoneCurveFit.ts';
 
 test('a dose logged in milligrams is read as milligrams', () => {
   assert.equal(doseMilligrams(5, 'mg'), 5);
@@ -61,4 +61,21 @@ test('a point that reads zero cannot scale a curve, and is not counted as used e
     factor: 1.5,
     pointsUsed: 1
   });
+});
+
+test('fitScaleFactorToLabs pairs each lab point against the model at its own day, then fits the same way', () => {
+  // The one thing ticket 10's own caller did by hand: read the model at each
+  // point's day, build a pair, hand the pairs to fitScaleFactor. Ticket 11
+  // needs the exact same steps for a curve with no band to read a midpoint
+  // from, so this is that loop, shared rather than written twice.
+  const modelledAt = (day: number) => day * 10;
+  const fit = fitScaleFactorToLabs(
+    [{ day: 5, value: 100 }, { day: 8, value: 120 }],
+    modelledAt
+  );
+  assert.deepEqual(fit, fitScaleFactor([{ modelled: 50, observed: 100 }, { modelled: 80, observed: 120 }]));
+});
+
+test('fitScaleFactorToLabs answers null rather than a factor of one when there are no lab points', () => {
+  assert.equal(fitScaleFactorToLabs([], () => 100), null);
 });

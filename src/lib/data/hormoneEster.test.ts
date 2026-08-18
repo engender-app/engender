@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import type { RegimenEpisode } from './types.ts';
-import { INJECTABLE_ESTERS, resolveInjectableEster } from './hormoneEster.ts';
+import { INJECTABLE_ESTERS, isEstradiolDrug, resolveInjectableEster } from './hormoneEster.ts';
 
 function episode(drug: string, ester: string | null): RegimenEpisode {
   return { id: 'e', drug, ester, dose: 5, doseUnit: 'mg', route: 'IM', interval: 'every 7 days', startEpochDay: 0, hidden: false };
@@ -76,4 +76,15 @@ test('estradiol with no recognizable ester resolves to nothing rather than to a 
 test('spelling variants of estradiol itself still count as estradiol', () => {
   assert.equal(resolveInjectableEster(episode('oestradiol valerate', null)), 'valerate');
   assert.equal(resolveInjectableEster(episode('Estradiolu walerianian', null)), 'valerate');
+});
+
+test('isEstradiolDrug answers the same drug-identity question resolveInjectableEster asks first', () => {
+  // Ticket 11 reuses this half on its own, for routes with no ester to read.
+  assert.equal(isEstradiolDrug('estradiol'), true);
+  assert.equal(isEstradiolDrug('Estradiol valerate'), true);
+  assert.equal(isEstradiolDrug('oestradiol gel'), true);
+  assert.equal(isEstradiolDrug('E2 patch'), true);
+  assert.equal(isEstradiolDrug('walerianian estradiolu'), true);
+  assert.equal(isEstradiolDrug('testosterone'), false);
+  assert.equal(isEstradiolDrug(''), false);
 });
