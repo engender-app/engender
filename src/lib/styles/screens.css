@@ -261,6 +261,28 @@
   min-height: 48px; outline: none;
 }
 
+/* ---------- Compare periods ---------- */
+.compare-picker { display: flex; flex-direction: column; }
+.compare-picker-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  text-align: left;
+}
+.compare-metrics-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.compare-metrics-row:last-child { border-bottom: none; }
+.compare-metrics-header { font-size: var(--text-sm); color: var(--text-2); }
+.compare-period-label { font-weight: var(--weight-bold); }
+.compare-metrics-tags { align-items: start; }
+
 /* ---------- Stats ---------- */
 .chart-card { display: block; width: 100%; text-align: left; border: none; font: inherit; cursor: pointer; margin-bottom: var(--space-3); }
 .chart-title { font-weight: var(--weight-bold); }
