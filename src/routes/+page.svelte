@@ -301,6 +301,12 @@
       <div data-quick-log-dims>
         <h3>{m.quick_log_dims_title()}</h3>
         <p class="muted small" style="margin-bottom:var(--space-4)">{m.quick_log_dims_hint()}</p>
+        <!-- A number input rather than DimensionSlider (EntryEditor.svelte):
+             the ticket's acceptance detail is placeholder text that clears
+             on focus with nothing to delete first, which only a real
+             placeholder attribute gives for free - a slider has no such
+             concept, and it also can't tell "skipped" apart from "chosen the
+             midpoint" the way an empty input can. -->
         {#each vocabulary.activeDimensions as dim (dim.key)}
           <div class="field">
             <label class="field-label" for={`qld-${dim.key}`}>{dim.name}</label>
