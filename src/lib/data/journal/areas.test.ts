@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
-import { journalWithBuiltIns } from './test-support.ts';
+import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 import { timestampAtLocalTime } from '../epochDay.ts';
 import type { Journal } from './journal.ts';
 import type { LabResultInput } from './labs.ts';
@@ -497,6 +497,62 @@ test('a severity outside the 1-5 scale is refused before it reaches the schema',
     journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2.5, epochDay: 100 }),
     /invalid severity/
   );
+});
+
+/* personal effects timeline (phase 4 ticket 07) */
+
+test('no marker exists until an effect is set; getMarkers only returns what was marked', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.deepEqual(await journal.personalEffects.getMarkers(), []);
+
+  const id = await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
+  assert.match(id, UUID_PATTERN);
+
+  assert.deepEqual(await journal.personalEffects.getMarkers(), [
+    { id, effect: 'breast_development', firstNoticedEpochDay: 19180 }
+  ]);
+});
+
+test('a second marker for the same effect replaces the date rather than adding a row', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const first = await journal.personalEffects.upsertMarker({ effect: 'skin_softening', firstNoticedEpochDay: 19100 });
+
+  const second = await journal.personalEffects.upsertMarker({ effect: 'skin_softening', firstNoticedEpochDay: 19120 });
+
+  assert.equal(second, first);
+  const markers = await journal.personalEffects.getMarkers();
+  assert.equal(markers.length, 1);
+  assert.equal(markers[0].firstNoticedEpochDay, 19120);
+});
+
+test('each of the four effects keeps its own marker', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 100 });
+  await journal.personalEffects.upsertMarker({ effect: 'fat_redistribution', firstNoticedEpochDay: 200 });
+
+  const markers = await journal.personalEffects.getMarkers();
+  assert.equal(markers.length, 2);
+  assert.deepEqual(
+    markers.map((m) => m.effect).toSorted(),
+    ['breast_development', 'fat_redistribution']
+  );
+});
+
+test('an unrecognized effect is refused before it reaches the schema', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.personalEffects.upsertMarker({ effect: 'not_a_real_effect' as never, firstNoticedEpochDay: 100 })
+  );
+});
+
+test('clearing a marker is the undo for a mistaken date, and is idempotent', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.personalEffects.upsertMarker({ effect: 'hair_changes', firstNoticedEpochDay: 100 });
+
+  await journal.personalEffects.clearMarker('hair_changes');
+  await journal.personalEffects.clearMarker('hair_changes'); // idempotent
+
+  assert.deepEqual(await journal.personalEffects.getMarkers(), []);
 });
 
 /* reminders */

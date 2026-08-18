@@ -324,6 +324,32 @@ CREATE TABLE side_effect (
 CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
 `;
 
+/* v12: the personal effects timeline (phase 4 ticket 07). Four fixed
+   markers - breast development, fat redistribution, skin softening, hair
+   changes - each a single "first noticed" day, one row per effect
+   (`effect` UNIQUE) the same way medication_stock is one row per drug
+   (migrations.ts v10): a person answers "when did I first notice this",
+   never "how much have I noticed since last time", so a fresh date
+   replaces the old one rather than appending to a log. No row at all
+   means the effect has not been marked yet, which is why the column is
+   NOT NULL rather than nullable - there is nothing to store until a
+   person marks it.
+
+   No regimen-episode reference: the anchor these markers are read against
+   is the earliest episode's start day (regimenEpisode.ts), resolved above
+   this seam at read time rather than stored here, the same reason
+   dose_event carries no episode link either. */
+const SCHEMA_V12 = `
+CREATE TABLE personal_effect (
+  id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid                    TEXT NOT NULL UNIQUE,
+  effect                  TEXT NOT NULL UNIQUE
+                          CHECK (effect IN ('breast_development','fat_redistribution','skin_softening','hair_changes')),
+  first_noticed_epoch_day INTEGER NOT NULL,
+  updated_at              INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -335,7 +361,8 @@ export const migrations: Migration[] = [
   { version: 8, sql: SCHEMA_V8 },
   { version: 9, sql: SCHEMA_V9 },
   { version: 10, sql: SCHEMA_V10 },
-  { version: 11, sql: SCHEMA_V11 }
+  { version: 11, sql: SCHEMA_V11 },
+  { version: 12, sql: SCHEMA_V12 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

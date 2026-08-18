@@ -183,6 +183,7 @@ export async function restoreArchive(
     await applyLabResults(restoring);
     await applyMeasurements(restoring);
     await applySideEffects(restoring);
+    await applyPersonalEffects(restoring);
     await applyReminders(restoring);
     await applyTallyEvents(restoring);
     await applyRegimenEpisodes(restoring);
@@ -204,6 +205,7 @@ const COLLECTIONS = [
   'labResults',
   'measurements',
   'sideEffects',
+  'personalEffects',
   'reminders',
   'tallyEvents',
   'regimenEpisodes',
@@ -242,6 +244,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM lab_result',
     'DELETE FROM measurement',
     'DELETE FROM side_effect',
+    'DELETE FROM personal_effect',
     'DELETE FROM reminder',
     'DELETE FROM tally_event',
     'DELETE FROM dose_event',
@@ -741,6 +744,23 @@ async function applySideEffects({ driver, journal, ts }: Restoring): Promise<voi
     driver,
     'INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at)',
     inserting.map((effect) => [effect.id, effect.name, effect.severity, effect.epochDay, ts])
+  );
+}
+
+/* Matched by `effect`, not by uuid: personal_effect is UNIQUE per effect
+   (migrations.ts v12), one row that a fresh date replaces in place rather
+   than a log of past dates - the same reasoning applyMedicationStock gives
+   for matching by drug. A device that already has its own marker for an
+   effect keeps it (Merge's own rule), which a Replace gets for free once
+   discardJournalRows has emptied the table first. */
+async function applyPersonalEffects({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT effect AS id FROM personal_effect');
+
+  const inserting = journal.personalEffects.filter((marker) => !present.has(marker.effect));
+  await insertRows(
+    driver,
+    'INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at)',
+    inserting.map((marker) => [marker.id, marker.effect, marker.firstNoticedEpochDay, ts])
   );
 }
 

@@ -20,7 +20,7 @@ import type {
   BuiltInTagKey,
   MilestoneTemplateKey
 } from './builtins';
-import type { Measurement } from '../types';
+import type { Measurement, PersonalEffectType } from '../types';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -71,6 +71,18 @@ const MEASUREMENT_TYPE_NAME: Record<Measurement['type'], Message> = {
 
 /** The name of a measurement type. */
 export const measurementTypeName = (type: Measurement['type']): string => MEASUREMENT_TYPE_NAME[type]();
+
+/* The four personal effect markers (phase 4 ticket 07) are a fixed set,
+   not a built-in row, the same reasoning MEASUREMENT_TYPE_NAME gives. */
+const PERSONAL_EFFECT_NAME: Record<PersonalEffectType, Message> = {
+  breast_development: m.effect_breast_development,
+  fat_redistribution: m.effect_fat_redistribution,
+  skin_softening: m.effect_skin_softening,
+  hair_changes: m.effect_hair_changes
+};
+
+/** The name of a personal effect marker. */
+export const personalEffectName = (effect: PersonalEffectType): string => PERSONAL_EFFECT_NAME[effect]();
 
 /* A side effect's severity (phase 4 ticket 06, CONTEXT: "Side effect") is a
    1-5 ordered scale like mood, and its five names are vocabulary the same

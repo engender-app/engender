@@ -326,6 +326,25 @@ export interface MilestoneTemplate {
   name: string;
 }
 
+/** The four fixed markers a personal effects timeline tracks (phase 4
+    ticket 07). Closed, like TallyKind: not an open-ended, user-extensible
+    list of effects. "Hair changes" here is a single first-noticed date
+    like the other three - ticket 09's Norwood-Hamilton staging and photo
+    scheduling is a separate, deeper module the two coexist alongside. */
+export type PersonalEffectType = 'breast_development' | 'fat_redistribution' | 'skin_softening' | 'hair_changes';
+
+/* One row per effect (migrations.ts v12), matched exactly like
+   MedicationStock's drug: a person is always answering "when did I first
+   notice this", never logging a series of sightings. No episode
+   reference: what this marker is read against - the earliest regimen
+   episode's start day - is resolved above the journal seam
+   (regimenEpisode.ts), not stored here. */
+export interface PersonalEffect {
+  id: string;
+  effect: PersonalEffectType;
+  firstNoticedEpochDay: number;
+}
+
 /** What a person last reported having of one drug (phase 4 ticket 04,
     CONTEXT: pending). One per drug, matched exactly (`RegimenEpisode.drug`'s
     own convention) rather than per episode - see migrations.ts v7. Neither

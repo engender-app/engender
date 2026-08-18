@@ -39,6 +39,7 @@ import type {
   ArchiveMeasurement,
   ArchiveMedicationStock,
   ArchiveMilestone,
+  ArchivePersonalEffect,
   ArchivePhoto,
   ArchivePreset,
   ArchiveRegimenEpisode,
@@ -285,6 +286,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     return rows.map((r) => ({ id: r.uuid, name: r.name, severity: r.severity, epochDay: r.epoch_day }));
   };
 
+  const personalEffects = async (): Promise<ArchivePersonalEffect[]> => {
+    const rows = await driver.query<{ uuid: string; effect: string; first_noticed_epoch_day: number }>(
+      'SELECT uuid, effect, first_noticed_epoch_day FROM personal_effect ORDER BY effect'
+    );
+    return rows.map((r) => ({ id: r.uuid, effect: r.effect, firstNoticedEpochDay: r.first_noticed_epoch_day }));
+  };
+
   const reminders = async (): Promise<ArchiveReminder[]> => {
     const rows = await driver.query<{
       uuid: string;
@@ -517,6 +525,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           labResults: await labResults(),
           measurements: await measurements(),
           sideEffects: await sideEffects(),
+          personalEffects: await personalEffects(),
           reminders: await reminders(),
           tallyEvents: await tallyEvents(),
           regimenEpisodes: await regimenEpisodes(),

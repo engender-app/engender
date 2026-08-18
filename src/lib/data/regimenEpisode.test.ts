@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay.ts';
-import { episodeEndEpochDay, resolveEpisodeAt } from './regimenEpisode.ts';
+import { earliestEpisodeStartEpochDay, episodeEndEpochDay, resolveEpisodeAt } from './regimenEpisode.ts';
 import type { RegimenEpisode } from './types.ts';
 
 const episode = (id: string, startEpochDay: number): RegimenEpisode => ({
@@ -53,4 +53,21 @@ test('episodeEndEpochDay derives the boundary from the next episode, or null for
   assert.equal(episodeEndEpochDay(episodes, 0), 199);
   assert.equal(episodeEndEpochDay(episodes, 1), 299);
   assert.equal(episodeEndEpochDay(episodes, 2), null);
+});
+
+test('earliestEpisodeStartEpochDay is the first episode there has ever been, not the current one', () => {
+  const episodes = [episode('a', 100), episode('b', 200), episode('c', 300)];
+  assert.equal(earliestEpisodeStartEpochDay(episodes), 100);
+  assert.equal(earliestEpisodeStartEpochDay([]), null);
+});
+
+test('a retroactive correction that starts earlier than the first episode moves the anchor back', () => {
+  // Ticket 07: the anchor is HRT's own start, not whichever episode a
+  // person happened to log first - a corrective episode inserted before it
+  // is a truer "first ever" and the anchor follows it.
+  const before = [episode('a', 100), episode('b', 200)];
+  assert.equal(earliestEpisodeStartEpochDay(before), 100);
+
+  const corrected = [episode('z', 50), episode('a', 100), episode('b', 200)];
+  assert.equal(earliestEpisodeStartEpochDay(corrected), 50);
 });
