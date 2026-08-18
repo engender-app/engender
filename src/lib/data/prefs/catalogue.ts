@@ -117,6 +117,12 @@ export interface PreferenceValues {
       is opt-in, never required to take a photo, so this only ever hides a
       card - it blocks nothing. */
   hairPhotoProtocolDismissed: boolean;
+  /** Whether the hormone curve is fitted to the user's own lab results
+      (phase 4 ticket 10). Off by default: the published band is what the
+      literature says, and moving it onto someone's own points is a thing
+      they ask for rather than a thing that happens to them. Not portable -
+      it says how one device draws a chart, not anything about the journal. */
+  hormoneCurveFitToOwnLabs: boolean;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
@@ -158,6 +164,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   preferredLabUnits: {},
   measurementProtocolDismissed: {},
   hairPhotoProtocolDismissed: false,
+  hormoneCurveFitToOwnLabs: false,
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
@@ -204,7 +211,8 @@ export const DEVICE_LOCAL_KEYS = [
   'lastBackupAt',
   'backupNoticeDismissed',
   'measurementProtocolDismissed',
-  'hairPhotoProtocolDismissed'
+  'hairPhotoProtocolDismissed',
+  'hormoneCurveFitToOwnLabs'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Mirrored outside SQLite because it is needed before the database opens

@@ -40,6 +40,7 @@ const PATHS: Record<string, string> = {
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/>',
   palette: '<path d="M12 21a9 9 0 1 1 9-9c0 2-1.5 3-3 3h-2a2 2 0 0 0-1.5 3.3c.4.5.5 1.7-.5 2.2a4 4 0 0 1-2 .5z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16.5" cy="10.5" r="1"/>',
   columns: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 3v18"/>',
+  curve: '<path d="M3 20h18"/><path d="M4 17c3.5 0 4-9 8-9s4.5 9 8 9"/>',
   timeline: '<circle cx="12" cy="5" r="2.2"/><circle cx="12" cy="19" r="2.2"/><path d="M12 7.2v9.6"/>',
   shuffle: '<path d="M2 18h3.5a4 4 0 0 0 3.2-1.6l6.6-8.8A4 4 0 0 1 18.5 6H22"/><path d="M2 6h3.5a4 4 0 0 1 3.2 1.6l.9 1.2M14 15l1.3 1.4a4 4 0 0 0 3.2 1.6H22"/><path d="m19 3 3 3-3 3M19 15l3 3-3 3"/>',
   share: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.3 10.8 7.4-3.6M8.3 13.2l7.4 3.6"/>',

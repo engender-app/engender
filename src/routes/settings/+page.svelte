@@ -412,6 +412,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/hormone-curve">
+      <span class="row-icon"><Icon name="curve" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.curve_title()}</span>
+        <span class="row-subtitle">{m.curve_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
     <a class="list-row" href="/settings/hair-progress">
       <span class="row-icon"><Icon name="comb" size={22} /></span>
       <span class="row-text">
