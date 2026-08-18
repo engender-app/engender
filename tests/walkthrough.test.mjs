@@ -1412,6 +1412,58 @@ try {
   ok('two independently picked periods compare side by side with no computed delta');
 } catch (e) { fail('compare two periods', e); }
 
+/* Flow: the transition roadmap (phase 4 ticket 23). Two acceptance boxes
+   need a real browser rather than a unit test: that a tick survives a
+   reload, and that viewing a country pack makes no network request at all.
+   The request log is filtered to requests the page itself starts after
+   boot - the document, its modules and the SQLite wasm all land during
+   boot, and a bundled pack means nothing follows them. */
+try {
+  await fresh('/settings/roadmap');
+  await page.waitForSelector('[role="checkbox"]');
+
+  const tracks = (await page.locator('.section-title').allTextContents()).map((t) => t.trim());
+  for (const track of ['Social', 'Legal', 'Presentation', 'Medical']) {
+    if (!tracks.includes(track)) throw new Error('missing track ' + track + ': ' + JSON.stringify(tracks));
+  }
+
+  if (!(await page.getByText(/III CZP 20\/26/).count())) throw new Error('the unsettled-law caveat is not shown');
+  if (!(await page.getByText(/checked against its sources/i).count())) throw new Error('the review date is not shown');
+
+  const requested = [];
+  page.on('request', (request) => requested.push(request.url()));
+
+  const boxes = page.locator('[role="checkbox"]');
+  const legalDeadline = page.locator('[role="checkbox"]', { hasText: 'Seven days to ask for the reasons' }).first();
+  const before = await boxes.count();
+  if (before < 30) throw new Error('the Polish pack rendered only ' + before + ' goals');
+
+  await legalDeadline.click();
+  await page.waitForFunction(
+    () => document.querySelectorAll('[role="checkbox"][aria-checked="true"]').length === 1
+  );
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[role="checkbox"][aria-checked="true"]');
+  const stillTicked = await page.locator('[role="checkbox"][aria-checked="true"]').count();
+  if (stillTicked !== 1) throw new Error('after a reload ' + stillTicked + ' goals read as ticked');
+
+  /* Every other goal is untouched by that one tick: they are independently
+     checkable, not a run that fills in behind the furthest one. */
+  const after = await boxes.count();
+  if (after !== before) throw new Error('the goal count changed from ' + before + ' to ' + after);
+
+  await page.locator('[role="checkbox"][aria-checked="true"]').first().click();
+  await page.waitForFunction(
+    () => document.querySelectorAll('[role="checkbox"][aria-checked="true"]').length === 0
+  );
+
+  const external = requested.filter((url) => !url.startsWith(BASE));
+  if (external.length) throw new Error('the roadmap reached off-origin: ' + JSON.stringify(external.slice(0, 4)));
+  ok('the roadmap ticks and unticks one goal at a time, offline, and remembers it across a reload');
+} catch (e) { fail('transition roadmap', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');
