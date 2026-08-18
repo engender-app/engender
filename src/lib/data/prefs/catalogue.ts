@@ -66,6 +66,11 @@ export interface PreferenceValues {
   checkInTime: string;
   /** Optional entry nudges that suggest adding detail after a mood-only save. */
   entryNudges: boolean;
+  /** Whether the rotating reflection prompt shows on the entry-creation
+      screen (phase 4 features ticket 17). Device-local for the same reason
+      `entryNudges` is: a yes/no about one installation's entry screen, not
+      anything the journal itself carries. */
+  guidedPromptsEnabled: boolean;
   /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
       stops the Home card and the recap read behind it, rather than hiding a
       card over work that still runs.
@@ -155,6 +160,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   checkInEnabled: false,
   checkInTime: '21:00',
   entryNudges: true,
+  guidedPromptsEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
   wrappedNotificationsEnabled: false,
@@ -200,6 +206,7 @@ export const DEVICE_LOCAL_KEYS = [
   'quickExit',
   'hideNotificationTitles',
   'entryNudges',
+  'guidedPromptsEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
   'wrappedNotificationsEnabled',

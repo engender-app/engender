@@ -11,7 +11,7 @@
   import { capturePhoto, pickPhotos } from '$lib/stores/photoPicking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
-  import type { GenderDimension } from '$lib/data/types';
+  import type { EntryPrompt, EntryTemplate, GenderDimension } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
@@ -76,6 +76,33 @@
 
   let deleteOpen = $state(false);
   let saving = $state(false);
+  let templateSheetOpen = $state(false);
+  let promptDismissed = $state(false);
+  /* Guided prompts and templates are entry-creation aids (ticket 17), not
+     something to surface while editing an already-saved entry - `entryId`
+     is undefined only for a new one. Read once, like `seedMood` above: the
+     route wraps this component in {#key}, so a fresh editor always means a
+     fresh prompt, never a stale one left over from a previous mount. */
+  // svelte-ignore state_referenced_locally
+  let prompt = $state<EntryPrompt | null>(
+    entryId == null && prefs.guidedPromptsEnabled ? vocabulary.randomPrompt() : null
+  );
+
+  /* A template only ever pre-fills what this install currently shows -
+     a hidden dimension or tag stays out of the draft even if the template
+     names it, because the picker that would let someone edit it back off
+     is exactly what `hidden` took out of the editor (CONTEXT: "Hidden").
+     Applying the same template twice cannot double up: applyTemplate()
+     unions the tags and overwrites the dims by key. */
+  function applyTemplate(tpl: EntryTemplate) {
+    const visibleTagIds = new Set(vocabulary.visibleTagGroups.flatMap((g) => g.tags.map((t) => t.id)));
+    const visibleDimKeys = new Set(vocabulary.visibleDimensions.map((d) => d.key));
+    entryDraft.applyTemplate(
+      tpl.tags.filter((id) => visibleTagIds.has(id)),
+      Object.fromEntries(Object.entries(tpl.dims).filter(([key]) => visibleDimKeys.has(key)))
+    );
+    templateSheetOpen = false;
+  }
   /* The union of the active preset's dimensions and the entry's own: an
      old entry logged under a wider preset keeps its extra dimensions on screen
      (marked below), instead of silently dropping their history on save. */
@@ -163,6 +190,24 @@
     {isToday ? `${m.today()} · ` : ''}{fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
   </p>
 
+  {#if prompt && !promptDismissed}
+    <div class="notice notice-info" role="status">
+      <Icon name="sparkle" size={18} />
+      <div class="notice-body">
+        <span>{prompt.text}</span>
+      </div>
+      <button class="icon-btn" aria-label={m.dismiss()} onclick={() => (promptDismissed = true)}>
+        <Icon name="x" size={18} />
+      </button>
+    </div>
+  {/if}
+
+  {#if entryId == null}
+    <button class="btn btn-ghost" data-use-template onclick={() => (templateSheetOpen = true)}>
+      <Icon name="sparkle" size={18} /><span>{m.use_template()}</span>
+    </button>
+  {/if}
+
   <!-- An existing entry has to arrive before the draft can hold it, so the
        editor waits rather than showing an empty form that fills itself in
        under the user's hands. A new entry has nothing to wait for. -->
@@ -246,6 +291,14 @@
     </button>
   </div>
   {/if}
+
+  <Sheet bind:open={templateSheetOpen} title={m.use_template()}>
+    <div class="stack-3">
+      {#each vocabulary.entryTemplates as tpl (tpl.key)}
+        <button class="list-row" onclick={() => applyTemplate(tpl)}>{tpl.name}</button>
+      {/each}
+    </div>
+  </Sheet>
 
   <Sheet bind:open={deleteOpen} title={m.delete_entry_q()}>
     <h3>{m.delete_entry_q()}</h3>

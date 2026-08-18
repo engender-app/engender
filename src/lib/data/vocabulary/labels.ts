@@ -18,6 +18,8 @@ import type {
   BuiltInPresetKey,
   BuiltInTagGroupKey,
   BuiltInTagKey,
+  EntryPromptKey,
+  EntryTemplateKey,
   MilestoneTemplateKey
 } from './builtins';
 import type { Measurement, NorwoodHamiltonStage, PersonalEffectType } from '../types';
@@ -202,6 +204,26 @@ const TEMPLATE_NAME: Record<MilestoneTemplateKey, Message> = {
   first_public: m.tpl_first_public
 };
 
+const ENTRY_TEMPLATE_NAME: Record<EntryTemplateKey, Message> = {
+  euphoria_day: m.tpl_entry_euphoria_day,
+  dysphoria_day: m.tpl_entry_dysphoria_day,
+  gendered_correctly: m.tpl_entry_gendered_correctly,
+  misgendered: m.tpl_entry_misgendered,
+  good_day: m.tpl_entry_good_day,
+  hard_day: m.tpl_entry_hard_day
+};
+
+const ENTRY_PROMPT_TEXT: Record<EntryPromptKey, Message> = {
+  euphoria_moment: m.prompt_euphoria_moment,
+  dysphoria_moment: m.prompt_dysphoria_moment,
+  body_feeling: m.prompt_body_feeling,
+  seen_moment: m.prompt_seen_moment,
+  self_care: m.prompt_self_care,
+  presentation_feeling: m.prompt_presentation_feeling,
+  name_pronouns_feeling: m.prompt_name_pronouns_feeling,
+  proud_moment: m.prompt_proud_moment
+};
+
 /* Each lookup falls back to the key itself. A key with no message means a
    built-in was seeded by a build that knew it and is being read by one that
    doesn't - an archive from a newer version, or a downgrade. Showing the
@@ -230,3 +252,5 @@ export const tagLabels = (key: string): string[] => {
 };
 export const milestoneTemplateName = (key: string) => lookup(TEMPLATE_NAME, key);
 export const bodyRegionName = (key: string) => lookup(BODY_REGION_NAME, key);
+export const entryTemplateName = (key: string) => lookup(ENTRY_TEMPLATE_NAME, key);
+export const entryPromptText = (key: string) => lookup(ENTRY_PROMPT_TEXT, key);

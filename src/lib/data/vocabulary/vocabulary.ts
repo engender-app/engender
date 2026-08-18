@@ -15,13 +15,24 @@ import { MOOD_RANGE, type MetricRange } from '../metricRange';
 import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
-import { milestoneTemplateRows } from './builtins';
-import type { GenderDimension, GenderPreset, Milestone, MilestoneTemplate, Tag, TagGroup } from '../types';
+import { entryPromptRows, entryTemplateRows, milestoneTemplateRows } from './builtins';
+import type {
+  EntryPrompt,
+  EntryTemplate,
+  GenderDimension,
+  GenderPreset,
+  Milestone,
+  MilestoneTemplate,
+  Tag,
+  TagGroup
+} from '../types';
 import {
   bodyRegionName,
   dimensionHigh,
   dimensionLow,
   dimensionName,
+  entryPromptText,
+  entryTemplateName,
   milestoneTemplateName,
   moodName,
   presetName,
@@ -54,9 +65,25 @@ function localizeTemplate(t: MilestoneTemplate): MilestoneTemplate {
   return { ...t, name: milestoneTemplateName(t.key) };
 }
 
+function localizeEntryTemplate(t: EntryTemplate): EntryTemplate {
+  return { ...t, name: entryTemplateName(t.key) };
+}
+
+function localizeEntryPrompt(p: EntryPrompt): EntryPrompt {
+  return { ...p, text: entryPromptText(p.key) };
+}
+
 /** Keys only; the names come from the message catalogue below. Not stored
     rows at all - a template is a suggestion the app ships (ticket 05). */
 const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
+
+/** Same shape as `milestoneTemplates` above, for entries rather than
+    milestones (phase 4 features ticket 17). */
+const entryTemplates: EntryTemplate[] = entryTemplateRows();
+
+/** The built-in rotating reflection prompts (phase 4 features ticket 17),
+    keyed the same way. */
+const entryPrompts: EntryPrompt[] = entryPromptRows();
 
 export const vocabulary = {
   get dimensions(): GenderDimension[] {
@@ -64,6 +91,12 @@ export const vocabulary = {
   },
   get activeDimensions(): GenderDimension[] {
     return reference.activeDimensions.map(localizeDimension);
+  },
+  /** Every dimension that has not been hidden (CONTEXT: "Hidden") - what a
+      template's pre-fill (ticket 17) may set, the same "not hidden" filter
+      `visibleTagGroups` already applies to tags. */
+  get visibleDimensions(): GenderDimension[] {
+    return this.dimensions.filter((d) => !d.hidden);
   },
   get presets(): GenderPreset[] {
     return reference.presets.map(localizePreset);
@@ -143,5 +176,16 @@ export const vocabulary = {
       picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
     }
     return picked.map(localizeTemplate);
+  },
+  /** The built-in templates the entry-creation flow can offer (phase 4
+      features ticket 17), in the wording the current language gives them. */
+  get entryTemplates(): EntryTemplate[] {
+    return entryTemplates.map(localizeEntryTemplate);
+  },
+  /** One rotating reflection prompt, picked at random so the cue differs
+      between visits (phase 4 features ticket 17) - the same reasoning
+      `randomTemplates` above gives the milestone shuffle button. */
+  randomPrompt(): EntryPrompt {
+    return localizeEntryPrompt(entryPrompts[Math.floor(Math.random() * entryPrompts.length)]);
   }
 };

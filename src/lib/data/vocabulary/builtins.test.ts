@@ -8,7 +8,11 @@ import {
   BUILT_IN_DIMENSIONS,
   BUILT_IN_PRESETS,
   BUILT_IN_TAG_GROUPS,
+  ENTRY_PROMPT_KEYS,
+  ENTRY_TEMPLATES,
   MILESTONE_TEMPLATE_KEYS,
+  entryPromptRows,
+  entryTemplateRows,
   withBuiltInDimensions,
   withBuiltInTagGroups
 } from './builtins.ts';
@@ -19,7 +23,9 @@ const allKeys = [
   ...BUILT_IN_PRESETS.map((p) => p.key),
   ...BUILT_IN_TAG_GROUPS.map((g) => g.key),
   ...BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags),
-  ...MILESTONE_TEMPLATE_KEYS
+  ...MILESTONE_TEMPLATE_KEYS,
+  ...ENTRY_TEMPLATES.map((t) => t.key),
+  ...ENTRY_PROMPT_KEYS
 ];
 
 test('every built-in carries a key', () => {
@@ -146,6 +152,46 @@ test('the euphoria tag lives in the gender group, separate from every dysphoria 
 
   expect(gender.tags.map((t) => t.id)).toContain('g-euphoria');
   expect(dysphoriaTypeKeys.has('g-euphoria')).toBe(false);
+});
+
+test('entry template keys are unique', () => {
+  const keys = ENTRY_TEMPLATES.map((t) => t.key);
+
+  expect(new Set(keys).size).toBe(keys.length);
+});
+
+test('every entry template names tags and dimensions that exist', () => {
+  const tagKeys = new Set<string>(BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags));
+  const dimensionKeys = new Set<string>(BUILT_IN_DIMENSIONS.map((d) => d.key));
+
+  const danglingTags = ENTRY_TEMPLATES.flatMap((t) => t.tags).filter((id) => !tagKeys.has(id));
+  const danglingDims = ENTRY_TEMPLATES.flatMap((t) => Object.keys(t.dims)).filter((key) => !dimensionKeys.has(key));
+
+  expect(danglingTags).toEqual([]);
+  expect(danglingDims).toEqual([]);
+});
+
+test('entry templates seed with no display text, because names are resolved by key', () => {
+  const rows = entryTemplateRows();
+
+  expect(rows).toHaveLength(ENTRY_TEMPLATES.length);
+  expect(rows.every((t) => t.name === '')).toBe(true);
+});
+
+test('entryTemplateRows copies its tags and dims, so mutating one row cannot leak into the built-in list', () => {
+  const rows = entryTemplateRows();
+  rows[0].tags.push('should-not-appear');
+  rows[0].dims.should_not_appear = 1;
+
+  expect(entryTemplateRows()[0].tags).not.toContain('should-not-appear');
+  expect(entryTemplateRows()[0].dims).not.toHaveProperty('should_not_appear');
+});
+
+test('entry prompts seed with no display text either', () => {
+  const rows = entryPromptRows();
+
+  expect(rows).toHaveLength(ENTRY_PROMPT_KEYS.length);
+  expect(rows.every((p) => p.text === '')).toBe(true);
 });
 
 test('a custom group survives seeding', () => {
