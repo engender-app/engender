@@ -624,9 +624,32 @@ try {
 
   // Backup health (F21): the plain path counts, so the screen it was
   // started from says so without a reload.
-  await page.waitForFunction(() =>
-    document.querySelector('.card.spread .row-subtitle')?.textContent.trim() === 'today'
+  /* Found by its own row title rather than by position under .card. This
+     assertion silently stopped running once ticket 28 split the single
+     `card spread` element into a card wrapping four spread rows, because
+     `.card.spread` wants both classes on one element and matched nothing,
+     so the predicate could never settle and the flow died on the timeout.
+     Position is the wrong anchor here for a second reason: the last-backup
+     and last-verified rows both read "today", so a first-match selector
+     that drifted onto the wrong row would pass while testing nothing. */
+  /* Named before waited on. A row that is simply not there any more can
+     only express itself as a 30s waitForFunction timeout, which is how this
+     assertion stayed quiet through eight merges - so the absence is checked
+     first and says what it could not find. */
+  const backupRows = await page.evaluate(
+    () =>
+      [...document.querySelectorAll('.spread')].filter(
+        (el) => el.querySelector('.row-title')?.textContent.trim() === 'Last backup'
+      ).length
   );
+  if (backupRows !== 1) throw new Error(`expected one "Last backup" row on the export screen, found ${backupRows}`);
+
+  await page.waitForFunction(() => {
+    const row = [...document.querySelectorAll('.spread')].find(
+      (el) => el.querySelector('.row-title')?.textContent.trim() === 'Last backup'
+    );
+    return row?.querySelector('.row-subtitle')?.textContent.trim() === 'today';
+  });
   ok(`plain CSV export behind the warning, ${entries.length} rows, notes intact`);
 } catch (e) { fail('plain export', e); }
 
