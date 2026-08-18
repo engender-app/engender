@@ -267,12 +267,21 @@ export async function daylioPreview(
       dims: {},
       tags: [],
       photos: [],
+      recordings: [],
       bodyRegions: {}
     };
 
     if (
       !moodLabel &&
-      entryIsEmpty({ mood, note, dimCount: 0, tagCount: activities.length, photoCount: 0, bodyRegionCount: 0 })
+      entryIsEmpty({
+        mood,
+        note,
+        dimCount: 0,
+        tagCount: activities.length,
+        photoCount: 0,
+        recordingCount: 0,
+        bodyRegionCount: 0
+      })
     ) {
       throw new DaylioCsvError(`row ${rowNumber} has no mood, activities or note`);
     }

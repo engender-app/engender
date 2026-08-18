@@ -91,4 +91,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Voice notes (ticket 24). Recording itself needs no native code: it
+         is plain getUserMedia/MediaRecorder, the same as the web build, and
+         Capacitor's own BridgeWebChromeClient.onPermissionRequest already
+         requests these two at the OS level and grants the WebView's
+         AUDIO_CAPTURE resource once they are - see
+         node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/BridgeWebChromeClient.java.
+         Declared here only so that runtime request has something to grant. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 </manifest>

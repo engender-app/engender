@@ -64,6 +64,8 @@ async function populated() {
     bodyRegions: { chest: 45 }
   });
   const photo = await journal.photos.attach({ entryId: entry }, { full: bytes('full-photo'), thumb: bytes('thumb') });
+  await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });
+  const recording = (await journal.entries.getEntry(entry))!.recordings[0].id;
   await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
 
   const milestone = await journal.milestones.upsertMilestone({
@@ -152,6 +154,7 @@ async function populated() {
     tag,
     sharedGroupTag,
     photo,
+    recording,
     milestone,
     milestonePhoto,
     episode,
@@ -233,6 +236,8 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.deepEqual(restored[0].dims, { [source.voice.key]: 7, femininity: 60 });
   assert.deepEqual(restored[0].tags.toSorted(), [source.tag.id, 'e-happy'].toSorted());
   assert.deepEqual(restored[0].photos, [{ id: source.photo, fileName: `${source.photo}.jpg` }]);
+  assert.deepEqual(restored[0].recordings, [{ id: source.recording, fileName: `${source.recording}.webm` }]);
+  assert.deepEqual(await target.files.read(`${source.recording}.webm`), bytes('a voice note'));
   assert.deepEqual(restored[0].bodyRegions, { chest: 45 });
   assert.equal(restored[0].note, 'a good day, zażółć');
   assert.equal((await target.journal.milestones.getMilestones()).length, 1);

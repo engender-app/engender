@@ -7,7 +7,10 @@
    Picked photos' raw bytes are deliberately not part of the snapshot - a
    localStorage mirror has no room for full-resolution JPEGs, so an unsaved
    photo attachment does not survive a killed process. A removal of an
-   already-stored photo does survive, since that is just an id. */
+   already-stored photo does survive, since that is just an id. A recording
+   just made (ticket 24) gets the same treatment as a picked photo, for the
+   same reason: its bytes are not small either, and a removed stored
+   recording's id survives the same way a removed stored photo's does. */
 
 import type { EntryDraft } from './entryDraft';
 
@@ -21,6 +24,7 @@ export interface PersistedEntryDraft {
   tags: string[];
   bodyRegions: Record<string, number>;
   removedPhotoIds: string[];
+  removedRecordingIds: string[];
 }
 
 /** The subset of `draft` that is worth mirroring outside the component. */
@@ -34,7 +38,8 @@ export function serializeDraft(draft: EntryDraft): PersistedEntryDraft {
     dims: { ...draft.dims },
     tags: [...draft.tags],
     bodyRegions: { ...draft.bodyRegions },
-    removedPhotoIds: [...draft.removedPhotoIds]
+    removedPhotoIds: [...draft.removedPhotoIds],
+    removedRecordingIds: [...draft.removedRecordingIds]
   };
 }
 
@@ -47,9 +52,9 @@ export function draftMatchesRoute(persisted: PersistedEntryDraft, entryId: numbe
   return persisted.id == null && persisted.epochDay === epochDay;
 }
 
-/** Overlays `persisted` onto `draft` in place. A stored photo the user had
-    already removed before the process died stays removed rather than
-    reappearing alongside the entry it came from. */
+/** Overlays `persisted` onto `draft` in place. A stored photo or recording
+    the user had already removed before the process died stays removed
+    rather than reappearing alongside the entry it came from. */
 export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntryDraft): void {
   draft.mood = persisted.mood;
   draft.note = persisted.note;
@@ -58,4 +63,8 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
   draft.bodyRegions = { ...persisted.bodyRegions };
   draft.removedPhotoIds = [...persisted.removedPhotoIds];
   draft.photos = draft.photos.filter((p) => p.kind !== 'stored' || !draft.removedPhotoIds.includes(p.photo.id));
+  draft.removedRecordingIds = [...persisted.removedRecordingIds];
+  draft.recordings = draft.recordings.filter(
+    (r) => r.kind !== 'stored' || !draft.removedRecordingIds.includes(r.recording.id)
+  );
 }

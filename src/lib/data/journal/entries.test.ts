@@ -47,6 +47,7 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
       dims: { euphoria_dysphoria: 70, femininity: 55 },
       tags: ['e-happy', 'g-soc-eu'],
       photos: [],
+      recordings: [],
       bodyRegions: { chest: 60, voice_throat: 30 }
     }
   );
@@ -150,9 +151,9 @@ test('unknown write ids throw: entry id, dimension key, tag id, body region', as
   await assert.rejects(journal.entries.upsertEntry({ id, bodyRegions: { nope: 1 } }), /unknown body region/);
 });
 
-test('deleting an entry takes its dimension values, tag links, body regions, photo rows and files; twice is success', async () => {
+test('deleting an entry takes its dimension values, tag links, body regions, photo rows, recording rows and files; twice is success', async () => {
   const db = await migratedDb();
-  const files = fakeFileStore(['p1.jpg', 'p1-thumb.jpg']);
+  const files = fakeFileStore(['p1.jpg', 'p1-thumb.jpg', 'r1.webm']);
   const journal = openJournal(db, files);
   await journal.reconcileBuiltIns();
 
@@ -164,16 +165,128 @@ test('deleting an entry takes its dimension values, tag links, body regions, pho
     bodyRegions: { chest: 30 }
   });
   db.raw.prepare("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', ?, 'p1.jpg', 0)").run(id);
+  db.raw
+    .prepare("INSERT INTO voice_recording (uuid, entry_id, file_path, updated_at) VALUES ('r1', ?, 'r1.webm', 0)")
+    .run(id);
 
   await journal.entries.deleteEntry(id);
 
   assert.equal(await journal.entries.getEntry(id), undefined);
-  for (const table of ['entry_dimension_value', 'entry_tag', 'entry_body_region', 'photo']) {
+  for (const table of ['entry_dimension_value', 'entry_tag', 'entry_body_region', 'photo', 'voice_recording']) {
     assert.equal((db.raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n, 0, table);
   }
-  assert.deepEqual(files.names(), [], 'the thumbnail goes with the photo');
+  assert.deepEqual(files.names(), [], 'the thumbnail and the recording go with the entry');
 
   await journal.entries.deleteEntry(id); // idempotent
+});
+
+/* Voice recordings (ticket 24): entry-only, sharing the photo file store
+   and the same file-before-row / row-before-file ordering (voiceRecordings.ts).
+   First-class entry media alongside a photo, so the same rules photos.test.ts
+   exercises against journal.photos.attach apply here against upsertEntry's
+   attachRecordings/removeRecordingIds instead - there is no separate
+   attach/remove call for a recording, since ticket 24 gives it no owner but
+   an entry and no screen that lists recordings across entries. */
+
+async function journalWithFiles() {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  await journal.reconcileBuiltIns();
+  return { db, files, journal };
+}
+
+test('attaching a recording on save writes its file and one row, and reads back', async () => {
+  const { files, journal } = await journalWithFiles();
+
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, attachRecordings: [new Uint8Array([1, 2, 3])] });
+
+  const entry = await journal.entries.getEntry(id);
+  assert.equal(entry?.recordings.length, 1);
+  const recording = entry!.recordings[0];
+  assert.match(recording.id, UUID_PATTERN);
+  // Opaque uuid.webm (voiceRecordings/names.ts), not a label from the picker.
+  assert.equal(recording.fileName, `${recording.id}.webm`);
+  assert.deepEqual(files.names(), [recording.fileName]);
+  assert.deepEqual(await files.read(recording.fileName), new Uint8Array([1, 2, 3]));
+});
+
+test('an entry carries several recordings, oldest first', async () => {
+  const { journal } = await journalWithFiles();
+
+  const id = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 4,
+    attachRecordings: [new Uint8Array([1]), new Uint8Array([2])]
+  });
+
+  const entry = await journal.entries.getEntry(id);
+  assert.equal(entry?.recordings.length, 2);
+});
+
+test('a recording file is written before its row, so a failed write leaves no row at all', async () => {
+  const { db, files, journal } = await journalWithFiles();
+  files.failNthWrite(1);
+
+  await assert.rejects(
+    journal.entries.upsertEntry({ epochDay: 100, mood: 4, attachRecordings: [new Uint8Array([1])] }),
+    /disk full/
+  );
+
+  assert.equal((await db.query('SELECT id FROM voice_recording')).length, 0);
+  assert.deepEqual(files.names(), [], 'no row may point at a recording that never landed');
+});
+
+test('a recording alone is not enough without a mood, and nothing is written', async () => {
+  const { journal, files } = await journalWithFiles();
+
+  await assert.rejects(
+    journal.entries.upsertEntry({ epochDay: 100, attachRecordings: [new Uint8Array([1])] }),
+    /needs a mood/
+  );
+  assert.deepEqual(files.names(), [], 'a rejected save writes no recording files');
+});
+
+test('editing an entry adds the recordings it brings without disturbing the ones it has', async () => {
+  const { journal } = await journalWithFiles();
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, attachRecordings: [new Uint8Array([1])] });
+  const first = (await journal.entries.getEntry(id))!.recordings[0];
+
+  await journal.entries.upsertEntry({ id, note: 'and another', attachRecordings: [new Uint8Array([2])] });
+
+  const recordings = (await journal.entries.getEntry(id))!.recordings;
+  assert.deepEqual(
+    recordings.map((r) => r.id),
+    [first.id, recordings[1].id]
+  );
+  assert.equal(recordings.length, 2);
+});
+
+test('removing a stored recording drops its row and file, and mood alone cannot be cleared while it remains', async () => {
+  const { files, journal } = await journalWithFiles();
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, attachRecordings: [new Uint8Array([1])] });
+  const recordingId = (await journal.entries.getEntry(id))!.recordings[0].id;
+
+  await journal.entries.upsertEntry({ id, removeRecordingIds: [recordingId] });
+
+  assert.deepEqual((await journal.entries.getEntry(id))!.recordings, []);
+  assert.deepEqual(files.names(), []);
+});
+
+test('an unknown recording id or one belonging to another entry is refused', async () => {
+  const { journal } = await journalWithFiles();
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, attachRecordings: [new Uint8Array([1])] });
+  const other = await journal.entries.upsertEntry({ epochDay: 101, mood: 2 });
+  const recordingId = (await journal.entries.getEntry(id))!.recordings[0].id;
+
+  await assert.rejects(
+    journal.entries.upsertEntry({ id, removeRecordingIds: ['nope'] }),
+    /unknown recording/
+  );
+  await assert.rejects(
+    journal.entries.upsertEntry({ id: other, removeRecordingIds: [recordingId] }),
+    /does not belong to entry/
+  );
 });
 
 test('creating an entry costs fixed round trips however many tags and dimension values it carries', async () => {

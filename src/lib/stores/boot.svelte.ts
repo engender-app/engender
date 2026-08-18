@@ -65,6 +65,7 @@ import {
 } from '../data/conversion/web-ports';
 import { LATEST_SCHEMA_VERSION } from '../data/sqlite/migrations';
 import { setPhotoFiles } from './photoFiles';
+import { setVoiceFiles } from './voiceFiles';
 import { localStorageCache } from '../data/prefs/boot-cache';
 import { wipeLocalData } from '../data/reset';
 import { openPreferences } from '../data/prefs/preferences';
@@ -518,6 +519,10 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
   // Set before boot() rather than after, so the first screen to render a
   // photo already has somewhere to read it from.
   setPhotoFiles(photoFiles);
+  // Same underlying store (journal.ts's PhotoFileStore covers any opaque
+  // blob, recordings included) - a second setter because VoicePlayer.svelte
+  // reads a different kind of file than PhotoThumb.svelte does.
+  setVoiceFiles(photoFiles);
 
   /* Attached before the migrations run, so the writes step 3 makes below -
      reconciling built-ins - announce themselves like any other. Queries stay

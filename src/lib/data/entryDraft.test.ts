@@ -20,6 +20,7 @@ const existingEntry = (): Entry => ({
   dims: { masculinity: 40 },
   tags: ['e-happy'],
   photos: [{ id: 'p1', fileName: 'p1.jpg' }],
+  recordings: [{ id: 'r1', fileName: 'r1.webm' }],
   bodyRegions: { chest: 60 }
 });
 
@@ -31,10 +32,11 @@ test('a fresh draft with no existing entry starts empty on the given day', () =>
   assert.deepEqual(draft.dims, {});
   assert.deepEqual(draft.tags, []);
   assert.deepEqual(draft.photos, []);
+  assert.deepEqual(draft.recordings, []);
   assert.deepEqual(draft.bodyRegions, {});
 });
 
-test('a draft hydrated from an existing entry copies its fields and stored photos', () => {
+test('a draft hydrated from an existing entry copies its fields and stored photos and recordings', () => {
   const draft = createEntryDraft(20_001, existingEntry());
   assert.equal(draft.isEmpty, false);
   assert.equal(draft.hasMoodOnlyContent, false);
@@ -45,6 +47,7 @@ test('a draft hydrated from an existing entry copies its fields and stored photo
   assert.deepEqual(draft.dims, { masculinity: 40 });
   assert.deepEqual(draft.tags, ['e-happy']);
   assert.deepEqual(draft.photos, [{ kind: 'stored', photo: { id: 'p1', fileName: 'p1.jpg' } }]);
+  assert.deepEqual(draft.recordings, [{ kind: 'stored', recording: { id: 'r1', fileName: 'r1.webm' } }]);
   assert.deepEqual(draft.bodyRegions, { chest: 60 });
 });
 
@@ -129,6 +132,25 @@ test('removing a stored photo tracks its id for removal but a re-visit does not 
   assert.deepEqual(draft.removedPhotoIds, ['p1']);
 });
 
+test('addRecording stages a recorded clip; removing it drops it without marking it removed', () => {
+  const draft = createEntryDraft(1);
+  draft.addRecording(new Uint8Array([1]));
+  assert.equal(draft.isEmpty, false);
+  assert.equal(draft.recordings.length, 1);
+  assert.equal(draft.recordings[0].kind, 'recorded');
+
+  draft.removeRecording(0);
+  assert.deepEqual(draft.recordings, []);
+  assert.deepEqual(draft.removedRecordingIds, []);
+});
+
+test('removing a stored recording tracks its id for removal but a re-visit does not discard it twice', () => {
+  const draft = createEntryDraft(1, existingEntry());
+  draft.removeRecording(0);
+  assert.deepEqual(draft.recordings, []);
+  assert.deepEqual(draft.removedRecordingIds, ['r1']);
+});
+
 test('toUpsert() produces the exact upsertEntry payload for a new entry', () => {
   const draft = createEntryDraft(20_005);
   draft.setMood(4);
@@ -147,14 +169,18 @@ test('toUpsert() produces the exact upsertEntry payload for a new entry', () => 
     tags: ['e-happy'],
     bodyRegions: {},
     attachPhotos: [photo(9)],
-    removePhotoIds: []
+    removePhotoIds: [],
+    attachRecordings: [],
+    removeRecordingIds: []
   });
 });
 
-test('toUpsert() for an existing entry carries its id, drops a falsy timestamp and lists both photo changes', () => {
+test('toUpsert() for an existing entry carries its id, drops a falsy timestamp and lists both photo and recording changes', () => {
   const draft = createEntryDraft(1, existingEntry());
   draft.addPhoto(photo(2));
   draft.removePhoto(0); // the one stored photo from existingEntry()
+  draft.addRecording(new Uint8Array([9]));
+  draft.removeRecording(0); // the one stored recording from existingEntry()
 
   assert.deepEqual(draft.toUpsert(), {
     id: 7,
@@ -166,7 +192,9 @@ test('toUpsert() for an existing entry carries its id, drops a falsy timestamp a
     tags: ['e-happy'],
     bodyRegions: { chest: 60 },
     attachPhotos: [photo(2)],
-    removePhotoIds: ['p1']
+    removePhotoIds: ['p1'],
+    attachRecordings: [new Uint8Array([9])],
+    removeRecordingIds: ['r1']
   });
 });
 
@@ -191,12 +219,14 @@ test('hydrating copies the existing entry, so a later mutation of it cannot disc
   original.dims.masculinity = 999;
   original.tags.push('should-not-appear');
   original.photos.push({ id: 'p2', fileName: 'p2.jpg' });
+  original.recordings.push({ id: 'r2', fileName: 'r2.webm' });
   original.bodyRegions.chest = 999;
 
   assert.equal(draft.note, 'typed after load');
   assert.deepEqual(draft.dims, { masculinity: 40 });
   assert.deepEqual(draft.tags, ['e-happy', 'e-sad']);
   assert.equal(draft.photos.length, 1);
+  assert.equal(draft.recordings.length, 1);
   assert.deepEqual(draft.bodyRegions, { chest: 60 });
 });
 

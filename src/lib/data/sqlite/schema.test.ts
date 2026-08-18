@@ -9,7 +9,7 @@ import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 16);
+  assert.equal(db.getUserVersion(), 17);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -38,7 +38,8 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'side_effect',
     'tag',
     'tag_group',
-    'tally_event'
+    'tally_event',
+    'voice_recording'
   ]) {
     assert.ok(tables.includes(expected), `expected table ${expected} to exist`);
   }
@@ -275,6 +276,7 @@ test('deleting an entry cascades to its photos, dimension values, tag links and 
   exec('INSERT INTO entry_tag (entry_id, tag_id) VALUES (1, 1)');
   exec("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', 1, 'a.jpg', 1000)");
   exec("INSERT INTO entry_body_region (entry_id, region, intensity) VALUES (1, 'chest', 40)");
+  exec("INSERT INTO voice_recording (uuid, entry_id, file_path, updated_at) VALUES ('v1', 1, 'v1.webm', 1000)");
 
   // Foreign keys are off by default per connection in SQLite.
   exec('PRAGMA foreign_keys = ON');
@@ -284,6 +286,7 @@ test('deleting an entry cascades to its photos, dimension values, tag links and 
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM entry_dimension_value').get()?.['n'], 0);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM entry_tag').get()?.['n'], 0);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM entry_body_region').get()?.['n'], 0);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM voice_recording').get()?.['n'], 0);
   // The tag and dimension themselves are reference data and must survive.
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM tag').get()?.['n'], 1);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM gender_dimension').get()?.['n'], 1);

@@ -146,21 +146,31 @@ export async function photosByMilestone(driver: SqliteDriver): Promise<Map<numbe
    OPFS root: the database file lives in OPFS too, and no row references
    it.
 
-   Reads `hair_photo` (migrations.ts v13) as well as `photo`: a hair-progress
-   photo's row lives in its own table (journal/hairProgress.ts), not as a
-   third owner here, but its files sit in the same store and would otherwise
-   look orphaned the moment this ran.
+   Reads `hair_photo` (migrations.ts v13) and `voice_recording` (migrations.ts
+   v17) as well as `photo`: a hair-progress photo's row lives in its own
+   table (journal/hairProgress.ts) and a voice recording's in its own
+   (journal/voiceRecordings.ts), neither as a third owner here, but both
+   kinds of file sit in the same store and would otherwise look orphaned
+   the moment this ran. A recording has no thumbnail to derive, so its file
+   name is read straight rather than through filesOf(): that helper's
+   `thumbFileName()` only rewrites a `.jpg` suffix (names.ts), so calling it
+   on a recording's `.webm` name would leave it unchanged and add the same
+   name to the referenced set twice for no reason.
 
    Precondition: nothing may attach a photo while this runs. It reads the
    rows and then lists the files, so a photo whose files landed after the
    read but whose row landed before the list would look like an orphan.
    Boot is the only caller and runs before any screen can write. */
 export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
-  const [photoRows, hairPhotoRows] = await Promise.all([
+  const [photoRows, hairPhotoRows, recordingRows] = await Promise.all([
     driver.query<{ file_path: string }>('SELECT file_path FROM photo'),
-    driver.query<{ file_path: string }>('SELECT file_path FROM hair_photo')
+    driver.query<{ file_path: string }>('SELECT file_path FROM hair_photo'),
+    driver.query<{ file_path: string }>('SELECT file_path FROM voice_recording')
   ]);
-  const referenced = new Set([...photoRows, ...hairPhotoRows].flatMap((row) => filesOf(row.file_path)));
+  const referenced = new Set([
+    ...[...photoRows, ...hairPhotoRows].flatMap((row) => filesOf(row.file_path)),
+    ...recordingRows.map((row) => row.file_path)
+  ]);
   for (const name of await files.list()) {
     if (!referenced.has(name)) await files.remove(name);
   }

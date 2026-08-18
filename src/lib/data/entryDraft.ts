@@ -15,6 +15,7 @@ import type { Entry } from './types';
 import type { EntryInput } from './journal/entries';
 import type { NormalizedPhoto } from './journal/photos';
 import type { EditorPhoto } from '$lib/stores/photoPicking';
+import type { EditorRecording } from '$lib/stores/voiceRecording';
 
 export interface EntryDraft {
   /** The entry being edited, unset for a new one. `toUpsert()` reads this
@@ -32,6 +33,10 @@ export interface EntryDraft {
       on the tap: nothing is committed until Save, so a removal the user
       backs out of by leaving the screen has to be recoverable. */
   removedPhotoIds: string[];
+  recordings: EditorRecording[];
+  /** Stored recording ids taken off in this edit, the same removed-on-save
+      rule removedPhotoIds follows. */
+  removedRecordingIds: string[];
   readonly isEmpty: boolean;
   readonly hasMoodOnlyContent: boolean;
   setMood(mood: number | null): void;
@@ -49,8 +54,10 @@ export interface EntryDraft {
   setBodyRegionIntensity(key: string, intensity: number): void;
   addPhoto(photo: NormalizedPhoto): void;
   removePhoto(index: number): void;
+  addRecording(bytes: Uint8Array): void;
+  removeRecording(index: number): void;
   /** The exact upsertEntry payload for the draft as it stands, including
-      photo attach and remove lists. */
+      photo and recording attach and remove lists. */
   toUpsert(): EntryInput;
 }
 
@@ -69,6 +76,8 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     bodyRegions: existing ? { ...existing.bodyRegions } : {},
     photos: existing ? existing.photos.map((photo) => ({ kind: 'stored' as const, photo })) : [],
     removedPhotoIds: [],
+    recordings: existing ? existing.recordings.map((recording) => ({ kind: 'stored' as const, recording })) : [],
+    removedRecordingIds: [],
 
     get isEmpty() {
       return entryIsEmpty({
@@ -77,6 +86,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         dimCount: Object.keys(this.dims).length,
         tagCount: this.tags.length,
         photoCount: this.photos.length,
+        recordingCount: this.recordings.length,
         bodyRegionCount: Object.keys(this.bodyRegions).length
       });
     },
@@ -88,6 +98,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         Object.keys(this.dims).length === 0 &&
         this.tags.length === 0 &&
         this.photos.length === 0 &&
+        this.recordings.length === 0 &&
         Object.keys(this.bodyRegions).length === 0
       );
     },
@@ -135,6 +146,15 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       if (gone.kind === 'stored') this.removedPhotoIds.push(gone.photo.id);
     },
 
+    addRecording(bytes) {
+      this.recordings.push({ kind: 'recorded', bytes });
+    },
+
+    removeRecording(index) {
+      const [gone] = this.recordings.splice(index, 1);
+      if (gone.kind === 'stored') this.removedRecordingIds.push(gone.recording.id);
+    },
+
     toUpsert() {
       return {
         id: this.id,
@@ -146,7 +166,11 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         tags: this.tags,
         bodyRegions: this.bodyRegions,
         attachPhotos: this.photos.filter((p: EditorPhoto) => p.kind === 'picked').map((p) => p.photo),
-        removePhotoIds: this.removedPhotoIds
+        removePhotoIds: this.removedPhotoIds,
+        attachRecordings: this.recordings
+          .filter((r: EditorRecording) => r.kind === 'recorded')
+          .map((r) => r.bytes),
+        removeRecordingIds: this.removedRecordingIds
       };
     }
   };

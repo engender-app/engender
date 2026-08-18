@@ -2,8 +2,9 @@
    killed process is a plain, storage-shaped snapshot of the draft's
    editable fields, matched back to the entry/day it belongs to and
    reapplied on top of a freshly created draft - never the picked photos'
-   raw bytes (out of size budget for a localStorage mirror), only which
-   stored photo ids the user had already removed. */
+   or recorded voice notes' raw bytes (out of size budget for a localStorage
+   mirror, ticket 24), only which stored photo or recording ids the user
+   had already removed. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -22,6 +23,10 @@ const existingEntry = (): Entry => ({
   photos: [
     { id: 'p1', fileName: 'p1.jpg' },
     { id: 'p2', fileName: 'p2.jpg' }
+  ],
+  recordings: [
+    { id: 'r1', fileName: 'r1.webm' },
+    { id: 'r2', fileName: 'r2.webm' }
   ],
   bodyRegions: { chest: 60 }
 });
@@ -42,7 +47,8 @@ test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
     dims: {},
     tags: ['e-happy'],
     bodyRegions: {},
-    removedPhotoIds: []
+    removedPhotoIds: [],
+    removedRecordingIds: []
   });
 });
 
@@ -56,7 +62,8 @@ test('a persisted draft for a new entry matches by day, not by id', () => {
     dims: {},
     tags: [],
     bodyRegions: {},
-    removedPhotoIds: []
+    removedPhotoIds: [],
+    removedRecordingIds: []
   };
   assert.equal(draftMatchesRoute(persisted, undefined, 20_001), true);
   assert.equal(draftMatchesRoute(persisted, undefined, 20_002), false);
@@ -73,7 +80,8 @@ test('a persisted draft for an existing entry matches by id, regardless of day',
     dims: {},
     tags: [],
     bodyRegions: {},
-    removedPhotoIds: []
+    removedPhotoIds: [],
+    removedRecordingIds: []
   };
   assert.equal(draftMatchesRoute(persisted, 7, 20_000), true);
   assert.equal(draftMatchesRoute(persisted, 8, 20_000), false);
@@ -91,7 +99,8 @@ test('applying a persisted draft overlays mood, note, dims, tags and body region
     dims: { femininity: 70 },
     tags: ['e-happy'],
     bodyRegions: { chest: 30 },
-    removedPhotoIds: []
+    removedPhotoIds: [],
+    removedRecordingIds: []
   };
 
   applyPersistedDraft(draft, persisted);
@@ -116,7 +125,8 @@ test('applying a persisted draft drops stored photos the user had already remove
     dims: { masculinity: 40 },
     tags: ['e-happy'],
     bodyRegions: { chest: 60 },
-    removedPhotoIds: ['p1']
+    removedPhotoIds: ['p1'],
+    removedRecordingIds: []
   };
 
   applyPersistedDraft(draft, persisted);
@@ -125,5 +135,31 @@ test('applying a persisted draft drops stored photos the user had already remove
   assert.deepEqual(
     draft.photos.map((p) => (p.kind === 'stored' ? p.photo.id : p.kind)),
     ['p2']
+  );
+});
+
+test('applying a persisted draft drops stored recordings the user had already removed', () => {
+  const draft = createEntryDraft(20_000, existingEntry());
+  assert.equal(draft.recordings.length, 2);
+
+  const persisted: PersistedEntryDraft = {
+    id: 7,
+    epochDay: 20_000,
+    timestamp: 123,
+    mood: 3,
+    note: 'ok day',
+    dims: { masculinity: 40 },
+    tags: ['e-happy'],
+    bodyRegions: { chest: 60 },
+    removedPhotoIds: [],
+    removedRecordingIds: ['r1']
+  };
+
+  applyPersistedDraft(draft, persisted);
+
+  assert.deepEqual(draft.removedRecordingIds, ['r1']);
+  assert.deepEqual(
+    draft.recordings.map((r) => (r.kind === 'stored' ? r.recording.id : r.kind)),
+    ['r2']
   );
 });

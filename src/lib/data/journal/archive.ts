@@ -54,7 +54,8 @@ import type {
   ArchiveTag,
   ArchiveTagGroup,
   ArchiveTallyEvent,
-  ArchiveTryout
+  ArchiveTryout,
+  ArchiveVoiceRecording
 } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
@@ -103,6 +104,13 @@ function groupBy<Row, Value>(rows: Row[], key: (row: Row) => number, value: (row
 }
 
 const toArchivePhoto = (row: PhotoRow): ArchivePhoto => ({ id: row.uuid, fileName: row.file_path });
+
+type RecordingRow = { uuid: string; file_path: string; entry_id: number };
+
+const toArchiveVoiceRecording = (row: RecordingRow): ArchiveVoiceRecording => ({
+  id: row.uuid,
+  fileName: row.file_path
+});
 
 export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): ArchiveArea {
   const dimensions = async (): Promise<ArchiveDimension[]> => {
@@ -172,7 +180,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     }));
   };
 
-  const entries = async (photos: PhotoRow[]): Promise<ArchiveEntry[]> => {
+  const entries = async (photos: PhotoRow[], recordings: RecordingRow[]): Promise<ArchiveEntry[]> => {
     const rows = await driver.query<{
       id: number;
       uuid: string;
@@ -198,6 +206,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     const tags = groupBy(tagLinks, (t) => t.entry_id, (t) => domainIdOf(t, 'tag'));
     const bodyRegions = groupBy(bodyRegionValues, (v) => v.entry_id, (v) => [v.region, v.intensity] as const);
     const byEntry = groupBy(photos.filter((p) => p.entry_id !== null), (p) => p.entry_id!, toArchivePhoto);
+    const recordingsByEntry = groupBy(recordings, (r) => r.entry_id, toArchiveVoiceRecording);
 
     return rows.map((r) => ({
       uuid: r.uuid,
@@ -208,6 +217,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       dims: Object.fromEntries(dims.get(r.id) ?? []),
       tags: tags.get(r.id) ?? [],
       photos: byEntry.get(r.id) ?? [],
+      recordings: recordingsByEntry.get(r.id) ?? [],
       bodyRegions: Object.fromEntries(bodyRegions.get(r.id) ?? [])
     }));
   };
@@ -547,13 +557,11 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     }));
   };
 
-  /** The manifest: every file the photo and hair-photo rows name, in the
-      order the rows name them, minus whatever the store no longer holds. A
-      row whose file is gone still travels - the photo is missing on this
-      device already, and dropping the row would delete it from the archive
-      too. */
-  const manifest = async (fileOwners: { file_path: string }[]): Promise<ArchiveFile[]> => {
-    const names = fileOwners.flatMap((owner) => filesOf(owner.file_path));
+  /** The manifest for a plain list of file names, minus whatever the store
+      no longer holds. A missing file still travels as an absent row would
+      - dropping it would delete a file that is only missing on this
+      device from the archive too. */
+  const manifestNames = async (names: string[]): Promise<ArchiveFile[]> => {
     if (names.length === 0) return [];
 
     if (files.sizeMany) {
@@ -573,6 +581,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     }
     return manifested;
   };
+
+  /** The manifest for photo and hair-photo rows specifically: each names
+      one full file, and filesOf() expands it to the derived thumbnail
+      name beside it (names.ts) - a recording has no such pair
+      (voiceRecordings/names.ts), so manifestNames() alone covers it. */
+  const manifest = (fileOwners: { file_path: string }[]): Promise<ArchiveFile[]> =>
+    manifestNames(fileOwners.flatMap((owner) => filesOf(owner.file_path)));
 
   const area: ArchiveArea = {
     replace: (contents) => restoreArchive(driver, files, 'replace', contents),
@@ -607,15 +622,21 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         'SELECT uuid, file_path, entry_id, milestone_id FROM photo ORDER BY order_index, id'
       );
       const hairPhotoRowsRead = await hairPhotoRows();
+      const recordingRows = await driver.query<RecordingRow>(
+        'SELECT uuid, file_path, entry_id FROM voice_recording ORDER BY order_index, id'
+      );
 
-      const archivedFiles = await manifest([...photos, ...hairPhotoRowsRead]);
+      const archivedFiles = [
+        ...(await manifest([...photos, ...hairPhotoRowsRead])),
+        ...(await manifestNames(recordingRows.map((r) => r.file_path)))
+      ];
 
       return {
         journal: {
           dimensions: await dimensions(),
           presets: await presets(),
           tagGroups: await tagGroups(),
-          entries: await entries(photos),
+          entries: await entries(photos, recordingRows),
           milestones: await milestones(photos),
           labResults: await labResults(),
           measurements: await measurements(),
