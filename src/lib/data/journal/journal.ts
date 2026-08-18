@@ -37,6 +37,7 @@ import { makeStockArea, type StockArea } from './stock';
 import { makeTagsArea, type TagsArea } from './tags';
 import { makeTallyArea, type TallyArea } from './tally';
 import { makeTryoutsArea, type TryoutsArea } from './tryouts';
+import { makeVoiceArea, type VoiceArea } from './voiceRecordings';
 import { reconcileBuiltIns } from './reconcile';
 
 /** Where photo files live. The journal owns the rows; whoever owns the
@@ -71,6 +72,11 @@ export interface Journal {
   dimensions: DimensionsArea;
   milestones: MilestonesArea;
   photos: PhotosArea;
+  /** Every voice recording (ticket 24), read back dated and oldest first for
+      the voice compare picker (ticket 25) - entry-only, so unlike photos
+      this owns no attach/remove of its own; those stay on upsertEntry's
+      attachRecordings/removeRecordingIds (voiceRecordings.ts). */
+  voice: VoiceArea;
   labs: LabsArea;
   measurements: MeasurementsArea;
   reminders: RemindersArea;
@@ -177,6 +183,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     dimensions,
     milestones: makeMilestonesArea(driver, files),
     photos: makePhotosArea(driver, files),
+    voice: makeVoiceArea(driver),
     labs,
     measurements: makeMeasurementsArea(driver),
     reminders,

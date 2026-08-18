@@ -21,6 +21,20 @@ type RecordingRow = { uuid: string; file_path: string };
 
 export type StagedRecording = { id: string; fileName: string };
 
+/** A recording placed in time, for the voice compare picker (ticket 25).
+    Entry-only (CONTEXT: "Voice recording"), so unlike DatedPhoto there is no
+    owner name to carry - a recording's date is always its entry's epoch
+    day, no COALESCE needed. */
+export interface DatedRecording extends VoiceRecording {
+  epochDay: number;
+}
+
+export interface VoiceArea {
+  /** Every recording in the journal, oldest first (ticket 25's compare
+      picker, mirroring PhotosArea.inJournal). */
+  inJournal(): Promise<DatedRecording[]>;
+}
+
 const toRecording = (row: RecordingRow): VoiceRecording => ({ id: row.uuid, fileName: row.file_path });
 
 /** Recording rows by entry, oldest first within each entry - one query for a
@@ -99,4 +113,18 @@ export async function insertStagedRecording(
     [recording.id, entryId, recording.fileName, orderIndex, now()]
   );
   return recording.id;
+}
+
+export function makeVoiceArea(driver: SqliteDriver): VoiceArea {
+  return {
+    async inJournal() {
+      const rows = await driver.query<RecordingRow & { epoch_day: number }>(
+        `SELECT v.uuid, v.file_path, e.epoch_day AS epoch_day
+         FROM voice_recording v
+         JOIN entry e ON e.id = v.entry_id
+         ORDER BY epoch_day, v.order_index, v.id`
+      );
+      return rows.map((row) => ({ ...toRecording(row), epochDay: row.epoch_day }));
+    }
+  };
 }

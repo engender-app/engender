@@ -469,6 +469,19 @@
 .compare-nav { display: flex; align-items: center; gap: var(--space-1); }
 /* SH-106: was 36px; falls back to .icon-btn's 44px default. */
 
+/* ---------- Voice compare ---------- */
+/* A list rather than photo-grid's thumbnail grid (ticket 25): a recording
+   has nothing to show but its date, so the same list-row idiom the rest of
+   Settings uses fits without a new one. */
+.list-row.is-selected { background: var(--accent-soft); }
+.list-row.is-selected .row-icon { color: var(--on-accent-soft); }
+/* .voice-player's own `flex: 1` (components.css) is sized for
+   .recording-row, a row-direction flex parent, where flex-basis 0% grows
+   its width. .compare-side is column-direction, so that same flex-basis
+   lands on height instead and collapses the player to 0px tall - the same
+   reason .compare-side overrides .photo-thumb's sizing above. */
+.compare-side .voice-player { flex: none; width: 100%; }
+
 /* ---------- Timeline ---------- */
 .timeline { position: relative; padding-left: 22px; }
 .timeline::before {
