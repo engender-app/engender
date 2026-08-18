@@ -51,10 +51,9 @@ public class TallyWidgetProvider extends AppWidgetProvider {
 
     /** The route a tally button's PendingIntent deep-links to - Home itself,
         carrying the kind as a query parameter it reads once and clears,
-        rather than a route belonging to this widget. Mirrored in
-        ReminderScheduler.sanitizeLaunchRoute and +layout.svelte's
-        isValidAndroidLaunchRoute - both must accept this exact shape or the
-        tap silently lands nowhere. */
+        rather than a route belonging to this widget. Pinned against
+        src/lib/android/launch-routes.ts by the shared fixture at
+        src/lib/android/fixtures/launch-routes.json (ADR-0028). */
     static String tallyRoute(String kind) {
         return "/?tally=" + kind;
     }

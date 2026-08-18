@@ -2,35 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import type { ArchiveSnapshot } from '../journal/archive.ts';
+import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import { EXPORT_PATHS, runExport, type Delivery, type OutgoingFile, type ExportSource } from './backup.ts';
 
 const emptySnapshot: ArchiveSnapshot = {
-  journal: {
-    dimensions: [],
-    presets: [],
-    tagGroups: [],
-    entries: [],
-    milestones: [],
-    labResults: [],
-    measurements: [],
-    sideEffects: [],
-    personalEffects: [],
-    hairStages: [],
-    hairPhotos: [],
-    reminders: [],
-    tallyEvents: [],
-    regimenEpisodes: [],
-    doubtEntries: [],
-    counterevidenceSnapshots: [],
-    letters: [],
-    roadmapChecks: [],
-    doseEvents: [],
-    doseSchedules: [],
-    dosePauses: [],
-    medicationStock: [],
-    tryouts: [],
-    feltSenseEntries: []
-  },
+  journal: emptyArchiveJournal(),
   files: [],
   readFile: async () => {
     throw new Error('the fixture has no photos');
