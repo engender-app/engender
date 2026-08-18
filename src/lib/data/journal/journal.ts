@@ -14,6 +14,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
+import { makeDoubtJournalArea, type DoubtJournalArea } from './doubtJournal';
 import { makeDosesArea, type DosesArea } from './doses';
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
@@ -115,6 +116,11 @@ export interface Journal {
       from personalEffects' single "hair changes" marker - the two are not
       merged. */
   hairProgress: HairProgressArea;
+  /** Free-write doubt entries and their saved counterevidence snapshots
+      (phase 4 ticket 11). Reads the counterevidence itself through
+      entries.entriesWithTag('g-euphoria', …), the same tag query the stats
+      screen already uses - this area owns only what it alone writes. */
+  doubtJournal: DoubtJournalArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -157,6 +163,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     clinicianSummary: makeClinicianSummaryArea(regimen, doses, labs, exposure, sideEffects),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
+    doubtJournal: makeDoubtJournalArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

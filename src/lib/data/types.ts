@@ -180,6 +180,40 @@ export interface TallyEvent {
   context: string;
 }
 
+/* Free-write reflection for a "not trans enough" spiral (phase 4 ticket
+   11, CONTEXT: "Doubt entry"). Its own record type, the same reasoning
+   TallyEvent above is not a variant of Entry: no mood, dimension values,
+   tags or note - just the one free-write field. */
+export interface DoubtEntry {
+  id: string;
+  epochDay: number;
+  timestamp: number;
+  text: string;
+}
+
+/** One of the user's own euphoria-tagged entries, copied into a
+    CounterevidenceSnapshot rather than referenced by id - see the
+    ADR-0010 exception argued at migrations.ts v14. Deliberately thinner
+    than Entry: a snapshot exists to be reread, not re-edited, so it
+    carries only what makes the counterevidence legible - the day and what
+    was written - not its tags or photos. */
+export interface CounterevidenceEntry {
+  epochDay: number;
+  mood: number | null;
+  note: string;
+}
+
+/** A one-tap capture of the counterevidence a doubt entry's composer was
+    showing at the moment it was saved (CONTEXT: "Counterevidence
+    snapshot"), so rereading it later shows exactly what convinced someone
+    then rather than whatever their history looks like now. */
+export interface CounterevidenceSnapshot {
+  id: string;
+  epochDay: number;
+  timestamp: number;
+  items: CounterevidenceEntry[];
+}
+
 /* No stored end: an episode runs until the next one starts, or is ongoing
    if it is the latest (ADR-0010, regimenEpisode.ts computes it). Not a
    preference (ADR-0003) and not a Reminder: it is attributed data every
