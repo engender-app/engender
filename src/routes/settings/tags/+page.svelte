@@ -54,7 +54,7 @@
                 <Icon name="pencil" size={16} />
               </button>
               {#if tg.builtIn}
-                <button class="icon-btn" aria-label={tg.hidden ? m.tags_show_aria({ label: tg.label }) : m.tags_hide_aria({ label: tg.label })}
+                <button class="icon-btn" data-tag-hide={tg.id} aria-label={tg.hidden ? m.tags_show_aria({ label: tg.label }) : m.tags_hide_aria({ label: tg.label })}
                   onclick={() => journal.tags.setTagHidden(tg.id, !tg.hidden)}>
                   <Icon name={tg.hidden ? 'eye' : 'eyeOff'} size={16} />
                 </button>

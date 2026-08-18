@@ -16,7 +16,7 @@
   let more = $derived(entry.tags.length - tags.length);
 </script>
 
-<a class="entry-card" href="/entry/{entry.id}">
+<a class="entry-card" data-entry-card href="/entry/{entry.id}">
   <div class="entry-side">
     {#if entry.mood != null}
       <span
@@ -37,7 +37,7 @@
       {#if entry.photos?.length}<span class="entry-has-photo"><Icon name="image" size={13} /></span>{/if}
       {#if entry.recordings?.length}<span class="entry-has-recording"><Icon name="mic" size={13} /></span>{/if}
     </div>
-    {#if entry.note}<p class="entry-note">{entry.note}</p>{/if}
+    {#if entry.note}<p class="entry-note" data-entry-note>{entry.note}</p>{/if}
     {#if tags.length}
       <div class="entry-tags">
         {#each tags as t (t.id)}<span class="tag-chip is-mini">{t.label}</span>{/each}

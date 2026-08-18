@@ -19,6 +19,7 @@
       class:is-active={o.value === value}
       role="radio"
       aria-checked={o.value === value}
+      data-segment={o.value}
       onclick={() => onChange(o.value)}>{o.label}</button
     >
   {/each}
