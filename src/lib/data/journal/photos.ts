@@ -146,13 +146,21 @@ export async function photosByMilestone(driver: SqliteDriver): Promise<Map<numbe
    OPFS root: the database file lives in OPFS too, and no row references
    it.
 
+   Reads `hair_photo` (migrations.ts v13) as well as `photo`: a hair-progress
+   photo's row lives in its own table (journal/hairProgress.ts), not as a
+   third owner here, but its files sit in the same store and would otherwise
+   look orphaned the moment this ran.
+
    Precondition: nothing may attach a photo while this runs. It reads the
    rows and then lists the files, so a photo whose files landed after the
    read but whose row landed before the list would look like an orphan.
    Boot is the only caller and runs before any screen can write. */
 export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
-  const rows = await driver.query<{ file_path: string }>('SELECT file_path FROM photo');
-  const referenced = new Set(rows.flatMap((row) => filesOf(row.file_path)));
+  const [photoRows, hairPhotoRows] = await Promise.all([
+    driver.query<{ file_path: string }>('SELECT file_path FROM photo'),
+    driver.query<{ file_path: string }>('SELECT file_path FROM hair_photo')
+  ]);
+  const referenced = new Set([...photoRows, ...hairPhotoRows].flatMap((row) => filesOf(row.file_path)));
   for (const name of await files.list()) {
     if (!referenced.has(name)) await files.remove(name);
   }

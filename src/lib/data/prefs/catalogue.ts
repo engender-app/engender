@@ -111,6 +111,12 @@ export interface PreferenceValues {
       dismissed (ticket 08). Guidance is opt-in, never required to save a
       measurement, so this only ever hides a card - it blocks nothing. */
   measurementProtocolDismissed: Partial<Record<'waist' | 'hips' | 'chest' | 'underbust', boolean>>;
+  /** Whether the hair-photo capture-protocol guidance has been dismissed
+      (phase 4 ticket 09). A plain boolean rather than measurementProtocolDismissed's
+      per-type record: hair progress has only the one photo kind. Guidance
+      is opt-in, never required to take a photo, so this only ever hides a
+      card - it blocks nothing. */
+  hairPhotoProtocolDismissed: boolean;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
@@ -151,6 +157,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lastOnThisDayNotifiedEpochDay: null,
   preferredLabUnits: {},
   measurementProtocolDismissed: {},
+  hairPhotoProtocolDismissed: false,
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
@@ -196,7 +203,8 @@ export const DEVICE_LOCAL_KEYS = [
   'autoExportSchedule',
   'lastBackupAt',
   'backupNoticeDismissed',
-  'measurementProtocolDismissed'
+  'measurementProtocolDismissed',
+  'hairPhotoProtocolDismissed'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Mirrored outside SQLite because it is needed before the database opens

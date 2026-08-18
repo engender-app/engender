@@ -9,7 +9,7 @@ import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 12);
+  assert.equal(db.getUserVersion(), 13);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -28,6 +28,8 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'medication_stock',
     'milestone',
     'personal_effect',
+    'hair_stage',
+    'hair_photo',
     'photo',
     'pref',
     'preset_dimension',
@@ -233,6 +235,29 @@ test('v11 side_effect carries no episode reference and rejects severity outside 
   );
   assert.throws(() =>
     db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s3', 'nausea', 6, 100, 1000)")
+  );
+});
+
+test('v13 hair_stage rejects a value outside the published Norwood-Hamilton scale', async () => {
+  const db = await migratedDb();
+
+  assert.doesNotThrow(() =>
+    db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h1', 100, '3v', 1000)")
+  );
+  assert.throws(() =>
+    db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h2', 100, '8', 1000)")
+  );
+});
+
+test('v13 hair_photo is its own table, not a third owner on photo', async () => {
+  const db = await migratedDb();
+  const columns = (db.raw.prepare('PRAGMA table_info(hair_photo)').all() as Array<{ name: string }>).map(
+    (c) => c.name
+  );
+  assert.ok(!columns.some((name) => name.includes('entry') || name.includes('milestone')));
+
+  assert.doesNotThrow(() =>
+    db.raw.exec("INSERT INTO hair_photo (uuid, epoch_day, file_path, updated_at) VALUES ('hp1', 100, 'hp1.jpg', 1000)")
   );
 });
 

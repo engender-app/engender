@@ -20,7 +20,7 @@ import type {
   BuiltInTagKey,
   MilestoneTemplateKey
 } from './builtins';
-import type { Measurement, PersonalEffectType } from '../types';
+import type { Measurement, NorwoodHamiltonStage, PersonalEffectType } from '../types';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -83,6 +83,28 @@ const PERSONAL_EFFECT_NAME: Record<PersonalEffectType, Message> = {
 
 /** The name of a personal effect marker. */
 export const personalEffectName = (effect: PersonalEffectType): string => PERSONAL_EFFECT_NAME[effect]();
+
+/* The published Norwood-Hamilton scale's twelve stage labels (phase 4
+   ticket 09) are a fixed set, not a built-in row, the same reasoning
+   MEASUREMENT_TYPE_NAME gives - what changes with the language is the
+   surrounding word ("Stage 3a"), not the stage code itself. */
+const HAIR_STAGE_NAME: Record<NorwoodHamiltonStage, Message> = {
+  '1': m.hair_stage_1,
+  '2': m.hair_stage_2,
+  '2a': m.hair_stage_2a,
+  '3': m.hair_stage_3,
+  '3v': m.hair_stage_3v,
+  '3a': m.hair_stage_3a,
+  '4': m.hair_stage_4,
+  '4a': m.hair_stage_4a,
+  '5': m.hair_stage_5,
+  '5a': m.hair_stage_5a,
+  '6': m.hair_stage_6,
+  '7': m.hair_stage_7
+};
+
+/** The name of a Norwood-Hamilton stage. */
+export const hairStageName = (stage: NorwoodHamiltonStage): string => HAIR_STAGE_NAME[stage]();
 
 /* A side effect's severity (phase 4 ticket 06, CONTEXT: "Side effect") is a
    1-5 ordered scale like mood, and its five names are vocabulary the same

@@ -234,6 +234,21 @@
       }
     }
   ],
+  "n_weeks": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} week",
+        "nPlural=other": "{n} weeks"
+      }
+    }
+  ],
   "apart_suffix": "apart",
   "dim_euphoria_dysphoria": "Gender feeling",
   "dim_euphoria_dysphoria_low": "dysphoria",
@@ -1030,6 +1045,51 @@
   "effect_legend_completion": "Literature: typical completion",
   "effect_legend_marker": "Your marker",
   "effect_legend_today": "Today",
+  "hair_progress": "Hair progress",
+  "hair_progress_sub": "Norwood-Hamilton staging and fixed-position photos",
+  "hair_intro": "Stage yourself against the published Norwood-Hamilton scale whenever you like, and take the same fixed-position photo every few weeks to see how it's going.",
+  "hair_unanchored_note": "Not anchored to a timeline yet. Log a finasteride, dutasteride or minoxidil dose and staging and photos here will start counting from it.",
+  "hair_since_start": "{weeks} since starting",
+  "hair_stage_section_title": "Norwood-Hamilton stage",
+  "hair_stage_add_aria": "Add a staging",
+  "hair_stage_empty_title": "No staging yet",
+  "hair_stage_empty_body": "Compare yourself against the published scale and log where you are today.",
+  "hair_stage_empty_action": "Stage yourself",
+  "hair_stage_label": "Stage",
+  "hair_stage_date_label": "Date",
+  "hair_stage_save": "Save",
+  "hair_stage_delete": "Delete",
+  "hair_stage_new_sheet": "New staging",
+  "hair_stage_edit_sheet": "Edit staging",
+  "hair_stage_delete_sheet": "Delete staging",
+  "hair_stage_delete_q": "Delete this staging?",
+  "hair_stage_delete_hint": "This cannot be undone.",
+  "hair_stage_row_aria": "Stage {stage} on {date}",
+  "hair_stage_1": "Stage 1",
+  "hair_stage_2": "Stage 2",
+  "hair_stage_2a": "Stage 2A",
+  "hair_stage_3": "Stage 3",
+  "hair_stage_3v": "Stage 3 vertex",
+  "hair_stage_3a": "Stage 3A",
+  "hair_stage_4": "Stage 4",
+  "hair_stage_4a": "Stage 4A",
+  "hair_stage_5": "Stage 5",
+  "hair_stage_5a": "Stage 5A",
+  "hair_stage_6": "Stage 6",
+  "hair_stage_7": "Stage 7",
+  "hair_photo_section_title": "Fixed-position photos",
+  "hair_photo_due_title": "A photo is due",
+  "hair_photo_due_body": "It's been a while since the last one. Taking one now keeps the interval even.",
+  "hair_photo_protocol_title": "Keeping photos consistent",
+  "hair_photo_protocol_body": "Use the same framing, lighting and distance each time, so what changes between photos is your hair and nothing else.",
+  "hair_photo_protocol_dismiss_aria": "Hide this guidance",
+  "hair_photo_empty_title": "No photos yet",
+  "hair_photo_empty_body": "Fixed-position photos land here as you take them, oldest first.",
+  "hair_photo_row_aria": "Hair photo from {date}",
+  "hair_photo_delete_sheet": "Delete photo",
+  "hair_photo_delete_q": "Delete this photo?",
+  "hair_photo_delete_hint": "This cannot be undone.",
+  "hair_photo_delete": "Delete",
   "ph_compare": "Compare",
   "ph_earlier": "Earlier photo",
   "ph_later": "Later photo",

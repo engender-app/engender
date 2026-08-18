@@ -1,5 +1,5 @@
-/* The dimensions, milestones, labs and reminders areas, exercised through
-   the driver interface (ticket 07). */
+/* The dimensions, milestones, labs, reminders and hair-progress areas,
+   exercised through the driver interface (ticket 07). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -553,6 +553,84 @@ test('clearing a marker is the undo for a mistaken date, and is idempotent', asy
   await journal.personalEffects.clearMarker('hair_changes'); // idempotent
 
   assert.deepEqual(await journal.personalEffects.getMarkers(), []);
+});
+
+/* hair progress (phase 4 ticket 09) */
+
+test('a staging round-trips with no anchor reference, ordered by day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.hairProgress.upsertStage({ epochDay: 200, stage: '3v' });
+  const id = await journal.hairProgress.upsertStage({ epochDay: 100, stage: '2' });
+
+  const stages = await journal.hairProgress.getStages();
+  assert.deepEqual(stages.map((s) => s.epochDay), [100, 200]);
+  assert.deepEqual(stages[0], { id, epochDay: 100, stage: '2' });
+});
+
+test('re-staging adds a row rather than replacing the last one - it is a series', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.hairProgress.upsertStage({ epochDay: 100, stage: '2' });
+  await journal.hairProgress.upsertStage({ epochDay: 200, stage: '3' });
+
+  assert.equal((await journal.hairProgress.getStages()).length, 2);
+});
+
+test('stagings update by id, throw on unknown ids and delete idempotently', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.hairProgress.upsertStage({ epochDay: 100, stage: '2' });
+
+  await journal.hairProgress.upsertStage({ id, epochDay: 100, stage: '2a' });
+  assert.equal((await journal.hairProgress.getStages())[0].stage, '2a');
+
+  await assert.rejects(
+    journal.hairProgress.upsertStage({ id: 'nope', epochDay: 1, stage: '1' }),
+    /unknown hair stage/
+  );
+
+  await journal.hairProgress.deleteStage(id);
+  await journal.hairProgress.deleteStage(id); // idempotent
+  assert.deepEqual(await journal.hairProgress.getStages(), []);
+});
+
+test('an unrecognized stage is refused before it reaches the schema', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, stage: 'not_a_real_stage' as never }));
+});
+
+test('a hair photo writes both files and its own row, distinct from the shared photo table', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+
+  const id = await journal.hairProgress.addPhoto(19000, {
+    full: new Uint8Array([1]),
+    thumb: new Uint8Array([2])
+  });
+
+  assert.match(id, UUID_PATTERN);
+  const photos = await journal.hairProgress.getPhotos();
+  assert.deepEqual(photos, [{ id, epochDay: 19000, fileName: `${id}.jpg` }]);
+  assert.deepEqual(files.names(), [`${id}-thumb.jpg`, `${id}.jpg`]);
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0, 'not a third owner on `photo`');
+});
+
+test('hair photos order oldest first and delete takes the row and its files; twice is success', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+
+  const first = await journal.hairProgress.addPhoto(19100, { full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+  const second = await journal.hairProgress.addPhoto(19000, { full: new Uint8Array([3]), thumb: new Uint8Array([4]) });
+
+  assert.deepEqual(
+    (await journal.hairProgress.getPhotos()).map((p) => p.id),
+    [second, first]
+  );
+
+  await journal.hairProgress.deletePhoto(first);
+  assert.deepEqual(files.names(), [`${second}-thumb.jpg`, `${second}.jpg`]);
+
+  await journal.hairProgress.deletePhoto(first); // idempotent
 });
 
 /* reminders */

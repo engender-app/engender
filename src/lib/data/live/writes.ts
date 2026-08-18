@@ -56,7 +56,11 @@ export type TableName =
      the point. */
   | 'stock'
   | 'sideEffect'
-  | 'personalEffect';
+  | 'personalEffect'
+  /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
+     nothing reads one without the other, the same reasoning 'dose' gives -
+     the screen shows both against the same anchor. */
+  | 'hairProgress';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -75,7 +79,8 @@ export const TABLE_NAMES: TableName[] = [
   'dose',
   'stock',
   'sideEffect',
-  'personalEffect'
+  'personalEffect',
+  'hairProgress'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -154,6 +159,15 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   personalEffects: {
     writes: { upsertMarker: ['personalEffect'], clearMarker: ['personalEffect'] },
     reads: ['getMarkers']
+  },
+  hairProgress: {
+    writes: {
+      upsertStage: ['hairProgress'],
+      deleteStage: ['hairProgress'],
+      addPhoto: ['hairProgress'],
+      deletePhoto: ['hairProgress']
+    },
+    reads: ['getStages', 'getPhotos']
   },
   reminders: {
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },
