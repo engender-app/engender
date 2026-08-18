@@ -84,16 +84,35 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         String title = texts != null ? texts.optString("checkInTitle", "Daily check-in") : "Daily check-in";
         String body = texts != null ? texts.optString("checkInBody", "How are you today?") : "How are you today?";
 
-        Notification notification = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_CHECK_IN)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_CHECK_IN)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            .setContentIntent(openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13))
-            .build();
+            .setContentIntent(openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13));
 
-        NotificationManagerCompat.from(context).notify(7999, notification);
+        String affirmation = resolveCheckInAffirmation(payload, epochDay);
+        if (affirmation != null) {
+            builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body + "\n" + affirmation));
+        }
+
+        NotificationManagerCompat.from(context).notify(7999, builder.build());
+    }
+
+    /** The affirming line for this day (phase 4 features ticket 22), or null
+        when the prompt stays plain: the pool arrives empty when the
+        preference is off, and hideNotificationTitles suppresses the line the
+        same way it hides reminder titles - an affirmation on a lock screen
+        says what the app is for. Indexed by epoch day rather than any stored
+        state, so the line rotates even across days the app is never
+        opened. */
+    static String resolveCheckInAffirmation(JSONObject payload, int epochDay) {
+        if (payload.optBoolean("hideNotificationTitles", false)) return null;
+        JSONArray pool = payload.optJSONArray("checkInAffirmations");
+        if (pool == null || pool.length() == 0) return null;
+        String line = pool.optString(epochDay % pool.length(), "");
+        return line.isBlank() ? null : line;
     }
 
     private PendingIntent openAppIntent(Context context, String route, String key, int requestCode) {
