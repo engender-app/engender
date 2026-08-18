@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { collect } from '../archive/container.ts';
 import { openArchive, packArchive } from '../archive/pack.ts';
-import { portablePreferences, type ArchiveJournal } from '../archive/payload.ts';
+import { portablePreferences } from '../archive/payload.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { readRowContext } from './archiveRead.ts';
@@ -18,6 +18,7 @@ import {
   applyArchiveJournal,
   emptyArchiveJournal,
   orderedSections,
+  readArchiveJournal,
   ARCHIVE_SECTIONS,
   ARCHIVE_SECTION_NAMES,
   type ArchiveSection
@@ -101,10 +102,7 @@ test('a section added to the registry travels in a packed archive and comes back
   await source.run('CREATE TABLE moon_phase (epoch_day INTEGER NOT NULL, phase TEXT NOT NULL)');
   await source.run("INSERT INTO moon_phase (epoch_day, phase) VALUES (20000, 'waxing'), (20007, 'full')");
 
-  const journal: ArchiveJournal = { ...emptyArchiveJournal() };
-  for (const s of sections) {
-    (journal as unknown as Record<string, unknown[]>)[s.name] = await s.read(await readRowContext(source));
-  }
+  const journal = await readArchiveJournal(await readRowContext(source), sections);
 
   const packed = await collect(
     packArchive(
