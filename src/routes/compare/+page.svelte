@@ -14,7 +14,7 @@
     label: string;
   }
 
-  interface SideStats {
+  interface ComparisonSideStats {
     entryCount: number;
     averageMood: number | null;
     bestStreak: number;
@@ -49,7 +49,7 @@
   let periodA = $derived(periodFrom(aStart, aEnd));
   let periodB = $derived(periodFrom(bStart, bEnd));
 
-  async function sideStats(j: Journal, period: Period): Promise<SideStats> {
+  async function sideStats(j: Journal, period: Period): Promise<ComparisonSideStats> {
     const recap = await j.stats.recap(period.start, period.end);
     const dims = vocabulary.activeDimensions;
     const series = await Promise.all(dims.map((d) => j.stats.dayAverages(d.key, period.start, period.end)));
