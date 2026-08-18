@@ -412,7 +412,10 @@
     <div class="spread">
       <span class="row-text">
         <span class="row-title">{m.exp_last_backup()}</span>
-        <span class="row-subtitle">
+        <!-- Handle for the walkthrough, like data-plain on the export buttons:
+             the backup age is what the plain-export flow checks moved to today,
+             and reaching it by layout broke silently once this card grew rows. -->
+        <span class="row-subtitle" data-backup-age>
           {backupAge == null
             ? m.exp_last_backup_never()
             : backupAge === 0

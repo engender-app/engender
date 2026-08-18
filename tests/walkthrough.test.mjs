@@ -632,24 +632,21 @@ try {
      Position is the wrong anchor here for a second reason: the last-backup
      and last-verified rows both read "today", so a first-match selector
      that drifted onto the wrong row would pass while testing nothing. */
-  /* Named before waited on. A row that is simply not there any more can
-     only express itself as a 30s waitForFunction timeout, which is how this
-     assertion stayed quiet through eight merges - so the absence is checked
-     first and says what it could not find. */
-  const backupRows = await page.evaluate(
-    () =>
-      [...document.querySelectorAll('.spread')].filter(
-        (el) => el.querySelector('.row-title')?.textContent.trim() === 'Last backup'
-      ).length
-  );
-  if (backupRows !== 1) throw new Error(`expected one "Last backup" row on the export screen, found ${backupRows}`);
+  /* Reached by its own handle rather than by layout position. This
+     assertion went quiet for eight merges when ticket 28's card grew rows
+     and the old `.card.spread` selector stopped matching; a data- handle
+     survives both a restructure and a rewording of the row title. Absence
+     is still named first, because a selector that resolves to nothing
+     inside waitForFunction can only fail as an anonymous timeout. */
+  const backupAgeCells = await page.locator('[data-backup-age]').count();
+  if (backupAgeCells !== 1) {
+    throw new Error(`expected one backup-age cell on the export screen, found ${backupAgeCells}`);
+  }
 
-  await page.waitForFunction(() => {
-    const row = [...document.querySelectorAll('.spread')].find(
-      (el) => el.querySelector('.row-title')?.textContent.trim() === 'Last backup'
-    );
-    return row?.querySelector('.row-subtitle')?.textContent.trim() === 'today';
-  });
+  await page.waitForFunction(
+    () => document.querySelector('[data-backup-age]')?.textContent.trim() === 'today'
+  );
+
   ok(`plain CSV export behind the warning, ${entries.length} rows, notes intact`);
 } catch (e) { fail('plain export', e); }
 
