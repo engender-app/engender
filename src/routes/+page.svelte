@@ -159,6 +159,15 @@
     </div>
   </div>
 
+  <!-- A persistent, always-visible Home affordance opening the doubt-entry
+       flow in one tap, without the normal new-entry chooser first (phase 4
+       ticket 11, Q13: Home-level, never lock-screen or disguise-mode). -->
+  <a class="card" style="display:block;color:inherit;text-decoration:none" href="/doubt">
+    <p class="quicklog-title">{m.doubt_home_card_title()}</p>
+    <p class="row-subtitle" style="margin:2px 0 var(--space-3)">{m.doubt_home_card_body()}</p>
+    <span class="btn btn-soft btn-block"><Icon name="heart" size={18} /> <span>{m.doubt_home_card_button()}</span></span>
+  </a>
+
   <!-- NAV-003: this section used to disappear entirely with no milestones,
        which also meant Timeline - only linked from here - was structurally
        unreachable exactly when its own empty state most needed to be seen. -->
