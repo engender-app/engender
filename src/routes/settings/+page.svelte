@@ -41,21 +41,23 @@
   let reminders = liveQuery(['reminder'], (j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.value ?? []).filter((r) => r.enabled).length);
 
-  /* The care section's rows are all the same shape (ticket phase-5 deepening
-     05): icon, title, subtitle, href. Only reminders' subtitle and trailing
-     icon are live, so a row carries functions for those instead of fixed
-     strings; every other row calls a fixed message. */
+  /* Every care row is icon + title + subtitle + href. Reminders is marked
+     `live` because its subtitle reads reactive state (isWeb, activeReminders,
+     checkInEnabled) rather than just formatting a fixed count the way
+     milestones' subtitle does, and it's the only row whose trailing icon
+     varies by platform. */
   type CareRow = {
     key: string;
     icon: string;
     title: () => string;
     subtitle: () => string;
     href: string;
+    live?: boolean;
     trailing?: () => { name: string; size: number };
   };
 
   const CARE_ROWS: CareRow[] = [
-    { key: 'reminders', icon: 'bell', title: () => m.reminders(), href: '/settings/reminders',
+    { key: 'reminders', icon: 'bell', title: () => m.reminders(), href: '/settings/reminders', live: true,
       subtitle: () => isWeb ? m.reminders_web_sub() : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() }),
       trailing: () => (isWeb ? { name: 'info', size: 18 } : { name: 'chevronRight', size: 20 }) },
     { key: 'milestones', icon: 'flag', title: () => m.milestones(), subtitle: () => m.settings_milestones_sub({ count: vocabulary.milestones.length }), href: '/settings/milestones' },
