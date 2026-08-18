@@ -86,9 +86,9 @@
      below, so reloading or going back never re-logs it. */
   $effect(() => {
     const raw = page.url.searchParams.get('tally');
+    if (!raw) return;
     const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
-    if (!kind) return;
-    journal.tally.log({ epochDay: today, kind });
+    if (kind) journal.tally.log({ epochDay: today, kind });
     goto('/', { replaceState: true, noScroll: true, keepFocus: true });
   });
 
