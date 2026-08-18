@@ -1724,10 +1724,10 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} zdjęcie w tym zakresie",
-        "countPlural=few": "Zdjęcia w tym zakresie: {count}",
-        "countPlural=many": "Zdjęcia w tym zakresie: {count}",
-        "countPlural=other": "Zdjęcia w tym zakresie: {count}"
+        "countPlural=one": "{count} zdjęcie w tym zakresie.",
+        "countPlural=few": "Zdjęcia w tym zakresie: {count}.",
+        "countPlural=many": "Zdjęcia w tym zakresie: {count}.",
+        "countPlural=other": "Zdjęcia w tym zakresie: {count}."
       }
     }
   ],

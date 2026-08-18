@@ -43,7 +43,7 @@
 
   let running = $state(false);
   let progress = $state<{ done: number; total: number } | null>(null);
-  let made = $state.raw<{ output: JourneyOutput; blob: Blob } | null>(null);
+  let made = $state.raw<{ blob: Blob; from: string } | null>(null);
   let previewUrl = $state<string | null>(null);
 
   // MediaRecorder is missing on Safari, which has no WebM encoder. Read once
@@ -70,6 +70,12 @@
   let selected = $derived(range ? journeySelection(photos, range, excluded) : []);
   let seconds = $derived(Math.max(1, Math.round(timelapseDurationMs(selected.length) / 1000)));
 
+  /* What a finished export was made from. Changing the range, tapping a
+     photo out or switching to the other output puts the picker back rather
+     than leaving a preview that no longer shows what is selected. */
+  let recipe = $derived(`${output}:${selected.map((photo) => photo.id).join(',')}`);
+  let showing = $derived(made && made.from === recipe ? made : null);
+
   const dateOf = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
   function toggle(id: string) {
@@ -80,7 +86,7 @@
      replaced or the screen closes - a preview per attempt otherwise leaks
      one blob each. */
   $effect(() => {
-    const blob = made?.blob;
+    const blob = showing?.blob;
     if (!blob) {
       previewUrl = null;
       return;
@@ -90,12 +96,20 @@
     return () => URL.revokeObjectURL(url);
   });
 
+  /* The grid above can be several screens tall, so a finished export off the
+     bottom of it reads as nothing having happened. */
+  function reveal(node: HTMLElement) {
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    node.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+  }
+
   async function make() {
     const frames: JourneyFrame[] = selected.map((photo) => ({
       fileName: photo.fileName!,
       caption: dateOf(photo.epochDay)
     }));
 
+    const from = recipe;
     running = true;
     made = null;
     progress = { done: 0, total: frames.length };
@@ -105,7 +119,7 @@
         output === 'collage'
           ? await renderCollage(frames, readPhoto, onProgress)
           : await recordTimelapse(frames, readPhoto, onProgress);
-      made = { output, blob };
+      made = { blob, from };
     } catch (error) {
       console.error(`the ${output} export failed`, error);
       toast(m.pj_failed());
@@ -120,9 +134,9 @@
      deliberately does not stamp lastBackupAt: a collage is not a copy of the
      journal, and Home must not tell anyone their journal is safe on it. */
   async function share() {
-    if (!made) return;
+    if (!showing) return;
     try {
-      const delivery = await deliverBlob(journeyFileName(prefs.name, made.output), made.blob);
+      const delivery = await deliverBlob(journeyFileName(prefs.name, output), showing.blob);
       if (delivery === 'cancelled') {
         toast(m.exp_cancelled());
         return;
@@ -210,9 +224,9 @@
       </p>
     </div>
 
-    {#if previewUrl && made}
-      <div class="card journey-preview" style="margin-top:var(--space-4)">
-        {#if made.output === 'collage'}
+    {#if previewUrl && showing}
+      <div class="card journey-preview" style="margin-top:var(--space-4)" use:reveal>
+        {#if output === 'collage'}
           <img src={previewUrl} alt={m.pj_preview_collage_alt()} />
         {:else}
           <!-- svelte-ignore a11y_media_has_caption -->
@@ -223,7 +237,7 @@
           <button class="btn btn-primary" data-share onclick={share}>
             <Icon name="share" size={20} /><span>{m.pj_share()}</span>
           </button>
-          <button class="btn btn-soft" onclick={() => (made = null)}>
+          <button class="btn btn-soft" data-again onclick={() => (made = null)}>
             <span>{m.pj_again()}</span>
           </button>
         </div>

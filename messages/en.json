@@ -1698,8 +1698,8 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} photo in this range",
-        "countPlural=other": "{count} photos in this range"
+        "countPlural=one": "{count} photo in this range.",
+        "countPlural=other": "{count} photos in this range."
       }
     }
   ],
