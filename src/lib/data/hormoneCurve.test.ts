@@ -15,6 +15,7 @@ import {
   settlingDays
 } from './hormoneCurve.ts';
 import { ESTER_POSTERIORS } from './hormoneCurveModels.ts';
+import { INJECTABLE_ESTERS } from './hormoneEster.ts';
 
 function episode(ester: string, over: Partial<RegimenEpisode> = {}): RegimenEpisode {
   return {
@@ -208,35 +209,38 @@ test('an injection older than its ester can still be carrying is left out of the
   assert.deepEqual(withAncient.curves[0].band, without.curves[0].band);
 });
 
-test('the lookback covers every posterior sample of every fitted ester, with room to spare', () => {
+test('the lookback is exactly what the slowest published sample needs', () => {
+  /* Pinned to the number, not compared against the maximum it is derived
+     from - that comparison cannot fail and would only look like a test.
+     Replacing the parameters changes this value and this assertion is where
+     someone has to notice: a lookback that grew to years would mean an ester
+     as loose as the dropped undecylate had got back in. */
+  assert.equal(CURVE_LOOKBACK_DAYS, 63);
+
+  // And the claim about the data itself, which is a separate fact.
   for (const [ester, samples] of Object.entries(ESTER_POSTERIORS)) {
-    if (ester === 'undecylate') continue;
-    const slowest = Math.max(...samples!.map(settlingDays));
-    assert.ok(slowest < CURVE_LOOKBACK_DAYS, `${ester} needs ${slowest.toFixed(0)} days, lookback is ${CURVE_LOOKBACK_DAYS}`);
-    assert.ok(slowest < 100, `${ester} settling in ${slowest.toFixed(0)} days is not what this test was written against`);
+    const slowest = Math.max(...samples.map(settlingDays));
+    assert.ok(slowest < 100, `${ester} settles in ${slowest.toFixed(0)} days, too slow for a fit this tight`);
   }
 });
 
-test('undecylate is the ester the lookback cannot cover, which is part of why it is hypothetical', () => {
-  // Pinned so that "a year is enough" is never read as covering this one.
-  const slowest = Math.max(...ESTER_POSTERIORS.undecylate!.map(settlingDays));
-  assert.ok(slowest > CURVE_LOOKBACK_DAYS * 5, `undecylate's slowest sample settles in ${slowest.toFixed(0)} days`);
+test('every ester in the vocabulary has parameters, so no curve can go missing', () => {
+  for (const ester of INJECTABLE_ESTERS) {
+    assert.equal(ESTER_POSTERIORS[ester].length, 313, `${ester} should carry the published posterior`);
+  }
+  assert.deepEqual(Object.keys(ESTER_POSTERIORS).sort(), [...INJECTABLE_ESTERS].sort());
 });
 
-test('undecylate is drawn, and flagged hypothetical; a fitted ester is not flagged', () => {
-  const undecylate = esterCurves({ doses: [dose(0)], episodes: [episode('undecylate')], ...WINDOW });
-  assert.equal(undecylate.curves[0].hypothetical, true);
-  assert.ok(undecylate.curves[0].band.some((p) => p.upper > 0));
-
-  const valerate = esterCurves({ doses: [dose(0)], episodes: [episode('valerate')], ...WINDOW });
-  assert.equal(valerate.curves[0].hypothetical, false);
-});
-
-test('polyestradiol phosphate is named as an ester with no curve rather than silently dropped', () => {
-  const result = esterCurves({ doses: [dose(0)], episodes: [episode('PEP')], ...WINDOW });
-
-  assert.deepEqual(result.curves, []);
-  assert.deepEqual(result.unmodelledEsters, ['polyestradiol-phosphate']);
+test('the four esters drawn all have fits tight enough to be worth drawing', () => {
+  /* The bar the two dropped esters failed. A fitted ester's plausible average
+     level spans about a third; undecylate's spanned more than tenfold, which
+     is why it is gone rather than drawn behind a caveat. */
+  for (const ester of INJECTABLE_ESTERS) {
+    const averages = ESTER_POSTERIORS[ester].map(([d, , , k3]) => d / k3).sort((a, b) => a - b);
+    const at = (p: number) => averages[Math.round((averages.length - 1) * p)];
+    const spread = at(0.975) / at(0.025);
+    assert.ok(spread < 1.6, `${ester} spans ${spread.toFixed(1)}x, too loose to draw`);
+  }
 });
 
 test('a skipped dose puts nothing into the body and nothing into the curve', () => {
@@ -280,7 +284,6 @@ test('a dose under a non-estradiol regimen draws nothing, ester word or not', ()
   });
 
   assert.deepEqual(result.curves, []);
-  assert.deepEqual(result.unmodelledEsters, []);
 });
 
 test('each dose resolves its own episode, so a backdated dose gets the ester in effect then', () => {
@@ -305,7 +308,6 @@ test('a scale factor multiplies the band and nothing else about the curve', () =
 
   assert.equal(scaled[0].ester, plain.curves[0].ester);
   assert.equal(scaled[0].doseCount, plain.curves[0].doseCount);
-  assert.equal(scaled[0].hypothetical, plain.curves[0].hypothetical);
   for (const [i, point] of plain.curves[0].band.entries()) {
     assert.equal(scaled[0].band[i].day, point.day);
     assert.ok(Math.abs(scaled[0].band[i].lower - 1.4 * point.lower) < 1e-9);
@@ -351,31 +353,3 @@ test('no doses at all is an empty answer, not a flat band at zero', () => {
   assert.equal(result.dosesWithoutMilligrams, 0);
 });
 
-test('the copy’s claim about undecylate holds against the numbers it ships', () => {
-  /* The screen says undecylate's band spans more than tenfold where a fitted
-     ester's spans about a third (m.curve_hypothetical_body). That is a claim
-     about this data, so it is checked against this data - an earlier draft
-     said the shape was borrowed from another ester, which was simply not
-     true of these parameters, and nothing caught it. */
-  const spread = (ester: keyof typeof ESTER_POSTERIORS) => {
-    const averages = ESTER_POSTERIORS[ester]!.map(([d, , , k3]) => d / k3).sort((a, b) => a - b);
-    const at = (p: number) => averages[Math.round((averages.length - 1) * p)];
-    return at(0.975) / at(0.025);
-  };
-
-  assert.ok(spread('undecylate') > 10, `undecylate spans ${spread('undecylate').toFixed(1)}x`);
-  for (const ester of ['benzoate', 'valerate', 'cypionate', 'enanthate'] as const) {
-    assert.ok(spread(ester) < 1.6, `${ester} spans ${spread(ester).toFixed(1)}x, too wide for "about a third"`);
-  }
-});
-
-test('undecylate’s parameters are its own, not another ester’s reused', () => {
-  // The specific thing the old copy got wrong.
-  const others = new Set(
-    (['benzoate', 'valerate', 'cypionate', 'enanthate'] as const).flatMap((ester) =>
-      ESTER_POSTERIORS[ester]!.map((sample) => sample.join(','))
-    )
-  );
-  const shared = ESTER_POSTERIORS.undecylate!.filter((sample) => others.has(sample.join(',')));
-  assert.deepEqual(shared, []);
-});

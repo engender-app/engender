@@ -30,7 +30,6 @@
     max = 400,
     height = 150,
     width = 320,
-    hypothetical = false,
     formatValue,
     unitLabel,
     ariaLabel,
@@ -44,9 +43,6 @@
     max?: number;
     height?: number;
     width?: number;
-    /** Draws the band as a hatched, dashed shape instead of a solid one, for
-        a curve that is not fitted to data for its own ester. */
-    hypothetical?: boolean;
     /** For the axis labels. Supplied so no number formatting - and no
         paraglide - lives in here. */
     formatValue: (value: number) => string;
@@ -65,12 +61,6 @@
   } = $props();
 
   let interactive = $derived(onSelect !== undefined && pointLabel !== undefined);
-
-  /* A fixed id, not a generated one. Only a hypothetical curve draws the
-     hatch and undecylate is the only hypothetical ester, so at most one chart
-     on a screen ever defines it - there is nothing for a second instance to
-     collide with. */
-  const HATCH_ID = 'hormone-band-hatch';
 
   const P = 8;
   /* Room on the left for the axis labels, which sit inside the viewBox so
@@ -116,14 +106,6 @@
     role="img"
     aria-label={ariaLabel}
   >
-    {#if hypothetical}
-      <defs>
-        <pattern id={HATCH_ID} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="6" class="band-hatch-line" />
-        </pattern>
-      </defs>
-    {/if}
-
     <text x={AXIS - 5} y={P - 1} class="band-axis-label" text-anchor="end">{unitLabel}</text>
 
     {#each chart.ticks as tick (tick.value)}
@@ -131,14 +113,9 @@
       <text x={AXIS - 5} y={tick.y + 3.5} class="band-axis-label" text-anchor="end">{formatValue(tick.value)}</text>
     {/each}
 
-    <path
-      d={chart.band}
-      class="band-fill"
-      class:is-hypothetical={hypothetical}
-      fill={hypothetical ? `url(#${HATCH_ID})` : undefined}
-    />
-    <path d={chart.upperEdge} class="band-edge" class:is-hypothetical={hypothetical} />
-    <path d={chart.lowerEdge} class="band-edge" class:is-hypothetical={hypothetical} />
+    <path d={chart.band} class="band-fill" />
+    <path d={chart.upperEdge} class="band-edge" />
+    <path d={chart.lowerEdge} class="band-edge" />
 
     <!-- The user's own results, over the band and shaped unlike it: a filled
          square rather than a dot, so a measurement never reads as part of a
@@ -194,19 +171,6 @@
     fill: color-mix(in oklab, var(--chart-line) 34%, transparent);
   }
 
-  /* Hatched rather than solid, and the fill comes from the pattern, so a
-     hypothetical curve is a different kind of shape at a glance and not the
-     same shape in a paler colour. */
-  .band-fill.is-hypothetical {
-    fill: none;
-  }
-
-  .band-hatch-line {
-    stroke: var(--chart-line);
-    stroke-width: 1.5;
-    opacity: 0.45;
-  }
-
   /* Faint, and only to give the band a definite edge. Any heavier and the
      two edges read as two lines rather than as the sides of one shape. */
   .band-edge {
@@ -214,14 +178,6 @@
     stroke: var(--chart-line);
     stroke-width: 1;
     opacity: 0.35;
-  }
-
-  /* The hypothetical band has no solid fill, so here the dashed edge is what
-     defines the shape and has to carry it. */
-  .band-edge.is-hypothetical {
-    stroke-dasharray: 5 4;
-    stroke-width: 1.5;
-    opacity: 0.9;
   }
 
   .band-axis-label {

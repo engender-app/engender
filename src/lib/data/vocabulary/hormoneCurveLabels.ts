@@ -23,9 +23,7 @@ const ESTER_LABELS: Record<InjectableEster, Message> = {
   benzoate: m.curve_ester_benzoate,
   valerate: m.curve_ester_valerate,
   cypionate: m.curve_ester_cypionate,
-  enanthate: m.curve_ester_enanthate,
-  'polyestradiol-phosphate': m.curve_ester_polyestradiol_phosphate,
-  undecylate: m.curve_ester_undecylate
+  enanthate: m.curve_ester_enanthate
 };
 
 export const esterLabel = (ester: InjectableEster): string => ESTER_LABELS[ester]();
