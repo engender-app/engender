@@ -55,13 +55,15 @@ export function makeClinicianSummaryArea(
         sideEffects.getSideEffectsInRange(fromEpochDay, toEpochDay)
       ]);
 
-      /* Each episode's end is derived against the full, correctly-ordered
-         history first (regimenEpisode.ts), so a superseded episode still in
-         range keeps the end day its successor gives it even though that
-         successor itself may fall outside the window. An episode belongs in
-         the history if any part of its dated range overlaps the window -
-         the same overlap exposureCounters.ts's own overlapDays tests, kept
-         here as a filter rather than a count. */
+      /* episodes is regimen.getEpisodes()'s own order - ascending by
+         startEpochDay - which episodeEndEpochDay requires (regimenEpisode.ts).
+         Each episode's end is derived against that full, correctly-ordered
+         history first, so a superseded episode still in range keeps the end
+         day its successor gives it even though that successor itself may
+         fall outside the window. An episode belongs in the history if any
+         part of its dated range overlaps the window - the same overlap
+         exposureCounters.ts's own overlapDays tests, kept here as a filter
+         rather than a count. */
       const regimenEpisodes = episodes
         .map((episode, index) => ({ ...episode, endEpochDay: episodeEndEpochDay(episodes, index) }))
         .filter((episode) => episode.startEpochDay <= toEpochDay && (episode.endEpochDay === null || episode.endEpochDay >= fromEpochDay));
