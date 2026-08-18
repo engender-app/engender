@@ -78,6 +78,13 @@ const ENTRIES = [
     url: 'https://tranzycja.pl/'
   },
   {
+    key: 'pl-zaimki',
+    region: 'pl',
+    kind: 'info',
+    name: 'zaimki.pl',
+    url: 'https://zaimki.pl/'
+  },
+  {
     key: 'int-translifeline',
     region: 'int',
     kind: 'helpline',
