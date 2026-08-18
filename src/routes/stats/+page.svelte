@@ -186,6 +186,15 @@
     </a>
   {/if}
 
+  <SectionTitle text={m.compare_title()} />
+  <a class="card spread recap-cta" href="/compare">
+    <span class="row-text">
+      <span class="row-title">{m.compare_title()}</span>
+      <span class="row-subtitle">{m.compare_sub()}</span>
+    </span>
+    <Icon name="chevronRight" size={20} />
+  </a>
+
   <Sheet open={valueSheet !== null} title={valueSheet?.name ?? ''} onClose={() => (valueSheet = null)}>
     {#if valueSheet}
       <h3>{m.values_title({ name: valueSheet.name })}</h3>

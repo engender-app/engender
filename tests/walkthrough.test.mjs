@@ -1376,6 +1376,42 @@ try {
   ok('declining the quick log dims prompt leaves the saved entry untouched');
 } catch (e) { fail('quick log dims prompt (decline)', e); }
 
+/* 25. ticket 18's compare-two-periods stats screen (phase 4 features): two
+   independently picked ranges show their own core figures side by side,
+   with no computed delta rendered between them. */
+try {
+  await fresh('/compare');
+  const { aStart, aEnd, bStart, bEnd } = await page.evaluate(() => {
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const today = new Date();
+    const daysAgo = (n) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - n);
+      return d;
+    };
+    return { aStart: fmt(daysAgo(29)), aEnd: fmt(today), bStart: fmt(daysAgo(59)), bEnd: fmt(daysAgo(30)) };
+  });
+
+  await page.locator('#compare-a-start').fill(aStart);
+  await page.locator('#compare-a-end').fill(aEnd);
+  await page.locator('#compare-b-start').fill(bStart);
+  await page.locator('#compare-b-end').fill(bEnd);
+
+  await page.waitForSelector('[data-compare-table]');
+  const entriesRow = page.locator('.compare-metrics-row', { hasText: 'Entries logged' });
+  const entriesValues = await entriesRow.locator('span').allTextContents();
+  if (entriesValues.length !== 3) throw new Error('entries row: ' + JSON.stringify(entriesValues));
+  if (entriesValues[1] === '0' || entriesValues[2] === '0') {
+    throw new Error('one of the two periods had no entries: ' + JSON.stringify(entriesValues));
+  }
+
+  const headerValues = await page.locator('.compare-metrics-header .compare-period-label').allTextContents();
+  if (headerValues[0] === headerValues[1]) throw new Error('the two period labels read the same: ' + JSON.stringify(headerValues));
+
+  if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('compare is not view-only');
+  ok('two independently picked periods compare side by side with no computed delta');
+} catch (e) { fail('compare two periods', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');
