@@ -1,15 +1,11 @@
 package dev.barankiewicz.genderdiary.widgets;
 
-import android.appwidget.AppWidgetManager;
-import android.appwidget.AppWidgetProvider;
-import android.content.ComponentName;
 import android.content.Context;
-import android.view.View;
-import android.widget.RemoteViews;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import dev.barankiewicz.genderdiary.R;
-import dev.barankiewicz.genderdiary.disguise.DisguiseAlias;
-import dev.barankiewicz.genderdiary.launch.AppLaunch;
 
 /**
  * A home-screen widget offering one-tap mood logging (ticket 26). Each of
@@ -22,14 +18,9 @@ import dev.barankiewicz.genderdiary.launch.AppLaunch;
  * <p>Nothing here reads or shows journal data (today's mood, a streak) -
  * the buttons are a static input control, not a display of what has
  * already been logged. The one thing that does vary at render time is
- * disguise mode: {@link #buttonLabel} swaps the mood name for the plain
- * digit already printed on the button, and the header (which names what
- * the buttons are for) is hidden outright, mirroring how
- * ReminderAlarmReceiver.resolveNotificationTitle swaps a reminder's title
- * for the channel name under hideNotificationTitles - a live read at
- * render time, not a second copy of the preference.
+ * disguise mode, handled once by {@link DisguisableWidgetProvider}.
  */
-public class QuickLogWidgetProvider extends AppWidgetProvider {
+public class QuickLogWidgetProvider extends DisguisableWidgetProvider {
 
     private static final int[] MOODS = {1, 2, 3, 4, 5};
     private static final int[] BUTTON_IDS = {
@@ -37,20 +28,24 @@ public class QuickLogWidgetProvider extends AppWidgetProvider {
     };
 
     @Override
-    public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        RemoteViews views = buildViews(context);
-        for (int id : appWidgetIds) appWidgetManager.updateAppWidget(id, views);
+    int layoutId() {
+        return R.layout.widget_quick_log;
     }
 
-    /** Called from DisguisePlugin.setDisguised right after the launcher
-        alias flips, so an already-placed widget goes neutral immediately
-        rather than waiting for the next system-scheduled onUpdate. */
-    public static void updateAll(Context context) {
-        AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        int[] ids = manager.getAppWidgetIds(new ComponentName(context, QuickLogWidgetProvider.class));
-        if (ids.length == 0) return;
-        RemoteViews views = buildViews(context);
-        for (int id : ids) manager.updateAppWidget(id, views);
+    @Override
+    int headerViewId() {
+        return R.id.widget_header;
+    }
+
+    @Override
+    List<ButtonSpec> buttons(Context context) {
+        String[] moodNames = context.getResources().getStringArray(R.array.widget_mood_names);
+        List<ButtonSpec> specs = new ArrayList<>(MOODS.length);
+        for (int i = 0; i < MOODS.length; i++) {
+            int mood = MOODS[i];
+            specs.add(new ButtonSpec(BUTTON_IDS[i], moodNames[i], moodRoute(mood), "widget-mood-" + mood, 100 + mood));
+        }
+        return specs;
     }
 
     /** The route a mood button's PendingIntent deep-links to - "today"
@@ -62,32 +57,5 @@ public class QuickLogWidgetProvider extends AppWidgetProvider {
         (ADR-0028). */
     static String moodRoute(int mood) {
         return "/entry/new/today?seedMood=" + mood;
-    }
-
-    /** What a mood button's accessible label reads as: the mood's own name
-        ("Awful".."Great") normally, or nothing beyond the plain digit
-        already printed on the button while disguise mode is on - a screen
-        reader is as much an at-rest surface as the visible icon, so the
-        swap has to cover both. */
-    static String buttonLabel(boolean disguised, String moodName) {
-        return disguised ? null : moodName;
-    }
-
-    static RemoteViews buildViews(Context context) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_quick_log);
-        boolean disguised = DisguiseAlias.isDisguised(context);
-        views.setViewVisibility(R.id.widget_header, disguised ? View.GONE : View.VISIBLE);
-
-        String[] moodNames = context.getResources().getStringArray(R.array.widget_mood_names);
-        for (int i = 0; i < MOODS.length; i++) {
-            int buttonId = BUTTON_IDS[i];
-            String label = buttonLabel(disguised, moodNames[i]);
-            if (label != null) views.setContentDescription(buttonId, label);
-            views.setOnClickPendingIntent(
-                buttonId,
-                AppLaunch.openAppIntent(context, moodRoute(MOODS[i]), "widget-mood-" + MOODS[i], 100 + MOODS[i])
-            );
-        }
-        return views;
     }
 }

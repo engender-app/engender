@@ -60,7 +60,7 @@ public class DoubtWidgetProviderRenderTest {
     }
 
     private View inflate() {
-        RemoteViews views = DoubtWidgetProvider.buildViews(context);
+        RemoteViews views = new DoubtWidgetProvider().buildViews(context);
         return views.apply(context, new FrameLayout(context));
     }
 }

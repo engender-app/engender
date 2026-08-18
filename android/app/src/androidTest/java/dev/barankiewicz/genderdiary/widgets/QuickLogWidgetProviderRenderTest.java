@@ -65,7 +65,7 @@ public class QuickLogWidgetProviderRenderTest {
     }
 
     private View inflate() {
-        RemoteViews views = QuickLogWidgetProvider.buildViews(context);
+        RemoteViews views = new QuickLogWidgetProvider().buildViews(context);
         return views.apply(context, new FrameLayout(context));
     }
 }
