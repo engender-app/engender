@@ -47,6 +47,7 @@
    file on disk. */
 
 import { CorruptArchiveError } from '../archive/container';
+import { openArchive } from '../archive/pack';
 import type { ArchiveJournal, ArchivePhoto } from '../archive/payload';
 import { foldText } from '../fold';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -203,6 +204,21 @@ export async function restoreArchive(
     await applyDoseEvents(restoring);
     await applyMedicationStock(restoring);
   });
+}
+
+/** The backup health drill (ticket 28): proves a chosen archive still
+    decrypts and parses, without a driver or a file store to write into -
+    the signature is the guarantee that the live journal cannot be touched.
+    Draining `files` to the end is not incidental: it is what forces every
+    chunk's AES-GCM tag to be checked, including the ones holding only
+    photos that the header and payload alone never reach (pack.ts's
+    OpenedArchive doc, ADR-0007). */
+export async function verifyArchive(source: AsyncIterable<Uint8Array>, password: string): Promise<void> {
+  const { payload, files } = await openArchive(source, password);
+  assertRestorable(payload.journal);
+
+  const iterator = files[Symbol.asyncIterator]();
+  while (!(await iterator.next()).done);
 }
 
 const COLLECTIONS = [

@@ -6,9 +6,11 @@ import { DecryptionFailedError } from '../../crypto/aesGcm.ts';
 import { deriveKey } from '../../crypto/argon2id.ts';
 import { PREFERENCE_DEFAULTS, DEVICE_LOCAL_KEYS, PORTABLE_KEYS, type PreferenceValues } from '../prefs/catalogue.ts';
 import { openJournal } from '../journal/journal.ts';
+import { verifyArchive } from '../journal/restore.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import {
+  CHUNK_SIZE,
   CorruptArchiveError,
   UnsupportedArchiveError,
   byteReader,
@@ -17,7 +19,7 @@ import {
   unframeArchive
 } from './container.ts';
 import { packArchive, openArchive, type ArchiveContents } from './pack.ts';
-import { portablePreferences } from './payload.ts';
+import { portablePreferences, type ArchiveJournal } from './payload.ts';
 
 /* The archive parameters take about a second per derivation by design
    (ADR-0013), and these tests derive a key twice per round trip. The
@@ -244,6 +246,88 @@ test('a file that is not an archive is refused', async () => {
   await assert.rejects(unpack(bytes('PK a zip file, or a photo, or anything else')), UnsupportedArchiveError);
 });
 
+/* The backup health drill (ticket 28): proves an archive still opens
+   without ever handing it a driver or a file store to write into. Every
+   case below reuses the same refusals openArchive/unpack already prove -
+   the drill's whole point is that it is the restore path with the write
+   step removed, not a second way to fail. */
+test('verifying a sound archive succeeds and reports nothing to write', async () => {
+  const { contents } = await contentsOf();
+  const archive = await pack(contents);
+
+  await assert.doesNotReject(verifyArchive(oneShot(archive), 'correct horse'));
+});
+
+test('verifying rejects a wrong password, the same as opening it would', async () => {
+  const { contents } = await contentsOf();
+  const archive = await pack(contents);
+
+  await assert.rejects(verifyArchive(oneShot(archive), 'Correct Horse'), DecryptionFailedError);
+});
+
+test('verifying notices a corrupt second chunk that opening alone never reads', async () => {
+  // A photo just over one chunk (container.ts's CHUNK_SIZE) so the body
+  // spans two chunks: the payload JSON is small enough that decoding it
+  // pulls only the first chunk, leaving the second's tag unchecked until
+  // something reads past it. Opening alone hands back a lazy generator over
+  // the files (pack.ts's OpenedArchive doc) and stops there - the drill has
+  // to drain it, which is the property this test is really about.
+  const length = CHUNK_SIZE + 4096;
+  const contents: ArchiveContents = {
+    journal: EMPTY_JOURNAL,
+    preferences: portablePreferences(PREFERENCE_DEFAULTS),
+    files: [{ name: 'big.jpg', length }],
+    async readFile() {
+      return new Uint8Array(length).fill(7);
+    }
+  };
+  const archive = await pack(contents);
+  const corrupted = new Uint8Array(archive);
+  corrupted[corrupted.length - 100] ^= 0xff;
+
+  await assert.doesNotReject(openArchive(oneShot(corrupted), 'correct horse'));
+  await assert.rejects(verifyArchive(oneShot(corrupted), 'correct horse'), DecryptionFailedError);
+});
+
+test('verifying a truncated archive fails rather than passing on a silently short one', async () => {
+  const { contents } = await contentsOf();
+  const archive = await pack(contents);
+
+  await assert.rejects(
+    verifyArchive(oneShot(archive.subarray(0, archive.length - 40)), 'correct horse'),
+    (error: Error) => error instanceof DecryptionFailedError || error instanceof CorruptArchiveError
+  );
+});
+
+test('verifying an archive from a newer format version is refused before the password is used', async () => {
+  const { contents } = await contentsOf();
+  const archive = new Uint8Array(await pack(contents));
+  new DataView(archive.buffer).setUint16(6, 99);
+
+  await assert.rejects(verifyArchive(oneShot(archive), 'anything at all'), UnsupportedArchiveError);
+});
+
+test('verifying an archive whose journal shape is unreadable fails before anything else runs', async () => {
+  const { contents } = await contentsOf();
+  const broken = { ...contents, journal: { ...contents.journal, entries: 'not an array' as never } };
+  const archive = await pack(broken);
+
+  await assert.rejects(verifyArchive(oneShot(archive), 'correct horse'), CorruptArchiveError);
+});
+
+test('verifying a different archive leaves a live journal exactly as it was', async () => {
+  const { journal: live } = await populatedJournal();
+  const before = await live.archive.snapshot();
+
+  const { contents } = await contentsOf();
+  const archive = await pack(contents);
+
+  await verifyArchive(oneShot(archive), 'correct horse');
+  await assert.rejects(verifyArchive(oneShot(archive), 'wrong password entirely'));
+
+  assert.deepEqual((await live.archive.snapshot()).journal, before.journal);
+});
+
 /* Peak memory is the reason the format is chunked at all (ADR-0007), so
    these two check the property rather than the shape: nothing may read the
    photo set into memory to pack it, and nothing may hold more than a chunk
@@ -253,37 +337,39 @@ test('a file that is not an archive is refused', async () => {
 const BIG_FILE = 2 * 1024 * 1024;
 const BIG_FILE_COUNT = 32;
 
+const EMPTY_JOURNAL: ArchiveJournal = {
+  dimensions: [],
+  presets: [],
+  tagGroups: [],
+  entries: [],
+  milestones: [],
+  labResults: [],
+  measurements: [],
+  sideEffects: [],
+  personalEffects: [],
+  hairStages: [],
+  hairPhotos: [],
+  reminders: [],
+  tallyEvents: [],
+  regimenEpisodes: [],
+  doubtEntries: [],
+  counterevidenceSnapshots: [],
+  letters: [],
+  doseEvents: [],
+  doseSchedules: [],
+  dosePauses: [],
+  medicationStock: [],
+  tryouts: [],
+  feltSenseEntries: []
+};
+
 function bigContents(): { contents: ArchiveContents; reads: string[] } {
   const reads: string[] = [];
   const files = Array.from({ length: BIG_FILE_COUNT }, (_, i) => ({ name: `photo-${i}.jpg`, length: BIG_FILE }));
   return {
     reads,
     contents: {
-      journal: {
-        dimensions: [],
-        presets: [],
-        tagGroups: [],
-        entries: [],
-        milestones: [],
-        labResults: [],
-        measurements: [],
-        sideEffects: [],
-        personalEffects: [],
-        hairStages: [],
-        hairPhotos: [],
-        reminders: [],
-        tallyEvents: [],
-        regimenEpisodes: [],
-        doubtEntries: [],
-        counterevidenceSnapshots: [],
-        letters: [],
-        doseEvents: [],
-        doseSchedules: [],
-        dosePauses: [],
-        medicationStock: [],
-        tryouts: [],
-        feltSenseEntries: []
-      },
+      journal: EMPTY_JOURNAL,
       preferences: portablePreferences(PREFERENCE_DEFAULTS),
       files,
       async readFile(name) {
