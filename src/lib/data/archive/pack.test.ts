@@ -276,6 +276,7 @@ function bigContents(): { contents: ArchiveContents; reads: string[] } {
         doubtEntries: [],
         counterevidenceSnapshots: [],
         letters: [],
+        roadmapChecks: [],
         doseEvents: [],
         doseSchedules: [],
         dosePauses: [],

@@ -131,6 +131,8 @@ async function populated() {
     { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
   ]);
 
+  await journal.roadmap.setGoalChecked('pl', 'pl-legal-court-file', true);
+
   const tryout = await journal.tryouts.upsertTryout({
     kind: 'name',
     label: 'Alex',
@@ -274,6 +276,24 @@ test('merging the same archive twice duplicates neither a doubt entry nor a coun
 
   assert.equal((await target.journal.doubtJournal.getEntries(10)).length, 1);
   assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
+});
+
+/* A tick travels as a pack/goal pair, not a uuid, so merging twice has to
+   land on the row already there rather than a second copy of it - and a
+   tick the importing device made itself must survive a merge that has
+   never heard of it. */
+test('merging carries a roadmap tick, twice over, without disturbing the target own ticks', async () => {
+  const source = await populated();
+  const target = await device();
+  await target.journal.roadmap.setGoalChecked('pl', 'pl-social-tell-someone', true);
+
+  await target.journal.archive.merge(await exported(source.journal));
+  await target.journal.archive.merge(await exported(source.journal));
+
+  assert.deepEqual(await target.journal.roadmap.getCheckedGoals('pl'), [
+    'pl-legal-court-file',
+    'pl-social-tell-someone'
+  ]);
 });
 
 test('merging the same archive twice duplicates neither a tryout nor its felt-sense entry', async () => {

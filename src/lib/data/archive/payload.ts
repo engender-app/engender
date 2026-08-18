@@ -180,6 +180,16 @@ export interface ArchiveLetter {
   unlockEpochDay: number;
 }
 
+/** One ticked-off transition-roadmap goal (phase 4 ticket 23), named by
+    its pack and its goal key rather than a uuid - both strings mean the
+    same thing on every device, so two installs that ticked the same goal
+    ticked the same goal (ADR-0002). Untucked goals travel as absence:
+    there is no row for one, here or in the journal. */
+export interface ArchiveRoadmapCheck {
+  packKey: string;
+  goalKey: string;
+}
+
 /** One counterevidence entry as it read at the moment its snapshot was
     saved (phase 4 ticket 11) - copied fields, not a reference to the
     source entry's id, the same reasoning the snapshot table itself argues
@@ -352,6 +362,7 @@ export interface ArchiveJournal {
   doubtEntries: ArchiveDoubtEntry[];
   counterevidenceSnapshots: ArchiveCounterevidenceSnapshot[];
   letters: ArchiveLetter[];
+  roadmapChecks: ArchiveRoadmapCheck[];
   regimenEpisodes: ArchiveRegimenEpisode[];
   doseEvents: ArchiveDoseEvent[];
   doseSchedules: ArchiveDoseSchedule[];

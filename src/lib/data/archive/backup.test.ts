@@ -23,6 +23,7 @@ const emptySnapshot: ArchiveSnapshot = {
     doubtEntries: [],
     counterevidenceSnapshots: [],
     letters: [],
+    roadmapChecks: [],
     doseEvents: [],
     doseSchedules: [],
     dosePauses: [],

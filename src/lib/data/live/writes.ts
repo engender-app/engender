@@ -69,7 +69,11 @@ export type TableName =
      ticket 16), the same reasoning 'doubtJournal' gives. */
   | 'tryout'
   /* Time-capsule letters (phase 4 ticket 19). */
-  | 'letter';
+  | 'letter'
+  /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
+     pack's ticks: they live in one table and a screen shows one pack at a
+     time, so there is nothing a per-pack name would let a query skip. */
+  | 'roadmapCheck';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -92,7 +96,8 @@ export const TABLE_NAMES: TableName[] = [
   'hairProgress',
   'doubtJournal',
   'tryout',
-  'letter'
+  'letter',
+  'roadmapCheck'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -206,6 +211,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   letters: {
     writes: { addLetter: ['letter'], deleteLetter: ['letter'] },
     reads: ['getLetters']
+  },
+  roadmap: {
+    writes: { setGoalChecked: ['roadmapCheck'] },
+    reads: ['getCheckedGoals']
   },
   tally: {
     writes: { log: ['tally'], setContext: ['tally'], deleteEvent: ['tally'] },

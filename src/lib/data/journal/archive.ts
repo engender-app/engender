@@ -42,6 +42,7 @@ import type {
   ArchiveHairStage,
   ArchiveLabResult,
   ArchiveLetter,
+  ArchiveRoadmapCheck,
   ArchiveMeasurement,
   ArchiveMedicationStock,
   ArchiveMilestone,
@@ -325,6 +326,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       'SELECT uuid, epoch_day, text, unlock_epoch_day FROM letter ORDER BY epoch_day, id'
     );
     return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, text: r.text, unlockEpochDay: r.unlock_epoch_day }));
+  };
+
+  const roadmapChecks = async (): Promise<ArchiveRoadmapCheck[]> => {
+    const rows = await driver.query<{ pack_key: string; goal_key: string }>(
+      'SELECT pack_key, goal_key FROM roadmap_check ORDER BY pack_key, goal_key'
+    );
+    return rows.map((r) => ({ packKey: r.pack_key, goalKey: r.goal_key }));
   };
 
   const tryouts = async (): Promise<ArchiveTryout[]> => {
@@ -628,6 +636,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           doubtEntries: await doubtEntries(),
           counterevidenceSnapshots: await counterevidenceSnapshots(),
           letters: await letters(),
+          roadmapChecks: await roadmapChecks(),
           regimenEpisodes: await regimenEpisodes(),
           doseEvents: await doseEvents(),
           doseSchedules: await doseSchedules(),

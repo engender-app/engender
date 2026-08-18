@@ -29,6 +29,7 @@ import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEff
 import { makePhotosArea, type PhotosArea } from './photos';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
+import { makeRoadmapArea, type RoadmapArea } from './roadmap';
 import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeStockArea, type StockArea } from './stock';
@@ -134,6 +135,11 @@ export interface Journal {
       unlock day and nothing else - letterStatus.ts derives sealed/
       unlocked against today (ADR-0010) above this seam. */
   letters: LettersArea;
+  /** Which goals of which country pack someone has ticked off on the
+      transition roadmap (phase 4 ticket 23). Holds ticks only: what the
+      goals say is a bundled content module, not a table, so this area
+      never validates a pack key it was handed. */
+  roadmap: RoadmapArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -179,6 +185,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     doubtJournal: makeDoubtJournalArea(driver),
     tryouts: makeTryoutsArea(driver),
     letters: makeLettersArea(driver),
+    roadmap: makeRoadmapArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)
