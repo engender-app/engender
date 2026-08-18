@@ -1,0 +1,614 @@
+{
+  "dimensions": [
+    {
+      "key": "euphoria_dysphoria",
+      "name": "",
+      "low": "",
+      "high": "",
+      "min": 0,
+      "max": 100,
+      "builtIn": true,
+      "hidden": false
+    },
+    {
+      "key": "femininity",
+      "name": "",
+      "low": "",
+      "high": "",
+      "min": 0,
+      "max": 100,
+      "builtIn": true,
+      "hidden": false
+    },
+    {
+      "key": "masculinity",
+      "name": "",
+      "low": "",
+      "high": "",
+      "min": 0,
+      "max": 100,
+      "builtIn": true,
+      "hidden": true
+    },
+    {
+      "key": "binary_nonbinary",
+      "name": "",
+      "low": "",
+      "high": "",
+      "min": 0,
+      "max": 100,
+      "builtIn": true,
+      "hidden": false
+    },
+    {
+      "key": "agender_gendered",
+      "name": "",
+      "low": "",
+      "high": "",
+      "min": 0,
+      "max": 100,
+      "builtIn": true,
+      "hidden": false
+    },
+    {
+      "key": "0e3f5f11-e2d8-485b-a871-4bc2d6d7efd9",
+      "name": "Voice comfort",
+      "low": "off",
+      "high": "mine",
+      "min": 0,
+      "max": 10,
+      "builtIn": false,
+      "hidden": false
+    }
+  ],
+  "presets": [
+    {
+      "id": "p-btw",
+      "name": "",
+      "builtIn": true,
+      "dims": [
+        "euphoria_dysphoria",
+        "femininity"
+      ]
+    },
+    {
+      "id": "p-masc",
+      "name": "",
+      "builtIn": true,
+      "dims": [
+        "euphoria_dysphoria",
+        "masculinity"
+      ]
+    },
+    {
+      "id": "p-fem-masc",
+      "name": "",
+      "builtIn": true,
+      "dims": [
+        "euphoria_dysphoria",
+        "femininity",
+        "masculinity"
+      ]
+    },
+    {
+      "id": "p-fluid",
+      "name": "",
+      "builtIn": true,
+      "dims": [
+        "euphoria_dysphoria",
+        "femininity",
+        "masculinity",
+        "binary_nonbinary"
+      ]
+    },
+    {
+      "id": "p-agender",
+      "name": "",
+      "builtIn": true,
+      "dims": [
+        "euphoria_dysphoria",
+        "agender_gendered"
+      ]
+    },
+    {
+      "id": "p-demi-fem",
+      "name": "",
+      "builtIn": true,
+      "dims": [
+        "euphoria_dysphoria",
+        "femininity",
+        "agender_gendered"
+      ]
+    },
+    {
+      "id": "p-demi-masc",
+      "name": "",
+      "builtIn": true,
+      "dims": [
+        "euphoria_dysphoria",
+        "masculinity",
+        "agender_gendered"
+      ]
+    },
+    {
+      "id": "p-nb",
+      "name": "",
+      "builtIn": true,
+      "dims": [
+        "euphoria_dysphoria",
+        "femininity",
+        "masculinity",
+        "binary_nonbinary",
+        "agender_gendered"
+      ]
+    },
+    {
+      "id": "bb362777-ec70-41d3-95ba-305da06fb0be",
+      "name": "Mine",
+      "builtIn": false,
+      "dims": [
+        "0e3f5f11-e2d8-485b-a871-4bc2d6d7efd9",
+        "femininity"
+      ]
+    }
+  ],
+  "tagGroups": [
+    {
+      "key": "gender",
+      "name": "",
+      "enabled": true,
+      "builtIn": true,
+      "tags": [
+        {
+          "id": "g-soc-dys",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "g-body-dys",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "g-soc-eu",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "g-body-eu",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "g-euphoria",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "g-transphobia",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "g-gendered-ok",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "g-misgendered",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "key": "emotions",
+      "name": "",
+      "enabled": true,
+      "builtIn": true,
+      "tags": [
+        {
+          "id": "e-happy",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "e-calm",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "e-anxious",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "e-sad",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "e-hopeful",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "e-tired",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "310219bf-fa02-4f9a-b38b-8336e28c1510",
+          "label": "wired",
+          "builtIn": false,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "key": "activities",
+      "name": "",
+      "enabled": false,
+      "builtIn": true,
+      "tags": [
+        {
+          "id": "a-work",
+          "label": "",
+          "builtIn": true,
+          "hidden": true
+        },
+        {
+          "id": "a-friends",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "a-family",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "a-exercise",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "a-therapy",
+          "label": "therapy session",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "a-shopping",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "a-selfcare",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "key": "imported",
+      "name": "",
+      "enabled": true,
+      "builtIn": true,
+      "tags": []
+    },
+    {
+      "key": "dysphoria_type",
+      "name": "",
+      "enabled": true,
+      "builtIn": true,
+      "tags": [
+        {
+          "id": "dt-physical",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "dt-biochemical",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "dt-social",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "dt-societal",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "dt-sexual",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "dt-presentational",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        },
+        {
+          "id": "dt-existential",
+          "label": "",
+          "builtIn": true,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "key": "5c750e78-f738-4dd2-9a02-d56447f87144",
+      "name": "Appointments",
+      "enabled": true,
+      "builtIn": false,
+      "tags": [
+        {
+          "id": "4d0b7d93-3c0c-4993-9038-e6a8c37c6b1b",
+          "label": "endo",
+          "builtIn": false,
+          "hidden": false
+        }
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "uuid": "44fb1958-4c0c-4353-a004-b632caccb67f",
+      "epochDay": 20000,
+      "timestamp": 1700000000000,
+      "mood": 4,
+      "note": "a good day, zażółć gęślą jaźń",
+      "dims": {
+        "femininity": 60,
+        "0e3f5f11-e2d8-485b-a871-4bc2d6d7efd9": 7
+      },
+      "tags": [
+        "e-happy",
+        "4d0b7d93-3c0c-4993-9038-e6a8c37c6b1b"
+      ],
+      "photos": [
+        {
+          "id": "ea71f7e4-0196-4f05-a49c-acff31d7f242",
+          "fileName": "ea71f7e4-0196-4f05-a49c-acff31d7f242.jpg"
+        }
+      ],
+      "recordings": [
+        {
+          "id": "810a6d90-f168-4f41-8f24-cd0eb155106c",
+          "fileName": "810a6d90-f168-4f41-8f24-cd0eb155106c.webm"
+        }
+      ],
+      "bodyRegions": {
+        "chest": 45
+      }
+    }
+  ],
+  "milestones": [
+    {
+      "id": "53749183-b34e-4823-a282-b7f8b1b6e050",
+      "name": "HRT start",
+      "epochDay": 19000,
+      "templateKey": "hrt_start",
+      "photo": {
+        "id": "90698356-684d-438f-9924-f79bf4bfde3f",
+        "fileName": "90698356-684d-438f-9924-f79bf4bfde3f.jpg"
+      }
+    }
+  ],
+  "labResults": [
+    {
+      "id": "eb0099e8-4877-4d49-9208-170a5100137f",
+      "epochDay": 20004,
+      "analyte": "estradiol",
+      "value": 412.5,
+      "unit": "pmol/L",
+      "note": "",
+      "drawTime": "07:40",
+      "provider": "Diagnostyka",
+      "timingRoute": null,
+      "timingHours": null,
+      "timingDayOfInterval": null
+    }
+  ],
+  "measurements": [
+    {
+      "id": "7c3269d5-5187-4a23-89d4-f206b2e74934",
+      "type": "waist",
+      "epochDay": 20000,
+      "value": 79,
+      "unit": "cm"
+    }
+  ],
+  "sideEffects": [
+    {
+      "id": "2dca3a56-4fe5-4768-a518-d5b35befa23a",
+      "name": "hot flashes",
+      "severity": 3,
+      "epochDay": 20000
+    }
+  ],
+  "personalEffects": [
+    {
+      "id": "4f1dbf9d-b2d3-4021-9591-009e450be718",
+      "effect": "breast_development",
+      "firstNoticedEpochDay": 19180
+    }
+  ],
+  "hairStages": [
+    {
+      "id": "90bf58ac-a07b-4c29-ba54-dadc7d8c83db",
+      "epochDay": 19200,
+      "stage": "2a"
+    }
+  ],
+  "hairPhotos": [
+    {
+      "id": "8bc8c882-bd6c-435e-832f-a04c07e11ff2",
+      "epochDay": 19200,
+      "fileName": "8bc8c882-bd6c-435e-832f-a04c07e11ff2.jpg"
+    }
+  ],
+  "reminders": [
+    {
+      "id": "c18d6ae9-91ba-4281-9cf4-28a3cb96f7ae",
+      "title": "injection",
+      "type": "injection",
+      "time": "08:00",
+      "recurrence": "EVERY_N_DAYS",
+      "interval": 7,
+      "anchorEpochDay": 20000,
+      "epochDay": null,
+      "enabled": true,
+      "autoSource": null
+    }
+  ],
+  "tallyEvents": [
+    {
+      "id": "69b27432-ba9d-486a-8e6a-1d2fb2569b5d",
+      "epochDay": 20000,
+      "kind": "misgendered",
+      "context": "wrong pronoun at the pharmacy"
+    }
+  ],
+  "doubtEntries": [
+    {
+      "id": "f1425c51-e92c-431c-a253-2222cea29600",
+      "epochDay": 20000,
+      "timestamp": 1787094669788,
+      "text": "am I even trans enough for this"
+    }
+  ],
+  "counterevidenceSnapshots": [
+    {
+      "id": "1cb5f68b-7d88-44ab-a229-2281d238deb3",
+      "epochDay": 20000,
+      "timestamp": 1787094669788,
+      "items": [
+        {
+          "epochDay": 19500,
+          "mood": 5,
+          "note": "euphoric at the appointment"
+        }
+      ]
+    }
+  ],
+  "letters": [
+    {
+      "id": "97cd0e7d-3435-4041-aee7-6c2597e58f16",
+      "epochDay": 20000,
+      "text": "read this in a year",
+      "unlockEpochDay": 20365
+    }
+  ],
+  "roadmapChecks": [
+    {
+      "packKey": "pl",
+      "goalKey": "pl-legal-court-file"
+    }
+  ],
+  "regimenEpisodes": [
+    {
+      "id": "4ed7e859-9229-48cc-aa1d-19091eb519b0",
+      "drug": "estradiol valerate",
+      "ester": "valerate",
+      "dose": 4,
+      "doseUnit": "mg",
+      "route": "im",
+      "interval": "every 2 weeks",
+      "startEpochDay": 19000,
+      "hidden": false
+    }
+  ],
+  "doseEvents": [
+    {
+      "id": "64895e18-b171-45df-adcd-661f4f186bb2",
+      "timestamp": 1700000000000,
+      "route": "im",
+      "dose": 4,
+      "doseUnit": "mg",
+      "injectionSite": "ventrogluteal-left",
+      "vehicle": "oil",
+      "applicationSite": null,
+      "status": "taken",
+      "scheduledDose": null,
+      "scheduledRoute": null,
+      "scheduledTimestamp": null
+    }
+  ],
+  "doseSchedules": [
+    {
+      "id": "1253b16b-2693-4371-ae73-6060515a2142",
+      "episodeId": "4ed7e859-9229-48cc-aa1d-19091eb519b0",
+      "everyNDays": 14,
+      "dosesPerDay": 1
+    }
+  ],
+  "dosePauses": [
+    {
+      "id": "c7cff226-ea74-4fac-9a74-21938bd6b939",
+      "episodeId": "4ed7e859-9229-48cc-aa1d-19091eb519b0",
+      "startEpochDay": 19100,
+      "endEpochDay": null,
+      "reason": "planned"
+    }
+  ],
+  "medicationStock": [
+    {
+      "id": "5f29fed6-6ab3-485b-9b7d-90fa767db4ae",
+      "drug": "estradiol valerate",
+      "quantity": 5,
+      "unit": "ampoules",
+      "recordedEpochDay": 20000,
+      "reminderEverCreated": false,
+      "reminderDismissed": false
+    }
+  ],
+  "tryouts": [
+    {
+      "id": "e7f08784-2560-4c6d-92ee-ce7ab3e66a59",
+      "kind": "name",
+      "label": "Alex",
+      "startEpochDay": 19900,
+      "endEpochDay": null
+    }
+  ],
+  "feltSenseEntries": [
+    {
+      "id": "cb84cace-3d71-4491-85d2-9845ad5cc39e",
+      "tryoutId": "e7f08784-2560-4c6d-92ee-ce7ab3e66a59",
+      "epochDay": 19910,
+      "mood": 4,
+      "note": "felt right"
+    }
+  ]
+}
