@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import type { ArchiveSnapshot } from '../journal/archive.ts';
+import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import { isDue, nextDueAt, runAndroidAutoExport } from './android-auto-export.ts';
 import { androidAutoExport } from './android-auto-export-bridge.ts';
 
@@ -19,32 +20,7 @@ vi.mock('./android-auto-export-bridge.ts', () => ({
 }));
 
 const snapshot: ArchiveSnapshot = {
-  journal: {
-    dimensions: [],
-    presets: [],
-    tagGroups: [],
-    entries: [],
-    milestones: [],
-    labResults: [],
-    measurements: [],
-    sideEffects: [],
-    personalEffects: [],
-    hairStages: [],
-    hairPhotos: [],
-    reminders: [],
-    tallyEvents: [],
-    regimenEpisodes: [],
-    doubtEntries: [],
-    counterevidenceSnapshots: [],
-    letters: [],
-    roadmapChecks: [],
-    doseEvents: [],
-    doseSchedules: [],
-    dosePauses: [],
-    medicationStock: [],
-    tryouts: [],
-    feltSenseEntries: []
-  },
+  journal: emptyArchiveJournal(),
   files: [],
   readFile: async () => {
     throw new Error('no files');

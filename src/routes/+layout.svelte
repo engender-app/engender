@@ -21,6 +21,7 @@
   import { App as AndroidAppPlugin } from '@capacitor/app';
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
   import { resolveAndroidBackAction } from '$lib/android/back-navigation';
+  import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import { androidReminders } from '$lib/reminders/android-bridge';
@@ -297,6 +298,9 @@
     (error) => console.error('Could not sync Android reminder schedules', error)
   );
 
+  /* androidReminders.consumeLaunchRoute is shared by reminders, check-in,
+     and - as of phase 4 features ticket 04 - wrapped and on-this-day
+     notifications, not just reminders despite the name. */
   async function consumeReminderLaunchRoute() {
     if (!isAndroid() || !isReadyState(bootState)) return;
     try {
@@ -306,26 +310,6 @@
     } catch (error) {
       console.error('Could not consume reminder launch route', error);
     }
-  }
-
-  /* Named for what it now validates, not for where the route came from: this
-     mechanism (androidReminders.consumeLaunchRoute) is shared by reminders,
-     check-in, and - as of phase 4 features ticket 04 - wrapped and
-     on-this-day notifications, mirroring the native allowlist in
-     ReminderScheduler.sanitizeLaunchRoute. */
-  function isValidAndroidLaunchRoute(route: string) {
-    return (
-      /^\/settings\/reminders(?:\/[^/]+)?$/.test(route) ||
-      /^\/entry\/new\/\d+$/.test(route) ||
-      // The quick-log widget's mood buttons (ticket 26).
-      /^\/entry\/new\/today\?seedMood=[1-5]$/.test(route) ||
-      // The tally widget's two buttons (ticket 33).
-      /^\/\?tally=(?:misgendered|correctly_gendered)$/.test(route) ||
-      // The doubt-entry widget's single tap target (ticket 34).
-      route === '/doubt' ||
-      /^\/wrapped\/(?:week|month|year)$/.test(route) ||
-      /^\/on-this-day(?:\?lookback=(?:month|sixMonths|year))?$/.test(route)
-    );
   }
 
   function chooseToday() {

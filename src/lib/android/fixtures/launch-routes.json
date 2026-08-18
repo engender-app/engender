@@ -1,0 +1,50 @@
+[
+  { "route": "/settings/reminders", "accepted": true },
+  { "route": "/settings/reminders/r-1", "accepted": true },
+  { "route": "/settings/reminders/", "accepted": false },
+  { "route": "/settings/reminders/r-1/extra", "accepted": false },
+
+  { "route": "/entry/new/20313", "accepted": true },
+  { "route": "/entry/new/0", "accepted": true },
+  { "route": "/entry/new/", "accepted": false },
+  { "route": "/entry/new/12a", "accepted": false },
+  { "route": "/entry/new/today", "accepted": false },
+
+  { "route": "/entry/new/today?seedMood=1", "accepted": true },
+  { "route": "/entry/new/today?seedMood=5", "accepted": true },
+  { "route": "/entry/new/today?seedMood=0", "accepted": false },
+  { "route": "/entry/new/today?seedMood=6", "accepted": false },
+  { "route": "/entry/new/today?seedMood=", "accepted": false },
+  { "route": "/entry/new/today?seedMood=12", "accepted": false },
+  { "route": "/entry/new/today?seedMood=three", "accepted": false },
+
+  { "route": "/?tally=misgendered", "accepted": true },
+  { "route": "/?tally=correctly_gendered", "accepted": true },
+  { "route": "/?tally=neutral", "accepted": false },
+  { "route": "/?tally=", "accepted": false },
+  { "route": "/?tally=misgendered&extra=1", "accepted": false },
+
+  { "route": "/doubt", "accepted": true },
+  { "route": "/doubts", "accepted": false },
+  { "route": "/doubt/", "accepted": false },
+  { "route": "/doubt?x=1", "accepted": false },
+
+  { "route": "/wrapped/week", "accepted": true },
+  { "route": "/wrapped/month", "accepted": true },
+  { "route": "/wrapped/year", "accepted": true },
+  { "route": "/wrapped/day", "accepted": false },
+  { "route": "/wrapped/", "accepted": false },
+  { "route": "/wrapped/week/extra", "accepted": false },
+
+  { "route": "/on-this-day", "accepted": true },
+  { "route": "/on-this-day?lookback=month", "accepted": true },
+  { "route": "/on-this-day?lookback=sixMonths", "accepted": true },
+  { "route": "/on-this-day?lookback=year", "accepted": true },
+  { "route": "/on-this-day?lookback=twoYears", "accepted": false },
+  { "route": "/on-this-day?lookback=", "accepted": false },
+  { "route": "/on-this-day/extra", "accepted": false },
+
+  { "route": "", "accepted": false },
+  { "route": "not-a-route", "accepted": false },
+  { "route": "//evil.example", "accepted": false }
+]
