@@ -16,7 +16,7 @@
    Writing it out as it is produced instead needs a save-file picker, which
    Android's WebView does not have. */
 
-import { foldText } from '../fold';
+import { nameSlug } from '../fold';
 import { dateInputValueFromEpochDay, todayEpochDay } from '../epochDay';
 
 /** Whether the file left, and how - so the caller can tell a cancelled
@@ -38,15 +38,6 @@ type Sharing = {
 export function exportFileName(name: string, extension: string, epochDay: number = todayEpochDay()): string {
   const slug = nameSlug(name);
   return `${slug ? `${slug}-` : ''}journal-${dateInputValueFromEpochDay(epochDay)}${extension}`;
-}
-
-/** The journal name reduced to what a file name can hold, empty when it
-    reduces to nothing. Shared with the photo journey export (ticket 27),
-    which builds a different name from the same slug. */
-export function nameSlug(name: string): string {
-  return foldText(name)
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
 }
 
 export async function deliverFile(file: {

@@ -722,8 +722,23 @@ try {
   else fail('the export consumes the stored full-size photos', JSON.stringify(r.readsWereFullPhotos));
 
   if (r.missingPhotoStillRendered && near(r.gapColour, MISSING))
-    ok('a photo whose file the sweep reclaimed leaves a gap rather than failing the whole export');
-  else fail('a photo whose file is gone leaves a gap', `rendered: ${r.missingPhotoStillRendered}, ${JSON.stringify(r.gapColour)}`);
+    ok('a photo with no file, reclaimed or never stored, leaves a gap rather than failing the whole export');
+  else fail('a photo with no file leaves a gap', `rendered: ${r.missingPhotoStillRendered}, ${JSON.stringify(r.gapColour)}`);
+
+  /* Ticket 27's out-of-scope line: no "upscaling beyond what the
+     already-normalized source photos support". A 200px photo in a 360px cell
+     sits at 200px, so the cell corner is still surround. */
+  if (near(r.tinyCentreColour, GREEN) && near(r.tinyCornerColour, SURROUND))
+    ok(`a photo smaller than its cell is centred at its own size, not stretched to fill (200px in a ${r.tinyCell}px cell)`);
+  else
+    fail(
+      'a photo smaller than its cell is not stretched to fill',
+      `centre ${JSON.stringify(r.tinyCentreColour)}, corner ${JSON.stringify(r.tinyCornerColour)}`
+    );
+
+  if (r.abortRejected)
+    ok('and a recording in flight can be abandoned, so a minutes-long timelapse is not a trap');
+  else fail('a recording in flight can be abandoned', `abortRejected: ${r.abortRejected}`);
 
   // --- the timelapse -----------------------------------------------------
   if (r.timelapseSupported) ok('MediaRecorder can record WebM here, which is what the timelapse option needs');

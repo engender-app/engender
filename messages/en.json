@@ -1720,8 +1720,8 @@
         "nPlural"
       ],
       "match": {
-        "nPlural=one": "About {n} second",
-        "nPlural=other": "About {n} seconds"
+        "nPlural=one": "About {n} second.",
+        "nPlural=other": "About {n} seconds."
       }
     }
   ],
@@ -1734,5 +1734,6 @@
   "pj_preview_collage_alt": "The collage you just made",
   "pj_shared": "Shared.",
   "pj_downloaded": "Saved. Check your downloads.",
-  "pj_failed": "That didn't work. Nothing was shared."
+  "pj_failed": "That didn't work. Nothing was shared.",
+  "pj_stop": "Stop"
 }

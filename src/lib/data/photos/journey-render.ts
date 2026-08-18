@@ -28,27 +28,53 @@ import {
 
 /** One photo's place in the export. The caption is already worded and
     formatted by the screen: dates read differently per locale and ADR-0016
-    keeps paraglide out of anything the Node tier imports. */
+    keeps paraglide out of anything the Node tier imports.
+
+    `fileName` is nullable because Photo.fileName is (types.ts): a photo with
+    no stored file draws the same gap as one whose file has gone, which is what
+    PhotoThumb does with the same case rather than the screen having to filter
+    the selection down and disagree with the count it showed. */
 export interface JourneyFrame {
-  fileName: string;
+  fileName: string | null;
   caption: string;
 }
 
-/** Full photo bytes by stored file name, or null when the file is gone -
-    the demo persona's photos have no files, and so does one whose file the
-    orphan sweep reclaimed. */
+/** Full photo bytes by stored file name, or null when there is no file to
+    read - one the orphan sweep reclaimed, or one a crash left a row for. */
 export type ReadPhoto = (fileName: string) => Promise<Uint8Array | null>;
 
 /** Called after each photo is drawn, so a screen can show progress through
     an export that takes tens of seconds. */
 export type JourneyProgress = (done: number, total: number) => void;
 
-/* The exported picture does not follow the app's theme. Someone sharing a
-   collage is sending a photograph, not a screenshot of their settings, and
-   a file that came out dark because the phone was in dark mode that evening
-   would be a surprise months later. Dark surround because that is what a
-   contact sheet of photographs wants. */
-const SURROUND = '#17151a';
+export interface JourneyRenderOptions {
+  onProgress?: JourneyProgress;
+  /** Abandons the export between photos. Worth having rather than assuming
+      nobody waits: a timelapse records in real time, so a 156-photo journey
+      is nearly two minutes with the button disabled, and there was no way out
+      of it. Checked per photo, so the wait to stop is one photo long. */
+  signal?: AbortSignal;
+}
+
+/** The abort check, spelled out rather than taken from signal's own
+    throwIfAborted(): that landed in Chrome 100 and this app's floor is
+    WebView 87 (ADR-0023), which is exactly the trap Object.hasOwn set there.
+    `aborted` and the DOMException constructor are both far below it. */
+function stopIfAsked(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new DOMException('the journey export was stopped', 'AbortError');
+}
+
+/** The ground the export is composed on.
+
+    The exported picture does not follow the app's theme. Someone sharing a
+    collage is sending a photograph, not a screenshot of their settings, and a
+    file that came out dark because the phone was in dark mode that evening
+    would be a surprise months later. Dark because that is what a contact
+    sheet of photographs wants.
+
+    Exported because the screen paints the same colour behind the preview, and
+    two copies of it would drift the moment one changed. */
+export const JOURNEY_SURROUND = '#17151a';
 const CAPTION_TEXT = '#f2eef5';
 const MISSING_PHOTO = '#2b2830';
 
@@ -60,8 +86,8 @@ const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
     decode. A single unreadable photo leaves a gap in the export rather than
     failing all of it - the export is the wrong place to find out, and the
     other twenty photos are still worth having. */
-async function decode(read: ReadPhoto, fileName: string): Promise<ImageBitmap | null> {
-  const bytes = await read(fileName);
+async function decode(read: ReadPhoto, fileName: string | null): Promise<ImageBitmap | null> {
+  const bytes = fileName ? await read(fileName) : null;
   if (!bytes) return null;
   try {
     return await createImageBitmap(new Blob([bytes as BlobPart]));
@@ -79,8 +105,13 @@ function drawCell(
   box: { x: number; y: number; cell: number; caption: number; fontSize: number }
 ): void {
   if (bitmap) {
-    const crop = fitCover(bitmap.width, bitmap.height, box.cell, box.cell);
-    context.drawImage(bitmap, crop.sx, crop.sy, crop.sWidth, crop.sHeight, box.x, box.y, box.cell, box.cell);
+    /* Destination as well as source: a photo too small to fill the cell is
+       centred at its own size rather than stretched (journey.ts). */
+    const fit = fitCover(bitmap.width, bitmap.height, box.cell, box.cell);
+    context.drawImage(
+      bitmap, fit.sx, fit.sy, fit.sWidth, fit.sHeight,
+      box.x + fit.x, box.y + fit.y, fit.width, fit.height
+    );
   } else {
     context.fillStyle = MISSING_PHOTO;
     context.fillRect(box.x, box.y, box.cell, box.cell);
@@ -97,17 +128,18 @@ function drawCell(
 export async function renderCollage(
   frames: JourneyFrame[],
   read: ReadPhoto,
-  onProgress?: JourneyProgress
+  options: JourneyRenderOptions = {}
 ): Promise<Blob> {
   const layout = collageLayout(frames.length);
   const canvas = new OffscreenCanvas(layout.width, layout.height);
   const context = canvas.getContext('2d');
   if (!context) throw new Error('no 2d canvas context to compose a collage with');
 
-  context.fillStyle = SURROUND;
+  context.fillStyle = JOURNEY_SURROUND;
   context.fillRect(0, 0, layout.width, layout.height);
 
   for (const [index, frame] of frames.entries()) {
+    stopIfAsked(options.signal);
     const column = index % layout.columns;
     const row = Math.floor(index / layout.columns);
     const bitmap = await decode(read, frame.fileName);
@@ -119,7 +151,7 @@ export async function renderCollage(
       fontSize: layout.fontSize
     });
     bitmap?.close();
-    onProgress?.(index + 1, frames.length);
+    options.onProgress?.(index + 1, frames.length);
   }
 
   return canvas.convertToBlob({ type: JOURNEY_MIME.collage, quality: COLLAGE_QUALITY });
@@ -150,7 +182,7 @@ export function timelapseSupported(): boolean {
 export async function recordTimelapse(
   frames: JourneyFrame[],
   read: ReadPhoto,
-  onProgress?: JourneyProgress
+  options: JourneyRenderOptions = {}
 ): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = TIMELAPSE_EDGE;
@@ -159,7 +191,7 @@ export async function recordTimelapse(
   if (!context) throw new Error('no 2d canvas context to record a timelapse with');
 
   const paint = async (frame: JourneyFrame) => {
-    context.fillStyle = SURROUND;
+    context.fillStyle = JOURNEY_SURROUND;
     context.fillRect(0, 0, TIMELAPSE_EDGE, TIMELAPSE_EDGE);
     const bitmap = await decode(read, frame.fileName);
     if (bitmap) {
@@ -193,16 +225,20 @@ export async function recordTimelapse(
   try {
     recorder.start();
     for (const [index, frame] of frames.entries()) {
+      stopIfAsked(options.signal);
       if (index > 0) await paint(frame);
       // Real time is the encoder's clock: this is how long the photo is on
       // screen and how long it lasts in the file.
       await delay(TIMELAPSE_MS_PER_PHOTO);
-      onProgress?.(index + 1, frames.length);
+      options.onProgress?.(index + 1, frames.length);
     }
     recorder.stop();
     await finished;
   } finally {
-    // Whatever happened, the capture track must not outlive this call.
+    /* Whatever happened, the recorder and the capture track must not outlive
+       this call - an abort leaves both running otherwise, and the canvas they
+       hold with them. */
+    if (recorder.state !== 'inactive') recorder.stop();
     for (const track of stream.getTracks()) track.stop();
   }
 

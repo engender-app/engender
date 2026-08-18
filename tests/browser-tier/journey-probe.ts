@@ -119,7 +119,7 @@ async function run() {
 
   // --- the collage --------------------------------------------------------
   const progress: number[] = [];
-  const collage = await renderCollage(frames, read, (done) => progress.push(done));
+  const collage = await renderCollage(frames, read, { onProgress: (done) => progress.push(done) });
   const layout = collageLayout(frames.length);
   const collageBytes = new Uint8Array(await collage.arrayBuffer());
 
@@ -157,12 +157,36 @@ async function run() {
   );
   result.coverOfPortrait = fitCover(800, 1200, layout.cell, layout.cell);
 
+  /* --- a photo smaller than its cell ------------------------------------
+     Ticket 27 puts upscaling out of scope and normalize.ts never upscales on
+     the way in, so a small import must sit small rather than be stretched to
+     fill. Drawn on its own so the cell is the full 360px: the corner of that
+     cell has to be surround and its centre the photo. */
+  const tiny = await renderCollage([{ fileName: 'tiny.jpg', caption: '4 Feb 2025' }], async () =>
+    solidJpeg(200, 200, GREEN)
+  );
+  const tinyLayout = collageLayout(1);
+  result.tinyCell = tinyLayout.cell;
+  result.tinyCornerColour = await pixelAt(tiny, tinyLayout.pad + 4, tinyLayout.pad + 4);
+  result.tinyCentreColour = await pixelAt(
+    tiny,
+    tinyLayout.pad + tinyLayout.cell / 2,
+    tinyLayout.pad + tinyLayout.cell / 2
+  );
+
   // --- a photo whose file is gone ----------------------------------------
+  /* Two ways a frame can have no picture: a file the sweep reclaimed, and a
+     row that names none at all (Photo.fileName is nullable). Both draw a gap
+     rather than failing the other three photos. */
   const withMissing = await renderCollage(
-    [...frames, { fileName: 'reclaimed-by-the-sweep.jpg', caption: '1 Sep 2025' }],
+    [
+      ...frames,
+      { fileName: 'reclaimed-by-the-sweep.jpg', caption: '1 Sep 2025' },
+      { fileName: null, caption: '2 Sep 2025' }
+    ],
     read
   );
-  const gapLayout = collageLayout(4);
+  const gapLayout = collageLayout(5);
   result.missingPhotoStillRendered = withMissing.size > 0;
   result.gapColour = await pixelAt(
     withMissing,
@@ -182,6 +206,19 @@ async function run() {
   result.timelapseSize = timelapse.size;
   result.timelapseEdge = TIMELAPSE_EDGE;
   result.firstFrame = await firstVideoFrame(timelapse);
+
+  /* --- stopping a long one ----------------------------------------------
+     A timelapse records in real time, so a long journey is minutes of
+     waiting. Aborting has to end it rather than leave the recorder running:
+     the call rejects with the abort, and nothing is returned. */
+  const stopper = new AbortController();
+  setTimeout(() => stopper.abort(), 300);
+  try {
+    await recordTimelapse([...frames, ...frames, ...frames], read, { signal: stopper.signal });
+    result.abortRejected = false;
+  } catch (error) {
+    result.abortRejected = (error as Error)?.name === 'AbortError';
+  }
 
   // Both outputs are made, and nothing has been shared.
   result.shareCallsAfterGenerating = shareCalls;

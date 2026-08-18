@@ -1735,9 +1735,9 @@
   "pj_none_in_range": "Brak zdjęć w tym zakresie.",
   "pj_output_title": "Co ma powstać",
   "pj_output_collage": "Kolaż",
-  "pj_output_timelapse": "Poklatkowy",
+  "pj_output_timelapse": "Film",
   "pj_collage_hint": "Jeden obraz, wszystkie zdjęcia w siatce, od najstarszego.",
-  "pj_timelapse_hint": "Film, zdjęcie po zdjęciu. Nagrywa się w tempie odtwarzania, więc powstaje tyle czasu, ile potem trwa.",
+  "pj_timelapse_hint": "Film, zdjęcie po zdjęciu. Nagrywa się w tempie odtwarzania, więc przygotowanie zajmuje tyle czasu, ile potem trwa film.",
   "pj_timelapse_length": [
     {
       "declarations": [
@@ -1748,15 +1748,15 @@
         "nPlural"
       ],
       "match": {
-        "nPlural=one": "Około {n} sekundy",
-        "nPlural=few": "Około {n} sekund",
-        "nPlural=many": "Około {n} sekund",
-        "nPlural=other": "Około {n} sekund"
+        "nPlural=one": "Około {n} sekundy.",
+        "nPlural=few": "Około {n} sekund.",
+        "nPlural=many": "Około {n} sekund.",
+        "nPlural=other": "Około {n} sekund."
       }
     }
   ],
   "pj_timelapse_unavailable": "Ta przeglądarka nie nagra filmu, więc zostaje kolaż.",
-  "pj_generate": "Zrób",
+  "pj_generate": "Utwórz",
   "pj_progress": "Zdjęcie {done} z {total}",
   "pj_stays_here": "Nic nie opuściło tego urządzenia. Plik jest tylko na tym ekranie, dopóki go nie wyślesz albo nie zapiszesz.",
   "pj_share": "Wyślij albo zapisz",
@@ -1764,5 +1764,6 @@
   "pj_preview_collage_alt": "Zrobiony przed chwilą kolaż",
   "pj_shared": "Wysłano.",
   "pj_downloaded": "Zapisano. Sprawdź pobrane pliki.",
-  "pj_failed": "Nie udało się. Nic nie zostało wysłane."
+  "pj_failed": "Nie udało się. Nic nie zostało wysłane.",
+  "pj_stop": "Przerwij"
 }

@@ -14,6 +14,7 @@
     recordTimelapse,
     renderCollage,
     timelapseSupported,
+    JOURNEY_SURROUND,
     type JourneyFrame
   } from '$lib/data/photos/journey-render';
   import { deliverBlob } from '$lib/data/archive/deliver';
@@ -43,6 +44,9 @@
 
   let running = $state(false);
   let progress = $state<{ done: number; total: number } | null>(null);
+  /* Live only while an export is being made, so the cancel button and the
+     render loop are talking about the same run. */
+  let attempt = $state.raw<AbortController | null>(null);
   let made = $state.raw<{ blob: Blob; from: string } | null>(null);
   let previewUrl = $state<string | null>(null);
 
@@ -108,25 +112,35 @@
 
   async function make() {
     const frames: JourneyFrame[] = selected.map((photo) => ({
-      fileName: photo.fileName!,
+      fileName: photo.fileName,
       caption: dateOf(photo.epochDay)
     }));
 
     const from = recipe;
+    const controller = new AbortController();
+    attempt = controller;
     running = true;
     made = null;
     progress = { done: 0, total: frames.length };
     try {
-      const onProgress = (done: number, total: number) => (progress = { done, total });
+      const options = {
+        onProgress: (done: number, total: number) => (progress = { done, total }),
+        signal: controller.signal
+      };
       const blob =
         output === 'collage'
-          ? await renderCollage(frames, readPhoto, onProgress)
-          : await recordTimelapse(frames, readPhoto, onProgress);
+          ? await renderCollage(frames, readPhoto, options)
+          : await recordTimelapse(frames, readPhoto, options);
       made = { blob, from };
     } catch (error) {
-      console.error(`the ${output} export failed`, error);
-      toast(m.pj_failed());
+      // A cancelled export is an answer, not a failure: the person pressed
+      // stop and the screen going back to the picker says so by itself.
+      if (!controller.signal.aborted) {
+        console.error(`the ${output} export failed`, error);
+        toast(m.pj_failed());
+      }
     } finally {
+      attempt = null;
       running = false;
       progress = null;
     }
@@ -230,10 +244,10 @@
     {#if previewUrl && showing}
       <div class="card journey-preview" style="margin-top:var(--space-4)" use:reveal>
         {#if output === 'collage'}
-          <img src={previewUrl} alt={m.pj_preview_collage_alt()} />
+          <img src={previewUrl} alt={m.pj_preview_collage_alt()} style:background={JOURNEY_SURROUND} />
         {:else}
           <!-- svelte-ignore a11y_media_has_caption -->
-          <video src={previewUrl} controls playsinline muted></video>
+          <video src={previewUrl} controls playsinline muted style:background={JOURNEY_SURROUND}></video>
         {/if}
         <p class="muted small">{m.pj_stays_here()}</p>
         <div class="journey-actions">
@@ -246,10 +260,15 @@
         </div>
       </div>
     {:else}
-      <div class="editor-savebar">
+      <div class="editor-savebar journey-actions">
         <button class="btn btn-primary" data-generate disabled={running || selected.length === 0} onclick={make}>
           <span>{running && progress ? m.pj_progress({ done: progress.done, total: progress.total }) : m.pj_generate()}</span>
         </button>
+        {#if attempt}
+          <button class="btn btn-soft" data-stop onclick={() => attempt?.abort()}>
+            <span>{m.pj_stop()}</span>
+          </button>
+        {/if}
       </div>
     {/if}
   {/if}
@@ -262,7 +281,6 @@
     width: 100%;
     height: auto;
     border-radius: var(--radius-md);
-    background: #17151a;
   }
   .journey-actions {
     display: flex;

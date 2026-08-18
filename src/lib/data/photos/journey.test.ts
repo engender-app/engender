@@ -1,7 +1,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
-  COLLAGE_MAX_EDGE,
+  COLLAGE_MAX_AREA,
   collageLayout,
   fitContain,
   fitCover,
@@ -62,9 +62,23 @@ test('a long journey scales the whole grid down rather than growing past the can
   assert.equal(small.cell, 360, 'a short journey gets full-size cells');
 
   const long = collageLayout(400);
-  assert.ok(Math.max(long.width, long.height) <= COLLAGE_MAX_EDGE, `got ${long.width}x${long.height}`);
+  assert.ok(long.width * long.height <= COLLAGE_MAX_AREA, `got ${long.width}x${long.height}`);
   assert.ok(long.cell < small.cell, 'cells shrink to fit');
   assert.ok(long.cell > 0 && long.fontSize > 0 && long.caption > 0, 'and nothing collapses to nothing');
+});
+
+/* The cap used to be on the long edge, which looked like the same thing and
+   was not: a near-square grid at a 4096px edge reaches 16.4M pixels, inside
+   the ~16.7M a mobile canvas allows by two per cent. Every count, not a
+   sample, because the worst case was not at either end - it was at 101. */
+test('no journey length, however long, asks for a canvas over the cap', () => {
+  for (let count = 1; count <= 1200; count++) {
+    const layout = collageLayout(count);
+    assert.ok(
+      layout.width * layout.height <= COLLAGE_MAX_AREA,
+      `${count} photos wanted ${layout.width}x${layout.height}`
+    );
+  }
 });
 
 test('contain fits the whole photo inside the box and centres what is left over', () => {
@@ -72,15 +86,39 @@ test('contain fits the whole photo inside the box and centres what is left over'
   assert.deepEqual(fitContain(1000, 500, 100, 100), { x: 0, y: 25, width: 100, height: 50 });
   // A portrait photo in a square box: full height, bars at the sides.
   assert.deepEqual(fitContain(500, 1000, 100, 100), { x: 25, y: 0, width: 50, height: 100 });
-  // Smaller than the box is still scaled up, because a video frame has one size.
-  assert.deepEqual(fitContain(50, 50, 100, 100), { x: 0, y: 0, width: 100, height: 100 });
 });
 
 test('cover crops the photo to the box centre instead of letterboxing it', () => {
-  // A landscape photo cropped to a square: the middle square of the source.
-  assert.deepEqual(fitCover(1000, 500, 100, 100), { sx: 250, sy: 0, sWidth: 500, sHeight: 500 });
-  assert.deepEqual(fitCover(500, 1000, 100, 100), { sx: 0, sy: 250, sWidth: 500, sHeight: 500 });
-  assert.deepEqual(fitCover(400, 400, 100, 100), { sx: 0, sy: 0, sWidth: 400, sHeight: 400 });
+  // A landscape photo cropped to a square: the middle square of the source,
+  // drawn over the whole box.
+  assert.deepEqual(fitCover(1000, 500, 100, 100), {
+    sx: 250, sy: 0, sWidth: 500, sHeight: 500, x: 0, y: 0, width: 100, height: 100
+  });
+  assert.deepEqual(fitCover(500, 1000, 100, 100), {
+    sx: 0, sy: 250, sWidth: 500, sHeight: 500, x: 0, y: 0, width: 100, height: 100
+  });
+  assert.deepEqual(fitCover(400, 400, 100, 100), {
+    sx: 0, sy: 0, sWidth: 400, sHeight: 400, x: 0, y: 0, width: 100, height: 100
+  });
+});
+
+/* Ticket 27 puts "upscaling beyond what the already-normalized source photos
+   support" out of scope, and normalize.ts already refuses to upscale on the
+   way in, so a 640px import must not be blown up to fill a 1080px video frame
+   or a 360px collage cell on the way out. */
+test('neither fit ever draws a photo bigger than it is', () => {
+  assert.deepEqual(fitContain(50, 50, 100, 100), { x: 25, y: 25, width: 50, height: 50 });
+  // The demo persona's photos, and any modest import: 640px into a 1080 frame.
+  assert.deepEqual(fitContain(640, 640, 1080, 1080), { x: 220, y: 220, width: 640, height: 640 });
+
+  // A cell too big for the photo takes the whole photo and centres it, rather
+  // than asking drawImage for a source rectangle the photo does not have.
+  assert.deepEqual(fitCover(200, 200, 360, 360), {
+    sx: 0, sy: 0, sWidth: 200, sHeight: 200, x: 80, y: 80, width: 200, height: 200
+  });
+  // Short on one side only: still contained, never stretched to fill.
+  const wide = fitCover(2000, 300, 360, 360);
+  assert.deepEqual(wide, { sx: 0, sy: 0, sWidth: 2000, sHeight: 300, x: 0, y: 153, width: 360, height: 54 });
 });
 
 test('a timelapse lasts as long as the photos it shows', () => {
