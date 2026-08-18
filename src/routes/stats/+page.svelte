@@ -13,6 +13,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DayAverage } from '$lib/data/journal/stats';
+  import type { CorrelationCard } from '$lib/data/correlationCards';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
   /** How many entries the sheet behind a tag insight lists. */
@@ -59,8 +60,11 @@
 
   // Native units both ways (ADR-0012): mood arrives on 1 to 5 and only
   // needs a decimal place, a dimension arrives in its own range. The /20
-  // that used to be here undid a x20 that no longer happens.
-  const fmtMetric = (v: number) => (prefs.metricKind === 'mood' ? v.toFixed(1) : String(Math.round(v)));
+  // that used to be here undid a x20 that no longer happens. Keyed off a
+  // metric key rather than hard-wired to the selected preference, so a
+  // correlation card spanning several metrics can call it too.
+  const fmtNativeValue = (metric: string, v: number) => (metric === 'mood' ? v.toFixed(1) : String(Math.round(v)));
+  const fmtMetric = (v: number) => fmtNativeValue(prefs.metricKind, v);
 
   let insightEntriesQuery = liveQuery(['entry', 'tag'], (j) => {
     const sheet = insightSheet;
@@ -68,6 +72,27 @@
     return j.entries.entriesWithTag(sheet.id, INSIGHT_ENTRIES);
   });
   let insightEntries = $derived(insightEntriesQuery.value ?? []);
+
+  /* Correlation cards (phase 4 ticket 21) - a deliberate reversal of
+     phase 3's explicit exclusion of correlation analysis, not scope
+     drift the phase 3 decision missed. Ranked and capped by the journal
+     area itself; this screen only renders what it returns. */
+  let correlationCardsQuery = liveQuery(['entry', 'tag', 'dimension', 'dose'], (j) =>
+    j.correlationCards.getCards(from, today)
+  );
+  let correlationCards = $derived(correlationCardsQuery.value ?? []);
+
+  const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
+
+  const occurrenceLabel = (card: CorrelationCard) =>
+    card.occurrence.kind === 'doseDay' ? m.correlation_card_dose_day() : vocabulary.tag(card.occurrence.id)?.label ?? card.occurrence.id;
+
+  const metricPhrase = (card: CorrelationCard) => {
+    const metric = metricName(card.metric);
+    if (card.withAvg > card.withoutAvg) return m.correlation_metric_higher({ metric });
+    if (card.withAvg < card.withoutAvg) return m.correlation_metric_lower({ metric });
+    return m.correlation_metric_different({ metric });
+  };
 </script>
 
 <div class="screen">
@@ -148,6 +173,33 @@
     <p class="muted small" style="margin-top:var(--space-2)">{m.insights_note()}</p>
   {:else}
     <p class="muted small">{m.insights_empty()}</p>
+  {/if}
+
+  <SectionTitle text={m.correlation_cards_title()}>
+    {#snippet aside()}{m.correlation_cards_sub()}{/snippet}
+  </SectionTitle>
+  {#if correlationCardsQuery.loading}
+    <Skeleton variant="line" count={3} />
+  {:else if correlationCards.length}
+    <div class="list-group" style="margin-bottom:var(--space-4)">
+      {#each correlationCards as c (`${c.occurrence.kind}-${c.occurrence.kind === 'tag' ? c.occurrence.id : ''}-${c.metric}`)}
+        <div class="list-row">
+          <span class="row-text">
+            <span class="row-title">{occurrenceLabel(c)}</span>
+            <span class="row-subtitle">{m.correlation_card_tends({ metric: metricPhrase(c) })}</span>
+            <span class="row-subtitle">
+              {m.insight_row_sub({
+                count: String(c.count),
+                with: fmtNativeValue(c.metric, c.withAvg),
+                without: fmtNativeValue(c.metric, c.withoutAvg)
+              })}
+            </span>
+          </span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small" style="margin-bottom:var(--space-4)">{m.correlation_cards_empty()}</p>
   {/if}
 
   <SectionTitle text={m.body_map_title()} />

@@ -264,6 +264,12 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     writes: {},
     reads: ['dayAverages', 'bodyRegionTrend', 'tallyTrend', 'entryCountsByDay', 'tagInsights', 'streak', 'bestStreakEver', 'recap', 'isGoodDay']
   },
+  // Read-only, the same reason exposure is: a card is recomputed from
+  // stats, the dose log and dimensions on every read (phase 4 ticket 21).
+  correlationCards: {
+    writes: {},
+    reads: ['getCards']
+  },
   /* An import rewrites the journal (ticket 14), so it invalidates all of it -
      every query and every mirrored slice. Naming the tables one at a time
      would be a list to keep in step with what a restore happens to touch,
