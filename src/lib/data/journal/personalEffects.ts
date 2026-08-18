@@ -9,7 +9,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PersonalEffect, PersonalEffectType } from '../types';
-import { assertChanged, mintUuid, now } from './support';
+import { mintUuid, now } from './support';
 
 export interface PersonalEffectInput {
   effect: PersonalEffectType;
