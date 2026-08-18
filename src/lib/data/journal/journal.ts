@@ -22,6 +22,7 @@ import { makeHormoneCurveArea, type HormoneCurveArea } from './hormoneCurve';
 import { makeQualitativeCurveArea, type QualitativeCurveArea } from './hormoneCurveQualitative';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeLabsArea, type LabsArea } from './labs';
+import { makeLettersArea, type LettersArea } from './letters';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
@@ -128,6 +129,11 @@ export interface Journal {
       than owning a link of its own (ADR-0010) - this area owns only what
       it alone writes. */
   tryouts: TryoutsArea;
+  /** Free-write letters to the person's future self, sealed until a
+      chosen unlock day (phase 4 ticket 19). Stores the text and the
+      unlock day and nothing else - letterStatus.ts derives sealed/
+      unlocked against today (ADR-0010) above this seam. */
+  letters: LettersArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -172,6 +178,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     hairProgress: makeHairProgressArea(driver, files),
     doubtJournal: makeDoubtJournalArea(driver),
     tryouts: makeTryoutsArea(driver),
+    letters: makeLettersArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

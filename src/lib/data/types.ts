@@ -469,6 +469,21 @@ export interface HairStage {
     have now". Remaining and its run-out day are never stored (ADR-0010) -
     stockProjection.ts derives both from this and the dose log on every
     read. */
+/* A free-write note to the person's future self, sealed until
+   `unlockEpochDay` (phase 4 ticket 19, CONTEXT: "Milestone", "Countdown",
+   "Anniversary"). No `sealed` flag: whether it is readable follows from
+   comparing `unlockEpochDay` against today, computed above the seam by
+   letterStatus.ts rather than stored (ADR-0010), the same reasoning that
+   keeps `kind` off Milestone. The seal is a UI-level gate only - no
+   second cryptographic layer sits under this row beyond the journal's
+   existing whole-database encryption (ADR-0020). */
+export interface Letter {
+  id: string;
+  epochDay: number;
+  text: string;
+  unlockEpochDay: number;
+}
+
 export interface MedicationStock {
   id: string;
   drug: string;

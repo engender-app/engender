@@ -67,7 +67,9 @@ export type TableName =
   | 'doubtJournal'
   /* One name for a tryout and its felt-sense history alike (phase 4
      ticket 16), the same reasoning 'doubtJournal' gives. */
-  | 'tryout';
+  | 'tryout'
+  /* Time-capsule letters (phase 4 ticket 19). */
+  | 'letter';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -89,7 +91,8 @@ export const TABLE_NAMES: TableName[] = [
   'personalEffect',
   'hairProgress',
   'doubtJournal',
-  'tryout'
+  'tryout',
+  'letter'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -199,6 +202,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       deleteFeltSenseEntry: ['tryout']
     },
     reads: ['getTryouts', 'getFeltSenseEntries']
+  },
+  letters: {
+    writes: { addLetter: ['letter'], deleteLetter: ['letter'] },
+    reads: ['getLetters']
   },
   tally: {
     writes: { log: ['tally'], setContext: ['tally'], deleteEvent: ['tally'] },

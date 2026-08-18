@@ -190,6 +190,7 @@ export async function restoreArchive(
     await applyTallyEvents(restoring);
     await applyDoubtEntries(restoring);
     await applyCounterevidenceSnapshots(restoring);
+    await applyLetters(restoring);
     await applyTryouts(restoring);
     /* After the tryouts: felt-sense rows hang off a tryout rowid, and the
        rows this import just inserted are where those rowids come from. */
@@ -220,6 +221,7 @@ const COLLECTIONS = [
   'tallyEvents',
   'doubtEntries',
   'counterevidenceSnapshots',
+  'letters',
   'tryouts',
   'feltSenseEntries',
   'regimenEpisodes',
@@ -266,6 +268,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM doubt_entry',
     'DELETE FROM doubt_snapshot_entry',
     'DELETE FROM doubt_snapshot',
+    'DELETE FROM letter',
     'DELETE FROM tryout_felt_sense',
     'DELETE FROM tryout',
     'DELETE FROM dose_event',
@@ -722,6 +725,20 @@ async function applyCounterevidenceSnapshots({ driver, journal, ts }: Restoring)
   }
 
   await insertRows(driver, 'INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note)', itemRows);
+}
+
+/* Matched by uuid, like applyDoubtEntries: a letter is a dated series, not
+   a single replaced value, and carries no children of its own to insert
+   afterwards. */
+async function applyLetters({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM letter');
+
+  const inserting = journal.letters.filter((letter) => !present.has(letter.id));
+  await insertRows(
+    driver,
+    'INSERT INTO letter (uuid, epoch_day, text, unlock_epoch_day, updated_at)',
+    inserting.map((letter) => [letter.id, letter.epochDay, letter.text, letter.unlockEpochDay, ts])
+  );
 }
 
 /* Matched by uuid, like applyDoubtEntries: a tryout is not a single value
