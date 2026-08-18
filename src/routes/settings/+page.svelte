@@ -475,6 +475,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/resources">
+      <span class="row-icon"><Icon name="globe" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.resources_title()}</span>
+        <span class="row-subtitle">{m.resources_row_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
   </div>
 
   <SectionTitle text={m.settings_privacy()} />
