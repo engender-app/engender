@@ -192,6 +192,7 @@ export async function restoreArchive(
     await applyDoubtEntries(restoring);
     await applyCounterevidenceSnapshots(restoring);
     await applyLetters(restoring);
+    await applyRoadmapChecks(restoring);
     await applyTryouts(restoring);
     /* After the tryouts: felt-sense rows hang off a tryout rowid, and the
        rows this import just inserted are where those rowids come from. */
@@ -238,6 +239,7 @@ const COLLECTIONS = [
   'doubtEntries',
   'counterevidenceSnapshots',
   'letters',
+  'roadmapChecks',
   'tryouts',
   'feltSenseEntries',
   'regimenEpisodes',
@@ -286,6 +288,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM doubt_snapshot_entry',
     'DELETE FROM doubt_snapshot',
     'DELETE FROM letter',
+    'DELETE FROM roadmap_check',
     'DELETE FROM tryout_felt_sense',
     'DELETE FROM tryout',
     'DELETE FROM dose_event',
@@ -765,6 +768,29 @@ async function applyLetters({ driver, journal, ts }: Restoring): Promise<void> {
     driver,
     'INSERT INTO letter (uuid, epoch_day, text, unlock_epoch_day, updated_at)',
     inserting.map((letter) => [letter.id, letter.epochDay, letter.text, letter.unlockEpochDay, ts])
+  );
+}
+
+/* Matched on the pack/goal pair rather than a uuid, the way applyDimensions
+   matches a built-in on its key: a tick names a bundled goal, so the same
+   pair on two devices is the same tick and a merge has nothing to
+   reconcile. A goal missing from the archive is left alone rather than
+   unticked - Replace already emptied the table before this ran, and a
+   merge must not undo a tick this device made. */
+async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Promise<void> {
+  /* Two columns, so the present-set is built here rather than through
+     presentIds, which reads a single id column. A newline joins the pair
+     because neither key can hold one. */
+  const rows = await driver.query<{ pack_key: string; goal_key: string }>(
+    'SELECT pack_key, goal_key FROM roadmap_check'
+  );
+  const present = new Set(rows.map((row) => `${row.pack_key}\n${row.goal_key}`));
+
+  const inserting = journal.roadmapChecks.filter((check) => !present.has(`${check.packKey}\n${check.goalKey}`));
+  await insertRows(
+    driver,
+    'INSERT INTO roadmap_check (pack_key, goal_key, updated_at)',
+    inserting.map((check) => [check.packKey, check.goalKey, ts])
   );
 }
 

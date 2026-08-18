@@ -355,6 +355,7 @@ const EMPTY_JOURNAL: ArchiveJournal = {
   doubtEntries: [],
   counterevidenceSnapshots: [],
   letters: [],
+  roadmapChecks: [],
   doseEvents: [],
   doseSchedules: [],
   dosePauses: [],

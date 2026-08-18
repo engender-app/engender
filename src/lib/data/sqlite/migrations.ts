@@ -562,6 +562,42 @@ CREATE TABLE voice_recording (
 CREATE INDEX idx_voice_recording_entry ON voice_recording(entry_id);
 `;
 
+/* v18: transition-roadmap progress (phase 4 ticket 23, CONTEXT: "Roadmap
+   goal", "Country pack"). The pack's content itself is not here and never
+   will be: a country pack is a bundled content module read synchronously
+   off the bundle (roadmap.ts), so what a person is working through is a
+   build artifact and what they have ticked off is the only part that is
+   theirs.
+
+   A row exists exactly when a goal is ticked, and unticking deletes it.
+   No `checked` column, and no row seeded per goal per pack at install
+   time: a table pre-filled with every goal of every pack would have to be
+   migrated each time a pack gained an item, which is the schema change
+   this ticket's contributable-pack requirement rules out.
+
+   No uuid either, unlike letter (v16) or tryout (v15), and ADR-0002's
+   amendment for this ticket argues why a tick is neither of that ADR's two
+   branches. In short: a tick is named by which pack and which goal, both of
+   which name bundled content and so mean the same thing on every device.
+   Two installs that ticked the same goal ticked the same goal, so an
+   archive matches on the pair and a merge has nothing to reconcile.
+
+   `pack_key` is not constrained to a list of packs. Storing the pack a
+   goal came from as free text is what lets a second country's pack ship
+   as content alone, with no migration behind it; the price is that a row
+   can outlive a pack that stops being bundled, which is the right way
+   round - a stale row is invisible and harmless, whereas a CHECK
+   constraint would make removing a pack a migration too. */
+const SCHEMA_V18 = `
+CREATE TABLE roadmap_check (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  pack_key   TEXT NOT NULL,
+  goal_key   TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  UNIQUE (pack_key, goal_key)
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -579,7 +615,8 @@ export const migrations: Migration[] = [
   { version: 14, sql: SCHEMA_V14 },
   { version: 15, sql: SCHEMA_V15 },
   { version: 16, sql: SCHEMA_V16 },
-  { version: 17, sql: SCHEMA_V17 }
+  { version: 17, sql: SCHEMA_V17 },
+  { version: 18, sql: SCHEMA_V18 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

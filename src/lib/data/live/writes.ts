@@ -76,7 +76,11 @@ export type TableName =
      voice-notes browsing view, or ticket 25's compare mode - could read
      recordings without reading the rest of an entry, the same reason
      'photo' gets its own name instead of folding into 'entry' too. */
-  | 'voiceRecording';
+  | 'voiceRecording'
+  /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
+     pack's ticks: they live in one table and a screen shows one pack at a
+     time, so there is nothing a per-pack name would let a query skip. */
+  | 'roadmapCheck';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -100,7 +104,8 @@ export const TABLE_NAMES: TableName[] = [
   'doubtJournal',
   'tryout',
   'letter',
-  'voiceRecording'
+  'voiceRecording',
+  'roadmapCheck'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -216,6 +221,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   letters: {
     writes: { addLetter: ['letter'], deleteLetter: ['letter'] },
     reads: ['getLetters']
+  },
+  roadmap: {
+    writes: { setGoalChecked: ['roadmapCheck'] },
+    reads: ['getCheckedGoals']
   },
   tally: {
     writes: { log: ['tally'], setContext: ['tally'], deleteEvent: ['tally'] },

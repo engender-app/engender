@@ -549,6 +549,10 @@ const CARRIED: Record<string, string[]> = {
   doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
   doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
   letter: ['uuid', 'epoch_day', 'text', 'unlock_epoch_day'],
+  // No uuid: a tick is named by its pack and goal keys, which mean the
+  // same thing on every device, the way a built-in tag travels as its key
+  // (ADR-0002).
+  roadmap_check: ['pack_key', 'goal_key'],
   tryout: ['uuid', 'kind', 'label', 'start_epoch_day', 'end_epoch_day'],
   // tryout_id travels as the tryout's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
