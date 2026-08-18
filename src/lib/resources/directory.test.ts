@@ -44,8 +44,10 @@ test('every url is https, so nothing sends a person to a plaintext page', () => 
 });
 
 test('both regions carry a helpline, since neither audience is served by the other', () => {
-  expect(resourcesFor('pl', 'helpline').length).toBeGreaterThan(0);
-  expect(resourcesFor('int', 'helpline').length).toBeGreaterThan(0);
+  const helplines = (region: 'pl' | 'int') => resourcesFor(region).filter((r) => r.kind === 'helpline');
+
+  expect(helplines('pl').length).toBeGreaterThan(0);
+  expect(helplines('int').length).toBeGreaterThan(0);
 });
 
 test('every helpline has a number to ring, and nothing else claims to be one', () => {

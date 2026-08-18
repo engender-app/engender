@@ -61,12 +61,25 @@ test('the screen loads no asset from anywhere but its own origin', () => {
   expect(loaded.filter((value) => /^[a-z]+:|^\/\//i.test(value))).toEqual([]);
 });
 
-test('the only off-origin addresses on the screen are ones a person has to tap', () => {
+/* A ratchet rather than a check of today's behaviour: as written the screen
+   cannot fail it, because every outbound href is an expression over the data
+   module. It fires the day someone writes an address straight into the
+   template, which is how a number ends up in two places and only one of them
+   gets corrected. */
+test('no address is written into the template instead of coming from the directory', () => {
   const screen = readFileSync(join(rootPath, SCREEN), 'utf8');
-  const hrefs = [...screen.matchAll(/\bhref=(?:["']([^"']*)["']|\{([^}]*)\})/g)].map((m) => m[1] ?? m[2]);
-  // Written-out addresses would freeze the directory into the template; every
-  // outbound href has to come from the data module through an expression.
-  const literal = hrefs.filter((value) => /^[a-z]+:/i.test(value));
+  const hrefs = [...screen.matchAll(/\bhref=["']([^"']*)["']/g)].map((m) => m[1]);
 
-  expect(literal).toEqual([]);
+  expect(hrefs.filter((value) => /^[a-z]+:/i.test(value))).toEqual([]);
+});
+
+/* The other half of the promise: a link that leaves has to leave, rather than
+   navigating this tab and making the app itself fetch the third party. */
+test('every outbound link opens outside the app', () => {
+  const screen = readFileSync(join(rootPath, SCREEN), 'utf8');
+  const anchors = [...screen.matchAll(/<a\b[^>]*>/g)].map((m) => m[0]);
+  const outbound = anchors.filter((a) => /href=\{resource\.url\}/.test(a));
+
+  expect(outbound.length).toBeGreaterThan(0);
+  expect(outbound.filter((a) => !a.includes('target="_blank"'))).toEqual([]);
 });

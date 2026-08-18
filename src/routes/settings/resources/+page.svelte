@@ -8,8 +8,8 @@
   import { resourceDescription, resourceHours } from '$lib/resources/labels';
 
   const GROUPS: { region: ResourceRegion; title: () => string }[] = [
-    { region: 'pl', title: () => m.resources_group_pl() },
-    { region: 'int', title: () => m.resources_group_int() }
+    { region: 'pl', title: m.resources_group_pl },
+    { region: 'int', title: m.resources_group_int }
   ];
 
   /* A tel: URI takes no spaces, but the number on screen keeps them: one is
@@ -20,12 +20,13 @@
      column. The full address is still where the link goes. */
   const shownUrl = (url: string) => new URL(url).host.replace(/^www\./, '');
 
-  const reviewedOn = $derived(() => {
-    const epochDay = epochDayFromDateInputValue(RESOURCES_REVIEWED_ON);
-    return epochDay == null
+  /* Nothing here reacts to anything: the date is a module constant and the
+     locale is fixed for the life of the page, so this is a plain const. */
+  const reviewedEpochDay = epochDayFromDateInputValue(RESOURCES_REVIEWED_ON);
+  const reviewedOn =
+    reviewedEpochDay == null
       ? RESOURCES_REVIEWED_ON
-      : fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
-  });
+      : fmtDay(reviewedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 </script>
 
 <div class="screen">
@@ -45,18 +46,26 @@
             <span class="row-subtitle">{resourceDescription(resource.key)}</span>
             <span class="resource-links">
               {#if resource.phone}
+                <!-- No icon: icons.ts has no phone glyph, and the nearest
+                     ones already mean something else across the app (a bell
+                     is a reminder). A number reads as a number. -->
                 <a class="resource-link" href={dial(resource.phone)} aria-label={m.resources_call({ name: resource.name })}>
-                  <Icon name="bell" size={16} />
-                  <span>{resource.phone}</span>
+                  {resource.phone}
                 </a>
                 {#if resourceHours(resource.key)}
                   <span class="resource-hours">{resourceHours(resource.key)}</span>
                 {/if}
               {/if}
               {#if resource.url}
+                <!-- target="_blank" is load-bearing, not habit. Without it
+                     the anchor navigates this tab to the third party, which
+                     is the app itself making the request the screen promises
+                     it will not, and on the web it would drop the person out
+                     of the app with no way back. -->
                 <a
                   class="resource-link"
                   href={resource.url}
+                  target="_blank"
                   rel="noreferrer"
                   aria-label={m.resources_open({ name: resource.name })}
                 >
@@ -71,7 +80,7 @@
     </div>
   {/each}
 
-  <p class="muted small" style="margin-top:var(--space-4)">{m.resources_reviewed({ date: reviewedOn() })}</p>
+  <p class="muted small" style="margin-top:var(--space-4)">{m.resources_reviewed({ date: reviewedOn })}</p>
   <p class="muted small" style="margin-top:var(--space-2)">{m.resources_leaving()}</p>
 </div>
 

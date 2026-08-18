@@ -1,4 +1,4 @@
-/* The bundled resource directory (ticket 32): trans organizations, helplines
+/* The bundled resource directory (ticket 32): trans organisations, helplines
    and reading, in the app rather than fetched from anywhere. Something a
    person reaches for at three in the morning with no signal has to be there
    with no signal, and this is the only screen in the app whose whole content
@@ -21,22 +21,22 @@
 
    RESOURCES_REVIEWED_ON is a claim, not a build stamp. It says a person
    opened every site below and read the number and the hours off what the
-   organization itself publishes. Hours are what rots: Mindline Trans+ went
+   organisation itself publishes. Hours are what rots: Mindline Trans+ went
    from three evenings a week to one and Trans Lifeline stopped being a
    24-hour line, both while their numbers stayed put. Do not bump the date
    without doing the pass. */
 
 export type ResourceRegion = 'pl' | 'int';
 
-/** helpline is a number a person answers, support is an organization to
+/** helpline is a number a person answers, support is an organisation to
     approach, info is reading. Also the order they appear in. */
 export type ResourceKind = 'helpline' | 'support' | 'info';
 
-export interface Resource {
+interface ResourceShape {
   key: string;
   region: ResourceRegion;
   kind: ResourceKind;
-  /** As the organization writes it. Never translated. */
+  /** As the organisation writes it. Never translated. */
   name: string;
   /** Dialable as written, spaces and all: it goes into a tel: URI. Always
       with its country code, because the person holding the phone is in
@@ -117,16 +117,21 @@ const ENTRIES = [
     name: 'Transfeminine Science',
     url: 'https://transfemscience.org/'
   }
-] as const satisfies readonly Resource[];
+] as const satisfies readonly ResourceShape[];
 
 export type ResourceKey = (typeof ENTRIES)[number]['key'];
 
-/* Widened on the way out. ENTRIES stays literal so the key union above is
-   exact, but every reader wants one type with optional phone and url rather
-   than a union of eight shapes, half of which have no `phone` property to
-   read at all. */
+/* What a reader gets: one type with optional phone and url, rather than the
+   union of eight literal shapes ENTRIES has, half of which carry no `phone`
+   property to read at all. The key stays narrow through that widening, which
+   is what lets labels.ts index its maps directly instead of casting them back
+   to strings and carrying a fallback for a key that cannot exist. */
+export interface Resource extends ResourceShape {
+  key: ResourceKey;
+}
+
 export const RESOURCES: readonly Resource[] = ENTRIES;
 
-export function resourcesFor(region: ResourceRegion, kind?: ResourceKind): readonly Resource[] {
-  return RESOURCES.filter((r) => r.region === region && (kind === undefined || r.kind === kind));
+export function resourcesFor(region: ResourceRegion): readonly Resource[] {
+  return RESOURCES.filter((r) => r.region === region);
 }

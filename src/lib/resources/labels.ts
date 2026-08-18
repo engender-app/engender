@@ -8,6 +8,11 @@
    an entry with no published hours has to say so explicitly here, which is
    the difference between "answers whenever" and "nobody wrote it down".
 
+   Both maps are indexed straight, with no cast and no fallback to the raw
+   key: `Resource.key` is the union rather than `string`, so there is no
+   missing-message case to handle and nothing that could put "pl-lambda" on
+   screen where a sentence belongs.
+
    This file imports paraglide, so nothing the Node tier touches may import
    it (ADR-0016). */
 
@@ -38,8 +43,6 @@ const HOURS: Record<ResourceKey, Message | null> = {
   'int-transfemscience': null
 };
 
-export const resourceDescription = (key: string): string =>
-  (DESCRIPTION as Record<string, Message | undefined>)[key]?.() ?? key;
+export const resourceDescription = (key: ResourceKey): string => DESCRIPTION[key]();
 
-export const resourceHours = (key: string): string | null =>
-  (HOURS as Record<string, Message | null | undefined>)[key]?.() ?? null;
+export const resourceHours = (key: ResourceKey): string | null => HOURS[key]?.() ?? null;
