@@ -1394,7 +1394,6 @@
   "tryout_start_label": "Started",
   "tryout_end_label": "Ended",
   "tryout_end_hint": "Leave blank if you're still trying it out.",
-  "tryout_sheet_title": "Tryout",
   "tryout_new_title": "New tryout",
   "tryout_edit_title": "Edit tryout",
   "tryout_save": "Save",
