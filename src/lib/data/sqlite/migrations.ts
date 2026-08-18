@@ -503,6 +503,38 @@ CREATE TABLE tryout_felt_sense (
 CREATE INDEX idx_tryout_felt_sense_tryout ON tryout_felt_sense(tryout_id);
 `;
 
+/* v16: time-capsule letters (phase 4 ticket 19, CONTEXT: "Milestone",
+   "Countdown", "Anniversary"). A free-write note to the person's future
+   self, sealed until `unlock_epoch_day`.
+
+   No `sealed` column: whether a letter is readable is a question about
+   today, the same reasoning that keeps `kind` off `milestone` (ADR-0010).
+   Screens compare `unlock_epoch_day` against today's epoch day and refuse
+   to render the text before it, the same way milestoneStatus() decides a
+   milestone's presentation above the schema rather than in it.
+
+   No reference to a specific milestone row either: the ticket's unlock
+   condition is a date, chosen either by typing one or by copying a
+   milestone's own date into the picker, and nothing here needs to keep
+   tracking that milestone afterwards - a letter sealed against "two years
+   on hormones" still means that day if the milestone is later renamed or
+   deleted.
+
+   No second cryptographic layer: the journal is already encrypted whole-
+   database (ADR-0020), so this row is protected exactly as every other
+   journal row already is, and a UI-level gate is the entire feature. */
+const SCHEMA_V16 = `
+CREATE TABLE letter (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid             TEXT NOT NULL UNIQUE,
+  epoch_day        INTEGER NOT NULL,
+  text             TEXT NOT NULL,
+  unlock_epoch_day INTEGER NOT NULL,
+  updated_at       INTEGER NOT NULL
+);
+CREATE INDEX idx_letter_epoch_day ON letter(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -518,7 +550,8 @@ export const migrations: Migration[] = [
   { version: 12, sql: SCHEMA_V12 },
   { version: 13, sql: SCHEMA_V13 },
   { version: 14, sql: SCHEMA_V14 },
-  { version: 15, sql: SCHEMA_V15 }
+  { version: 15, sql: SCHEMA_V15 },
+  { version: 16, sql: SCHEMA_V16 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

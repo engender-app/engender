@@ -170,6 +170,16 @@ export interface ArchiveDoubtEntry {
   text: string;
 }
 
+/** A time-capsule letter (phase 4 ticket 19), sealed until `unlockEpochDay`
+    - never stored as a `sealed` flag, the same reasoning ArchiveMilestone
+    carries no `kind`. */
+export interface ArchiveLetter {
+  id: string;
+  epochDay: number;
+  text: string;
+  unlockEpochDay: number;
+}
+
 /** One counterevidence entry as it read at the moment its snapshot was
     saved (phase 4 ticket 11) - copied fields, not a reference to the
     source entry's id, the same reasoning the snapshot table itself argues
@@ -341,6 +351,7 @@ export interface ArchiveJournal {
   tallyEvents: ArchiveTallyEvent[];
   doubtEntries: ArchiveDoubtEntry[];
   counterevidenceSnapshots: ArchiveCounterevidenceSnapshot[];
+  letters: ArchiveLetter[];
   regimenEpisodes: ArchiveRegimenEpisode[];
   doseEvents: ArchiveDoseEvent[];
   doseSchedules: ArchiveDoseSchedule[];

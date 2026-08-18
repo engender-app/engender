@@ -541,6 +541,7 @@ const CARRIED: Record<string, string[]> = {
   doubt_entry: ['uuid', 'epoch_day', 'timestamp', 'text'],
   doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
   doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
+  letter: ['uuid', 'epoch_day', 'text', 'unlock_epoch_day'],
   tryout: ['uuid', 'kind', 'label', 'start_epoch_day', 'end_epoch_day'],
   // tryout_id travels as the tryout's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).

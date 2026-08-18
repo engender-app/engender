@@ -41,6 +41,7 @@ import type {
   ArchiveHairPhoto,
   ArchiveHairStage,
   ArchiveLabResult,
+  ArchiveLetter,
   ArchiveMeasurement,
   ArchiveMedicationStock,
   ArchiveMilestone,
@@ -317,6 +318,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       timestamp: r.timestamp,
       items: items.get(r.id) ?? []
     }));
+  };
+
+  const letters = async (): Promise<ArchiveLetter[]> => {
+    const rows = await driver.query<{ uuid: string; epoch_day: number; text: string; unlock_epoch_day: number }>(
+      'SELECT uuid, epoch_day, text, unlock_epoch_day FROM letter ORDER BY epoch_day, id'
+    );
+    return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, text: r.text, unlockEpochDay: r.unlock_epoch_day }));
   };
 
   const tryouts = async (): Promise<ArchiveTryout[]> => {
@@ -619,6 +627,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           tallyEvents: await tallyEvents(),
           doubtEntries: await doubtEntries(),
           counterevidenceSnapshots: await counterevidenceSnapshots(),
+          letters: await letters(),
           regimenEpisodes: await regimenEpisodes(),
           doseEvents: await doseEvents(),
           doseSchedules: await doseSchedules(),

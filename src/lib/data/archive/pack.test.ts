@@ -275,6 +275,7 @@ function bigContents(): { contents: ArchiveContents; reads: string[] } {
         regimenEpisodes: [],
         doubtEntries: [],
         counterevidenceSnapshots: [],
+        letters: [],
         doseEvents: [],
         doseSchedules: [],
         dosePauses: [],
