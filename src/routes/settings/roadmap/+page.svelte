@@ -4,7 +4,14 @@
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { POLISH_PACK, ROADMAP_TRACKS, goalsInTrack } from '$lib/data/roadmap';
-  import { roadmapGoalNote, roadmapGoalTitle, roadmapPackName, roadmapTrackName } from '$lib/data/vocabulary/roadmapLabels';
+  import {
+    roadmapGoalNote,
+    roadmapGoalTitle,
+    roadmapPackCaveat,
+    roadmapPackName,
+    roadmapPackSources,
+    roadmapTrackName
+  } from '$lib/data/vocabulary/roadmapLabels';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -30,10 +37,14 @@
     <h1 class="screen-title">{m.roadmap_title()}</h1>
   </header>
 
-  <p class="muted small">{m.roadmap_intro({ country: roadmapPackName(pack.key) })}</p>
+  <p class="muted small">{m.roadmap_intro()}</p>
   <div class="card" style="margin:var(--space-3) 0">
-    <p class="small" style="margin:0">{m.roadmap_not_advice()}</p>
-    <p class="muted small" style="margin:var(--space-2) 0 0">{m.roadmap_reviewed_on({ date: reviewedLabel })}</p>
+    <p class="quicklog-title">{roadmapPackName(pack.key)}</p>
+    <p class="small" style="margin:0">{roadmapPackCaveat(pack.key)}</p>
+    <p class="small" style="margin:var(--space-2) 0 0">{m.roadmap_not_advice()}</p>
+    <p class="muted small" style="margin:var(--space-2) 0 0">
+      {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
+    </p>
   </div>
 
   {#if checkedQuery.loading}

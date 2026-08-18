@@ -26,12 +26,16 @@ export const ROADMAP_TRACKS = ['social', 'legal', 'presentational', 'medical'] a
 
 export type RoadmapTrack = (typeof ROADMAP_TRACKS)[number];
 
-export interface RoadmapGoal {
-  readonly key: string;
+/* Generic in its key so a pack declared `as const` keeps its literal keys
+   all the way to the screen, where roadmapLabels.ts needs them to look
+   wording up. The default keeps every other reader - the tests, a future
+   contributed pack - writing plain `RoadmapGoal`. */
+export interface RoadmapGoal<K extends string = string> {
+  readonly key: K;
   readonly track: RoadmapTrack;
 }
 
-export interface RoadmapPack {
+export interface RoadmapPack<K extends string = string> {
   /** Prefixes every goal key in the pack, and is what a stored tick names
       the pack by. */
   readonly key: string;
@@ -41,12 +45,55 @@ export interface RoadmapPack {
       procedure changes with legislation, so a reader needs to know how old
       what they are reading is. */
   readonly reviewedOn: string;
-  readonly goals: readonly RoadmapGoal[];
+  readonly goals: readonly RoadmapGoal<K>[];
 }
 
 /* Polish pack. Sources and the reasoning behind the wording are in
    vocabulary/roadmapLabels.ts, next to the text itself. */
-const POLISH_GOALS = [] as const satisfies readonly RoadmapGoal[];
+const POLISH_GOALS = [
+  /* social */
+  { key: 'pl-social-tell-one-person', track: 'social' },
+  { key: 'pl-social-close-people', track: 'social' },
+  { key: 'pl-social-name-at-work', track: 'social' },
+  { key: 'pl-social-community', track: 'social' },
+  /* legal */
+  { key: 'pl-legal-birth-certificate', track: 'legal' },
+  { key: 'pl-legal-which-court', track: 'legal' },
+  { key: 'pl-legal-court-fee', track: 'legal' },
+  { key: 'pl-legal-application', track: 'legal' },
+  { key: 'pl-legal-file-it', track: 'legal' },
+  { key: 'pl-legal-formal-defects', track: 'legal' },
+  { key: 'pl-legal-remote-hearing', track: 'legal' },
+  { key: 'pl-legal-closed-hearing', track: 'legal' },
+  { key: 'pl-legal-fee-waiver', track: 'legal' },
+  { key: 'pl-legal-expert', track: 'legal' },
+  { key: 'pl-legal-written-reasons', track: 'legal' },
+  { key: 'pl-legal-appeal', track: 'legal' },
+  { key: 'pl-legal-final-copy', track: 'legal' },
+  { key: 'pl-legal-pesel', track: 'legal' },
+  { key: 'pl-legal-new-birth-copy', track: 'legal' },
+  { key: 'pl-legal-name-usc', track: 'legal' },
+  { key: 'pl-legal-id-card', track: 'legal' },
+  { key: 'pl-legal-passport', track: 'legal' },
+  { key: 'pl-legal-driving-licence', track: 'legal' },
+  { key: 'pl-legal-zus-ceidg', track: 'legal' },
+  { key: 'pl-legal-diplomas', track: 'legal' },
+  { key: 'pl-legal-institutions', track: 'legal' },
+  { key: 'pl-legal-document-set', track: 'legal' },
+  /* presentational */
+  { key: 'pl-presentational-clothes', track: 'presentational' },
+  { key: 'pl-presentational-voice', track: 'presentational' },
+  { key: 'pl-presentational-hair', track: 'presentational' },
+  { key: 'pl-presentational-photo', track: 'presentational' },
+  /* medical */
+  { key: 'pl-medical-two-specialists', track: 'medical' },
+  { key: 'pl-medical-psychologist', track: 'medical' },
+  { key: 'pl-medical-psych-opinion', track: 'medical' },
+  { key: 'pl-medical-doctor-opinion', track: 'medical' },
+  { key: 'pl-medical-diagnosis-code', track: 'medical' },
+  { key: 'pl-medical-bloodwork', track: 'medical' },
+  { key: 'pl-medical-keep-opinions', track: 'medical' }
+] as const satisfies readonly RoadmapGoal[];
 
 export type PolishGoalKey = (typeof POLISH_GOALS)[number]['key'];
 
@@ -70,5 +117,5 @@ export type RoadmapGoalKey = PolishGoalKey;
 export type RoadmapPackKey = (typeof ROADMAP_PACKS)[number]['key'];
 
 /** One track's goals, in the order the pack lists them. */
-export const goalsInTrack = (pack: RoadmapPack, track: RoadmapTrack): RoadmapGoal[] =>
+export const goalsInTrack = <K extends string>(pack: RoadmapPack<K>, track: RoadmapTrack): RoadmapGoal<K>[] =>
   pack.goals.filter((goal) => goal.track === track);
