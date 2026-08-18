@@ -4,6 +4,7 @@ import { startOfDayTimestamp } from '../epochDay.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import { portablePreferences } from './payload.ts';
 import type { ArchiveEntry, ArchiveJournal } from './payload.ts';
+import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import { journalCsv, journalJson, type PlainNaming } from './plain.ts';
 
 /* January, so that local midnight plus a whole number of hours reads back
@@ -42,13 +43,13 @@ function entry(fields: Partial<ArchiveEntry>): ArchiveEntry {
 
 function journalOf(entries: ArchiveEntry[]): ArchiveJournal {
   return {
+    ...emptyArchiveJournal(),
     dimensions: [
       { key: 'femininity', name: '', low: '', high: '', min: 0, max: 100, builtIn: true, hidden: false },
       { key: 'masculinity', name: '', low: '', high: '', min: 0, max: 100, builtIn: true, hidden: false },
       { key: 'voice', name: 'Voice', low: 'off', high: 'mine', min: 0, max: 10, builtIn: false, hidden: false },
       { key: 'binder', name: 'Binder hours', low: 'none', high: 'all day', min: 0, max: 12, builtIn: false, hidden: true }
     ],
-    presets: [],
     tagGroups: [
       {
         key: 'emotions',
@@ -61,27 +62,7 @@ function journalOf(entries: ArchiveEntry[]): ArchiveJournal {
         ]
       }
     ],
-    entries,
-    milestones: [],
-    labResults: [],
-    measurements: [],
-    sideEffects: [],
-    personalEffects: [],
-    hairStages: [],
-    hairPhotos: [],
-    reminders: [],
-    tallyEvents: [],
-    regimenEpisodes: [],
-    doubtEntries: [],
-    counterevidenceSnapshots: [],
-    letters: [],
-    roadmapChecks: [],
-    doseEvents: [],
-    doseSchedules: [],
-    dosePauses: [],
-    medicationStock: [],
-    tryouts: [],
-    feltSenseEntries: []
+    entries
   };
 }
 
@@ -144,34 +125,11 @@ test('the JSON carries the whole journal and the settings that travel with it', 
 
 /* The text, not the parse: what someone opens is a file, so the file is
    what this pins - the key order, the indentation and the version at the
-   top of it, which a parsed comparison would let change silently. */
+   top of it, which a parsed comparison would let change silently. The key
+   order is the order sections are declared in (archiveSections.ts), which
+   is also the order a snapshot writes them. */
 test('the JSON reads as a file, indented, version first', () => {
-  const empty: ArchiveJournal = {
-    dimensions: [],
-    presets: [],
-    tagGroups: [],
-    entries: [],
-    milestones: [],
-    labResults: [],
-    measurements: [],
-    sideEffects: [],
-    personalEffects: [],
-    hairStages: [],
-    hairPhotos: [],
-    reminders: [],
-    tallyEvents: [],
-    regimenEpisodes: [],
-    doubtEntries: [],
-    counterevidenceSnapshots: [],
-    letters: [],
-    roadmapChecks: [],
-    doseEvents: [],
-    doseSchedules: [],
-    dosePauses: [],
-    medicationStock: [],
-    tryouts: [],
-    feltSenseEntries: []
-  };
+  const empty: ArchiveJournal = emptyArchiveJournal();
   const written = journalJson(empty, portablePreferences({ ...PREFERENCE_DEFAULTS, name: 'Ola', palette: 'lesbian' }));
 
   assert.equal(
@@ -192,11 +150,11 @@ test('the JSON reads as a file, indented, version first', () => {
     "hairPhotos": [],
     "reminders": [],
     "tallyEvents": [],
-    "regimenEpisodes": [],
     "doubtEntries": [],
     "counterevidenceSnapshots": [],
     "letters": [],
     "roadmapChecks": [],
+    "regimenEpisodes": [],
     "doseEvents": [],
     "doseSchedules": [],
     "dosePauses": [],

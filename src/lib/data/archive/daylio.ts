@@ -12,6 +12,7 @@
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue, localDateFromEpochDay } from '../epochDay';
 import { entryIsEmpty } from '../entryContent';
 import { foldText } from '../fold';
+import { emptyArchiveJournal } from '../journal/archiveSections';
 import { mintUuid } from '../journal/support';
 import type { ArchiveEntry, ArchiveJournal, ArchiveTag, ArchiveTagGroup } from './payload';
 
@@ -209,31 +210,15 @@ function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, 
   return matches;
 }
 
+/* Everything but the tag group and the entries travels empty: a Daylio
+   export carries no dimensions, no doses and no labs, and the merge that
+   commits this preview leaves whatever the device already has alone. Built
+   from the registry so a section added later starts out empty here too
+   rather than arriving as an absent key. */
 const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]): ArchiveJournal => ({
-  dimensions: [],
-  presets: [],
+  ...emptyArchiveJournal(),
   tagGroups: [tagGroup],
-  entries,
-  milestones: [],
-  labResults: [],
-  measurements: [],
-  sideEffects: [],
-  personalEffects: [],
-  hairStages: [],
-  hairPhotos: [],
-  reminders: [],
-  tallyEvents: [],
-  doubtEntries: [],
-  counterevidenceSnapshots: [],
-  letters: [],
-  roadmapChecks: [],
-  regimenEpisodes: [],
-  doseEvents: [],
-  doseSchedules: [],
-  dosePauses: [],
-  medicationStock: [],
-  tryouts: [],
-  feltSenseEntries: []
+  entries
 });
 
 export async function daylioPreview(
