@@ -116,7 +116,7 @@ async function insertRows(
 
 async function rowidsByUuid(
   driver: SqliteDriver,
-  table: 'entry' | 'milestone' | 'regimen_episode',
+  table: 'entry' | 'milestone' | 'regimen_episode' | 'doubt_snapshot',
   uuids: string[]
 ): Promise<Map<string, number>> {
   const ids = new Map<string, number>();
@@ -188,6 +188,8 @@ export async function restoreArchive(
     await applyHairPhotos(restoring);
     await applyReminders(restoring);
     await applyTallyEvents(restoring);
+    await applyDoubtEntries(restoring);
+    await applyCounterevidenceSnapshots(restoring);
     await applyRegimenEpisodes(restoring);
     /* After the episodes: both hang off an episode rowid, and the rows this
        import just inserted are where those rowids come from. */
@@ -212,6 +214,8 @@ const COLLECTIONS = [
   'hairPhotos',
   'reminders',
   'tallyEvents',
+  'doubtEntries',
+  'counterevidenceSnapshots',
   'regimenEpisodes',
   'doseEvents',
   'doseSchedules',
@@ -253,6 +257,9 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM hair_photo',
     'DELETE FROM reminder',
     'DELETE FROM tally_event',
+    'DELETE FROM doubt_entry',
+    'DELETE FROM doubt_snapshot_entry',
+    'DELETE FROM doubt_snapshot',
     'DELETE FROM dose_event',
     /* Before the episodes they hang off. The foreign keys cascade, but only
        with `PRAGMA foreign_keys` on, which is the driver's business and not
@@ -659,6 +666,54 @@ async function applyTallyEvents({ driver, journal, ts }: Restoring): Promise<voi
     'INSERT INTO tally_event (uuid, epoch_day, kind, context, updated_at)',
     inserting.map((event) => [event.id, event.epochDay, event.kind, event.context, ts])
   );
+}
+
+/* Matched by uuid, like applyMeasurements: a doubt entry is a dated series,
+   never a single replaced value. */
+async function applyDoubtEntries({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM doubt_entry');
+
+  const inserting = journal.doubtEntries.filter((entry) => !present.has(entry.id));
+  await insertRows(
+    driver,
+    'INSERT INTO doubt_entry (uuid, epoch_day, timestamp, text, updated_at)',
+    inserting.map((entry) => [entry.id, entry.epochDay, entry.timestamp, entry.text, ts])
+  );
+}
+
+/* Matched by uuid, like applyEntries: a snapshot's items are inserted
+   right after it, against the rowid the insert above just produced - the
+   same owner-then-detail-rows order applyEntries uses for photos. */
+async function applyCounterevidenceSnapshots({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM doubt_snapshot');
+
+  const inserting = journal.counterevidenceSnapshots.filter((snapshot) => !present.has(snapshot.id));
+  if (inserting.length === 0) return;
+
+  await insertRows(
+    driver,
+    'INSERT INTO doubt_snapshot (uuid, epoch_day, timestamp, updated_at)',
+    inserting.map((snapshot) => [snapshot.id, snapshot.epochDay, snapshot.timestamp, ts])
+  );
+
+  const snapshotIds = await rowidsByUuid(
+    driver,
+    'doubt_snapshot',
+    inserting.map((snapshot) => snapshot.id)
+  );
+
+  const itemRows: unknown[][] = [];
+  for (const snapshot of inserting) {
+    const snapshotId = snapshotIds.get(snapshot.id);
+    if (snapshotId === undefined) {
+      throw new Error(`counterevidence snapshot row id missing after restore insert: ${snapshot.id}`);
+    }
+    for (const [orderIndex, item] of (snapshot.items ?? []).entries()) {
+      itemRows.push([snapshotId, orderIndex, item.epochDay, item.mood, item.note]);
+    }
+  }
+
+  await insertRows(driver, 'INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note)', itemRows);
 }
 
 async function applyDoseEvents({ driver, journal, ts }: Restoring): Promise<void> {

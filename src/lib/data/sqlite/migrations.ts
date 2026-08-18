@@ -397,6 +397,64 @@ CREATE TABLE hair_photo (
 CREATE INDEX idx_hair_photo_epoch_day ON hair_photo(epoch_day);
 `;
 
+/* v14: the doubt journal (phase 4 ticket 11, CONTEXT: "Doubt entry",
+   "Counterevidence snapshot"). Free-write reflection for a "not trans
+   enough" spiral, its own record type - it carries no mood, dimension
+   values, tags or note beyond the one free-write field (CONTEXT: "Entry"),
+   the same reasoning `tally_event` (v6) and `side_effect` (v11) are their
+   own tables rather than a variant of `entry`.
+
+   `doubt_snapshot` and `doubt_snapshot_entry` hold a one-tap capture of
+   which of the user's own euphoria-tagged entries were on screen as
+   counterevidence when a person tapped save. They are copied in rather
+   than referenced by the source entry's id.
+
+   THIS PAIR STORES DERIVED DATA, WHICH ADR-0010 FORBIDS ON ITS FACE. The
+   exception is the same one lab_result's dosing-context columns argue
+   above (v9): the figure is measured against a moment - the counterevidence
+   list as it read when "save" was tapped - that is not recoverable later,
+   since the source entry can be edited, untagged or deleted afterwards. So
+   the copy cannot drift out of agreement with anything; it is a recorded
+   observation, not a cache of a live computation. Re-deriving it from a
+   live join on every read would let exactly the edit, untagging or
+   deletion above silently rewrite what a past snapshot showed, defeating
+   the feature's own point - rereading later what convinced someone then.
+
+   `doubt_snapshot_entry` carries no identity of its own (no uuid, no
+   updated_at) and no link back to the source entry's row: like
+   `entry_dimension_value`, it is a detail row that lives and dies with its
+   parent snapshot, never a thing addressed on its own. */
+const SCHEMA_V14 = `
+CREATE TABLE doubt_entry (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  timestamp  INTEGER NOT NULL,
+  text       TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_doubt_entry_epoch_day ON doubt_entry(epoch_day);
+
+CREATE TABLE doubt_snapshot (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  timestamp  INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_doubt_snapshot_epoch_day ON doubt_snapshot(epoch_day);
+
+CREATE TABLE doubt_snapshot_entry (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  snapshot_id INTEGER NOT NULL REFERENCES doubt_snapshot(id),
+  order_index INTEGER NOT NULL,
+  epoch_day   INTEGER NOT NULL,
+  mood        INTEGER,
+  note        TEXT NOT NULL
+);
+CREATE INDEX idx_doubt_snapshot_entry_snapshot ON doubt_snapshot_entry(snapshot_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -410,7 +468,8 @@ export const migrations: Migration[] = [
   { version: 10, sql: SCHEMA_V10 },
   { version: 11, sql: SCHEMA_V11 },
   { version: 12, sql: SCHEMA_V12 },
-  { version: 13, sql: SCHEMA_V13 }
+  { version: 13, sql: SCHEMA_V13 },
+  { version: 14, sql: SCHEMA_V14 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

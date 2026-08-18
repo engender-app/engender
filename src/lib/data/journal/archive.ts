@@ -32,9 +32,11 @@ import type {
   ArchiveEntry,
   ArchiveFile,
   ArchiveJournal,
+  ArchiveCounterevidenceSnapshot,
   ArchiveDoseEvent,
   ArchiveDosePause,
   ArchiveDoseSchedule,
+  ArchiveDoubtEntry,
   ArchiveHairPhoto,
   ArchiveHairStage,
   ArchiveLabResult,
@@ -286,6 +288,33 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       'SELECT uuid, name, severity, epoch_day FROM side_effect ORDER BY epoch_day, id'
     );
     return rows.map((r) => ({ id: r.uuid, name: r.name, severity: r.severity, epochDay: r.epoch_day }));
+  };
+
+  const doubtEntries = async (): Promise<ArchiveDoubtEntry[]> => {
+    const rows = await driver.query<{ uuid: string; epoch_day: number; timestamp: number; text: string }>(
+      'SELECT uuid, epoch_day, timestamp, text FROM doubt_entry ORDER BY epoch_day, timestamp, id'
+    );
+    return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, timestamp: r.timestamp, text: r.text }));
+  };
+
+  const counterevidenceSnapshots = async (): Promise<ArchiveCounterevidenceSnapshot[]> => {
+    const rows = await driver.query<{ id: number; uuid: string; epoch_day: number; timestamp: number }>(
+      'SELECT id, uuid, epoch_day, timestamp FROM doubt_snapshot ORDER BY epoch_day, timestamp, id'
+    );
+    const itemRows = await driver.query<{ snapshot_id: number; epoch_day: number; mood: number | null; note: string }>(
+      'SELECT snapshot_id, epoch_day, mood, note FROM doubt_snapshot_entry ORDER BY snapshot_id, order_index'
+    );
+    const items = groupBy(
+      itemRows,
+      (r) => r.snapshot_id,
+      (r) => ({ epochDay: r.epoch_day, mood: r.mood, note: r.note })
+    );
+    return rows.map((r) => ({
+      id: r.uuid,
+      epochDay: r.epoch_day,
+      timestamp: r.timestamp,
+      items: items.get(r.id) ?? []
+    }));
   };
 
   const personalEffects = async (): Promise<ArchivePersonalEffect[]> => {
@@ -548,6 +577,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           hairPhotos: hairPhotos(hairPhotoRowsRead),
           reminders: await reminders(),
           tallyEvents: await tallyEvents(),
+          doubtEntries: await doubtEntries(),
+          counterevidenceSnapshots: await counterevidenceSnapshots(),
           regimenEpisodes: await regimenEpisodes(),
           doseEvents: await doseEvents(),
           doseSchedules: await doseSchedules(),

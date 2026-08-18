@@ -126,6 +126,11 @@ async function populated() {
     reason: 'planned'
   });
 
+  const doubtEntry = await journal.doubtJournal.addEntry({ epochDay: 20000, text: 'am I even trans enough for this' });
+  const counterevidenceSnapshot = await journal.doubtJournal.saveSnapshot(20000, [
+    { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
+  ]);
+
   return {
     ...made,
     voice,
@@ -139,7 +144,9 @@ async function populated() {
     episode,
     dose,
     schedule,
-    dosePause
+    dosePause,
+    doubtEntry,
+    counterevidenceSnapshot
   };
 }
 
@@ -229,6 +236,22 @@ test('merge adds what this device does not have and leaves what it has alone', a
   const episodes = await target.journal.regimen.getEpisodes();
   assert.equal(episodes.length, 1);
   assert.equal(episodes[0].drug, 'estradiol valerate');
+  const doubtEntries = await target.journal.doubtJournal.getEntries(10);
+  assert.equal(doubtEntries.length, 1);
+  assert.equal(doubtEntries[0].text, 'am I even trans enough for this');
+  const snapshots = await target.journal.doubtJournal.getSnapshots(10);
+  assert.deepEqual(snapshots[0].items, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]);
+});
+
+test('merging the same archive twice duplicates neither a doubt entry nor a counterevidence snapshot', async () => {
+  const source = await populated();
+  const target = await device();
+
+  await target.journal.archive.merge(await exported(source.journal));
+  await target.journal.archive.merge(await exported(source.journal));
+
+  assert.equal((await target.journal.doubtJournal.getEntries(10)).length, 1);
+  assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
 });
 
 test('a dose log travels with its schedule and pauses, still hung off the right episode', async () => {
@@ -358,6 +381,7 @@ test("replace installs the archive's journal and discards this device's", async 
   });
   const myMilestone = await target.journal.milestones.upsertMilestone({ name: 'mine', epochDay: 19500 });
   await target.journal.tally.log({ epochDay: 19500, kind: 'correctly_gendered' });
+  await target.journal.doubtJournal.addEntry({ epochDay: 19500, text: 'mine' });
 
   await target.journal.archive.replace(await exported(source.journal));
 
@@ -365,6 +389,10 @@ test("replace installs the archive's journal and discards this device's", async 
   assert.equal((await target.journal.milestones.getMilestones()).map((m) => m.name).includes('mine'), false);
   assert.equal((await target.journal.tally.getEvents('correctly_gendered')).length, 0, "this device's tally event is gone");
   assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1, "the archive's tally event is here");
+  const doubtEntries = await target.journal.doubtJournal.getEntries(10);
+  assert.equal(doubtEntries.length, 1, "this device's doubt entry is gone");
+  assert.equal(doubtEntries[0].text, 'am I even trans enough for this', "the archive's doubt entry is here");
+  assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
   const tags = (await target.journal.tags.getTagGroups()).flatMap((g) => g.tags);
   assert.equal(tags.some((t) => t.id === myTag.id), false, 'a custom tag this device had is gone');
   assert.ok(tags.some((t) => t.id === source.tag.id), "the archive's custom tag is here");

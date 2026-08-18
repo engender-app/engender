@@ -60,7 +60,11 @@ export type TableName =
   /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
      nothing reads one without the other, the same reasoning 'dose' gives -
      the screen shows both against the same anchor. */
-  | 'hairProgress';
+  | 'hairProgress'
+  /* One name for doubt entries and counterevidence snapshots alike (phase
+     4 ticket 11): both belong to the same doubt-journal screen, the same
+     reasoning 'hairProgress' gives. */
+  | 'doubtJournal';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -80,7 +84,8 @@ export const TABLE_NAMES: TableName[] = [
   'stock',
   'sideEffect',
   'personalEffect',
-  'hairProgress'
+  'hairProgress',
+  'doubtJournal'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -172,6 +177,15 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   reminders: {
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },
     reads: ['getReminders']
+  },
+  doubtJournal: {
+    writes: {
+      addEntry: ['doubtJournal'],
+      deleteEntry: ['doubtJournal'],
+      saveSnapshot: ['doubtJournal'],
+      deleteSnapshot: ['doubtJournal']
+    },
+    reads: ['getEntries', 'getSnapshots']
   },
   tally: {
     writes: { log: ['tally'], setContext: ['tally'], deleteEvent: ['tally'] },
