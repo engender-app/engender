@@ -12,8 +12,10 @@ vi.mock('$lib/paraglide/messages', () => ({
   m: new Proxy({}, { get: (_target, key) => () => String(key) })
 }));
 
-function affirmationEntries(catalogue: Record<string, string>): [string, string][] {
-  return Object.entries(catalogue).filter(([key]) => /^affirmation_\d+$/.test(key));
+function affirmationEntries(catalogue: Record<string, unknown>): [string, string][] {
+  return Object.entries(catalogue).filter(
+    (entry): entry is [string, string] => /^affirmation_\d+$/.test(entry[0]) && typeof entry[1] === 'string'
+  );
 }
 
 describe('affirmation catalogues', () => {
