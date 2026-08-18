@@ -73,6 +73,20 @@
             android:name=".reminders.ReminderAlarmReceiver"
             android:exported="false" />
 
+        <!-- The quick-log widget (ticket 26). Exported, unlike the reminder
+             alarm receiver above: APPWIDGET_UPDATE comes from the launcher,
+             a different app, not a broadcast this app sends itself. -->
+        <receiver
+            android:name=".widgets.QuickLogWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_log_widget_info" />
+        </receiver>
+
         <receiver
             android:name=".reminders.ReminderRescheduleReceiver"
             android:enabled="true"

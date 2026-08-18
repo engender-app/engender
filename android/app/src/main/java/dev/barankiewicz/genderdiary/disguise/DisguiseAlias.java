@@ -32,6 +32,14 @@ public final class DisguiseAlias {
         return true;
     }
 
+    /** The same live PackageManager read {@link #apply} uses, exposed for
+        other at-rest surfaces that must not brand themselves while disguise
+        is on - the quick-log widget (ticket 26) reads this rather than
+        keeping a second copy of the preference. */
+    public static boolean isDisguised(Context context) {
+        return isDisguised(context.getPackageManager(), context);
+    }
+
     /** Reads which alias is currently live, straight from PackageManager -
         the manifest's android:enabled is the fallback for "never toggled",
         not a value this class keeps a second copy of. */

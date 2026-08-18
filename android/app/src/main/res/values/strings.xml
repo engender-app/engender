@@ -9,4 +9,20 @@
     <string name="title_activity_main">Gender Diary</string>
     <string name="package_name">dev.barankiewicz.genderdiary</string>
     <string name="custom_url_scheme">dev.barankiewicz.genderdiary</string>
+
+    <!-- Quick-log widget (ticket 26). The header names what the buttons are
+         for; QuickLogWidgetProvider hides it while disguise mode is on,
+         since that is exactly the kind of identity a casual glance must not
+         see. Not localized, matching app_name_disguised above - Android
+         resources here have never carried translations, only the web side
+         (Paraglide) does. -->
+    <string name="widget_quick_log_title">How are you feeling?</string>
+    <string name="widget_quick_log_description">Log your mood in one tap.</string>
+    <string-array name="widget_mood_names">
+        <item>Awful</item>
+        <item>Bad</item>
+        <item>Meh</item>
+        <item>Good</item>
+        <item>Great</item>
+    </string-array>
 </resources>
