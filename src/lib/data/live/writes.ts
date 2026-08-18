@@ -262,7 +262,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {
     writes: {},
-    reads: ['dayAverages', 'bodyRegionTrend', 'tallyTrend', 'entryCountsByDay', 'tagInsights', 'streak', 'recap', 'isGoodDay']
+    reads: ['dayAverages', 'bodyRegionTrend', 'tallyTrend', 'entryCountsByDay', 'tagInsights', 'streak', 'bestStreakEver', 'recap', 'isGoodDay']
   },
   /* An import rewrites the journal (ticket 14), so it invalidates all of it -
      every query and every mirrored slice. Naming the tables one at a time

@@ -111,6 +111,12 @@ export interface StatsArea {
       least one entry exists (CONTEXT: Streak). Today counts as unbroken
       until today is over, and backdating into a gap repairs the run. */
   streak(todayEpochDay: number): Promise<number>;
+  /** The longest run in the journal's whole history (CONTEXT: Best streak),
+      not just the one ending today - a goal's gentle achievements (phase 4
+      features ticket 20) read this rather than `streak()` so that a badge
+      earned once stays earned through a later gap. Entries dated in the
+      future are excluded, the same rule `streak()` applies. */
+  bestStreakEver(todayEpochDay: number): Promise<number>;
   recap(fromEpochDay: number, toEpochDay: number): Promise<Recap>;
   /** One point per day a body region (bodyMap.ts) carried an intensity in
       the range, oldest first, both ends inclusive - the same shape as
@@ -325,6 +331,13 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         [todayEpochDay, todayEpochDay]
       );
       return rows[0]?.n ?? 0;
+    },
+
+    async bestStreakEver(todayEpochDay) {
+      // The same gaps-and-islands query bestStreakIn runs for a recap's
+      // range, just with no lower bound - "ever" is "every day up to
+      // today", not a second streak-counting rule to keep in step with it.
+      return bestStreakIn(Number.MIN_SAFE_INTEGER, todayEpochDay);
     },
 
     async recap(fromEpochDay, toEpochDay) {
