@@ -6,6 +6,7 @@ import { DecryptionFailedError } from '../../crypto/aesGcm.ts';
 import { deriveKey } from '../../crypto/argon2id.ts';
 import { PREFERENCE_DEFAULTS, DEVICE_LOCAL_KEYS, PORTABLE_KEYS, type PreferenceValues } from '../prefs/catalogue.ts';
 import { openJournal } from '../journal/journal.ts';
+import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import { verifyArchive } from '../journal/restore.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
@@ -337,32 +338,7 @@ test('verifying a different archive leaves a live journal exactly as it was', as
 const BIG_FILE = 2 * 1024 * 1024;
 const BIG_FILE_COUNT = 32;
 
-const EMPTY_JOURNAL: ArchiveJournal = {
-  dimensions: [],
-  presets: [],
-  tagGroups: [],
-  entries: [],
-  milestones: [],
-  labResults: [],
-  measurements: [],
-  sideEffects: [],
-  personalEffects: [],
-  hairStages: [],
-  hairPhotos: [],
-  reminders: [],
-  tallyEvents: [],
-  regimenEpisodes: [],
-  doubtEntries: [],
-  counterevidenceSnapshots: [],
-  letters: [],
-  roadmapChecks: [],
-  doseEvents: [],
-  doseSchedules: [],
-  dosePauses: [],
-  medicationStock: [],
-  tryouts: [],
-  feltSenseEntries: []
-};
+const EMPTY_JOURNAL: ArchiveJournal = emptyArchiveJournal();
 
 function bigContents(): { contents: ArchiveContents; reads: string[] } {
   const reads: string[] = [];
