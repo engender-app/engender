@@ -145,6 +145,8 @@ export function timelapseSupported(): boolean {
   return typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(JOURNEY_MIME.timelapse);
 }
 
+/** Precondition: at least one frame. A timelapse of nothing is not a file
+    the screen offers - the button is disabled until something is selected. */
 export async function recordTimelapse(
   frames: JourneyFrame[],
   read: ReadPhoto,
