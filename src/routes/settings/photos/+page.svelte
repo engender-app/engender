@@ -146,6 +146,11 @@
           </button>
         {/each}
       </div>
+      <div style="margin-top:var(--space-4)">
+        <a class="btn btn-soft" href="/settings/photos/export" data-journey-export>
+          <Icon name="image" size={20} /><span>{m.pj_open()}</span>
+        </a>
+      </div>
       {#if pair}
         <div class="editor-savebar">
           <button class="btn btn-primary" data-compare onclick={() => (comparing = true)}>

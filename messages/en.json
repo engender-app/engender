@@ -1684,5 +1684,55 @@
   "roadmap_goal_pl_legal_institutions": "Bank, insurers, clinic, phone operator",
   "roadmap_note_pl_legal_institutions": "Each one handles it separately, off the new ID card and a copy of the ruling.",
   "roadmap_goal_pl_legal_document_set": "The set of documents to carry",
-  "roadmap_note_pl_legal_document_set": "The new ID card, a copy of the final ruling, the USC name-change decision, and a fresh birth certificate copy."
+  "roadmap_note_pl_legal_document_set": "The new ID card, a copy of the final ruling, the USC name-change decision, and a fresh birth certificate copy.",
+  "pj_open": "Make a collage or timelapse",
+  "pj_title": "Collage and timelapse",
+  "pj_range_title": "Which photos",
+  "pj_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} photo in this range",
+        "countPlural=other": "{count} photos in this range"
+      }
+    }
+  ],
+  "pj_leave_out_hint": "Tap a photo to leave it out.",
+  "pj_none_in_range": "No photos in this range.",
+  "pj_output_title": "What to make",
+  "pj_output_collage": "Collage",
+  "pj_output_timelapse": "Timelapse",
+  "pj_collage_hint": "One image, every photo in a grid, oldest first.",
+  "pj_timelapse_hint": "A video, one photo at a time. It records as it plays, so making it takes as long as it runs.",
+  "pj_timelapse_length": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "About {n} second",
+        "nPlural=other": "About {n} seconds"
+      }
+    }
+  ],
+  "pj_timelapse_unavailable": "This browser can't record video, so a collage is the option here.",
+  "pj_generate": "Make it",
+  "pj_progress": "Photo {done} of {total}",
+  "pj_stays_here": "Nothing has left this device. The file is only in this screen until you share or save it.",
+  "pj_share": "Share or save",
+  "pj_again": "Make another",
+  "pj_preview_collage_alt": "The collage you just made",
+  "pj_shared": "Shared.",
+  "pj_downloaded": "Saved. Check your downloads.",
+  "pj_failed": "That didn't work. Nothing was shared."
 }

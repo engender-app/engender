@@ -26,3 +26,10 @@ export function setPhotoFiles(files: PhotoFileStore): void {
 export async function readThumbnail(fileName: string): Promise<Uint8Array | null> {
   return store ? store.read(thumbFileName(fileName)) : null;
 }
+
+/** A stored photo's full bytes, on the same terms. Only the journey export
+    (ticket 27) reads these: a screen drawing a photo wants the thumbnail,
+    and a composed collage at 360px a cell would show the difference. */
+export async function readPhoto(fileName: string): Promise<Uint8Array | null> {
+  return store ? store.read(fileName) : null;
+}
