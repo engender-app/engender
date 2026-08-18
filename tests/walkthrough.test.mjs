@@ -1254,6 +1254,74 @@ try {
   ok('on-this-day: the good-day rule, the Home card, and its own Settings toggle');
 } catch (e) { fail('on-this-day', e); }
 
+/* 23. an unsaved entry survives Android killing the backgrounded process,
+   not only a same-process app-switcher round trip (ticket 14). A full page
+   reload discards every JS heap the same way process death does, while
+   localStorage - the mirror EntryEditor.svelte writes to on every change -
+   survives on disk either way, so this is the closest a desktop browser
+   gets to proving it. */
+try {
+  await fresh('/entry/new/today');
+  await page.locator('.mood-picker .mood-btn[data-mood="4"]').click();
+  await page.locator('#ed-note').fill('Killed mid-edit by Playwright.');
+  await page.waitForFunction(() => {
+    const raw = localStorage.getItem('gender-diary-entry-draft');
+    if (!raw) return false;
+    const draft = JSON.parse(raw);
+    return draft.mood === 4 && draft.note === 'Killed mid-edit by Playwright.';
+  });
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('#ed-note');
+  const restoredNote = await page.locator('#ed-note').inputValue();
+  if (restoredNote !== 'Killed mid-edit by Playwright.') {
+    throw new Error(`note lost across reload: "${restoredNote}"`);
+  }
+  await page.waitForSelector('.mood-picker .mood-btn[data-mood="4"].is-selected');
+
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('.entry-card .entry-note');
+  const saved = await page.locator('.entry-card .entry-note').first().textContent();
+  if (!saved.includes('Killed mid-edit')) throw new Error('the resumed draft did not save');
+
+  /* Saving unmounts the editor, which clears the mirror (onDestroy), so a
+     later, unrelated new entry must not inherit anything from this one. */
+  await fresh('/entry/new/today');
+  const leftover = await page.locator('#ed-note').inputValue();
+  if (leftover) throw new Error(`a saved draft leaked into a fresh editor: "${leftover}"`);
+  ok('an unsaved entry survives a killed process and does not leak into the next one');
+} catch (e) { fail('background/process-death draft restore', e); }
+
+/* 23b. the other half of ticket 14: backgrounding and returning without the
+   process ever dying (home button, app switcher) must not touch an
+   in-progress edit either. Unlike flow 20, this never reloads or
+   navigates, so the editor component itself never unmounts - firing the
+   same visibility events Android does is only worth asserting because it
+   proves nothing here mistakes "hidden" for "gone" and clears the draft
+   early. */
+try {
+  await fresh('/entry/new/today');
+  await page.locator('.mood-picker .mood-btn[data-mood="3"]').click();
+  await page.locator('#ed-note').fill('Backgrounded but never killed.');
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('pagehide', { persisted: true }));
+  });
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('pageshow', { persisted: true }));
+  });
+
+  const note = await page.locator('#ed-note').inputValue();
+  if (note !== 'Backgrounded but never killed.') throw new Error(`note changed across backgrounding: "${note}"`);
+  await page.waitForSelector('.mood-picker .mood-btn[data-mood="3"].is-selected');
+  ok('backgrounding and returning in the same process leaves an unsaved edit untouched');
+} catch (e) { fail('same-process background/resume', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');
