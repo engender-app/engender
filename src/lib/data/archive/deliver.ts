@@ -36,10 +36,17 @@ type Sharing = {
     on the other side. The extension is the caller's, because the plain
     export writes the same name with `.csv` and `.json` (F22). */
 export function exportFileName(name: string, extension: string, epochDay: number = todayEpochDay()): string {
-  const slug = foldText(name)
+  const slug = nameSlug(name);
+  return `${slug ? `${slug}-` : ''}journal-${dateInputValueFromEpochDay(epochDay)}${extension}`;
+}
+
+/** The journal name reduced to what a file name can hold, empty when it
+    reduces to nothing. Shared with the photo journey export (ticket 27),
+    which builds a different name from the same slug. */
+export function nameSlug(name: string): string {
+  return foldText(name)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-  return `${slug ? `${slug}-` : ''}journal-${dateInputValueFromEpochDay(epochDay)}${extension}`;
 }
 
 export async function deliverFile(file: {
