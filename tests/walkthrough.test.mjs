@@ -1235,7 +1235,7 @@ try {
    02's flow above: append here, run `npx svelte-kit sync` first. */
 try {
   await fresh('/on-this-day');
-  if (!(await page.locator('[data-screen-title]').count())) {
+  if (!(await page.locator('[data-screen-title="on-this-day"]').count())) {
     throw new Error('the route did not render');
   }
 

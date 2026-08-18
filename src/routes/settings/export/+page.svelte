@@ -307,34 +307,27 @@
       }
     } catch (error) {
       console.error('the import failed', error);
-      impError = importFailure(error);
-      impErrorKind = importFailureKind(error);
+      ({ message: impError, kind: impErrorKind } = importFailure(error));
     } finally {
       importing = false;
     }
   }
 
-  /* Each branch is a catalogued sentence rather than an error message: the
+  /* One branch per catalogued sentence rather than an error message: the
      archive errors carry English diagnostics for the console, and a Polish
      reader must not get one of those spliced into a Polish paragraph
-     (docs/ui-copy.md). */
-  function importFailure(error: unknown): string {
-    if (error instanceof DecryptionFailedError) return m.imp_wrong_password();
+     (docs/ui-copy.md). The stable `kind` alongside each sentence is a
+     walkthrough handle, not a second copy of the catalogue - the branches
+     stay in one place so the two can't drift apart. */
+  function importFailure(error: unknown): { message: string; kind: string } {
+    if (error instanceof DecryptionFailedError) return { message: m.imp_wrong_password(), kind: 'wrong-password' };
     if (error instanceof UnsupportedArchiveError) {
-      return error.kind === 'newer-version' ? m.imp_newer_version() : m.imp_not_an_archive();
+      return error.kind === 'newer-version'
+        ? { message: m.imp_newer_version(), kind: 'newer-version' }
+        : { message: m.imp_not_an_archive(), kind: 'not-an-archive' };
     }
-    if (error instanceof CorruptArchiveError) return m.imp_corrupt();
-    return m.imp_failed();
-  }
-
-  // Same branches as importFailure, as a stable key instead of a sentence.
-  function importFailureKind(error: unknown): string {
-    if (error instanceof DecryptionFailedError) return 'wrong-password';
-    if (error instanceof UnsupportedArchiveError) {
-      return error.kind === 'newer-version' ? 'newer-version' : 'not-an-archive';
-    }
-    if (error instanceof CorruptArchiveError) return 'corrupt';
-    return 'failed';
+    if (error instanceof CorruptArchiveError) return { message: m.imp_corrupt(), kind: 'corrupt' };
+    return { message: m.imp_failed(), kind: 'failed' };
   }
 
   /* The backup health drill (ticket 28): the same picked file and password
