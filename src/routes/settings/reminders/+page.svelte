@@ -55,7 +55,7 @@
   });
 </script>
 
-<div class="screen">
+<div class="screen" data-screen>
   <header class="screen-header">
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.reminders()}</h1>

@@ -175,11 +175,11 @@
       const offerDims = seedMood != null && entryDraft.hasMoodOnlyContent && vocabulary.activeDimensions.length > 0;
       await goto(offerDims ? `/?quickLogDims=${id}` : '/');
       if (offerDims) {
-        toast(m.saved());
+        toast(m.saved(), { kind: 'saved' });
       } else if (prefs.entryNudges && entryDraft.hasMoodOnlyContent) {
-        toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`) });
+        toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
       } else {
-        toast(m.saved());
+        toast(m.saved(), { kind: 'saved' });
       }
     } catch (error) {
       console.error('could not save the entry', error);
@@ -198,7 +198,7 @@
 
 <div class="screen">
   <header class="screen-header">
-    <a class="icon-btn" href={existing ? `/day/${day}` : '/'} aria-label={m.back()}><Icon name="arrowLeft" /></a>
+    <a class="icon-btn" data-editor-back href={existing ? `/day/${day}` : '/'} aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{existing ? m.entry() : m.new_entry()}</h1>
     <div class="header-action">
       {#if existing}

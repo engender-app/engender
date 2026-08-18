@@ -457,7 +457,7 @@
   {/await}
 {/if}
 
-<div class="app-viewport">
+<div class="app-viewport" data-app-viewport>
   <!-- data-boot is what the error notice below already branches on, published
        so it can be waited for: the walkthrough suite has to let a cold start
        finish before it clears storage, or it interrupts the very writes it
@@ -508,6 +508,7 @@
           <a
             class="rail-item"
             class:is-active={activeKey === item.key}
+            data-rail-item={item.key}
             href={item.href}
             aria-current={activeKey === item.key ? 'page' : undefined}
           >
@@ -536,19 +537,20 @@
     </main>
 
     {#if !chromeless}
-      <nav class="app-nav" aria-label={m.nav_main()}>
+      <nav class="app-nav" data-app-nav aria-label={m.nav_main()}>
         {#each NAV.slice(0, 2) as item (item.key)}
           <a
             class="nav-item"
             class:is-active={activeKey === item.key}
+            data-nav-item={item.key}
             href={item.href}
             aria-current={activeKey === item.key ? 'page' : undefined}
           >
-            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label">{item.label()}</span>
+            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label" data-nav-label>{item.label()}</span>
           </a>
         {/each}
         <div class="nav-fab-slot">
-          <button class="nav-fab" aria-label={m.new_entry()} onclick={() => (ui.chooserOpen = true)}>
+          <button class="nav-fab" data-nav-fab aria-label={m.new_entry()} onclick={() => (ui.chooserOpen = true)}>
             <Icon name="plus" size={26} />
           </button>
         </div>
@@ -556,10 +558,11 @@
           <a
             class="nav-item"
             class:is-active={activeKey === item.key}
+            data-nav-item={item.key}
             href={item.href}
             aria-current={activeKey === item.key ? 'page' : undefined}
           >
-            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label">{item.label()}</span>
+            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label" data-nav-label>{item.label()}</span>
           </a>
         {/each}
       </nav>

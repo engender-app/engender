@@ -201,7 +201,7 @@
   </div>
 
   <SectionTitle text={m.settings_tracking()} />
-  <div class="list-group">
+  <div class="list-group" data-settings-list>
     <button class="list-row" onclick={() => (presetSheet = true)}>
       <span class="row-icon"><Icon name="heart" size={22} /></span>
       <span class="row-text">
@@ -557,7 +557,7 @@
           }}
         >
           <span class="row-text">
-            <span class="row-title">{p.name}</span>
+            <span class="row-title" data-row-title>{p.name}</span>
             <span class="row-subtitle">{vocabulary.presetDimensionNames(p.dims)}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
           </span>
           {#if prefs.activePreset === p.id}<Icon name="check" size={20} />{/if}
