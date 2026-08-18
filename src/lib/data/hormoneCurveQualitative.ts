@@ -97,7 +97,7 @@ export interface QualitativeCurveInput {
 const SHAPE_SAMPLES = 361;
 
 function isQualitativeRoute(route: DoseEvent['route']): route is QualitativeRoute {
-  return route === 'oral' || route === 'sublingual' || route === 'patch' || route === 'gel';
+  return (QUALITATIVE_ROUTES as readonly string[]).includes(route);
 }
 
 /** The trapezoid's own value, in shape units per milligram, `hoursSince` the

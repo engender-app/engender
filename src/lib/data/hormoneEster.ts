@@ -88,7 +88,8 @@ export function isEstradiolDrug(drug: string): boolean {
     field is read first and the drug field second - someone who corrects the
     ester without retyping the drug means the narrower field. */
 export function resolveInjectableEster(episode: Pick<RegimenEpisode, 'drug' | 'ester'>): InjectableEster | null {
-  if (!isEstradiolDrug(episode.drug)) return null;
+  const drug = normalize(episode.drug);
+  if (!mentions(drug, { names: ESTRADIOL_NAMES, abbreviations: ESTRADIOL_ABBREVIATIONS })) return null;
 
-  return esterIn(normalize(episode.ester ?? '')) ?? esterIn(normalize(episode.drug));
+  return esterIn(normalize(episode.ester ?? '')) ?? esterIn(drug);
 }

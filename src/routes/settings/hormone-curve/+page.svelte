@@ -224,7 +224,7 @@
         {@const points = pointsFor(curve)}
         {@const selected = picked[curve.ester] ?? null}
         <div class="card curve-card">
-          <h3 class="curve-ester">{esterLabel(curve.ester)}</h3>
+          <h3 class="curve-card-heading">{esterLabel(curve.ester)}</h3>
 
           <HormoneBandChart
             band={curve.band}
@@ -298,7 +298,7 @@
       {#each qualView.curves as curve (curve.route)}
         <div class="card curve-card">
           <div class="qual-card-head">
-            <h3 class="curve-ester">{routeLabel(curve.route)}</h3>
+            <h3 class="curve-card-heading">{routeLabel(curve.route)}</h3>
             <span class="qual-notice">{m.curve_qual_notice()}</span>
           </div>
 
@@ -404,7 +404,7 @@
     margin-bottom: var(--space-4);
   }
 
-  .curve-ester {
+  .curve-card-heading {
     font-size: var(--text-md);
     margin: 0;
   }
