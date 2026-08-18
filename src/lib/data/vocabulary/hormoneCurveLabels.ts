@@ -15,7 +15,11 @@
 import { m } from '$lib/paraglide/messages';
 import type { InjectableEster } from '$lib/data/hormoneEster';
 
-const ESTER_LABELS: Record<InjectableEster, () => string> = {
+/** The same shape labels.ts declares, so a message that later takes inputs or
+    a locale override still fits this record. */
+type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
+
+const ESTER_LABELS: Record<InjectableEster, Message> = {
   benzoate: m.curve_ester_benzoate,
   valerate: m.curve_ester_valerate,
   cypionate: m.curve_ester_cypionate,

@@ -4,10 +4,13 @@ import { startOfDayTimestamp } from './epochDay.ts';
 import type { DoseEvent, RegimenEpisode } from './types.ts';
 import {
   BAND_PERCENTILES,
+  CURVE_ANALYTE,
   CURVE_LOOKBACK_DAYS,
   CURVE_UNIT,
   bandMidpointAt,
+  bandRangeAt,
   esterCurves,
+  latestBandPoint,
   scaleCurves,
   settlingDays
 } from './hormoneCurve.ts';
@@ -103,13 +106,58 @@ test('every point of every band is a range, and a band carries no single value t
   }
 });
 
-test('the band spans the window that was asked for, and no more', () => {
+test('the band covers the whole of the last day, not up to its midnight', () => {
+  /* An epoch day is a whole local day, so a band that stopped at
+     `toEpochDay` stopped at 00:00 that morning - an injection given that day
+     would have contributed nothing to a chart that still drew a curve. */
   const result = esterCurves({ doses: [dose(0)], episodes: [episode('valerate')], ...WINDOW });
   const band = result.curves[0].band;
 
   assert.equal(band[0].day, 0);
-  assert.equal(band[band.length - 1].day, 28);
-  for (const point of band) assert.ok(point.day >= 0 && point.day <= 28);
+  assert.equal(band[band.length - 1].day, 29);
+  for (const point of band) assert.ok(point.day >= 0 && point.day <= 29);
+});
+
+test('an injection given on the last day of the window is in the band', () => {
+  const result = esterCurves({ doses: [dose(28)], episodes: [episode('valerate')], ...WINDOW });
+  assert.equal(result.curves[0].doseCount, 1);
+  assert.ok(
+    latestBandPoint(result.curves[0])!.upper > 0,
+    'the band should have risen by the end of the day the injection was given on'
+  );
+});
+
+test('the band range at a day, and the last point of it, are both available to a screen', () => {
+  const result = esterCurves({ doses: [dose(0), dose(7)], episodes: [episode('valerate')], ...WINDOW });
+  const curve = result.curves[0];
+
+  const atTen = bandRangeAt(curve, 10);
+  assert.ok(atTen !== null);
+  assert.ok(atTen.day >= 10);
+  assert.ok(atTen.lower < atTen.upper);
+
+  // Past the end it answers with the last slice rather than null.
+  assert.deepEqual(bandRangeAt(curve, 999), curve.band[curve.band.length - 1]);
+  assert.deepEqual(latestBandPoint(curve), curve.band[curve.band.length - 1]);
+});
+
+test('the analyte the curve is of is the one ADR-0026 knows by that name', () => {
+  assert.equal(CURVE_ANALYTE, 'estradiol');
+});
+
+test('subcutaneous injections are counted, because they borrow intramuscular parameters', () => {
+  // Every published fit behind this model is intramuscular. Drawing an SC
+  // dose against them is an assumption, so it has to be countable.
+  const both = esterCurves({
+    doses: [dose(0), dose(7, { route: 'sc' }) as DoseEvent],
+    episodes: [episode('valerate')],
+    ...WINDOW
+  });
+  assert.equal(both.curves[0].doseCount, 2);
+  assert.equal(both.subcutaneousDoses, 1);
+
+  const imOnly = esterCurves({ doses: [dose(0)], episodes: [episode('valerate')], ...WINDOW });
+  assert.equal(imOnly.subcutaneousDoses, 0);
 });
 
 test('doubling the dose doubles the whole band, because dose scales linearly within an ester', () => {
@@ -301,4 +349,33 @@ test('no doses at all is an empty answer, not a flat band at zero', () => {
   const result = esterCurves({ doses: [], episodes: [episode('valerate')], ...WINDOW });
   assert.deepEqual(result.curves, []);
   assert.equal(result.dosesWithoutMilligrams, 0);
+});
+
+test('the copy’s claim about undecylate holds against the numbers it ships', () => {
+  /* The screen says undecylate's band spans more than tenfold where a fitted
+     ester's spans about a third (m.curve_hypothetical_body). That is a claim
+     about this data, so it is checked against this data - an earlier draft
+     said the shape was borrowed from another ester, which was simply not
+     true of these parameters, and nothing caught it. */
+  const spread = (ester: keyof typeof ESTER_POSTERIORS) => {
+    const averages = ESTER_POSTERIORS[ester]!.map(([d, , , k3]) => d / k3).sort((a, b) => a - b);
+    const at = (p: number) => averages[Math.round((averages.length - 1) * p)];
+    return at(0.975) / at(0.025);
+  };
+
+  assert.ok(spread('undecylate') > 10, `undecylate spans ${spread('undecylate').toFixed(1)}x`);
+  for (const ester of ['benzoate', 'valerate', 'cypionate', 'enanthate'] as const) {
+    assert.ok(spread(ester) < 1.6, `${ester} spans ${spread(ester).toFixed(1)}x, too wide for "about a third"`);
+  }
+});
+
+test('undecylate’s parameters are its own, not another ester’s reused', () => {
+  // The specific thing the old copy got wrong.
+  const others = new Set(
+    (['benzoate', 'valerate', 'cypionate', 'enanthate'] as const).flatMap((ester) =>
+      ESTER_POSTERIORS[ester]!.map((sample) => sample.join(','))
+    )
+  );
+  const shared = ESTER_POSTERIORS.undecylate!.filter((sample) => others.has(sample.join(',')));
+  assert.deepEqual(shared, []);
 });

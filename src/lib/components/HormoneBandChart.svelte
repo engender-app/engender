@@ -27,12 +27,12 @@
   let {
     band,
     labPoints = [],
-    min = 0,
     max = 400,
     height = 150,
     width = 320,
     hypothetical = false,
     formatValue,
+    unitLabel,
     ariaLabel,
     selected = null,
     onSelect,
@@ -41,7 +41,6 @@
     band: BandPoint[];
     /** The user's own results. Drawn over the band and never part of it. */
     labPoints?: LabPoint[];
-    min?: number;
     max?: number;
     height?: number;
     width?: number;
@@ -51,6 +50,10 @@
     /** For the axis labels. Supplied so no number formatting - and no
         paraglide - lives in here. */
     formatValue: (value: number) => string;
+    /** The unit the axis is in, printed above it. Without it a result logged
+        in the analyte's other unit sits at a height nobody can reconcile with
+        the number they wrote down. */
+    unitLabel: string;
     ariaLabel: string;
     /** Index into `labPoints`, or null for none. */
     selected?: number | null;
@@ -80,7 +83,9 @@
     const x0 = band[0].day;
     const x1 = band[band.length - 1].day;
     const x = scaleLinear().domain([x0, Math.max(x0 + 1, x1)]).range([AXIS, width - P]);
-    const y = scaleLinear().domain([min, max]).range([height - P, P]);
+    /* Zero-based always: a concentration has a floor and a band that started
+       part-way up one would exaggerate every trough. */
+    const y = scaleLinear().domain([0, max]).range([height - P, P]);
 
     const bandGen = d3area<BandPoint>()
       .x((p) => x(p.day))
@@ -91,7 +96,7 @@
         .x((p) => x(p.day))
         .y((p) => pick(p))(band) ?? '';
 
-    const ticks = y.ticks(4).filter((value) => value >= min && value <= max);
+    const ticks = y.ticks(4).filter((value) => value >= 0 && value <= max);
 
     return {
       band: bandGen(band) ?? '',
@@ -118,6 +123,8 @@
         </pattern>
       </defs>
     {/if}
+
+    <text x={AXIS - 5} y={P - 1} class="band-axis-label" text-anchor="end">{unitLabel}</text>
 
     {#each chart.ticks as tick (tick.value)}
       <line x1={AXIS} x2={width - P} y1={tick.y} y2={tick.y} class="chart-gridline" />

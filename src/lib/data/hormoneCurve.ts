@@ -46,6 +46,13 @@ import type { DoseEvent, RegimenEpisode } from './types';
     (ADR-0026, secondaryLabValue). */
 export const CURVE_UNIT = 'pg/mL';
 
+/** The analyte this curve is of, as ADR-0026's allowlist spells it. Named
+    here so the screen can ask that allowlist for a pmol/L reading of a
+    modelled value without a bare 'estradiol' literal at the call site - the
+    conversion is the same fixed physical factor either way, and this ticket
+    adds no second path for it. */
+export const CURVE_ANALYTE = 'estradiol';
+
 /** The percentiles the band's edges are. estrannaise publishes its own
     ranges as p5/p95 (menstrualCycleData), so the band matches the source's
     own way of expressing one. */
@@ -72,8 +79,9 @@ export interface CurveBandPoint {
 
 export interface EsterCurve {
   ester: InjectableEster;
-  /** True for undecylate, whose parameters are not a fit to injectable
-      estradiol data at all. Every screen drawing this has to say so. */
+  /** True for undecylate, whose fit rests on so little data that it barely
+      constrains anything (isHypotheticalEster). Every screen drawing this
+      has to say so. */
   hypothetical: boolean;
   band: CurveBandPoint[];
   /** How many logged doses went into it. */
@@ -90,6 +98,13 @@ export interface HormoneCurves {
       often logged by volume. Counted so a screen can say the curve is
       missing doses rather than quietly drawing a low one. */
   dosesWithoutMilligrams: number;
+  /** Subcutaneous injections that went into a band built from intramuscular
+      parameters. Every published fit behind this model is intramuscular and
+      there are none for the subcutaneous route, so those doses are drawn on
+      the assumption that a depot behaves the same either way. That is an
+      assumption and not a finding, so it is counted here and said on screen
+      rather than left implicit. */
+  subcutaneousDoses: number;
 }
 
 export interface CurveInput {
@@ -148,12 +163,12 @@ export function settlingDays([, k1, k2, k3]: PkSample): number {
     across all of them asks for 6302 days of dose log to draw a 90-day chart.
 
     That gap is not a rounding problem, it is the thing that makes
-    undecylate's curve hypothetical. Its parameters were never fitted to
-    injectable estradiol data, so nothing in the posterior pins its tail
-    down, and at the far end of it a dose given two years ago is still
-    two-thirds of its own peak. A year of lookback truncates that tail. The
-    screen already says the curve is hypothetical and this is one more reason
-    it has to. */
+    undecylate's curve hypothetical. Its fit rests on a handful of injections
+    followed for about a fortnight, which is nothing next to an ester that
+    acts for months, so almost nothing in the posterior pins its tail down -
+    at the far end of it a dose given two years ago is still two-thirds of
+    its own peak. A year of lookback truncates that tail. The screen already
+    says the curve is hypothetical and this is one more reason it has to. */
 export const CURVE_LOOKBACK_DAYS = 365;
 
 function percentile(sorted: readonly number[], p: number): number {
@@ -186,8 +201,20 @@ function bandFor(
   const reach = Math.max(...samples.map(settlingDays));
   const injections = allInjections.filter((injection) => injection.day >= fromEpochDay - reach);
 
-  const step = (toEpochDay - fromEpochDay) / (BAND_SAMPLES - 1);
-  const days = Array.from({ length: BAND_SAMPLES }, (_, i) => fromEpochDay + i * step);
+  /* Through the END of the last day, not up to its midnight. An epoch day is
+     a whole local day (ADR-0001), so a band that stopped at `toEpochDay`
+     stopped at 00:00 this morning: an injection given today would have
+     contributed nothing to a chart that still drew a curve, and the readout
+     would have been labelled with today's date for a value at midnight. */
+  const end = toEpochDay + 1;
+  const step = (end - fromEpochDay) / (BAND_SAMPLES - 1);
+  /* The last sample is pinned to `end` rather than left as
+     `from + 360 * step`, which lands a few float-epsilons past it. Not
+     cosmetic: bandMidpointAt answers null outside the band, so a lab point
+     drawn at exactly the end of the window would have fallen off it. */
+  const days = Array.from({ length: BAND_SAMPLES }, (_, i) =>
+    i === BAND_SAMPLES - 1 ? end : fromEpochDay + i * step
+  );
 
   /* One row per sampled day, filled sample by sample, so the percentile at
      a day is taken over the 313 whole curves rather than over anything
@@ -222,6 +249,7 @@ export function esterCurves(input: CurveInput): HormoneCurves {
   const injections = new Map<InjectableEster, { day: number; milligrams: number }[]>();
   const unmodelled = new Set<InjectableEster>();
   let dosesWithoutMilligrams = 0;
+  let subcutaneousDoses = 0;
 
   for (const dose of doses) {
     if (dose.route !== 'im' && dose.route !== 'sc') continue;
@@ -243,6 +271,8 @@ export function esterCurves(input: CurveInput): HormoneCurves {
       continue;
     }
 
+    if (dose.route === 'sc') subcutaneousDoses += 1;
+
     const existing = injections.get(ester);
     const injection = { day: fractionalEpochDay(dose.timestamp), milligrams };
     if (existing) existing.push(injection);
@@ -259,7 +289,8 @@ export function esterCurves(input: CurveInput): HormoneCurves {
   return {
     curves,
     unmodelledEsters: INJECTABLE_ESTERS.filter((ester) => unmodelled.has(ester)),
-    dosesWithoutMilligrams
+    dosesWithoutMilligrams,
+    subcutaneousDoses
   };
 }
 
@@ -281,6 +312,24 @@ export function scaleCurves(curves: readonly EsterCurve[], factor: number): Este
       upper: point.upper * factor
     }))
   }));
+}
+
+/** The band's own range at `day`: the first sample at or after it, or the
+    last one when `day` is past the end. Null for an empty band.
+
+    Here rather than in the screen that reads it, for the reason every other
+    derived module gives: it is arithmetic over a band and it is testable in
+    the Node tier, where a helper inside a Svelte file is not. */
+export function bandRangeAt(curve: EsterCurve, day: number): CurveBandPoint | null {
+  if (curve.band.length === 0) return null;
+  return curve.band.find((point) => point.day >= day) ?? curve.band[curve.band.length - 1];
+}
+
+/** The last slice of the band - where the curve has got to by the end of the
+    window. What the screen shows when no result of the user's own is picked
+    out. */
+export function latestBandPoint(curve: EsterCurve): CurveBandPoint | null {
+  return curve.band[curve.band.length - 1] ?? null;
 }
 
 /** The middle of the band at `day`, interpolated between the two samples

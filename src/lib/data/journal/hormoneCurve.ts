@@ -53,6 +53,9 @@ export interface HormoneCurveView {
   curves: EsterCurve[];
   unmodelledEsters: InjectableEster[];
   dosesWithoutMilligrams: number;
+  /** Subcutaneous injections drawn against intramuscular parameters, which
+      is an assumption the screen has to state (hormoneCurve.ts). */
+  subcutaneousDoses: number;
   labPoints: CurveLabPoint[];
   /** Estradiol results in the window whose unit is outside ADR-0026's
       allowlist, so there is no honest way to place them against a pg/mL
@@ -156,16 +159,17 @@ export function makeHormoneCurveArea(
         }
       }
 
-      const scaleFactor = pairs.length > 0 ? fitScaleFactor(pairs) : null;
+      const fit = pairs.length > 0 ? fitScaleFactor(pairs) : null;
 
       return {
-        curves: scaleFactor === null ? population.curves : scaleCurves(population.curves, scaleFactor),
+        curves: fit === null ? population.curves : scaleCurves(population.curves, fit.factor),
         unmodelledEsters: population.unmodelledEsters,
         dosesWithoutMilligrams: population.dosesWithoutMilligrams,
+        subcutaneousDoses: population.subcutaneousDoses,
         labPoints,
         labPointsOffAxis,
-        scaleFactor,
-        fitPointCount: scaleFactor === null ? 0 : pairs.filter((pair) => pair.modelled > 0 && pair.observed > 0).length
+        scaleFactor: fit?.factor ?? null,
+        fitPointCount: fit?.pointsUsed ?? 0
       };
     }
   };

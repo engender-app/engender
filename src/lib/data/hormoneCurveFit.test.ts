@@ -25,23 +25,27 @@ test('a dose that is not a positive number has no milligram figure either', () =
 });
 
 test('one lab point above the model scales the curve up by exactly its ratio', () => {
-  assert.equal(fitScaleFactor([{ modelled: 100, observed: 150 }]), 1.5);
+  assert.deepEqual(fitScaleFactor([{ modelled: 100, observed: 150 }]), { factor: 1.5, pointsUsed: 1 });
 });
 
 test('several points are fitted by least squares through the origin, not averaged pairwise', () => {
   // Least squares through the origin is sum(o*m)/sum(m*m): the bigger
   // modelled values carry more of the answer, which is what keeps one
   // near-zero trough point from dominating the whole fit.
-  const factor = fitScaleFactor([
+  const fit = fitScaleFactor([
     { modelled: 100, observed: 200 },
     { modelled: 200, observed: 300 }
   ]);
-  assert.ok(factor !== null);
-  assert.ok(Math.abs(factor - (100 * 200 + 200 * 300) / (100 * 100 + 200 * 200)) < 1e-12);
+  assert.ok(fit !== null);
+  assert.ok(Math.abs(fit.factor - (100 * 200 + 200 * 300) / (100 * 100 + 200 * 200)) < 1e-12);
+  assert.equal(fit.pointsUsed, 2);
 });
 
 test('a factor of one comes back when the user sits exactly on the model', () => {
-  assert.equal(fitScaleFactor([{ modelled: 80, observed: 80 }, { modelled: 40, observed: 40 }]), 1);
+  assert.deepEqual(fitScaleFactor([{ modelled: 80, observed: 80 }, { modelled: 40, observed: 40 }]), {
+    factor: 1,
+    pointsUsed: 2
+  });
 });
 
 test('nothing to fit against gives no factor rather than a factor of one', () => {
@@ -51,6 +55,10 @@ test('nothing to fit against gives no factor rather than a factor of one', () =>
   assert.equal(fitScaleFactor([{ modelled: 0, observed: 90 }]), null);
 });
 
-test('a point that reads zero cannot scale a curve and is left out of the fit', () => {
-  assert.equal(fitScaleFactor([{ modelled: 100, observed: 0 }, { modelled: 100, observed: 150 }]), 1.5);
+test('a point that reads zero cannot scale a curve, and is not counted as used either', () => {
+  // The count and the fit share one rule, so they cannot drift apart.
+  assert.deepEqual(fitScaleFactor([{ modelled: 100, observed: 0 }, { modelled: 100, observed: 150 }]), {
+    factor: 1.5,
+    pointsUsed: 1
+  });
 });

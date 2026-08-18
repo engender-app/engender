@@ -1364,7 +1364,7 @@
   "curve_legend_band": "Modelled range",
   "curve_legend_results": "Your results",
   "curve_hypothetical_tag": "Hypothetical",
-  "curve_hypothetical_body": "No published study of injectable estradiol undecylate is detailed enough to fit a curve to. This shape is borrowed from a comparable long-acting ester, so it shows nothing measured about undecylate itself. Read it as an illustration, not an estimate.",
+  "curve_hypothetical_body": "Estradiol undecylate does have a curve of its own, but it rests on a handful of injections followed for about two weeks - nothing next to an ester that acts for months. The fit barely pins anything down, and its own uncertainty says so: this band spans more than tenfold where a fitted ester's spans about a third. Read it as an illustration, not an estimate.",
   "curve_band_note": "The band is how uncertain the typical curve for an ester is, not how much people differ from one another. Your own numbers can fall outside it and still be ordinary.",
   "curve_source": "Model and parameters: estrannaise.js by alix, MIT licensed, estrannai.se. A three-compartment fit to published injection studies, with the uncertainty samples this band is drawn from.",
   "curve_band_at": "Modelled range on {date}",
@@ -1393,5 +1393,6 @@
   "curve_empty_action": "Open the dose log",
   "curve_chart_aria": "Modelled estradiol range for {ester}, {from} to {to}. Your own results shown: {count}.",
   "curve_point_aria": "{value} {unit} on {date}",
-  "curve_point_clear": "Close"
+  "curve_point_clear": "Close",
+  "curve_sc_note": "Injections under the skin drawn against intramuscular parameters: {count}. The published fits are all intramuscular, and this app has none for the subcutaneous route, so those doses are drawn on the assumption that the two behave alike."
 }

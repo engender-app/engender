@@ -10,12 +10,13 @@
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { CURVE_UNIT, type EsterCurve } from '$lib/data/hormoneCurve';
+  import { CURVE_ANALYTE, CURVE_UNIT, bandRangeAt, latestBandPoint, type EsterCurve } from '$lib/data/hormoneCurve';
   import type { CurveLabPoint } from '$lib/data/journal/hormoneCurve';
+  import type { InjectableEster } from '$lib/data/hormoneEster';
   import { esterLabel } from '$lib/data/vocabulary/hormoneCurveLabels';
   import { secondaryLabValue } from '$lib/data/labs/units';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, intlLocale } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -58,7 +59,12 @@
     return tops.length ? Math.max(...tops) * 1.1 : 400;
   });
 
-  const round = (value: number) => Math.round(value).toLocaleString();
+  /** Localized, like every other number this app shows (labContextLabel.ts's
+      fmtHours): a Polish reader expects "1 234", not "1,234". Bare
+      toLocaleString would follow the browser's locale rather than the one
+      chosen in Settings. */
+  const round = (value: number): string =>
+    new Intl.NumberFormat(intlLocale(), { maximumFractionDigits: 0 }).format(value);
 
   /** The user's own results, in their own unit first and the allowlisted
       conversion second (ADR-0026). Never the other way round. */
@@ -73,15 +79,15 @@
     };
   }
 
-  /** The band's own reading at a day, in the model's unit and then converted.
-      The band is the thing being described, so its native unit is pg/mL - the
-      unit the parameters were published in. */
-  function bandLines(curve: EsterCurve, day: number): { native: string; converted: string | null } | null {
-    const point = curve.band.find((candidate) => candidate.day >= day) ?? curve.band[curve.band.length - 1];
+  /** The band's own reading where the window ends, in the model's unit and
+      then converted. The band is the thing being described, so its native
+      unit is pg/mL - the unit the parameters were published in. */
+  function bandLines(curve: EsterCurve): { native: string; converted: string | null } | null {
+    const point = latestBandPoint(curve);
     if (!point) return null;
 
-    const low = secondaryLabValue('estradiol', point.lower, CURVE_UNIT);
-    const high = secondaryLabValue('estradiol', point.upper, CURVE_UNIT);
+    const low = secondaryLabValue(CURVE_ANALYTE, point.lower, CURVE_UNIT);
+    const high = secondaryLabValue(CURVE_ANALYTE, point.upper, CURVE_UNIT);
     return {
       native: m.curve_range_value({ low: round(point.lower), high: round(point.upper), unit: CURVE_UNIT }),
       converted:
@@ -94,9 +100,9 @@
   /* Which result is picked out on which ester's chart, keyed by ester so two
      charts keep their own selection instead of fighting over one index they
      number differently. Tapping the picked result again clears it. */
-  let picked = $state<Record<string, number | null>>({});
+  let picked = $state<Partial<Record<InjectableEster, number | null>>>({});
 
-  function pickPoint(ester: string, index: number) {
+  function pickPoint(ester: InjectableEster, index: number) {
     picked = { ...picked, [ester]: picked[ester] === index ? null : index };
   }
 
@@ -159,6 +165,7 @@
           max={axisMax}
           hypothetical={curve.hypothetical}
           formatValue={round}
+          unitLabel={CURVE_UNIT}
           ariaLabel={m.curve_chart_aria({
             ester: esterLabel(curve.ester),
             from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
@@ -170,7 +177,11 @@
           pointLabel={(index) =>
             m.curve_point_aria({
               value: String(points[index].result.value),
-              unit: points[index].result.unit || CURVE_UNIT,
+              /* Never blank: a result only reaches this chart if its unit
+                 converts, so there is no unitless case to substitute for -
+                 and substituting CURVE_UNIT would announce a unit nobody
+                 logged. */
+              unit: points[index].result.unit,
               date: fmtDay(points[index].result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
             })}
         />
@@ -203,7 +214,7 @@
             {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
             {#if lines.context}<p class="muted small">{lines.context}</p>{/if}
           {:else}
-            {@const lines = bandLines(curve, today)}
+            {@const lines = bandLines(curve)}
             {#if lines}
               <p class="readout-label">
                 {m.curve_band_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
@@ -269,6 +280,9 @@
     {/if}
     {#if view.labPointsOffAxis > 0}
       <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(view.labPointsOffAxis) })}</p>
+    {/if}
+    {#if view.subcutaneousDoses > 0}
+      <p class="muted small curve-note">{m.curve_sc_note({ count: String(view.subcutaneousDoses) })}</p>
     {/if}
 
     <p class="muted small curve-note">{m.curve_source()}</p>

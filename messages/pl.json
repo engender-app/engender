@@ -1390,7 +1390,7 @@
   "curve_legend_band": "Modelowany zakres",
   "curve_legend_results": "Twoje wyniki",
   "curve_hypothetical_tag": "Hipotetyczna",
-  "curve_hypothetical_body": "Żadne opublikowane badanie undecylanu estradiolu w zastrzykach nie jest na tyle dokładne, żeby dopasować do niego krzywą. Ten kształt pochodzi z innego estru o podobnie długim działaniu, więc nie mówi nic zmierzonego o samym undecylanie. Czytaj go jak ilustrację, nie jak oszacowanie.",
+  "curve_hypothetical_body": "Undecylan estradiolu ma własną krzywą, ale stoi ona na kilku zastrzykach obserwowanych przez jakieś dwa tygodnie - a to nic przy estrze, który działa miesiącami. Dopasowanie prawie niczego nie ustala i sama niepewność to pokazuje: to pasmo jest ponad dziesięciokrotnie szerokie, a u dopasowanego estru mieści się w jednej trzeciej. Czytaj je jak ilustrację, nie jak oszacowanie.",
   "curve_band_note": "Pasmo mówi, jak niepewna jest typowa krzywa dla estru, a nie jak bardzo ludzie różnią się między sobą. Twoje liczby mogą wypaść poza nim i nadal być zwyczajne.",
   "curve_source": "Model i parametry: estrannaise.js autorstwa alix, licencja MIT, estrannai.se. Dopasowanie trójkompartmentowe do opublikowanych badań nad zastrzykami, razem z próbkami niepewności, z których powstaje to pasmo.",
   "curve_band_at": "Modelowany zakres, {date}",
@@ -1419,5 +1419,6 @@
   "curve_empty_action": "Otwórz dziennik dawek",
   "curve_chart_aria": "Modelowany zakres estradiolu dla {ester}, {from} - {to}. Pokazane Twoje wyniki: {count}.",
   "curve_point_aria": "{value} {unit}, {date}",
-  "curve_point_clear": "Zamknij"
+  "curve_point_clear": "Zamknij",
+  "curve_sc_note": "Zastrzyki podskórne policzone z parametrów domięśniowych: {count}. Wszystkie opublikowane dopasowania są domięśniowe, a dla drogi podskórnej ta aplikacja nie ma żadnych, więc te dawki rysują się przy założeniu, że jedna droga zachowuje się jak druga."
 }

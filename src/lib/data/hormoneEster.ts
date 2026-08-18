@@ -88,9 +88,14 @@ export function resolveInjectableEster(episode: Pick<RegimenEpisode, 'drug' | 'e
   return esterIn(normalize(episode.ester ?? '')) ?? esterIn(drug);
 }
 
-/** True only for undecylate, whose parameters were never fitted to
-    injectable estradiol data at all. Its curve is hypothetical by
-    construction and every screen that draws it has to say so (ticket 10). */
+/** True only for undecylate. It does have a fit of its own, unlike
+    polyestradiol phosphate which has none - but it is fitted to so little
+    data that the fit barely constrains anything, and the posterior says so
+    itself: its plausible average level spans more than tenfold where the
+    other four esters span about a third (hormoneCurveModels.ts, and a test
+    in hormoneCurve.test.ts pins the gap). A curve that loose is an
+    illustration rather than an estimate, and every screen drawing it has to
+    say so. */
 export function isHypotheticalEster(ester: InjectableEster): boolean {
   return ester === 'undecylate';
 }

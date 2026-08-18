@@ -98,7 +98,13 @@ export function canonicalizeLabMeasurement(analyte: string, value: number, unit:
     is; this is the secondary reading shown beside it, never a replacement.
 
     No new conversion path: this reads ALLOWED_PREFERRED_UNITS for the other
-    unit and hands the arithmetic to convertLabValue above. */
+    unit and hands the arithmetic to convertLabValue above.
+
+    "The other unit" is only a well-posed question because every analyte on
+    the allowlist has exactly two. A third would make this pick whichever
+    came first in the list, which is why it is a fixed pair per analyte in
+    ADR-0026 and not an open set - an analyte with three units needs a
+    caller that says which one it wants, not this function. */
 export function secondaryLabValue(
   analyte: string,
   value: number,

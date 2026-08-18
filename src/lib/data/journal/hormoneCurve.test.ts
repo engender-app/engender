@@ -281,3 +281,30 @@ test('a result drawn under a non-estradiol regimen is attributed to no ester eit
 
   assert.equal(view.labPoints[0].ester, null);
 });
+
+test('a subcutaneous injection reaches the screen as an assumption to state', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await journal.doses.upsertDose({
+    timestamp: at(FROM + 3),
+    route: 'sc',
+    dose: 5,
+    doseUnit: 'mg',
+    injectionSite: 'thigh-left',
+    vehicle: 'oil'
+  });
+
+  const view = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+
+  assert.equal(view.curves.length, 1);
+  assert.equal(view.subcutaneousDoses, 1);
+});
+
+test('an all-intramuscular log has nothing to state about the subcutaneous route', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await injectWeekly(journal, 4);
+
+  const view = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+  assert.equal(view.subcutaneousDoses, 0);
+});

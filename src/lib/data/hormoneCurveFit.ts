@@ -31,25 +31,37 @@ export interface FitPair {
   observed: number;
 }
 
+/** A fitted scale factor and how many of the user's points went into it.
+    The count comes back from here rather than being recounted by the caller:
+    which pairs are usable is this function's rule, and a caller applying the
+    same test separately would disagree with it the moment either changed. */
+export interface ScaleFit {
+  factor: number;
+  pointsUsed: number;
+}
+
 /** How much to multiply the whole curve by so it sits as close as possible
     to the user's own points: least squares through the origin, which is the
     one-parameter fit a scale factor is. Null when there is nothing to fit
-    against, which is a different answer from 1 - one says the curve was
-    never fitted, the other says it was and the user matches the population.
+    against, which is a different answer from a factor of 1 - one says the
+    curve was never fitted, the other says it was and the user matches the
+    population.
 
     Deliberately not a refit of the per-ester compartment parameters. Those
     are the literature's (hormoneCurveModels.ts) and stay as published; this
     moves the amplitude and nothing else. */
-export function fitScaleFactor(pairs: readonly FitPair[]): number | null {
+export function fitScaleFactor(pairs: readonly FitPair[]): ScaleFit | null {
   let numerator = 0;
   let denominator = 0;
+  let pointsUsed = 0;
 
   for (const { modelled, observed } of pairs) {
     if (!Number.isFinite(modelled) || !Number.isFinite(observed)) continue;
     if (modelled <= 0 || observed <= 0) continue;
     numerator += modelled * observed;
     denominator += modelled * modelled;
+    pointsUsed += 1;
   }
 
-  return denominator > 0 ? numerator / denominator : null;
+  return denominator > 0 ? { factor: numerator / denominator, pointsUsed } : null;
 }
