@@ -22,3 +22,14 @@ export function foldText(s: string): string {
     .replace(/[śš]/g, 's')
     .replace(/[żźž]/g, 'z');
 }
+
+/** The same folding, reduced to what a file name can carry: lowercase, ASCII,
+    hyphen separated, empty when the name reduces to nothing. Here rather than
+    beside either export that builds a name, because a journal archive
+    (archive/deliver.ts) and a photo journey (photos/journey.ts) have to agree
+    on it, and neither should have to import the other to do that. */
+export function nameSlug(name: string): string {
+  return foldText(name)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}

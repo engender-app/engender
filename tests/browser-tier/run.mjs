@@ -670,6 +670,121 @@ try {
   fail('ticket 04 (phase 2) migration and rollback', e.message ?? String(e));
 }
 
+// --- Ticket 27: the photo journey export, against a real canvas and MediaRecorder ---
+try {
+  const r = await load('/journey.html', 'data-journey-probe-ready', '__journeyProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  const size = (s) => `${s.width}x${s.height}`;
+  // JPEG survives a re-encode, so a flat colour comes back near it, not on it.
+  const near = (got, want) => got.every((channel, i) => Math.abs(channel - want[i]) <= 16);
+  /* VP8 is looser still: 4:2:0 chroma subsampling plus a full RGB-YUV-RGB
+     round trip moves a flat red by about twenty per channel. Wide enough to
+     accept that, nowhere near wide enough to confuse red with green or blue,
+     which are what this is telling apart. */
+  const nearInVideo = (got, want) => got.every((channel, i) => Math.abs(channel - want[i]) <= 32);
+  const RED = [220, 40, 40];
+  const GREEN = [40, 200, 80];
+  const BLUE = [50, 80, 220];
+  const SURROUND = [23, 21, 26];
+  const MISSING = [43, 40, 48];
+
+  if (r.collageSignature.join() === '255,216,255' && r.collageType === 'image/jpeg')
+    ok('a collage comes back as real JPEG bytes, not a canvas nobody encoded');
+  else fail('a collage comes back as real JPEG bytes', `${r.collageType}, starts ${r.collageSignature}`);
+
+  if (size(r.collageSize) === size(r.expectedCollageSize))
+    ok(`the collage is the size collageLayout() measured (${size(r.collageSize)})`);
+  else fail('the collage is the size collageLayout() measured', `${size(r.collageSize)} vs ${size(r.expectedCollageSize)}`);
+
+  const [first, second, third, empty] = r.cellColours;
+  if (near(first, RED) && near(second, GREEN) && near(third, BLUE))
+    ok('the cells hold the photos in journey order, oldest first');
+  else fail('the cells hold the photos in journey order', JSON.stringify(r.cellColours.slice(0, 3)));
+
+  if (near(empty, SURROUND)) ok('and a grid slot past the end of the journey stays empty rather than repeating a photo');
+  else fail('a grid slot past the end of the journey stays empty', JSON.stringify(empty));
+
+  // A portrait photo in a square cell: cropped to its centre, so the corner
+  // of the cell is inside the photo. Letterboxing would leave the surround.
+  if (near(r.portraitCornerColour, GREEN))
+    ok(`a portrait photo is cropped to fill its square cell, not letterboxed (${r.coverOfPortrait.sHeight | 0}px taken from ${1200}px)`);
+  else fail('a portrait photo is cropped to fill its square cell', JSON.stringify(r.portraitCornerColour));
+
+  if (r.collageProgress.join() === '1,2,3') ok('progress is reported per photo, so a long export can say where it is');
+  else fail('progress is reported per photo', JSON.stringify(r.collageProgress));
+
+  // ADR-0008 leaves no original to go back to, so the export can only read
+  // the stored files - and it reads the full photos, not the thumbnails the
+  // grid draws, because a 320px thumbnail in a 360px cell would be visible.
+  if (r.readsWereFullPhotos.every((name) => !name.includes('-thumb')))
+    ok('the export consumes the stored full-size photos, never a thumbnail or an original (ADR-0008)');
+  else fail('the export consumes the stored full-size photos', JSON.stringify(r.readsWereFullPhotos));
+
+  if (r.missingPhotoStillRendered && near(r.gapColour, MISSING))
+    ok('a photo with no file, reclaimed or never stored, leaves a gap rather than failing the whole export');
+  else fail('a photo with no file leaves a gap', `rendered: ${r.missingPhotoStillRendered}, ${JSON.stringify(r.gapColour)}`);
+
+  /* Ticket 27's out-of-scope line: no "upscaling beyond what the
+     already-normalized source photos support". A 200px photo in a 360px cell
+     sits at 200px, so the cell corner is still surround. */
+  if (near(r.tinyCentreColour, GREEN) && near(r.tinyCornerColour, SURROUND))
+    ok(`a photo smaller than its cell is centred at its own size, not stretched to fill (200px in a ${r.tinyCell}px cell)`);
+  else
+    fail(
+      'a photo smaller than its cell is not stretched to fill',
+      `centre ${JSON.stringify(r.tinyCentreColour)}, corner ${JSON.stringify(r.tinyCornerColour)}`
+    );
+
+  if (r.abortRejected)
+    ok('and a recording in flight can be abandoned, so a minutes-long timelapse is not a trap');
+  else fail('a recording in flight can be abandoned', `abortRejected: ${r.abortRejected}`);
+
+  // --- the timelapse -----------------------------------------------------
+  if (r.timelapseSupported) ok('MediaRecorder can record WebM here, which is what the timelapse option needs');
+  else fail('MediaRecorder can record WebM here', 'timelapseSupported() said no');
+
+  if (r.timelapseSignature.join() === '26,69,223,163' && r.timelapseType === 'video/webm')
+    ok('a timelapse comes back as a real WebM file (EBML header)');
+  else fail('a timelapse comes back as a real WebM file', `${r.timelapseType}, starts ${r.timelapseSignature}`);
+
+  if (size(r.firstFrame) === `${r.timelapseEdge}x${r.timelapseEdge}`)
+    ok(`the recorded video decodes at ${r.timelapseEdge}x${r.timelapseEdge}`);
+  else fail('the recorded video decodes at the timelapse edge', size(r.firstFrame));
+
+  if (nearInVideo(r.firstFrame.centre, RED))
+    ok('and its first frame is the oldest photo, on the canvas before recording started');
+  else fail('the first frame is the oldest photo', JSON.stringify(r.firstFrame.centre));
+
+  // Recording is real time (MediaRecorder has no other clock), so three
+  // photos at 700ms each cannot come back in less than about two seconds.
+  if (r.recordingTookMs >= 2000) ok(`recording runs in real time, as the duration estimate says (${r.recordingTookMs}ms for 3 photos)`);
+  else fail('recording runs in real time', `${r.recordingTookMs}ms for 3 photos at 700ms each`);
+
+  // --- generating is not sharing (ticket 27's whole posture) --------------
+  if (r.shareCallsAfterGenerating === 0)
+    ok('a collage and a timelapse both exist and nothing has been shared: generating transmits nothing');
+  else fail('generating transmits nothing', `navigator.share was called ${r.shareCallsAfterGenerating} time(s)`);
+
+  if (r.fileNames.collage === 'alicja-journey-2025-08-13.jpg' && r.fileNames.timelapse === 'alicja-journey-2025-08-13.webm')
+    ok('the files are named for a journey rather than a journal, so neither reads as a backup');
+  else fail('the files are named for a journey', JSON.stringify(r.fileNames));
+
+  await page.click('#share');
+  await page.waitForFunction(() => window.__journeyShareResult !== undefined);
+  const shared = await page.evaluate(() => window.__journeyShareResult);
+
+  if (shared.delivery === 'shared' && shared.shareCalls === 1)
+    ok('and it takes a click on the share button to hand the file over - once');
+  else fail('a click on the share button hands the file over', JSON.stringify(shared));
+
+  if (shared.sharedFile?.name === 'alicja-journey-2025-08-13.jpg' && shared.sharedFile.type === 'image/jpeg' && shared.sharedFile.size > 0)
+    ok('what the share sheet receives is the generated collage itself, named and typed for what it is');
+  else fail('the share sheet receives the generated collage', JSON.stringify(shared.sharedFile));
+} catch (e) {
+  fail('ticket 27 photo journey export', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 

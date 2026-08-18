@@ -16,7 +16,7 @@
    Writing it out as it is produced instead needs a save-file picker, which
    Android's WebView does not have. */
 
-import { foldText } from '../fold';
+import { nameSlug } from '../fold';
 import { dateInputValueFromEpochDay, todayEpochDay } from '../epochDay';
 
 /** Whether the file left, and how - so the caller can tell a cancelled
@@ -36,9 +36,7 @@ type Sharing = {
     on the other side. The extension is the caller's, because the plain
     export writes the same name with `.csv` and `.json` (F22). */
 export function exportFileName(name: string, extension: string, epochDay: number = todayEpochDay()): string {
-  const slug = foldText(name)
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+  const slug = nameSlug(name);
   return `${slug ? `${slug}-` : ''}journal-${dateInputValueFromEpochDay(epochDay)}${extension}`;
 }
 
@@ -49,13 +47,18 @@ export async function deliverFile(file: {
 }): Promise<Delivery> {
   const parts: BlobPart[] = [];
   for await (const piece of file.body) parts.push(piece as BlobPart);
-  const blob = new Blob(parts, { type: file.type });
+  return deliverBlob(file.fileName, new Blob(parts, { type: file.type }));
+}
 
+/** The same hand-off for something already whole in memory: ticket 27's
+    collage and timelapse come off a canvas as a Blob, and this is what keeps
+    them on the one share path rather than growing a second one. */
+export async function deliverBlob(fileName: string, blob: Blob): Promise<Delivery> {
   const sharing = navigator as Navigator & Sharing;
-  const shared = new File([blob], file.fileName, { type: blob.type });
+  const shared = new File([blob], fileName, { type: blob.type });
   if (sharing.canShare?.({ files: [shared] }) && sharing.share) {
     try {
-      await sharing.share({ files: [shared], title: file.fileName });
+      await sharing.share({ files: [shared], title: fileName });
       return 'shared';
     } catch (error) {
       // The one error worth reading: the user closed the sheet. Anything
@@ -68,7 +71,7 @@ export async function deliverFile(file: {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = file.fileName;
+  link.download = fileName;
   link.click();
   URL.revokeObjectURL(url);
   return 'downloaded';
