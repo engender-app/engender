@@ -1,7 +1,7 @@
 /* The journal (ADR-0017, CONTEXT: "Journal"): everything this device holds
    about the user's transition, reached through one handle bound to a
    database driver. A factory takes a SqliteDriver and a photo file store
-   and composes nine area modules behind that handle. The interface is
+   and composes eleven area modules behind that handle. The interface is
    uniformly async and free of Svelte runes, so the whole thing runs under
    the Node tier's real SQLite; it mints every row's identity itself
    (ADR-0002), so no screen ever needs a Date.now() scheme again.
@@ -13,6 +13,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
+import { makeDosesArea, type DosesArea } from './doses';
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
@@ -64,6 +65,10 @@ export interface Journal {
       Its own record type, never an Entry or a quick log. */
   tally: TallyArea;
   regimen: RegimenArea;
+  /** The dose log, plus the schedules and pauses read alongside it. Stores
+      no episode link: which episode a dose belongs to is resolved from its
+      timestamp above this seam (regimenEpisode.ts). */
+  doses: DosesArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -90,6 +95,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     reminders: makeRemindersArea(driver),
     tally: makeTallyArea(driver),
     regimen: makeRegimenArea(driver),
+    doses: makeDosesArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

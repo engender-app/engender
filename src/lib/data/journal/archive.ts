@@ -32,6 +32,9 @@ import type {
   ArchiveEntry,
   ArchiveFile,
   ArchiveJournal,
+  ArchiveDoseEvent,
+  ArchiveDosePause,
+  ArchiveDoseSchedule,
   ArchiveLabResult,
   ArchiveMeasurement,
   ArchiveMilestone,
@@ -315,6 +318,84 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     }));
   };
 
+  const doseEvents = async (): Promise<ArchiveDoseEvent[]> => {
+    const rows = await driver.query<{
+      uuid: string;
+      timestamp: number;
+      route: string;
+      dose: number;
+      dose_unit: string;
+      injection_site: string | null;
+      vehicle: string | null;
+      application_site: string | null;
+      status: string;
+      scheduled_dose: number | null;
+      scheduled_route: string | null;
+      scheduled_timestamp: number | null;
+    }>(
+      `SELECT uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
+              status, scheduled_dose, scheduled_route, scheduled_timestamp
+         FROM dose_event ORDER BY timestamp, id`
+    );
+    return rows.map((r) => ({
+      id: r.uuid,
+      timestamp: r.timestamp,
+      route: r.route,
+      dose: r.dose,
+      doseUnit: r.dose_unit,
+      injectionSite: r.injection_site,
+      vehicle: r.vehicle,
+      applicationSite: r.application_site,
+      status: r.status,
+      scheduledDose: r.scheduled_dose,
+      scheduledRoute: r.scheduled_route,
+      scheduledTimestamp: r.scheduled_timestamp
+    }));
+  };
+
+  /* Joined to the episode rather than carrying `episode_id`: a rowid is
+     this device's alone (ADR-0002), and the uuid is what the importing
+     device can match an episode by. */
+  const doseSchedules = async (): Promise<ArchiveDoseSchedule[]> => {
+    const rows = await driver.query<{
+      uuid: string;
+      episode_uuid: string;
+      every_n_days: number;
+      doses_per_day: number;
+    }>(
+      `SELECT s.uuid, e.uuid AS episode_uuid, s.every_n_days, s.doses_per_day
+         FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id
+        ORDER BY s.id`
+    );
+    return rows.map((r) => ({
+      id: r.uuid,
+      episodeId: r.episode_uuid,
+      everyNDays: r.every_n_days,
+      dosesPerDay: r.doses_per_day
+    }));
+  };
+
+  const dosePauses = async (): Promise<ArchiveDosePause[]> => {
+    const rows = await driver.query<{
+      uuid: string;
+      episode_uuid: string;
+      start_epoch_day: number;
+      end_epoch_day: number | null;
+      reason: string;
+    }>(
+      `SELECT p.uuid, e.uuid AS episode_uuid, p.start_epoch_day, p.end_epoch_day, p.reason
+         FROM dose_pause p JOIN regimen_episode e ON e.id = p.episode_id
+        ORDER BY p.start_epoch_day, p.id`
+    );
+    return rows.map((r) => ({
+      id: r.uuid,
+      episodeId: r.episode_uuid,
+      startEpochDay: r.start_epoch_day,
+      endEpochDay: r.end_epoch_day,
+      reason: r.reason
+    }));
+  };
+
   /** The manifest: every file the photo rows name, in the order the rows
       name them, minus whatever the store no longer holds. A row whose
       file is gone still travels - the photo is missing on this device
@@ -388,7 +469,10 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           measurements: await measurements(),
           reminders: await reminders(),
           tallyEvents: await tallyEvents(),
-          regimenEpisodes: await regimenEpisodes()
+          regimenEpisodes: await regimenEpisodes(),
+          doseEvents: await doseEvents(),
+          doseSchedules: await doseSchedules(),
+          dosePauses: await dosePauses()
         },
         files: archivedFiles,
         async readFile(name) {

@@ -136,6 +136,68 @@ CREATE TABLE regimen_episode (
 CREATE INDEX idx_regimen_episode_start ON regimen_episode(start_epoch_day);
 `;
 
+/* v8: the dose log (phase 4 ticket 02, CONTEXT: "Dose event").
+
+   `dose_event` has no episode column, deliberately. Which regimen episode a
+   dose belongs to is resolved from its own timestamp (regimenEpisode.ts)
+   every time it is asked, so backdating a dose - or inserting a corrective
+   episode underneath one - changes the answer with nothing to rewrite. A
+   stored link would be the migration ticket 01 exists to avoid.
+
+   `timestamp` is epoch milliseconds, not an epoch day: ticket 03 derives
+   hours-since-last-dose from it and sublingual estradiol peaks in one to
+   two hours, so a day would round away the thing being derived.
+
+   The route-conditional fields are nullable columns here because SQLite has
+   no union type; the domain type is a union on route (types.ts) and the
+   area module (doses.ts) is what turns one into the other, so an oral dose
+   never surfaces a null site to a screen.
+
+   `dose_schedule.episode_id` is UNIQUE: an episode expects one rhythm at a
+   time, and a second row would leave "how often" ambiguous. Both child
+   tables cascade from the episode rowid the way every other child table
+   does, which is also what lets ticket 14's Replace import empty them by
+   deleting episodes. */
+const SCHEMA_V8 = `
+CREATE TABLE dose_event (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid                TEXT NOT NULL UNIQUE,
+  timestamp           INTEGER NOT NULL,
+  route               TEXT NOT NULL,
+  dose                REAL NOT NULL,
+  dose_unit           TEXT NOT NULL,
+  injection_site      TEXT,
+  vehicle             TEXT,
+  application_site    TEXT,
+  status              TEXT NOT NULL,
+  scheduled_dose      REAL,
+  scheduled_route     TEXT,
+  scheduled_timestamp INTEGER,
+  updated_at          INTEGER NOT NULL
+);
+CREATE INDEX idx_dose_event_timestamp ON dose_event(timestamp);
+
+CREATE TABLE dose_schedule (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid          TEXT NOT NULL UNIQUE,
+  episode_id    INTEGER NOT NULL UNIQUE REFERENCES regimen_episode(id) ON DELETE CASCADE,
+  every_n_days  INTEGER NOT NULL,
+  doses_per_day INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+
+CREATE TABLE dose_pause (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  episode_id      INTEGER NOT NULL REFERENCES regimen_episode(id) ON DELETE CASCADE,
+  start_epoch_day INTEGER NOT NULL,
+  end_epoch_day   INTEGER,
+  reason          TEXT NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX idx_dose_pause_episode ON dose_pause(episode_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -143,7 +205,8 @@ export const migrations: Migration[] = [
   { version: 4, sql: SCHEMA_V4 },
   { version: 5, sql: SCHEMA_V5 },
   { version: 6, sql: SCHEMA_V6 },
-  { version: 7, sql: SCHEMA_V7 }
+  { version: 7, sql: SCHEMA_V7 },
+  { version: 8, sql: SCHEMA_V8 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

@@ -44,7 +44,12 @@ export type TableName =
   | 'measurement'
   | 'reminder'
   | 'tally'
-  | 'regimen';
+  | 'regimen'
+  /* One name for dose events, schedules and pauses alike. Nothing reads a
+     schedule or a pause without the doses they are compared against - the
+     adherence view needs all three - so splitting them would be precision
+     no screen can use. */
+  | 'dose';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -59,7 +64,8 @@ export const TABLE_NAMES: TableName[] = [
   'measurement',
   'reminder',
   'tally',
-  'regimen'
+  'regimen',
+  'dose'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -142,6 +148,16 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   regimen: {
     writes: { upsertEpisode: ['regimen'], setEpisodeHidden: ['regimen'] },
     reads: ['getEpisodes']
+  },
+  doses: {
+    writes: {
+      upsertDose: ['dose'],
+      deleteDose: ['dose'],
+      upsertSchedule: ['dose'],
+      upsertPause: ['dose'],
+      deletePause: ['dose']
+    },
+    reads: ['getDoses', 'getSchedules', 'getPauses']
   },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {

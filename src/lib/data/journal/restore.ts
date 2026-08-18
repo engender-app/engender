@@ -114,7 +114,11 @@ async function insertRows(
   }
 }
 
-async function rowidsByUuid(driver: SqliteDriver, table: 'entry' | 'milestone', uuids: string[]): Promise<Map<string, number>> {
+async function rowidsByUuid(
+  driver: SqliteDriver,
+  table: 'entry' | 'milestone' | 'regimen_episode',
+  uuids: string[]
+): Promise<Map<string, number>> {
   const ids = new Map<string, number>();
   if (uuids.length === 0) return ids;
 
@@ -181,6 +185,11 @@ export async function restoreArchive(
     await applyReminders(restoring);
     await applyTallyEvents(restoring);
     await applyRegimenEpisodes(restoring);
+    /* After the episodes: both hang off an episode rowid, and the rows this
+       import just inserted are where those rowids come from. */
+    await applyDoseSchedules(restoring);
+    await applyDosePauses(restoring);
+    await applyDoseEvents(restoring);
   });
 }
 
@@ -194,7 +203,10 @@ const COLLECTIONS = [
   'measurements',
   'reminders',
   'tallyEvents',
-  'regimenEpisodes'
+  'regimenEpisodes',
+  'doseEvents',
+  'doseSchedules',
+  'dosePauses'
 ] as const;
 
 function assertRestorable(journal: ArchiveJournal): void {
@@ -227,6 +239,12 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM measurement',
     'DELETE FROM reminder',
     'DELETE FROM tally_event',
+    'DELETE FROM dose_event',
+    /* Before the episodes they hang off. The foreign keys cascade, but only
+       with `PRAGMA foreign_keys` on, which is the driver's business and not
+       something this ordering should depend on. */
+    'DELETE FROM dose_schedule',
+    'DELETE FROM dose_pause',
     'DELETE FROM regimen_episode',
     /* Only the custom presets' links. A built-in preset the archive does not
        carry keeps the dimensions reconciling gave it: emptying the table
@@ -596,6 +614,87 @@ async function applyTallyEvents({ driver, journal, ts }: Restoring): Promise<voi
     driver,
     'INSERT INTO tally_event (uuid, epoch_day, kind, context, updated_at)',
     inserting.map((event) => [event.id, event.epochDay, event.kind, event.context, ts])
+  );
+}
+
+async function applyDoseEvents({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM dose_event');
+
+  const inserting = journal.doseEvents.filter((dose) => !present.has(dose.id));
+  await insertRows(
+    driver,
+    `INSERT INTO dose_event
+       (uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
+        status, scheduled_dose, scheduled_route, scheduled_timestamp, updated_at)`,
+    inserting.map((dose) => [
+      dose.id,
+      dose.timestamp,
+      dose.route,
+      dose.dose,
+      dose.doseUnit,
+      dose.injectionSite,
+      dose.vehicle,
+      dose.applicationSite,
+      dose.status,
+      dose.scheduledDose,
+      dose.scheduledRoute,
+      dose.scheduledTimestamp,
+      ts
+    ])
+  );
+}
+
+/* Both of these resolve their episode by uuid against what is in the table
+   after applyRegimenEpisodes ran. A row whose episode is not there is
+   dropped rather than inserted against a guessed episode: a schedule
+   belonging to nothing would generate slots nobody expects, and a merge is
+   allowed to carry only part of another device's history. */
+async function applyDoseSchedules({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM dose_schedule');
+  const episodesWithSchedule = await presentIds(
+    driver,
+    'SELECT e.uuid AS id FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id'
+  );
+  const episodeIds = await rowidsByUuid(
+    driver,
+    'regimen_episode',
+    journal.doseSchedules.map((schedule) => schedule.episodeId)
+  );
+
+  const rows: unknown[][] = [];
+  for (const schedule of journal.doseSchedules) {
+    if (present.has(schedule.id)) continue;
+    const episodeId = episodeIds.get(schedule.episodeId);
+    // One schedule per episode (migration v8): a merge must not bring a
+    // second one for an episode that already has its own.
+    if (episodeId === undefined || episodesWithSchedule.has(schedule.episodeId)) continue;
+    episodesWithSchedule.add(schedule.episodeId);
+    rows.push([schedule.id, episodeId, schedule.everyNDays, schedule.dosesPerDay, ts]);
+  }
+
+  await insertRows(driver, 'INSERT INTO dose_schedule (uuid, episode_id, every_n_days, doses_per_day, updated_at)', rows);
+}
+
+async function applyDosePauses({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM dose_pause');
+  const episodeIds = await rowidsByUuid(
+    driver,
+    'regimen_episode',
+    journal.dosePauses.map((pause) => pause.episodeId)
+  );
+
+  const rows: unknown[][] = [];
+  for (const pause of journal.dosePauses) {
+    if (present.has(pause.id)) continue;
+    const episodeId = episodeIds.get(pause.episodeId);
+    if (episodeId === undefined) continue;
+    rows.push([pause.id, episodeId, pause.startEpochDay, pause.endEpochDay, pause.reason, ts]);
+  }
+
+  await insertRows(
+    driver,
+    'INSERT INTO dose_pause (uuid, episode_id, start_epoch_day, end_epoch_day, reason, updated_at)',
+    rows
   );
 }
 

@@ -156,6 +156,45 @@ export interface ArchiveRegimenEpisode {
   hidden: boolean;
 }
 
+/* Flat and nullable, the way ArchiveReminder carries its recurrence
+   variants, rather than a union on route the way the domain type is
+   (types.ts). A transport shape that never changes arms is one an older
+   build can still parse field by field, and mapping it back to the union is
+   the dose area's job either way (doses.ts). No episode id: a dose's
+   regimen episode is resolved from its timestamp on whatever device reads
+   it, so carrying one would carry an answer instead of the question. */
+export interface ArchiveDoseEvent {
+  id: string;
+  timestamp: number;
+  route: string;
+  dose: number;
+  doseUnit: string;
+  injectionSite: string | null;
+  vehicle: string | null;
+  applicationSite: string | null;
+  status: string;
+  scheduledDose: number | null;
+  scheduledRoute: string | null;
+  scheduledTimestamp: number | null;
+}
+
+/** Named by the episode's travelling uuid, not its rowid: the rowid means
+    nothing on the device importing this (ADR-0002). */
+export interface ArchiveDoseSchedule {
+  id: string;
+  episodeId: string;
+  everyNDays: number;
+  dosesPerDay: number;
+}
+
+export interface ArchiveDosePause {
+  id: string;
+  episodeId: string;
+  startEpochDay: number;
+  endEpochDay: number | null;
+  reason: string;
+}
+
 /** Everything the journal holds (CONTEXT: "Journal"). */
 export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
@@ -168,6 +207,9 @@ export interface ArchiveJournal {
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
   regimenEpisodes: ArchiveRegimenEpisode[];
+  doseEvents: ArchiveDoseEvent[];
+  doseSchedules: ArchiveDoseSchedule[];
+  dosePauses: ArchiveDosePause[];
 }
 
 /** A photo file travelling in the body, and how many bytes of it there

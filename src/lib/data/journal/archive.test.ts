@@ -58,6 +58,30 @@ async function populated() {
     startEpochDay: 19000
   });
 
+  const dose = await journal.doses.upsertDose({
+    timestamp: 1_700_000_000_000,
+    route: 'im',
+    dose: 4,
+    doseUnit: 'mg',
+    injectionSite: 'ventrogluteal-left',
+    vehicle: 'oil'
+  });
+  const changedDose = await journal.doses.upsertDose({
+    timestamp: 1_700_100_000_000,
+    route: 'sublingual',
+    dose: 1,
+    doseUnit: 'mg',
+    status: 'changed',
+    scheduled: { dose: 2, route: 'oral', timestamp: 1_700_090_000_000 }
+  });
+  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, everyNDays: 14, dosesPerDay: 1 });
+  const dosePause = await journal.doses.upsertPause({
+    episodeId: episode,
+    startEpochDay: 19100,
+    endEpochDay: 19110,
+    reason: 'accidental'
+  });
+
   return {
     db,
     files,
@@ -75,7 +99,11 @@ async function populated() {
     measurement,
     tally,
     reminder,
-    episode
+    episode,
+    dose,
+    changedDose,
+    schedule,
+    dosePause
   };
 }
 
@@ -200,6 +228,69 @@ test('milestones, lab results, measurements, tally events, reminders and regimen
   ]);
 });
 
+test('dose events travel whole, including the route-conditional fields and a changed dose\'s scheduled value', async () => {
+  const { journal, dose, changedDose } = await populated();
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(snapshot.journal.doseEvents, [
+    {
+      id: dose,
+      timestamp: 1_700_000_000_000,
+      route: 'im',
+      dose: 4,
+      doseUnit: 'mg',
+      injectionSite: 'ventrogluteal-left',
+      vehicle: 'oil',
+      applicationSite: null,
+      status: 'taken',
+      scheduledDose: null,
+      scheduledRoute: null,
+      scheduledTimestamp: null
+    },
+    {
+      id: changedDose,
+      timestamp: 1_700_100_000_000,
+      route: 'sublingual',
+      dose: 1,
+      doseUnit: 'mg',
+      injectionSite: null,
+      vehicle: null,
+      applicationSite: null,
+      status: 'changed',
+      scheduledDose: 2,
+      scheduledRoute: 'oral',
+      scheduledTimestamp: 1_700_090_000_000
+    }
+  ]);
+});
+
+test('a dose carries no episode link, so nothing about its attribution travels', async () => {
+  const { journal } = await populated();
+
+  const snapshot = await journal.archive.snapshot();
+
+  for (const dose of snapshot.journal.doseEvents) {
+    assert.deepEqual(
+      Object.keys(dose).filter((key) => key.toLowerCase().includes('episode')),
+      []
+    );
+  }
+});
+
+test('schedules and pauses name their episode by its travelling uuid, not this device\'s rowid', async () => {
+  const { journal, episode, schedule, dosePause } = await populated();
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(snapshot.journal.doseSchedules, [
+    { id: schedule, episodeId: episode, everyNDays: 14, dosesPerDay: 1 }
+  ]);
+  assert.deepEqual(snapshot.journal.dosePauses, [
+    { id: dosePause, episodeId: episode, startEpochDay: 19100, endEpochDay: 19110, reason: 'accidental' }
+  ]);
+});
+
 test('the manifest names every photo file and its thumbnail, with their lengths', async () => {
   const { journal, photo, milestonePhoto } = await populated();
 
@@ -247,6 +338,24 @@ const CARRIED: Record<string, string[]> = {
   measurement: ['uuid', 'epoch_day', 'type', 'value', 'unit'],
   tally_event: ['uuid', 'epoch_day', 'kind', 'context'],
   regimen_episode: ['uuid', 'drug', 'ester', 'dose', 'dose_unit', 'route', 'interval', 'start_epoch_day', 'hidden'],
+  dose_event: [
+    'uuid',
+    'timestamp',
+    'route',
+    'dose',
+    'dose_unit',
+    'injection_site',
+    'vehicle',
+    'application_site',
+    'status',
+    'scheduled_dose',
+    'scheduled_route',
+    'scheduled_timestamp'
+  ],
+  // episode_id travels as the episode's uuid, the way preset_dimension's
+  // rowids travel as keys (ADR-0002).
+  dose_schedule: ['uuid', 'episode_id', 'every_n_days', 'doses_per_day'],
+  dose_pause: ['uuid', 'episode_id', 'start_epoch_day', 'end_epoch_day', 'reason'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };
