@@ -29,6 +29,14 @@ test('every phone number is dialable as written', () => {
   expect(undialable.map((r) => r.key)).toEqual([]);
 });
 
+test('every number carries its country code, so it dials from anywhere', () => {
+  // Trevor and Mindline Trans+ publish theirs nationally, as 1-866 and 0300.
+  // Neither rings from a Polish phone that way, and this app is used from one.
+  const local = RESOURCES.filter((r) => r.phone && !r.phone.startsWith('+'));
+
+  expect(local.map((r) => r.key)).toEqual([]);
+});
+
 test('every url is https, so nothing sends a person to a plaintext page', () => {
   const insecure = RESOURCES.filter((r) => r.url && !r.url.startsWith('https://'));
 

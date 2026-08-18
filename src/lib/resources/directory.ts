@@ -38,7 +38,10 @@ export interface Resource {
   kind: ResourceKind;
   /** As the organization writes it. Never translated. */
   name: string;
-  /** Dialable as written, spaces and all: it goes into a tel: URI. */
+  /** Dialable as written, spaces and all: it goes into a tel: URI. Always
+      with its country code, because the person holding the phone is in
+      Poland and a UK line published as 0300 330 5468 does not ring from
+      there. */
   phone?: string;
   url?: string;
 }
@@ -79,7 +82,7 @@ const ENTRIES = [
     region: 'int',
     kind: 'helpline',
     name: 'Trans Lifeline',
-    phone: '1 877 565 8860',
+    phone: '+1 877 565 8860',
     url: 'https://translifeline.org/'
   },
   {
@@ -87,7 +90,7 @@ const ENTRIES = [
     region: 'int',
     kind: 'helpline',
     name: 'The Trevor Project',
-    phone: '1 866 488 7386',
+    phone: '+1 866 488 7386',
     url: 'https://www.thetrevorproject.org/'
   },
   {
@@ -95,7 +98,7 @@ const ENTRIES = [
     region: 'int',
     kind: 'helpline',
     name: 'Mindline Trans+',
-    phone: '0300 330 5468',
+    phone: '+44 300 330 5468',
     /* Under Mind in Somerset, not mindlinetrans.org.uk. That domain lapsed
        and now serves casino spam. */
     url: 'https://www.mindinsomerset.org.uk/our-services/mindline-trans/'
