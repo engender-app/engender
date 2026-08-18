@@ -2,7 +2,6 @@ package dev.barankiewicz.genderdiary.reminders;
 
 import android.Manifest;
 import android.app.Notification;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -13,8 +12,8 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
-import dev.barankiewicz.genderdiary.MainActivity;
 import dev.barankiewicz.genderdiary.R;
+import dev.barankiewicz.genderdiary.launch.AppLaunch;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -71,7 +70,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentText(time)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            .setContentIntent(openAppIntent(context, route, "reminder:" + id, 1))
+            .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1))
             .build();
 
         NotificationManagerCompat.from(context).notify("reminder:" + id, 7000, notification);
@@ -90,7 +89,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            .setContentIntent(openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13));
+            .setContentIntent(AppLaunch.openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13));
 
         String affirmation = resolveCheckInAffirmation(payload, epochDay);
         if (affirmation != null) {
@@ -113,20 +112,6 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         if (pool == null || pool.length() == 0) return null;
         String line = pool.optString(epochDay % pool.length(), "");
         return line.isBlank() ? null : line;
-    }
-
-    private PendingIntent openAppIntent(Context context, String route, String key, int requestCode) {
-        Intent open = new Intent(context, MainActivity.class)
-            .setAction(Intent.ACTION_VIEW)
-            .setData(android.net.Uri.parse("genderdiary://open/" + android.net.Uri.encode(key)))
-            .putExtra(ReminderScheduler.EXTRA_ROUTE, route)
-            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        return PendingIntent.getActivity(
-            context,
-            9000 + requestCode,
-            open,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
     }
 
     /** The reminder's own title, unless hideNotificationTitles (ticket 15) is
