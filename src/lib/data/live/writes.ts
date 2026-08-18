@@ -213,6 +213,12 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     writes: {},
     reads: ['getCurves']
   },
+  // Read-only for the same reason: a qualitative curve is recomputed on
+  // every read too (phase 4 ticket 11, ADR-0010).
+  qualitativeCurve: {
+    writes: {},
+    reads: ['getCurves']
+  },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {
     writes: {},

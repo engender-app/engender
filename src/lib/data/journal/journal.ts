@@ -17,6 +17,7 @@ import { makeDosesArea, type DosesArea } from './doses';
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeHormoneCurveArea, type HormoneCurveArea } from './hormoneCurve';
+import { makeQualitativeCurveArea, type QualitativeCurveArea } from './hormoneCurveQualitative';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
@@ -89,6 +90,11 @@ export interface Journal {
       `regimen` and `labs` own, computed on every read - the bands are the
       published posterior's, not a stored estimate. */
   hormoneCurve: HormoneCurveArea;
+  /** Illustrative rise/plateau/fall shapes for oral, sublingual, patch and
+      gel estradiol (phase 4 ticket 11) - the routes hormoneCurve has no
+      published fit for. Same view shape and the same read-only-derived
+      rule, over the same dose log and lab results. */
+  qualitativeCurve: QualitativeCurveArea;
   sideEffects: SideEffectsArea;
   /** The four fixed "first noticed" markers (phase 4 ticket 07), read
       against the earliest regimen episode's start day above this seam
@@ -137,6 +143,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     stock: makeStockArea(driver, doses, regimen, reminders),
     exposure: makeExposureArea(doses, regimen),
     hormoneCurve: makeHormoneCurveArea(doses, regimen, labs),
+    qualitativeCurve: makeQualitativeCurveArea(doses, regimen, labs),
     sideEffects: makeSideEffectsArea(driver),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
