@@ -560,8 +560,37 @@ async function applyLabResults({ driver, journal, ts }: Restoring): Promise<void
   const inserting = journal.labResults.filter((result) => !present.has(result.id));
   await insertRows(
     driver,
-    'INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, updated_at)',
-    inserting.map((result) => [result.id, result.epochDay, result.analyte, result.value, result.unit, result.note, ts])
+    `INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, draw_time, provider,
+                             timing_route, timing_hours, timing_day_of_interval, updated_at)`,
+    /* The dosing context comes across as it was written, never re-derived
+       against this device's dose log: the log it was measured on is not the
+       one being imported into (ticket 03, and the argument at migrations.ts
+       v6).
+
+       Coalesced rather than passed straight through, unlike every other
+       column here, because these five arrived after lab results did. An
+       archive is JSON.parse output cast to ArchivePayload - the type is a
+       claim about the file, not a guarantee - so a lab row written by a build
+       from before ticket 03 reaches this line with the fields simply absent.
+       Binding undefined is not a soft failure: node:sqlite rejects it with
+       "Provided value cannot be bound to SQLite parameter 7", a raw driver
+       error rather than a CorruptArchiveError, and `provider` is NOT NULL
+       besides. An older archive restores with an empty context instead, which
+       is the same thing a result logged before the feature carries. */
+    inserting.map((result) => [
+      result.id,
+      result.epochDay,
+      result.analyte,
+      result.value,
+      result.unit,
+      result.note,
+      result.drawTime ?? null,
+      result.provider ?? '',
+      result.timingRoute ?? null,
+      result.timingHours ?? null,
+      result.timingDayOfInterval ?? null,
+      ts
+    ])
   );
 }
 

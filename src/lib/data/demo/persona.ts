@@ -159,12 +159,18 @@ export function persona(): Persona {
       { title: 'Progesterone', type: 'med', time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true },
       { title: 'Endocrinologist', type: 'appointment', time: '09:30', recurrence: null, interval: null, anchorEpochDay: null, epochDay: today + 12, enabled: true },
     ],
+    /* Two labs across the estradiol series, which is what raises the
+       comparability flag on it: a series folds results together by unit
+       alone, and these were not all drawn by the same lab. No timing context
+       comes out of this fixture, because the persona has no dose log to
+       derive one from - the demo seeds tags, entries, milestones, reminders
+       and labs, and nothing else. */
     labResults: [
-      { epochDay: today - 700, analyte: 'estradiol', value: 41, unit: 'pg/mL', note: 'baseline' },
-      { epochDay: today - 610, analyte: 'estradiol', value: 96, unit: 'pg/mL', note: '' },
-      { epochDay: today - 430, analyte: 'estradiol', value: 148, unit: 'pg/mL', note: 'dose up' },
-      { epochDay: today - 250, analyte: 'estradiol', value: 173, unit: 'pg/mL', note: '' },
-      { epochDay: today - 70, analyte: 'estradiol', value: 165, unit: 'pg/mL', note: 'patches' },
+      { epochDay: today - 700, analyte: 'estradiol', value: 41, unit: 'pg/mL', note: 'baseline', provider: 'Diagnostyka' },
+      { epochDay: today - 610, analyte: 'estradiol', value: 96, unit: 'pg/mL', note: '', provider: 'Diagnostyka' },
+      { epochDay: today - 430, analyte: 'estradiol', value: 148, unit: 'pg/mL', note: 'dose up', provider: 'ALAB', drawTime: '07:50' },
+      { epochDay: today - 250, analyte: 'estradiol', value: 173, unit: 'pg/mL', note: '', provider: 'ALAB', drawTime: '08:10' },
+      { epochDay: today - 70, analyte: 'estradiol', value: 165, unit: 'pg/mL', note: 'patches', provider: 'ALAB', drawTime: '07:35' },
       { epochDay: today - 700, analyte: 'testosterone', value: 480, unit: 'ng/dL', note: 'baseline' },
       { epochDay: today - 610, analyte: 'testosterone', value: 120, unit: 'ng/dL', note: '' },
       { epochDay: today - 430, analyte: 'testosterone', value: 38, unit: 'ng/dL', note: '' },

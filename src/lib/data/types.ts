@@ -104,6 +104,31 @@ export interface Reminder {
   enabled: boolean;
 }
 
+/* Where a draw fell relative to dosing (phase 4 ticket 03, CONTEXT: "Lab
+   draw context"). Two figures rather than one, because "how long since
+   dosing" means different things by pharmacokinetics: hours for oral,
+   sublingual, patch and gel; day-of-interval for IM and SC, where a
+   single-digit-hour figure says nothing about a depot with a
+   days-to-weeks half-life.
+
+   A union on route the way DoseEvent is, for the same reason: which figure
+   a context carries is decided by its route and nothing else, so no screen
+   should have to remember which of two numbers is the null one.
+
+   This is stored, not derived on read, and it is the one place in this
+   schema that stores a figure computable from other rows - which is what
+   ADR-0010 exists to prevent. The exception is deliberate and argued at
+   the column definitions (migrations.ts, v6). In short: ADR-0010's case is
+   about columns that drift out of agreement with their inputs, and this
+   one cannot, because its input is the dose log as it stood at the moment
+   of the draw and that is not recoverable later. It is a recorded
+   observation, like the value beside it, not a cache of a live
+   computation. Recomputing it would let a dose corrected months later
+   silently rewrite the context on a result someone already reviewed. */
+export type LabTiming =
+  | { route: 'oral' | 'sublingual' | 'patch' | 'gel'; hoursSinceDose: number }
+  | { route: 'im' | 'sc'; dayOfInterval: number };
+
 export interface LabResult {
   id: string;
   epochDay: number;
@@ -111,6 +136,20 @@ export interface LabResult {
   value: number;
   unit: string;
   note: string;
+  /** Local wall-clock 'HH:MM', or null when the draw time was not
+      recorded. Optional because a lab slip often does not carry one, and
+      day-of-interval does not need it; without it there is no hours
+      figure, which is the honest answer rather than a zero. Unlike an
+      Entry's Timestamp this never decides which day the result belongs to
+      - `epochDay` does, and this refines the moment within it. */
+  drawTime: string | null;
+  /** Which lab drew it. Free text, exactly as free as `unit`: no fixed
+      list, no normalization, and no matching between two spellings of one
+      lab (CONTEXT: "Lab provider"). Blank when not recorded. */
+  provider: string;
+  /** Null when no dose preceded the draw, or when an hours figure would
+      have needed a draw time nobody recorded. */
+  timing: LabTiming | null;
 }
 
 /* No episode reference (ticket 08 scope): a measurement stands alone and

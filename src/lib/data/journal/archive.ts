@@ -227,14 +227,28 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       value: number;
       unit: string;
       note: string | null;
-    }>('SELECT uuid, epoch_day, analyte, value, unit, note FROM lab_result ORDER BY epoch_day, id');
+      draw_time: string | null;
+      provider: string;
+      timing_route: string | null;
+      timing_hours: number | null;
+      timing_day_of_interval: number | null;
+    }>(
+      `SELECT uuid, epoch_day, analyte, value, unit, note, draw_time, provider,
+              timing_route, timing_hours, timing_day_of_interval
+         FROM lab_result ORDER BY epoch_day, id`
+    );
     return rows.map((r) => ({
       id: r.uuid,
       epochDay: r.epoch_day,
       analyte: r.analyte,
       value: r.value,
       unit: r.unit,
-      note: r.note ?? ''
+      note: r.note ?? '',
+      drawTime: r.draw_time,
+      provider: r.provider,
+      timingRoute: r.timing_route,
+      timingHours: r.timing_hours,
+      timingDayOfInterval: r.timing_day_of_interval
     }));
   };
 

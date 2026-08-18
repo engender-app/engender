@@ -4,6 +4,7 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { thumbFileName } from '../photos/names.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
+import { epochDayFromTimestamp } from '../epochDay.ts';
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
 
@@ -66,6 +67,20 @@ async function populated() {
     injectionSite: 'ventrogluteal-left',
     vehicle: 'oil'
   });
+
+  /* Saved while that injection is the only dose logged, so its frozen
+     day-of-interval is a fixed 5 rather than something the sublingual dose
+     below would move. That the dose logged afterwards does not change it is
+     the freeze this archive then has to carry across (ticket 03). */
+  const contextLab = await journal.labs.upsertResult({
+    epochDay: epochDayFromTimestamp(1_700_000_000_000) + 4,
+    analyte: 'estradiol',
+    value: 300,
+    unit: 'pmol/L',
+    drawTime: '07:40',
+    provider: 'Diagnostyka'
+  });
+
   const changedDose = await journal.doses.upsertDose({
     timestamp: 1_700_100_000_000,
     route: 'sublingual',
@@ -98,6 +113,7 @@ async function populated() {
     lab,
     measurement,
     tally,
+    contextLab,
     reminder,
     episode,
     dose,
@@ -178,7 +194,7 @@ test('the state a user put on a built-in row travels with it', async () => {
 });
 
 test('milestones, lab results, measurements, tally events, reminders and regimen episodes travel whole', async () => {
-  const { journal, milestone, milestonePhoto, lab, measurement, tally, reminder, episode } = await populated();
+  const { journal, milestone, milestonePhoto, lab, contextLab, measurement, tally, reminder, episode } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -191,8 +207,36 @@ test('milestones, lab results, measurements, tally events, reminders and regimen
       photo: { id: milestonePhoto, fileName: `${milestonePhoto}.jpg` }
     }
   ]);
+  /* Ordered by draw day, so the one carrying a dosing context comes first.
+     The other was saved before any dose was logged and travels with its
+     context empty rather than zeroed. */
   assert.deepEqual(snapshot.journal.labResults, [
-    { id: lab, epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' }
+    {
+      id: contextLab,
+      epochDay: epochDayFromTimestamp(1_700_000_000_000) + 4,
+      analyte: 'estradiol',
+      value: 300,
+      unit: 'pmol/L',
+      note: '',
+      drawTime: '07:40',
+      provider: 'Diagnostyka',
+      timingRoute: 'im',
+      timingHours: null,
+      timingDayOfInterval: 5
+    },
+    {
+      id: lab,
+      epochDay: 20000,
+      analyte: 'estradiol',
+      value: 412.5,
+      unit: 'pmol/L',
+      note: 'fasting',
+      drawTime: null,
+      provider: '',
+      timingRoute: null,
+      timingHours: null,
+      timingDayOfInterval: null
+    }
   ]);
   assert.deepEqual(snapshot.journal.measurements, [
     { id: measurement, type: 'waist', epochDay: 20000, value: 79, unit: 'cm' }
@@ -334,7 +378,22 @@ const CARRIED: Record<string, string[]> = {
   tag_group: ['uuid', 'key', 'name', 'enabled', 'order_index'],
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
   reminder: ['uuid', 'title', 'type', 'time', 'recurrence', 'interval', 'anchor_epoch_day', 'epoch_day', 'enabled'],
-  lab_result: ['uuid', 'epoch_day', 'analyte', 'value', 'unit', 'note'],
+  /* The dosing context travels: a device importing this cannot re-derive it,
+     because the dose log it was measured against is not the one being
+     imported into (ticket 03). */
+  lab_result: [
+    'uuid',
+    'epoch_day',
+    'analyte',
+    'value',
+    'unit',
+    'note',
+    'draw_time',
+    'provider',
+    'timing_route',
+    'timing_hours',
+    'timing_day_of_interval'
+  ],
   measurement: ['uuid', 'epoch_day', 'type', 'value', 'unit'],
   tally_event: ['uuid', 'epoch_day', 'kind', 'context'],
   regimen_episode: ['uuid', 'drug', 'ester', 'dose', 'dose_unit', 'route', 'interval', 'start_epoch_day', 'hidden'],

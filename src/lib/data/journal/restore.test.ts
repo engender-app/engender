@@ -13,6 +13,7 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
 import { resolveEpisodeAt } from '../regimenEpisode.ts';
+import { epochDayFromTimestamp } from '../epochDay.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
 import type { RestoreContents } from './restore.ts';
@@ -72,7 +73,6 @@ async function populated() {
   });
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
-  await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L' });
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
   await journal.tally.log({ epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' });
   await journal.reminders.upsertReminder({
@@ -103,6 +103,19 @@ async function populated() {
     injectionSite: 'ventrogluteal-left',
     vehicle: 'oil'
   });
+  /* Saved after the injection above, so it carries a frozen day-of-interval
+     the importing device could not work out for itself: the result travels
+     without any promise that the dose log it was measured against travels
+     with it, or ever existed there (ticket 03). */
+  await journal.labs.upsertResult({
+    epochDay: epochDayFromTimestamp(1_700_000_000_000) + 4,
+    analyte: 'estradiol',
+    value: 412.5,
+    unit: 'pmol/L',
+    drawTime: '07:40',
+    provider: 'Diagnostyka'
+  });
+
   const schedule = await journal.doses.upsertSchedule({ episodeId: episode, everyNDays: 14, dosesPerDay: 1 });
   const dosePause = await journal.doses.upsertPause({
     episodeId: episode,
@@ -202,6 +215,12 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
   assert.equal((await target.journal.measurements.getMeasurements('waist')).length, 1);
   assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1);
+  /* The dosing context comes across as it was recorded, not re-derived
+     against this device's dose log (ticket 03). */
+  const [restoredLab] = await target.journal.labs.getResults('estradiol');
+  assert.equal(restoredLab.drawTime, '07:40');
+  assert.equal(restoredLab.provider, 'Diagnostyka');
+  assert.deepEqual(restoredLab.timing, { route: 'im', dayOfInterval: 5 });
   assert.equal((await target.journal.reminders.getReminders()).length, 1);
   const episodes = await target.journal.regimen.getEpisodes();
   assert.equal(episodes.length, 1);
@@ -572,6 +591,27 @@ test('a payload that is not a journal is refused before anything is written', as
   );
 
   assert.deepEqual((await target.journal.archive.snapshot()).journal, before.journal);
+});
+
+/* A lab row written before ticket 03 has no draw time, no provider and no
+   timing columns. The payload type says otherwise, but it is a cast over
+   JSON.parse output, so the importer has to survive the fields being absent
+   rather than binding undefined at the driver. */
+test('a lab result from an archive written before the dosing context existed still imports', async () => {
+  const source = await populated();
+  const contents = await exported(source.journal);
+  const older = contents.journal.labResults.map((result) => {
+    const { drawTime, provider, timingRoute, timingHours, timingDayOfInterval, ...rest } = result;
+    return rest as typeof result;
+  });
+
+  const target = await device();
+  await target.journal.archive.merge({ ...contents, journal: { ...contents.journal, labResults: older } });
+
+  const [restored] = await target.journal.labs.getResults('estradiol');
+  assert.equal(restored.provider, '');
+  assert.equal(restored.drawTime, null);
+  assert.equal(restored.timing, null);
 });
 
 test('importing into a journal that has never been through a boot works', async () => {

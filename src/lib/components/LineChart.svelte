@@ -9,6 +9,10 @@
     value: number;
   }
 
+  /* Selectable points are opt-in, so the three callers that just want a line
+     are unchanged. The chart stays a renderer: it reports which point was
+     picked and knows nothing about what its caller then says about it, which
+     is what keeps the wording (and paraglide) out of an SVG. */
   let {
     points,
     min = 0,
@@ -16,8 +20,29 @@
     height = 120,
     width = 320,
     showDots = false,
-  }: { points: Point[]; min?: number; max?: number; height?: number; width?: number; showDots?: boolean } =
-    $props();
+    selected = null,
+    onSelect,
+    pointLabel,
+  }: {
+    points: Point[];
+    min?: number;
+    max?: number;
+    height?: number;
+    width?: number;
+    showDots?: boolean;
+    /** Index into `points`, or null for none. */
+    selected?: number | null;
+    /** Omitted means the dots are not interactive at all. */
+    onSelect?: (index: number) => void;
+    /** The accessible name for the point at `index`. Required alongside
+        onSelect: a tappable dot with no name is a control a screen reader
+        cannot announce. */
+    pointLabel?: (index: number) => string;
+  } = $props();
+
+  /* Tied to showDots: the hit areas are invisible, so without the dots under
+     them a caller would ship targets nobody can see they can tap. */
+  let interactive = $derived(showDots && onSelect !== undefined && pointLabel !== undefined);
 
   const P = 8;
 
@@ -52,7 +77,37 @@
     <path d={chart.area} class="chart-area" />
     <path d={chart.line} class="chart-line" />
     {#if showDots}
-      {#each chart.dots as d, i (i)}<circle cx={d.cx} cy={d.cy} r="3" class="chart-dot" />{/each}
+      {#each chart.dots as d, i (i)}<circle
+          cx={d.cx}
+          cy={d.cy}
+          r="3"
+          class="chart-dot"
+          class:is-selected={i === selected}
+        />{/each}
+    {/if}
+    {#if interactive}
+      <!-- The hit areas, over the dots rather than on them: a 3px dot is not
+           something anyone taps on a phone. Wider than the visible dot and
+           narrower than a 44px control, because at 44px the targets on a
+           320-wide chart would overlap each other, and a dot that steals its
+           neighbour's taps is worse than a small one. -->
+      {#each chart.dots as d, i (i)}<circle
+          cx={d.cx}
+          cy={d.cy}
+          r="13"
+          class="chart-hit"
+          role="button"
+          tabindex="0"
+          aria-label={pointLabel?.(i)}
+          aria-pressed={i === selected}
+          onclick={() => onSelect?.(i)}
+          onkeydown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onSelect?.(i);
+            }
+          }}
+        />{/each}
     {/if}
   </svg>
 {:else}

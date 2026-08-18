@@ -7,6 +7,10 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { journalWithBuiltIns } from './test-support.ts';
+import { timestampAtLocalTime } from '../epochDay.ts';
+import type { Journal } from './journal.ts';
+import type { LabResultInput } from './labs.ts';
+import type { LabResult } from '../types.ts';
 
 /* dimensions */
 
@@ -110,7 +114,17 @@ test('analytes are the presets plus whatever is in use; results order by day', a
 
   const results = await journal.labs.getResults('shbg');
   assert.deepEqual(results.map((r) => r.epochDay), [100, 200]);
-  assert.deepEqual(results[0], { id, epochDay: 100, analyte: 'shbg', value: 55, unit: 'nmol/L', note: '' });
+  assert.deepEqual(results[0], {
+    id,
+    epochDay: 100,
+    analyte: 'shbg',
+    value: 55,
+    unit: 'nmol/L',
+    note: '',
+    drawTime: null,
+    provider: '',
+    timing: null
+  });
 });
 
 test('the analytes in use are only the ones with a result, because a trend needs data', async () => {
@@ -256,6 +270,178 @@ test('measurements update by id, throw on unknown ids and delete idempotently', 
   await journal.measurements.deleteMeasurement(id);
   await journal.measurements.deleteMeasurement(id); // idempotent
   assert.deepEqual(await journal.measurements.getMeasurements('waist'), []);
+});
+
+/* lab draw context (phase 4 ticket 03) */
+
+const DRAW_DAY = 20000;
+const drawn = (time: string) => timestampAtLocalTime(DRAW_DAY, time);
+
+/** A lab result saved against a dose log built by `logDoses`. */
+async function labWithDoses(
+  logDoses: (journal: Journal) => Promise<unknown>,
+  input: Partial<LabResultInput> = {}
+): Promise<LabResult> {
+  const { journal } = await journalWithBuiltIns();
+  await logDoses(journal);
+  await journal.labs.upsertResult({ epochDay: DRAW_DAY, analyte: 'estradiol', value: 400, ...input });
+  return (await journal.labs.getResults('estradiol'))[0];
+}
+
+test('an oral regimen stamps a lab result with hours since the last dose', async () => {
+  const result = await labWithDoses(
+    (journal) => journal.doses.upsertDose({ timestamp: drawn('20:00') - 86400000, route: 'oral', dose: 2, doseUnit: 'mg' }),
+    { drawTime: '08:00' }
+  );
+  assert.deepEqual(result.timing, { route: 'oral', hoursSinceDose: 12 });
+});
+
+test('a sublingual, patch or gel regimen stamps hours too', async () => {
+  for (const route of ['sublingual', 'patch', 'gel'] as const) {
+    const result = await labWithDoses(
+      (journal) =>
+        journal.doses.upsertDose(
+          route === 'sublingual'
+            ? { timestamp: drawn('06:00'), route, dose: 2, doseUnit: 'mg' }
+            : { timestamp: drawn('06:00'), route, dose: 2, doseUnit: 'mg', applicationSite: 'thigh' }
+        ),
+      { drawTime: '09:00' }
+    );
+    assert.deepEqual(result.timing, { route, hoursSinceDose: 3 });
+  }
+});
+
+test('an IM or SC regimen stamps day-of-interval instead of an hours figure', async () => {
+  for (const route of ['im', 'sc'] as const) {
+    const result = await labWithDoses(
+      (journal) =>
+        journal.doses.upsertDose({
+          timestamp: drawn('08:00') - 6 * 86400000,
+          route,
+          dose: 5,
+          doseUnit: 'mg',
+          injectionSite: 'thigh-left',
+          vehicle: 'oil'
+        }),
+      { drawTime: '08:00' }
+    );
+    assert.deepEqual(result.timing, { route, dayOfInterval: 7 });
+  }
+});
+
+test('a lab result with no dose logged before it saves with no timing context', async () => {
+  const result = await labWithDoses(async () => {}, { drawTime: '08:00' });
+  assert.equal(result.timing, null);
+});
+
+test('a dose logged after the draw is not what the context is measured from', async () => {
+  const result = await labWithDoses(
+    (journal) => journal.doses.upsertDose({ timestamp: drawn('10:00'), route: 'oral', dose: 2, doseUnit: 'mg' }),
+    { drawTime: '08:00' }
+  );
+  assert.equal(result.timing, null);
+});
+
+/* A skipped dose is one that was expected and not taken, so hours since it
+   would be hours since nothing happened. */
+test('a skipped dose is passed over in favour of the last dose actually taken', async () => {
+  const result = await labWithDoses(async (journal) => {
+    await journal.doses.upsertDose({ timestamp: drawn('08:00') - 86400000, route: 'oral', dose: 2, doseUnit: 'mg' });
+    await journal.doses.upsertDose({
+      timestamp: drawn('06:00'),
+      route: 'oral',
+      dose: 2,
+      doseUnit: 'mg',
+      status: 'skipped'
+    });
+  }, { drawTime: '08:00' });
+  assert.deepEqual(result.timing, { route: 'oral', hoursSinceDose: 24 });
+});
+
+test('a changed dose did happen, so the context is measured from it', async () => {
+  const result = await labWithDoses(
+    (journal) =>
+      journal.doses.upsertDose({
+        timestamp: drawn('06:00'),
+        route: 'oral',
+        dose: 1,
+        doseUnit: 'mg',
+        status: 'changed',
+        scheduled: { dose: 2, route: 'oral', timestamp: drawn('06:00') }
+      }),
+    { drawTime: '08:00' }
+  );
+  assert.deepEqual(result.timing, { route: 'oral', hoursSinceDose: 2 });
+});
+
+/* Ticket 03, box 6. The reason the figure is stored rather than derived on
+   read: a dose corrected in November must not rewrite the context on a draw
+   from August that someone has already discussed at an appointment. */
+test('editing a past dose event leaves an already-saved timing context alone', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const doseId = await journal.doses.upsertDose({
+    timestamp: drawn('08:00') - 86400000,
+    route: 'oral',
+    dose: 2,
+    doseUnit: 'mg'
+  });
+  await journal.labs.upsertResult({ epochDay: DRAW_DAY, analyte: 'estradiol', value: 400, drawTime: '08:00' });
+  assert.deepEqual((await journal.labs.getResults('estradiol'))[0].timing, { route: 'oral', hoursSinceDose: 24 });
+
+  await journal.doses.upsertDose({ id: doseId, timestamp: drawn('02:00'), route: 'oral', dose: 2, doseUnit: 'mg' });
+
+  assert.deepEqual((await journal.labs.getResults('estradiol'))[0].timing, { route: 'oral', hoursSinceDose: 24 });
+});
+
+test('editing a lab result for any other reason leaves its timing context alone', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.doses.upsertDose({ timestamp: drawn('08:00') - 86400000, route: 'oral', dose: 2, doseUnit: 'mg' });
+  const id = await journal.labs.upsertResult({
+    epochDay: DRAW_DAY,
+    analyte: 'estradiol',
+    value: 400,
+    drawTime: '08:00'
+  });
+  await journal.doses.upsertDose({ timestamp: drawn('07:00'), route: 'oral', dose: 2, doseUnit: 'mg' });
+
+  await journal.labs.upsertResult({
+    id,
+    epochDay: DRAW_DAY,
+    analyte: 'estradiol',
+    value: 410,
+    drawTime: '08:00',
+    note: 'corrected off the slip'
+  });
+
+  const result = (await journal.labs.getResults('estradiol'))[0];
+  assert.equal(result.value, 410);
+  assert.deepEqual(result.timing, { route: 'oral', hoursSinceDose: 24 });
+});
+
+/* The other half of the freeze rule: moving the draw voids the old figure
+   outright, so it is re-derived. Without this, a result saved with no draw
+   time could never be given one afterwards. */
+test('correcting the draw day or time re-derives the context', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.doses.upsertDose({ timestamp: drawn('06:00'), route: 'oral', dose: 2, doseUnit: 'mg' });
+  const id = await journal.labs.upsertResult({ epochDay: DRAW_DAY, analyte: 'estradiol', value: 400 });
+  assert.equal((await journal.labs.getResults('estradiol'))[0].timing, null);
+
+  await journal.labs.upsertResult({ id, epochDay: DRAW_DAY, analyte: 'estradiol', value: 400, drawTime: '09:00' });
+
+  assert.deepEqual((await journal.labs.getResults('estradiol'))[0].timing, { route: 'oral', hoursSinceDose: 3 });
+});
+
+test('a provider is stored as typed, with no list and no normalization', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 400, provider: '  Diagnostyka ' });
+  await journal.labs.upsertResult({ epochDay: 101, analyte: 'estradiol', value: 410, provider: 'diagnostyka' });
+  await journal.labs.upsertResult({ epochDay: 102, analyte: 'estradiol', value: 420 });
+
+  assert.deepEqual(
+    (await journal.labs.getResults('estradiol')).map((r) => r.provider),
+    ['  Diagnostyka ', 'diagnostyka', '']
+  );
 });
 
 /* reminders */

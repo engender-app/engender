@@ -105,6 +105,25 @@ export interface ArchiveMilestone {
   photo: ArchivePhoto | null;
 }
 
+/* The dosing context travels flat and nullable, the way ArchiveDoseEvent
+   carries its route-conditional fields rather than the union the domain type
+   uses (types.ts). Same reason: a transport shape that never changes arms is
+   one an older build can still parse field by field, and rebuilding the
+   union is the labs area's job on the way in either way.
+
+   It travels at all because it is recorded data, not a cache. A device
+   importing this archive cannot re-derive it - the dose log the figure was
+   measured against is not necessarily the one it is importing, and may
+   never have existed on that device. Leaving it behind would lose it.
+
+   These five are required here, so that whatever writes an archive has to
+   fill them, but the importer coalesces them anyway (restore.ts): this
+   interface is a cast over JSON.parse output, and a lab row written before
+   ticket 03 will not have them however the type is spelled. No format
+   version step for the addition, following ticket 02, which added four whole
+   collections without one - no release has shipped, so no archive in
+   existence predates either. A real v1 ladder step, filling in both tickets'
+   additions, is worth its own ticket rather than half of one here. */
 export interface ArchiveLabResult {
   id: string;
   epochDay: number;
@@ -112,6 +131,11 @@ export interface ArchiveLabResult {
   value: number;
   unit: string;
   note: string;
+  drawTime: string | null;
+  provider: string;
+  timingRoute: string | null;
+  timingHours: number | null;
+  timingDayOfInterval: number | null;
 }
 
 export interface ArchiveMeasurement {

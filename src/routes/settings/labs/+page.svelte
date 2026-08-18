@@ -2,6 +2,8 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { normalizeUnit, type LabSeries } from '$lib/data/journal/labs';
+  import { seriesComparability } from '$lib/data/labTiming';
+  import { comparabilityLabels, labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { createOcrMachine, type OcrSaver } from '$lib/data/labs/ocr-machine';
   import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, type PreferredUnitAnalyte } from '$lib/data/labs/units';
@@ -58,14 +60,43 @@
     return { points: s.results.map((r) => ({ day: r.epochDay, value: r.value })), min: min - pad, max: max + pad };
   }
 
+  /* Which point is picked out on which chart, keyed by the series unit, so
+     each line keeps its own selection instead of the charts fighting over one
+     index they number differently. Null is "none", the absence LineChart's
+     `selected` is spelled with; tapping the picked point again clears it. */
+  let picked = $state<Record<string, number | null>>({});
+
+  function pickPoint(unit: string, index: number | null) {
+    picked = { ...picked, [unit]: picked[unit] === index ? null : index };
+  }
+
+  /** What a point's readout says: the value, when it was drawn, and the
+      context it was drawn in. The same three facts the list rows carry. */
+  const pointAria = (r: LabResult) =>
+    m.labs_point_aria({
+      value: String(r.value),
+      unit: r.unit || m.labs_no_unit(),
+      date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+    });
+
+  /** The context beside a value, wherever it appears: the timing figure and
+      the lab, whichever of the two is known. Blank when neither is. */
+  const contextLine = (r: LabResult) =>
+    [r.timing ? labTimingLabel(r.timing) : '', r.provider.trim()].filter(Boolean).join(' · ');
+
   let editor = $state<{
     id?: string;
     date: string;
+    time: string;
     analyte: string;
     customAnalyte: string;
     value: string;
     unit: string;
     note: string;
+    provider: string;
+    /** Read-only: the context is frozen when the result is saved, so the
+        sheet shows what was recorded rather than offering to change it. */
+    timing: LabResult['timing'];
   } | null>(null);
   let deleteTarget = $state<LabResult | null>(null);
 
@@ -151,19 +182,25 @@
       ? {
           id: result.id,
           date: dateInputValueFromEpochDay(result.epochDay),
+          time: result.drawTime ?? '',
           analyte: result.analyte,
           customAnalyte: '',
           value: String(result.value),
           unit: result.unit,
-          note: result.note
+          note: result.note,
+          provider: result.provider,
+          timing: result.timing
         }
       : {
           date: dateInputValueFromEpochDay(todayEpochDay()),
+          time: '',
           analyte: 'estradiol',
           customAnalyte: '',
           value: '',
           unit: defaultUnitForAnalyte('estradiol', prefs.preferredLabUnits),
-          note: ''
+          note: '',
+          provider: '',
+          timing: null
         };
   }
 
@@ -210,7 +247,12 @@
       analyte: resultAnalyte,
       value,
       unit: draft.unit,
-      note: draft.note
+      note: draft.note,
+      /* An empty time input is "not recorded", not midnight. The journal
+         derives the timing context from this; a blank one means no hours
+         figure rather than a zero (labTiming.ts). */
+      drawTime: draft.time || null,
+      provider: draft.provider
     });
     analyte = resultAnalyte;
     editor = null;
@@ -281,15 +323,61 @@
 
     {#each series as s (s.unit)}
       {@const chart = chartFor(s)}
+      {@const mixed = comparabilityLabels(seriesComparability(s.results))}
+      {@const pickedIndex = picked[s.unit] ?? null}
+      {@const point = pickedIndex === null ? undefined : s.results[pickedIndex]}
       <div class="card" data-lab-series={s.unit} style="margin-top:var(--space-4)">
         <div class="spread" style="margin-bottom:var(--space-2)">
           <span class="chart-title">{analyte}</span>
           <span class="muted small series-unit">{s.unit || m.labs_no_unit()}</span>
         </div>
         {#if chart}
-          <LineChart points={chart.points} min={chart.min} max={chart.max} showDots />
+          <LineChart
+            points={chart.points}
+            min={chart.min}
+            max={chart.max}
+            showDots
+            selected={pickedIndex}
+            onSelect={(i) => pickPoint(s.unit, i)}
+            pointLabel={(i) => pointAria(s.results[i])}
+          />
+          <!-- The chart's tooltip. A panel under the line rather than a
+               floating bubble: on a 390px screen a bubble over the point
+               covers the neighbours you are comparing it against, and it has
+               nowhere to go at either edge. -->
+          <!-- aria-live, because the readout appears somewhere other than the
+               point that was activated: without it a screen reader announces
+               nothing after the press. -->
+          {#if point}
+            <div class="lab-point" data-lab-point={point.id} aria-live="polite">
+              <div class="spread">
+                <span class="row-title">{point.value} <span class="muted small">{point.unit}</span></span>
+                <button class="icon-btn" aria-label={m.labs_point_clear()} onclick={() => pickPoint(s.unit, null)}>
+                  <Icon name="x" size={18} />
+                </button>
+              </div>
+              <span class="muted small">{fmtDay(point.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              {#if contextLine(point)}
+                <span class="muted small lab-context">{contextLine(point)}</span>
+              {/if}
+            </div>
+          {/if}
         {:else}
           <div class="chart-too-little">{m.labs_too_little()}</div>
+        {/if}
+        <!-- Stated, not warned about: the series is drawn whole, and this
+             says what it is made of (ticket 03). -->
+        {#if mixed.length}
+          <div class="notice notice-info" data-lab-mixed={s.unit} style="margin-top:var(--space-3)">
+            <Icon name="info" size={20} />
+            <div class="notice-body">
+              <span class="notice-title">{m.labs_mixed_title()}</span>
+              {m.labs_mixed_body()}
+              <ul class="lab-mixed-list">
+                {#each mixed as reason (reason)}<li>{reason}</li>{/each}
+              </ul>
+            </div>
+          </div>
         {/if}
       </div>
     {/each}
@@ -302,6 +390,12 @@
             <span class="row-subtitle">
               {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
             </span>
+            <!-- The context on its own line, not appended to the date: it is
+                 two more facts about the draw, and three of them run together
+                 stop being readable at 390px. -->
+            {#if contextLine(r)}
+              <span class="row-subtitle lab-context">{contextLine(r)}</span>
+            {/if}
           </span>
           <Icon name="pencil" size={18} />
         </button>
@@ -324,9 +418,17 @@
   <Sheet open={editor !== null} title={editor?.id ? m.labs_edit_sheet() : m.labs_new_sheet()} onClose={() => (editor = null)}>
     {#if editor}
       <h3>{editor.id ? m.labs_edit_sheet() : m.labs_new_sheet()}</h3>
-      <div class="field">
-        <label class="field-label" for="lab-date">{m.labs_date_label()}</label>
-        <input class="input" type="date" id="lab-date" name="lab-date" bind:value={editor.date} />
+      <div class="cd-endpoints">
+        <div class="field">
+          <label class="field-label" for="lab-date">{m.labs_date_label()}</label>
+          <input class="input" type="date" id="lab-date" name="lab-date" bind:value={editor.date} />
+        </div>
+        <!-- Optional, and the hours figure depends on it: a lab slip often
+             carries no time, and day-of-interval does not need one. -->
+        <div class="field">
+          <label class="field-label" for="lab-time">{m.labs_time_label()}</label>
+          <input class="input" type="time" id="lab-time" name="lab-time" bind:value={editor.time} />
+        </div>
       </div>
       <div class="field">
         <label class="field-label" for="lab-analyte">{m.labs_analyte_label()}</label>
@@ -354,9 +456,33 @@
         </div>
       </div>
       <div class="field">
+        <label class="field-label" for="lab-provider">{m.labs_provider_label()}</label>
+        <input class="input" id="lab-provider" name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
+      </div>
+      <div class="field">
         <label class="field-label" for="lab-note">{m.labs_note_label()}</label>
         <input class="input" id="lab-note" name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
       </div>
+
+      <!-- The detail view's copy of the context. Read-only, because it was
+           recorded when the result was saved and is not recomputed
+           afterwards (ticket 03, box 6). A saved result with no hours figure
+           says what would give it one, rather than staying blank. -->
+      {#if editor.id}
+        <div class="card editor-section" data-lab-context>
+          <h4>{m.labs_context_title()}</h4>
+          {#if editor.timing}
+            <p class="lab-context">{labTimingLabel(editor.timing)}</p>
+            <p class="muted small">{m.labs_context_frozen()}</p>
+          {:else}
+            <p class="muted small">{m.labs_context_none()}</p>
+            {#if !editor.time}
+              <p class="muted small">{m.labs_context_needs_time()}</p>
+            {/if}
+          {/if}
+        </div>
+      {/if}
+
       <div class="stack-3">
         <button class="btn btn-primary" data-save-lab onclick={saveResult}><span>{m.labs_save()}</span></button>
         {#if editor.id}

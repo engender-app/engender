@@ -399,11 +399,21 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .week-name { font-size: var(--text-xs); color: var(--text-2); }
 
 /* ---------- charts ---------- */
-.line-chart { width: 100%; height: auto; display: block; }
+/* overflow visible so a focus ring on the first or last point is not clipped
+   by the viewBox it sits against - the card's padding absorbs the few px. */
+.line-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .chart-line { fill: none; stroke: var(--chart-line); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .chart-area { fill: var(--chart-fill); }
 .chart-gridline { stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 4; }
 .chart-dot { fill: var(--surface); stroke: var(--chart-line); stroke-width: 2; }
+.chart-dot.is-selected { fill: var(--chart-line); stroke-width: 4; }
+/* Invisible tap targets over the dots. `fill: transparent` rather than
+   `fill: none`, which would make them ignore pointer events entirely. */
+/* No outline in any focus state: a rectangle drawn around a point on a
+   scaled viewBox lands nowhere near the point. The ring is a stroke on the
+   hit circle itself, which scales with everything else. */
+.chart-hit { fill: transparent; cursor: pointer; outline: none; }
+.chart-hit:focus-visible { stroke: var(--focus-ring); stroke-width: 2; }
 .chart-too-little { color: var(--text-2); font-size: var(--text-sm); padding: var(--space-6); text-align: center; }
 
 /* ---------- sheets, toasts ---------- */
