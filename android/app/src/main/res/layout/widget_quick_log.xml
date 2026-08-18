@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/widget_header"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:textColor="#1A1A1A"
+        android:textSize="13sp"
+        android:text="@string/widget_quick_log_title" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_mood_1"
+            style="@style/WidgetMoodButton"
+            android:text="1" />
+
+        <TextView
+            android:id="@+id/widget_mood_2"
+            style="@style/WidgetMoodButton"
+            android:text="2" />
+
+        <TextView
+            android:id="@+id/widget_mood_3"
+            style="@style/WidgetMoodButton"
+            android:text="3" />
+
+        <TextView
+            android:id="@+id/widget_mood_4"
+            style="@style/WidgetMoodButton"
+            android:text="4" />
+
+        <TextView
+            android:id="@+id/widget_mood_5"
+            style="@style/WidgetMoodButton"
+            android:layout_marginEnd="0dp"
+            android:text="5" />
+
+    </LinearLayout>
+</LinearLayout>

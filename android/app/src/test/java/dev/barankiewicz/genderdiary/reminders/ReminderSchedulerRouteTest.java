@@ -52,6 +52,23 @@ public class ReminderSchedulerRouteTest {
     }
 
     @Test
+    public void allowsEachQuickLogWidgetMoodValue() {
+        for (int mood = 1; mood <= 5; mood++) {
+            String route = "/entry/new/today?seedMood=" + mood;
+            assertEquals(route, ReminderScheduler.sanitizeLaunchRoute(route));
+        }
+    }
+
+    @Test
+    public void rejectsAQuickLogWidgetMoodOutsideOneToFive() {
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/entry/new/today?seedMood=0"));
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/entry/new/today?seedMood=6"));
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/entry/new/today?seedMood="));
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/entry/new/today?seedMood=12"));
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/entry/new/today?seedMood=three"));
+    }
+
+    @Test
     public void stillRejectsGarbage() {
         assertNull(ReminderScheduler.sanitizeLaunchRoute(null));
         assertNull(ReminderScheduler.sanitizeLaunchRoute(""));

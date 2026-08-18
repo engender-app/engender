@@ -19,4 +19,20 @@
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
     </style>
+
+    <!-- The quick-log widget's five mood buttons (ticket 26): identical
+         beyond the digit each carries, so nothing about the layout itself
+         reveals which is which - that's the button's own contentDescription
+         at render time (QuickLogWidgetProvider), not this shared style. -->
+    <style name="WidgetMoodButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginEnd">6dp</item>
+        <item name="android:background">@drawable/widget_mood_button_bg</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">#1A1A1A</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
 </resources>

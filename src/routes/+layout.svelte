@@ -317,6 +317,8 @@
     return (
       /^\/settings\/reminders(?:\/[^/]+)?$/.test(route) ||
       /^\/entry\/new\/\d+$/.test(route) ||
+      // The quick-log widget's mood buttons (ticket 26).
+      /^\/entry\/new\/today\?seedMood=[1-5]$/.test(route) ||
       /^\/wrapped\/(?:week|month|year)$/.test(route) ||
       /^\/on-this-day(?:\?lookback=(?:month|sixMonths|year))?$/.test(route)
     );

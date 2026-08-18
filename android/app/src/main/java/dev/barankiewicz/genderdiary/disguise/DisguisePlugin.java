@@ -7,6 +7,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import dev.barankiewicz.genderdiary.widgets.QuickLogWidgetProvider;
+
 /**
  * Mirrors the disguise preference (ticket 15) into the launcher alias
  * PackageManager reads. Called from a Svelte effect on every change to
@@ -27,7 +29,13 @@ public class DisguisePlugin extends Plugin {
         // next cold start - disguise_app_sub_android's "the app closes
         // briefly to switch". Only when the alias actually flipped: prefs
         // sync onto every boot, and a restart nobody asked for is its own
-        // kind of leak.
-        if (changed) Process.killProcess(Process.myPid());
+        // kind of leak. An already-placed quick-log widget (ticket 26) is
+        // the same category of exposure as the launcher icon, so it gets
+        // the same immediate refresh rather than waiting on its own
+        // system-scheduled update.
+        if (changed) {
+            QuickLogWidgetProvider.updateAll(getContext());
+            Process.killProcess(Process.myPid());
+        }
     }
 }

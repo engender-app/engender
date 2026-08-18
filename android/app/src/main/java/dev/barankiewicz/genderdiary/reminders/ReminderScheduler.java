@@ -143,6 +143,15 @@ public final class ReminderScheduler {
             boolean known = "month".equals(lookback) || "sixMonths".equals(lookback) || "year".equals(lookback);
             return known ? route : null;
         }
+        // The quick-log widget's mood buttons (ticket 26): "today" rather than
+        // a computed epoch day, so a PendingIntent built at widget-render time
+        // still lands on the right day even if tapped much later - the [day]
+        // route resolves "today" live, at navigation time, not at intent-build
+        // time. One digit 1-5 only, matching MoodPicker's five mood values.
+        if (route.startsWith("/entry/new/today?seedMood=")) {
+            String mood = route.substring("/entry/new/today?seedMood=".length());
+            return mood.length() == 1 && mood.charAt(0) >= '1' && mood.charAt(0) <= '5' ? route : null;
+        }
         if (!route.startsWith("/entry/new/")) return null;
         String epochDay = route.substring("/entry/new/".length());
         if (epochDay.isBlank() || epochDay.contains("/")) return null;
