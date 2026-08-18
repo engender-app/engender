@@ -16,6 +16,7 @@ import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDosesArea, type DosesArea } from './doses';
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
+import { makeHormoneCurveArea, type HormoneCurveArea } from './hormoneCurve';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
@@ -83,6 +84,11 @@ export interface Journal {
       purely descriptive (phase 4 ticket 05). A view over rows `doses` and
       `regimen` own, not a third owner for either one. */
   exposure: ExposureArea;
+  /** Estradiol level bands per injectable ester, with the user's own lab
+      results overlaid (phase 4 ticket 10). A view over rows `doses`,
+      `regimen` and `labs` own, computed on every read - the bands are the
+      published posterior's, not a stored estimate. */
+  hormoneCurve: HormoneCurveArea;
   sideEffects: SideEffectsArea;
   /** The four fixed "first noticed" markers (phase 4 ticket 07), read
       against the earliest regimen episode's start day above this seam
@@ -114,6 +120,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const reminders = makeRemindersArea(driver);
   const regimen = makeRegimenArea(driver);
   const doses = makeDosesArea(driver);
+  const labs = makeLabsArea(driver);
 
   return {
     entries: makeEntriesArea(driver, files),
@@ -121,7 +128,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     dimensions: makeDimensionsArea(driver),
     milestones: makeMilestonesArea(driver, files),
     photos: makePhotosArea(driver, files),
-    labs: makeLabsArea(driver),
+    labs,
     measurements: makeMeasurementsArea(driver),
     reminders,
     tally: makeTallyArea(driver),
@@ -129,6 +136,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     doses,
     stock: makeStockArea(driver, doses, regimen, reminders),
     exposure: makeExposureArea(doses, regimen),
+    hormoneCurve: makeHormoneCurveArea(doses, regimen, labs),
     sideEffects: makeSideEffectsArea(driver),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),

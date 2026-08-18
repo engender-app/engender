@@ -6,6 +6,7 @@ import {
   normalizePreferredUnitSelection,
   preferredUnitForAnalyte,
   sanitizePreferredLabUnits,
+  secondaryLabValue,
   type PreferredLabUnits
 } from './units';
 
@@ -70,5 +71,34 @@ describe('labs unit conversion', () => {
     expect(raw.unit).toBe('pg/mL');
     expect(converted.unit).toBe('pg/mL');
     expect(raw.value).toBeCloseTo(converted.value, 4);
+  });
+});
+describe('the secondary value beside a native one (ADR-0026)', () => {
+  test('an estradiol result logged in pg/mL offers its pmol/L reading', () => {
+    const secondary = secondaryLabValue('estradiol', 100, 'pg/mL');
+    expect(secondary?.unit).toBe('pmol/L');
+    expect(secondary!.value).toBeCloseTo(367.1, 4);
+  });
+
+  test('and the other way round, because either unit can be the logged one', () => {
+    const secondary = secondaryLabValue('estradiol', 367.1, 'pmol/L');
+    expect(secondary?.unit).toBe('pg/mL');
+    expect(secondary!.value).toBeCloseTo(100, 4);
+  });
+
+  test('the unit is read as loosely as it is entered, and answered canonically', () => {
+    expect(secondaryLabValue('Estradiol', 100, '  PG/ML ')?.unit).toBe('pmol/L');
+  });
+
+  test('an analyte or unit outside the allowlist gets no secondary value at all', () => {
+    // The fail-closed half of ADR-0026: a free-text unit is never guessed at.
+    expect(secondaryLabValue('estradiol', 100, 'ng/dL')).toBeNull();
+    expect(secondaryLabValue('estradiol', 100, '')).toBeNull();
+    expect(secondaryLabValue('shbg', 100, 'nmol/L')).toBeNull();
+  });
+
+  test('the other two allowlisted analytes work the same way', () => {
+    expect(secondaryLabValue('testosterone', 100, 'ng/dL')?.unit).toBe('nmol/L');
+    expect(secondaryLabValue('prolactin', 10, 'ng/mL')?.unit).toBe('mIU/L');
   });
 });

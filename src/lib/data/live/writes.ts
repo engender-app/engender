@@ -207,6 +207,12 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     writes: {},
     reads: ['getCounters']
   },
+  // Read-only too: a hormone curve is recomputed from the dose log on every
+  // read and stored nowhere (phase 4 ticket 10, ADR-0010).
+  hormoneCurve: {
+    writes: {},
+    reads: ['getCurves']
+  },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {
     writes: {},
