@@ -31,6 +31,8 @@ async function populated() {
     bodyRegions: { chest: 40 }
   });
   const photo = await journal.photos.attach({ entryId: entry }, { full: bytes('full-photo'), thumb: bytes('thumb') });
+  await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a recording')] });
+  const recording = (await journal.entries.getEntry(entry))!.recordings[0].id;
   const second = await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
 
   const milestone = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 19000, templateKey: 'hrt_start' });
@@ -138,6 +140,7 @@ async function populated() {
     entry,
     second,
     photo,
+    recording,
     milestone,
     milestonePhoto,
     lab,
@@ -160,8 +163,8 @@ async function populated() {
   };
 }
 
-test('entries travel by uuid, with their dimension values, tags and photos', async () => {
-  const { db, journal, voice, tag, entry, photo } = await populated();
+test('entries travel by uuid, with their dimension values, tags, photos and recordings', async () => {
+  const { db, journal, voice, tag, entry, photo, recording } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -179,6 +182,7 @@ test('entries travel by uuid, with their dimension values, tags and photos', asy
     // matter, not which of them the seed happened to create first.
     tags: ['e-happy', tag.id],
     photos: [{ id: photo, fileName: `${photo}.jpg` }],
+    recordings: [{ id: recording, fileName: `${recording}.webm` }],
     bodyRegions: { chest: 40 }
   });
   assert.equal(snapshot.journal.entries.length, 2);
@@ -194,6 +198,7 @@ test('an entry with nothing but a mood carries empty collections, not missing on
   assert.deepEqual(entry.dims, {});
   assert.deepEqual(entry.tags, []);
   assert.deepEqual(entry.photos, []);
+  assert.deepEqual(entry.recordings, []);
   assert.deepEqual(entry.bodyRegions, {});
   assert.equal(entry.note, '');
 });
@@ -434,8 +439,8 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
   ]);
 });
 
-test('the manifest names every photo file and its thumbnail, with their lengths', async () => {
-  const { journal, photo, milestonePhoto } = await populated();
+test('the manifest names every photo file and its thumbnail, plus every recording file, with their lengths', async () => {
+  const { journal, photo, milestonePhoto, recording } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -443,9 +448,11 @@ test('the manifest names every photo file and its thumbnail, with their lengths'
     { name: `${photo}.jpg`, length: 10 },
     { name: thumbFileName(`${photo}.jpg`), length: 5 },
     { name: `${milestonePhoto}.jpg`, length: 1 },
-    { name: thumbFileName(`${milestonePhoto}.jpg`), length: 2 }
+    { name: thumbFileName(`${milestonePhoto}.jpg`), length: 2 },
+    { name: `${recording}.webm`, length: bytes('a recording').length }
   ]);
   assert.deepEqual(await snapshot.readFile(`${photo}.jpg`), bytes('full-photo'));
+  assert.deepEqual(await snapshot.readFile(`${recording}.webm`), bytes('a recording'));
 });
 
 test('a photo row whose file is gone keeps its row and leaves the manifest alone', async () => {
@@ -546,6 +553,7 @@ const CARRIED: Record<string, string[]> = {
   // tryout_id travels as the tryout's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
   tryout_felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
+  voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

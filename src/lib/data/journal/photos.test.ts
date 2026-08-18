@@ -216,6 +216,26 @@ test('the sweep is a no-op on an empty journal and an empty store', async () => 
   assert.deepEqual(files.names(), []);
 });
 
+test('the sweep keeps a referenced voice recording, which shares this store (ticket 24)', async () => {
+  const { db, files, journal } = await journalWithFiles();
+  const entryId = await anEntry(journal);
+  await journal.entries.upsertEntry({ id: entryId, attachRecordings: [new Uint8Array([9])] });
+  const recording = (await journal.entries.getEntry(entryId))!.recordings[0];
+
+  await sweepOrphanPhotos(db, files);
+
+  assert.deepEqual(files.names(), [recording.fileName]);
+});
+
+test('the sweep reclaims a voice recording file no row references', async () => {
+  const { db, files } = await journalWithFiles();
+  await files.write('99999999-dead-4000-8000-000000000000.webm', new Uint8Array([9]));
+
+  await sweepOrphanPhotos(db, files);
+
+  assert.deepEqual(files.names(), []);
+});
+
 test('mood cannot be cleared from an entry even with a photo still on it', async () => {
   const { journal } = await journalWithFiles();
   // Mood is required unconditionally now (ticket 04): a photo does not

@@ -20,7 +20,7 @@ import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryCont
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Entry, Photo } from '../types';
+import type { Entry, Photo, VoiceRecording } from '../types';
 import type { PhotoFileStore } from './journal';
 import {
   insertStagedPhoto,
@@ -31,6 +31,14 @@ import {
   type NormalizedPhoto,
   type StagedPhoto
 } from './photos';
+import {
+  insertStagedRecording,
+  recordingsByEntry,
+  removeRecordingFilesAfterCommit,
+  removeRecordingFilesOf,
+  stageRecording,
+  type StagedRecording
+} from './voiceRecordings';
 import { domainIdOf, mintUuid, now, rowidByUuid } from './support';
 
 export interface EntryInput {
@@ -56,6 +64,14 @@ export interface EntryInput {
   /** Stored photos removed in this edit. They travel with the rest of the
       entry save so its fields and photos commit as one action. */
   removePhotoIds?: string[];
+  /** Recordings made in this edit, ready to store as-is (ticket 24: no
+      client-side audio effects, so nothing normalizes them the way a photo
+      is). Additive, the same reason attachPhotos is: the editor has the
+      entry's existing recording rows but not their bytes. */
+  attachRecordings?: Uint8Array[];
+  /** Stored recordings removed in this edit, committed with the rest of the
+      entry save the same way removePhotoIds is. */
+  removeRecordingIds?: string[];
 }
 
 export interface EntrySearchFilters {
@@ -102,7 +118,8 @@ export interface EntriesArea {
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
   /** Idempotent. Takes the entry's dimension values, tag links, body-region
-      values, photo rows and photo files with it. */
+      values, photo rows, photo files, recording rows and recording files
+      with it. */
   deleteEntry(id: number): Promise<void>;
 }
 
@@ -117,6 +134,7 @@ type EntryRow = {
 };
 
 type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: string };
+type RemovedRecordingRow = { uuid: string; entry_id: number; file_path: string };
 
 export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): EntriesArea {
   const resolveDimensionIds = async (dims: Record<string, number>): Promise<readonly (readonly [number, number])[]> => {
@@ -228,6 +246,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     return rows[0].n;
   };
 
+  const recordingCountOf = async (entryId: number): Promise<number> => {
+    const rows = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM voice_recording WHERE entry_id = ?', [
+      entryId
+    ]);
+    return rows[0].n;
+  };
+
   const photosToRemove = async (entryId: number | null, ids: string[]): Promise<RemovedPhotoRow[]> =>
     Promise.all(
       [...new Set(ids)].map(async (id) => {
@@ -238,6 +263,20 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         if (!rows[0]) throw new Error(`unknown photo: ${id}`);
         if (entryId == null) throw new Error(`photo ${id} does not belong to a new entry`);
         if (rows[0].entry_id !== entryId) throw new Error(`photo ${id} does not belong to entry: ${entryId}`);
+        return rows[0];
+      })
+    );
+
+  const recordingsToRemove = async (entryId: number | null, ids: string[]): Promise<RemovedRecordingRow[]> =>
+    Promise.all(
+      [...new Set(ids)].map(async (id) => {
+        const rows = await driver.query<RemovedRecordingRow>(
+          'SELECT uuid, entry_id, file_path FROM voice_recording WHERE uuid = ?',
+          [id]
+        );
+        if (!rows[0]) throw new Error(`unknown recording: ${id}`);
+        if (entryId == null) throw new Error(`recording ${id} does not belong to a new entry`);
+        if (rows[0].entry_id !== entryId) throw new Error(`recording ${id} does not belong to entry: ${entryId}`);
         return rows[0];
       })
     );
@@ -261,6 +300,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     const dims = new Map<number, Record<string, number>>();
     const tags = new Map<number, string[]>();
     const photos = new Map<number, Photo[]>();
+    const recordings = new Map<number, VoiceRecording[]>();
     const bodyRegions = new Map<number, Record<string, number>>();
 
     for (let from = 0; from < rows.length; from += ID_CHUNK) {
@@ -293,6 +333,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       }
 
       for (const [entryId, forEntry] of await photosByEntry(driver, ids)) photos.set(entryId, forEntry);
+      for (const [entryId, forEntry] of await recordingsByEntry(driver, ids)) recordings.set(entryId, forEntry);
 
       const bodyRegionRows = await driver.query<{ entry_id: number; region: string; intensity: number }>(
         `SELECT entry_id, region, intensity FROM entry_body_region WHERE entry_id IN (${placeholders})`,
@@ -314,6 +355,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       dims: dims.get(row.id) ?? {},
       tags: tags.get(row.id) ?? [],
       photos: photos.get(row.id) ?? [],
+      recordings: recordings.get(row.id) ?? [],
       bodyRegions: bodyRegions.get(row.id) ?? {}
     }));
   };
@@ -517,12 +559,16 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const bodyRegions = input.bodyRegions ?? (await bodyRegionsOf(current.id));
         const attaching = input.attachPhotos ?? [];
         const removedPhotos = await photosToRemove(current.id, input.removePhotoIds ?? []);
+        const attachingRecordings = input.attachRecordings ?? [];
+        const removedRecordings = await recordingsToRemove(current.id, input.removeRecordingIds ?? []);
         assertHasContent({
           mood,
           note: input.note ?? current.note ?? '',
           dimCount: Object.keys(mergedDims).length,
           tagCount: tags.length,
           photoCount: (await photoCountOf(current.id)) - removedPhotos.length + attaching.length,
+          recordingCount:
+            (await recordingCountOf(current.id)) - removedRecordings.length + attachingRecordings.length,
           bodyRegionCount: Object.keys(bodyRegions).length
         });
 
@@ -536,6 +582,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const note = input.note ?? current.note ?? '';
         const stagedPhotos: StagedPhoto[] = [];
         for (const photo of attaching) stagedPhotos.push(await stagePhoto(files, photo));
+        const stagedRecordings: StagedRecording[] = [];
+        for (const bytes of attachingRecordings) stagedRecordings.push(await stageRecording(files, bytes));
 
         await driver.transaction(async () => {
           await driver.run(
@@ -565,8 +613,18 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           for (const photo of stagedPhotos) {
             await insertStagedPhoto(driver, { entryId: current.id, milestoneId: null }, photo);
           }
+          for (const recording of removedRecordings) {
+            await driver.run('DELETE FROM voice_recording WHERE uuid = ? AND entry_id = ?', [
+              recording.uuid,
+              current.id
+            ]);
+          }
+          for (const recording of stagedRecordings) {
+            await insertStagedRecording(driver, current.id, recording);
+          }
         });
         await removeFilesAfterCommit(files, removedPhotos);
+        await removeRecordingFilesAfterCommit(files, removedRecordings);
         return current.id;
       }
 
@@ -575,15 +633,18 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const tags = input.tags ?? [];
       const bodyRegions = input.bodyRegions ?? {};
       const attachingNew = input.attachPhotos ?? [];
+      const attachingRecordingsNew = input.attachRecordings ?? [];
       const mood = input.mood;
       if (mood == null) throw new Error('an entry needs a mood');
       await photosToRemove(null, input.removePhotoIds ?? []);
+      await recordingsToRemove(null, input.removeRecordingIds ?? []);
       assertHasContent({
         mood,
         note: input.note ?? '',
         dimCount: Object.keys(dims).length,
         tagCount: tags.length,
         photoCount: attachingNew.length,
+        recordingCount: attachingRecordingsNew.length,
         bodyRegionCount: Object.keys(bodyRegions).length
       });
       const dimIds = await resolveDimensionIds(dims);
@@ -591,6 +652,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       assertKnownBodyRegions(bodyRegions);
       const stagedPhotos: StagedPhoto[] = [];
       for (const photo of attachingNew) stagedPhotos.push(await stagePhoto(files, photo));
+      const stagedRecordings: StagedRecording[] = [];
+      for (const bytes of attachingRecordingsNew) stagedRecordings.push(await stageRecording(files, bytes));
 
       const uuid = mintUuid();
       return driver.transaction(async () => {
@@ -606,6 +669,9 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         for (const photo of stagedPhotos) {
           await insertStagedPhoto(driver, { entryId, milestoneId: null }, photo);
         }
+        for (const recording of stagedRecordings) {
+          await insertStagedRecording(driver, entryId, recording);
+        }
         return entryId;
       });
     },
@@ -614,8 +680,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const photos = await driver.query<{ file_path: string }>('SELECT file_path FROM photo WHERE entry_id = ?', [
         id
       ]);
+      const recordings = await driver.query<{ file_path: string }>(
+        'SELECT file_path FROM voice_recording WHERE entry_id = ?',
+        [id]
+      );
       await driver.transaction(async () => {
         await driver.run('DELETE FROM photo WHERE entry_id = ?', [id]);
+        await driver.run('DELETE FROM voice_recording WHERE entry_id = ?', [id]);
         await driver.run('DELETE FROM entry_dimension_value WHERE entry_id = ?', [id]);
         await driver.run('DELETE FROM entry_tag WHERE entry_id = ?', [id]);
         await driver.run('DELETE FROM entry_body_region WHERE entry_id = ?', [id]);
@@ -624,6 +695,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       // After the commit: a failed file removal must not resurrect rows,
       // and an orphaned file is what the boot sweep (ticket 11) reclaims.
       await removeFilesOf(files, photos);
+      await removeRecordingFilesOf(files, recordings);
     }
   };
 }

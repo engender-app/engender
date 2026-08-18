@@ -535,6 +535,33 @@ CREATE TABLE letter (
 CREATE INDEX idx_letter_epoch_day ON letter(epoch_day);
 `;
 
+/* v17: voice recordings (phase 4 ticket 24, CONTEXT: "Voice recording"). An
+   entry-only file-carrying row - its own table rather than a third owner
+   arm on `photo` (SCHEMA_V1), for the same reason `hair_photo` (v13) got
+   its own table rather than widening `photo`'s CHECK: SQLite cannot ALTER
+   a table-level CHECK in place. Simpler than either precedent, though:
+   ticket 24 excludes milestones, so there is only ever one owner column,
+   and `entry_id` is plain NOT NULL rather than a CHECK across two nullable
+   columns.
+
+   No thumbnail pair: a recording has one file, not the full-plus-thumb pair
+   normalize() gives a photo (ADR-0008). It shares photo's file store and
+   the same file-before-row/row-before-file ordering (journal/photos.ts's
+   header comment), so the boot orphan sweep has to read this table too
+   (sweepOrphanPhotos, journal/photos.ts) or every saved recording looks
+   orphaned the moment it runs. */
+const SCHEMA_V17 = `
+CREATE TABLE voice_recording (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  entry_id    INTEGER NOT NULL REFERENCES entry(id) ON DELETE CASCADE,
+  file_path   TEXT NOT NULL,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  updated_at  INTEGER NOT NULL
+);
+CREATE INDEX idx_voice_recording_entry ON voice_recording(entry_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -551,7 +578,8 @@ export const migrations: Migration[] = [
   { version: 13, sql: SCHEMA_V13 },
   { version: 14, sql: SCHEMA_V14 },
   { version: 15, sql: SCHEMA_V15 },
-  { version: 16, sql: SCHEMA_V16 }
+  { version: 16, sql: SCHEMA_V16 },
+  { version: 17, sql: SCHEMA_V17 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

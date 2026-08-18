@@ -69,7 +69,14 @@ export type TableName =
      ticket 16), the same reasoning 'doubtJournal' gives. */
   | 'tryout'
   /* Time-capsule letters (phase 4 ticket 19). */
-  | 'letter';
+  | 'letter'
+  /* Voice recordings (phase 4 ticket 24). Its own name rather than folded
+     into 'entry' the way `hairProgress`/`doubtJournal`/`tryout` fold two
+     tables into one name: unlike those, a screen elsewhere - a future
+     voice-notes browsing view, or ticket 25's compare mode - could read
+     recordings without reading the rest of an entry, the same reason
+     'photo' gets its own name instead of folding into 'entry' too. */
+  | 'voiceRecording';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -92,7 +99,8 @@ export const TABLE_NAMES: TableName[] = [
   'hairProgress',
   'doubtJournal',
   'tryout',
-  'letter'
+  'letter',
+  'voiceRecording'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -106,10 +114,12 @@ export const TABLE_NAMES: TableName[] = [
 const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>; reads: string[] }> = {
   entries: {
     writes: {
-      // Photos as well as the entry: a save carries additions and removals.
-      upsertEntry: ['entry', 'photo'],
-      // Takes the entry's photo rows and files with it (entries.ts).
-      deleteEntry: ['entry', 'photo']
+      // Photos and recordings as well as the entry: a save carries
+      // additions and removals of both.
+      upsertEntry: ['entry', 'photo', 'voiceRecording'],
+      // Takes the entry's photo and recording rows and files with it
+      // (entries.ts).
+      deleteEntry: ['entry', 'photo', 'voiceRecording']
     },
     reads: ['getEntry', 'entriesForDay', 'recentDays', 'entriesWithTag', 'searchEntries', 'countSearchMatches']
   },

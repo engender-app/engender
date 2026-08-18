@@ -35,6 +35,7 @@
       <span class="entry-time">{fmtTime(entry.timestamp)}</span>
       {#if dayCount > 1}<span class="entry-multi"><Icon name="dots" size={13} /> {m.entry_day_count({ count: String(dayCount) })}</span>{/if}
       {#if entry.photos?.length}<span class="entry-has-photo"><Icon name="image" size={13} /></span>{/if}
+      {#if entry.recordings?.length}<span class="entry-has-recording"><Icon name="mic" size={13} /></span>{/if}
     </div>
     {#if entry.note}<p class="entry-note">{entry.note}</p>{/if}
     {#if tags.length}

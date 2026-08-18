@@ -9,6 +9,7 @@
   import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { capturePhoto, pickPhotos } from '$lib/stores/photoPicking';
+  import { startRecording, type ActiveRecording } from '$lib/stores/voiceRecording';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import type { EntryPrompt, EntryTemplate, GenderDimension } from '$lib/data/types';
@@ -18,6 +19,7 @@
   import TagPicker from '$lib/components/TagPicker.svelte';
   import BodyRegionPicker from '$lib/components/BodyRegionPicker.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -127,6 +129,26 @@
     const photo = await capturePhoto();
     if (photo) entryDraft.addPhoto(photo);
   }
+
+  // Unset while nothing is being recorded; the record/stop button reads
+  // this to know which state it is showing (ticket 24).
+  let activeRecording = $state<ActiveRecording | null>(null);
+
+  async function toggleRecording() {
+    if (activeRecording) {
+      const bytes = await activeRecording.stop();
+      activeRecording = null;
+      if (bytes) entryDraft.addRecording(bytes);
+      return;
+    }
+    activeRecording = await startRecording();
+  }
+
+  // A recording still running when the editor unmounts (navigating away
+  // mid-recording) must not leave the microphone open behind the screen.
+  onDestroy(() => {
+    activeRecording?.stop();
+  });
 
   let moodMissing = $derived(entryDraft.mood == null);
 
@@ -283,6 +305,30 @@
         <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
       </button>
     </div>
+  </section>
+
+  <section class="card editor-section">
+    <h2 class="editor-heading">{m.recordings_label()}</h2>
+    {#if entryDraft.recordings.length > 0}
+      <div class="recording-list">
+        {#each entryDraft.recordings as r, i (r)}
+          <div class="recording-row">
+            {#if r.kind === 'stored'}
+              <VoicePlayer fileName={r.recording.fileName} />
+            {:else}
+              <VoicePlayer bytes={r.bytes} />
+            {/if}
+            <button class="recording-remove" aria-label={m.recording_remove()} onclick={() => entryDraft.removeRecording(i)}>
+              <Icon name="x" size={16} />
+            </button>
+          </div>
+        {/each}
+      </div>
+    {/if}
+    <button class="photo-add" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={toggleRecording}>
+      <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
+      <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
+    </button>
   </section>
 
   <div class="editor-savebar">

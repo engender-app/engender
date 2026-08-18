@@ -268,6 +268,7 @@ function assertRestorable(journal: ArchiveJournal): void {
 async function discardJournalRows(driver: SqliteDriver): Promise<void> {
   const statements = [
     'DELETE FROM photo',
+    'DELETE FROM voice_recording',
     'DELETE FROM entry_dimension_value',
     'DELETE FROM entry_tag',
     'DELETE FROM entry_body_region',
@@ -517,6 +518,7 @@ async function applyEntries({ driver, journal, ts }: Restoring): Promise<void> {
   const dimensionRows: unknown[][] = [];
   const tagRows: unknown[][] = [];
   const photoRows: unknown[][] = [];
+  const recordingRows: unknown[][] = [];
   const bodyRegionRows: unknown[][] = [];
 
   for (const entry of inserting) {
@@ -547,6 +549,10 @@ async function applyEntries({ driver, journal, ts }: Restoring): Promise<void> {
       photoRows.push([photo.id, entryId, null, photo.fileName, orderIndex, ts]);
     }
 
+    for (const [orderIndex, recording] of (entry.recordings ?? []).entries()) {
+      recordingRows.push([recording.id, entryId, recording.fileName, orderIndex, ts]);
+    }
+
     // Unlike dims and tags, a region key is not resolved against a stored
     // row - there is none (bodyMap.ts) - so it travels straight through,
     // the same forward-compatible treatment lab_result.analyte gets: an
@@ -565,6 +571,11 @@ async function applyEntries({ driver, journal, ts }: Restoring): Promise<void> {
     driver,
     'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)',
     photoRows
+  );
+  await insertRows(
+    driver,
+    'INSERT INTO voice_recording (uuid, entry_id, file_path, order_index, updated_at)',
+    recordingRows
   );
 }
 

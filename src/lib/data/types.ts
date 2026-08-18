@@ -20,6 +20,16 @@ export interface Photo {
     minted on write, by the repository, never in a screen. */
 export type DraftPhoto = Omit<Photo, 'id'>;
 
+/** An in-app audio recording belonging to exactly one entry (phase 4 ticket
+    24, CONTEXT: "Voice recording"). Entry-only, unlike Photo: no milestone
+    owner. One file per row, unlike Photo: nothing normalizes or thumbnails
+    a recording (out of scope by the ticket - no client-side audio
+    effects), so `fileName` names the one file the entry's playback reads. */
+export interface VoiceRecording {
+  id: string;
+  fileName: string;
+}
+
 export interface Entry {
   id: number;
   epochDay: number;
@@ -29,6 +39,7 @@ export interface Entry {
   dims: Record<string, number>;
   tags: string[];
   photos: Photo[];
+  recordings: VoiceRecording[];
   /** By body-region key (bodyMap.ts), independent of dims and tags -
       ticket 09 does not require ticket 02's "physical" dysphoria tag to be
       present to log a region. */

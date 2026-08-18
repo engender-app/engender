@@ -44,6 +44,18 @@ export interface ArchivePhoto {
   fileName: string;
 }
 
+/** One voice recording (phase 4 ticket 24, CONTEXT: "Voice recording"). Its
+    own interface rather than reused ArchivePhoto, for the reason this
+    file's header gives: a rename on one must not silently change what the
+    other travels as. Structurally the same shape today - an id and an
+    opaque file name - because a recording has no thumbnail pair to carry
+    and no owner but an entry. */
+export interface ArchiveVoiceRecording {
+  id: string;
+  /** The opaque `<uuid>.webm` of voiceRecordings/names.ts. Never a path. */
+  fileName: string;
+}
+
 export interface ArchiveEntry {
   uuid: string;
   epochDay: number;
@@ -55,6 +67,7 @@ export interface ArchiveEntry {
   /** Tag ids: the key of a built-in, the uuid of a custom. */
   tags: string[];
   photos: ArchivePhoto[];
+  recordings: ArchiveVoiceRecording[];
   /** By body-region key (bodyMap.ts). Free-standing TEXT, not a row to
       resolve against a built-in table, so restore.ts writes it back
       unvalidated - the same forward-compatible treatment lab_result.analyte
