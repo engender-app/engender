@@ -229,7 +229,9 @@ const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]):
   doseEvents: [],
   doseSchedules: [],
   dosePauses: [],
-  medicationStock: []
+  medicationStock: [],
+  tryouts: [],
+  feltSenseEntries: []
 });
 
 export async function daylioPreview(
