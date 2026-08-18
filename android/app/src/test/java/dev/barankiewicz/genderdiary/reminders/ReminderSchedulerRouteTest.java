@@ -82,6 +82,18 @@ public class ReminderSchedulerRouteTest {
     }
 
     @Test
+    public void allowsTheDoubtWidgetRoute() {
+        assertEquals("/doubt", ReminderScheduler.sanitizeLaunchRoute("/doubt"));
+    }
+
+    @Test
+    public void rejectsAnythingPastTheDoubtWidgetRoute() {
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/doubts"));
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/doubt/"));
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/doubt?x=1"));
+    }
+
+    @Test
     public void stillRejectsGarbage() {
         assertNull(ReminderScheduler.sanitizeLaunchRoute(null));
         assertNull(ReminderScheduler.sanitizeLaunchRoute(""));

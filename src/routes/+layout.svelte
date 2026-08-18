@@ -321,6 +321,8 @@
       /^\/entry\/new\/today\?seedMood=[1-5]$/.test(route) ||
       // The tally widget's two buttons (ticket 33).
       /^\/\?tally=(?:misgendered|correctly_gendered)$/.test(route) ||
+      // The doubt-entry widget's single tap target (ticket 34).
+      route === '/doubt' ||
       /^\/wrapped\/(?:week|month|year)$/.test(route) ||
       /^\/on-this-day(?:\?lookback=(?:month|sixMonths|year))?$/.test(route)
     );

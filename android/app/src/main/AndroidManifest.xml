@@ -101,6 +101,20 @@
                 android:resource="@xml/tally_widget_info" />
         </receiver>
 
+        <!-- The doubt-entry widget (ticket 34), same reasoning as the
+             quick-log widget above: exported so the launcher can deliver
+             APPWIDGET_UPDATE. -->
+        <receiver
+            android:name=".widgets.DoubtWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/doubt_widget_info" />
+        </receiver>
+
         <receiver
             android:name=".reminders.ReminderRescheduleReceiver"
             android:enabled="true"
