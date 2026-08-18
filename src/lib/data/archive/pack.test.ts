@@ -278,7 +278,9 @@ function bigContents(): { contents: ArchiveContents; reads: string[] } {
         doseEvents: [],
         doseSchedules: [],
         dosePauses: [],
-        medicationStock: []
+        medicationStock: [],
+        tryouts: [],
+        feltSenseEntries: []
       },
       preferences: portablePreferences(PREFERENCE_DEFAULTS),
       files,

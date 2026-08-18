@@ -114,6 +114,19 @@ async function populated() {
     { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
   ]);
 
+  const tryout = await journal.tryouts.upsertTryout({
+    kind: 'name',
+    label: 'Alex',
+    startEpochDay: 19900,
+    endEpochDay: null
+  });
+  const feltSense = await journal.tryouts.addFeltSenseEntry({
+    tryoutId: tryout,
+    epochDay: 19910,
+    mood: 4,
+    note: 'felt right at the pharmacy'
+  });
+
   return {
     db,
     files,
@@ -141,7 +154,9 @@ async function populated() {
     sideEffect,
     personalEffect,
     doubtEntry,
-    counterevidenceSnapshot
+    counterevidenceSnapshot,
+    tryout,
+    feltSense
   };
 }
 
@@ -322,6 +337,19 @@ test('a doubt entry travels whole, and a counterevidence snapshot travels with i
       timestamp: snapshot.journal.counterevidenceSnapshots[0].timestamp,
       items: [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]
     }
+  ]);
+});
+
+test('a tryout travels whole, and its felt-sense entry travels by the tryout\'s own uuid', async () => {
+  const { journal, tryout, feltSense } = await populated();
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(snapshot.journal.tryouts, [
+    { id: tryout, kind: 'name', label: 'Alex', startEpochDay: 19900, endEpochDay: null }
+  ]);
+  assert.deepEqual(snapshot.journal.feltSenseEntries, [
+    { id: feltSense, tryoutId: tryout, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
   ]);
 });
 
@@ -513,6 +541,10 @@ const CARRIED: Record<string, string[]> = {
   doubt_entry: ['uuid', 'epoch_day', 'timestamp', 'text'],
   doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
   doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
+  tryout: ['uuid', 'kind', 'label', 'start_epoch_day', 'end_epoch_day'],
+  // tryout_id travels as the tryout's own uuid, the way dose_pause's
+  // episode_id does (ADR-0002).
+  tryout_felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

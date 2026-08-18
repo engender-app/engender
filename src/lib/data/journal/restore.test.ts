@@ -131,6 +131,19 @@ async function populated() {
     { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
   ]);
 
+  const tryout = await journal.tryouts.upsertTryout({
+    kind: 'name',
+    label: 'Alex',
+    startEpochDay: 19900,
+    endEpochDay: null
+  });
+  const feltSense = await journal.tryouts.addFeltSenseEntry({
+    tryoutId: tryout,
+    epochDay: 19910,
+    mood: 4,
+    note: 'felt right at the pharmacy'
+  });
+
   return {
     ...made,
     voice,
@@ -146,7 +159,9 @@ async function populated() {
     schedule,
     dosePause,
     doubtEntry,
-    counterevidenceSnapshot
+    counterevidenceSnapshot,
+    tryout,
+    feltSense
   };
 }
 
@@ -241,6 +256,13 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal(doubtEntries[0].text, 'am I even trans enough for this');
   const snapshots = await target.journal.doubtJournal.getSnapshots(10);
   assert.deepEqual(snapshots[0].items, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]);
+  const tryouts = await target.journal.tryouts.getTryouts();
+  assert.equal(tryouts.length, 1);
+  assert.equal(tryouts[0].label, 'Alex');
+  const feltSense = await target.journal.tryouts.getFeltSenseEntries(tryouts[0].id);
+  assert.deepEqual(feltSense, [
+    { id: source.feltSense, tryoutId: tryouts[0].id, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
+  ]);
 });
 
 test('merging the same archive twice duplicates neither a doubt entry nor a counterevidence snapshot', async () => {
@@ -252,6 +274,18 @@ test('merging the same archive twice duplicates neither a doubt entry nor a coun
 
   assert.equal((await target.journal.doubtJournal.getEntries(10)).length, 1);
   assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
+});
+
+test('merging the same archive twice duplicates neither a tryout nor its felt-sense entry', async () => {
+  const source = await populated();
+  const target = await device();
+
+  await target.journal.archive.merge(await exported(source.journal));
+  await target.journal.archive.merge(await exported(source.journal));
+
+  const tryouts = await target.journal.tryouts.getTryouts();
+  assert.equal(tryouts.length, 1);
+  assert.equal((await target.journal.tryouts.getFeltSenseEntries(tryouts[0].id)).length, 1);
 });
 
 test('a dose log travels with its schedule and pauses, still hung off the right episode', async () => {
@@ -382,6 +416,12 @@ test("replace installs the archive's journal and discards this device's", async 
   const myMilestone = await target.journal.milestones.upsertMilestone({ name: 'mine', epochDay: 19500 });
   await target.journal.tally.log({ epochDay: 19500, kind: 'correctly_gendered' });
   await target.journal.doubtJournal.addEntry({ epochDay: 19500, text: 'mine' });
+  const myTryout = await target.journal.tryouts.upsertTryout({
+    kind: 'pronouns',
+    label: 'they/them',
+    startEpochDay: 19500,
+    endEpochDay: null
+  });
 
   await target.journal.archive.replace(await exported(source.journal));
 
@@ -393,6 +433,9 @@ test("replace installs the archive's journal and discards this device's", async 
   assert.equal(doubtEntries.length, 1, "this device's doubt entry is gone");
   assert.equal(doubtEntries[0].text, 'am I even trans enough for this', "the archive's doubt entry is here");
   assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
+  const tryouts = await target.journal.tryouts.getTryouts();
+  assert.equal(tryouts.some((t) => t.id === myTryout), false, "this device's tryout is gone");
+  assert.ok(tryouts.some((t) => t.label === 'Alex'), "the archive's tryout is here");
   const tags = (await target.journal.tags.getTagGroups()).flatMap((g) => g.tags);
   assert.equal(tags.some((t) => t.id === myTag.id), false, 'a custom tag this device had is gone');
   assert.ok(tags.some((t) => t.id === source.tag.id), "the archive's custom tag is here");

@@ -37,6 +37,7 @@ import type {
   ArchiveDosePause,
   ArchiveDoseSchedule,
   ArchiveDoubtEntry,
+  ArchiveFeltSenseEntry,
   ArchiveHairPhoto,
   ArchiveHairStage,
   ArchiveLabResult,
@@ -51,7 +52,8 @@ import type {
   ArchiveSideEffect,
   ArchiveTag,
   ArchiveTagGroup,
-  ArchiveTallyEvent
+  ArchiveTallyEvent,
+  ArchiveTryout
 } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
@@ -314,6 +316,44 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       epochDay: r.epoch_day,
       timestamp: r.timestamp,
       items: items.get(r.id) ?? []
+    }));
+  };
+
+  const tryouts = async (): Promise<ArchiveTryout[]> => {
+    const rows = await driver.query<{
+      uuid: string;
+      kind: string;
+      label: string;
+      start_epoch_day: number;
+      end_epoch_day: number | null;
+    }>('SELECT uuid, kind, label, start_epoch_day, end_epoch_day FROM tryout ORDER BY start_epoch_day, id');
+    return rows.map((r) => ({
+      id: r.uuid,
+      kind: r.kind,
+      label: r.label,
+      startEpochDay: r.start_epoch_day,
+      endEpochDay: r.end_epoch_day
+    }));
+  };
+
+  const feltSenseEntries = async (): Promise<ArchiveFeltSenseEntry[]> => {
+    const rows = await driver.query<{
+      uuid: string;
+      tryout_uuid: string;
+      epoch_day: number;
+      mood: number;
+      note: string | null;
+    }>(
+      `SELECT f.uuid, t.uuid AS tryout_uuid, f.epoch_day, f.mood, f.note
+         FROM tryout_felt_sense f JOIN tryout t ON t.id = f.tryout_id
+        ORDER BY f.epoch_day, f.id`
+    );
+    return rows.map((r) => ({
+      id: r.uuid,
+      tryoutId: r.tryout_uuid,
+      epochDay: r.epoch_day,
+      mood: r.mood,
+      note: r.note
     }));
   };
 
@@ -583,7 +623,9 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           doseEvents: await doseEvents(),
           doseSchedules: await doseSchedules(),
           dosePauses: await dosePauses(),
-          medicationStock: await medicationStock()
+          medicationStock: await medicationStock(),
+          tryouts: await tryouts(),
+          feltSenseEntries: await feltSenseEntries()
         },
         files: archivedFiles,
         async readFile(name) {

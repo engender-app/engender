@@ -39,7 +39,9 @@ const snapshot: ArchiveSnapshot = {
     doseEvents: [],
     doseSchedules: [],
     dosePauses: [],
-    medicationStock: []
+    medicationStock: [],
+    tryouts: [],
+    feltSenseEntries: []
   },
   files: [],
   readFile: async () => {

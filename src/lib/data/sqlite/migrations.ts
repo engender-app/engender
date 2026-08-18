@@ -455,6 +455,54 @@ CREATE TABLE doubt_snapshot_entry (
 CREATE INDEX idx_doubt_snapshot_entry_snapshot ON doubt_snapshot_entry(snapshot_id);
 `;
 
+/* v15: name and pronoun tryouts (phase 4 ticket 16, CONTEXT: "Tryout",
+   "Felt-sense entry"). Greenfield - no prior table tracked a name or
+   pronoun set someone was trying.
+
+   No "current tryout" column or flag: several tryouts can be in progress
+   at once (a name and a pronoun set tried together) or entirely in the
+   past, and nothing here may force exactly one to be it. `end_epoch_day`
+   is nullable for the same reason `dose_pause.end_epoch_day` is (v8) -
+   null means still going, not "forgot to close it out".
+
+   No entry link of any kind: which entries fall inside a tryout's date
+   range is read at query time against `start_epoch_day`/`end_epoch_day`
+   (ADR-0010), the same rule regimen_episode's missing `end_epoch_day`
+   argues at v7. Storing one would drift the moment a tryout's dates were
+   corrected after entries had already been logged against it.
+
+   `tryout_felt_sense` gets its own uuid and updated_at, unlike
+   doubt_snapshot_entry (v14): a felt-sense observation is watched change
+   over the tryout's life and is addressed, edited and deleted on its own,
+   never written and forgotten alongside its parent - the same shape
+   dose_pause has against regimen_episode. `mood` reuses the app's one
+   five-level scale (CONTEXT: "Mood") rather than a second one for the
+   same kind of judgement, and is required: a felt-sense row with no
+   rating is the one thing this table exists to hold. */
+const SCHEMA_V15 = `
+CREATE TABLE tryout (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  kind            TEXT NOT NULL CHECK (kind IN ('name', 'pronouns')),
+  label           TEXT NOT NULL,
+  start_epoch_day INTEGER NOT NULL,
+  end_epoch_day   INTEGER,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX idx_tryout_start ON tryout(start_epoch_day);
+
+CREATE TABLE tryout_felt_sense (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  tryout_id  INTEGER NOT NULL REFERENCES tryout(id) ON DELETE CASCADE,
+  epoch_day  INTEGER NOT NULL,
+  mood       INTEGER NOT NULL CHECK (mood BETWEEN 1 AND 5),
+  note       TEXT,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_tryout_felt_sense_tryout ON tryout_felt_sense(tryout_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -469,7 +517,8 @@ export const migrations: Migration[] = [
   { version: 11, sql: SCHEMA_V11 },
   { version: 12, sql: SCHEMA_V12 },
   { version: 13, sql: SCHEMA_V13 },
-  { version: 14, sql: SCHEMA_V14 }
+  { version: 14, sql: SCHEMA_V14 },
+  { version: 15, sql: SCHEMA_V15 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

@@ -116,7 +116,7 @@ async function insertRows(
 
 async function rowidsByUuid(
   driver: SqliteDriver,
-  table: 'entry' | 'milestone' | 'regimen_episode' | 'doubt_snapshot',
+  table: 'entry' | 'milestone' | 'regimen_episode' | 'doubt_snapshot' | 'tryout',
   uuids: string[]
 ): Promise<Map<string, number>> {
   const ids = new Map<string, number>();
@@ -190,6 +190,10 @@ export async function restoreArchive(
     await applyTallyEvents(restoring);
     await applyDoubtEntries(restoring);
     await applyCounterevidenceSnapshots(restoring);
+    await applyTryouts(restoring);
+    /* After the tryouts: felt-sense rows hang off a tryout rowid, and the
+       rows this import just inserted are where those rowids come from. */
+    await applyFeltSenseEntries(restoring);
     await applyRegimenEpisodes(restoring);
     /* After the episodes: both hang off an episode rowid, and the rows this
        import just inserted are where those rowids come from. */
@@ -216,6 +220,8 @@ const COLLECTIONS = [
   'tallyEvents',
   'doubtEntries',
   'counterevidenceSnapshots',
+  'tryouts',
+  'feltSenseEntries',
   'regimenEpisodes',
   'doseEvents',
   'doseSchedules',
@@ -260,6 +266,8 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM doubt_entry',
     'DELETE FROM doubt_snapshot_entry',
     'DELETE FROM doubt_snapshot',
+    'DELETE FROM tryout_felt_sense',
+    'DELETE FROM tryout',
     'DELETE FROM dose_event',
     /* Before the episodes they hang off. The foreign keys cascade, but only
        with `PRAGMA foreign_keys` on, which is the driver's business and not
@@ -714,6 +722,42 @@ async function applyCounterevidenceSnapshots({ driver, journal, ts }: Restoring)
   }
 
   await insertRows(driver, 'INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note)', itemRows);
+}
+
+/* Matched by uuid, like applyDoubtEntries: a tryout is not a single value
+   ticket 14's Replace can safely retire, it is a dated record someone
+   might still be adding felt-sense entries against. */
+async function applyTryouts({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM tryout');
+
+  const inserting = journal.tryouts.filter((tryout) => !present.has(tryout.id));
+  await insertRows(
+    driver,
+    'INSERT INTO tryout (uuid, kind, label, start_epoch_day, end_epoch_day, updated_at)',
+    inserting.map((tryout) => [tryout.id, tryout.kind, tryout.label, tryout.startEpochDay, tryout.endEpochDay, ts])
+  );
+}
+
+/* Resolves its tryout by uuid against what applyTryouts just inserted, the
+   same shape applyDosePauses uses for its episode. A row whose tryout is
+   not there is dropped rather than inserted against a guessed one. */
+async function applyFeltSenseEntries({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM tryout_felt_sense');
+  const tryoutIds = await rowidsByUuid(
+    driver,
+    'tryout',
+    journal.feltSenseEntries.map((entry) => entry.tryoutId)
+  );
+
+  const rows: unknown[][] = [];
+  for (const entry of journal.feltSenseEntries) {
+    if (present.has(entry.id)) continue;
+    const tryoutId = tryoutIds.get(entry.tryoutId);
+    if (tryoutId === undefined) continue;
+    rows.push([entry.id, tryoutId, entry.epochDay, entry.mood, entry.note, ts]);
+  }
+
+  await insertRows(driver, 'INSERT INTO tryout_felt_sense (uuid, tryout_id, epoch_day, mood, note, updated_at)', rows);
 }
 
 async function applyDoseEvents({ driver, journal, ts }: Restoring): Promise<void> {

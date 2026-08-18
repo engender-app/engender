@@ -287,6 +287,29 @@ export interface ArchiveDosePause {
   reason: string;
 }
 
+/** A name or pronoun set being tried out (phase 4 ticket 16). No "current"
+    flag: several can travel with overlapping or long-closed ranges, and
+    nothing here may single one out. */
+export interface ArchiveTryout {
+  id: string;
+  kind: string;
+  label: string;
+  startEpochDay: number;
+  endEpochDay: number | null;
+}
+
+/** One point in a tryout's felt-sense history (phase 4 ticket 16). Named
+    by the tryout's own travelling uuid, not its rowid: the rowid means
+    nothing on the device importing this (ADR-0002), the same rule
+    ArchiveDosePause's `episodeId` follows. */
+export interface ArchiveFeltSenseEntry {
+  id: string;
+  tryoutId: string;
+  epochDay: number;
+  mood: number;
+  note: string | null;
+}
+
 /** What a person last reported having of one drug, plus box 4's reminder
     hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
     that is derived from the dose log, and the importing device has its
@@ -323,6 +346,8 @@ export interface ArchiveJournal {
   doseSchedules: ArchiveDoseSchedule[];
   dosePauses: ArchiveDosePause[];
   medicationStock: ArchiveMedicationStock[];
+  tryouts: ArchiveTryout[];
+  feltSenseEntries: ArchiveFeltSenseEntry[];
 }
 
 /** A photo file travelling in the body, and how many bytes of it there
