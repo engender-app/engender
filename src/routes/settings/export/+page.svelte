@@ -423,7 +423,7 @@
           </button>
         </div>
         <p class="muted small" style="margin-top:var(--space-2)">
-          {m.exp_auto_destination_hint()}
+          {m.exp_auto_destination_note()}
         </p>
         <p class="muted small" style="margin-top:var(--space-2)">
           {autoDestination ?? m.exp_auto_destination_missing()}

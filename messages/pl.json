@@ -545,7 +545,7 @@
   "exp_auto_choose_destination": "Wybierz folder",
   "exp_auto_change_destination": "Zmień folder",
   "exp_auto_destination_missing": "Nie wybrano jeszcze folderu",
-  "exp_auto_destination_hint": "Dowolny folder się nadaje, także taki od dostawcy chmury jak Google Drive czy Dropbox. Trafia do niego tylko zaszyfrowana kopia, nigdy niezaszyfrowany dziennik ani dane konta u tego dostawcy.",
+  "exp_auto_destination_note": "Dowolny folder się nadaje, także taki od dostawcy chmury jak Google Drive czy Dropbox. Trafia do niego tylko zaszyfrowana kopia, nigdy niezaszyfrowany dziennik ani dane konta u tego dostawcy.",
   "exp_auto_destination_saved": "Zapisano folder kopii.",
   "exp_auto_pick_destination_first": "Najpierw wybierz folder kopii.",
   "exp_auto_password_needed": "Najpierw wpisz hasło eksportu.",

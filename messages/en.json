@@ -533,7 +533,7 @@
   "exp_auto_choose_destination": "Choose folder",
   "exp_auto_change_destination": "Change folder",
   "exp_auto_destination_missing": "No folder chosen yet",
-  "exp_auto_destination_hint": "Any folder works, including one from a cloud provider such as Google Drive or Dropbox. Only the encrypted backup ever reaches it, never your journal in the clear or that provider's account details.",
+  "exp_auto_destination_note": "Any folder works, including one from a cloud provider such as Google Drive or Dropbox. Only the encrypted backup ever reaches it, never your journal in the clear or that provider's account details.",
   "exp_auto_destination_saved": "Backup folder saved.",
   "exp_auto_pick_destination_first": "Choose a backup folder first.",
   "exp_auto_password_needed": "Type your export password first.",
