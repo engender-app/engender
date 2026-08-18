@@ -12,6 +12,11 @@ export interface AndroidReminderSyncPayload {
   reminders: Reminder[];
   checkInEnabled: boolean;
   checkInTime: string;
+  /** The affirmation pool the check-in notification draws its daily line
+      from (phase 4 features ticket 22), already in the app's language.
+      Empty when affirmations are turned off - the native side never sees
+      the preference, only the pool. */
+  checkInAffirmations: string[];
   latestEntryEpochDay: number | null;
   /** Reminder notifications drop the reminder's own title for a generic
       one when true (ticket 15). */

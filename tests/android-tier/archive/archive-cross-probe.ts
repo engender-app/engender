@@ -199,6 +199,7 @@ function portableWith(marker: string) {
     language: values.language,
     checkInEnabled: values.checkInEnabled,
     checkInTime: values.checkInTime,
+    checkInAffirmationsEnabled: values.checkInAffirmationsEnabled,
     preferredLabUnits: {},
     streakGoalHabit: values.streakGoalHabit,
     streakGoalTargetDays: values.streakGoalTargetDays

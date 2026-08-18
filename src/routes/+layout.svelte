@@ -25,6 +25,7 @@
   import { isAndroid } from '$lib/platform';
   import { androidReminders } from '$lib/reminders/android-bridge';
   import { buildAndroidReminderPayload } from '$lib/reminders/payload';
+  import { affirmationLines } from '$lib/reminders/affirmations';
   import { androidDisguise } from '$lib/disguise/android-bridge';
   import { androidQuickExit } from '$lib/lock/quick-exit-bridge';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
@@ -281,6 +282,7 @@
           reminders,
           checkInEnabled: prefs.checkInEnabled,
           checkInTime: prefs.checkInTime,
+          checkInAffirmations: prefs.checkInAffirmationsEnabled ? affirmationLines() : [],
           latestEntryEpochDay: recent[0]?.epochDay ?? null,
           hideNotificationTitles: prefs.hideNotificationTitles,
           texts: {
@@ -354,6 +356,7 @@
     if (!isAndroid() || !isReadyState(bootState)) return;
     void prefs.checkInEnabled;
     void prefs.checkInTime;
+    void prefs.checkInAffirmationsEnabled;
     void prefs.hideNotificationTitles;
     void syncAndroidReminderSchedules();
   });

@@ -99,6 +99,19 @@
             bind:value={prefs.checkInTime}
           />
         </div>
+        <div class="spread" style="margin-top:var(--space-3)" data-checkin-affirmations>
+          <span class="row-text">
+            <span class="row-title">{m.checkin_affirmations_title()}</span>
+            <span class="row-subtitle">{m.checkin_affirmations_sub()}</span>
+          </span>
+          <Switch
+            checked={prefs.checkInAffirmationsEnabled}
+            label={m.checkin_affirmations_title()}
+            onChange={(v) => {
+              prefs.checkInAffirmationsEnabled = v;
+            }}
+          />
+        </div>
       {/if}
     </div>
 

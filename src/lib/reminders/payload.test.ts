@@ -20,6 +20,7 @@ describe('buildAndroidReminderPayload', () => {
       ],
       checkInEnabled: true,
       checkInTime: '21:30',
+      checkInAffirmations: ['You are enough.', 'Your pace is the right pace.'],
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
       texts: {
@@ -47,6 +48,7 @@ describe('buildAndroidReminderPayload', () => {
       ],
       checkInEnabled: true,
       checkInTime: '21:30',
+      checkInAffirmations: ['You are enough.', 'Your pace is the right pace.'],
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
       texts: {
@@ -74,10 +76,12 @@ describe('buildAndroidReminderPayload', () => {
       }
     ];
 
+    const affirmations = ['You are enough.'];
     const payload = buildAndroidReminderPayload({
       reminders,
       checkInEnabled: false,
       checkInTime: '21:00',
+      checkInAffirmations: affirmations,
       latestEntryEpochDay: 21000,
       hideNotificationTitles: false,
       texts: {
@@ -89,6 +93,8 @@ describe('buildAndroidReminderPayload', () => {
     });
 
     reminders[0].title = 'Changed';
+    affirmations[0] = 'Changed';
     expect(payload.reminders[0].title).toBe('Reminder');
+    expect(payload.checkInAffirmations[0]).toBe('You are enough.');
   });
 });

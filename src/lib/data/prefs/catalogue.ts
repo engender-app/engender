@@ -64,6 +64,15 @@ export interface PreferenceValues {
   checkInEnabled: boolean;
   /** Wall-clock "HH:MM" in the device's timezone. */
   checkInTime: string;
+  /** Whether the daily check-in prompt carries an affirming line alongside
+      its question (phase 4 features ticket 22). Only ever adds a line to
+      the prompt - off leaves the check-in exactly as it was. Portable,
+      with `checkInEnabled` and `checkInTime` rather than with the wrapped
+      family: it configures the same ritual those two carry into an
+      archive, and someone who turned the line off should not get it back
+      by restoring on a new device. Weighed rather than defaulted -
+      ADR-0003's rule alone would have made it device-local. */
+  checkInAffirmationsEnabled: boolean;
   /** Optional entry nudges that suggest adding detail after a mood-only save. */
   entryNudges: boolean;
   /** Whether the rotating reflection prompt shows on the entry-creation
@@ -168,6 +177,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hideNotificationTitles: false,
   checkInEnabled: false,
   checkInTime: '21:00',
+  checkInAffirmationsEnabled: true,
   entryNudges: true,
   guidedPromptsEnabled: true,
   wrappedEnabled: true,
@@ -200,6 +210,7 @@ export const PORTABLE_KEYS = [
   'language',
   'checkInEnabled',
   'checkInTime',
+  'checkInAffirmationsEnabled',
   'preferredLabUnits',
   'streakGoalHabit',
   'streakGoalTargetDays'
