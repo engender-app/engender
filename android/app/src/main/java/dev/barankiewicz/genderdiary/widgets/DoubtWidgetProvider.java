@@ -61,7 +61,7 @@ public class DoubtWidgetProvider extends AppWidgetProvider {
         return disguised ? null : label;
     }
 
-    private static RemoteViews buildViews(Context context) {
+    static RemoteViews buildViews(Context context) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_doubt);
         boolean disguised = DisguiseAlias.isDisguised(context);
         views.setViewVisibility(R.id.widget_doubt_header, disguised ? View.GONE : View.VISIBLE);

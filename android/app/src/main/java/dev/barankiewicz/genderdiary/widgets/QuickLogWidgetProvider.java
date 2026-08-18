@@ -73,7 +73,7 @@ public class QuickLogWidgetProvider extends AppWidgetProvider {
         return disguised ? null : moodName;
     }
 
-    private static RemoteViews buildViews(Context context) {
+    static RemoteViews buildViews(Context context) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_quick_log);
         boolean disguised = DisguiseAlias.isDisguised(context);
         views.setViewVisibility(R.id.widget_header, disguised ? View.GONE : View.VISIBLE);
