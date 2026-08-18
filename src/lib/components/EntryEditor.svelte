@@ -96,7 +96,7 @@
      unions the tags and overwrites the dims by key. */
   function applyTemplate(tpl: EntryTemplate) {
     const visibleTagIds = new Set(vocabulary.visibleTagGroups.flatMap((g) => g.tags.map((t) => t.id)));
-    const visibleDimKeys = new Set(vocabulary.dimensions.filter((d) => !d.hidden).map((d) => d.key));
+    const visibleDimKeys = new Set(vocabulary.visibleDimensions.map((d) => d.key));
     entryDraft.applyTemplate(
       tpl.tags.filter((id) => visibleTagIds.has(id)),
       Object.fromEntries(Object.entries(tpl.dims).filter(([key]) => visibleDimKeys.has(key)))

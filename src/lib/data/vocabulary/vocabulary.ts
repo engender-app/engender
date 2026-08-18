@@ -92,6 +92,12 @@ export const vocabulary = {
   get activeDimensions(): GenderDimension[] {
     return reference.activeDimensions.map(localizeDimension);
   },
+  /** Every dimension that has not been hidden (CONTEXT: "Hidden") - what a
+      template's pre-fill (ticket 17) may set, the same "not hidden" filter
+      `visibleTagGroups` already applies to tags. */
+  get visibleDimensions(): GenderDimension[] {
+    return this.dimensions.filter((d) => !d.hidden);
+  },
   get presets(): GenderPreset[] {
     return reference.presets.map(localizePreset);
   },
