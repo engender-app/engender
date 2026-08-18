@@ -298,6 +298,9 @@
     (error) => console.error('Could not sync Android reminder schedules', error)
   );
 
+  /* androidReminders.consumeLaunchRoute is shared by reminders, check-in,
+     and - as of phase 4 features ticket 04 - wrapped and on-this-day
+     notifications, not just reminders despite the name. */
   async function consumeReminderLaunchRoute() {
     if (!isAndroid() || !isReadyState(bootState)) return;
     try {
