@@ -62,7 +62,7 @@ public class TallyWidgetProviderRenderTest {
     }
 
     private View inflate() {
-        RemoteViews views = TallyWidgetProvider.buildViews(context);
+        RemoteViews views = new TallyWidgetProvider().buildViews(context);
         return views.apply(context, new FrameLayout(context));
     }
 }

@@ -7,6 +7,9 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.List;
+
+import dev.barankiewicz.genderdiary.widgets.DisguisableWidgetProvider;
 import dev.barankiewicz.genderdiary.widgets.DoubtWidgetProvider;
 import dev.barankiewicz.genderdiary.widgets.QuickLogWidgetProvider;
 import dev.barankiewicz.genderdiary.widgets.TallyWidgetProvider;
@@ -20,6 +23,13 @@ import dev.barankiewicz.genderdiary.widgets.TallyWidgetProvider;
  */
 @CapacitorPlugin(name = "Disguise")
 public class DisguisePlugin extends Plugin {
+
+    /** Every at-rest widget surface (tickets 26, 33, 34) that must go
+        neutral the moment disguise flips - adding a widget here is all
+        DisguisePlugin needs to pick it up. */
+    private static final List<DisguisableWidgetProvider> WIDGET_PROVIDERS = List.of(
+        new QuickLogWidgetProvider(), new TallyWidgetProvider(), new DoubtWidgetProvider()
+    );
 
     @PluginMethod
     public void setDisguised(PluginCall call) {
@@ -36,9 +46,7 @@ public class DisguisePlugin extends Plugin {
         // the launcher icon, so they get the same immediate refresh rather
         // than waiting on their own system-scheduled update.
         if (changed) {
-            QuickLogWidgetProvider.updateAll(getContext());
-            TallyWidgetProvider.updateAll(getContext());
-            DoubtWidgetProvider.updateAll(getContext());
+            for (DisguisableWidgetProvider provider : WIDGET_PROVIDERS) provider.updateAll(getContext());
             Process.killProcess(Process.myPid());
         }
     }
