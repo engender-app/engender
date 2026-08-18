@@ -186,7 +186,9 @@ test('deleting an entry takes its dimension values, tag links, body regions, pho
    exercises against journal.photos.attach apply here against upsertEntry's
    attachRecordings/removeRecordingIds instead - there is no separate
    attach/remove call for a recording, since ticket 24 gives it no owner but
-   an entry and no screen that lists recordings across entries. */
+   an entry. journal.voice.inJournal (voiceRecordings.test.ts) is the one
+   read that lists recordings across entries, for ticket 25's compare
+   picker. */
 
 async function journalWithFiles() {
   const db = await migratedDb();

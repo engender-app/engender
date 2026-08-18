@@ -171,6 +171,14 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     },
     reads: ['inJournal']
   },
+  // Read-only, the same reason exposure and stats are: a recording's row is
+  // owned by upsertEntry/deleteEntry (voiceRecording is already announced
+  // there), and this area only reads it back dated for the compare picker
+  // (ticket 25).
+  voice: {
+    writes: {},
+    reads: ['inJournal']
+  },
   labs: {
     writes: { upsertResult: ['lab'], deleteResult: ['lab'] },
     reads: ['getAnalytes', 'getUsedAnalytes', 'getResults', 'getSeries']

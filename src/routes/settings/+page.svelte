@@ -387,6 +387,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/voice">
+      <span class="row-icon"><Icon name="mic" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.recordings_label()}</span>
+        <span class="row-subtitle">{m.voice_compare_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
     <a class="list-row" href="/settings/labs">
       <span class="row-icon"><Icon name="flask" size={22} /></span>
       <span class="row-text">
