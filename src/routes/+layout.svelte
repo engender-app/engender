@@ -28,6 +28,7 @@
   import { androidDisguise } from '$lib/disguise/android-bridge';
   import { androidQuickExit } from '$lib/lock/quick-exit-bridge';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
+  import DecoyNotes from '$lib/components/DecoyNotes.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LockScreen from '$lib/components/LockScreen.svelte';
   import PassphraseGate from '$lib/components/PassphraseGate.svelte';
@@ -153,7 +154,10 @@
        app.html stamps the same icon before first paint, from the same
        mirrored preference, so a disguised cold start never shows the flag. */
     const tab = lockState.blanked
-      ? { title: 'New tab', icon: 'favicon-notes.svg' }
+      ? /* Disguised, the quick-exit face is the decoy notes screen (ticket
+           30), so the tab says what the page shows; undisguised it stays an
+           empty tab over the blank. */
+        { title: prefs.disguise ? 'Notes' : 'New tab', icon: 'favicon-notes.svg' }
       : prefs.disguise
         ? { title: 'Notes', icon: 'favicon-notes.svg' }
         : { title: 'Gender Diary', icon: 'favicon.svg' };
@@ -581,13 +585,19 @@
 </div>
 
 {#if lockState.blanked}
-  <!-- Quick exit (F24): the whole tab, blank, over everything. Dismissing
-       it does not unlock anything - with a PIN set, what is underneath is
-       the lock screen. -->
-  <button
-    class="quick-exit-blank"
-    data-blank
-    aria-label={m.quick_exit_back()}
-    onclick={() => (lockState.blanked = false)}
-  ></button>
+  {#if prefs.disguise}
+    <!-- Disguised, quick exit shows the decoy home screen (ticket 30): the
+         notes app the tab's name and icon already claim to be. -->
+    <DecoyNotes />
+  {:else}
+    <!-- Quick exit (F24): the whole tab, blank, over everything. Dismissing
+         it does not unlock anything - with a PIN set, what is underneath is
+         the lock screen. -->
+    <button
+      class="quick-exit-blank"
+      data-blank
+      aria-label={m.quick_exit_back()}
+      onclick={() => (lockState.blanked = false)}
+    ></button>
+  {/if}
 {/if}
