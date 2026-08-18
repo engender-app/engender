@@ -57,9 +57,9 @@ public class QuickLogWidgetProvider extends AppWidgetProvider {
         rather than a computed epoch day, so a PendingIntent built now still
         lands on the right day no matter how long it sits on the home
         screen before being tapped; the [day] route resolves "today" live,
-        at navigation time. Mirrored in ReminderScheduler.sanitizeLaunchRoute
-        and +layout.svelte's isValidAndroidLaunchRoute - both must accept
-        this exact shape or the tap silently lands nowhere. */
+        at navigation time. Pinned against src/lib/android/launch-routes.ts
+        by the shared fixture at src/lib/android/fixtures/launch-routes.json
+        (ADR-0028). */
     static String moodRoute(int mood) {
         return "/entry/new/today?seedMood=" + mood;
     }

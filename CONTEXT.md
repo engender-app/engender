@@ -386,6 +386,14 @@ A recurring or one-off prompt for a medication, injection or appointment, stored
 a rule (wall-clock time plus recurrence) rather than as a next-fire instant.
 Android only, though it travels in an archive.
 
+**Launch route**:
+The in-app path a tapped notification or widget deep-links to, sanitized
+against an allowlisted shape before it is followed. Checked twice, in two
+languages that cannot import one another - once in Java before the WebView
+exists, once in TypeScript once the route reaches the layout - and the two
+checks are pinned against the same shared fixture rather than kept in sync by
+hand (ADR-0028).
+
 **Check-in**:
 The daily prompt to log an entry, skipped on days that already have one. A
 preference rather than a reminder: it has no name, no type and no recurrence
