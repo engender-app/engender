@@ -923,7 +923,8 @@ try {
   ok('built-in tags follow the language, so they were seeded as keys');
 } catch (e) { fail('vocabulary localization', e); }
 
-/* 18. lock on leave, quick exit, then the forgotten-PIN reset (ticket 17).
+/* 18. lock on leave, quick exit blank and disguised decoy (tickets 17, 30),
+   then the forgotten-PIN reset.
    Last, because the reset is the one flow that destroys the journal. */
 try {
   await fresh('/settings/lock?setup=1');
@@ -973,6 +974,30 @@ try {
   await page.locator('[data-blank]').click();
   await page.waitForSelector('.applock');
 
+  /* Disguised, the same gesture shows the decoy notes screen instead of the
+     blank (ticket 30), and the tab title matches what the page claims to be.
+     Left on afterwards: the reset below wipes preferences, disguise included. */
+  await typePin('1234');
+  await page.waitForSelector('.list-group');
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
+  /* The same dispatched two-finger gesture as above. */
+  await page.evaluate(() => {
+    const at = (y) => [1, 2].map((id) => new Touch({ identifier: id, target: document.body, clientX: 100 + id * 20, clientY: y }));
+    window.dispatchEvent(new TouchEvent('touchstart', { touches: at(100) }));
+    window.dispatchEvent(new TouchEvent('touchmove', { touches: at(320) }));
+  });
+  await page.waitForSelector('[data-decoy]');
+  if (await page.locator('[data-blank]').count()) throw new Error('the blank showed alongside the decoy');
+  if ((await page.title()) !== 'Notes') throw new Error('tab title over the decoy: ' + (await page.title()));
+  const decoyText = await page.locator('[data-decoy]').innerText();
+  if (/gender|trans|journal|diary|dziennik|płe|tranzyc/i.test(decoyText)) {
+    throw new Error('the decoy screen leaks the journal: ' + decoyText);
+  }
+  await page.locator('[data-decoy]').click();
+  await page.waitForSelector('.applock');
+
   await page.locator('[data-forgot]').click();
   await page.locator('[data-confirm-reset]').click();
   /* The reset ends in a page load, and this page is already `ready` - so
@@ -988,7 +1013,7 @@ try {
      one. In a production build the first-run gate (flow 13) is what a
      wiped device meets instead. */
   await page.waitForSelector('.home-hello');
-  ok('lock on leave, quick exit blanks and locks, forgotten-PIN reset clears the lock');
+  ok('lock on leave, quick exit blanks and locks, disguised quick exit shows the decoy, forgotten-PIN reset clears the lock');
 } catch (e) { fail('lock on leave, quick exit and reset', e); }
 
 /* 19. the About screen shows the version the build was given (ticket 01).
