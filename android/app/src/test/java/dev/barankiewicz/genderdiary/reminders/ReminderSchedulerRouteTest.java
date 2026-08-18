@@ -69,6 +69,19 @@ public class ReminderSchedulerRouteTest {
     }
 
     @Test
+    public void allowsEachTallyWidgetKind() {
+        assertEquals("/?tally=misgendered", ReminderScheduler.sanitizeLaunchRoute("/?tally=misgendered"));
+        assertEquals("/?tally=correctly_gendered", ReminderScheduler.sanitizeLaunchRoute("/?tally=correctly_gendered"));
+    }
+
+    @Test
+    public void rejectsATallyWidgetKindOutsideTheTwoAllowed() {
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/?tally=neutral"));
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/?tally="));
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/?tally=misgendered&extra=1"));
+    }
+
+    @Test
     public void stillRejectsGarbage() {
         assertNull(ReminderScheduler.sanitizeLaunchRoute(null));
         assertNull(ReminderScheduler.sanitizeLaunchRoute(""));
