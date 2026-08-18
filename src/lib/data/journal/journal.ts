@@ -33,6 +33,7 @@ import { makeStatsArea, type StatsArea } from './stats';
 import { makeStockArea, type StockArea } from './stock';
 import { makeTagsArea, type TagsArea } from './tags';
 import { makeTallyArea, type TallyArea } from './tally';
+import { makeTryoutsArea, type TryoutsArea } from './tryouts';
 import { reconcileBuiltIns } from './reconcile';
 
 /** Where photo files live. The journal owns the rows; whoever owns the
@@ -121,6 +122,12 @@ export interface Journal {
       entries.entriesWithTag('g-euphoria', …), the same tag query the stats
       screen already uses - this area owns only what it alone writes. */
   doubtJournal: DoubtJournalArea;
+  /** Name and pronoun tryouts and their felt-sense history (phase 4 ticket
+      16). Reads the entries in a tryout's date range through
+      entries.searchEntries('', [], { startEpochDay, endEpochDay }) rather
+      than owning a link of its own (ADR-0010) - this area owns only what
+      it alone writes. */
+  tryouts: TryoutsArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -164,6 +171,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
     doubtJournal: makeDoubtJournalArea(driver),
+    tryouts: makeTryoutsArea(driver),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

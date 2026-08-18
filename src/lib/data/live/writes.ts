@@ -64,7 +64,10 @@ export type TableName =
   /* One name for doubt entries and counterevidence snapshots alike (phase
      4 ticket 11): both belong to the same doubt-journal screen, the same
      reasoning 'hairProgress' gives. */
-  | 'doubtJournal';
+  | 'doubtJournal'
+  /* One name for a tryout and its felt-sense history alike (phase 4
+     ticket 16), the same reasoning 'doubtJournal' gives. */
+  | 'tryout';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -85,7 +88,8 @@ export const TABLE_NAMES: TableName[] = [
   'sideEffect',
   'personalEffect',
   'hairProgress',
-  'doubtJournal'
+  'doubtJournal',
+  'tryout'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -186,6 +190,15 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       deleteSnapshot: ['doubtJournal']
     },
     reads: ['getEntries', 'getSnapshots']
+  },
+  tryouts: {
+    writes: {
+      upsertTryout: ['tryout'],
+      deleteTryout: ['tryout'],
+      addFeltSenseEntry: ['tryout'],
+      deleteFeltSenseEntry: ['tryout']
+    },
+    reads: ['getTryouts', 'getFeltSenseEntries']
   },
   tally: {
     writes: { log: ['tally'], setContext: ['tally'], deleteEvent: ['tally'] },

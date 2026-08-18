@@ -214,6 +214,45 @@ export interface CounterevidenceSnapshot {
   items: CounterevidenceEntry[];
 }
 
+export type TryoutKind = 'name' | 'pronouns';
+
+/** Trying out a name or a pronoun set (phase 4 ticket 16, CONTEXT:
+    "Tryout"). `endEpochDay` is null while the tryout is still going - the
+    same "still running" shape DosePause uses for a break with no end date
+    yet - so a tryout in progress needs no placeholder end invented for it,
+    and several tryouts can overlap or sit entirely in the past with no
+    rule that exactly one of them is current.
+
+    Which entries fall inside a tryout's range is never stored (ADR-0010):
+    TryoutsArea owns only this row and its felt-sense history, and a
+    screen reads the entries themselves through
+    entries.searchEntries('', [], { startEpochDay, endEpochDay }), the
+    plain date-range filter the search screen already offers. */
+export interface Tryout {
+  id: string;
+  kind: TryoutKind;
+  label: string;
+  startEpochDay: number;
+  endEpochDay: number | null;
+}
+
+/** One point in a tryout's running felt-sense history (CONTEXT:
+    "Felt-sense entry"). Watching that feeling change over the tryout's
+    lifespan is the point of tracking it, so this is its own addressable
+    row rather than a single rating fixed on the tryout at creation - the
+    same reasoning that gives DosePause its own uuid where
+    doubt_snapshot_entry, a frozen detail row nobody addresses alone, has
+    none. `mood` reuses the app's one five-level mood scale (CONTEXT:
+    "Mood") rather than inventing a second one for the same kind of
+    judgement. */
+export interface FeltSenseEntry {
+  id: string;
+  tryoutId: string;
+  epochDay: number;
+  mood: number;
+  note: string | null;
+}
+
 /* No stored end: an episode runs until the next one starts, or is ongoing
    if it is the latest (ADR-0010, regimenEpisode.ts computes it). Not a
    preference (ADR-0003) and not a Reminder: it is attributed data every
