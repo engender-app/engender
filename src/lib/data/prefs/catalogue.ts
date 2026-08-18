@@ -128,6 +128,15 @@ export interface PreferenceValues {
       they ask for rather than a thing that happens to them. Not portable -
       it says how one device draws a chart, not anything about the journal. */
   hormoneCurveFitToOwnLabs: boolean;
+  /** The habit a streak goal (phase 4 features ticket 17) is set against,
+      or null when no goal is set. Mirrors streakGoal.ts's
+      `StreakGoalHabit` as an inline literal rather than importing it - this
+      file stays import-free so both tiers and the pre-database boot path
+      can read it. */
+  streakGoalHabit: 'journaling' | null;
+  /** The target streak length, in days, for `streakGoalHabit`. Null exactly
+      when `streakGoalHabit` is null - the two are set and cleared together. */
+  streakGoalTargetDays: number | null;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
@@ -171,6 +180,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   measurementProtocolDismissed: {},
   hairPhotoProtocolDismissed: false,
   hormoneCurveFitToOwnLabs: false,
+  streakGoalHabit: null,
+  streakGoalTargetDays: null,
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
@@ -189,7 +200,9 @@ export const PORTABLE_KEYS = [
   'language',
   'checkInEnabled',
   'checkInTime',
-  'preferredLabUnits'
+  'preferredLabUnits',
+  'streakGoalHabit',
+  'streakGoalTargetDays'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */

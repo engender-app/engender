@@ -443,6 +443,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/streak-goal">
+      <span class="row-icon"><Icon name="sparkle" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.streak_goal_title()}</span>
+        <span class="row-subtitle">{m.streak_goal_row_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
     <a class="list-row" href="/settings/hormone-curve">
       <span class="row-icon"><Icon name="curve" size={22} /></span>
       <span class="row-text">

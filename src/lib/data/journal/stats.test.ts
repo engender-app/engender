@@ -261,6 +261,36 @@ test('a run that ended before yesterday is not a streak, and no entries is no st
   assert.equal(await journal.stats.streak(today), 0);
 });
 
+test('bestStreakEver finds the longest run across all of history, not just the run ending today', async () => {
+  const today = 20000;
+  const { journal } = await journalWithBuiltIns();
+  for (const day of [100, 101, 102, 103, 104]) await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
+  for (const day of [today - 1, today]) await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
+
+  assert.equal(await journal.stats.bestStreakEver(today), 5, 'the five-day run from long ago beats the two-day run ending today');
+});
+
+test('bestStreakEver ignores entries dated in the future, and no entries is no streak', async () => {
+  const today = 20000;
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.stats.bestStreakEver(today), 0);
+
+  await journal.entries.upsertEntry({ epochDay: today + 5, mood: 3 });
+  assert.equal(await journal.stats.bestStreakEver(today), 0);
+});
+
+test("a backdated entry filling a gap repairs bestStreakEver the same way it repairs the live streak", async () => {
+  const today = 20000;
+  const { journal } = await journalWithBuiltIns();
+  for (const day of [today - 4, today - 3, today - 1, today]) {
+    await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
+  }
+  assert.equal(await journal.stats.bestStreakEver(today), 2);
+
+  await journal.entries.upsertEntry({ epochDay: today - 2, mood: 2, note: 'written up a day late' });
+  assert.equal(await journal.stats.bestStreakEver(today), 5);
+});
+
 test('several entries on one day are one day of streak, and future entries do not extend it', async () => {
   const today = 20000;
   const { journal } = await journalWithBuiltIns();

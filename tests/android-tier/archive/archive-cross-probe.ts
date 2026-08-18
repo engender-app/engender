@@ -199,7 +199,9 @@ function portableWith(marker: string) {
     language: values.language,
     checkInEnabled: values.checkInEnabled,
     checkInTime: values.checkInTime,
-    preferredLabUnits: {}
+    preferredLabUnits: {},
+    streakGoalHabit: values.streakGoalHabit,
+    streakGoalTargetDays: values.streakGoalTargetDays
   };
 }
 
