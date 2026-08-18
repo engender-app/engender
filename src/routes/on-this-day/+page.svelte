@@ -92,7 +92,7 @@
   <PrideAurora />
   <header class="screen-header">
     <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/')}><Icon name="arrowLeft" /></button>
-    <h1 class="screen-title" data-screen-title>{m.on_this_day()}</h1>
+    <h1 class="screen-title" data-screen-title="on-this-day">{m.on_this_day()}</h1>
     <div class="header-action"></div>
   </header>
 
