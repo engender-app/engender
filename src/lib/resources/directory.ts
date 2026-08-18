@@ -46,7 +46,7 @@ export interface Resource {
 /** The day a person last checked every number and address below. */
 export const RESOURCES_REVIEWED_ON = '2026-08-18';
 
-export const RESOURCES = [
+const ENTRIES = [
   {
     key: 'pl-lambda',
     region: 'pl',
@@ -116,7 +116,13 @@ export const RESOURCES = [
   }
 ] as const satisfies readonly Resource[];
 
-export type ResourceKey = (typeof RESOURCES)[number]['key'];
+export type ResourceKey = (typeof ENTRIES)[number]['key'];
+
+/* Widened on the way out. ENTRIES stays literal so the key union above is
+   exact, but every reader wants one type with optional phone and url rather
+   than a union of eight shapes, half of which have no `phone` property to
+   read at all. */
+export const RESOURCES: readonly Resource[] = ENTRIES;
 
 export function resourcesFor(region: ResourceRegion, kind?: ResourceKind): readonly Resource[] {
   return RESOURCES.filter((r) => r.region === region && (kind === undefined || r.kind === kind));
