@@ -46,10 +46,9 @@ public class DoubtWidgetProvider extends AppWidgetProvider {
     }
 
     /** The route the widget's PendingIntent deep-links to - the existing
-        /doubt route itself, unchanged. Mirrored in
-        ReminderScheduler.sanitizeLaunchRoute and +layout.svelte's
-        isValidAndroidLaunchRoute - both must accept this exact shape or the
-        tap silently lands nowhere. */
+        /doubt route itself, unchanged. Pinned against
+        src/lib/android/launch-routes.ts by the shared fixture at
+        src/lib/android/fixtures/launch-routes.json (ADR-0028). */
     static String doubtRoute() {
         return "/doubt";
     }
