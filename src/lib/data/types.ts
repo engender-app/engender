@@ -345,6 +345,26 @@ export interface PersonalEffect {
   firstNoticedEpochDay: number;
 }
 
+/** The published Norwood-Hamilton scale (phase 4 ticket 09), as the twelve
+    stage labels the classification uses - including the "vertex" and "a"
+    (anterior) variants at stages 3 and beyond. Closed, the way
+    Measurement['type'] is: there is no sixth or "in-between" stage to add,
+    the scale itself is the fixed vocabulary. */
+export type NorwoodHamiltonStage = '1' | '2' | '2a' | '3' | '3v' | '3a' | '4' | '4a' | '5' | '5a' | '6' | '7';
+
+/* A dated series like Measurement (ticket 08), not a single replaced value
+   like PersonalEffect: a person re-stages over time to track progression,
+   never answering "what is it now" in place of what it was before. No
+   episode or anchor reference: what this is read against - the earliest
+   finasteride/dutasteride/minoxidil dose - is resolved above this seam
+   (hairTreatmentAnchor.ts), the same reason Measurement and PersonalEffect
+   carry none either. */
+export interface HairStage {
+  id: string;
+  epochDay: number;
+  stage: NorwoodHamiltonStage;
+}
+
 /** What a person last reported having of one drug (phase 4 ticket 04,
     CONTEXT: pending). One per drug, matched exactly (`RegimenEpisode.drug`'s
     own convention) rather than per episode - see migrations.ts v7. Neither

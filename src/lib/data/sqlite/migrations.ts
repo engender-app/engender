@@ -350,6 +350,53 @@ CREATE TABLE personal_effect (
 );
 `;
 
+/* v13: Norwood-Hamilton hair-progress staging and its scheduled
+   fixed-position photos (phase 4 ticket 09).
+
+   `hair_stage` is a dated series like `measurement` (v5), not a single
+   replaced value like `personal_effect` (v12): a person re-stages over
+   time, so this is many rows, not one row per something. `stage` is a
+   closed CHECK over the published scale's twelve labels, the same
+   free-value-but-fixed-set treatment `measurement.type` gets.
+
+   `hair_photo` is its own table rather than a third owner arm on `photo`
+   (SCHEMA_V1, ADR-0008): `photo`'s exactly-one-owner CHECK is over two
+   columns, and SQLite cannot ALTER a table-level CHECK in place - widening
+   it to three owners needs a full table rebuild (copy, drop, recreate),
+   a bigger and riskier migration on the table every entry and milestone
+   already depends on than this ticket's photos need. The shared pipeline
+   is still reused exactly as ticket 09 asks: normalizePhoto and
+   photos.ts's stagePhoto write the same normalized, metadata-stripped
+   bytes through the same file-before-row order, and removeFilesOf reclaims
+   them the same way on delete (journal/hairProgress.ts) - only the row
+   naming the files lives in its own table, and the boot orphan sweep
+   (sweepOrphanPhotos, photos.ts) reads both tables so a hair photo's files
+   are reclaimed exactly like any other's.
+
+   Neither table carries an anchor or an episode reference: what these are
+   read against - the earliest finasteride/dutasteride/minoxidil dose - is
+   resolved above this seam (hairTreatmentAnchor.ts), the same reason
+   `personal_effect` carries none either. */
+const SCHEMA_V13 = `
+CREATE TABLE hair_stage (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  stage      TEXT NOT NULL CHECK (stage IN ('1','2','2a','3','3v','3a','4','4a','5','5a','6','7')),
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
+
+CREATE TABLE hair_photo (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  file_path  TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_hair_photo_epoch_day ON hair_photo(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -362,7 +409,8 @@ export const migrations: Migration[] = [
   { version: 9, sql: SCHEMA_V9 },
   { version: 10, sql: SCHEMA_V10 },
   { version: 11, sql: SCHEMA_V11 },
-  { version: 12, sql: SCHEMA_V12 }
+  { version: 12, sql: SCHEMA_V12 },
+  { version: 13, sql: SCHEMA_V13 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

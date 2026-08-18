@@ -184,6 +184,8 @@ export async function restoreArchive(
     await applyMeasurements(restoring);
     await applySideEffects(restoring);
     await applyPersonalEffects(restoring);
+    await applyHairStages(restoring);
+    await applyHairPhotos(restoring);
     await applyReminders(restoring);
     await applyTallyEvents(restoring);
     await applyRegimenEpisodes(restoring);
@@ -206,6 +208,8 @@ const COLLECTIONS = [
   'measurements',
   'sideEffects',
   'personalEffects',
+  'hairStages',
+  'hairPhotos',
   'reminders',
   'tallyEvents',
   'regimenEpisodes',
@@ -245,6 +249,8 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM measurement',
     'DELETE FROM side_effect',
     'DELETE FROM personal_effect',
+    'DELETE FROM hair_stage',
+    'DELETE FROM hair_photo',
     'DELETE FROM reminder',
     'DELETE FROM tally_event',
     'DELETE FROM dose_event',
@@ -761,6 +767,34 @@ async function applyPersonalEffects({ driver, journal, ts }: Restoring): Promise
     driver,
     'INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at)',
     inserting.map((marker) => [marker.id, marker.effect, marker.firstNoticedEpochDay, ts])
+  );
+}
+
+/* Matched by uuid, like applyMeasurements: a staging is a dated series
+   entry, not a single replaced value like personal_effect. */
+async function applyHairStages({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM hair_stage');
+
+  const inserting = journal.hairStages.filter((stage) => !present.has(stage.id));
+  await insertRows(
+    driver,
+    'INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at)',
+    inserting.map((stage) => [stage.id, stage.epochDay, stage.stage, ts])
+  );
+}
+
+/* A hair photo owns no other row (migrations.ts v13's own table, not a
+   third owner on `photo`), so it is matched and inserted directly by uuid
+   like applyMeasurements - unlike applyEntries/applyMilestones, there is no
+   owner row to insert first and no owner id to resolve. */
+async function applyHairPhotos({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM hair_photo');
+
+  const inserting = journal.hairPhotos.filter((photo) => !present.has(photo.id));
+  await insertRows(
+    driver,
+    'INSERT INTO hair_photo (uuid, epoch_day, file_path, updated_at)',
+    inserting.map((photo) => [photo.id, photo.epochDay, photo.fileName, ts])
   );
 }
 

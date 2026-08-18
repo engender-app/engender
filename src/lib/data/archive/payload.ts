@@ -173,6 +173,26 @@ export interface ArchivePersonalEffect {
   firstNoticedEpochDay: number;
 }
 
+/** One Norwood-Hamilton staging (phase 4 ticket 09). `stage` is loosened
+    from NorwoodHamiltonStage, the way ArchiveMeasurement loosens `type`:
+    the schema's CHECK enforces it on the way back in (restore.ts), not
+    this boundary type. */
+export interface ArchiveHairStage {
+  id: string;
+  epochDay: number;
+  stage: string;
+}
+
+/** One scheduled fixed-position hair photo (phase 4 ticket 09). Its own
+    shape, not ArchivePhoto: it carries its own date rather than an owner's,
+    since a hair photo is not an entry's or a milestone's (migrations.ts
+    v13). */
+export interface ArchiveHairPhoto {
+  id: string;
+  epochDay: number;
+  fileName: string;
+}
+
 export interface ArchiveReminder {
   id: string;
   title: string;
@@ -267,6 +287,8 @@ export interface ArchiveJournal {
   measurements: ArchiveMeasurement[];
   sideEffects: ArchiveSideEffect[];
   personalEffects: ArchivePersonalEffect[];
+  hairStages: ArchiveHairStage[];
+  hairPhotos: ArchiveHairPhoto[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
   regimenEpisodes: ArchiveRegimenEpisode[];

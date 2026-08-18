@@ -16,6 +16,7 @@ import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDosesArea, type DosesArea } from './doses';
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
+import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
@@ -88,6 +89,13 @@ export interface Journal {
       (regimenEpisode.ts's earliestEpisodeStartEpochDay). No episode
       reference of its own, the same reason sideEffects has none. */
   personalEffects: PersonalEffectsArea;
+  /** Norwood-Hamilton self-staging and scheduled fixed-position photos
+      (phase 4 ticket 09), read against the earliest
+      finasteride/dutasteride/minoxidil dose above this seam
+      (hairTreatmentAnchor.ts's earliestHairTreatmentDoseEpochDay). Distinct
+      from personalEffects' single "hair changes" marker - the two are not
+      merged. */
+  hairProgress: HairProgressArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -123,6 +131,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     exposure: makeExposureArea(doses, regimen),
     sideEffects: makeSideEffectsArea(driver),
     personalEffects: makePersonalEffectsArea(driver),
+    hairProgress: makeHairProgressArea(driver, files),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

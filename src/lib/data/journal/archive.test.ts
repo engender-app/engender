@@ -478,6 +478,8 @@ const CARRIED: Record<string, string[]> = {
   ],
   side_effect: ['uuid', 'name', 'severity', 'epoch_day'],
   personal_effect: ['uuid', 'effect', 'first_noticed_epoch_day'],
+  hair_stage: ['uuid', 'epoch_day', 'stage'],
+  hair_photo: ['uuid', 'epoch_day', 'file_path'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

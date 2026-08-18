@@ -35,6 +35,8 @@ import type {
   ArchiveDoseEvent,
   ArchiveDosePause,
   ArchiveDoseSchedule,
+  ArchiveHairPhoto,
+  ArchiveHairStage,
   ArchiveLabResult,
   ArchiveMeasurement,
   ArchiveMedicationStock,
@@ -293,6 +295,21 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     return rows.map((r) => ({ id: r.uuid, effect: r.effect, firstNoticedEpochDay: r.first_noticed_epoch_day }));
   };
 
+  const hairStages = async (): Promise<ArchiveHairStage[]> => {
+    const rows = await driver.query<{ uuid: string; epoch_day: number; stage: string }>(
+      'SELECT uuid, epoch_day, stage FROM hair_stage ORDER BY epoch_day, id'
+    );
+    return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, stage: r.stage }));
+  };
+
+  type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
+
+  const hairPhotoRows = (): Promise<HairPhotoRow[]> =>
+    driver.query<HairPhotoRow>('SELECT uuid, epoch_day, file_path FROM hair_photo ORDER BY epoch_day, id');
+
+  const hairPhotos = (rows: HairPhotoRow[]): ArchiveHairPhoto[] =>
+    rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, fileName: r.file_path }));
+
   const reminders = async (): Promise<ArchiveReminder[]> => {
     const rows = await driver.query<{
       uuid: string;
@@ -453,13 +470,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     }));
   };
 
-  /** The manifest: every file the photo rows name, in the order the rows
-      name them, minus whatever the store no longer holds. A row whose
-      file is gone still travels - the photo is missing on this device
-      already, and dropping the row would delete it from the archive
+  /** The manifest: every file the photo and hair-photo rows name, in the
+      order the rows name them, minus whatever the store no longer holds. A
+      row whose file is gone still travels - the photo is missing on this
+      device already, and dropping the row would delete it from the archive
       too. */
-  const manifest = async (photos: PhotoRow[]): Promise<ArchiveFile[]> => {
-    const names = photos.flatMap((photo) => filesOf(photo.file_path));
+  const manifest = async (fileOwners: { file_path: string }[]): Promise<ArchiveFile[]> => {
+    const names = fileOwners.flatMap((owner) => filesOf(owner.file_path));
     if (names.length === 0) return [];
 
     if (files.sizeMany) {
@@ -512,8 +529,9 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       const photos = await driver.query<PhotoRow>(
         'SELECT uuid, file_path, entry_id, milestone_id FROM photo ORDER BY order_index, id'
       );
+      const hairPhotoRowsRead = await hairPhotoRows();
 
-      const archivedFiles = await manifest(photos);
+      const archivedFiles = await manifest([...photos, ...hairPhotoRowsRead]);
 
       return {
         journal: {
@@ -526,6 +544,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           measurements: await measurements(),
           sideEffects: await sideEffects(),
           personalEffects: await personalEffects(),
+          hairStages: await hairStages(),
+          hairPhotos: hairPhotos(hairPhotoRowsRead),
           reminders: await reminders(),
           tallyEvents: await tallyEvents(),
           regimenEpisodes: await regimenEpisodes(),

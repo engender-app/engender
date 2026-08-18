@@ -268,6 +268,8 @@ function bigContents(): { contents: ArchiveContents; reads: string[] } {
         measurements: [],
         sideEffects: [],
         personalEffects: [],
+        hairStages: [],
+        hairPhotos: [],
         reminders: [],
         tallyEvents: [],
         regimenEpisodes: [],
