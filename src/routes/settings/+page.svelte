@@ -428,6 +428,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/clinician-summary">
+      <span class="row-icon"><Icon name="share" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.clinician_summary_row()}</span>
+        <span class="row-subtitle">{m.clinician_summary_row_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
   </div>
 
   <SectionTitle text={m.settings_privacy()} />

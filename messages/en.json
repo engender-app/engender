@@ -1398,5 +1398,19 @@
   "curve_qual_fit_applied": "Fitted to your results. Points used: {count}. The shape is multiplied by {factor}.",
   "curve_qual_fit_incomplete": "Not fitted. The shape is already drawing less than you took, so that gap is not yours to carry.",
   "curve_qual_volume_note": "Doses logged by volume or by count rather than milligrams, left out of the shape: {count}. Nothing records the strength, so there is no dose to scale by.",
-  "curve_qual_chart_aria": "Illustrative estradiol shape for {route}, {from} to {to}."
+  "curve_qual_chart_aria": "Illustrative estradiol shape for {route}, {from} to {to}.",
+  "clinician_summary_row": "Clinician visit summary",
+  "clinician_summary_row_sub": "Doses, lab results and side effects for a chosen range, ready to print",
+  "clinician_summary_title": "Clinician visit summary",
+  "clinician_summary_intro": "Everything below comes from what you've already logged, for the range you pick. Nothing here is computed beyond that, and generating this doesn't save anything.",
+  "clinician_summary_range_start_label": "Start date",
+  "clinician_summary_range_end_label": "End date",
+  "clinician_summary_range_required": "Pick a start and end date to see the summary.",
+  "clinician_summary_print": "Print",
+  "clinician_summary_generated": "Generated {date}",
+  "clinician_summary_regimen_episodes_empty": "No regimen episodes in this range.",
+  "clinician_summary_doses_empty": "No doses logged in this range.",
+  "clinician_summary_labs_empty": "No lab results in this range.",
+  "clinician_summary_side_effects_empty": "No side effects logged in this range.",
+  "clinician_summary_disclaimer": "Self-reported logs, not clinical advice. No figure above is compared to a target range or interpreted."
 }

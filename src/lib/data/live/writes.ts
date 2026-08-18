@@ -219,6 +219,12 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     writes: {},
     reads: ['getCurves']
   },
+  // Read-only, the same reason exposure is: a clinician summary assembles
+  // rows other areas own and stores nothing of its own (phase 4 ticket 12).
+  clinicianSummary: {
+    writes: {},
+    reads: ['getSummary']
+  },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {
     writes: {},
