@@ -102,6 +102,13 @@ export interface Reminder {
   /** One-off only (recurrence null): the concrete day. */
   epochDay: number | null;
   enabled: boolean;
+  /** Which feature manages this reminder on this person's behalf, e.g.
+      `stock:estradiol valerate` (phase 4 ticket 04, stockReminder.ts).
+      Null for every reminder a person created themselves. The general
+      reminders editor never sets this, so saving a reminder through it -
+      even one that started out managed - clears it: that is the handoff
+      this field exists to record. */
+  autoSource: string | null;
 }
 
 /* Where a draw fell relative to dosing (phase 4 ticket 03, CONTEXT: "Lab
@@ -307,4 +314,29 @@ export interface DosePause {
 export interface MilestoneTemplate {
   key: string;
   name: string;
+}
+
+/** What a person last reported having of one drug (phase 4 ticket 04,
+    CONTEXT: pending). One per drug, matched exactly (`RegimenEpisode.drug`'s
+    own convention) rather than per episode - see migrations.ts v7. Neither
+    `quantity` nor `recordedEpochDay` is a running total: saving a fresh
+    count replaces the old one outright, the way `DoseSchedule` replaces per
+    episode, because a person reporting stock is always answering "how much
+    do I have today", never "how much did I have last time plus what I
+    have now". Remaining and its run-out day are never stored (ADR-0010) -
+    stockProjection.ts derives both from this and the dose log on every
+    read. */
+export interface MedicationStock {
+  id: string;
+  drug: string;
+  quantity: number;
+  unit: string;
+  recordedEpochDay: number;
+  /** Whether box 4's run-out prompt has ever been created for this drug -
+      stockReminder.ts's signal that a Reminder now missing was a person's
+      own edit or delete, not one that was never made. */
+  reminderEverCreated: boolean;
+  /** Set once a person's own edit or delete took that prompt over; a fresh
+      `upsertEntry` (stock.ts) is the only thing that clears it. */
+  reminderDismissed: boolean;
 }

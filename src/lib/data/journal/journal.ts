@@ -22,6 +22,7 @@ import { makePhotosArea, type PhotosArea } from './photos';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
 import { makeStatsArea, type StatsArea } from './stats';
+import { makeStockArea, type StockArea } from './stock';
 import { makeTagsArea, type TagsArea } from './tags';
 import { makeTallyArea, type TallyArea } from './tally';
 import { reconcileBuiltIns } from './reconcile';
@@ -69,6 +70,11 @@ export interface Journal {
       no episode link: which episode a dose belongs to is resolved from its
       timestamp above this seam (regimenEpisode.ts). */
   doses: DosesArea;
+  /** What a person last reported having of each drug, and the run-out
+      projection and reminder reconciliation built over it and the dose log
+      (phase 4 ticket 04). A view over rows `doses`, `regimen` and
+      `reminders` own, not a fourth owner for any of them. */
+  stock: StockArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -84,6 +90,10 @@ export interface Journal {
 }
 
 export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journal {
+  const reminders = makeRemindersArea(driver);
+  const regimen = makeRegimenArea(driver);
+  const doses = makeDosesArea(driver);
+
   return {
     entries: makeEntriesArea(driver, files),
     tags: makeTagsArea(driver),
@@ -92,10 +102,11 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     photos: makePhotosArea(driver, files),
     labs: makeLabsArea(driver),
     measurements: makeMeasurementsArea(driver),
-    reminders: makeRemindersArea(driver),
+    reminders,
     tally: makeTallyArea(driver),
-    regimen: makeRegimenArea(driver),
-    doses: makeDosesArea(driver),
+    regimen,
+    doses,
+    stock: makeStockArea(driver, doses, regimen, reminders),
     stats: makeStatsArea(driver),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)

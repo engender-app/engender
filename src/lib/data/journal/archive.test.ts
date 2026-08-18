@@ -97,6 +97,13 @@ async function populated() {
     reason: 'accidental'
   });
 
+  const stock = await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000
+  });
+
   return {
     db,
     files,
@@ -119,7 +126,8 @@ async function populated() {
     dose,
     changedDose,
     schedule,
-    dosePause
+    dosePause,
+    stock
   };
 }
 
@@ -254,7 +262,8 @@ test('milestones, lab results, measurements, tally events, reminders and regimen
       interval: 7,
       anchorEpochDay: 20000,
       epochDay: null,
-      enabled: true
+      enabled: true,
+      autoSource: null
     }
   ]);
   assert.deepEqual(snapshot.journal.regimenEpisodes, [
@@ -335,6 +344,24 @@ test('schedules and pauses name their episode by its travelling uuid, not this d
   ]);
 });
 
+test('medication stock travels whole, including its reminder hand-off bookkeeping', async () => {
+  const { journal, stock } = await populated();
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(snapshot.journal.medicationStock, [
+    {
+      id: stock,
+      drug: 'estradiol valerate',
+      quantity: 10,
+      unit: 'vials',
+      recordedEpochDay: 19000,
+      reminderEverCreated: false,
+      reminderDismissed: false
+    }
+  ]);
+});
+
 test('the manifest names every photo file and its thumbnail, with their lengths', async () => {
   const { journal, photo, milestonePhoto } = await populated();
 
@@ -377,7 +404,18 @@ const CARRIED: Record<string, string[]> = {
   preset_dimension: ['preset_id', 'dimension_id', 'order_index'],
   tag_group: ['uuid', 'key', 'name', 'enabled', 'order_index'],
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
-  reminder: ['uuid', 'title', 'type', 'time', 'recurrence', 'interval', 'anchor_epoch_day', 'epoch_day', 'enabled'],
+  reminder: [
+    'uuid',
+    'title',
+    'type',
+    'time',
+    'recurrence',
+    'interval',
+    'anchor_epoch_day',
+    'epoch_day',
+    'enabled',
+    'auto_source'
+  ],
   /* The dosing context travels: a device importing this cannot re-derive it,
      because the dose log it was measured against is not the one being
      imported into (ticket 03). */
@@ -415,6 +453,15 @@ const CARRIED: Record<string, string[]> = {
   // rowids travel as keys (ADR-0002).
   dose_schedule: ['uuid', 'episode_id', 'every_n_days', 'doses_per_day'],
   dose_pause: ['uuid', 'episode_id', 'start_epoch_day', 'end_epoch_day', 'reason'],
+  medication_stock: [
+    'uuid',
+    'drug',
+    'quantity',
+    'unit',
+    'recorded_epoch_day',
+    'reminder_ever_created',
+    'reminder_dismissed'
+  ],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

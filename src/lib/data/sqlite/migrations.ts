@@ -250,6 +250,57 @@ ALTER TABLE lab_result ADD COLUMN timing_hours REAL;
 ALTER TABLE lab_result ADD COLUMN timing_day_of_interval INTEGER;
 `;
 
+/* v10: medication stock and its run-out prompt (phase 4 ticket 04, CONTEXT:
+   pending - "Dose event", "Regimen episode").
+
+   `medication_stock` holds what the user reported, not a decremented
+   number: one row per drug (`drug` UNIQUE, matched exactly the way an
+   analyte's unit or a lab provider is - CONTEXT: "Analyte", "Lab
+   provider" - not by regimen episode, since a dose or route change starts
+   a new episode and an episode-scoped count would go stale on the very
+   next adjustment). "Remaining" is `quantity` minus every non-skipped dose
+   logged against that drug since `recorded_epoch_day`, worked out on read
+   (stockProjection.ts) - storing the subtraction itself would be the
+   `reminder.trigger_time` mistake ADR-0010 already rejected: it would need
+   rewriting after every dose, every edit, every delete and every import,
+   and drift the first time one of those paths forgot. This is not the
+   exception ticket 03 made for a lab result's dosing context: that figure
+   is measured against a dose log that will not exist to recompute against
+   later, while every dose this stock projects over is still sitting in
+   `dose_event`, readable on demand.
+
+   The two reminder columns are bookkeeping for box 4's run-out prompt
+   (stockReminder.ts), not the projection: `reminder_ever_created` records
+   that this drug has had an auto-managed Reminder at some point, and
+   `reminder_dismissed` records that a person's own edit or delete took it
+   over. Both live here rather than on the Reminder row because a person
+   deleting that row is exactly the event this has to survive - if the
+   marker went with it, the next dose write would recreate the very prompt
+   they just silenced. A fresh `upsertEntry` (stock.ts) clears both: saving
+   a new count is a deliberate act, and re-arming there is not the same
+   thing as a background dose write conjuring a dismissed prompt back up.
+
+   `reminder.auto_source` is the other half of that handoff: nullable, and
+   left alone by every write except stock.ts's own, so a person saving a
+   reminder through the ordinary editor clears it purely by never knowing
+   it exists - the moment they touch their own copy, this feature stops
+   touching it too. */
+const SCHEMA_V10 = `
+CREATE TABLE medication_stock (
+  id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid                  TEXT NOT NULL UNIQUE,
+  drug                  TEXT NOT NULL UNIQUE,
+  quantity              REAL NOT NULL,
+  unit                  TEXT NOT NULL,
+  recorded_epoch_day    INTEGER NOT NULL,
+  reminder_ever_created INTEGER NOT NULL DEFAULT 0,
+  reminder_dismissed    INTEGER NOT NULL DEFAULT 0,
+  updated_at            INTEGER NOT NULL
+);
+
+ALTER TABLE reminder ADD COLUMN auto_source TEXT;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -259,7 +310,8 @@ export const migrations: Migration[] = [
   { version: 6, sql: SCHEMA_V6 },
   { version: 7, sql: SCHEMA_V7 },
   { version: 8, sql: SCHEMA_V8 },
-  { version: 9, sql: SCHEMA_V9 }
+  { version: 9, sql: SCHEMA_V9 },
+  { version: 10, sql: SCHEMA_V10 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

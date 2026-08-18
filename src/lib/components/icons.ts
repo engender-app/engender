@@ -48,6 +48,8 @@ const PATHS: Record<string, string> = {
   book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/><path d="M20 17v5H6.5a2.5 2.5 0 0 1 0-5"/>',
   zap: '<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>',
   ruler: '<path d="M3 8h18v8H3z"/><path d="M7 8v3M11 8v3M15 8v3"/>',
+  package:
+    '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/>'
 };
 
 export function icon(name: string, size = 24, cls = ''): string {

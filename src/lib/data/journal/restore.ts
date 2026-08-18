@@ -190,6 +190,7 @@ export async function restoreArchive(
     await applyDoseSchedules(restoring);
     await applyDosePauses(restoring);
     await applyDoseEvents(restoring);
+    await applyMedicationStock(restoring);
   });
 }
 
@@ -206,7 +207,8 @@ const COLLECTIONS = [
   'regimenEpisodes',
   'doseEvents',
   'doseSchedules',
-  'dosePauses'
+  'dosePauses',
+  'medicationStock'
 ] as const;
 
 function assertRestorable(journal: ArchiveJournal): void {
@@ -246,6 +248,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM dose_schedule',
     'DELETE FROM dose_pause',
     'DELETE FROM regimen_episode',
+    'DELETE FROM medication_stock',
     /* Only the custom presets' links. A built-in preset the archive does not
        carry keeps the dimensions reconciling gave it: emptying the table
        wholesale left one with none at all, permanently, because reconciling
@@ -736,7 +739,7 @@ async function applyReminders({ driver, journal, ts }: Restoring): Promise<void>
   await insertRows(
     driver,
     `INSERT INTO reminder
-       (uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, updated_at)`,
+       (uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source, updated_at)`,
     inserting.map((reminder) => [
       reminder.id,
       reminder.title,
@@ -747,6 +750,40 @@ async function applyReminders({ driver, journal, ts }: Restoring): Promise<void>
       reminder.anchorEpochDay,
       reminder.epochDay,
       flag(reminder.enabled),
+      // Coalesced like the lab timing columns (applyLabResults): an
+      // archive written before ticket 04 has no such field at all, and
+      // binding undefined is a raw node:sqlite error, not a soft failure.
+      reminder.autoSource ?? null,
+      ts
+    ])
+  );
+}
+
+/* Matched by `drug`, not by uuid: medication_stock is UNIQUE per drug
+   (migrations.ts v7), one row that a fresh count replaces in place rather
+   than a log of past ones. A device that already has its own entry for a
+   drug keeps it - Merge's own rule (CONTEXT: "Merge") - which is also what
+   a Replace gets for free once discardJournalRows has emptied the table
+   first, the same way applyDoseSchedules checks episode identity rather
+   than its own row's uuid. The reminder bookkeeping travels as recorded:
+   restoring a device's own backup should restore its own hand-off state,
+   not a blank one (see ArchiveMedicationStock's own comment). */
+async function applyMedicationStock({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT drug AS id FROM medication_stock');
+
+  const inserting = journal.medicationStock.filter((entry) => !present.has(entry.drug));
+  await insertRows(
+    driver,
+    `INSERT INTO medication_stock
+       (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed, updated_at)`,
+    inserting.map((entry) => [
+      entry.id,
+      entry.drug,
+      entry.quantity,
+      entry.unit,
+      entry.recordedEpochDay,
+      flag(entry.reminderEverCreated),
+      flag(entry.reminderDismissed),
       ts
     ])
   );

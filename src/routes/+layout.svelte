@@ -219,17 +219,55 @@
   /* New-entry chooser (F1). */
   let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
   let remindersListenerAttached = false;
-  let reminderSyncRunning = false;
-  let reminderSyncQueued = false;
+  let stockReminderListenerAttached = false;
 
-  async function syncAndroidReminderSchedules() {
-    if (!isAndroid() || !isReadyState(bootState)) return;
-    if (reminderSyncRunning) {
-      reminderSyncQueued = true;
-      return;
-    }
-    reminderSyncRunning = true;
-    try {
+  /** Wraps `run` so a call while one is already in flight is queued rather
+      than overlapped or dropped: a write landing mid-sync still gets a
+      fresh sync once the current one finishes, but two never run at once.
+      Shared by the Android reminder sync below and box 4's stock run-out
+      reconciliation (phase 4 ticket 04) - both need exactly this shape,
+      and a second copy of the flag/queue dance had already crept in once. */
+  function coalescing(run: () => Promise<void>, onError: (error: unknown) => void): () => void {
+    let running = false;
+    let queued = false;
+    const start = (): void => {
+      if (running) {
+        queued = true;
+        return;
+      }
+      running = true;
+      run()
+        .catch(onError)
+        .finally(() => {
+          running = false;
+          if (queued) {
+            queued = false;
+            start();
+          }
+        });
+    };
+    return start;
+  }
+
+  /* Box 4's run-out reminder (phase 4 ticket 04, journal.stock). Android
+     only: Reminder never fires on web (CONTEXT: "Reminder"), so there is
+     nothing for stock.ts's reconciliation to schedule there - the stock
+     screen surfaces the same projection directly instead (box 5). Reacts
+     to 'dose' and 'stock' writes, the two that can move a projection;
+     reconcileRunOutReminders' own write to 'reminder' is what feeds
+     syncAndroidReminderSchedules above, the same way any other reminder
+     edit does. */
+  const reconcileStockRunOutReminders = coalescing(
+    async () => {
+      if (!isAndroid() || !isReadyState(bootState)) return;
+      await journal.stock.reconcileRunOutReminders(todayEpochDay());
+    },
+    (error) => console.error('Could not reconcile the medication stock run-out reminder', error)
+  );
+
+  const syncAndroidReminderSchedules = coalescing(
+    async () => {
+      if (!isAndroid() || !isReadyState(bootState)) return;
       const [reminders, recent] = await Promise.all([
         journal.reminders.getReminders(),
         journal.entries.recentDays(1)
@@ -249,16 +287,9 @@
           }
         })
       );
-    } catch (error) {
-      console.error('Could not sync Android reminder schedules', error);
-    } finally {
-      reminderSyncRunning = false;
-      if (reminderSyncQueued) {
-        reminderSyncQueued = false;
-        void syncAndroidReminderSchedules();
-      }
-    }
-  }
+    },
+    (error) => console.error('Could not sync Android reminder schedules', error)
+  );
 
   async function consumeReminderLaunchRoute() {
     if (!isAndroid() || !isReadyState(bootState)) return;
@@ -304,6 +335,15 @@
     });
     void syncAndroidReminderSchedules();
     void consumeReminderLaunchRoute();
+  });
+
+  $effect(() => {
+    if (!isAndroid() || !isReadyState(bootState) || stockReminderListenerAttached) return;
+    stockReminderListenerAttached = true;
+    onTablesWritten((tables) => {
+      if (tables.includes('dose') || tables.includes('stock')) void reconcileStockRunOutReminders();
+    });
+    void reconcileStockRunOutReminders();
   });
 
   $effect(() => {

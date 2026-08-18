@@ -9,7 +9,11 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { Reminder } from '../types';
 import { assertChanged, bool, mintUuid, now } from './support';
 
-export type ReminderInput = Omit<Reminder, 'id'> & { id?: string };
+/** `autoSource` defaults to null: every ordinary save - the reminders
+    editor never sets it - clears whichever feature's marker a reminder
+    carried, which is the handoff stock.ts's auto-managed run-out prompt
+    relies on (stockReminder.ts). Only stock.ts's own writes pass one. */
+export type ReminderInput = Omit<Reminder, 'id' | 'autoSource'> & { id?: string; autoSource?: string | null };
 
 export interface RemindersArea {
   getReminders(): Promise<Reminder[]>;
@@ -34,8 +38,9 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
         anchor_epoch_day: number | null;
         epoch_day: number | null;
         enabled: number;
+        auto_source: string | null;
       }>(
-        'SELECT uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled FROM reminder ORDER BY id'
+        'SELECT uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source FROM reminder ORDER BY id'
       );
       return rows.map((r) => ({
         id: r.uuid,
@@ -46,16 +51,18 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
         interval: r.interval,
         anchorEpochDay: r.anchor_epoch_day,
         epochDay: r.epoch_day,
-        enabled: bool(r.enabled)
+        enabled: bool(r.enabled),
+        autoSource: r.auto_source
       }));
     },
 
     async upsertReminder(input) {
       assertValidRule(input);
+      const autoSource = input.autoSource ?? null;
       if (input.id) {
         const result = await driver.run(
           `UPDATE reminder SET title = ?, type = ?, time = ?, recurrence = ?, interval = ?, anchor_epoch_day = ?,
-             epoch_day = ?, enabled = ?, updated_at = ? WHERE uuid = ?`,
+             epoch_day = ?, enabled = ?, auto_source = ?, updated_at = ? WHERE uuid = ?`,
           [
             input.title,
             input.type,
@@ -65,6 +72,7 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
             input.anchorEpochDay,
             input.epochDay,
             input.enabled ? 1 : 0,
+            autoSource,
             now(),
             input.id
           ]
@@ -74,8 +82,8 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
       }
       const uuid = mintUuid();
       await driver.run(
-        `INSERT INTO reminder (uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO reminder (uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uuid,
           input.title,
@@ -86,6 +94,7 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
           input.anchorEpochDay,
           input.epochDay,
           input.enabled ? 1 : 0,
+          autoSource,
           now()
         ]
       );

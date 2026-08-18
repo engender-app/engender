@@ -166,6 +166,12 @@ export interface ArchiveReminder {
   anchorEpochDay: number | null;
   epochDay: number | null;
   enabled: boolean;
+  /** Which feature manages this reminder, e.g. `stock:estradiol valerate`
+      (phase 4 ticket 04). Null for a reminder a person created themselves.
+      Travels so restoring a device's own backup keeps that device's own
+      hand-off state - see the coalescing note at applyReminders (an
+      archive from before ticket 04 has no such field at all). */
+  autoSource: string | null;
 }
 
 export interface ArchiveRegimenEpisode {
@@ -219,6 +225,20 @@ export interface ArchiveDosePause {
   reason: string;
 }
 
+/** What a person last reported having of one drug, plus box 4's reminder
+    hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
+    that is derived from the dose log, and the importing device has its
+    own (CONTEXT: pending, stockProjection.ts). */
+export interface ArchiveMedicationStock {
+  id: string;
+  drug: string;
+  quantity: number;
+  unit: string;
+  recordedEpochDay: number;
+  reminderEverCreated: boolean;
+  reminderDismissed: boolean;
+}
+
 /** Everything the journal holds (CONTEXT: "Journal"). */
 export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
@@ -234,6 +254,7 @@ export interface ArchiveJournal {
   doseEvents: ArchiveDoseEvent[];
   doseSchedules: ArchiveDoseSchedule[];
   dosePauses: ArchiveDosePause[];
+  medicationStock: ArchiveMedicationStock[];
 }
 
 /** A photo file travelling in the body, and how many bytes of it there
