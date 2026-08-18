@@ -194,8 +194,6 @@ test('an injection before the window still feeds the first days of it', async ()
   assert.ok(view.curves[0].band[0].upper > 0, 'the window should open part-way down the previous injection');
 });
 
-
-
 test('nothing injected at all is an empty view rather than a flat line at zero', async () => {
   const { journal } = await journalWithBuiltIns();
 

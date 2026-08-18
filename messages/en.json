@@ -1383,7 +1383,7 @@
   "curve_volume_note": "Injections logged by volume rather than milligrams, and left out of the band: {count}. Nothing records the concentration, so there is no dose to scale by.",
   "curve_off_axis_note": "Results left off the chart because their unit does not convert: {count}.",
   "curve_empty_title": "No curve to draw yet",
-  "curve_empty_body": "A curve needs injections of estradiol benzoate, valerate, cypionate or enanthate, logged in milligrams. Those are the four esters with published data tight enough to be worth drawing.",
+  "curve_empty_body": "A curve is drawn from injections logged in milligrams, under a regimen episode naming one of four esters: estradiol benzoate, valerate, cypionate or enanthate. Those four are the ones with published data tight enough to be worth drawing.",
   "curve_empty_action": "Open the dose log",
   "curve_chart_aria": "Modelled estradiol range for {ester}, {from} to {to}. Your own results shown: {count}.",
   "curve_point_aria": "{value} {unit} on {date}",

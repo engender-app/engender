@@ -131,10 +131,14 @@
     <Skeleton variant="block" count={2} />
   {:else if view.curves.length === 0}
     <!-- One empty state for every way of having no curve, because they are
-         all the same answer to the reader: nothing in the log is an ester
-         this app draws, in a unit it can read. Saying "no injections logged
-         yet" here would have been false for anyone on an ester it does not
-         draw, or logging by volume. -->
+         all the same answer to the reader: nothing in the log adds up to a
+         curve this app can draw. Saying "no injections logged yet" here would
+         have been false for anyone on an ester it does not draw, logging by
+         volume, or with no regimen episode over their doses.
+
+         The two notes below repeat what the populated branch says, on
+         purpose: a dose left out for its unit, or a result left off for its
+         unit, is worth saying whether or not a curve came of the rest. -->
     <EmptyState title={m.curve_empty_title()} text={m.curve_empty_body()}>
       {#snippet action()}
         <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
@@ -142,6 +146,9 @@
     </EmptyState>
     {#if view.dosesWithoutMilligrams > 0}
       <p class="muted small curve-note">{m.curve_volume_note({ count: String(view.dosesWithoutMilligrams) })}</p>
+    {/if}
+    {#if view.labPointsOffAxis > 0}
+      <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(view.labPointsOffAxis) })}</p>
     {/if}
   {:else}
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.curve_intro()}</p>
@@ -227,35 +234,31 @@
       </div>
     {/each}
 
+    <p class="muted small curve-note">{m.curve_band_note()}</p>
 
-    {#if view.curves.length > 0}
-      <p class="muted small curve-note">{m.curve_band_note()}</p>
-
-      <div class="list-group curve-fit">
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">{m.curve_fit_label()}</span>
-            <span class="row-subtitle">{m.curve_fit_hint()}</span>
-          </span>
-          <span class="row-trailing">
-            <Switch checked={prefs.hormoneCurveFitToOwnLabs} onChange={toggleFit} label={m.curve_fit_label()} />
-          </span>
-        </div>
+    <div class="list-group curve-fit">
+      <div class="list-row">
+        <span class="row-text">
+          <span class="row-title">{m.curve_fit_label()}</span>
+          <span class="row-subtitle">{m.curve_fit_hint()}</span>
+        </span>
+        <span class="row-trailing">
+          <Switch checked={prefs.hormoneCurveFitToOwnLabs} onChange={toggleFit} label={m.curve_fit_label()} />
+        </span>
       </div>
+    </div>
 
-      {#if prefs.hormoneCurveFitToOwnLabs}
-        <p class="muted small curve-note" data-fit-status aria-live="polite">
-          {#if view.scaleFactor !== null}
-            {m.curve_fit_applied({ count: String(view.fitPointCount), factor: view.scaleFactor.toFixed(2) })}
-          {:else if view.dosesWithoutMilligrams > 0}
-            {m.curve_fit_incomplete()}
-          {:else}
-            {m.curve_fit_no_points()}
-          {/if}
-        </p>
-      {/if}
+    {#if prefs.hormoneCurveFitToOwnLabs}
+      <p class="muted small curve-note" data-fit-status aria-live="polite">
+        {#if view.scaleFactor !== null}
+          {m.curve_fit_applied({ count: String(view.fitPointCount), factor: view.scaleFactor.toFixed(2) })}
+        {:else if view.dosesWithoutMilligrams > 0}
+          {m.curve_fit_incomplete()}
+        {:else}
+          {m.curve_fit_no_points()}
+        {/if}
+      </p>
     {/if}
-
     {#if view.dosesWithoutMilligrams > 0}
       <p class="muted small curve-note">{m.curve_volume_note({ count: String(view.dosesWithoutMilligrams) })}</p>
     {/if}

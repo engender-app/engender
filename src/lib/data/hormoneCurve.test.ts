@@ -209,14 +209,19 @@ test('an injection older than its ester can still be carrying is left out of the
   assert.deepEqual(withAncient.curves[0].band, without.curves[0].band);
 });
 
-test('the lookback is exactly what the slowest published sample needs, and every ester is inside it', () => {
+test('the lookback is exactly what the slowest published sample needs', () => {
+  /* Pinned to the number, not compared against the maximum it is derived
+     from - that comparison cannot fail and would only look like a test.
+     Replacing the parameters changes this value and this assertion is where
+     someone has to notice: a lookback that grew to years would mean an ester
+     as loose as the dropped undecylate had got back in. */
+  assert.equal(CURVE_LOOKBACK_DAYS, 63);
+
+  // And the claim about the data itself, which is a separate fact.
   for (const [ester, samples] of Object.entries(ESTER_POSTERIORS)) {
     const slowest = Math.max(...samples.map(settlingDays));
-    assert.ok(slowest <= CURVE_LOOKBACK_DAYS, `${ester} needs ${slowest.toFixed(0)} days, lookback is ${CURVE_LOOKBACK_DAYS}`);
+    assert.ok(slowest < 100, `${ester} settles in ${slowest.toFixed(0)} days, too slow for a fit this tight`);
   }
-  // Derived, so it tracks the data - but pinned, because a lookback that
-  // quietly grew to years would be a sign an ester too loose to draw got in.
-  assert.ok(CURVE_LOOKBACK_DAYS < 100, `${CURVE_LOOKBACK_DAYS} days is longer than any tight fit needs`);
 });
 
 test('every ester in the vocabulary has parameters, so no curve can go missing', () => {
@@ -237,9 +242,6 @@ test('the four esters drawn all have fits tight enough to be worth drawing', () 
     assert.ok(spread < 1.6, `${ester} spans ${spread.toFixed(1)}x, too loose to draw`);
   }
 });
-
-
-
 
 test('a skipped dose puts nothing into the body and nothing into the curve', () => {
   const result = esterCurves({
@@ -350,5 +352,4 @@ test('no doses at all is an empty answer, not a flat band at zero', () => {
   assert.deepEqual(result.curves, []);
   assert.equal(result.dosesWithoutMilligrams, 0);
 });
-
 

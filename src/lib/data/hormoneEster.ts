@@ -85,4 +85,3 @@ export function resolveInjectableEster(episode: Pick<RegimenEpisode, 'drug' | 'e
 
   return esterIn(normalize(episode.ester ?? '')) ?? esterIn(drug);
 }
-

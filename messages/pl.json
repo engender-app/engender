@@ -1409,7 +1409,7 @@
   "curve_volume_note": "Zastrzyki zapisane objętością, a nie w miligramach, pominięte w pasmie: {count}. Nigdzie nie ma stężenia, więc nie ma dawki, przez którą można przeskalować krzywą.",
   "curve_off_axis_note": "Wyniki pominięte na wykresie, bo ich jednostka się nie przelicza: {count}.",
   "curve_empty_title": "Nie ma jeszcze czego rysować",
-  "curve_empty_body": "Krzywa potrzebuje zastrzyków z benzoesanu, walerianianu, cypionianu albo enantanu estradiolu, zapisanych w miligramach. To te cztery estry, dla których opublikowane dane są dość dokładne, żeby warto je było rysować.",
+  "curve_empty_body": "Krzywa powstaje z zastrzyków zapisanych w miligramach, w ramach schematu, który wskazuje jeden z czterech estrów: benzoesan, walerianian, cypionian albo enantan estradiolu. Te cztery mają opublikowane dane dość dokładne, żeby warto je było rysować.",
   "curve_empty_action": "Otwórz dziennik dawek",
   "curve_chart_aria": "Modelowany zakres estradiolu dla {ester}, {from} - {to}. Pokazane Twoje wyniki: {count}.",
   "curve_point_aria": "{value} {unit}, {date}",

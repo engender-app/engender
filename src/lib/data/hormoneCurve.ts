@@ -261,9 +261,10 @@ export function esterCurves(input: CurveInput): HormoneCurves {
     else injections.set(ester, [injection]);
   }
 
-  /* Every ester in the vocabulary has parameters, so the lookup is total and
-     the non-null assertion is the type system's gap rather than an
-     assumption: ESTER_POSTERIORS is keyed by the same union. */
+  /* Ordered by the vocabulary rather than by first use, so two esters always
+     appear in the same order on screen. ESTER_POSTERIORS is keyed by that
+     same union and total over it, so there is no missing-parameter case to
+     handle here. */
   const curves = INJECTABLE_ESTERS.filter((ester) => injections.has(ester)).map((ester) => ({
     ester,
     band: bandFor(ESTER_POSTERIORS[ester], injections.get(ester)!, fromEpochDay, toEpochDay),

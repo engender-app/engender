@@ -77,4 +77,3 @@ test('spelling variants of estradiol itself still count as estradiol', () => {
   assert.equal(resolveInjectableEster(episode('oestradiol valerate', null)), 'valerate');
   assert.equal(resolveInjectableEster(episode('Estradiolu walerianian', null)), 'valerate');
 });
-
