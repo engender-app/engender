@@ -73,15 +73,15 @@
       <h1 class="screen-title">{m.ph_compare()}</h1>
       <div class="header-action"></div>
     </header>
-    <p class="compare-gap">{gapLabel}</p>
+    <p class="compare-gap" data-compare-gap>{gapLabel}</p>
     <div class="compare-wrap">
       {#each [{ i: pair.left, which: 'left' as const, canPrev: pair.left > 0, canNext: pair.left < pair.right - 1 }, { i: pair.right, which: 'right' as const, canPrev: pair.right > pair.left + 1, canNext: pair.right < photos.length - 1 }] as side (side.which)}
-        <div class="compare-side">
+        <div class="compare-side" data-compare-side={side.which}>
           <PhotoThumb photo={photos[side.i]} size={150} />
           <div class="compare-nav">
             <button class="icon-btn" disabled={!side.canPrev} style={side.canPrev ? '' : 'opacity:.3'}
               aria-label={m.ph_earlier()} onclick={() => step(side.which, -1)}><Icon name="chevronLeft" size={18} /></button>
-            <span class="small">{fmtDay(photos[side.i].epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span class="small" data-compare-date>{fmtDay(photos[side.i].epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             <button class="icon-btn" disabled={!side.canNext} style={side.canNext ? '' : 'opacity:.3'}
               aria-label={m.ph_later()} onclick={() => step(side.which, 1)}><Icon name="chevronRight" size={18} /></button>
           </div>
@@ -137,7 +137,7 @@
       </p>
       <div class="photo-grid">
         {#each photos as p, i (p.id + String(p.epochDay))}
-          <button class="photo-cell" class:is-selected={orderedSelected.includes(p.id)} aria-pressed={orderedSelected.includes(p.id)}
+          <button class="photo-cell" data-photo-cell class:is-selected={orderedSelected.includes(p.id)} aria-pressed={orderedSelected.includes(p.id)}
             aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
             onclick={() => toggle(p.id)}>
             <PhotoThumb photo={p} size={104} />

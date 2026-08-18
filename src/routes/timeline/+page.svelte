@@ -65,7 +65,7 @@
             <div class="tl-body"><span class="tl-name muted small">{m.tl_you_are_here()}</span></div>
           </div>
         {:else if item.kind === 'gap'}
-          <div class="tl-gap" aria-label={m.tl_gap_aria({ duration: item.label })}>
+          <div class="tl-gap" data-tl-gap aria-label={m.tl_gap_aria({ duration: item.label })}>
             <span class="tl-gap-line"></span><span class="tl-gap-label">{m.tl_gap_label({ duration: item.label })}</span><span class="tl-gap-line"></span>
           </div>
         {:else}
@@ -73,7 +73,7 @@
             <span class="tl-dot"></span>
             <div class="tl-body card">
               <div class="spread">
-                <span class="tl-name">{item.m.name}</span>
+                <span class="tl-name" data-tl-name>{item.m.name}</span>
                 {#if item.future}<span class="tl-count">{item.status}</span>{/if}
               </div>
               <span class="tl-date muted small">

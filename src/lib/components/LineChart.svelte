@@ -70,7 +70,7 @@
 </script>
 
 {#if chart}
-  <svg class="line-chart" viewBox="0 0 {width} {height}" preserveAspectRatio="none" role="img" aria-label={chart.label}>
+  <svg class="line-chart" data-line-chart viewBox="0 0 {width} {height}" preserveAspectRatio="none" role="img" aria-label={chart.label}>
     {#each gridYs as f (f)}
       <line x1={P} x2={width - P} y1={P + f * (height - 2 * P)} y2={P + f * (height - 2 * P)} class="chart-gridline" />
     {/each}

@@ -36,7 +36,7 @@
     </div>
     <div class="stack-3" style="margin-top:var(--space-4)">
       {#each entries as e (e.id)}
-        <div class="day-entry-row">
+        <div class="day-entry-row" data-day-entry-row>
           <span class="day-entry-time">{fmtTime(e.timestamp)}</span>
           <EntryCard entry={e} showDay={false} />
         </div>

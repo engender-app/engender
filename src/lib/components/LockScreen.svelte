@@ -222,7 +222,7 @@
 
 <div class="screen">
   <PrideAurora />
-  <div class="applock">
+  <div class="applock" data-applock>
     <div class="applock-badge"><Icon name="lock" size={30} /></div>
     <h1 class="ob-title" style="text-align:center">{title}</h1>
     <p class="ob-text" style="text-align:center">
@@ -238,12 +238,16 @@
           class:is-filled={i < pin.length}
         ></span>{/each}
     </div>
-    <p class="pin-status small" role="alert" data-pin-status>
+    <p
+      class="pin-status small"
+      role="alert"
+      data-pin-status={waitMs > 0 ? 'throttled' : error ? 'wrong' : 'idle'}
+    >
       {#if waitMs > 0}
         {m.pin_throttled({ seconds: String(Math.ceil(waitMs / 1000)) })}
       {:else}{error}{/if}
     </p>
-    <div class="pin-pad" class:is-waiting={waitMs > 0}>
+    <div class="pin-pad" data-pin-pad class:is-waiting={waitMs > 0}>
       {#each ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as n (n)}
         <button class="pin-key" data-key={n} disabled={waitMs > 0} onclick={() => press(n)}>{n}</button>
       {/each}

@@ -138,7 +138,7 @@
   <PrideAurora />
   <header class="home-header">
     <h1 class="home-hero" translate="no">{m.app_name()}</h1>
-    <p class="home-hello">{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     {#if streak > 1}
       <p class="home-streak"><Icon name="sparkle" size={14} /> {streak} {m.streak_row()}</p>
     {/if}
@@ -159,7 +159,7 @@
   {/if}
 
   {#if showBackupNotice}
-    <div class="notice notice-warn" role="status">
+    <div class="notice notice-warn" role="status" data-backup-notice>
       <Icon name="download" size={20} />
       <div class="notice-body">
         <span class="notice-title">{m.backup_stale_title({ days: String(backupAge) })}</span>

@@ -334,7 +334,7 @@
       {#if s.rive}
         <RiveSlot height={150} variant={s.confetti ? 'confetti' : 'bloom'} />
       {/if}
-      <h2 class="recap-title">{s.title}</h2>
+      <h2 class="recap-title" data-recap-title>{s.title}</h2>
       <p class="recap-body">{s.body}</p>
       <div class="recap-progress">
         {#each steps as _, i (i)}<span class="ob-dot" class:is-done={i <= step}></span>{/each}

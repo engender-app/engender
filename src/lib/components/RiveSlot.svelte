@@ -15,7 +15,7 @@
      decoration rather than rewritten. -->
 <div class="rive-stage" style:height="{height}px" aria-hidden="true">
   {#if variant === 'confetti'}
-    <div class="confetti" aria-hidden="true">
+    <div class="confetti" data-confetti aria-hidden="true">
       {#each Array.from({ length: 14 }) as _, i (i)}
         <i class="cf cf-{i % 7}"></i>
       {/each}

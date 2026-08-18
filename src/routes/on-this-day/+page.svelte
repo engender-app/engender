@@ -92,7 +92,7 @@
   <PrideAurora />
   <header class="screen-header">
     <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/')}><Icon name="arrowLeft" /></button>
-    <h1 class="screen-title">{m.on_this_day()}</h1>
+    <h1 class="screen-title" data-screen-title>{m.on_this_day()}</h1>
     <div class="header-action"></div>
   </header>
 
@@ -100,7 +100,7 @@
     <div class="notice notice-info" role="status">
       <Icon name="info" size={20} />
       <div class="notice-body">
-        <span class="notice-title">{m.on_this_day_off_title()}</span>
+        <span class="notice-title" data-notice-title>{m.on_this_day_off_title()}</span>
         {m.on_this_day_off_body()} <a href="/settings">{m.nav_settings()}</a>
       </div>
     </div>
@@ -110,7 +110,7 @@
     <div class="notice notice-info" role="status">
       <Icon name="info" size={20} />
       <div class="notice-body">
-        <span class="notice-title">{m.on_this_day_none_title()}</span>
+        <span class="notice-title" data-notice-title>{m.on_this_day_none_title()}</span>
         {m.on_this_day_none_body()}
       </div>
     </div>

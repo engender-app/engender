@@ -40,21 +40,21 @@
 </script>
 
 <header class="wrapped-head">
-  <h2 class="wrapped-title">{title}</h2>
+  <h2 class="wrapped-title" data-wrapped-title>{title}</h2>
   <p class="wrapped-sub">{subtitle}</p>
 </header>
 
-<div class="wrapped-stats">
-  <div class="wrapped-stat">
+<div class="wrapped-stats" data-wrapped-stats>
+  <div class="wrapped-stat" data-wrapped-stat>
     <strong>{recap.entryCount}</strong>
     <span>{m.wrapped_stat_entries()}</span>
   </div>
-  <div class="wrapped-stat">
+  <div class="wrapped-stat" data-wrapped-stat>
     <strong>{recap.bestStreak}</strong>
     <span>{m.wrapped_stat_streak()}</span>
   </div>
   {#if recap.averageMood !== null}
-    <div class="wrapped-stat">
+    <div class="wrapped-stat" data-wrapped-stat>
       <strong>{recap.averageMood.toFixed(1)}</strong>
       <span>{m.wrapped_stat_mood()}</span>
     </div>

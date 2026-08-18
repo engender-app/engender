@@ -260,7 +260,9 @@
     /* Stated, not warned about: a new unit is a normal thing for a lab to
        report, and all that follows from it is a second line. */
     if (otherUnits.size && !otherUnits.has(unit)) {
-      toast(unit ? m.labs_new_unit_toast({ unit, analyte: resultAnalyte }) : m.labs_no_unit_toast());
+      toast(unit ? m.labs_new_unit_toast({ unit, analyte: resultAnalyte }) : m.labs_no_unit_toast(), {
+        kind: 'lab-new-unit'
+      });
     }
   }
 
@@ -329,7 +331,7 @@
       <div class="card" data-lab-series={s.unit} style="margin-top:var(--space-4)">
         <div class="spread" style="margin-bottom:var(--space-2)">
           <span class="chart-title">{analyte}</span>
-          <span class="muted small series-unit">{s.unit || m.labs_no_unit()}</span>
+          <span class="muted small series-unit" data-series-unit>{s.unit || m.labs_no_unit()}</span>
         </div>
         {#if chart}
           <LineChart
