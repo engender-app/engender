@@ -26,7 +26,9 @@ public class DisguisePlugin extends Plugin {
 
     /** Every at-rest widget surface (tickets 26, 33, 34) that must go
         neutral the moment disguise flips - adding a widget here is all
-        DisguisePlugin needs to pick it up. */
+        DisguisePlugin needs to pick it up. These instances are only ever
+        used to call updateAll; the system creates its own separate
+        instances to deliver the real onUpdate broadcasts. */
     private static final List<DisguisableWidgetProvider> WIDGET_PROVIDERS = List.of(
         new QuickLogWidgetProvider(), new TallyWidgetProvider(), new DoubtWidgetProvider()
     );
