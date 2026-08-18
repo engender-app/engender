@@ -13,6 +13,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
+import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDoubtJournalArea, type DoubtJournalArea } from './doubtJournal';
 import { makeDosesArea, type DosesArea } from './doses';
@@ -137,6 +138,12 @@ export interface Journal {
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
+  /** Descriptive co-occurrence cards between a tag or a dose-log day and
+      mood or a gender dimension (phase 4 ticket 21) - a deliberate
+      reversal of phase 3's explicit exclusion of correlation analysis,
+      not scope drift. A view over rows `stats`, `doses` and `dimensions`
+      own, not a fourth owner for any of them. */
+  correlationCards: CorrelationCardsArea;
   /** Everything above at once, in the shape an export carries it
       (ADR-0007), and one archive read back in - Replace or Merge, each a
       single operation whose order of writes is nobody else's business
@@ -155,11 +162,13 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const labs = makeLabsArea(driver);
   const exposure = makeExposureArea(doses, regimen);
   const sideEffects = makeSideEffectsArea(driver);
+  const dimensions = makeDimensionsArea(driver);
+  const stats = makeStatsArea(driver);
 
   return {
     entries: makeEntriesArea(driver, files),
     tags: makeTagsArea(driver),
-    dimensions: makeDimensionsArea(driver),
+    dimensions,
     milestones: makeMilestonesArea(driver, files),
     photos: makePhotosArea(driver, files),
     labs,
@@ -179,7 +188,8 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     doubtJournal: makeDoubtJournalArea(driver),
     tryouts: makeTryoutsArea(driver),
     letters: makeLettersArea(driver),
-    stats: makeStatsArea(driver),
+    stats,
+    correlationCards: makeCorrelationCardsArea(stats, doses, dimensions),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)
   };
