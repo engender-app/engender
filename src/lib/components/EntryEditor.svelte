@@ -112,8 +112,22 @@
     saving = true;
     try {
       const id = await journal.entries.upsertEntry(entryDraft.toUpsert());
-      await goto('/');
-      if (prefs.entryNudges && entryDraft.hasMoodOnlyContent) {
+      /* A quick log (seedMood set) that is still mood-only at save time
+         offers to fill in the active preset's scales too, right on Home
+         (ticket 13, beta B2) - the entry id travels there as a query param
+         since the save already navigates there, the way `seedMood` and
+         `celebrate` also arrive as query params (though those are read
+         directly; this one is consumed once and stripped from the URL by
+         +page.svelte, since the sheet must not reopen on a reload or the
+         back button). Offering that sheet replaces the "Add details" nudge
+         below rather than stacking alongside it - both are the same kind of
+         post-save suggestion, and showing both would ask for the same thing
+         twice. */
+      const offerDims = seedMood != null && entryDraft.hasMoodOnlyContent && vocabulary.activeDimensions.length > 0;
+      await goto(offerDims ? `/?quickLogDims=${id}` : '/');
+      if (offerDims) {
+        toast(m.saved());
+      } else if (prefs.entryNudges && entryDraft.hasMoodOnlyContent) {
         toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`) });
       } else {
         toast(m.saved());

@@ -85,6 +85,39 @@
     tallyKind = null;
     tallyEventId = null;
   }
+
+  /* Ticket 13: a quick log's save already happened before this sheet ever
+     opens (EntryEditor.svelte), so declining it never delays or blocks
+     the quick log itself - it only decides whether the scale values on the
+     same entry get filled in too. `quickLogDims` arrives as a query param
+     because the save navigates here; the effect below reads it once and
+     replaces the URL so reloading or going back never reopens the sheet. */
+  let dimsPromptEntryId = $state<number | null>(null);
+  // A `type="number"` input binds its value as a number, not a string.
+  let dimInputs = $state<Record<string, number | undefined>>({});
+
+  $effect(() => {
+    const raw = page.url.searchParams.get('quickLogDims');
+    if (!raw) return;
+    const id = Number(raw);
+    if (!Number.isNaN(id)) {
+      dimInputs = {};
+      dimsPromptEntryId = id;
+    }
+    goto('/', { replaceState: true, noScroll: true, keepFocus: true });
+  });
+
+  async function saveQuickLogDims() {
+    if (dimsPromptEntryId == null) return;
+    const dims: Record<string, number> = {};
+    for (const dim of vocabulary.activeDimensions) {
+      const n = dimInputs[dim.key];
+      if (n == null || Number.isNaN(n)) continue;
+      dims[dim.key] = Math.min(dim.max, Math.max(dim.min, Math.round(n)));
+    }
+    if (Object.keys(dims).length) await journal.entries.upsertEntry({ id: dimsPromptEntryId, dims });
+    dimsPromptEntryId = null;
+  }
 </script>
 
 <div class="screen">
@@ -256,6 +289,46 @@
       <button class="btn btn-primary btn-block" style="margin-top:var(--space-3)" onclick={saveTallyContext}>
         <span>{m.tally_add_context_button()}</span>
       </button>
+    {/if}
+  </Sheet>
+
+  <Sheet
+    open={dimsPromptEntryId !== null}
+    title={m.quick_log_dims_title()}
+    onClose={() => (dimsPromptEntryId = null)}
+  >
+    {#if dimsPromptEntryId !== null}
+      <div data-quick-log-dims>
+        <h3>{m.quick_log_dims_title()}</h3>
+        <p class="muted small" style="margin-bottom:var(--space-4)">{m.quick_log_dims_hint()}</p>
+        <!-- A number input rather than DimensionSlider (EntryEditor.svelte):
+             the ticket's acceptance detail is placeholder text that clears
+             on focus with nothing to delete first, which only a real
+             placeholder attribute gives for free - a slider has no such
+             concept, and it also can't tell "skipped" apart from "chosen the
+             midpoint" the way an empty input can. -->
+        {#each vocabulary.activeDimensions as dim (dim.key)}
+          <div class="field">
+            <label class="field-label" for={`qld-${dim.key}`}>{dim.name}</label>
+            <input
+              class="input"
+              type="number"
+              id={`qld-${dim.key}`}
+              data-qld-input={dim.key}
+              inputmode="decimal"
+              min={dim.min}
+              max={dim.max}
+              placeholder={m.dim_value_placeholder({ n: String(Math.round((dim.min + dim.max) / 2)) })}
+              bind:value={dimInputs[dim.key]}
+            />
+            <div class="dim-ends"><span>{dim.low}</span><span>{dim.high}</span></div>
+          </div>
+        {/each}
+        <div class="stack-3" style="margin-top:var(--space-3)">
+          <button class="btn btn-primary" data-qld-add onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>
+          <button class="btn btn-ghost" data-qld-skip onclick={() => (dimsPromptEntryId = null)}><span>{m.not_now()}</span></button>
+        </div>
+      </div>
     {/if}
   </Sheet>
 </div>
