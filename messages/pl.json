@@ -1424,5 +1424,19 @@
   "curve_qual_fit_applied": "Dopasowane do Twoich wyników. Użyte punkty: {count}. Kształt pomnożony przez {factor}.",
   "curve_qual_fit_incomplete": "Bez dopasowania. Kształt i tak pokazuje mniej, niż wzięłaś, więc ta różnica nie jest Twoja.",
   "curve_qual_volume_note": "Dawki zapisane objętością albo sztukami, a nie w miligramach, pominięte w kształcie: {count}. Nigdzie nie ma zapisanej mocy dawki, więc nie ma przez co przeskalować krzywej.",
-  "curve_qual_chart_aria": "Poglądowy kształt estradiolu dla {route}, {from} - {to}."
+  "curve_qual_chart_aria": "Poglądowy kształt estradiolu dla {route}, {from} - {to}.",
+  "clinician_summary_row": "Podsumowanie do lekarza",
+  "clinician_summary_row_sub": "Dawki, wyniki badań i skutki uboczne z wybranego zakresu, gotowe do druku",
+  "clinician_summary_title": "Podsumowanie do lekarza",
+  "clinician_summary_intro": "To, co widzisz niżej, pochodzi z tego, co już zapisałaś, dla wybranego zakresu dat. Nic tu nie jest liczone na nowo, a samo wygenerowanie podsumowania niczego nie zapisuje.",
+  "clinician_summary_range_start_label": "Data początkowa",
+  "clinician_summary_range_end_label": "Data końcowa",
+  "clinician_summary_range_required": "Wybierz datę początkową i końcową, żeby zobaczyć podsumowanie.",
+  "clinician_summary_print": "Drukuj",
+  "clinician_summary_generated": "Wygenerowano {date}",
+  "clinician_summary_regimen_episodes_empty": "Brak etapów kuracji w tym zakresie.",
+  "clinician_summary_doses_empty": "W tym zakresie nie zapisano żadnych dawek.",
+  "clinician_summary_labs_empty": "Brak wyników badań w tym zakresie.",
+  "clinician_summary_side_effects_empty": "Brak zapisanych skutków ubocznych w tym zakresie.",
+  "clinician_summary_disclaimer": "To surowe dane z własnych zapisów, nie porada medyczna. Żadna z liczb powyżej nie jest zestawiona z zakresem docelowym ani zinterpretowana."
 }

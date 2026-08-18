@@ -12,6 +12,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { makeArchiveArea, type ArchiveArea } from './archive';
+import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDosesArea, type DosesArea } from './doses';
 import { makeEntriesArea, type EntriesArea } from './entries';
@@ -96,6 +97,12 @@ export interface Journal {
       rule, over the same dose log and lab results. */
   qualitativeCurve: QualitativeCurveArea;
   sideEffects: SideEffectsArea;
+  /** A one-shot, printable assembly of labs, doses, regimen history, side
+      effects and exposure counters for a chosen range (phase 4 ticket 12).
+      A view over rows regimen, doses, labs, exposure and sideEffects own,
+      not a sixth owner for any of them - every figure on it already comes
+      from one of those areas' own read paths. */
+  clinicianSummary: ClinicianSummaryArea;
   /** The four fixed "first noticed" markers (phase 4 ticket 07), read
       against the earliest regimen episode's start day above this seam
       (regimenEpisode.ts's earliestEpisodeStartEpochDay). No episode
@@ -127,6 +134,8 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const regimen = makeRegimenArea(driver);
   const doses = makeDosesArea(driver);
   const labs = makeLabsArea(driver);
+  const exposure = makeExposureArea(doses, regimen);
+  const sideEffects = makeSideEffectsArea(driver);
 
   return {
     entries: makeEntriesArea(driver, files),
@@ -141,10 +150,11 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     regimen,
     doses,
     stock: makeStockArea(driver, doses, regimen, reminders),
-    exposure: makeExposureArea(doses, regimen),
+    exposure,
     hormoneCurve: makeHormoneCurveArea(doses, regimen, labs),
     qualitativeCurve: makeQualitativeCurveArea(doses, regimen, labs),
-    sideEffects: makeSideEffectsArea(driver),
+    sideEffects,
+    clinicianSummary: makeClinicianSummaryArea(regimen, doses, labs, exposure, sideEffects),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
     stats: makeStatsArea(driver),
