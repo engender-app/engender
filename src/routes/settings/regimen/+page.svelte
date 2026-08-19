@@ -6,7 +6,7 @@
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { pauseReasonLabel } from '$lib/data/vocabulary/doseLabels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import type { PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
+  import type { DoseScheduleRecurrence, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -95,7 +95,17 @@
     editor = null;
   }
 
-  let schedule = $state<{ everyNDays: string; dosesPerDay: string } | null>(null);
+  /** Monday-first, matching `weekdayOfEpochDay` (epochDay.ts) and the
+      calendar heat-map's own week. */
+  const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+
+  let schedule = $state<{
+    recurrenceKind: DoseScheduleRecurrence['kind'];
+    everyNDays: string;
+    weekdays: number[];
+    dosesPerDay: string;
+    doseAmounts: { dose: string; doseUnit: string }[];
+  } | null>(null);
   let newPause = $state<{ start: string; end: string; reason: PauseReason } | null>(null);
 
   /* Re-seeded whenever the editor opens on a different episode, so the
@@ -107,24 +117,66 @@
       newPause = null;
       return;
     }
+    const recurrence = editorSchedule?.recurrence ?? { kind: 'everyNDays' as const, everyNDays: 1 };
     schedule = {
-      everyNDays: String(editorSchedule?.everyNDays ?? 1),
-      dosesPerDay: String(editorSchedule?.dosesPerDay ?? 1)
+      recurrenceKind: recurrence.kind,
+      everyNDays: String(recurrence.kind === 'everyNDays' ? recurrence.everyNDays : 1),
+      weekdays: recurrence.kind === 'weekdays' ? recurrence.weekdays : [],
+      dosesPerDay: String(editorSchedule?.dosesPerDay ?? 1),
+      doseAmounts: (editorSchedule?.doseAmounts ?? []).map((amount) => ({
+        dose: String(amount.dose),
+        doseUnit: amount.doseUnit
+      }))
     };
     newPause = null;
   });
 
-  /* Both fields have to be at least 1: a schedule of "every 0 days" describes
-     no rhythm, and expectedSlots would generate nothing from it. Checked here
-     so the button can go dead rather than accepting a tap and doing nothing. */
-  let scheduleValues = $derived(
-    schedule
-      ? { everyNDays: parseInt(schedule.everyNDays, 10), dosesPerDay: parseInt(schedule.dosesPerDay, 10) }
-      : null
-  );
-  let scheduleCanSave = $derived(
-    scheduleValues !== null && scheduleValues.everyNDays >= 1 && scheduleValues.dosesPerDay >= 1
-  );
+  function toggleWeekday(day: number) {
+    if (!schedule) return;
+    schedule.weekdays = schedule.weekdays.includes(day)
+      ? schedule.weekdays.filter((d) => d !== day)
+      : [...schedule.weekdays, day].sort((a, b) => a - b);
+  }
+
+  function addDoseAmount() {
+    if (!schedule) return;
+    schedule.doseAmounts = [...schedule.doseAmounts, { dose: '', doseUnit: editor?.doseUnit ?? '' }];
+  }
+
+  function removeDoseAmount(index: number) {
+    if (!schedule) return;
+    schedule.doseAmounts = schedule.doseAmounts.filter((_, i) => i !== index);
+  }
+
+  /* Every-N-days needs a positive step, weekdays needs at least one day, and
+     doses-per-day has to be at least 1 either way: a schedule describing no
+     rhythm at all is what expectedSlots refuses to invent one from
+     (doseSchedule.ts). Checked here so the button can go dead rather than
+     accepting a tap and doing nothing. An empty doseAmounts list is not a
+     validation failure - it is "no amount tracked", same as before this
+     field existed - so only a *non-empty* list with a bad row blocks saving. */
+  let scheduleValues = $derived.by(() => {
+    if (!schedule) return null;
+    const dosesPerDay = parseInt(schedule.dosesPerDay, 10);
+    const recurrence: DoseScheduleRecurrence =
+      schedule.recurrenceKind === 'everyNDays'
+        ? { kind: 'everyNDays', everyNDays: parseInt(schedule.everyNDays, 10) }
+        : { kind: 'weekdays', weekdays: schedule.weekdays };
+    const doseAmounts =
+      schedule.doseAmounts.length > 0
+        ? schedule.doseAmounts.map((amount) => ({ dose: parseFloat(amount.dose), doseUnit: amount.doseUnit.trim() }))
+        : null;
+    return { recurrence, dosesPerDay, doseAmounts };
+  });
+  let scheduleCanSave = $derived.by(() => {
+    if (!scheduleValues) return false;
+    const { recurrence, dosesPerDay, doseAmounts } = scheduleValues;
+    if (isNaN(dosesPerDay) || dosesPerDay < 1) return false;
+    if (recurrence.kind === 'everyNDays' && (isNaN(recurrence.everyNDays) || recurrence.everyNDays < 1)) return false;
+    if (recurrence.kind === 'weekdays' && recurrence.weekdays.length === 0) return false;
+    if (doseAmounts && doseAmounts.some((amount) => isNaN(amount.dose) || !amount.doseUnit)) return false;
+    return true;
+  });
 
   async function saveSchedule() {
     if (!editor?.id || !scheduleValues || !scheduleCanSave) return;
@@ -302,7 +354,25 @@
           <p class="muted small">{m.regimen_schedule_hint()}</p>
         </div>
         {#if schedule}
-          <div class="cd-endpoints">
+          <div class="field">
+            <span class="field-label" id="schedule-kind-label">{m.regimen_schedule_kind_label()}</span>
+            <div class="tag-row" role="group" aria-labelledby="schedule-kind-label">
+              {#each ['everyNDays', 'weekdays'] as const as kind (kind)}
+                <button
+                  type="button"
+                  class="tag-chip"
+                  class:is-selected={schedule.recurrenceKind === kind}
+                  aria-pressed={schedule.recurrenceKind === kind}
+                  data-schedule-kind={kind}
+                  onclick={() => schedule && (schedule.recurrenceKind = kind)}
+                >
+                  {kind === 'everyNDays' ? m.regimen_schedule_kind_every_days() : m.regimen_schedule_kind_weekdays()}
+                </button>
+              {/each}
+            </div>
+          </div>
+
+          {#if schedule.recurrenceKind === 'everyNDays'}
             <div class="field">
               <label class="field-label" for="regimen-every">{m.regimen_schedule_every_label()}</label>
               <input
@@ -315,20 +385,90 @@
                 bind:value={schedule.everyNDays}
               />
             </div>
+          {:else}
             <div class="field">
-              <label class="field-label" for="regimen-per-day">{m.regimen_schedule_per_day_label()}</label>
-              <input
-                class="input"
-                type="number"
-                min="1"
-                id="regimen-per-day"
-                name="regimen-per-day"
-                inputmode="numeric"
-                bind:value={schedule.dosesPerDay}
-              />
+              <span class="field-label" id="schedule-weekdays-label">{m.regimen_schedule_weekdays_label()}</span>
+              <div class="tag-row" role="group" aria-labelledby="schedule-weekdays-label">
+                {#each WEEKDAYS as day (day)}
+                  <button
+                    type="button"
+                    class="tag-chip"
+                    class:is-selected={schedule.weekdays.includes(day)}
+                    aria-pressed={schedule.weekdays.includes(day)}
+                    data-weekday={day}
+                    onclick={() => toggleWeekday(day)}
+                  >
+                    {fmtDay(4 + day, { weekday: 'short' })}
+                  </button>
+                {/each}
+              </div>
             </div>
+          {/if}
+
+          <div class="field">
+            <label class="field-label" for="regimen-per-day">{m.regimen_schedule_per_day_label()}</label>
+            <input
+              class="input"
+              type="number"
+              min="1"
+              id="regimen-per-day"
+              name="regimen-per-day"
+              inputmode="numeric"
+              bind:value={schedule.dosesPerDay}
+            />
           </div>
-          <button class="btn btn-soft" data-save-schedule disabled={!scheduleCanSave} onclick={saveSchedule}>
+
+          <div class="field" style="margin-top:var(--space-3)">
+            <span class="field-label">{m.regimen_schedule_amounts_legend()}</span>
+            <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
+          </div>
+          {#if schedule.doseAmounts.length}
+            <div class="list-group">
+              {#each schedule.doseAmounts as amount, index (index)}
+                <div class="list-row">
+                  <span class="row-text cd-endpoints">
+                    <span class="field">
+                      <input
+                        class="input"
+                        type="number"
+                        inputmode="decimal"
+                        data-amount-dose={index}
+                        aria-label={m.dose_amount_label()}
+                        bind:value={amount.dose}
+                      />
+                    </span>
+                    <span class="field">
+                      <input
+                        class="input"
+                        data-amount-unit={index}
+                        aria-label={m.dose_unit_label()}
+                        bind:value={amount.doseUnit}
+                      />
+                    </span>
+                  </span>
+                  <button
+                    class="icon-btn"
+                    data-delete-amount={index}
+                    aria-label={m.regimen_schedule_amount_delete_aria({ index: index + 1 })}
+                    onclick={() => removeDoseAmount(index)}
+                  >
+                    <Icon name="trash" size={18} />
+                  </button>
+                </div>
+              {/each}
+            </div>
+          {/if}
+          <button class="btn btn-ghost" data-add-amount onclick={addDoseAmount}>
+            <span>{m.regimen_schedule_amount_add()}</span>
+          </button>
+
+          <button
+            class="btn btn-soft"
+            data-save-schedule
+            disabled={!scheduleCanSave}
+            onclick={saveSchedule}
+            style="margin-top:var(--space-3)"
+          >
             <span>{m.regimen_schedule_save()}</span>
           </button>
         {/if}
