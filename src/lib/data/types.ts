@@ -416,6 +416,23 @@ export interface CycleEvent {
   epochDay: number;
 }
 
+/* Its own record type, not an Entry (CONTEXT: "Wear session"), and not a
+   Reminder either: the record is what happened, and its optional Reminder
+   is a separate row this area manages by an auto_source marker
+   (wearSessions.ts), the same handoff medication_stock's run-out prompt
+   uses. */
+export interface WearSession {
+  id: string;
+  /** The one load-bearing timestamp, the same rule DoseEvent's carries
+      (CONTEXT: "Dose event timestamp"): when the session actually started. */
+  startTimestamp: number;
+  /** Null while the session is still running - a live timer started and
+      not yet stopped. Never null for a backfilled session: its day and
+      duration are both known at save time. */
+  durationMs: number | null;
+  note: string | null;
+}
+
 /* Preferences are not here: they live in SQLite's `pref` table and are
    described by prefs/catalogue.ts (ticket 06). Neither is a whole-journal
    type: the `DB` object the demo store held went with it in ticket 08, and
