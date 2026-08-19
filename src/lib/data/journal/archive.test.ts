@@ -558,6 +558,7 @@ const CARRIED: Record<string, string[]> = {
   // episode_id does (ADR-0002).
   tryout_felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
+  wear_session: ['uuid', 'start_timestamp', 'duration_ms', 'note'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

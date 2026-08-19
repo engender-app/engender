@@ -357,6 +357,18 @@ export interface ArchiveMedicationStock {
   reminderDismissed: boolean;
 }
 
+/** A wear session as it travels (phase 5 ticket 04). No reminder-handoff
+    bookkeeping the way ArchiveMedicationStock carries: the reminder itself
+    travels as an ordinary ArchiveReminder, carrying this session's own
+    auto_source marker, and is matched back up by that marker on import - a
+    session has nothing of its own to record about the handoff. */
+export interface ArchiveWearSession {
+  id: string;
+  startTimestamp: number;
+  durationMs: number | null;
+  note: string | null;
+}
+
 /** Everything the journal holds (CONTEXT: "Journal"). */
 export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
@@ -383,6 +395,7 @@ export interface ArchiveJournal {
   medicationStock: ArchiveMedicationStock[];
   tryouts: ArchiveTryout[];
   feltSenseEntries: ArchiveFeltSenseEntry[];
+  wearSessions: ArchiveWearSession[];
 }
 
 /** A photo file travelling in the body, and how many bytes of it there

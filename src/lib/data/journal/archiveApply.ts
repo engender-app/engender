@@ -792,3 +792,17 @@ export async function applyMedicationStock({ driver, journal, ts }: Restoring): 
     ])
   );
 }
+
+/* No episode or reminder rowid to resolve, unlike dose events and stock -
+   a wear session's own optional reminder travels as an ordinary
+   ArchiveReminder, matched back up by its auto_source marker rather than a
+   link this section would have to carry. */
+export async function applyWearSessions({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM wear_session');
+  const inserting = journal.wearSessions.filter((session) => !present.has(session.id));
+  await insertRows(
+    driver,
+    'INSERT INTO wear_session (uuid, start_timestamp, duration_ms, note, updated_at)',
+    inserting.map((session) => [session.id, session.startTimestamp, session.durationMs, session.note, ts])
+  );
+}
