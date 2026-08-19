@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { PREFERRED_UNIT_ANALYTES, convertLabValue } from './labs/units.ts';
-import { CURVE_DRUGS, CURVE_UNITS, resolveCurveDrug } from './hormoneDrug.ts';
+import { CURVE_DRUGS, curveUnit, resolveCurveDrug } from './hormoneDrug.ts';
 
 test('the two drugs this app curves, and only those', () => {
   assert.deepEqual(CURVE_DRUGS, ['estradiol', 'testosterone']);
@@ -10,8 +10,8 @@ test('the two drugs this app curves, and only those', () => {
 test('each drug names the unit its own curve is drawn in', () => {
   // Both are ADR-0026 allowlist units, so a curve value can be converted for
   // display the same way a lab result is.
-  assert.equal(CURVE_UNITS.estradiol, 'pg/mL');
-  assert.equal(CURVE_UNITS.testosterone, 'ng/dL');
+  assert.equal(curveUnit('estradiol'), 'pg/mL');
+  assert.equal(curveUnit('testosterone'), 'ng/dL');
 });
 
 test('a drug field resolves to whichever hormone it names', () => {
@@ -47,7 +47,7 @@ test('each hormone owns its curve unit outright, which is what keeps two curves 
      share a unit. If the allowlist ever gives one away, this fails here
      rather than silently drawing estradiol results on a testosterone curve. */
   for (const drug of CURVE_DRUGS) {
-    const unit = CURVE_UNITS[drug];
+    const unit = curveUnit(drug);
     for (const analyte of PREFERRED_UNIT_ANALYTES) {
       const converts = convertLabValue(analyte, 1, unit, unit) !== null;
       assert.equal(converts, analyte === drug, `${analyte} in ${unit}`);

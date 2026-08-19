@@ -17,7 +17,7 @@
    all. */
 
 import { convertLabValue } from '../labs/units';
-import { CURVE_UNITS, type CurveDrug } from '../hormoneDrug';
+import { curveUnit, type CurveDrug } from '../hormoneDrug';
 import { fractionalEpochDay } from '../hormoneCurve';
 import { fitScaleFactorToLabs } from '../hormoneCurveFit';
 import {
@@ -91,7 +91,7 @@ export interface QualitativeCurveArea {
     A test pins that, so an allowlist that ever gave two analytes the same unit
     fails there rather than quietly crossing two curves. */
 function measuredInCurveUnit(analyte: string, drug: CurveDrug): boolean {
-  const unit = CURVE_UNITS[drug];
+  const unit = curveUnit(drug);
   return convertLabValue(analyte, 1, unit, unit) !== null;
 }
 
@@ -109,7 +109,7 @@ export function makeQualitativeCurveArea(
 ): QualitativeCurveArea {
   return {
     async getCurves({ drug, fromEpochDay, toEpochDay, fitToOwnLabs }) {
-      const unit = CURVE_UNITS[drug];
+      const unit = curveUnit(drug);
       /* The dose log is read back past the window: a dose given before it
          opens is most of what the window's first hours are made of. */
       const [doseEvents, episodes, usedAnalytes] = await Promise.all([

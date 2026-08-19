@@ -57,7 +57,8 @@ const QUALITATIVE_LABELS: Record<QualitativeCurveKey, Message> &
     for a pair with no message, which the type above makes unreachable for any
     pair the model can actually produce. */
 export function qualitativeCurveLabel(drug: CurveDrug, route: QualitativeRoute): string {
-  return (QUALITATIVE_LABELS[`${drug}:${route}`] ?? routeLabel.bind(null, route))();
+  const message = QUALITATIVE_LABELS[`${drug}:${route}`];
+  return message ? message() : routeLabel(route);
 }
 
 /** Just the hormone's name, for the places that name one without naming a

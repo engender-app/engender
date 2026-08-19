@@ -35,6 +35,7 @@
    was checked, so the check is written down here instead. */
 
 import { doseMilligrams } from './hormoneCurveFit';
+import { curveUnit, type CurveDrug } from './hormoneDrug';
 import { INJECTABLE_ESTERS, resolveInjectableEster, type InjectableEster } from './hormoneEster';
 import { ESTER_POSTERIORS, type PkSample } from './hormoneCurveModels';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
@@ -44,14 +45,14 @@ import type { DoseEvent, RegimenEpisode } from './types';
 /** The unit the model works in. Not a lab result's unit: a lab result keeps
     whatever was logged, and the two are reconciled where they meet
     (ADR-0026, secondaryLabValue). */
-export const CURVE_UNIT = 'pg/mL';
+export const CURVE_UNIT = curveUnit('estradiol');
 
 /** The analyte this curve is of, as ADR-0026's allowlist spells it. Named
     here so the screen can ask that allowlist for a pmol/L reading of a
     modelled value without a bare 'estradiol' literal at the call site - the
     conversion is the same fixed physical factor either way, and this ticket
     adds no second path for it. */
-export const CURVE_ANALYTE = 'estradiol';
+export const CURVE_ANALYTE: CurveDrug = 'estradiol';
 
 /** The percentiles the band's edges are. estrannaise publishes its own
     ranges as p5/p95 (menstrualCycleData), so the band matches the source's

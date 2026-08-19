@@ -23,7 +23,7 @@
   import type { CurveLabPoint } from '$lib/data/journal/hormoneCurve';
   import type { InjectableEster } from '$lib/data/hormoneEster';
   import { latestQualitativeValue, type QualitativeCurve } from '$lib/data/hormoneCurveQualitative';
-  import { CURVE_DRUGS, CURVE_UNITS, type CurveDrug } from '$lib/data/hormoneDrug';
+  import { CURVE_DRUGS, curveUnit, type CurveDrug } from '$lib/data/hormoneDrug';
   import { curveDrugLabel, esterLabel, qualitativeCurveLabel } from '$lib/data/vocabulary/hormoneCurveLabels';
   import { secondaryLabValue } from '$lib/data/labs/units';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
@@ -74,6 +74,11 @@
   );
   type QualView = NonNullable<(typeof qualQueries)[number]['value']>;
   let qualLoading = $derived(qualQueries.some((query) => query.loading));
+  /** Whether every hormone's query has actually produced a view. Not the same
+      question as `qualLoading`: a query that failed reports itself done with no
+      value, and the screen must show the skeleton rather than read fields off
+      what is not there. */
+  let qualAnswered = $derived(qualQueries.every((query) => query.value !== undefined));
   /** Only the hormones with something to draw, so a section appears for a
       hormone the reader actually takes. */
   let qualSections = $derived(
@@ -82,8 +87,13 @@
         section.view != null && section.view.curves.length > 0
     )
   );
+  /* `undefined` and not null: a LiveQuery's value is `T | undefined` until its
+     first result lands, and stays undefined if the query errors
+     (live/journal.svelte.ts). Testing for null here would drop nothing and
+     narrow nothing, and the sums below would then read a field off undefined
+     on that error path. */
   let qualViews = $derived(
-    qualQueries.map((query) => query.value).filter((view): view is QualView => view !== null)
+    qualQueries.map((query) => query.value).filter((view): view is QualView => view !== undefined)
   );
   /* Summed across the hormones: these two notes count records the model left
      out, and a reader wants one number for "doses the curve is missing", not
@@ -137,7 +147,7 @@
       ticket exists to avoid. Null tells QualitativeCurveChart to draw the
       shape with no axis numbers. */
   function qualUnitLabel(drug: CurveDrug, view: QualView): string | null {
-    return view.scaleFactor !== null ? CURVE_UNITS[drug] : null;
+    return view.scaleFactor !== null ? curveUnit(drug) : null;
   }
 
   /** Localized, like every other number this app shows (labContextLabel.ts's
@@ -225,7 +235,7 @@
     <h1 class="screen-title">{m.curve_title()}</h1>
   </header>
 
-  {#if injectableQuery.loading || qualLoading || !injectableView || qualViews.length < CURVE_DRUGS.length}
+  {#if injectableQuery.loading || qualLoading || !injectableView || !qualAnswered}
     <Skeleton variant="block" count={2} />
   {:else if injectableView.curves.length === 0 && qualSections.length === 0}
     <!-- One empty state for every way of having no curve at all, across both
