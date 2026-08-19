@@ -460,15 +460,31 @@ export interface ArchiveDosePause {
   reason: string;
 }
 
-/** A name or pronoun set being tried out (phase 4 ticket 16). No "current"
-    flag: several can travel with overlapping or long-closed ranges, and
-    nothing here may single one out. */
+/** One dated tryout photo (phase 5 ticket 13). Nested under its tryout
+    rather than a top-level section, the way ArchiveProcedurePhoto is
+    nested under its procedure, and for the same reason: it carries its
+    own `epochDay` because when during the tryout it was taken is the
+    whole point of it, unlike the tryout's own dates. */
+export interface ArchiveTryoutPhoto {
+  id: string;
+  epochDay: number;
+  fileName: string;
+}
+
+/** Something being tried out (phase 4 ticket 16, widened past name/pronoun
+    by phase 5 ticket 13). No "current" flag: several can travel with
+    overlapping or long-closed ranges, and nothing here may single one
+    out. `kind` is loosened from TryoutKind, the way ArchiveMeasurement
+    loosens `type`: the schema's CHECK enforces it on the way back in
+    (restore.ts), not this boundary type. */
 export interface ArchiveTryout {
   id: string;
   kind: string;
   label: string;
+  description: string | null;
   startEpochDay: number;
   endEpochDay: number | null;
+  photos: ArchiveTryoutPhoto[];
 }
 
 /** One point in a tryout's felt-sense history (phase 4 ticket 16). Named

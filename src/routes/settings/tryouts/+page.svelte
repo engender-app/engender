@@ -2,6 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import { liveQuery, journal } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
+  import { tryoutKindName } from '$lib/data/vocabulary/labels';
   import type { Tryout } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -11,7 +12,6 @@
   let tryoutsQuery = liveQuery(['tryout'], (j) => j.tryouts.getTryouts());
   let tryouts = $derived(tryoutsQuery.value ?? []);
 
-  const kindLabel = (kind: Tryout['kind']) => (kind === 'name' ? m.tryout_kind_name() : m.tryout_kind_pronouns());
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
   const rangeLabel = (t: Tryout) =>
     t.endEpochDay == null
@@ -48,7 +48,7 @@
           <span class="row-icon"><Icon name="tag" size={22} /></span>
           <a class="row-text" href="/settings/tryouts/{t.id}" style="text-decoration:none;color:inherit">
             <span class="row-title">{t.label}</span>
-            <span class="row-subtitle">{kindLabel(t.kind)} · {rangeLabel(t)}</span>
+            <span class="row-subtitle">{tryoutKindName(t.kind)} · {rangeLabel(t)}</span>
           </a>
           <button class="icon-btn" aria-label={m.tryout_delete_sheet()} onclick={() => (deleteTarget = t)}>
             <Icon name="trash" size={18} />

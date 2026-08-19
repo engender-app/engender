@@ -122,6 +122,8 @@ const SECTIONS = [
   }),
   section({ name: 'dosePauses', after: ['regimenEpisodes'], read: read.readDosePauses, apply: apply.applyDosePauses }),
   section({ name: 'medicationStock', read: read.readMedicationStock, apply: apply.applyMedicationStock }),
+  // Inserts its own photo children, the same reasoning `hairRemovalSessions`
+  // and `procedures` above give.
   section({ name: 'tryouts', read: read.readTryouts, apply: apply.applyTryouts }),
   // A felt-sense row hangs off a tryout rowid, the same way a dose schedule
   // hangs off an episode's.
