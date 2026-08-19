@@ -24,6 +24,12 @@ export type EditorPhoto =
   | { kind: 'stored'; photo: { id: string; fileName: string | null; starred: boolean } }
   | { kind: 'picked'; photo: NormalizedPhoto };
 
+/** The default comparison photo a screen hands the post-capture review
+    (ticket 12): a stored photo's file name, or the bytes of one already
+    picked in this same editing session and not yet written to disk - the
+    same stored/picked split EditorPhoto draws, for the same reason. */
+export type ReferencePhoto = { fileName: string } | { bytes: Uint8Array };
+
 const picker = filePhotoPicker();
 const camera = cameraPhotoPicker();
 

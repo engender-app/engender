@@ -10,10 +10,11 @@
   import type { HairStage, NorwoodHamiltonStage } from '$lib/data/types';
   import type { HairPhoto } from '$lib/data/journal/hairProgress';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { capturePhoto, pickPhotos } from '$lib/stores/photoPicking';
+  import { capturePhoto, pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -112,8 +113,22 @@
     await storePhoto(photo ?? null);
   }
 
+  // The context is the hair-progress log as a whole - a schedule, not a
+  // single dated entry - so its last photo is the log's last one, already
+  // loaded above for photoDue.
+  let reviewingPhoto = $state<NormalizedPhoto | null>(null);
+  let reviewReference = $derived<ReferencePhoto | null>(
+    photos.length ? { fileName: photos[photos.length - 1].fileName } : null
+  );
+
   async function captureHairPhoto() {
-    await storePhoto(await capturePhoto());
+    const photo = await capturePhoto();
+    if (photo) reviewingPhoto = photo;
+  }
+
+  async function useReviewedPhoto(photo: NormalizedPhoto) {
+    reviewingPhoto = null;
+    await storePhoto(photo);
   }
 
   async function deletePhoto() {
@@ -280,4 +295,12 @@
       </div>
     {/if}
   </Sheet>
+
+  <PhotoAlignmentReview
+    photo={reviewingPhoto}
+    reference={reviewReference}
+    onAccept={useReviewedPhoto}
+    onRetake={captureHairPhoto}
+    onCancel={() => (reviewingPhoto = null)}
+  />
 </div>
