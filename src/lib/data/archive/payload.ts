@@ -278,6 +278,32 @@ export interface ArchiveHairPhoto {
   fileName: string;
 }
 
+/** One hair-removal session photo (phase 5 ticket 08). Nested under its
+    session rather than a top-level section, the way `ArchiveChecklistItem`
+    is nested under its checklist: a session photo belongs to exactly one
+    session, so it travels with the session that owns it. It carries no
+    date of its own - the session's `epochDay` is enough. */
+export interface ArchiveHairRemovalPhoto {
+  id: string;
+  fileName: string;
+}
+
+/** One electrolysis/laser session (phase 5 ticket 08). `area` and `method`
+    are loosened from their literal-union/closed-set typings, the way
+    ArchiveMeasurement loosens `type` and ArchiveHairStage loosens `stage`:
+    the schema's CHECK enforces both on the way back in (restore.ts), not
+    this boundary type. */
+export interface ArchiveHairRemovalSession {
+  id: string;
+  epochDay: number;
+  area: string;
+  method: string;
+  painRating: number;
+  cost: string;
+  provider: string;
+  photos: ArchiveHairRemovalPhoto[];
+}
+
 export interface ArchiveReminder {
   id: string;
   title: string;
@@ -398,6 +424,7 @@ export interface ArchiveJournal {
   personalEffects: ArchivePersonalEffect[];
   hairStages: ArchiveHairStage[];
   hairPhotos: ArchiveHairPhoto[];
+  hairRemovalSessions: ArchiveHairRemovalSession[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
   doubtEntries: ArchiveDoubtEntry[];

@@ -700,6 +700,195 @@ test('hair photos order oldest first and delete takes the row and its files; twi
   await journal.hairProgress.deletePhoto(first); // idempotent
 });
 
+/* hair removal (phase 5 ticket 08) */
+
+test('a hair-removal session round-trips with no episode reference, ordered by day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.hairRemoval.upsertSession({
+    epochDay: 200,
+    area: 'legs',
+    method: 'laser',
+    painRating: 2,
+    cost: '300 PLN',
+    provider: 'Klinika Laserowa'
+  });
+  const id = await journal.hairRemoval.upsertSession({
+    epochDay: 100,
+    area: 'upper_lip',
+    method: 'electrolysis',
+    painRating: 4,
+    cost: '',
+    provider: ''
+  });
+
+  const sessions = await journal.hairRemoval.getSessions();
+  assert.deepEqual(sessions.map((s) => s.epochDay), [100, 200]);
+  assert.deepEqual(sessions[0], {
+    id,
+    epochDay: 100,
+    area: 'upper_lip',
+    method: 'electrolysis',
+    painRating: 4,
+    cost: '',
+    provider: ''
+  });
+});
+
+test('hair-removal sessions update by id, throw on unknown ids and delete idempotently', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.hairRemoval.upsertSession({
+    epochDay: 100,
+    area: 'chin',
+    method: 'laser',
+    painRating: 2,
+    cost: '',
+    provider: ''
+  });
+
+  await journal.hairRemoval.upsertSession({ id, epochDay: 100, area: 'chin', method: 'laser', painRating: 3, cost: '', provider: '' });
+  assert.equal((await journal.hairRemoval.getSessions())[0].painRating, 3);
+
+  await assert.rejects(
+    journal.hairRemoval.upsertSession({ id: 'nope', epochDay: 1, area: 'chin', method: 'laser', painRating: 1, cost: '', provider: '' }),
+    /unknown hair removal session/
+  );
+
+  await journal.hairRemoval.deleteSession(id);
+  await journal.hairRemoval.deleteSession(id); // idempotent
+  assert.deepEqual(await journal.hairRemoval.getSessions(), []);
+});
+
+test('an area outside the closed vocabulary is refused before it reaches the schema', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.hairRemoval.upsertSession({
+      epochDay: 100,
+      area: 'face_jaw', // a BODY_REGION_KEYS key, not a hair-removal area
+      method: 'laser',
+      painRating: 2,
+      cost: '',
+      provider: ''
+    }),
+    /invalid hair-removal area/
+  );
+});
+
+test('a pain rating outside the 1-5 scale is refused before it reaches the schema', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 0, cost: '', provider: '' }),
+    /invalid pain rating/
+  );
+  await assert.rejects(
+    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 6, cost: '', provider: '' }),
+    /invalid pain rating/
+  );
+});
+
+test('cost and provider are stored as typed, with no list and no normalization', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.hairRemoval.upsertSession({
+    epochDay: 100,
+    area: 'chin',
+    method: 'laser',
+    painRating: 2,
+    cost: '  250 PLN ',
+    provider: 'diagnostyka'
+  });
+  await journal.hairRemoval.upsertSession({ epochDay: 101, area: 'chin', method: 'laser', painRating: 2 });
+
+  assert.deepEqual(
+    (await journal.hairRemoval.getSessions()).map((s) => [s.cost, s.provider]),
+    [
+      ['  250 PLN ', 'diagnostyka'],
+      ['', '']
+    ]
+  );
+});
+
+test('a session photo writes both files and its own row, distinct from `photo` and `hair_photo`', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  const sessionId = await journal.hairRemoval.upsertSession({
+    epochDay: 100,
+    area: 'chin',
+    method: 'laser',
+    painRating: 2,
+    cost: '',
+    provider: ''
+  });
+
+  const id = await journal.hairRemoval.addPhoto(sessionId, { full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+
+  assert.match(id, UUID_PATTERN);
+  assert.deepEqual(await journal.hairRemoval.getPhotos(sessionId), [{ id, sessionId, fileName: `${id}.jpg` }]);
+  assert.deepEqual(files.names(), [`${id}-thumb.jpg`, `${id}.jpg`]);
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0, 'not a third owner on `photo`');
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM hair_photo').get() as { n: number }).n, 0, 'not hair_photo either');
+});
+
+test('adding a photo to an unknown session throws before any file lands', async () => {
+  const files = fakeFileStore();
+  const journal = openJournal(await migratedDb(), files);
+
+  await assert.rejects(
+    journal.hairRemoval.addPhoto('nope', { full: new Uint8Array([1]), thumb: new Uint8Array([2]) }),
+    /unknown hair removal session/
+  );
+  assert.deepEqual(files.names(), []);
+});
+
+test('session photos order oldest first and delete takes the row and its files; twice is success', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  const sessionId = await journal.hairRemoval.upsertSession({
+    epochDay: 100,
+    area: 'chin',
+    method: 'laser',
+    painRating: 2,
+    cost: '',
+    provider: ''
+  });
+
+  const first = await journal.hairRemoval.addPhoto(sessionId, { full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+  const second = await journal.hairRemoval.addPhoto(sessionId, { full: new Uint8Array([3]), thumb: new Uint8Array([4]) });
+
+  assert.deepEqual(
+    (await journal.hairRemoval.getPhotos(sessionId)).map((p) => p.id),
+    [first, second]
+  );
+
+  await journal.hairRemoval.deletePhoto(first);
+  assert.deepEqual(files.names(), [`${second}-thumb.jpg`, `${second}.jpg`]);
+
+  await journal.hairRemoval.deletePhoto(first); // idempotent
+});
+
+test('deleting a session cascades to its photos', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  const sessionId = await journal.hairRemoval.upsertSession({
+    epochDay: 100,
+    area: 'chin',
+    method: 'laser',
+    painRating: 2,
+    cost: '',
+    provider: ''
+  });
+  await journal.hairRemoval.addPhoto(sessionId, { full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+
+  await journal.hairRemoval.deleteSession(sessionId);
+
+  assert.equal(
+    (db.raw.prepare('SELECT COUNT(*) AS n FROM hair_removal_photo').get() as { n: number }).n,
+    0,
+    'ON DELETE CASCADE removed the photo row too'
+  );
+});
+
 /* reminders */
 
 test('every rule shape written by the journal passes the schema recurrence CHECK', async () => {

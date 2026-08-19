@@ -22,7 +22,8 @@ import type {
   EntryTemplateKey,
   MilestoneTemplateKey
 } from './builtins';
-import type { CycleEventKind, Measurement, NorwoodHamiltonStage, PersonalEffectType } from '../types';
+import type { CycleEventKind, HairRemovalMethod, Measurement, NorwoodHamiltonStage, PersonalEffectType } from '../types';
+import type { HairRemovalAreaKey } from '../hairRemovalAreas';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -120,6 +121,35 @@ const SEVERITY_NAME: Message[] = [m.severity_1, m.severity_2, m.severity_3, m.se
 
 /** The name of a severity, 1 to 5. */
 export const severityName = (value: number): string => SEVERITY_NAME[value - 1]?.() ?? String(value);
+
+/* Hair-removal treatment areas (phase 5 ticket 08) are a fixed set, not a
+   built-in row, the same reasoning MEASUREMENT_TYPE_NAME gives - and their
+   own vocabulary, deliberately not BODY_REGION_NAME below. */
+const HAIR_REMOVAL_AREA_NAME: Record<HairRemovalAreaKey, Message> = {
+  upper_lip: m.hair_removal_area_upper_lip,
+  chin: m.hair_removal_area_chin,
+  neck: m.hair_removal_area_neck,
+  underarms: m.hair_removal_area_underarms,
+  chest: m.hair_removal_area_chest,
+  abdomen: m.hair_removal_area_abdomen,
+  back: m.hair_removal_area_back,
+  arms: m.hair_removal_area_arms,
+  legs: m.hair_removal_area_legs,
+  bikini_line: m.hair_removal_area_bikini_line
+};
+
+/** The name of a hair-removal treatment area, or the raw key for one an
+    import carries that this build's vocabulary no longer lists. */
+export const hairRemovalAreaName = (area: string): string => lookup(HAIR_REMOVAL_AREA_NAME, area);
+
+const HAIR_REMOVAL_METHOD_NAME: Record<HairRemovalMethod, Message> = {
+  laser: m.hair_removal_method_laser,
+  electrolysis: m.hair_removal_method_electrolysis,
+  other: m.hair_removal_method_other
+};
+
+/** The name of a hair-removal method. */
+export const hairRemovalMethodName = (method: HairRemovalMethod): string => HAIR_REMOVAL_METHOD_NAME[method]();
 
 /* A cycle event's three kinds (phase 5 ticket 03, CONTEXT: "Cycle event")
    are a fixed set, not a built-in row, the same reasoning
