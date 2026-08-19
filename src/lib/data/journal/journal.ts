@@ -24,6 +24,7 @@ import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeHormoneCurveArea, type HormoneCurveArea } from './hormoneCurve';
 import { makeQualitativeCurveArea, type QualitativeCurveArea } from './hormoneCurveQualitative';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
+import { makeIntervalMoodPatternArea, type IntervalMoodPatternArea } from './intervalMoodPattern';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeLettersArea, type LettersArea } from './letters';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
@@ -169,6 +170,12 @@ export interface Journal {
       not scope drift. A view over rows `stats`, `doses` and `dimensions`
       own, not a fourth owner for any of them. */
   correlationCards: CorrelationCardsArea;
+  /** Day-average mood bucketed by a cyclical position - day of interval
+      across completed injectable regimen intervals, or a person-chosen
+      period length (phase 5 ticket 09) - descriptive throughout, the same
+      as correlationCards and the comparability flag. A view over rows
+      `stats` and `doses` own, not a third owner for either. */
+  intervalMoodPattern: IntervalMoodPatternArea;
   /** Everything above at once, in the shape an export carries it
       (ADR-0007), and one archive read back in - Replace or Merge, each a
       single operation whose order of writes is nobody else's business
@@ -219,6 +226,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     checklists: makeChecklistsArea(driver),
     stats,
     correlationCards: makeCorrelationCardsArea(stats, doses, dimensions),
+    intervalMoodPattern: makeIntervalMoodPatternArea(stats, doses),
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver)
   };
