@@ -220,8 +220,8 @@
      session"), not the full body-map vocabulary. */
   let trendRegionOptions = $derived(
     vocabulary.bodyRegions
-      .filter((r) => r.key === 'chest' || r.key === 'genitals')
-      .map((r) => ({ value: r.key, label: r.name }))
+      .filter((r) => r.id === 'chest' || r.id === 'genitals')
+      .map((r) => ({ value: r.id, label: r.name }))
   );
   let trendRegion = $state('chest');
   $effect(() => {
