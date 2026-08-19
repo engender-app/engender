@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { startOfDayTimestamp } from './epochDay.ts';
-import { activeEpisodesAt, attributeDose, attributedDrug, earliestEpisode, isAmbiguousDrug } from './regimenEpisode.ts';
+import { activeEpisodesAt, attributeDose, attributeDrug, earliestEpisode } from './regimenEpisode.ts';
 import type { RegimenEpisode } from './types.ts';
 
 const episode = (
@@ -133,39 +133,31 @@ test('case 4: a non-hormone oral dose alongside a concurrent estradiol episode n
   assert.equal(withoutDrug.ambiguous, true);
 });
 
-test('attributedDrug takes the dose\'s own drug even with no episode backing it', () => {
+test('attributeDrug takes the dose\'s own drug even with no episode backing it, never ambiguous', () => {
   const episodes: RegimenEpisode[] = [];
   const timestamp = startOfDayTimestamp(150);
-  assert.equal(attributedDrug(episodes, { drug: 'melatonin', timestamp }), 'melatonin');
+  assert.deepEqual(attributeDrug(episodes, { drug: 'melatonin', timestamp }), { drug: 'melatonin', ambiguous: false });
 });
 
-test('attributedDrug falls back to the sole active episode, tolerates several agreeing on the same drug, and is null when they disagree or none are active', () => {
-  const single = [episode('a', 100, null, 'estradiol')];
-  const sameDrugTwice = [episode('a', 100, null, 'estradiol'), episode('b', 100, null, 'estradiol')];
-  const differentDrugs = [episode('e', 100, null, 'estradiol'), episode('s', 100, null, 'spironolactone')];
-  const timestamp = startOfDayTimestamp(150);
-
-  assert.equal(attributedDrug(single, { drug: null, timestamp }), 'estradiol');
-  assert.equal(attributedDrug(sameDrugTwice, { drug: null, timestamp }), 'estradiol');
-  assert.equal(attributedDrug(differentDrugs, { drug: null, timestamp }), null);
-  assert.equal(attributedDrug([], { drug: null, timestamp }), null);
-});
-
-test('isAmbiguousDrug is true only for a drug-less dose whose active episodes disagree on the drug', () => {
-  const timestamp = startOfDayTimestamp(150);
+test('attributeDrug falls back to the sole active episode, tolerates several agreeing on the same drug, and is ambiguous only when they disagree', () => {
   const none: RegimenEpisode[] = [];
   const single = [episode('a', 100, null, 'estradiol')];
   const sameDrugTwice = [episode('a', 100, null, 'estradiol'), episode('b', 100, null, 'estradiol')];
   const differentDrugs = [episode('e', 100, null, 'estradiol'), episode('s', 100, null, 'spironolactone')];
+  const timestamp = startOfDayTimestamp(150);
 
-  assert.equal(isAmbiguousDrug(none, { drug: null, timestamp }), false);
-  assert.equal(isAmbiguousDrug(single, { drug: null, timestamp }), false);
-  // Two episodes agreeing on the same drug - a dose change recorded as a
-  // new episode before the old one was ended, say - are not ambiguous for
-  // this question: there is only one honest drug name to give.
-  assert.equal(isAmbiguousDrug(sameDrugTwice, { drug: null, timestamp }), false);
-  assert.equal(isAmbiguousDrug(differentDrugs, { drug: null, timestamp }), true);
+  assert.deepEqual(attributeDrug(single, { drug: null, timestamp }), { drug: 'estradiol', ambiguous: false });
+  assert.deepEqual(attributeDrug(sameDrugTwice, { drug: null, timestamp }), { drug: 'estradiol', ambiguous: false });
+  // No episode covers the timestamp at all - the pre-existing, silent
+  // "nothing to attribute" case, and not the new ambiguous kind.
+  assert.deepEqual(attributeDrug(none, { drug: null, timestamp }), { drug: null, ambiguous: false });
+  // Two episodes actively disagreeing on the drug is the only new kind of
+  // failure ticket 38 introduces.
+  assert.deepEqual(attributeDrug(differentDrugs, { drug: null, timestamp }), { drug: null, ambiguous: true });
   // A dose naming its own drug is never ambiguous for this question, even
-  // among several active episodes - attributedDrug takes it as-is.
-  assert.equal(isAmbiguousDrug(differentDrugs, { drug: 'spironolactone', timestamp }), false);
+  // among several active episodes disagreeing - attributeDrug takes it as-is.
+  assert.deepEqual(attributeDrug(differentDrugs, { drug: 'spironolactone', timestamp }), {
+    drug: 'spironolactone',
+    ambiguous: false
+  });
 });

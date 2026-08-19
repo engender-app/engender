@@ -319,7 +319,7 @@ test('one hormone’s gel dose never adds height to the other hormone’s gel cu
      episodes are concurrently active from day 2 on (phase 5 ticket 38),
      so the second dose names its own drug the way the dose editor would
      have prompted for it - a drug-less dose in that window would be
-     genuinely ambiguous, which is a different, already-covered case. */
+     genuinely ambiguous, which the next test covers. */
   const doses = [
     { ...dose(0), route: 'gel' } as DoseEvent,
     { ...dose(3), route: 'gel', dose: 50, drug: 'testosterone' } as DoseEvent
@@ -342,6 +342,31 @@ test('one hormone’s gel dose never adds height to the other hormone’s gel cu
   const at = (points: { day: number; value: number }[], day: number) => points.find((point) => point.day >= day)!.value;
   assert.equal(at(e2.curves[0].points, 3.4), 0);
   assert.ok(at(t.curves[0].points, 3.4) > 0);
+});
+
+test('a drug-less dose logged while a same-route episode of a different drug is also active is drawn into neither curve (case 4)', () => {
+  /* The bug ticket 38 exists to close: before concurrency was representable,
+     a route match alone was enough to draw a dose into whichever episode
+     resolveEpisodeAt happened to return, so a spironolactone tablet logged
+     the same way as an oral estradiol dose could get drawn straight into
+     the estradiol curve at full value. Two concurrent oral episodes for
+     different drugs, and a dose naming no drug of its own, must now be
+     excluded from both curves rather than guessed into either - and
+     counted by dosesWithNoCurve, not silently dropped. */
+  const doses = [{ ...dose(0), route: 'oral' } as DoseEvent];
+  const episodes = [
+    episode({ drug: 'estradiol', route: 'oral', startEpochDay: -1000 }),
+    episode({ id: 'ep2', drug: 'spironolactone', route: 'oral', startEpochDay: -1000 })
+  ];
+
+  const e2 = qualitativeCurves({ ...WINDOW, drug: 'estradiol', doses, episodes });
+
+  assert.equal(e2.curves.length, 0, 'the ambiguous dose must not seed an estradiol curve');
+  assert.equal(
+    dosesWithNoCurve({ fromEpochDay: WINDOW.fromEpochDay, toEpochDay: WINDOW.toEpochDay, doses, episodes }),
+    1,
+    'excluded for want of unambiguous attribution, and counted rather than silently dropped'
+  );
 });
 
 test('a drug that is neither hormone still gets nothing, however familiar its route', () => {

@@ -32,7 +32,7 @@
    the direction box 3 asks for. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { attributedDrug, isAmbiguousDrug } from './regimenEpisode';
+import { attributeDrug } from './regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from './types';
 
 /** How many trailing days of the dose log the consumption rate is
@@ -91,7 +91,7 @@ const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
     recorded. */
 function consumesStock(dose: DoseEvent, stock: StockEntry, episodes: readonly RegimenEpisode[]): boolean {
   if (!isConsuming(dose)) return false;
-  const drug = attributedDrug(episodes, dose);
+  const { drug } = attributeDrug(episodes, dose);
   return drug !== null && drugsMatch(drug, stock.drug);
 }
 
@@ -115,7 +115,7 @@ export function projectStock(
   const consumed = doses.filter((dose) => inWindow(dose) && consumesStock(dose, stock, episodes));
   const remaining = stock.quantity - consumed.length;
   const excludedDoses = doses.filter(
-    (dose) => inWindow(dose) && isConsuming(dose) && isAmbiguousDrug(episodes, dose)
+    (dose) => inWindow(dose) && isConsuming(dose) && attributeDrug(episodes, dose).ambiguous
   ).length;
 
   const windowStart = Math.max(stock.recordedEpochDay, asOfEpochDay - TRAILING_WINDOW_DAYS + 1);

@@ -1,6 +1,6 @@
 /* The regimen episode area (phase 4 ticket 01, CONTEXT: "Regimen episode"):
    uuid-only identity, no built-in counterpart, hide-never-delete, and the
-   ordering getEpisodes() promises resolveEpisodeAt relies on. */
+   ordering getEpisodes() promises activeEpisodesAt relies on. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

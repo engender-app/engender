@@ -89,6 +89,24 @@ test('two esters dosed in one window get a curve each, never one merged line', (
   );
 });
 
+test('a drug-less injection logged while a concurrent episode of a different drug is also active is drawn into no curve (case 4)', () => {
+  /* The bug ticket 38 exists to close: before concurrency was representable,
+     a route match alone was enough to draw a dose into whichever episode
+     resolveEpisodeAt happened to return. Two concurrent injectable episodes
+     for different drugs, and a dose naming no drug of its own, must now be
+     excluded rather than guessed into either one's band. */
+  const result = esterCurves({
+    doses: [dose(0)],
+    episodes: [
+      episode('valerate', { startEpochDay: -1000 }),
+      episode('cypionate', { id: 'ep2', drug: 'testosterone', startEpochDay: -1000 })
+    ],
+    ...WINDOW
+  });
+
+  assert.equal(result.curves.length, 0);
+});
+
 test('every point of every band is a range, and a band carries no single value to draw a line from', () => {
   // Box 2 of the acceptance, pinned as a shape test as well as a value one:
   // adding a `median` or `value` to a band point is how a single-line

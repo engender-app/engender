@@ -53,7 +53,7 @@ export type DoseAttribution =
   | { episode: null; ambiguous: boolean };
 
 /** Which episode `dose` belongs to, for reading its drug, ester and route
-    parameters against - not only its drug's name (attributedDrug below is
+    parameters against - not only its drug's name (attributeDrug below is
     for that). A dose's own `drug` (types.ts) wins when set: it must match
     exactly one episode active at the dose's timestamp, or attribution is
     ambiguous. With no `drug` of its own, the dose falls back to the sole
@@ -76,46 +76,32 @@ export function attributeDose(
   return { episode: null, ambiguous: active.length > 1 };
 }
 
-/** Which drug `dose` counts against, for callers that only need the name -
+/** How a dose's drug name came out, for callers that only need the name -
     exposure totals and stock projection - and not an episode's ester or
-    route. A dose's own `drug` is taken as-is when set, even without a
-    backing episode (a person can name a drug stock or exposure should
-    track without ever having logged an episode for it). Otherwise, every
-    active episode's drug has to agree: two overlapping episodes for the
-    *same* drug (a dose change recorded as a new episode before the old one
-    was ended, say) are not an attribution problem this question has -
-    unlike attributeDose, which also needs a single episode's ester and
-    route and can't treat two same-drug episodes as interchangeable. Only
-    when the active episodes actually name different drugs is there
-    nothing honest to answer. */
-export function attributedDrug(
+    route (attributeDose above is for that). `ambiguous` is the only new
+    way this can fail after ticket 38: a dose with no episode covering it
+    at all resolves to `{ drug: null, ambiguous: false }`, the
+    pre-existing, silent "nothing to attribute" case, and so does more
+    than one active episode agreeing on the same drug (a dose change
+    recorded as a new episode before the old one was ended, say - not an
+    attribution problem this question has, unlike attributeDose, which
+    also needs a single episode's ester and route and can't treat two
+    same-drug episodes as interchangeable). Only when the active episodes
+    actually name different drugs is there nothing honest to answer, and
+    `ambiguous` comes back true so exposure totals and stock projection can
+    count what they had to leave out. A dose's own `drug` (types.ts) is
+    taken as-is when set, even without a backing episode (a person can
+    name a drug stock or exposure should track without ever having logged
+    an episode for it), and is never ambiguous. */
+export function attributeDrug(
   episodes: readonly RegimenEpisode[],
   dose: Pick<DoseEvent, 'drug' | 'timestamp'>
-): string | null {
-  if (dose.drug) return dose.drug;
+): { drug: string | null; ambiguous: boolean } {
+  if (dose.drug) return { drug: dose.drug, ambiguous: false };
   const active = activeEpisodesAt(episodes, dose.timestamp);
-  if (active.length === 0) return null;
+  if (active.length === 0) return { drug: null, ambiguous: false };
   const drugs = new Set(active.map((episode) => episode.drug.trim()));
-  return drugs.size === 1 ? active[0].drug : null;
-}
-
-/** Whether `dose` could not be given a single drug name at all: it named
-    none of its own, and the episodes active at its timestamp disagree on
-    what drug they are. The only new way attribution can fail after ticket
-    38 - a dose with no episode covering it at all is the pre-existing,
-    silent "nothing to attribute" case and is not this, and neither is more
-    than one episode agreeing on the same drug (attributedDrug's own
-    reasoning). attributedDrug itself only answers with a name or null and
-    cannot say which kind of null that was; exposure totals and stock
-    projection use this to count what it had to leave out. */
-export function isAmbiguousDrug(
-  episodes: readonly RegimenEpisode[],
-  dose: Pick<DoseEvent, 'drug' | 'timestamp'>
-): boolean {
-  if (dose.drug) return false;
-  const active = activeEpisodesAt(episodes, dose.timestamp);
-  const drugs = new Set(active.map((episode) => episode.drug.trim()));
-  return drugs.size > 1;
+  return drugs.size === 1 ? { drug: active[0].drug, ambiguous: false } : { drug: null, ambiguous: true };
 }
 
 /** The first episode there has ever been - the one HRT overall started

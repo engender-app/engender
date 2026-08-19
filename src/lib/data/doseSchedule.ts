@@ -222,7 +222,7 @@ export interface Adherence {
     two, not 8am and 8pm.
 
     `doses` must already be scoped to the same episode whose schedule produced
-    `slots` - resolveEpisodeAt is how a caller does that (regimenEpisode.ts).
+    `slots` - attributeDose is how a caller does that (regimenEpisode.ts).
     Handing in a whole window's worth instead puts every earlier episode's
     doses in `unmatched`, where they read as extras or as taken during a pause,
     and neither is true. This function cannot check it: it is given slots and
