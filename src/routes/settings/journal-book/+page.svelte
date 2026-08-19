@@ -155,7 +155,7 @@
 
     <div class="print-heading">
       <h1>{m.journal_book_title()}</h1>
-      <p>{dayLong(book.fromEpochDay)}, {dayLong(book.toEpochDay)}</p>
+      <p>{m.journal_book_range({ from: dayLong(book.fromEpochDay), to: dayLong(book.toEpochDay) })}</p>
     </div>
 
     {#if empty}
