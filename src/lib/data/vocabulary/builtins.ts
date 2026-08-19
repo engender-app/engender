@@ -41,6 +41,15 @@ export const BUILT_IN_PRESETS = [
 
 export type BuiltInPresetKey = (typeof BUILT_IN_PRESETS)[number]['key'];
 
+/** The three tags that count as a euphoria capture (CONTEXT: "Euphoria
+    capture") - general, social and body, read as equals by anything that
+    asks "did this day carry a euphoria capture" (the doubt journal's
+    counterevidence pool, the good-day rule). Not narrowed to g-euphoria
+    alone: someone whose euphoria is mostly social or body-specific tags
+    g-soc-eu/g-body-eu faithfully for months and must not find the app
+    blind to it (phase 5 ticket 32). */
+export const EUPHORIA_TAG_KEYS = ['g-euphoria', 'g-soc-eu', 'g-body-eu'] as const;
+
 export const BUILT_IN_TAG_GROUPS = [
   {
     key: 'gender',

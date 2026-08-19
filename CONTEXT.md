@@ -172,7 +172,12 @@ day it was rather than just that it was hard.
 
 **Euphoria capture**:
 A one-tap tag for what felt right today, the positive counterpart to a dysphoria
-type on the same entry.
+type on the same entry. Three built-in tags carry it, read as equals rather than
+one general tag plus two ordinary ones that happen to mention euphoria:
+`g-euphoria` (general), `g-soc-eu` (social) and `g-body-eu` (body). Someone not
+pursuing body changes tags social euphoria far more than the general tag, so
+anything asking "did this day carry a euphoria capture" - the doubt journal's
+counterevidence pool, the good-day rule below - checks all three.
 
 **Tally event**:
 One tap of the misgendering or correct-gendering counter, carrying only its kind
@@ -427,9 +432,10 @@ before today. Only ever resurfaces a **good day** (below) - never a bad one.
 
 **Good day**:
 The bar a day must clear for on-this-day to resurface it: a day average mood at
-or above the mood scale's midpoint, a euphoria capture logged that day, or
-either. The rule, not just a definition: on-this-day must never show a day that
-doesn't clear this bar.
+or above the mood scale's midpoint, any of the three euphoria capture tags
+(`g-euphoria`, `g-soc-eu`, `g-body-eu`) logged that day, or either. The rule,
+not just a definition: on-this-day must never show a day that doesn't clear
+this bar.
 
 **Doubt entry**:
 A free-write record for a "not trans enough" spiral, timestamped and its own

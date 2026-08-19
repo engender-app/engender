@@ -622,6 +622,24 @@ test('a euphoria capture on one of several entries is enough, even with a low da
   assert.equal(await journal.stats.isGoodDay(100), true);
 });
 
+// The case ticket 32 was found by: someone whose euphoria is entirely
+// social or body-specific tags g-soc-eu/g-body-eu faithfully for months
+// and the general g-euphoria tag never once. Neither is the general tag,
+// so the bar must clear on either alone.
+test('a social euphoria capture makes a day good, with no g-euphoria tag at all', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 1, tags: ['g-soc-eu'] });
+
+  assert.equal(await journal.stats.isGoodDay(100), true);
+});
+
+test('a body euphoria capture makes a day good, with no g-euphoria tag at all', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 1, tags: ['g-body-eu'] });
+
+  assert.equal(await journal.stats.isGoodDay(100), true);
+});
+
 test('a day with nothing logged on it is not a good day', async () => {
   const { journal } = await journalWithBuiltIns();
   assert.equal(await journal.stats.isGoodDay(100), false);
