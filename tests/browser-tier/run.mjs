@@ -63,8 +63,18 @@ try {
   const first = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
   if (first.error) throw new Error(first.error);
 
-  if (first.userVersion === 6) ok('boot() opens the database and migrates it to the current schema');
-  else fail('boot() opens the database and migrates it to the current schema', `user_version is ${first.userVersion}`);
+  /* Compared against the migration list rather than a literal. This read
+     `=== 6` from ticket 04 until phase 5 ticket 22, so it had been failing
+     since v7 and saying nothing useful while it did - a hardcoded schema
+     version is exactly what goes stale first, and it collides between
+     branches besides. */
+  if (first.userVersion === first.latestSchemaVersion)
+    ok(`boot() opens the database and migrates it to the current schema (v${first.userVersion})`);
+  else
+    fail(
+      'boot() opens the database and migrates it to the current schema',
+      `user_version is ${first.userVersion}, migrations.ts says ${first.latestSchemaVersion}`
+    );
 
   if (first.markerExisted === false) ok('boot() runs against a fresh database on first load');
   else fail('boot() runs against a fresh database on first load', 'marker entry already existed');
