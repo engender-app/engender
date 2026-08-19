@@ -667,6 +667,28 @@ CREATE TABLE checklist_item (
 CREATE INDEX idx_checklist_item_checklist ON checklist_item(checklist_id);
 `;
 
+/* v21: the cycle event log (phase 5 ticket 03, CONTEXT: "Cycle event"). A
+   menstrual event for people on testosterone - period occurred, spotting,
+   nothing this month - structurally independent of the regimen episode
+   model, the same reasoning `tally_event` (v6) and `side_effect` (v11)
+   are their own tables for: no episode reference, so it works whether or
+   not a regimen episode exists. `kind` is a fixed three-value CHECK, the
+   same treatment tally_event.kind already gets, because the three states
+   are never extended or user-defined - "nothing this month" is a real,
+   loggable state here, not the absence of a row. epoch_day rather than a
+   timestamp (ADR-0001): a cycle event is something noticed on a day, with
+   none of a dose event's intraday timing to keep. */
+const SCHEMA_V21 = `
+CREATE TABLE cycle_event (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  kind       TEXT NOT NULL CHECK (kind IN ('period_occurred', 'spotting', 'nothing_this_month')),
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_cycle_event_epoch_day ON cycle_event(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -687,7 +709,8 @@ export const migrations: Migration[] = [
   { version: 17, sql: SCHEMA_V17 },
   { version: 18, sql: SCHEMA_V18 },
   { version: 19, sql: SCHEMA_V19 },
-  { version: 20, sql: SCHEMA_V20 }
+  { version: 20, sql: SCHEMA_V20 },
+  { version: 21, sql: SCHEMA_V21 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

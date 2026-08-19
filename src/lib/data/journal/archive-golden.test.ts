@@ -51,6 +51,7 @@ const SECTIONS = [
   'labResults',
   'measurements',
   'sideEffects',
+  'cycleEvents',
   'personalEffects',
   'hairStages',
   'hairPhotos',
@@ -82,7 +83,7 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 25 sections, and the customizations that
+/** A journal with something in all 26 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, and a renamed, a hidden and a switched-off built-in. */
@@ -134,6 +135,7 @@ async function everySection(): Promise<Journal> {
   });
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.hairProgress.upsertStage({ epochDay: 19200, stage: '2a' });
   await journal.hairProgress.addPhoto(19200, { full: bytes('hairline'), thumb: bytes('ht') });

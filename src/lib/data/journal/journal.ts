@@ -15,6 +15,7 @@ import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeChecklistsArea, type ChecklistsArea } from './checklists';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
 import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
+import { makeCycleEventsArea, type CycleEventsArea } from './cycleEvents';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDoubtJournalArea, type DoubtJournalArea } from './doubtJournal';
 import { makeDosesArea, type DosesArea } from './doses';
@@ -109,6 +110,11 @@ export interface Journal {
       rule, over the same dose log and lab results. */
   qualitativeCurve: QualitativeCurveArea;
   sideEffects: SideEffectsArea;
+  /** Period occurred, spotting or nothing this month (phase 5 ticket 03,
+      CONTEXT: "Cycle event"). No episode reference of its own, the same
+      reason sideEffects has none - charted against regimen episode
+      history above this seam rather than owning a link to one. */
+  cycleEvents: CycleEventsArea;
   /** A one-shot, printable assembly of labs, doses, regimen history, side
       effects and exposure counters for a chosen range (phase 4 ticket 12).
       A view over rows regimen, doses, labs, exposure and sideEffects own,
@@ -202,7 +208,8 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     hormoneCurve: makeHormoneCurveArea(doses, regimen, labs),
     qualitativeCurve: makeQualitativeCurveArea(doses, regimen, labs),
     sideEffects,
-    clinicianSummary: makeClinicianSummaryArea(regimen, doses, labs, exposure, sideEffects),
+    cycleEvents: makeCycleEventsArea(driver),
+    clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects }),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
     doubtJournal: makeDoubtJournalArea(driver),

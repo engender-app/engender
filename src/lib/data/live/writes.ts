@@ -57,6 +57,8 @@ export type TableName =
   | 'stock'
   | 'sideEffect'
   | 'personalEffect'
+  /* Cycle events (phase 5 ticket 03). */
+  | 'cycleEvent'
   /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
      nothing reads one without the other, the same reasoning 'dose' gives -
      the screen shows both against the same anchor. */
@@ -103,6 +105,7 @@ export const TABLE_NAMES: TableName[] = [
   'stock',
   'sideEffect',
   'personalEffect',
+  'cycleEvent',
   'hairProgress',
   'doubtJournal',
   'tryout',
@@ -198,6 +201,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   personalEffects: {
     writes: { upsertMarker: ['personalEffect'], clearMarker: ['personalEffect'] },
     reads: ['getMarkers']
+  },
+  cycleEvents: {
+    writes: { upsertCycleEvent: ['cycleEvent'], deleteCycleEvent: ['cycleEvent'] },
+    reads: ['getCycleEvents', 'getCycleEventsInRange']
   },
   hairProgress: {
     writes: {
