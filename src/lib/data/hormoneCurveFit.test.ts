@@ -8,6 +8,17 @@ test('a dose logged in milligrams is read as milligrams', () => {
   assert.equal(doseMilligrams(4, 'milligrams'), 4);
 });
 
+test('a dose logged in micrograms is converted to milligrams at a factor of 1000', () => {
+  assert.equal(doseMilligrams(50, 'mcg'), 0.05);
+  assert.equal(doseMilligrams(100, ' MCG '), 0.1);
+  assert.equal(doseMilligrams(37.5, 'µg'), 0.0375);
+  assert.equal(doseMilligrams(75, 'ug'), 0.075);
+  assert.equal(doseMilligrams(25, 'microgram'), 0.025);
+  assert.equal(doseMilligrams(50, 'micrograms'), 0.05);
+  assert.equal(doseMilligrams(50, 'mikrogram'), 0.05);
+  assert.equal(doseMilligrams(50, 'mikrogramy'), 0.05);
+});
+
 test('a dose logged by volume has no milligram figure, because the concentration is not recorded', () => {
   // The common way to write an injection down. Nothing in the schema says
   // whether that 0.5 mL was 10 mg/mL or 40 mg/mL, so there is no dose to
