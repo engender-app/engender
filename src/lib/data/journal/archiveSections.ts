@@ -91,7 +91,19 @@ const SECTIONS = [
   section({ name: 'sideEffects', read: read.readSideEffects, apply: apply.applySideEffects }),
   section({ name: 'cycleEvents', read: read.readCycleEvents, apply: apply.applyCycleEvents }),
   section({ name: 'journalingPauses', read: read.readJournalingPauses, apply: apply.applyJournalingPauses }),
-  section({ name: 'personalEffects', read: read.readPersonalEffects, apply: apply.applyPersonalEffects }),
+  section({ name: 'effectCategories', read: read.readEffectCategories, apply: apply.applyEffectCategories }),
+  section({ name: 'personalEffectTypes', read: read.readPersonalEffectTypes, apply: apply.applyPersonalEffectTypes }),
+  // No `after`: personal_effect.effect stores an effect's domain key
+  // directly with no FK (migrations.ts v37 dropped its CHECK), the same
+  // reason bodyRegions needs none. Declared after personalEffectTypes
+  // anyway, reference data before the rows that name it, matching the
+  // convention entries/dimensions/tagGroups set.
+  section({
+    name: 'personalEffects',
+    after: ['personalEffectTypes'],
+    read: read.readPersonalEffects,
+    apply: apply.applyPersonalEffects
+  }),
   section({ name: 'hairStages', read: read.readHairStages, apply: apply.applyHairStages }),
   section({ name: 'hairPhotos', read: read.readHairPhotos, apply: apply.applyHairPhotos }),
   // Inserts its own photo children, the same reasoning `hairPhotos` and

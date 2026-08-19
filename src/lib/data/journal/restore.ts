@@ -242,7 +242,14 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     // statement for rows that named a custom type just removed here - they
     // simply keep a key nothing resolves any more, the same forward-
     // compatible treatment lab_result.analyte already gets.
-    'DELETE FROM measurement_type WHERE is_built_in = 0'
+    'DELETE FROM measurement_type WHERE is_built_in = 0',
+    // Same reasoning as measurement_type's own delete: personal_effect
+    // references an effect by key (personalEffects.ts), not by rowid, so a
+    // marker naming a custom effect just removed here simply keeps a key
+    // nothing resolves any more. No statement for effect_category: it is
+    // built-in only (no custom-category creation is asked for, ticket 41's
+    // own scope), so there is never a custom row to discard.
+    'DELETE FROM personal_effect_type WHERE is_built_in = 0'
   ];
   for (const statement of statements) await driver.run(statement);
 }
