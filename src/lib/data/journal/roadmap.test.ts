@@ -1,76 +1,132 @@
-/* The roadmap area (phase 4 ticket 23, CONTEXT: "Roadmap goal", "Country
-   pack"). The area stores ticks and nothing else; what the goals are is
-   roadmap.ts's business, and the tests here never import a pack so that
-   the seam stays honest - a stub pack key is as valid here as 'pl'. */
+/* The roadmap area (phase 4 ticket 23, widened phase 5 ticket 20 for a
+   tri-state tick and custom goals; CONTEXT: "Roadmap goal", "Country
+   pack", "Custom"). The area stores ticks, custom goals and nothing else;
+   what the bundled goals are is roadmap.ts's business, and the tests here
+   never import a pack so that the seam stays honest - a stub pack key is
+   as valid here as 'pl'. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { journalWithBuiltIns } from './test-support.ts';
+import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 
-test('ticking a goal reads back, and unticking it leaves nothing behind', async () => {
-  const { journal, db } = await journalWithBuiltIns();
+test('a bundled goal with no status at all is absent from getGoalStatuses', async () => {
+  const { journal } = await journalWithBuiltIns();
 
-  await journal.roadmap.setGoalChecked('pl', 'pl-legal-court-file', true);
-  assert.deepEqual(await journal.roadmap.getCheckedGoals('pl'), ['pl-legal-court-file']);
-
-  await journal.roadmap.setGoalChecked('pl', 'pl-legal-court-file', false);
-  assert.deepEqual(await journal.roadmap.getCheckedGoals('pl'), []);
-
-  const rows = await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM roadmap_check');
-  assert.equal(rows[0].n, 0, 'an unticked goal keeps no row at all');
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), {});
 });
 
-test('ticking is idempotent both ways, so a double tap cannot duplicate a row', async () => {
+test('checking a goal reads back, and clearing it to unchecked leaves nothing behind', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  await journal.roadmap.setGoalChecked('pl', 'pl-social-tell-someone', true);
-  await journal.roadmap.setGoalChecked('pl', 'pl-social-tell-someone', true);
-  await journal.roadmap.setGoalChecked('pl', 'pl-social-tell-someone', false);
-  await journal.roadmap.setGoalChecked('pl', 'pl-social-tell-someone', false);
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-court-file': 'checked' });
+
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'unchecked');
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), {});
+
+  const rows = await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM roadmap_check');
+  assert.equal(rows[0].n, 0, 'an unchecked goal keeps no row at all');
+});
+
+test('marking a goal not-my-path is a third state, distinct from unchecked and checked', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': 'not-my-path' });
+});
+
+test('setting a status is idempotent, and re-setting the same status keeps one row', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+
+  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'checked');
+  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'checked');
+  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'not-my-path');
+  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'unchecked');
+  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'unchecked');
 
   const rows = await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM roadmap_check');
   assert.equal(rows[0].n, 0);
 });
 
-test('goals in each of the four tracks tick independently of one another', async () => {
+test('goals in each of the four tracks are ticked independently of one another', async () => {
   const { journal } = await journalWithBuiltIns();
 
   for (const key of ['pl-social-a', 'pl-legal-b', 'pl-presentational-c', 'pl-medical-d']) {
-    await journal.roadmap.setGoalChecked('pl', key, true);
+    await journal.roadmap.setGoalStatus('pl', key, 'checked');
   }
-  await journal.roadmap.setGoalChecked('pl', 'pl-legal-b', false);
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-b', 'unchecked');
 
-  assert.deepEqual(await journal.roadmap.getCheckedGoals('pl'), [
-    'pl-medical-d',
-    'pl-presentational-c',
-    'pl-social-a'
-  ]);
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), {
+    'pl-social-a': 'checked',
+    'pl-presentational-c': 'checked',
+    'pl-medical-d': 'checked'
+  });
 });
 
-/* Acceptance box 3: a second country's pack has to be content alone. The
-   stub key here has no bundled pack behind it and no migration was run
-   for it, which is the whole assertion. */
-test('a second pack keeps its own ticks, with no schema change behind it', async () => {
+/* Acceptance box 3 (phase 4 ticket 23): a second country's pack has to be
+   content alone. The stub key here has no bundled pack behind it and no
+   migration was run for it, which is the whole assertion. */
+test('a second pack keeps its own statuses, with no schema change behind it', async () => {
   const { journal } = await journalWithBuiltIns();
 
-  await journal.roadmap.setGoalChecked('pl', 'shared-goal-key', true);
-  await journal.roadmap.setGoalChecked('stub-second-country', 'shared-goal-key', true);
-  await journal.roadmap.setGoalChecked('stub-second-country', 'stub-only-goal', true);
+  await journal.roadmap.setGoalStatus('pl', 'shared-goal-key', 'checked');
+  await journal.roadmap.setGoalStatus('stub-second-country', 'shared-goal-key', 'checked');
+  await journal.roadmap.setGoalStatus('stub-second-country', 'stub-only-goal', 'not-my-path');
 
-  assert.deepEqual(await journal.roadmap.getCheckedGoals('pl'), ['shared-goal-key']);
-  assert.deepEqual(await journal.roadmap.getCheckedGoals('stub-second-country'), [
-    'shared-goal-key',
-    'stub-only-goal'
-  ]);
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), { 'shared-goal-key': 'checked' });
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('stub-second-country'), {
+    'shared-goal-key': 'checked',
+    'stub-only-goal': 'not-my-path'
+  });
 
-  await journal.roadmap.setGoalChecked('stub-second-country', 'shared-goal-key', false);
-  assert.deepEqual(await journal.roadmap.getCheckedGoals('pl'), ['shared-goal-key'], 'the other pack is untouched');
+  await journal.roadmap.setGoalStatus('stub-second-country', 'shared-goal-key', 'unchecked');
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), { 'shared-goal-key': 'checked' }, 'the other pack is untouched');
 });
 
 test('a tick writes no entry row - a roadmap goal is not a logged moment', async () => {
   const { journal, db } = await journalWithBuiltIns();
-  await journal.roadmap.setGoalChecked('pl', 'pl-medical-first-appointment', true);
+  await journal.roadmap.setGoalStatus('pl', 'pl-medical-first-appointment', 'checked');
 
   const entries = await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM entry');
   assert.equal(entries[0].n, 0);
+});
+
+test('a custom goal gets a minted uuid id, starts unchecked, and is never translated', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  const goal = await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  assert.match(goal.id, UUID_PATTERN);
+  assert.deepEqual(goal, { id: goal.id, track: 'social', text: 'Tell my sister', status: 'unchecked' });
+});
+
+test('custom goals come back in the order they were added, appended per track', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  const first = await journal.roadmap.addCustomGoal('legal', 'Ask the court about remote hearings');
+  const second = await journal.roadmap.addCustomGoal('social', 'Come out to my book club');
+  const third = await journal.roadmap.addCustomGoal('legal', 'Find a trans-friendly notary');
+
+  assert.deepEqual(
+    (await journal.roadmap.getCustomGoals()).map((g) => g.id),
+    [first.id, second.id, third.id]
+  );
+});
+
+test('a custom goal ticks through the same tri-state a bundled one does', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const goal = await journal.roadmap.addCustomGoal('presentational', 'A haircut I feel like myself in');
+
+  await journal.roadmap.setCustomGoalStatus(goal.id, 'checked');
+  assert.equal((await journal.roadmap.getCustomGoals())[0].status, 'checked');
+
+  await journal.roadmap.setCustomGoalStatus(goal.id, 'not-my-path');
+  assert.equal((await journal.roadmap.getCustomGoals())[0].status, 'not-my-path');
+
+  await journal.roadmap.setCustomGoalStatus(goal.id, 'unchecked');
+  assert.equal((await journal.roadmap.getCustomGoals())[0].status, 'unchecked');
+});
+
+test('setting a custom goal that does not exist fails loudly rather than doing nothing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(() => journal.roadmap.setCustomGoalStatus('not-a-real-uuid', 'checked'));
 });
