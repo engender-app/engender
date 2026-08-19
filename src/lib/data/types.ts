@@ -248,26 +248,49 @@ export interface CounterevidenceSnapshot {
   items: CounterevidenceEntry[];
 }
 
-export type TryoutKind = 'name' | 'pronouns';
+/** What someone is trying out (phase 4 ticket 16, widened past name/pronoun
+    by phase 5 ticket 13, CONTEXT: "Tryout"): a name or pronoun set, a
+    style, a garment, makeup, or a presentation step - one record type
+    covering whatever is being tried, rather than a second type forked
+    alongside this one for everything that is not a name or pronoun set. */
+export type TryoutKind = 'name' | 'pronouns' | 'style' | 'garment' | 'makeup' | 'presentation_step';
 
-/** Trying out a name or a pronoun set (phase 4 ticket 16, CONTEXT:
-    "Tryout"). `endEpochDay` is null while the tryout is still going - the
-    same "still running" shape DosePause uses for a break with no end date
-    yet - so a tryout in progress needs no placeholder end invented for it,
-    and several tryouts can overlap or sit entirely in the past with no
-    rule that exactly one of them is current.
+/** Trying something out (phase 4 ticket 16, widened by phase 5 ticket 13,
+    CONTEXT: "Tryout"). `endEpochDay` is null while the tryout is still
+    going - the same "still running" shape DosePause uses for a break with
+    no end date yet - so a tryout in progress needs no placeholder end
+    invented for it, and several tryouts can overlap or sit entirely in the
+    past with no rule that exactly one of them is current.
+
+    `description` is free text alongside `label`, for a kind whose label
+    does not carry enough on its own - a style or garment tryout usually
+    needs more said about it than a name or pronoun set does. Null for any
+    kind that has no use for it.
 
     Which entries fall inside a tryout's range is never stored (ADR-0010):
-    TryoutsArea owns only this row and its felt-sense history, and a
-    screen reads the entries themselves through
+    TryoutsArea owns only this row, its felt-sense history and its photos,
+    and a screen reads the entries themselves through
     entries.searchEntries('', [], { startEpochDay, endEpochDay }), the
     plain date-range filter the search screen already offers. */
 export interface Tryout {
   id: string;
   kind: TryoutKind;
   label: string;
+  description: string | null;
   startEpochDay: number;
   endEpochDay: number | null;
+}
+
+/** One dated tryout photo (phase 5 ticket 13). Its own shape rather than
+    ProcedurePhoto's, though the same reasoning: it is the only other photo
+    in the app that carries both an owner and a date, because when during
+    the tryout it was taken is the whole point of it, the same argument
+    ProcedurePhoto's own doc comment makes for recovery photos. */
+export interface TryoutPhoto {
+  id: string;
+  tryoutId: string;
+  epochDay: number;
+  fileName: string;
 }
 
 /** One point in a tryout's running felt-sense history (CONTEXT:

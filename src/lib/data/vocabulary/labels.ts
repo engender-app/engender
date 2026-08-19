@@ -23,7 +23,14 @@ import type {
   EntryTemplateKey,
   MilestoneTemplateKey
 } from './builtins';
-import type { CycleEventKind, HairRemovalMethod, Measurement, NorwoodHamiltonStage, PersonalEffectType } from '../types';
+import type {
+  CycleEventKind,
+  HairRemovalMethod,
+  Measurement,
+  NorwoodHamiltonStage,
+  PersonalEffectType,
+  TryoutKind
+} from '../types';
 import type { HairRemovalAreaKey } from '../hairRemovalAreas';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
@@ -151,6 +158,21 @@ const HAIR_REMOVAL_METHOD_NAME: Record<HairRemovalMethod, Message> = {
 
 /** The name of a hair-removal method. */
 export const hairRemovalMethodName = (method: HairRemovalMethod): string => HAIR_REMOVAL_METHOD_NAME[method]();
+
+/* A tryout's kind (phase 4 ticket 16, widened by phase 5 ticket 13) is a
+   fixed set, not a built-in row, the same reasoning HAIR_REMOVAL_METHOD_NAME
+   gives. */
+const TRYOUT_KIND_NAME: Record<TryoutKind, Message> = {
+  name: m.tryout_kind_name,
+  pronouns: m.tryout_kind_pronouns,
+  style: m.tryout_kind_style,
+  garment: m.tryout_kind_garment,
+  makeup: m.tryout_kind_makeup,
+  presentation_step: m.tryout_kind_presentation_step
+};
+
+/** The name of a tryout's kind. */
+export const tryoutKindName = (kind: TryoutKind): string => TRYOUT_KIND_NAME[kind]();
 
 /* A cycle event's three kinds (phase 5 ticket 03, CONTEXT: "Cycle event")
    are a fixed set, not a built-in row, the same reasoning
