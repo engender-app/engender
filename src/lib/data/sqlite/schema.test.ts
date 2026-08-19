@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 38);
+  assert.equal(db.getUserVersion(), 39);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -35,7 +35,9 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'measurement_type',
     'medication_stock',
     'milestone',
+    'effect_category',
     'personal_effect',
+    'personal_effect_type',
     'photo',
     'pref',
     'preset_dimension',
@@ -341,7 +343,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 38);
+  assert.equal(db.getUserVersion(), 39);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -359,11 +361,9 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
       )
     );
   }
-  assert.throws(() =>
-    db.raw.exec(
-      "INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe-bad', 'not_a_real_effect', 100, 1000)"
-    )
-  );
+  // v19's own CHECK on the closed eight no longer holds once the full
+  // migrations list runs - v37 drops it, the same way this test's sibling
+  // below shows v34 dropping measurement.type's. See the v37 test.
 });
 
 test('v34 drops the CHECK on measurement.type, preserving rows the v5 table already held', async () => {
@@ -375,7 +375,7 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 38);
+  assert.equal(db.getUserVersion(), 39);
 
   const row = db.raw.prepare('SELECT * FROM measurement WHERE uuid = ?').get('m1') as {
     type: string;
@@ -391,6 +391,56 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   assert.doesNotThrow(() =>
     db.raw.exec(
       "INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m2', 19180, 'a1b2c3d4-uuid', 30, 'cm', 1000)"
+    )
+  );
+});
+
+test('v39 drops the CHECK on personal_effect.effect and adds effect_category/personal_effect_type, preserving rows the v19 table already held', async () => {
+  const preV39 = migrations.filter((m) => m.version <= 19);
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), preV39);
+  db.raw.exec(
+    "INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe1', 'breast_development', 19180, 1000)"
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), 39);
+
+  const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
+    effect: string;
+    first_noticed_epoch_day: number;
+    updated_at: number;
+  };
+  assert.deepEqual(row.effect, 'breast_development');
+  assert.equal(row.first_noticed_epoch_day, 19180);
+  assert.equal(row.updated_at, 1000);
+
+  // The CHECK is gone: a key outside the old eight - including one shaped
+  // like a custom effect type's minted uuid - now inserts cleanly.
+  assert.doesNotThrow(() =>
+    db.raw.exec(
+      "INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe2', 'a1b2c3d4-uuid', 100, 1000)"
+    )
+  );
+
+  const categoryTable = db.raw
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'effect_category'")
+    .get();
+  assert.ok(categoryTable, 'effect_category table exists');
+  db.raw.exec("INSERT INTO effect_category (key, name, enabled, updated_at) VALUES ('body_shape', '', 1, 1000)");
+
+  const typeTable = db.raw
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'personal_effect_type'")
+    .get();
+  assert.ok(typeTable, 'personal_effect_type table exists');
+  assert.doesNotThrow(() =>
+    db.raw.exec(
+      "INSERT INTO personal_effect_type (key, name, category_key, direction, hidden, updated_at) VALUES ('breast_development', '', 'body_shape', 'feminizing', 0, 1000)"
+    )
+  );
+  assert.throws(() =>
+    db.raw.exec(
+      "INSERT INTO personal_effect_type (uuid, key, name, direction, hidden, updated_at) VALUES ('c1', 'c1', 'My own thing', 'not_a_direction', 0, 1000)"
     )
   );
 });
@@ -438,7 +488,7 @@ test('v37 carries the v13 table across as Norwood-Hamilton stagings', async () =
   db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h1', 19180, '3a', 1000)");
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 38);
+  assert.equal(db.getUserVersion(), 39);
 
   const row = db.raw.prepare('SELECT * FROM hair_stage WHERE uuid = ?').get('h1') as {
     epoch_day: number;
@@ -469,7 +519,7 @@ test('v38 carries the v8 dose_schedule table across as everyNDays, with no weekd
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 38);
+  assert.equal(db.getUserVersion(), 39);
 
   const row = db.raw.prepare('SELECT * FROM dose_schedule WHERE uuid = ?').get('s1') as {
     recurrence_kind: string;
