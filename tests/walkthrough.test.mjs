@@ -763,14 +763,14 @@ try {
   const presetButtons = page.locator('[data-preset]');
   const presetNames = await presetButtons.locator('[data-row-title]').allTextContents();
   const expectedPresetNames = [
-    'Femininity',
-    'Masculinity',
     'Fem + masc',
     'Fem + masc + nonbinary',
     'Agender axis',
     'Partly feminine',
     'Partly masculine',
-    'Full spectrum'
+    'Full spectrum',
+    'Femininity',
+    'Masculinity'
   ];
   if (JSON.stringify(presetNames) !== JSON.stringify(expectedPresetNames)) {
     throw new Error('onboarding preset names: ' + JSON.stringify(presetNames));
@@ -800,14 +800,14 @@ try {
   const picks = page.locator('[data-pick-preset]');
   const names = await picks.locator('[data-row-title]').allTextContents();
   const expected = [
-    ['p-btw', 'Femininity'],
-    ['p-masc', 'Masculinity'],
     ['p-fem-masc', 'Fem + masc'],
     ['p-fluid', 'Fem + masc + nonbinary'],
     ['p-agender', 'Agender axis'],
     ['p-demi-fem', 'Partly feminine'],
     ['p-demi-masc', 'Partly masculine'],
-    ['p-nb', 'Full spectrum']
+    ['p-nb', 'Full spectrum'],
+    ['p-btw', 'Femininity'],
+    ['p-masc', 'Masculinity']
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected.map(([, label]) => label))) {
     throw new Error('settings preset names: ' + JSON.stringify(names));
@@ -823,6 +823,33 @@ try {
   }
   ok('settings preset picker lists and persists all built-ins');
 } catch (e) { fail('settings preset picker', e); }
+
+/* 13c. onboarding step 2 starts unchosen, and "Not now" leaves the stored
+   default preset in place (ticket 28) */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+  await page.locator('[data-next]').click();
+  await page.locator('#ob-name').fill('Robin');
+  await page.locator('[data-next]').click();
+
+  if (await page.locator('[data-next]').isEnabled()) {
+    throw new Error('onboarding step 2 Continue was enabled before a preset was tapped');
+  }
+  await page.getByRole('button', { name: 'Not now' }).click();
+  await page.locator('[data-next]').click();
+  await page.locator('[data-next]').click();
+  await page.locator('[data-finish]').click();
+  await page.waitForSelector('[data-home-hello]');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Gender preset/i }).click();
+  await page.waitForSelector('[data-pick-preset="p-fem-masc"][data-selected="true"]');
+  ok('onboarding "Not now" keeps the default preset');
+} catch (e) { fail('onboarding not-now preset', e); }
 
 /* 14. desktop: rail via container query at wide viewport */
 try {
