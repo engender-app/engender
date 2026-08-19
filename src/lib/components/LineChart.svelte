@@ -63,11 +63,16 @@
       line: lineGen(points) ?? '',
       area: areaGen(points) ?? '',
       dots: points.map((p) => ({ cx: x(p.day), cy: y(p.value) })),
-      label: m.chart_aria({
-        count: String(points.length),
-        from: fmtDay(x0, { day: 'numeric', month: 'short' }),
-        to: fmtDay(x1, { day: 'numeric', month: 'short' })
-      }),
+      // Skipped once ariaLabel overrides it: fmtDay would format a bucketed
+      // position (a day of interval, say) as though it were an epoch day,
+      // which is wrong rather than merely unused.
+      label: ariaLabel
+        ? ''
+        : m.chart_aria({
+            count: String(points.length),
+            from: fmtDay(x0, { day: 'numeric', month: 'short' }),
+            to: fmtDay(x1, { day: 'numeric', month: 'short' })
+          }),
     };
   });
 
