@@ -387,8 +387,11 @@ try {
   await page.locator('[data-segment="estradiol"]').click();
   /* The "+" sheet now prefills from whichever analyte is on screen (ticket
      37), so the add below has to happen after the switch has actually
-     reached that state, not just after the click event fired. */
+     reached that state - not just after aria-checked flips, which is
+     synchronous and settles a query round-trip before the series/result
+     list this test reads next actually catches up to the new analyte. */
   await page.waitForSelector('[data-segment="estradiol"][aria-checked="true"]');
+  await page.waitForSelector('[data-series-unit]:has-text("pg/mL")'); // text-under-test: the persona's own estradiol unit, confirming the series list itself (not just the segment button) has caught up
   await page.waitForSelector('[data-lab-series]');
   if ((await page.locator('[data-lab-series]').count()) !== 1) throw new Error('estradiol did not start as one series');
   const resultsBefore = await page.locator('[data-lab-result]').count();
