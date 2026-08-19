@@ -102,7 +102,7 @@ async function populated() {
     status: 'changed',
     scheduled: { dose: 2, route: 'oral', timestamp: 1_700_090_000_000 }
   });
-  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, everyNDays: 14, dosesPerDay: 1 });
+  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null });
   const dosePause = await journal.doses.upsertPause({
     episodeId: episode,
     startEpochDay: 19100,
@@ -478,7 +478,15 @@ test('schedules and pauses name their episode by its travelling uuid, not this d
   const snapshot = await journal.archive.snapshot();
 
   assert.deepEqual(snapshot.journal.doseSchedules, [
-    { id: schedule, episodeId: episode, everyNDays: 14, dosesPerDay: 1 }
+    {
+      id: schedule,
+      episodeId: episode,
+      recurrenceKind: 'everyNDays',
+      everyNDays: 14,
+      weekdays: null,
+      dosesPerDay: 1,
+      doseAmounts: null
+    }
   ]);
   assert.deepEqual(snapshot.journal.dosePauses, [
     { id: dosePause, episodeId: episode, startEpochDay: 19100, endEpochDay: 19110, reason: 'accidental' }
@@ -618,8 +626,13 @@ const CARRIED: Record<string, string[]> = {
   ],
   // episode_id travels as the episode's uuid, the way preset_dimension's
   // rowids travel as keys (ADR-0002).
-  dose_schedule: ['uuid', 'episode_id', 'every_n_days', 'doses_per_day'],
+  dose_schedule: ['uuid', 'episode_id', 'recurrence_kind', 'every_n_days', 'doses_per_day'],
   dose_pause: ['uuid', 'episode_id', 'start_epoch_day', 'end_epoch_day', 'reason'],
+  // schedule_id travels as the schedule's own uuid, the way dose_pause's
+  // episode_id does (ADR-0002) - nested inside its ArchiveDoseSchedule
+  // rather than carried as its own section (payload.ts).
+  dose_schedule_weekday: ['schedule_id', 'weekday'],
+  dose_schedule_dose_amount: ['schedule_id', 'position', 'dose', 'dose_unit'],
   medication_stock: [
     'uuid',
     'drug',

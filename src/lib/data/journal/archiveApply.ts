@@ -829,6 +829,11 @@ export async function applyDoseEvents({ driver, journal, ts }: Restoring): Promi
    dropped rather than inserted against a guessed episode: a schedule
    belonging to nothing would generate slots nobody expects, and a merge is
    allowed to carry only part of another device's history. */
+/* Not the batched insertRows helper the rest of this module uses: a
+   schedule's weekdays and dose amounts are child rows that need the parent's
+   own rowid back, which a chunked multi-row INSERT does not hand back per
+   row. One episode has at most one schedule, so the per-row cost this trades
+   away is not one this module needs to have avoided. */
 export async function applyDoseSchedules({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM dose_schedule');
   const episodesWithSchedule = await presentIds(
@@ -841,7 +846,6 @@ export async function applyDoseSchedules({ driver, journal, ts }: Restoring): Pr
     journal.doseSchedules.map((schedule) => schedule.episodeId)
   );
 
-  const rows: unknown[][] = [];
   for (const schedule of journal.doseSchedules) {
     if (present.has(schedule.id)) continue;
     const episodeId = episodeIds.get(schedule.episodeId);
@@ -849,10 +853,27 @@ export async function applyDoseSchedules({ driver, journal, ts }: Restoring): Pr
     // second one for an episode that already has its own.
     if (episodeId === undefined || episodesWithSchedule.has(schedule.episodeId)) continue;
     episodesWithSchedule.add(schedule.episodeId);
-    rows.push([schedule.id, episodeId, schedule.everyNDays, schedule.dosesPerDay, ts]);
-  }
 
-  await insertRows(driver, 'INSERT INTO dose_schedule (uuid, episode_id, every_n_days, doses_per_day, updated_at)', rows);
+    const result = await driver.run(
+      `INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [schedule.id, episodeId, schedule.recurrenceKind, schedule.everyNDays, schedule.dosesPerDay, ts]
+    );
+    const scheduleId = result.lastInsertRowid;
+
+    for (const weekday of schedule.weekdays ?? []) {
+      await driver.run('INSERT INTO dose_schedule_weekday (schedule_id, weekday) VALUES (?, ?)', [
+        scheduleId,
+        weekday
+      ]);
+    }
+    for (const [position, amount] of (schedule.doseAmounts ?? []).entries()) {
+      await driver.run(
+        'INSERT INTO dose_schedule_dose_amount (schedule_id, position, dose, dose_unit) VALUES (?, ?, ?, ?)',
+        [scheduleId, position, amount.dose, amount.doseUnit]
+      );
+    }
+  }
 }
 
 export async function applyDosePauses({ driver, journal, ts }: Restoring): Promise<void> {

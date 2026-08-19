@@ -208,6 +208,9 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM tryout_photo',
     'DELETE FROM tryout',
     'DELETE FROM dose_event',
+    // Before the schedule they hang off, same reasoning as the comment below.
+    'DELETE FROM dose_schedule_weekday',
+    'DELETE FROM dose_schedule_dose_amount',
     /* Before the episodes they hang off. The foreign keys cascade, but only
        with `PRAGMA foreign_keys` on, which is the driver's business and not
        something this ordering should depend on. */

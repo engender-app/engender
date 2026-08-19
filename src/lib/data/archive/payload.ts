@@ -497,12 +497,24 @@ export interface ArchiveDoseEvent {
 }
 
 /** Named by the episode's travelling uuid, not its rowid: the rowid means
-    nothing on the device importing this (ADR-0002). */
+    nothing on the device importing this (ADR-0002).
+
+    Flat and permissive like ArchiveDoseEvent above, not the domain's
+    `DoseScheduleRecurrence` union: `recurrenceKind` is a plain string and
+    `everyNDays`/`weekdays` both nullable, so a build that only knows
+    'everyNDays' can still read a 'weekdays' row's fields field by field
+    instead of failing to parse an arm it has never seen. `weekdays` and
+    `doseAmounts` are this schedule's own child rows (dose_schedule_weekday,
+    dose_schedule_dose_amount), nested here the same way ArchiveTryoutPhoto
+    nests under its tryout rather than travelling as their own section. */
 export interface ArchiveDoseSchedule {
   id: string;
   episodeId: string;
-  everyNDays: number;
+  recurrenceKind: string;
+  everyNDays: number | null;
+  weekdays: number[] | null;
   dosesPerDay: number;
+  doseAmounts: { dose: number; doseUnit: string }[] | null;
 }
 
 export interface ArchiveDosePause {
