@@ -1146,6 +1146,30 @@ ALTER TABLE measurement_v34 RENAME TO measurement;
 CREATE INDEX idx_measurement_type ON measurement(type, epoch_day);
 `;
 
+/* v35: the sizes-and-fit log (phase 5 ticket 23, CONTEXT: "Size record").
+   No episode reference, the same reason measurement (v6) has none: it has
+   to work whether or not a regimen episode exists. `category` is a closed,
+   built-in vocabulary the same way hair_removal_session.area is (v25) -
+   garmentCategories.ts holds the list this CHECK enforces. `size` is
+   required (there is nothing to log without one); `brand` and `fit_note`
+   default to '' the same way hair_removal_session.cost/provider do, since
+   neither is ever normalized (ADR-0012's rule for a stored unit applies to
+   free text just the same). */
+const SCHEMA_V35 = `
+CREATE TABLE size_record (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  category   TEXT NOT NULL CHECK (category IN ('shirts','pants','dresses','skirts','bras','underwear','shoes','outerwear')),
+  size       TEXT NOT NULL,
+  brand      TEXT NOT NULL DEFAULT '',
+  fit_note   TEXT NOT NULL DEFAULT '',
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_size_record_epoch_day ON size_record(epoch_day);
+CREATE INDEX idx_size_record_category ON size_record(category);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1180,7 +1204,8 @@ export const migrations: Migration[] = [
   { version: 31, sql: SCHEMA_V31 },
   { version: 32, sql: SCHEMA_V32 },
   { version: 33, sql: SCHEMA_V33 },
-  { version: 34, sql: SCHEMA_V34 }
+  { version: 34, sql: SCHEMA_V34 },
+  { version: 35, sql: SCHEMA_V35 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

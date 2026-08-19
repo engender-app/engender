@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 34);
+  assert.equal(db.getUserVersion(), 35);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -307,7 +307,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 34);
+  assert.equal(db.getUserVersion(), 35);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -341,7 +341,7 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 34);
+  assert.equal(db.getUserVersion(), 35);
 
   const row = db.raw.prepare('SELECT * FROM measurement WHERE uuid = ?').get('m1') as {
     type: string;

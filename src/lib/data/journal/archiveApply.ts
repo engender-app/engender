@@ -529,6 +529,17 @@ export async function applyMeasurements({ driver, journal, ts }: Restoring): Pro
   );
 }
 
+export async function applySizeRecords({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM size_record');
+
+  const inserting = journal.sizeRecords.filter((record) => !present.has(record.id));
+  await insertRows(
+    driver,
+    'INSERT INTO size_record (uuid, epoch_day, category, size, brand, fit_note, updated_at)',
+    inserting.map((record) => [record.id, record.epochDay, record.category, record.size, record.brand, record.fitNote, ts])
+  );
+}
+
 export async function applyRegimenEpisodes({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM regimen_episode');
 
