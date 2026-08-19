@@ -13,6 +13,7 @@
    recording's id survives the same way a removed stored photo's does. */
 
 import type { EntryDraft } from './entryDraft';
+import type { BodyRegionFeeling } from './types';
 
 export interface PersistedEntryDraft {
   id: number | undefined;
@@ -22,7 +23,7 @@ export interface PersistedEntryDraft {
   note: string;
   dims: Record<string, number>;
   tags: string[];
-  bodyRegions: Record<string, number>;
+  bodyRegions: Record<string, BodyRegionFeeling>;
   removedPhotoIds: string[];
   removedRecordingIds: string[];
   removedVideoIds: string[];
@@ -38,7 +39,7 @@ export function serializeDraft(draft: EntryDraft): PersistedEntryDraft {
     note: draft.note,
     dims: { ...draft.dims },
     tags: [...draft.tags],
-    bodyRegions: { ...draft.bodyRegions },
+    bodyRegions: structuredClone(draft.bodyRegions),
     removedPhotoIds: [...draft.removedPhotoIds],
     removedRecordingIds: [...draft.removedRecordingIds],
     removedVideoIds: [...draft.removedVideoIds]
@@ -62,7 +63,7 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
   draft.note = persisted.note;
   draft.dims = { ...persisted.dims };
   draft.tags = [...persisted.tags];
-  draft.bodyRegions = { ...persisted.bodyRegions };
+  draft.bodyRegions = structuredClone(persisted.bodyRegions);
   draft.removedPhotoIds = [...persisted.removedPhotoIds];
   draft.photos = draft.photos.filter((p) => p.kind !== 'stored' || !draft.removedPhotoIds.includes(p.photo.id));
   draft.removedRecordingIds = [...persisted.removedRecordingIds];

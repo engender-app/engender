@@ -33,7 +33,7 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
     note: 'łóżko',
     dims: { euphoria_dysphoria: 70, femininity: 55 },
     tags: ['e-happy', 'g-soc-eu'],
-    bodyRegions: { chest: 60, voice_throat: 30 }
+    bodyRegions: { chest: { dysphoria: 60, euphoria: null }, voice_throat: { dysphoria: 30, euphoria: null } }
   });
 
   const entry = await journal.entries.getEntry(id);
@@ -51,7 +51,7 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
       photos: [],
       recordings: [],
       videos: [],
-      bodyRegions: { chest: 60, voice_throat: 30 },
+      bodyRegions: { chest: { dysphoria: 60, euphoria: null }, voice_throat: { dysphoria: 30, euphoria: null } },
       starred: false
     }
   );
@@ -65,20 +65,71 @@ test('body regions replace as a whole set on update, unlike dimension values', a
   const id = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 3,
-    bodyRegions: { chest: 40, hairline: 70 }
+    bodyRegions: { chest: { dysphoria: 40, euphoria: null }, hairline: { dysphoria: 70, euphoria: null } }
   });
 
-  await journal.entries.upsertEntry({ id, mood: 3, bodyRegions: { chest: 90 } });
+  await journal.entries.upsertEntry({ id, mood: 3, bodyRegions: { chest: { dysphoria: 90, euphoria: null } } });
 
-  assert.deepEqual((await journal.entries.getEntry(id))?.bodyRegions, { chest: 90 });
+  assert.deepEqual((await journal.entries.getEntry(id))?.bodyRegions, { chest: { dysphoria: 90, euphoria: null } });
+});
+
+test('a region can carry euphoria alone, distinct from a region that did not hurt', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const good = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 80 } }
+  });
+  const painless = await journal.entries.upsertEntry({
+    epochDay: 101,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: 0, euphoria: null } }
+  });
+
+  // The point of the second axis: "this felt good" and "this did not hurt"
+  // are different statements, and neither is the absence of the other.
+  assert.deepEqual((await journal.entries.getEntry(good))?.bodyRegions, {
+    chest: { dysphoria: null, euphoria: 80 }
+  });
+  assert.deepEqual((await journal.entries.getEntry(painless))?.bodyRegions, {
+    chest: { dysphoria: 0, euphoria: null }
+  });
+});
+
+test('a region can carry both axes at once', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: 40, euphoria: 65 } }
+  });
+
+  assert.deepEqual((await journal.entries.getEntry(id))?.bodyRegions, {
+    chest: { dysphoria: 40, euphoria: 65 }
+  });
+});
+
+test('a region with neither axis set is not stored', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  // Picking a region in the editor and then leaving it alone writes no row:
+  // it says nothing the region's absence does not already say.
+  const id = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: null, euphoria: null }, hairline: { dysphoria: 20, euphoria: null } }
+  });
+  assert.deepEqual((await journal.entries.getEntry(id))?.bodyRegions, {
+    hairline: { dysphoria: 20, euphoria: null }
+  });
 });
 
 test('an entry can log body regions with no dysphoria tag and independently of one', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: 55 } });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: { dysphoria: 55, euphoria: null } } });
 
   const entry = await journal.entries.getEntry(id);
-  assert.deepEqual(entry?.bodyRegions, { chest: 55 });
+  assert.deepEqual(entry?.bodyRegions, { chest: { dysphoria: 55, euphoria: null } });
   assert.deepEqual(entry?.tags, []);
 });
 
@@ -147,22 +198,22 @@ test('unknown write ids throw: entry id, dimension key, tag id, body region', as
   await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, mood: 4, dims: { nope: 1 } }), /unknown dimension/);
   await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, mood: 4, tags: ['nope'] }), /unknown tag/);
   await assert.rejects(
-    journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { nope: 1 } }),
+    journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { nope: { dysphoria: 1, euphoria: null } } }),
     /unknown body region/
   );
 
-  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { chest: 1 } });
-  await assert.rejects(journal.entries.upsertEntry({ id, bodyRegions: { nope: 1 } }), /unknown body region/);
+  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { chest: { dysphoria: 1, euphoria: null } } });
+  await assert.rejects(journal.entries.upsertEntry({ id, bodyRegions: { nope: { dysphoria: 1, euphoria: null } } }), /unknown body region/);
 });
 
 test('an entry can log an intensity against a custom body region by its uuid', async () => {
   const { journal } = await journalWithBuiltIns();
   const region = await journal.bodyRegions.addCustomRegion('scar tissue');
 
-  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { [region.id]: 70 } });
+  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { [region.id]: { dysphoria: 70, euphoria: null } } });
 
   const entry = await journal.entries.getEntry(id);
-  assert.deepEqual(entry?.bodyRegions, { [region.id]: 70 });
+  assert.deepEqual(entry?.bodyRegions, { [region.id]: { dysphoria: 70, euphoria: null } });
 });
 
 test('deleting an entry moves it to trash: hidden from getEntry, but its rows and files survive; twice is success', async () => {
@@ -176,7 +227,7 @@ test('deleting an entry moves it to trash: hidden from getEntry, but its rows an
     mood: 4,
     dims: { femininity: 60 },
     tags: ['e-happy'],
-    bodyRegions: { chest: 30 }
+    bodyRegions: { chest: { dysphoria: 30, euphoria: null } }
   });
   db.raw.prepare("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', ?, 'p1.jpg', 0)").run(id);
   db.raw

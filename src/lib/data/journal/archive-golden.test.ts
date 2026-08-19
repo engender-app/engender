@@ -129,7 +129,13 @@ async function everySection(): Promise<Journal> {
     note: 'a good day, zażółć gęślą jaźń',
     dims: { [voice.key]: 7, femininity: 60 },
     tags: [tag.id, 'e-happy'],
-    bodyRegions: { chest: 45, [bodyRegion.id]: 30 }
+    // Three shapes on purpose, so the fixture pins all of them: distress
+    // only, euphoria only, and both at once (ticket 31).
+    bodyRegions: {
+      chest: { dysphoria: 45, euphoria: null },
+      [bodyRegion.id]: { dysphoria: 30, euphoria: 55 },
+      voice_throat: { dysphoria: null, euphoria: 70 }
+    }
   });
   await journal.photos.attach({ entryId: entry }, { full: bytes('full photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });
