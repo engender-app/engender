@@ -1,13 +1,12 @@
-/* The hair-progress area (phase 4 ticket 09): Norwood-Hamilton self-staging
-   and scheduled fixed-position photos.
+/* The hair-progress area (phase 4 ticket 09): self-staging against a
+   published scale, and scheduled fixed-position photos.
 
    Stages are a dated series like measurement (ticket 08) - a person
    re-stages over time, never replacing one date's value in place. No
    episode or anchor reference: what a screen reads staging and photos
-   against - the earliest finasteride/dutasteride/minoxidil dose - is
-   resolved above this seam (hairTreatmentAnchor.ts's
-   earliestHairTreatmentDoseEpochDay), the same reason personalEffects.ts
-   and measurements.ts carry none either.
+   against is resolved above this seam (hairAnchor.ts's
+   hairAnchorEpochDay), the same reason personalEffects.ts and
+   measurements.ts carry none either.
 
    Hair photos are their own table rather than a third owner on `photo`
    (migrations.ts v13 explains why: SQLite cannot widen that table's

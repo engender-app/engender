@@ -203,7 +203,8 @@ function portableWith(marker: string) {
     preferredLabUnits: {},
     streakGoalHabit: values.streakGoalHabit,
     streakGoalTargetDays: values.streakGoalTargetDays,
-    journeyAnchorMilestoneId: values.journeyAnchorMilestoneId
+    journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
+    hairAnchorEpochDay: values.hairAnchorEpochDay
   };
 }
 
