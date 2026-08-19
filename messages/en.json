@@ -1043,7 +1043,7 @@
   "regimen_hidden": "hidden",
   "regimen_row_aria": "Edit the {drug} episode starting {date}",
   "regimen_template_sheet_title": "Add a regimen episode",
-  "regimen_own_title": "Enter it yourself",
+  "regimen_own_title": "Enter your own",
   "regimen_own_sub": "any drug, dose and route",
   "regimen_new_sheet": "New regimen episode",
   "regimen_edit_sheet": "Edit regimen episode",
