@@ -9,8 +9,7 @@
     toComparePair,
     toggleCompareAnchor
   } from '$lib/data/photos/compare-state';
-  import { MEASUREMENT_TYPES } from '$lib/data/journal/measurements';
-  import { measurementTypeName } from '$lib/data/vocabulary/labels';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Measurement } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
@@ -45,16 +44,22 @@
   let rangeMeasurements = $derived(rangeQuery.value ?? []);
 
   let rangeSummaries = $derived.by(() => {
-    const byType = new Map<Measurement['type'], Measurement[]>();
+    const byType = new Map<string, Measurement[]>();
     for (const measurement of rangeMeasurements) {
       const list = byType.get(measurement.type) ?? [];
       list.push(measurement);
       byType.set(measurement.type, list);
     }
-    return MEASUREMENT_TYPES.filter((t) => byType.has(t)).map((t) => {
-      const list = byType.get(t)!;
-      return { type: t, first: list[0], last: list[list.length - 1] };
-    });
+    // Ordered by the vocabulary's own order, hidden types included: a
+    // range someone is comparing may still hold a measurement logged
+    // against a type since hidden, and this summary reads it back
+    // exactly as logged (CONTEXT: "Hidden").
+    return vocabulary.measurementTypes
+      .filter((t) => byType.has(t.key))
+      .map((t) => {
+        const list = byType.get(t.key)!;
+        return { type: t.key, first: list[0], last: list[list.length - 1] };
+      });
   });
 
   function toggle(id: string) {
@@ -96,7 +101,7 @@
           {#each rangeSummaries as s (s.type)}
             <div class="list-row" data-range-measurement={s.type}>
               <span class="row-text">
-                <span class="row-title">{measurementTypeName(s.type)}</span>
+                <span class="row-title">{vocabulary.measurementTypeName(s.type)}</span>
                 <span class="row-subtitle">
                   {#if s.first.id === s.last.id}
                     {s.first.value} {s.first.unit}

@@ -1099,6 +1099,53 @@ CREATE INDEX idx_felt_sense_tryout ON felt_sense(tryout_id);
 CREATE INDEX idx_felt_sense_milestone ON felt_sense(milestone_id);
 `;
 
+/* v34: custom measurement types, and hide/unhide for a built-in one (phase
+   5 ticket 29). Waist, hips, chest and underbust were the only four
+   `measurement.type` could ever be; a person tracking anything else - a
+   shoulder, a neck, an arm - had no row for it. `measurement_type` gives
+   the type its own vocabulary row, the same `key` NOT NULL / `uuid`
+   nullable shape `gender_dimension` uses (ADR-0002): a built-in has a
+   `uuid` of NULL and a stable `key`, a custom mints a uuid that doubles as
+   both columns. There is no `name`/`min`/`max` split like a dimension's -
+   a measurement type has one number, not a scale between two ends - so
+   this is closer to `tag`'s shape than `gender_dimension`'s, minus the
+   group it would otherwise belong to.
+
+   `measurement.type` cannot keep its CHECK once the set is open to a
+   uuid it was never written to allow (same limitation v19 and v31's
+   comments describe) - copy, drop, rename, the same shape those two use.
+   The index is dropped with the table and has to be recreated after the
+   rename; existing rows carry across with their `type` value unchanged,
+   which is what lets them go on meaning what they meant, whether that
+   value turns out to name a built-in key or, after this ticket, a custom
+   type's uuid. */
+const SCHEMA_V34 = `
+CREATE TABLE measurement_type (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT UNIQUE,
+  key         TEXT NOT NULL UNIQUE,
+  name        TEXT NOT NULL,
+  is_built_in INTEGER NOT NULL DEFAULT 0,
+  hidden      INTEGER NOT NULL DEFAULT 0,
+  updated_at  INTEGER NOT NULL
+);
+
+CREATE TABLE measurement_v34 (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  type       TEXT NOT NULL,
+  value      REAL NOT NULL,
+  unit       TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+INSERT INTO measurement_v34 (id, uuid, epoch_day, type, value, unit, updated_at)
+  SELECT id, uuid, epoch_day, type, value, unit, updated_at FROM measurement;
+DROP TABLE measurement;
+ALTER TABLE measurement_v34 RENAME TO measurement;
+CREATE INDEX idx_measurement_type ON measurement(type, epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1132,7 +1179,8 @@ export const migrations: Migration[] = [
   { version: 30, sql: SCHEMA_V30 },
   { version: 31, sql: SCHEMA_V31 },
   { version: 32, sql: SCHEMA_V32 },
-  { version: 33, sql: SCHEMA_V33 }
+  { version: 33, sql: SCHEMA_V33 },
+  { version: 34, sql: SCHEMA_V34 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

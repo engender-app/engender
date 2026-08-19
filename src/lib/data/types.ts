@@ -194,13 +194,32 @@ export interface LabResult {
 }
 
 /* No episode reference (ticket 08 scope): a measurement stands alone and
-   has to work whether or not a regimen episode exists. */
+   has to work whether or not a regimen episode exists. `type` names a
+   MeasurementType by key - a built-in's stable key or a custom's minted
+   uuid (phase 5 ticket 29) - rather than a closed union: the CHECK that
+   once enforced the closed set lives in application code now, the same
+   free-text-but-matched-by-key treatment tag.label's group reference
+   never needed either, because nothing here resolves it to a rowid. */
 export interface Measurement {
   id: string;
-  type: 'waist' | 'hips' | 'chest' | 'underbust';
+  type: string;
   epochDay: number;
   value: number;
   unit: string;
+}
+
+/* A measurement type (phase 5 ticket 29): user-supplied name, created from
+   the measurements screen, minted with a uuid that doubles as its key -
+   exactly addCustomDimension's pattern (dimensions.ts). Hides rather than
+   deletes, like a gender dimension or a tag (CONTEXT: "Hidden"): every
+   measurement logged against it survives a hide. `name` is '' for a
+   built-in - its wording is looked up at display time (vocabulary.ts),
+   the same split GenderDimension's name gets. */
+export interface MeasurementType {
+  key: string;
+  name: string;
+  builtIn: boolean;
+  hidden: boolean;
 }
 
 /** The two counters ticket 10 tracks. Fixed rather than user-defined, so it
@@ -565,9 +584,10 @@ export interface PersonalEffect {
 
 /** The published Norwood-Hamilton scale (phase 4 ticket 09), as the twelve
     stage labels the classification uses - including the "vertex" and "a"
-    (anterior) variants at stages 3 and beyond. Closed, the way
-    Measurement['type'] is: there is no sixth or "in-between" stage to add,
-    the scale itself is the fixed vocabulary. */
+    (anterior) variants at stages 3 and beyond. Closed: there is no sixth
+    or "in-between" stage to add, the scale itself is the fixed
+    vocabulary - unlike a measurement type, which opens to a custom one
+    (phase 5 ticket 29). */
 export type NorwoodHamiltonStage = '1' | '2' | '2a' | '3' | '3v' | '3a' | '4' | '4a' | '5' | '5a' | '6' | '7';
 
 /* A dated series like Measurement (ticket 08), not a single replaced value

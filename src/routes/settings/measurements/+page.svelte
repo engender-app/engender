@@ -2,8 +2,8 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { MEASUREMENT_TYPES, type MeasurementSeries } from '$lib/data/journal/measurements';
-  import { measurementTypeName } from '$lib/data/vocabulary/labels';
+  import type { MeasurementSeries } from '$lib/data/journal/measurements';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Measurement } from '$lib/data/types';
@@ -14,15 +14,17 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
-  const PROTOCOL: Record<Measurement['type'], () => string> = {
+  /** No card for a custom type - it never had built-in guidance to give
+      (CONTEXT: "Custom"). */
+  const PROTOCOL: Partial<Record<string, () => string>> = {
     waist: m.measurement_protocol_waist,
     hips: m.measurement_protocol_hips,
     chest: m.measurement_protocol_chest,
     underbust: m.measurement_protocol_underbust
   };
 
-  let type = $state<Measurement['type']>('waist');
-  const typeOptions = MEASUREMENT_TYPES.map((t) => ({ value: t, label: measurementTypeName(t) }));
+  let type = $state<string>('waist');
+  let typeOptions = $derived(vocabulary.visibleMeasurementTypes.map((t) => ({ value: t.key, label: t.name })));
 
   let measurementsQuery = liveQuery(['measurement'], (j) => j.measurements.getMeasurements(type));
   let measurements = $derived(measurementsQuery.value ?? []);
@@ -47,8 +49,10 @@
     return measurements.at(-1)?.unit ?? 'cm';
   }
 
-  let editor = $state<{ id?: string; date: string; type: Measurement['type']; value: string; unit: string } | null>(null);
+  let editor = $state<{ id?: string; date: string; type: string; value: string; unit: string } | null>(null);
   let deleteTarget = $state<Measurement | null>(null);
+  let manageOpen = $state(false);
+  let newTypeName = $state('');
 
   function openEditor(measurement: Measurement | null) {
     editor = measurement
@@ -96,7 +100,30 @@
     await journal.measurements.deleteMeasurement(id);
   }
 
-  function dismissProtocol(t: Measurement['type']) {
+  /** Hiding never deletes (CONTEXT: "Hidden") - it only takes the type out
+      of the picker above. If that was the type on screen, fall back to
+      another still-visible one rather than leaving the picker on a type
+      it no longer offers. `vocabulary.measurementTypes` is read before the
+      write's own mirror refresh lands, so `key` is excluded explicitly
+      rather than trusted to already read hidden. */
+  async function setTypeHidden(key: string, hidden: boolean) {
+    await journal.measurements.setMeasurementTypeHidden(key, hidden);
+    if (hidden && type === key) {
+      const fallback = vocabulary.measurementTypes.find((t) => t.key !== key && !t.hidden);
+      if (fallback) type = fallback.key;
+    }
+  }
+
+  async function addType() {
+    const name = newTypeName.trim();
+    if (!name) return;
+    const created = await journal.measurements.addCustomMeasurementType(name);
+    newTypeName = '';
+    manageOpen = false;
+    type = created.key;
+  }
+
+  function dismissProtocol(t: string) {
     prefs.measurementProtocolDismissed = { ...prefs.measurementProtocolDismissed, [t]: true };
   }
 </script>
@@ -106,6 +133,9 @@
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.body_measurements()}</h1>
     <div class="header-action">
+      <button class="icon-btn" data-manage-types aria-label={m.measurement_manage_types_aria()} onclick={() => (manageOpen = true)}>
+        <Icon name="settings" size={20} />
+      </button>
       <button class="icon-btn" data-add aria-label={m.measurement_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
@@ -113,9 +143,9 @@
   </header>
 
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.measurements_intro()}</p>
-  <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v as Measurement['type'])} />
+  <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
-  {#if !prefs.measurementProtocolDismissed[type]}
+  {#if !prefs.measurementProtocolDismissed[type] && PROTOCOL[type]}
     <div class="card" data-protocol={type} style="margin-top:var(--space-4)">
       <div class="spread">
         <h3>{m.measurement_protocol_title()}</h3>
@@ -123,7 +153,7 @@
           <Icon name="x" size={18} />
         </button>
       </div>
-      <p class="muted small">{PROTOCOL[type]()}</p>
+      <p class="muted small">{PROTOCOL[type]!()}</p>
     </div>
   {/if}
 
@@ -134,7 +164,7 @@
       {@const chart = chartFor(s)}
       <div class="card" data-measurement-series={s.unit} style="margin-top:var(--space-4)">
         <div class="spread" style="margin-bottom:var(--space-2)">
-          <span class="chart-title">{measurementTypeName(type)}</span>
+          <span class="chart-title">{vocabulary.measurementTypeName(type)}</span>
           <span class="muted small series-unit">{s.unit}</span>
         </div>
         {#if chart}
@@ -150,7 +180,7 @@
         <button
           class="list-row"
           data-measurement={r.id}
-          aria-label={m.measurement_row_aria({ type: measurementTypeName(r.type), date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+          aria-label={m.measurement_row_aria({ type: vocabulary.measurementTypeName(r.type), date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
           onclick={() => openEditor(r)}
         >
           <span class="row-text">
@@ -176,7 +206,7 @@
       <h3>{editor.id ? m.measurement_edit_sheet() : m.measurement_new_sheet()}</h3>
       <div class="field">
         <span class="field-label">{m.measurement_type_label()}</span>
-        <Segmented name={m.measurement_type_label()} options={typeOptions} value={editor.type} onChange={(v) => (editor!.type = v as Measurement['type'])} />
+        <Segmented name={m.measurement_type_label()} options={typeOptions} value={editor.type} onChange={(v) => (editor!.type = v)} />
       </div>
       <div class="field">
         <label class="field-label" for="measurement-date">{m.measurement_date_label()}</label>
@@ -211,12 +241,48 @@
 
   <Sheet open={deleteTarget !== null} title={m.measurement_delete_sheet()} onClose={() => (deleteTarget = null)}>
     {#if deleteTarget}
-      <h3>{m.measurement_delete_q({ type: measurementTypeName(deleteTarget.type) })}</h3>
+      <h3>{m.measurement_delete_q({ type: vocabulary.measurementTypeName(deleteTarget.type) })}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.measurement_delete_hint()}</p>
       <div class="stack-3">
         <button class="btn btn-danger" data-confirm-delete-measurement onclick={deleteMeasurement}><span>{m.measurement_delete()}</span></button>
         <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
       </div>
     {/if}
+  </Sheet>
+
+  <Sheet open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
+    <h3>{m.measurement_manage_types()}</h3>
+    <p class="muted small" style="margin-bottom:var(--space-3)">{m.measurement_manage_types_intro()}</p>
+    <div class="managed-tags">
+      {#each vocabulary.measurementTypes as t (t.key)}
+        <div class="managed-tag" class:is-hidden={t.hidden}>
+          <span class="managed-label">
+            {t.name}{#if !t.builtIn}<span class="muted small"> · {m.custom_suffix()}</span>{/if}
+          </span>
+          {#if t.hidden}<span class="muted small">{m.tags_hidden()}</span>{/if}
+          <span class="managed-actions">
+            <button
+              class="icon-btn"
+              data-measurement-type-hide={t.key}
+              aria-label={t.hidden ? m.measurement_type_show_aria({ name: t.name }) : m.measurement_type_hide_aria({ name: t.name })}
+              onclick={() => setTypeHidden(t.key, !t.hidden)}
+            >
+              <Icon name={t.hidden ? 'eye' : 'eyeOff'} size={16} />
+            </button>
+          </span>
+        </div>
+      {/each}
+    </div>
+    <div class="field" style="margin-top:var(--space-4)">
+      <label class="field-label" for="new-measurement-type">{m.measurement_type_new_label()}</label>
+      <input
+        class="input"
+        id="new-measurement-type"
+        name="new-measurement-type"
+        placeholder={m.measurement_type_new_placeholder()}
+        bind:value={newTypeName}
+      />
+    </div>
+    <button class="btn btn-primary" data-add-measurement-type onclick={addType}><span>{m.measurement_type_add()}</span></button>
   </Sheet>
 </div>
