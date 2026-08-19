@@ -49,11 +49,11 @@ test('opens the database, runs migrations, and reports ready', async () => {
 
   assert.equal(result.phase, 'ready');
   if (result.phase === 'ready') {
-    assert.equal(await result.driver.getUserVersion(), 23);
+    assert.equal(await result.driver.getUserVersion(), 24);
   }
 });
 
-test('runs steps in the documented order: prefs, then open+migrate, then persist, then reference data and photo sweep', async () => {
+test('runs steps in the documented order: prefs, then open+migrate, then persist, then reference data, trash purge and photo sweep', async () => {
   const order: string[] = [];
   await boot({
     createDriver: () => {
@@ -69,12 +69,15 @@ test('runs steps in the documented order: prefs, then open+migrate, then persist
     loadReferenceData: async () => {
       order.push('referenceData');
     },
+    purgeExpiredTrash: async () => {
+      order.push('trashPurge');
+    },
     sweepOrphanPhotos: async () => {
       order.push('photoSweep');
     }
   });
 
-  assert.deepEqual(order, ['prefs', 'open+migrate', 'persist', 'referenceData', 'photoSweep']);
+  assert.deepEqual(order, ['prefs', 'open+migrate', 'persist', 'referenceData', 'trashPurge', 'photoSweep']);
 });
 
 test('reports persistDenied when persistent storage is refused', async () => {
@@ -118,6 +121,7 @@ test('does not load reference data or sweep photos after a failed migration', as
     createDriver: brokenDriver,
     fileOps: noopFileOps(),
     loadReferenceData: async () => { touchedAfterFailure = true; },
+    purgeExpiredTrash: async () => { touchedAfterFailure = true; },
     sweepOrphanPhotos: async () => { touchedAfterFailure = true; }
   });
 
@@ -169,6 +173,20 @@ test('a failing photo sweep still boots: housekeeping must not cost the app its 
     fileOps: noopFileOps(),
     sweepOrphanPhotos: async () => {
       throw new Error('OPFS unavailable');
+    }
+  });
+
+  assert.equal(result.phase, 'ready');
+});
+
+test('a failing trash purge still boots: housekeeping must not cost the app its screens', async () => {
+  // Phase 5 ticket 19, the same reasoning the photo sweep above gets: a
+  // failed purge leaves the trash for the next boot to try again.
+  const result = await boot({
+    createDriver: makeFakeDriver,
+    fileOps: noopFileOps(),
+    purgeExpiredTrash: async () => {
+      throw new Error('disk full');
     }
   });
 

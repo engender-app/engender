@@ -59,9 +59,33 @@
   "body_region_intensity_high": "bardzo",
   "entry": "Wpis",
   "delete_entry_q": "Usunąć ten wpis?",
-  "delete_entry_hint": "Wpis, jego zdjęcia i nagrania głosowe zostaną usunięte. Tego nie da się cofnąć.",
+  "delete_entry_hint": "Wpis, zdjęcia i nagrania trafią do kosza. Możesz je przywrócić w ciągu 30 dni, w Ustawieniach.",
   "delete_entry": "Usuń wpis",
   "keep_it": "Zostaw",
+  "trash_title": "Kosz",
+  "trash_row_sub": "Usunięte wpisy, przez 30 dni",
+  "trash_intro": "Usunięte wpisy czekają tu 30 dni, zanim znikną na stałe.",
+  "trash_empty_title": "Kosz jest pusty",
+  "trash_empty_body": "Usunięty wpis trafia tutaj na 30 dni, zanim zniknie na stałe.",
+  "trash_restore": "Przywróć",
+  "trash_restored_toast": "Wpis przywrócony",
+  "trash_days_left": [
+    {
+      "declarations": [
+        "input days",
+        "local daysPlural = days: plural"
+      ],
+      "selectors": [
+        "daysPlural"
+      ],
+      "match": {
+        "daysPlural=one": "Został {days} dzień",
+        "daysPlural=few": "Zostały {days} dni",
+        "daysPlural=many": "Zostało {days} dni",
+        "daysPlural=other": "Zostało {days} dni"
+      }
+    }
+  ],
   "streak_row": "dni z rzędu",
   "streak_with_entry": "dni z rzędu z wpisem",
   "streak_sub": "cicha regularność wygrywa z perfekcją",

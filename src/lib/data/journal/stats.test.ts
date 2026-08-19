@@ -34,6 +34,24 @@ test('one metric, one number: every aggregate reports mood on the 1-to-5 range i
   assert.equal(recap.averageMood, 3);
 });
 
+test('a trashed entry is invisible everywhere in stats (phase 5 ticket 19)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['e-happy'] });
+  const trashed = await journal.entries.upsertEntry({ epochDay: 101, mood: 5, tags: ['e-happy'] });
+
+  await journal.entries.deleteEntry(trashed);
+
+  assert.deepEqual(await journal.stats.dayAverages('mood', 100, 101), [{ day: 100, value: 4, count: 1 }]);
+  assert.deepEqual(await journal.stats.entryCountsByDay(100, 101), [{ day: 100, count: 1 }]);
+  assert.equal(await journal.stats.bestStreakEver(101), 1);
+  assert.equal(await journal.stats.isGoodDay(101), false);
+
+  const recap = await journal.stats.recap(100, 101);
+  assert.equal(recap.entryCount, 1);
+  assert.equal(recap.averageMood, 4);
+  assert.deepEqual(recap.topTags, [{ id: 'e-happy', count: 1 }]);
+});
+
 test('a dimension reports in its own range, whatever that range is', async () => {
   const { journal } = await journalWithBuiltIns();
   const voice = await journal.dimensions.addCustomDimension({
