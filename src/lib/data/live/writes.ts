@@ -80,7 +80,9 @@ export type TableName =
   /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
      pack's ticks: they live in one table and a screen shows one pack at a
      time, so there is nothing a per-pack name would let a query skip. */
-  | 'roadmapCheck';
+  | 'roadmapCheck'
+  /* The binder/tucking wear log (phase 5 ticket 04). */
+  | 'wearSession';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -105,7 +107,8 @@ export const TABLE_NAMES: TableName[] = [
   'tryout',
   'letter',
   'voiceRecording',
-  'roadmapCheck'
+  'roadmapCheck',
+  'wearSession'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -194,6 +197,16 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   personalEffects: {
     writes: { upsertMarker: ['personalEffect'], clearMarker: ['personalEffect'] },
     reads: ['getMarkers']
+  },
+  wearSessions: {
+    writes: {
+      // A save can also create, move or clear this session's own reminder
+      // (wearSessions.ts), the same reason stock's deleteEntry announces
+      // both tables.
+      upsertSession: ['wearSession', 'reminder'],
+      deleteSession: ['wearSession', 'reminder']
+    },
+    reads: ['getSessions', 'getRunningSession']
   },
   hairProgress: {
     writes: {
@@ -289,7 +302,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {
     writes: {},
-    reads: ['dayAverages', 'bodyRegionTrend', 'tallyTrend', 'entryCountsByDay', 'tagInsights', 'streak', 'bestStreakEver', 'recap', 'isGoodDay']
+    reads: ['dayAverages', 'bodyRegionTrend', 'wearTimeTrend', 'tallyTrend', 'entryCountsByDay', 'tagInsights', 'streak', 'bestStreakEver', 'recap', 'isGoodDay']
   },
   // Read-only, the same reason exposure is: a card is recomputed from
   // stats, the dose log and dimensions on every read (phase 4 ticket 21).

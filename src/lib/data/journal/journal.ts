@@ -38,6 +38,7 @@ import { makeTagsArea, type TagsArea } from './tags';
 import { makeTallyArea, type TallyArea } from './tally';
 import { makeTryoutsArea, type TryoutsArea } from './tryouts';
 import { makeVoiceArea, type VoiceArea } from './voiceRecordings';
+import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
 import { reconcileBuiltIns } from './reconcile';
 
 /** Where photo files live. The journal owns the rows; whoever owns the
@@ -108,6 +109,11 @@ export interface Journal {
       rule, over the same dose log and lab results. */
   qualitativeCurve: QualitativeCurveArea;
   sideEffects: SideEffectsArea;
+  /** The binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear
+      session"). Owns its own optional Reminder by an auto_source marker,
+      the same way stock owns its run-out reminder - hence the dependency
+      on `reminders` below. */
+  wearSessions: WearSessionsArea;
   /** A one-shot, printable assembly of labs, doses, regimen history, side
       effects and exposure counters for a chosen range (phase 4 ticket 12).
       A view over rows regimen, doses, labs, exposure and sideEffects own,
@@ -195,6 +201,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     hormoneCurve: makeHormoneCurveArea(doses, regimen, labs),
     qualitativeCurve: makeQualitativeCurveArea(doses, regimen, labs),
     sideEffects,
+    wearSessions: makeWearSessionsArea(driver, reminders),
     clinicianSummary: makeClinicianSummaryArea(regimen, doses, labs, exposure, sideEffects),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
