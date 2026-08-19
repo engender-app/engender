@@ -3,9 +3,9 @@
    here reads a clock or a database, and the anchor is never stored
    (ADR-0010) - the hair-progress screen recomputes it from the dose log and
    the regimen episode history on every read, the same way ticket 07's
-   earliestEpisodeStartEpochDay is recomputed from episodes alone.
+   earliestEpisode is recomputed from episodes alone.
 
-   Distinct from earliestEpisodeStartEpochDay (regimenEpisode.ts): that is
+   Distinct from earliestEpisode (regimenEpisode.ts): that is
    HRT's own start, whichever drug began it. This is the first dose event
    actually logged against one of three named hair-loss-treatment drugs
    specifically - finasteride, dutasteride or minoxidil - since a person can

@@ -51,15 +51,12 @@ export function episodeEndEpochDay(episodes: readonly RegimenEpisode[], index: n
     still count, the same as they still resolve. Null when there is no
     episode at all yet.
 
-    The whole episode rather than only its start day, because phase 5
-    ticket 27 reads its `drug` too: the anchor decides which literature
-    table the effects timeline is allowed to draw, and the drug is the
-    only thing that says which. */
+    The whole episode rather than only its start day, which is what this
+    returned until phase 5 ticket 27: the effects timeline reads the
+    anchor's `drug` as well, because the drug decides which literature
+    table it is allowed to draw a band from, and its start day decides
+    where that band is counted from. Both answers come off one episode, so
+    the caller takes the episode. */
 export function earliestEpisode(episodes: readonly RegimenEpisode[]): RegimenEpisode | null {
   return episodes[0] ?? null;
-}
-
-/** The start day of `earliestEpisode`. */
-export function earliestEpisodeStartEpochDay(episodes: readonly RegimenEpisode[]): number | null {
-  return earliestEpisode(episodes)?.startEpochDay ?? null;
 }

@@ -2,12 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { earliestEpisode } from '$lib/data/regimenEpisode';
-  import {
-    literatureCovers,
-    literatureWindow,
-    literatureWindowDays,
-    PERSONAL_EFFECT_TYPES
-  } from '$lib/data/personalEffectWindow';
+  import { literatureWindow, literatureWindowDays, PERSONAL_EFFECT_TYPES } from '$lib/data/personalEffectWindow';
   import { personalEffectName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -34,23 +29,31 @@
 
   const today = todayEpochDay();
 
+  /* Whether an effect has a band at all is decided once, here, and read
+     by both the chart and the editor sheet's caption - asking
+     literatureWindowDays in one place and the predicate behind it in the
+     other would be two decisions free to drift apart. Null before there is
+     any anchor to ask about. */
+  let bands = $derived(
+    anchor == null
+      ? null
+      : new Map(PERSONAL_EFFECT_TYPES.map((effect) => [effect, literatureWindowDays(effect, anchor)] as const))
+  );
+
   /* Every effect gets a row whether or not its literature applies: the row
      is where a change is marked, and someone on testosterone who notices
      their skin softening has as much right to record the day as anyone.
      What the drug gates is the band, not the row. */
   let timelineRows = $derived(
-    anchor == null
+    bands == null
       ? []
-      : PERSONAL_EFFECT_TYPES.map((effect) => {
-          const days = literatureWindowDays(effect, anchor);
-          return {
-            key: effect,
-            label: personalEffectName(effect),
-            onset: days?.onset ?? null,
-            completion: days?.completion ?? null,
-            markerDay: markerFor(effect)?.firstNoticedEpochDay ?? null
-          };
-        })
+      : PERSONAL_EFFECT_TYPES.map((effect) => ({
+          key: effect,
+          label: personalEffectName(effect),
+          onset: bands.get(effect)?.onset ?? null,
+          completion: bands.get(effect)?.completion ?? null,
+          markerDay: markerFor(effect)?.firstNoticedEpochDay ?? null
+        }))
   );
 
   /* One whole-sentence message per window shape (no completion window,
@@ -62,7 +65,7 @@
      sentence would be a timing claim about a hormone this person is not on
      (ticket 27). */
   function windowCaption(effect: PersonalEffectType): string | null {
-    if (anchor == null || !literatureCovers(effect, anchor.drug)) return null;
+    if (bands?.get(effect) == null) return null;
     const window = literatureWindow(effect);
     const onsetMin = String(window.onsetMonths.min);
     const onsetMax = String(window.onsetMonths.max);
