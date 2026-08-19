@@ -16,7 +16,9 @@ import type {
   BuiltInAffirmationKey,
   BuiltInBodyRegionKey,
   BuiltInDimensionKey,
+  BuiltInEffectCategoryKey,
   BuiltInMeasurementTypeKey,
+  BuiltInPersonalEffectKey,
   BuiltInPresetKey,
   BuiltInTagGroupKey,
   BuiltInTagKey,
@@ -24,7 +26,7 @@ import type {
   EntryTemplateKey,
   MilestoneTemplateKey
 } from './builtins';
-import type { CycleEventKind, HairRemovalMethod, PersonalEffectType, TryoutKind } from '../types';
+import type { CycleEventKind, HairRemovalMethod, TryoutKind } from '../types';
 import type { HairScale, NorwoodHamiltonStage, SinclairGrade } from '../hairStageScales';
 import type { HairRemovalAreaKey } from '../hairRemovalAreas';
 import type { GarmentCategoryKey } from '../garmentCategories';
@@ -77,22 +79,100 @@ const MEASUREMENT_TYPE_NAME: Record<BuiltInMeasurementTypeKey, Message> = {
   underbust: m.measurement_type_underbust
 };
 
-/* The eight personal effect markers (phase 4 ticket 07, widened by phase 5
-   ticket 02) are a fixed set, not a built-in row, the same reasoning
-   MEASUREMENT_TYPE_NAME gives. */
-const PERSONAL_EFFECT_NAME: Record<PersonalEffectType, Message> = {
+/* The personal-effects catalogue (phase 4 ticket 07, widened well past its
+   original eight by phase 5 ticket 41) is a built-in reference-data area
+   now, the same split MEASUREMENT_TYPE_NAME gives: a custom effect's name
+   is never looked up here, it is the stored row's own name
+   (vocabulary.ts). Never called for a custom effect - falls back to the
+   raw key via `lookup` only for a built-in key a newer build seeded that
+   this one does not know the wording of, the same forward-compat reason
+   `measurementTypeName` falls back. */
+const PERSONAL_EFFECT_NAME: Record<BuiltInPersonalEffectKey, Message> = {
+  // Feminizing, tier 1.
   breast_development: m.effect_breast_development,
   fat_redistribution: m.effect_fat_redistribution,
   skin_softening: m.effect_skin_softening,
   hair_changes: m.effect_hair_changes,
+  decreased_muscle_mass_strength: m.effect_decreased_muscle_mass_strength,
+  decreased_libido: m.effect_decreased_libido,
+  decreased_spontaneous_erections: m.effect_decreased_spontaneous_erections,
+  decreased_testicular_volume: m.effect_decreased_testicular_volume,
+  male_pattern_baldness_ceasing: m.effect_male_pattern_baldness_ceasing,
+  // Feminizing, tier 2.
+  increased_flexibility_feminizing: m.effect_increased_flexibility_feminizing,
+  slimmer_hands_feet_feminizing: m.effect_slimmer_hands_feet_feminizing,
+  softer_fingernails_feminizing: m.effect_softer_fingernails_feminizing,
+  temperature_sensitivity_feminizing: m.effect_temperature_sensitivity_feminizing,
+  perspiration_pattern_feminizing: m.effect_perspiration_pattern_feminizing,
+  body_odor_feminizing: m.effect_body_odor_feminizing,
+  facial_feature_changes_feminizing: m.effect_facial_feature_changes_feminizing,
+  pelvic_tilt_feminizing: m.effect_pelvic_tilt_feminizing,
+  reduced_substance_tolerance_feminizing: m.effect_reduced_substance_tolerance_feminizing,
+  mental_clarity_feminizing: m.effect_mental_clarity_feminizing,
+  adhd_symptom_change_feminizing: m.effect_adhd_symptom_change_feminizing,
+  emotional_expansion_feminizing: m.effect_emotional_expansion_feminizing,
+  mood_swings_feminizing: m.effect_mood_swings_feminizing,
+  appetite_change_feminizing: m.effect_appetite_change_feminizing,
+  sleep_change_feminizing: m.effect_sleep_change_feminizing,
+  increased_extroversion_feminizing: m.effect_increased_extroversion_feminizing,
+  improved_smell_feminizing: m.effect_improved_smell_feminizing,
+  improved_color_perception_feminizing: m.effect_improved_color_perception_feminizing,
+  improved_spatial_awareness_feminizing: m.effect_improved_spatial_awareness_feminizing,
+  taste_perception_change_feminizing: m.effect_taste_perception_change_feminizing,
+  reduced_confidence_feminizing: m.effect_reduced_confidence_feminizing,
+  genital_sensitivity_increase_feminizing: m.effect_genital_sensitivity_increase_feminizing,
+  genital_moisture_odor_feminizing: m.effect_genital_moisture_odor_feminizing,
+  genital_skin_texture_change_feminizing: m.effect_genital_skin_texture_change_feminizing,
+  fewer_erections_feminizing: m.effect_fewer_erections_feminizing,
+  ejaculate_change_feminizing: m.effect_ejaculate_change_feminizing,
+  testicular_atrophy_feminizing: m.effect_testicular_atrophy_feminizing,
+  heightened_erogenous_zones_feminizing: m.effect_heightened_erogenous_zones_feminizing,
+  orgasm_change_feminizing: m.effect_orgasm_change_feminizing,
+  attraction_change_feminizing: m.effect_attraction_change_feminizing,
+  // Masculinizing, tier 1.
   voice_drop: m.effect_voice_drop,
   facial_body_hair: m.effect_facial_body_hair,
   masculinizing_fat_redistribution: m.effect_masculinizing_fat_redistribution,
-  cycle_cessation: m.effect_cycle_cessation
+  cycle_cessation: m.effect_cycle_cessation,
+  skin_oiliness_acne_masculinizing: m.effect_skin_oiliness_acne_masculinizing,
+  increased_muscle_mass_strength_masculinizing: m.effect_increased_muscle_mass_strength_masculinizing,
+  clitoral_enlargement_masculinizing: m.effect_clitoral_enlargement_masculinizing,
+  vaginal_atrophy_masculinizing: m.effect_vaginal_atrophy_masculinizing,
+  // Masculinizing, tier 2.
+  scalp_hair_loss_masculinizing: m.effect_scalp_hair_loss_masculinizing,
+  larger_hands_feet_masculinizing: m.effect_larger_hands_feet_masculinizing,
+  thicker_stronger_nails_masculinizing: m.effect_thicker_stronger_nails_masculinizing,
+  facial_feature_changes_masculinizing: m.effect_facial_feature_changes_masculinizing,
+  increased_substance_tolerance_masculinizing: m.effect_increased_substance_tolerance_masculinizing,
+  adhd_symptom_change_masculinizing: m.effect_adhd_symptom_change_masculinizing,
+  mental_clarity_masculinizing: m.effect_mental_clarity_masculinizing,
+  increased_appetite_masculinizing: m.effect_increased_appetite_masculinizing,
+  sleep_change_masculinizing: m.effect_sleep_change_masculinizing,
+  increased_confidence_masculinizing: m.effect_increased_confidence_masculinizing,
+  increased_extroversion_masculinizing: m.effect_increased_extroversion_masculinizing,
+  temperature_sensitivity_masculinizing: m.effect_temperature_sensitivity_masculinizing,
+  perspiration_pattern_masculinizing: m.effect_perspiration_pattern_masculinizing,
+  body_odor_masculinizing: m.effect_body_odor_masculinizing,
+  decreased_lubrication_masculinizing: m.effect_decreased_lubrication_masculinizing,
+  increased_ejaculate_emissions_masculinizing: m.effect_increased_ejaculate_emissions_masculinizing,
+  genital_sensitivity_change_masculinizing: m.effect_genital_sensitivity_change_masculinizing,
+  increased_libido_masculinizing: m.effect_increased_libido_masculinizing,
+  orgasm_change_masculinizing: m.effect_orgasm_change_masculinizing,
+  attraction_change_masculinizing: m.effect_attraction_change_masculinizing,
+  epidermis_thickening_masculinizing: m.effect_epidermis_thickening_masculinizing,
+  vein_prominence_masculinizing: m.effect_vein_prominence_masculinizing
 };
 
-/** The name of a personal effect marker. */
-export const personalEffectName = (effect: PersonalEffectType): string => PERSONAL_EFFECT_NAME[effect]();
+/** The five effect categories (phase 5 ticket 41, CONTEXT: "Effect
+    category") are a fixed set, not a built-in row, the same reasoning
+    MEASUREMENT_TYPE_NAME gives. */
+const EFFECT_CATEGORY_NAME: Record<BuiltInEffectCategoryKey, Message> = {
+  body_shape: m.effect_category_body_shape,
+  skin_hair: m.effect_category_skin_hair,
+  genital_sexual: m.effect_category_genital_sexual,
+  cognitive_emotional: m.effect_category_cognitive_emotional,
+  sensory: m.effect_category_sensory
+};
 
 /* The published Norwood-Hamilton scale's twelve stage labels (phase 4
    ticket 09) are a fixed set, not a built-in row, the same reasoning
@@ -410,6 +490,11 @@ export const tagLabels = (key: string): string[] => {
     but falls back to the key like dimensionName does, for a built-in
     key a newer build seeded that this one does not know the wording of. */
 export const measurementTypeName = (key: string) => lookup(MEASUREMENT_TYPE_NAME, key);
+/** The name of a built-in personal effect, or the raw key for one a newer
+    build seeded that this one does not know the wording of. */
+export const personalEffectName = (key: string): string => lookup(PERSONAL_EFFECT_NAME, key);
+/** The name of an effect category. */
+export const effectCategoryName = (key: string): string => lookup(EFFECT_CATEGORY_NAME, key);
 export const milestoneTemplateName = (key: string) => lookup(TEMPLATE_NAME, key);
 export const bodyRegionName = (key: string) => lookup(BODY_REGION_NAME, key);
 export const entryTemplateName = (key: string) => lookup(ENTRY_TEMPLATE_NAME, key);
