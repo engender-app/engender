@@ -5,7 +5,12 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import { BUILT_IN_DIMENSIONS, BUILT_IN_PRESETS, BUILT_IN_TAG_GROUPS } from '../vocabulary/builtins.ts';
+import {
+  BUILT_IN_AFFIRMATION_KEYS,
+  BUILT_IN_DIMENSIONS,
+  BUILT_IN_PRESETS,
+  BUILT_IN_TAG_GROUPS
+} from '../vocabulary/builtins.ts';
 import type { TableName } from '../live/writes.ts';
 import { openJournal } from './journal.ts';
 import { RECONCILE_TABLES, reconcileBuiltIns } from './reconcile.ts';
@@ -22,6 +27,7 @@ test('seeds every built-in dimension, preset, group and tag into an empty journa
   assert.equal(count(db, 'gender_preset'), BUILT_IN_PRESETS.length);
   assert.equal(count(db, 'tag_group'), BUILT_IN_TAG_GROUPS.length);
   assert.equal(count(db, 'tag'), BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags).length);
+  assert.equal(count(db, 'affirmation'), BUILT_IN_AFFIRMATION_KEYS.length);
 
   // Preset links land in declared order, resolved through dimension keys.
   const nb = db.raw
@@ -66,6 +72,20 @@ test('restores a missing built-in without touching custom rows', async () => {
   assert.ok(emotions.tags.some((t) => t.label === 'proud'), 'custom tag survived');
 });
 
+test('restores a missing built-in affirmation without touching a custom one', async () => {
+  const db = await migratedDb();
+  const journal = openJournal(db, fakeFileStore());
+  await journal.reconcileBuiltIns();
+  await journal.affirmations.addLine('en', 'You are doing great.');
+
+  db.raw.exec("DELETE FROM affirmation WHERE key = 'affirmation_1'");
+  await journal.reconcileBuiltIns();
+
+  const affirmations = await journal.affirmations.getAffirmations();
+  assert.ok(affirmations.some((a) => a.id === 'affirmation_1'), 'affirmation_1 restored');
+  assert.ok(affirmations.some((a) => a.text === 'You are doing great.'), 'custom line survived');
+});
+
 // The physical schema tables reconcileBuiltIns inserts into, mapped to the
 // logical TableName writes.ts announces (ticket 28's drift guard): a new
 // built-in table added to reconcile.ts without an entry here, or without a
@@ -76,7 +96,8 @@ const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
   gender_preset: 'preset',
   preset_dimension: 'preset',
   tag_group: 'tag',
-  tag: 'tag'
+  tag: 'tag',
+  affirmation: 'affirmation'
 };
 
 test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async () => {

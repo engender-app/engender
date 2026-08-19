@@ -11,6 +11,7 @@
    test-support's node:sqlite driver. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import { makeAffirmationsArea, type AffirmationsArea } from './affirmations';
 import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeChecklistsArea, type ChecklistsArea } from './checklists';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
@@ -75,6 +76,11 @@ export interface PhotoFileStore {
 export interface Journal {
   entries: EntriesArea;
   tags: TagsArea;
+  /** The check-in's affirmation pool (phase 5 ticket 15, CONTEXT:
+      "Affirmation"). Built-in lines are seeded by key, the same as tags;
+      custom lines are additive to the pool the check-in draws from
+      (reminders/affirmations.ts), never a replacement for it. */
+  affirmations: AffirmationsArea;
   dimensions: DimensionsArea;
   milestones: MilestonesArea;
   photos: PhotosArea;
@@ -224,6 +230,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   return {
     entries: makeEntriesArea(driver, files),
     tags: makeTagsArea(driver),
+    affirmations: makeAffirmationsArea(driver),
     dimensions,
     milestones: makeMilestonesArea(driver, files),
     photos: makePhotosArea(driver, files),

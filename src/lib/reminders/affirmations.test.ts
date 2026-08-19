@@ -47,11 +47,24 @@ describe('affirmation catalogues', () => {
 });
 
 describe('affirmationLines', () => {
-  test('the pool lists every catalogue line exactly once', () => {
+  test('with no arguments, the pool lists every catalogue line exactly once', () => {
     expect(affirmationLines().sort()).toEqual(
       affirmationEntries(en)
         .map(([key]) => key)
         .sort()
     );
+  });
+
+  test('a hidden built-in key leaves the pool', () => {
+    const lines = affirmationLines(new Set(['affirmation_1', 'affirmation_2']));
+    expect(lines).not.toContain('affirmation_1');
+    expect(lines).not.toContain('affirmation_2');
+    expect(lines).toHaveLength(affirmationEntries(en).length - 2);
+  });
+
+  test('custom lines are additive, appended after the built-ins', () => {
+    const lines = affirmationLines(new Set(), ['written by hand']);
+    expect(lines).toHaveLength(affirmationEntries(en).length + 1);
+    expect(lines.at(-1)).toBe('written by hand');
   });
 });

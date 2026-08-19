@@ -73,6 +73,7 @@ const SECTIONS = [
   // wrote.
   section({ name: 'presets', after: ['dimensions'], read: read.readPresets, apply: apply.applyPresets }),
   section({ name: 'tagGroups', read: read.readTagGroups, apply: apply.applyTagGroups }),
+  section({ name: 'affirmations', read: read.readAffirmations, apply: apply.applyAffirmations }),
   /* Reference data first: an entry's dims and tags are resolved to rowids,
      and an archive's entry must find the archive's own vocabulary rather
      than whatever this device happened to have. */

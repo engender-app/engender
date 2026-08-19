@@ -25,7 +25,7 @@
    vocabulary.ts answers "called what". */
 
 import { prefs } from '../prefs/store.svelte';
-import type { GenderDimension, GenderPreset, Milestone, Tag, TagGroup } from '../types';
+import type { Affirmation, GenderDimension, GenderPreset, Milestone, Tag, TagGroup } from '../types';
 import type { Journal } from '../journal/journal';
 import { onTablesWritten } from './journal.svelte';
 import type { TableName } from './writes';
@@ -35,17 +35,19 @@ const mirror = $state<{
   presets: GenderPreset[];
   tagGroups: TagGroup[];
   milestones: Milestone[];
-}>({ dimensions: [], presets: [], tagGroups: [], milestones: [] });
+  affirmations: Affirmation[];
+}>({ dimensions: [], presets: [], tagGroups: [], milestones: [], affirmations: [] });
 
 /** Which slices a written table invalidates. Photos are in here because a
     milestone carries its photo on the mirrored row, so attaching one changes
     what the timeline should draw. */
-const AFFECTED: Partial<Record<TableName, ('dimensions' | 'presets' | 'tagGroups' | 'milestones')[]>> = {
+const AFFECTED: Partial<Record<TableName, ('dimensions' | 'presets' | 'tagGroups' | 'milestones' | 'affirmations')[]>> = {
   dimension: ['dimensions', 'presets'],
   preset: ['presets'],
   tag: ['tagGroups'],
   milestone: ['milestones'],
-  photo: ['milestones']
+  photo: ['milestones'],
+  affirmation: ['affirmations']
 };
 
 let registered = false;
@@ -54,16 +56,18 @@ let registered = false;
     it: fills the mirror before the first screen renders, so nothing has to
     cope with an app whose vocabulary is briefly empty. */
 export async function hydrateReference(journal: Journal): Promise<void> {
-  const [dimensions, presets, tagGroups, milestones] = await Promise.all([
+  const [dimensions, presets, tagGroups, milestones, affirmations] = await Promise.all([
     journal.dimensions.getDimensions(),
     journal.dimensions.getPresets(),
     journal.tags.getTagGroups(),
-    journal.milestones.getMilestones()
+    journal.milestones.getMilestones(),
+    journal.affirmations.getAffirmations()
   ]);
   mirror.dimensions = dimensions;
   mirror.presets = presets;
   mirror.tagGroups = tagGroups;
   mirror.milestones = milestones;
+  mirror.affirmations = affirmations;
 
   if (registered) return;
   registered = true;
@@ -80,6 +84,7 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('presets')) mirror.presets = await journal.dimensions.getPresets();
     if (slices.has('tagGroups')) mirror.tagGroups = await journal.tags.getTagGroups();
     if (slices.has('milestones')) mirror.milestones = await journal.milestones.getMilestones();
+    if (slices.has('affirmations')) mirror.affirmations = await journal.affirmations.getAffirmations();
   } catch (error) {
     // The write itself succeeded; only the re-read failed. Keeping the stale
     // rows beats emptying the vocabulary out from under the screen.
@@ -102,6 +107,21 @@ export const reference = {
   },
   get milestones(): Milestone[] {
     return mirror.milestones;
+  },
+
+  /** Every affirmation line, hidden built-ins included - what the settings
+      screen manages (CONTEXT: "Hidden"). */
+  get affirmations(): Affirmation[] {
+    return mirror.affirmations;
+  },
+
+  /** The lines the check-in's pool may draw from: hidden ones removed, the
+      same "not hidden" filter `visibleTagGroups` already applies to tags.
+      Language is not filtered here - that needs the active locale, and this
+      module stays free of paraglide (ADR-0016) - vocabulary.ts narrows it
+      further. */
+  get visibleAffirmations(): Affirmation[] {
+    return mirror.affirmations.filter((a) => !a.hidden);
   },
 
   /** The preset the preferences point at, falling back to the first one: a

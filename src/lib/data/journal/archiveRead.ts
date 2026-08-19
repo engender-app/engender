@@ -13,6 +13,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
+  ArchiveAffirmation,
   ArchiveChecklist,
   ArchiveChecklistItem,
   ArchiveCounterevidenceSnapshot,
@@ -186,6 +187,24 @@ export async function readTagGroups({ driver }: SectionRead): Promise<ArchiveTag
     // makes it custom is having a uuid at all, not the two differing.
     builtIn: g.uuid === null,
     tags: byGroup.get(g.id) ?? []
+  }));
+}
+
+export async function readAffirmations({ driver }: SectionRead): Promise<ArchiveAffirmation[]> {
+  const rows = await driver.query<{
+    id: number;
+    uuid: string | null;
+    key: string | null;
+    language: 'en' | 'pl' | null;
+    text: string;
+    hidden: number;
+  }>('SELECT id, uuid, key, language, text, hidden FROM affirmation ORDER BY id');
+  return rows.map((a) => ({
+    id: domainIdOf(a, 'affirmation'),
+    language: a.language,
+    text: a.text,
+    builtIn: a.key !== null,
+    hidden: bool(a.hidden)
   }));
 }
 
