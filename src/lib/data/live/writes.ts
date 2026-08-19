@@ -325,7 +325,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   // recomputed from stats and the dose log on every read (phase 5 ticket 09).
   intervalMoodPattern: {
     writes: {},
-    reads: ['dayOfInterval', 'byPeriod']
+    reads: ['dayOfInterval', 'byCustomInterval']
   },
   /* An import rewrites the journal (ticket 14), so it invalidates all of it -
      every query and every mirrored slice. Naming the tables one at a time

@@ -69,18 +69,21 @@ test('with nothing logged, the range comes back with no points rather than throw
   assert.deepEqual(pattern, []);
 });
 
-test('byPeriod folds mood history by a chosen period length, with no injections at all', async () => {
+test('byCustomInterval folds mood history by a chosen interval length, with no injections at all', async () => {
   const { journal } = await journalWithBuiltIns();
-  for (const day of [DAY_0, DAY_0 + 7, DAY_0 + 14]) {
+  // A multiple of 14, so position 1 falls on it - the fold anchors to the
+  // epoch itself, not to this test's own range.
+  const BASE = 20006;
+  for (const day of [BASE, BASE + 14, BASE + 28]) {
     await journal.entries.upsertEntry({ epochDay: day, mood: 5 });
   }
-  for (const day of [DAY_0 + 21, DAY_0 + 28]) {
+  for (const day of [BASE + 7, BASE + 21]) {
     await journal.entries.upsertEntry({ epochDay: day, mood: 2 });
   }
 
-  const pattern = await journal.intervalMoodPattern.byPeriod(DAY_0, DAY_0 + 28, 14);
+  const pattern = await journal.intervalMoodPattern.byCustomInterval(BASE, BASE + 28, 14);
 
-  // Day 0, 14 and 28 fold to position 1 (avg (5+5+2)/3 = 4); day 7 and 21
+  // Day 0, 14 and 28 fold to position 1 (avg (5+5+5)/3 = 5); day 7 and 21
   // fold to position 8 but that is only two days - below the floor.
-  assert.deepEqual(pattern, [{ position: 1, value: 4, count: 3 }]);
+  assert.deepEqual(pattern, [{ position: 1, value: 5, count: 3 }]);
 });

@@ -172,7 +172,7 @@ export interface Journal {
   correlationCards: CorrelationCardsArea;
   /** Day-average mood bucketed by a cyclical position - day of interval
       across completed injectable regimen intervals, or a person-chosen
-      period length (phase 5 ticket 09) - descriptive throughout, the same
+      interval length (phase 5 ticket 09) - descriptive throughout, the same
       as correlationCards and the comparability flag. A view over rows
       `stats` and `doses` own, not a third owner for either. */
   intervalMoodPattern: IntervalMoodPatternArea;

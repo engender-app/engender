@@ -1,26 +1,33 @@
 /* Interval mood pattern (phase 5 ticket 09, CONTEXT: "Day of interval", "Day
    average"). Two bucket-and-average shapes over a cyclical position -
    day-average mood folded by position within an injectable regimen's own
-   interval, or by an arbitrary period length someone names - kept apart from
-   ../correlationCards.ts on purpose: that engine pairs an occurrence against
-   a value, and neither shape here is a pair. This is closer to how
+   interval, or by an arbitrary interval length someone names - kept apart
+   from ../correlationCards.ts on purpose: that engine pairs an occurrence
+   against a value, and neither shape here is a pair. This is closer to how
    labTiming.ts derives day of interval from the dose log than to a
    correlation card.
 
+   The second shape is deliberately never called a "period": CONTEXT.md's
+   Cycle event already gives that word a menstrual meaning for people on
+   testosterone, and reusing it here for an arbitrary fold length would sit
+   the two features on the same word for unrelated ideas - worse in Polish,
+   where the ordinary translation of "period" has no other reading.
+
    Purely descriptive throughout, the same rule labTiming.ts and its
    comparability flag hold to: a bucket says where days fell and stops. The
-   free-period fold in particular asserts nothing about a cycle existing - it
-   folds by whatever length it is given, the way Chuanromanee & Metoyer's CHI
-   2023 study describes a period tracker being repurposed for exactly this,
-   without the app claiming to have found a cycle on anyone's behalf. */
+   custom-interval fold in particular asserts nothing about a cycle existing
+   - it folds by whatever length it is given, the way Chuanromanee &
+   Metoyer's CHI 2023 study describes a period tracker being repurposed for
+   exactly this, without the app claiming to have found a cycle on anyone's
+   behalf. */
 
 import type { DayAverage } from './journal/stats';
 import type { DoseEvent } from './types';
 import { epochDayFromTimestamp } from './epochDay';
 
 export interface PatternPoint {
-  /** 1-based position within the interval or period. An injection's own
-      day is position 1, the same rule labTiming.ts's day of interval uses. */
+  /** 1-based position within the interval. An injection's own day is
+      position 1, the same rule labTiming.ts's day of interval uses. */
   position: number;
   /** The bucket's day-average mood, entry-weighted across the days folded
       into it, in native units (ADR-0012). */
@@ -33,7 +40,7 @@ export interface PatternPoint {
 }
 
 /** A position needs days from at least this many distinct intervals or
-    period repeats before it says anything - the same evidentiary bar
+    interval repeats before it says anything - the same evidentiary bar
     tagInsights and correlationCards hold every occurrence to. */
 const MIN_POSITION_DAYS = 3;
 
@@ -119,19 +126,21 @@ export function dayOfIntervalPattern(
 }
 
 /** The same bucket-and-average shape as `dayOfIntervalPattern`, folded by
-    `periodLengthDays` starting from `fromEpochDay` instead of by the
-    regimen's own interval. Asserts nothing about a cycle existing: position
-    1 is `fromEpochDay` and every `periodLengthDays`'th day after it,
-    whatever that day turns out to mean. */
-export function foldByPeriod(
-  dayAverages: readonly DayAverage[],
-  fromEpochDay: number,
-  periodLengthDays: number
-): PatternPoint[] {
+    `intervalLengthDays` against the epoch day itself instead of against the
+    regimen's own interval - position 1 is every day that is a multiple of
+    `intervalLengthDays` since 1970-01-01 (epochDay.ts), and every
+    `intervalLengthDays`'th day after it, whatever that day turns out to
+    mean. Anchored to the epoch rather than to whatever range a caller
+    happens to be asking about, for two reasons: an epoch day is never
+    negative (ADR-0001), so this needs no caller-supplied reference point to
+    stay exact, and a fixed anchor means position 1 keeps meaning the same
+    calendar days no matter which range someone later widens or narrows.
+    Asserts nothing about a cycle existing either way. */
+export function foldByCustomInterval(dayAverages: readonly DayAverage[], intervalLengthDays: number): PatternPoint[] {
   const totals = new Map<number, Bucket>();
 
   for (const point of dayAverages) {
-    accumulate(totals, ((point.day - fromEpochDay) % periodLengthDays) + 1, point);
+    accumulate(totals, (point.day % intervalLengthDays) + 1, point);
   }
 
   return finishedPoints(totals);
