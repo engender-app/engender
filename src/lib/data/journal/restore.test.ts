@@ -134,7 +134,8 @@ async function populated() {
     { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
   ]);
 
-  await journal.roadmap.setGoalChecked('pl', 'pl-legal-court-file', true);
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
+  await journal.roadmap.addCustomGoal('social', 'Tell my sister');
 
   const tryout = await journal.tryouts.upsertTryout({
     kind: 'name',
@@ -288,19 +289,27 @@ test('merging the same archive twice duplicates neither a doubt entry nor a coun
 /* A tick travels as a pack/goal pair, not a uuid, so merging twice has to
    land on the row already there rather than a second copy of it - and a
    tick the importing device made itself must survive a merge that has
-   never heard of it. */
-test('merging carries a roadmap tick, twice over, without disturbing the target own ticks', async () => {
+   never heard of it. A custom goal is uuid-identified instead, so the same
+   claim is checked the way a checklist item's is: merging twice must not
+   duplicate the source's own custom goal, and the target's own custom
+   goal must survive a merge that has never heard of it either. */
+test('merging carries a roadmap tick, twice over, without disturbing the target own ticks or custom goals', async () => {
   const source = await populated();
   const target = await device();
-  await target.journal.roadmap.setGoalChecked('pl', 'pl-social-tell-someone', true);
+  await target.journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'checked');
+  await target.journal.roadmap.addCustomGoal('legal', 'Ask about remote hearings');
 
   await target.journal.archive.merge(await exported(source.journal));
   await target.journal.archive.merge(await exported(source.journal));
 
-  assert.deepEqual(await target.journal.roadmap.getCheckedGoals('pl'), [
-    'pl-legal-court-file',
-    'pl-social-tell-someone'
-  ]);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), {
+    'pl-legal-court-file': 'checked',
+    'pl-social-tell-someone': 'checked'
+  });
+  assert.deepEqual(
+    (await target.journal.roadmap.getCustomGoals()).map((g) => g.text).sort(),
+    ['Ask about remote hearings', 'Tell my sister']
+  );
 });
 
 test('merging the same archive twice duplicates neither a tryout nor its felt-sense entry', async () => {
