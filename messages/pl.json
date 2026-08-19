@@ -49,7 +49,7 @@
   "stop_video": "Zatrzymaj",
   "video_remove": "Usuń nagranie wideo",
   "video_recording_hint": "Najwyżej 30 sekund.",
-  "video_compressing": "Zmniejszam plik, żeby kopie zapasowe nie rozrosły się bez potrzeby…",
+  "video_compressing": "Kompresowanie…",
   "video_camera_failed": "Nie udało się otworzyć kamery.",
   "video_unsupported": "Ta przeglądarka nie obsługuje nagrywania wideo.",
   "gender_label": "Płeć",
