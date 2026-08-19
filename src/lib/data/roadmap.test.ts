@@ -24,6 +24,14 @@ test('every goal sits in one of the four tracks and carries a key', () => {
   }
 });
 
+/* Acceptance box 2 (phase 5 ticket 43): every goal carries a hand-authored
+   lean, not left undefined by an incomplete pack entry. */
+test('every goal carries a lean of femme, masc, or neutral', () => {
+  for (const goal of allGoals) {
+    expect(['femme', 'masc', 'neutral']).toContain(goal.lean);
+  }
+});
+
 /* Goal keys have to be unique across packs, not just within one: the
    labels are one map over every bundled key, and a stored tick names a
    pack and a goal, so two packs reusing a key would read as one goal in
@@ -79,8 +87,8 @@ test('a second pack satisfies the same shape without any change to it', () => {
     key: 'xx',
     reviewedOn: '2026-01-31',
     goals: [
-      { key: 'xx-social-first', track: 'social' },
-      { key: 'xx-legal-first', track: 'legal' }
+      { key: 'xx-social-first', track: 'social', lean: 'neutral' },
+      { key: 'xx-legal-first', track: 'legal', lean: 'neutral' }
     ]
   } satisfies RoadmapPack;
 
