@@ -1307,6 +1307,66 @@ CREATE TABLE dose_schedule_dose_amount (
 );
 `;
 
+/* v39: personal effects widen from a fixed eight to an open catalogue
+   (phase 5 ticket 41, the third revisit of this list's closure - it stops
+   closing it). Two new reference-data tables and a rebuild:
+
+   `effect_category` is a named, toggleable collection over the effect
+   catalogue - "body shape and composition", "skin and hair", "genital and
+   sexual", "cognitive and emotional", "sensory" - built-in only, no
+   custom-category creation asked for, so it carries just `key`/`name`/
+   `enabled` rather than tag_group's fuller shape.
+
+   `personal_effect_type` gives an effect its own vocabulary row, the
+   `key` nullable / `uuid` nullable / builtIn-when-key-is-not-null shape
+   `body_region` uses (v32): a built-in's `name` stays '' and is looked up
+   by key at display time, a custom's `uuid` doubles as its `key` per this
+   ticket's own scope. `category_key` is nullable - a custom effect may be
+   added uncategorised - and `direction` is nullable for the same reason:
+   only a built-in's direction is a claim from the source material, and a
+   custom effect gets no direction pushed onto it that nobody asked it to
+   have.
+
+   `personal_effect.effect` cannot keep v19's CHECK once the catalogue is
+   open past its eight named keys to whatever `personal_effect_type` grows
+   - the same limitation v19, v31 and v34's own rebuilds describe. Copy,
+   drop, rename, unchanged rows carrying across exactly as v19's and v34's
+   did. Validation moves up a layer, to whatever `personal_effect_type`
+   rows exist and are not hidden, the same as measurement.type's after
+   v34. */
+const SCHEMA_V39 = `
+CREATE TABLE effect_category (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  key        TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL DEFAULT '',
+  enabled    INTEGER NOT NULL DEFAULT 1,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE personal_effect_type (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid         TEXT UNIQUE,
+  key          TEXT UNIQUE,
+  name         TEXT NOT NULL DEFAULT '',
+  category_key TEXT REFERENCES effect_category(key),
+  direction    TEXT CHECK (direction IN ('feminizing', 'masculinizing') OR direction IS NULL),
+  hidden       INTEGER NOT NULL DEFAULT 0,
+  updated_at   INTEGER NOT NULL
+);
+
+CREATE TABLE personal_effect_v39 (
+  id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid                    TEXT NOT NULL UNIQUE,
+  effect                  TEXT NOT NULL UNIQUE,
+  first_noticed_epoch_day INTEGER NOT NULL,
+  updated_at              INTEGER NOT NULL
+);
+INSERT INTO personal_effect_v39 (id, uuid, effect, first_noticed_epoch_day, updated_at)
+  SELECT id, uuid, effect, first_noticed_epoch_day, updated_at FROM personal_effect;
+DROP TABLE personal_effect;
+ALTER TABLE personal_effect_v39 RENAME TO personal_effect;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1345,7 +1405,8 @@ export const migrations: Migration[] = [
   { version: 35, sql: SCHEMA_V35 },
   { version: 36, sql: SCHEMA_V36 },
   { version: 37, sql: SCHEMA_V37 },
-  { version: 38, sql: SCHEMA_V38 }
+  { version: 38, sql: SCHEMA_V38 },
+  { version: 39, sql: SCHEMA_V39 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database
