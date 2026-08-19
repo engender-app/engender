@@ -17,7 +17,7 @@ export interface PersonalEffectInput {
 }
 
 export interface PersonalEffectsArea {
-  /** Whatever effects have been marked so far - zero to four rows, one per
+  /** Whatever effects have been marked so far - zero to eight rows, one per
       effect. No row for an effect means it has not been marked yet. */
   getMarkers(): Promise<PersonalEffect[]>;
   /** One row per effect (migrations.ts v12): a second call for an effect
