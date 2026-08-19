@@ -981,7 +981,7 @@ test('a procedure round-trips with a free-text name and an optional surgery date
     name: 'orchiectomy',
     surgeryEpochDay: 20000,
     notes: '',
-    consultEpochDays: []
+    consults: []
   });
   assert.equal(procedures[2].surgeryEpochDay, null);
   assert.equal(procedures[2].id, unscheduled);
@@ -1000,9 +1000,9 @@ test('several procedures coexist, each with its own dates, notes and checklist',
 
   const procedures = await journal.procedures.getProcedures();
   const [first, second] = procedures;
-  assert.deepEqual(first.consultEpochDays, [19900]);
+  assert.deepEqual(first.consults.map((c) => c.epochDay), [19900]);
   assert.equal(first.notes, 'drains out on day 5');
-  assert.deepEqual(second.consultEpochDays, [20100]);
+  assert.deepEqual(second.consults.map((c) => c.epochDay), [20100]);
   assert.equal(second.notes, '');
 
   assert.deepEqual((await journal.procedures.getChecklist(top))?.items.map((i) => i.content), ['buy gauze']);
@@ -1016,10 +1016,11 @@ test('consult dates are a list, oldest first, and each one can be dropped on its
   const second = await journal.procedures.addConsult(id, 19950);
   await journal.procedures.addConsult(id, 19900);
 
-  assert.deepEqual((await journal.procedures.getProcedures())[0].consultEpochDays, [19900, 19950]);
+  const days = async () => (await journal.procedures.getProcedures())[0].consults.map((c) => c.epochDay);
+  assert.deepEqual(await days(), [19900, 19950]);
 
   await journal.procedures.deleteConsult(second);
-  assert.deepEqual((await journal.procedures.getProcedures())[0].consultEpochDays, [19900]);
+  assert.deepEqual(await days(), [19900]);
   await journal.procedures.deleteConsult(second); // idempotent
 });
 
