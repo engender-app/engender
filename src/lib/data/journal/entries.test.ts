@@ -670,6 +670,23 @@ test('counterevidencePool includes an entry whose body-region euphoria clears th
   assert.deepEqual(pool.map((e) => e.id), [byRegion]);
 });
 
+test('counterevidencePool\'s region-euphoria floor is inclusive: exactly 50 clears it, 49 does not', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const atFloor = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 4,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 50 } }
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 101,
+    mood: 4,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 49 } }
+  });
+
+  const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
+  assert.deepEqual(pool.map((e) => e.id), [atFloor]);
+});
+
 test('counterevidencePool matches any tag id it is given, not just the first', async () => {
   const { journal } = await journalWithBuiltIns();
   const social = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['g-soc-eu'] });

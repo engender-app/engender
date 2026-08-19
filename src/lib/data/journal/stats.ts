@@ -181,7 +181,7 @@ export const GOOD_DAY_MOOD_FLOOR = 3;
     Named apart from the euphoria tags' own good-day clause: a region is a
     magnitude a person can log without a euphoria tag at all, so it needs its
     own floor rather than reusing GOOD_DAY_MOOD_FLOOR's shape or piggybacking
-    on EUPHORIA_TAG_KEYS. Compared inclusively (`>= `), the same convention
+    on EUPHORIA_TAG_KEYS. Compared inclusively (`>=`), the same convention
     GOOD_DAY_MOOD_FLOOR itself uses. */
 export const GOOD_DAY_REGION_EUPHORIA_FLOOR = 50;
 
