@@ -2,12 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { epochDayFromLocalDate } from './epochDay.ts';
 import type { PersonalEffectType, RegimenEpisode } from './types.ts';
-import {
-  literatureCovers,
-  literatureWindow,
-  literatureWindowDays,
-  PERSONAL_EFFECT_TYPES
-} from './personalEffectWindow.ts';
+import { literatureCovers, literatureWindow, literatureWindowDays } from './personalEffectWindow.ts';
 
 const ANCHOR = epochDayFromLocalDate(new Date(2024, 0, 1)); // 2024-01-01
 
@@ -29,18 +24,44 @@ function bandOf(effect: PersonalEffectType, anchor: Anchor) {
   return days;
 }
 
-test('every one of the eight fixed effects has a literature window', () => {
-  assert.deepEqual(PERSONAL_EFFECT_TYPES, [
-    'breast_development',
-    'fat_redistribution',
-    'skin_softening',
-    'hair_changes',
-    'voice_drop',
-    'facial_body_hair',
-    'masculinizing_fat_redistribution',
-    'cycle_cessation'
-  ]);
-  for (const effect of PERSONAL_EFFECT_TYPES) assert.ok(literatureWindow(effect));
+/* Ticket 02's original eight, unchanged: same keys, same windows. Ticket 41
+   widens tier 1 well past these, but this list stays exactly what it was -
+   see personalEffectWindow.ts's header for why the CHECK's own eight are
+   untouched. */
+const ORIGINAL_EIGHT = [
+  'breast_development',
+  'fat_redistribution',
+  'skin_softening',
+  'hair_changes',
+  'voice_drop',
+  'facial_body_hair',
+  'masculinizing_fat_redistribution',
+  'cycle_cessation'
+] as const;
+
+/* Ticket 41's tier-1 widening: nine new feminizing-direction keys and four
+   new masculinizing-direction keys, read out of GenderGP's WPATH-sourced
+   tables (personalEffectWindow.ts's header). Masculinising scalp hair loss
+   is deliberately absent - its completion figure is "variable", no range,
+   so it sits at tier 2 instead (personalEffectCatalog.ts). */
+const NEW_FEMINIZING_TIER_1 = [
+  'decreased_muscle_mass_strength',
+  'decreased_libido',
+  'decreased_spontaneous_erections',
+  'decreased_testicular_volume',
+  'male_pattern_baldness_ceasing'
+] as const;
+const NEW_MASCULINIZING_TIER_1 = [
+  'skin_oiliness_acne_masculinizing',
+  'increased_muscle_mass_strength_masculinizing',
+  'clitoral_enlargement_masculinizing',
+  'vaginal_atrophy_masculinizing'
+] as const;
+
+const ALL_TIER_1 = [...ORIGINAL_EIGHT, ...NEW_FEMINIZING_TIER_1, ...NEW_MASCULINIZING_TIER_1];
+
+test('every tier-1 effect - the original eight plus ticket 41s widening - has a literature window', () => {
+  for (const effect of ALL_TIER_1) assert.ok(literatureWindow(effect), `expected a window for ${effect}`);
 });
 
 test('onset and completion are counted forward from the anchor in calendar months', () => {
@@ -92,15 +113,77 @@ test('cycle cessation has no defined completion ceiling, like skin softening', (
   assert.equal(days.completion, null);
 });
 
-/* Phase 5 ticket 27: the drug gate. */
+/* Ticket 41's new tier-1 windows, all bounded (no open ends among them). */
 
-const FEMINIZING = ['breast_development', 'fat_redistribution', 'skin_softening', 'hair_changes'] as const;
-const MASCULINIZING = ['voice_drop', 'facial_body_hair', 'masculinizing_fat_redistribution', 'cycle_cessation'] as const;
+test('decreased muscle mass and strength (feminizing) matches GenderGPs table', () => {
+  const days = bandOf('decreased_muscle_mass_strength', ON_E);
+  assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
+  assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
+  assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
+  assert.equal(days.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
+});
 
-test('every effect belongs to exactly one of the two literature tables', () => {
-  assert.deepEqual([...FEMINIZING, ...MASCULINIZING].sort(), [...PERSONAL_EFFECT_TYPES].sort());
-  for (const effect of FEMINIZING) assert.equal(literatureWindow(effect).direction, 'feminizing');
-  for (const effect of MASCULINIZING) assert.equal(literatureWindow(effect).direction, 'masculinizing');
+test('decreased libido, decreased spontaneous erections and decreased testicular volume (feminizing) match GenderGPs table', () => {
+  const libido = bandOf('decreased_libido', ON_E);
+  assert.equal(libido.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
+  assert.equal(libido.onset.end, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
+  assert.equal(libido.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
+  assert.equal(libido.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
+
+  const erections = bandOf('decreased_spontaneous_erections', ON_E);
+  assert.equal(erections.completion?.start, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
+  assert.equal(erections.completion?.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
+
+  const testes = bandOf('decreased_testicular_volume', ON_E);
+  assert.equal(testes.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
+  assert.equal(testes.completion?.end, epochDayFromLocalDate(new Date(2027, 0, 1))); // +36 months
+});
+
+test('male pattern baldness ceasing to progress (feminizing) matches GenderGPs table', () => {
+  const days = bandOf('male_pattern_baldness_ceasing', ON_E);
+  assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
+  assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
+  assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
+  assert.equal(days.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
+});
+
+test('skin oiliness/acne and increased muscle mass (masculinizing) match GenderGPs table', () => {
+  const skin = bandOf('skin_oiliness_acne_masculinizing', ON_T);
+  assert.equal(skin.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
+  assert.equal(skin.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
+  assert.equal(skin.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
+  assert.equal(skin.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
+
+  const muscle = bandOf('increased_muscle_mass_strength_masculinizing', ON_T);
+  assert.equal(muscle.onset.start, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
+  assert.equal(muscle.onset.end, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
+  assert.equal(muscle.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
+  assert.equal(muscle.completion?.end, epochDayFromLocalDate(new Date(2029, 0, 1))); // +60 months
+});
+
+test('clitoral enlargement and vaginal atrophy (masculinizing) match GenderGPs table', () => {
+  const clitoral = bandOf('clitoral_enlargement_masculinizing', ON_T);
+  assert.equal(clitoral.onset.start, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
+  assert.equal(clitoral.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
+  assert.equal(clitoral.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
+  assert.equal(clitoral.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
+
+  const vaginal = bandOf('vaginal_atrophy_masculinizing', ON_T);
+  assert.equal(vaginal.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
+  assert.equal(vaginal.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
+});
+
+/* Phase 5 ticket 27: the drug gate. Still exhaustive over every tier-1 key,
+   original and widened alike - tier 1 is exactly the keys this file's
+   literature-window map lists. */
+
+const FEMINIZING = [...ORIGINAL_EIGHT.slice(0, 4), ...NEW_FEMINIZING_TIER_1] as const;
+const MASCULINIZING = [...ORIGINAL_EIGHT.slice(4), ...NEW_MASCULINIZING_TIER_1] as const;
+
+test('every tier-1 effect belongs to exactly one of the two literature tables', () => {
+  assert.deepEqual([...FEMINIZING, ...MASCULINIZING].sort(), [...ALL_TIER_1].sort());
+  for (const effect of FEMINIZING) assert.equal(literatureWindow(effect)?.direction, 'feminizing');
+  for (const effect of MASCULINIZING) assert.equal(literatureWindow(effect)?.direction, 'masculinizing');
 });
 
 test('a journal whose only regimen episode is testosterone gets no feminizing band', () => {
@@ -125,7 +208,7 @@ test('a drug the app cannot classify gets no band at all, rather than a hedged o
   // hormones the tables describe", which is not the same as "probably the
   // one the other fields hint at".
   for (const drug of ['spironolactone', 'cyproterone acetate', 'progesterone', 'blokery', 'Androcur', '']) {
-    for (const effect of PERSONAL_EFFECT_TYPES) {
+    for (const effect of ALL_TIER_1) {
       assert.equal(literatureCovers(effect, drug), false, `${drug} should not cover ${effect}`);
       assert.equal(literatureWindowDays(effect, { drug, startEpochDay: ANCHOR }), null);
     }
@@ -142,5 +225,20 @@ test('the gate reads the same drug names the hormone curve does, in both catalog
   for (const drug of ['testosterone', 'testosteron enantan', 'T cypionate']) {
     assert.equal(literatureCovers('voice_drop', drug), true);
     assert.equal(literatureCovers('breast_development', drug), false);
+  }
+});
+
+test('a tier-2 or tier-3 key - no literature window at all - never gets a band', () => {
+  // scalp_hair_loss_masculinizing is a real tier-2 catalogue key
+  // (personalEffectCatalog.ts): GenderGP names it but gives no usable
+  // completion range, so ticket 41 catalogues it at tier 2 rather than
+  // stretching this file's tier-1 map to cover it. A minted custom key
+  // behaves identically - absence from the map is what "no band" means.
+  for (const effect of ['scalp_hair_loss_masculinizing', 'a1b2c3d4-custom-uuid']) {
+    assert.equal(literatureWindow(effect), undefined);
+    assert.equal(literatureCovers(effect, 'estradiol'), false);
+    assert.equal(literatureCovers(effect, 'testosterone'), false);
+    assert.equal(literatureWindowDays(effect, ON_E), null);
+    assert.equal(literatureWindowDays(effect, ON_T), null);
   }
 });
