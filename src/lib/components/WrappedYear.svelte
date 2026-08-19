@@ -23,7 +23,8 @@
     recap,
     moodTrend,
     dimChange,
-    topTags
+    topTags,
+    anchorDuration = null
   }: {
     /** The calendar year, as a number: the cover prints it and the month
         names are formatted in it, and a string round-tripped through
@@ -34,6 +35,12 @@
     moodTrend: DayAverage[];
     dimChange: { name: string; from: number; to: number } | null;
     topTags: { label: string; count: number }[];
+    /** The journey anchor's duration (phase 5 ticket 25), already named and
+        formatted - the caller resolves the anchor milestone and formats its
+        gap to today, the same division of labour dimChange's name
+        resolution already follows. Null while no anchor is set - the figure
+        is left out rather than shown as a gap. */
+    anchorDuration?: { name: string; duration: string } | null;
   } = $props();
 
   const MOOD_MIN = 1;
@@ -66,6 +73,9 @@
     { label: m.wrapped_stat_streak(), value: m.n_days({ n: recap.bestStreak }) },
     ...(recap.averageMood !== null
       ? [{ label: m.wrapped_stat_mood(), value: `${recap.averageMood.toFixed(1)} / ${MOOD_MAX}` }]
+      : []),
+    ...(anchorDuration
+      ? [{ label: m.journey_anchor_since({ name: anchorDuration.name }), value: anchorDuration.duration }]
       : []),
     ...(dimChange
       ? [
