@@ -454,6 +454,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/journal-book">
+      <span class="row-icon"><Icon name="book" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.journal_book_row()}</span>
+        <span class="row-subtitle">{m.journal_book_row_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
     <a class="list-row" href="/settings/trash">
       <span class="row-icon"><Icon name="trash" size={22} /></span>
       <span class="row-text">

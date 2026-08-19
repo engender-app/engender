@@ -2160,5 +2160,20 @@
   "journaling_pause_history_title": "Poprzednie przerwy",
   "journaling_pause_range_to": "do",
   "journaling_pause_ongoing": "trwa",
-  "journaling_pause_delete_aria": "Usuń przerwę od {from}"
+  "journaling_pause_delete_aria": "Usuń przerwę od {from}",
+  "journal_book_row": "Dziennik do druku",
+  "journal_book_row_sub": "Wydruk z wybranego zakresu, na pamiątkę albo do pokazania",
+  "journal_book_title": "Dziennik do druku",
+  "journal_book_intro": "Wydruk powstaje tutaj, na urządzeniu, i nic nie idzie na zewnątrz. To pamiątka albo coś do pokazania komuś, nie kopia zapasowa: wydruku nie da się wczytać z powrotem. Dziennik przywraca się tylko z pliku archiwum.",
+  "journal_book_range_start_label": "Data początkowa",
+  "journal_book_range_end_label": "Data końcowa",
+  "journal_book_range_required": "Wybierz datę początkową i końcową, żeby zobaczyć wydruk.",
+  "journal_book_print": "Drukuj",
+  "journal_book_include_title": "Co wchodzi do wydruku",
+  "journal_book_include_note": "Drukuje się tylko to, co tu zaznaczysz.",
+  "journal_book_part_entries": "Wpisy",
+  "journal_book_part_opening_page": "Bilans na otwarcie",
+  "journal_book_part_dysphoria_euphoria_tags": "Tagi dysforii i eufori",
+  "journal_book_empty": "W tym zakresie nie ma nic do wydruku.",
+  "journal_book_range": "od {from} do {to}"
 }

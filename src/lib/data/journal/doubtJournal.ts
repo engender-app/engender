@@ -28,6 +28,12 @@ export interface DoubtEntryInput {
 export interface DoubtJournalArea {
   /** Newest first, the same order entriesWithTag reads counterevidence in. */
   getEntries(limit: number): Promise<DoubtEntry[]>;
+  /** Every doubt entry whose day falls in the range, oldest first. Its own
+      read rather than a slice of `getEntries`: the journal book (phase 5
+      ticket 17) covers a range someone chose rather than the recent past,
+      and a limit that happened to be large enough for the doubt screen
+      would silently drop the older half of a year's book. */
+  getEntriesInRange(fromEpochDay: number, toEpochDay: number): Promise<DoubtEntry[]>;
   /** Returns the entry's id. Throws on blank text: a doubt entry's one
       field is the whole point of the record, unlike Entry's "at least one
       of six" rule. */
@@ -61,6 +67,16 @@ export function makeDoubtJournalArea(driver: SqliteDriver): DoubtJournalArea {
       const rows = await driver.query<DoubtEntryRow>(
         'SELECT uuid, epoch_day, timestamp, text FROM doubt_entry ORDER BY epoch_day DESC, timestamp DESC, id DESC LIMIT ?',
         [limit]
+      );
+      return rows.map(toDoubtEntry);
+    },
+
+    async getEntriesInRange(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<DoubtEntryRow>(
+        `SELECT uuid, epoch_day, timestamp, text FROM doubt_entry
+         WHERE epoch_day >= ? AND epoch_day <= ?
+         ORDER BY epoch_day, timestamp, id`,
+        [fromEpochDay, toEpochDay]
       );
       return rows.map(toDoubtEntry);
     },

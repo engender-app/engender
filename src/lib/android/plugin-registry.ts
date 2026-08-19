@@ -9,6 +9,7 @@ export const androidPluginOwners = {
   retrospectiveNotifications: 'retrospective/android-bridge',
   disguise: 'disguise/android-bridge',
   quickExit: 'lock/quick-exit-bridge',
+  print: 'print/android-bridge',
   // Official @capacitor/app plugin, not one of ours - imported directly
   // from that package rather than through registerAndroidPlugin() below,
   // but still asserted at startup like every other required plugin
@@ -32,6 +33,7 @@ export const androidPluginRegistry = [
   { name: 'RetrospectiveNotifications', owner: androidPluginOwners.retrospectiveNotifications },
   { name: 'Disguise', owner: androidPluginOwners.disguise },
   { name: 'QuickExit', owner: androidPluginOwners.quickExit },
+  { name: 'Print', owner: androidPluginOwners.print },
   { name: 'App', owner: androidPluginOwners.backNavigation },
 ] as const satisfies readonly AndroidPluginRegistryEntry[];
 
