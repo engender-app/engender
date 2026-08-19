@@ -130,21 +130,22 @@ function activeDeps(): PlatformSyncDeps {
 
 const syncReminderSchedules = coalescing(
   async () => {
-    if (!activeDeps().isAndroid() || !activeDeps().isReady()) return;
+    const deps = activeDeps();
+    if (!deps.isAndroid() || !deps.isReady()) return;
     const [reminders, recentEntries] = await Promise.all([
-      activeDeps().journal.reminders.getReminders(),
-      activeDeps().journal.entries.recentDays(1)
+      deps.journal.reminders.getReminders(),
+      deps.journal.entries.recentDays(1)
     ]);
-    await activeDeps().androidReminders.sync(
+    await deps.androidReminders.sync(
       assembleReminderSyncPayload({
         reminders,
         recentEntries,
-        checkInEnabled: activeDeps().prefs.checkInEnabled,
-        checkInTime: activeDeps().prefs.checkInTime,
-        checkInAffirmationsEnabled: activeDeps().prefs.checkInAffirmationsEnabled,
-        affirmationLines: activeDeps().prefs.checkInAffirmationsEnabled ? activeDeps().affirmationLines() : [],
-        hideNotificationTitles: activeDeps().prefs.hideNotificationTitles,
-        texts: activeDeps().reminderTexts()
+        checkInEnabled: deps.prefs.checkInEnabled,
+        checkInTime: deps.prefs.checkInTime,
+        checkInAffirmationsEnabled: deps.prefs.checkInAffirmationsEnabled,
+        affirmationLines: deps.affirmationLines(),
+        hideNotificationTitles: deps.prefs.hideNotificationTitles,
+        texts: deps.reminderTexts()
       })
     );
   },
@@ -153,18 +154,20 @@ const syncReminderSchedules = coalescing(
 
 const reconcileStockRunOutReminders = coalescing(
   async () => {
-    if (!activeDeps().isAndroid() || !activeDeps().isReady()) return;
-    await activeDeps().journal.stock.reconcileRunOutReminders(activeDeps().todayEpochDay());
+    const deps = activeDeps();
+    if (!deps.isAndroid() || !deps.isReady()) return;
+    await deps.journal.stock.reconcileRunOutReminders(deps.todayEpochDay());
   },
   (error) => console.error('Could not reconcile the medication stock run-out reminder', error)
 );
 
 async function consumeReminderLaunchRoute() {
-  if (!activeDeps().isAndroid() || !activeDeps().isReady()) return;
+  const deps = activeDeps();
+  if (!deps.isAndroid() || !deps.isReady()) return;
   try {
-    const { route } = await activeDeps().androidReminders.consumeLaunchRoute();
-    if (!route || !activeDeps().isValidLaunchRoute(route) || route === activeDeps().currentPathname()) return;
-    await activeDeps().goto(route);
+    const { route } = await deps.androidReminders.consumeLaunchRoute();
+    if (!route || !deps.isValidLaunchRoute(route) || route === deps.currentPathname()) return;
+    await deps.goto(route);
   } catch (error) {
     console.error('Could not consume reminder launch route', error);
   }
