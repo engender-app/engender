@@ -202,7 +202,8 @@ function portableWith(marker: string) {
     checkInAffirmationsEnabled: values.checkInAffirmationsEnabled,
     preferredLabUnits: {},
     streakGoalHabit: values.streakGoalHabit,
-    streakGoalTargetDays: values.streakGoalTargetDays
+    streakGoalTargetDays: values.streakGoalTargetDays,
+    journeyAnchorMilestoneId: values.journeyAnchorMilestoneId
   };
 }
 

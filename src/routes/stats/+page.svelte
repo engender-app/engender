@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, fmtMonthName } from '$lib/data/dates';
-  import { localDateFromEpochDay, todayEpochDay, previousCalendarMonthRange, previousCalendarYearRange } from '$lib/data/epochDay';
+  import { fmtDay, fmtDuration, fmtMonthName } from '$lib/data/dates';
+  import { calendarDuration, localDateFromEpochDay, todayEpochDay, previousCalendarMonthRange, previousCalendarYearRange } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
@@ -26,6 +26,14 @@
      rather than captured, so a session open across midnight moves on. */
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
+
+  /* The journey anchor (phase 5 ticket 25, ADR-0010): recomputed on every
+     render from the anchor's own date, nothing cached - so switching or
+     clearing it in settings shows up here the same instant it does on
+     wrapped. No card at all while unset, the same way the streak card below
+     only appears once there is something to say. */
+  let anchor = $derived(vocabulary.journeyAnchor);
+  let anchorDuration = $derived(anchor ? fmtDuration(calendarDuration(anchor.epochDay, today)) : null);
 
   let metrics = $derived([
     { key: 'mood', name: m.mood(), min: 1, max: 5 },
@@ -140,6 +148,15 @@
       >
     {/each}
   </div>
+
+  {#if anchor}
+    <div class="card spread" style="margin-bottom:var(--space-4)" data-journey-anchor-card>
+      <span class="row-text">
+        <span class="row-title">{anchorDuration}</span>
+        <span class="row-subtitle">{m.journey_anchor_since({ name: anchor.name })}</span>
+      </span>
+    </div>
+  {/if}
 
   {#if streak > 0}
     <div class="card spread" style="margin-bottom:var(--space-4)">

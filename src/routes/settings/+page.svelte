@@ -61,6 +61,13 @@
       subtitle: () => isWeb ? m.reminders_web_sub() : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() }),
       trailing: () => (isWeb ? { name: 'info', size: 18 } : { name: 'chevronRight', size: 20 }) },
     { key: 'milestones', icon: 'flag', title: () => m.milestones(), subtitle: () => m.settings_milestones_sub({ count: vocabulary.milestones.length }), href: '/settings/milestones' },
+    { key: 'journey-anchor', icon: 'flag',
+      title: () => m.journey_anchor_title(),
+      subtitle: () => {
+        const anchor = vocabulary.journeyAnchor;
+        return anchor ? m.journey_anchor_row_sub_set({ name: anchor.name }) : m.journey_anchor_row_sub_unset();
+      },
+      href: '/settings/journey-anchor' },
     { key: 'affirmations', icon: 'sparkle', title: () => m.affirmations_row_title(), subtitle: () => m.affirmations_row_sub(), href: '/settings/affirmations' },
     { key: 'photos', icon: 'image', title: () => m.progress_photos(), subtitle: () => m.progress_photos_sub(), href: '/settings/photos' },
     { key: 'voice', icon: 'mic', title: () => m.recordings_label(), subtitle: () => m.voice_compare_sub(), href: '/settings/voice' },
