@@ -14,10 +14,11 @@
    case and the USC name change), the Supreme Court's own announcement of
    resolution III CZP 6/24 of 4 March 2025, the Ombudsman's guide to
    ustalenie plci proceedings, and the relevant gov.pl pages, on the date
-   POLISH_PACK.reviewedOn records. Two things that check turned up are said
-   out loud in roadmap_caveat_pl rather than hidden: there is still no
-   gender recognition statute, and whether identity alone grounds a change
-   is pending before the Supreme Court as III CZP 20/26.
+   POLISH_PACK.reviewedOn records. What that check turned up is said out
+   loud in roadmap_caveat_pl rather than hidden: there is still no gender
+   recognition statute, whether identity alone grounds a change is pending
+   before the Supreme Court as III CZP 20/26, and the recorded sex marker
+   itself only ever holds K or M, so no procedure produces a third value.
 
    Every item describes procedure. None of them tells anyone what to do
    about their own case, which is the ticket's out-of-scope line and the
