@@ -120,7 +120,7 @@
               {fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
               {pause.endEpochDay === null
                 ? `· ${m.journaling_pause_ongoing()}`
-                : `– ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                : `${m.journaling_pause_range_to()} ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`}
             </span>
           </span>
           <button

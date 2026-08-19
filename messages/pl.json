@@ -2070,6 +2070,7 @@
   "journaling_pause_end_hint": "Zostaw puste, jeśli przerwa jeszcze trwa.",
   "journaling_pause_start": "Zacznij przerwę",
   "journaling_pause_history_title": "Poprzednie przerwy",
+  "journaling_pause_range_to": "do",
   "journaling_pause_ongoing": "trwa",
   "journaling_pause_delete_aria": "Usuń przerwę od {from}"
 }

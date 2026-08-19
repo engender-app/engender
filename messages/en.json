@@ -2038,6 +2038,7 @@
   "journaling_pause_end_hint": "Leave empty if the pause is still going.",
   "journaling_pause_start": "Start a pause",
   "journaling_pause_history_title": "Past pauses",
+  "journaling_pause_range_to": "to",
   "journaling_pause_ongoing": "still going",
   "journaling_pause_delete_aria": "Delete the pause starting {from}"
 }
