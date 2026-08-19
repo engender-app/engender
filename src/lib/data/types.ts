@@ -400,6 +400,22 @@ export interface SideEffect {
   epochDay: number;
 }
 
+/** The three states phase 5 ticket 03 logs. Fixed rather than user-defined,
+    the same reasoning TallyKind gives - 'nothing_this_month' is a real,
+    loggable state here, not the absence of a row. */
+export type CycleEventKind = 'period_occurred' | 'spotting' | 'nothing_this_month';
+
+/* No episode reference (CONTEXT: "Cycle event"): this record stands alone
+   and has to work whether or not a regimen episode exists, the same
+   reasoning SideEffect above gives. Not an Entry: no mood, dimension
+   values, tags or note. Purely descriptive - no prediction, forecast or
+   fertility framing of any kind. */
+export interface CycleEvent {
+  id: string;
+  kind: CycleEventKind;
+  epochDay: number;
+}
+
 /* Preferences are not here: they live in SQLite's `pref` table and are
    described by prefs/catalogue.ts (ticket 06). Neither is a whole-journal
    type: the `DB` object the demo store held went with it in ticket 08, and

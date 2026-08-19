@@ -328,6 +328,24 @@ a recommendation, warning or escalation.
 _Avoid_: Symptom (this app's own term is side effect), adverse event (implies
 clinical reporting this is not)
 
+**Cycle event**:
+A menstrual event for people on testosterone - period occurred, spotting, or
+nothing this month - and an epoch day, structurally independent of the
+regimen episode the same way **Side effect** is: no episode reference, and it
+works whether or not one exists. Not an entry: no mood, dimension values,
+tags or note. Charted against regimen episode history so cessation is
+visible over time, but purely descriptive otherwise - no prediction of a
+next period, no fertility framing, no assumption that a regular cycle
+exists. "Nothing this month" is a real, loggable state, not the absence of a
+row - the shape a severity scale cannot represent. Modeled after
+[Clue's own guidance for trans users](https://helloclue.com/articles/cycle-a-z/tips-for-using-clue-when-you're-trans),
+which documents both the harm mainstream cycle trackers do (gendered copy,
+fertility-first framing) and the fix that worked: gender-neutral language and
+letting cycle tracking coexist with dysphoria and HRT tracking rather than
+assuming one story.
+_Avoid_: Period tracker, menstrual cycle (implies a regularity this makes no
+assumption of), fertility window
+
 **Personal effect**:
 One of eight fixed body-change markers a person can mark a "first noticed"
 date for: four feminizing (breast development, fat redistribution, skin

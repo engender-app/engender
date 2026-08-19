@@ -81,6 +81,7 @@ const SECTIONS = [
   section({ name: 'labResults', read: read.readLabResults, apply: apply.applyLabResults }),
   section({ name: 'measurements', read: read.readMeasurements, apply: apply.applyMeasurements }),
   section({ name: 'sideEffects', read: read.readSideEffects, apply: apply.applySideEffects }),
+  section({ name: 'cycleEvents', read: read.readCycleEvents, apply: apply.applyCycleEvents }),
   section({ name: 'personalEffects', read: read.readPersonalEffects, apply: apply.applyPersonalEffects }),
   section({ name: 'hairStages', read: read.readHairStages, apply: apply.applyHairStages }),
   section({ name: 'hairPhotos', read: read.readHairPhotos, apply: apply.applyHairPhotos }),
