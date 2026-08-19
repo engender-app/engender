@@ -66,7 +66,8 @@ const SECTIONS = [
   'dosePauses',
   'medicationStock',
   'tryouts',
-  'feltSenseEntries'
+  'feltSenseEntries',
+  'wearSessions'
 ] as const satisfies readonly (keyof ArchiveJournal)[];
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
@@ -81,7 +82,7 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 24 sections, and the customizations that
+/** A journal with something in all 25 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, and a renamed, a hidden and a switched-off built-in. */
@@ -180,6 +181,14 @@ async function everySection(): Promise<Journal> {
     endEpochDay: null
   });
   await journal.tryouts.addFeltSenseEntry({ tryoutId: tryout, epochDay: 19910, mood: 4, note: 'felt right' });
+
+  await journal.wearSessions.upsertSession({
+    startTimestamp: 1_700_000_000_000,
+    durationMs: 6 * 3600000,
+    note: 'a bit tight by the end',
+    reminderHoursAfterStart: 8,
+    reminderTitle: 'binder check-in'
+  });
 
   return journal;
 }
