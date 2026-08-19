@@ -4,7 +4,32 @@ import { startOfDayTimestamp } from './epochDay.ts';
 import { esterCurves } from './hormoneCurve.ts';
 import { qualitativeCurves } from './hormoneCurveQualitative.ts';
 import type { DoseEvent, RegimenEpisode } from './types.ts';
-import { isTestosteroneDrug } from './hormoneTestosteroneEster.ts';
+import {
+  INJECTABLE_TESTOSTERONE_ESTERS,
+  isTestosteroneDrug,
+  resolveTestosteroneEster
+} from './hormoneTestosteroneEster.ts';
+
+/** A weekly testosterone injection log on `ester`, over a three-week window. */
+function injectionWindow(ester: string) {
+  const episodes: RegimenEpisode[] = [tEpisode('testosterone', ester)];
+  const doses: DoseEvent[] = [0, 7, 14].map((day) => ({
+    id: `d${day}`,
+    timestamp: startOfDayTimestamp(day) + 8 * 3600000,
+    dose: 100,
+    doseUnit: 'mg',
+    status: 'taken',
+    scheduled: null,
+    route: 'im',
+    injectionSite: null,
+    vehicle: 'oil'
+  }));
+  return { doses, episodes, fromEpochDay: 0, toEpochDay: 20 };
+}
+
+function tEpisode(drug: string, ester: string | null): RegimenEpisode {
+  return { id: 'e', drug, ester, dose: 100, doseUnit: 'mg', route: 'IM', interval: 'every 7 days', startEpochDay: 0, hidden: false };
+}
 
 test('isTestosteroneDrug answers the drug-identity question, in both catalogue languages', () => {
   assert.equal(isTestosteroneDrug('testosterone'), true);
@@ -46,42 +71,74 @@ test('another androgen is not testosterone, however close its name or its route'
   assert.equal(isTestosteroneDrug('metylotestosteron'), false);
 });
 
-test('an injectable testosterone dose draws nothing, in either model', () => {
-  /* Phase 5 ticket 01's fail-closed outcome, pinned so it cannot be lost by
-     accident. No published testosterone fit clears the bar the four estradiol
-     esters clear (see this module's header), and ticket 01 reserves the
-     qualitative curve for non-injectable routes - so an injection of
-     testosterone resolves to no curve at all rather than to a band built from
-     estradiol's parameters or a shape standing in for one. */
-  const episodes: RegimenEpisode[] = [
-    {
-      id: 'ep',
-      drug: 'testosterone',
-      ester: 'cypionate',
-      dose: 100,
-      doseUnit: 'mg',
-      route: 'IM',
-      interval: 'every 7 days',
-      startEpochDay: -100,
-      hidden: false
-    }
-  ];
-  const doses: DoseEvent[] = [0, 7, 14].map((day) => ({
-    id: `d${day}`,
-    timestamp: startOfDayTimestamp(day) + 8 * 3600000,
-    dose: 100,
-    doseUnit: 'mg',
-    status: 'taken',
-    scheduled: null,
-    route: 'im',
-    injectionSite: null,
-    vehicle: 'oil'
-  }));
-  const window = { doses, episodes, fromEpochDay: 0, toEpochDay: 20 };
+test('an injectable testosterone dose gets a shape, never the estradiol band', () => {
+  /* The two halves of ticket 01's answer for injections. No published
+     testosterone fit clears the band bar (this module's header argues each
+     ester), so an injection never reaches hormoneCurve.ts's fitted band, ester
+     word notwithstanding - but it does get the qualitative shape, which claims
+     no width and no unit. */
+  const window = injectionWindow('cypionate');
 
-  // The estradiol band: the drug gate refuses it, ester word notwithstanding.
   assert.deepEqual(esterCurves(window).curves, []);
-  // The qualitative shape: injectable routes are not in either drug's list.
-  assert.deepEqual(qualitativeCurves({ ...window, drug: 'testosterone' }).curves, []);
+
+  const shape = qualitativeCurves({ ...window, drug: 'testosterone' });
+  assert.equal(shape.curves.length, 1);
+  assert.equal(shape.curves[0].key, 'testosterone:injected');
+  assert.equal(shape.curves[0].doseCount, 3);
+
+  // And it is testosterone's alone: the estradiol call sees none of it.
   assert.deepEqual(qualitativeCurves({ ...window, drug: 'estradiol' }).curves, []);
+});
+
+test('an injectable testosterone ester with no shape of its own draws nothing at all', () => {
+  /* Undecanoate is a months-long depot and a blend is four esters at once whose
+     published curves are composite only. Drawing either on the weekly shape
+     would be wrong rather than rough, so neither is drawn. */
+  for (const ester of ['undecanoate', 'propionate']) {
+    const window = injectionWindow(ester);
+    assert.deepEqual(esterCurves(window).curves, [], ester);
+    assert.deepEqual(qualitativeCurves({ ...window, drug: 'testosterone' }).curves, [], ester);
+  }
+});
+
+test('the testosterone esters this app draws a shape for, and only those', () => {
+  assert.deepEqual(INJECTABLE_TESTOSTERONE_ESTERS, ['cypionate', 'enanthate']);
+});
+
+test('a testosterone ester resolves from either field, in both catalogue languages', () => {
+  assert.equal(resolveTestosteroneEster(tEpisode('testosterone', 'cypionate')), 'cypionate');
+  assert.equal(resolveTestosteroneEster(tEpisode('testosterone', 'enanthate')), 'enanthate');
+  assert.equal(resolveTestosteroneEster(tEpisode('testosterone', 'cypionian')), 'cypionate');
+  assert.equal(resolveTestosteroneEster(tEpisode('testosterone', 'enantan')), 'enanthate');
+  assert.equal(resolveTestosteroneEster(tEpisode('cypionian testosteronu', null)), 'cypionate');
+  assert.equal(resolveTestosteroneEster(tEpisode('Testosterone enanthate', null)), 'enanthate');
+  assert.equal(resolveTestosteroneEster(tEpisode('T', 'TC')), 'cypionate');
+  assert.equal(resolveTestosteroneEster(tEpisode('T', 'TE')), 'enanthate');
+});
+
+test('the long depot and the blends resolve to nothing, so neither is drawn on a weekly shape', () => {
+  /* Undecanoate acts over months and a Sustanon-type blend is four esters at
+     once whose published curves are composite only. Both need a shape of their
+     own that nothing here argues, so both get none rather than the
+     cypionate/enanthate one. */
+  assert.equal(resolveTestosteroneEster(tEpisode('testosterone undecanoate', 'undecanoate')), null);
+  assert.equal(resolveTestosteroneEster(tEpisode('testosterone', 'undekanian')), null);
+  assert.equal(resolveTestosteroneEster(tEpisode('Nebido', null)), null);
+  assert.equal(resolveTestosteroneEster(tEpisode('Sustanon 250', null)), null);
+  assert.equal(resolveTestosteroneEster(tEpisode('Omnadren 250', null)), null);
+  assert.equal(resolveTestosteroneEster(tEpisode('testosterone', 'propionate')), null);
+});
+
+test('estradiol never resolves a testosterone ester, however familiar the ester word', () => {
+  // The mirror of hormoneEster.ts's own guard: cypionate and enanthate name an
+  // ester of either drug, and the two rest on separate evidence.
+  assert.equal(resolveTestosteroneEster(tEpisode('estradiol cypionate', 'cypionate')), null);
+  assert.equal(resolveTestosteroneEster(tEpisode('estradiol', 'enanthate')), null);
+  assert.equal(resolveTestosteroneEster(tEpisode('nandrolone decanoate', 'decanoate')), null);
+});
+
+test('testosterone with no recognizable ester resolves to nothing rather than a guess', () => {
+  assert.equal(resolveTestosteroneEster(tEpisode('testosterone', null)), null);
+  assert.equal(resolveTestosteroneEster(tEpisode('testosterone', 'oil')), null);
+  assert.equal(resolveTestosteroneEster(tEpisode('', null)), null);
 });

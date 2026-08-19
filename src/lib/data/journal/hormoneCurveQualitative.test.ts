@@ -46,7 +46,7 @@ test('a daily oral regimen gets one curve, drawn from the dose log', async () =>
   const view = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
 
   assert.equal(view.curves.length, 1);
-  assert.equal(view.curves[0].route, 'oral');
+  assert.equal(view.curves[0].key, 'estradiol:oral');
   assert.equal(view.curves[0].doseCount, 8);
   assert.ok(view.curves[0].points.some((point) => point.value > 0));
 });
@@ -60,8 +60,8 @@ test('two routes dosed in one window get a curve each', async () => {
   const view = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
 
   assert.deepEqual(
-    view.curves.map((c) => c.route),
-    ['oral', 'gel']
+    view.curves.map((c) => c.key),
+    ['estradiol:oral', 'estradiol:gel']
   );
 });
 
@@ -202,7 +202,7 @@ test('a daily testosterone gel regimen gets its own curve, fitted against testos
   const view = await journal.qualitativeCurve.getCurves({ drug: 'testosterone', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: true });
 
   assert.equal(view.curves.length, 1);
-  assert.equal(view.curves[0].route, 'gel');
+  assert.equal(view.curves[0].key, 'testosterone:gel');
   assert.equal(view.curves[0].doseCount, 8);
   assert.equal(view.labPoints.length, 1);
   assert.ok(view.scaleFactor !== null);
@@ -255,12 +255,48 @@ test('neither hormone’s results reach the other hormone’s curve', async () =
   assert.notEqual(e2.scaleFactor, t.scaleFactor);
 });
 
-test('a testosterone route with no shape argued for it draws nothing at this seam either', async () => {
+test('a testosterone injection on an ester with no shape draws nothing at this seam either', async () => {
   const { journal } = await journalWithBuiltIns();
-  await episode(journal, FROM - 5, { drug: 'testosterone', route: 'patch' });
-  await journal.doses.upsertDose({ timestamp: at(FROM), route: 'patch', dose: 4, doseUnit: 'mg', applicationSite: 'back' });
+  await episode(journal, FROM - 5, { drug: 'testosterone', ester: 'undecanoate', route: 'IM' });
+  await journal.doses.upsertDose({
+    timestamp: at(FROM),
+    route: 'im',
+    dose: 1000,
+    doseUnit: 'mg',
+    injectionSite: 'dorsogluteal-left',
+    vehicle: 'oil'
+  });
 
   const view = await journal.qualitativeCurve.getCurves({ drug: 'testosterone', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
 
   assert.deepEqual(view.curves, []);
+});
+
+test('a weekly testosterone injection gets a shape, fitted against testosterone results', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 5, { drug: 'testosterone', ester: 'cypionate', route: 'IM' });
+  for (const day of [FROM, FROM + 7]) {
+    await journal.doses.upsertDose({
+      timestamp: at(day),
+      route: 'im',
+      dose: 100,
+      doseUnit: 'mg',
+      injectionSite: 'thigh-left',
+      vehicle: 'oil'
+    });
+  }
+  await journal.labs.upsertResult({ epochDay: FROM + 2, analyte: 'testosterone', value: 610, unit: 'ng/dL', drawTime: '09:00' });
+
+  const view = await journal.qualitativeCurve.getCurves({ drug: 'testosterone', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: true });
+
+  assert.equal(view.curves.length, 1);
+  assert.equal(view.curves[0].key, 'testosterone:injected');
+  assert.equal(view.curves[0].doseCount, 2);
+  assert.ok(view.scaleFactor !== null);
+  assert.equal(view.fitPointCount, 1);
+
+  /* The shape peaks a day or two after the injection rather than at it, which
+     is what separates it from the topical shapes. */
+  const at2 = (day: number) => view.curves[0].points.find((point) => point.day >= day)!.value;
+  assert.ok(at2(FROM + 1.5) > at2(FROM + 0.1));
 });

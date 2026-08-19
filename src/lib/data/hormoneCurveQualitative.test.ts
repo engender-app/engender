@@ -4,8 +4,9 @@ import { startOfDayTimestamp } from './epochDay.ts';
 import type { DoseEvent, RegimenEpisode } from './types.ts';
 import {
   QUALITATIVE_LOOKBACK_DAYS,
+  QUALITATIVE_CURVE_KEYS,
+  dosesWithNoCurve,
   QUALITATIVE_ROUTES,
-  QUALITATIVE_ROUTES_BY_DRUG,
   latestQualitativeValue,
   qualitativeCurves,
   qualitativeValueAt,
@@ -50,7 +51,7 @@ test('one curve per route dosed in the window, from the dose log', () => {
   const result = qualitativeCurves({ doses: [dose(0), dose(1), dose(2)], episodes: [episode()], ...WINDOW });
 
   assert.equal(result.curves.length, 1);
-  assert.equal(result.curves[0].route, 'oral');
+  assert.equal(result.curves[0].key, 'estradiol:oral');
   assert.equal(result.curves[0].doseCount, 3);
   assert.ok(result.curves[0].points.length > 100);
 });
@@ -63,8 +64,8 @@ test('two routes dosed in one window get a curve each', () => {
   });
 
   assert.deepEqual(
-    result.curves.map((c) => c.route),
-    ['oral', 'gel']
+    result.curves.map((c) => c.key),
+    ['estradiol:oral', 'estradiol:gel']
   );
 });
 
@@ -164,20 +165,24 @@ test('each dose resolves its own episode', () => {
   // The gel dose on day 4 falls under the progesterone episode, so only the
   // oral one - still under the estradiol episode - draws a curve.
   assert.deepEqual(
-    result.curves.map((c) => c.route),
-    ['oral']
+    result.curves.map((c) => c.key),
+    ['estradiol:oral']
   );
 });
 
-test('the lookback is short, because these routes act over hours and days rather than weeks', () => {
-  assert.ok(QUALITATIVE_LOOKBACK_DAYS < 10);
+test('the lookback is set by the widest shape, which is the injected one', () => {
+  /* The other shapes act over hours and a day or two; a testosterone injection
+     is still contributing a week and more later, so it is what decides how far
+     back the dose log has to be read. Still far shorter than the injectable
+     band's own lookback, which the published posteriors put at 63 days. */
+  assert.equal(QUALITATIVE_LOOKBACK_DAYS, 11);
 });
 
 test('a scale factor multiplies the curve and nothing else about it', () => {
   const plain = qualitativeCurves({ doses: [dose(0)], episodes: [episode()], ...WINDOW });
   const scaled = scaleQualitativeCurves(plain.curves, 1.5);
 
-  assert.equal(scaled[0].route, plain.curves[0].route);
+  assert.equal(scaled[0].key, plain.curves[0].key);
   assert.equal(scaled[0].doseCount, plain.curves[0].doseCount);
   for (const [i, point] of plain.curves[0].points.entries()) {
     assert.equal(scaled[0].points[i].day, point.day);
@@ -214,17 +219,23 @@ test('no doses at all is an empty answer, not a flat curve at zero', () => {
   assert.equal(result.dosesWithoutMilligrams, 0);
 });
 
-test('each drug draws only the routes an invented shape was actually argued for', () => {
-  /* Estradiol keeps all four. Testosterone gets gel and nothing else: a
-     testosterone patch is changed daily where the patch shape is a multi-day
-     depot, and oral testosterone undecanoate is a different absorption story
-     again, so borrowing either shape would draw something wrong rather than
-     something rough. */
-  assert.deepEqual(QUALITATIVE_ROUTES_BY_DRUG.estradiol, ['oral', 'sublingual', 'patch', 'gel']);
-  assert.deepEqual(QUALITATIVE_ROUTES_BY_DRUG.testosterone, ['gel']);
+test('the curves this app can draw, and only those', () => {
+  /* Estradiol keeps its four routes. Testosterone gets three curves and picks
+     the injected one by ester, not by route, because that is what decides the
+     shape. Estradiol has no injected key: its injections have a real posterior
+     and get the fitted band instead. */
+  assert.deepEqual(QUALITATIVE_CURVE_KEYS, [
+    'estradiol:oral',
+    'estradiol:sublingual',
+    'estradiol:patch',
+    'estradiol:gel',
+    'testosterone:injected',
+    'testosterone:patch',
+    'testosterone:gel'
+  ]);
 });
 
-test('testosterone gel gets a curve of its own, on the same invented shape as estradiol gel', () => {
+test('testosterone gel gets a curve of its own, on the same shape as estradiol gel', () => {
   const result = qualitativeCurves({
     ...WINDOW,
     drug: 'testosterone',
@@ -233,14 +244,16 @@ test('testosterone gel gets a curve of its own, on the same invented shape as es
   });
 
   assert.equal(result.curves.length, 1);
-  assert.equal(result.curves[0].route, 'gel');
+  assert.equal(result.curves[0].key, 'testosterone:gel');
   assert.equal(result.curves[0].doseCount, 1);
   assert.ok(result.curves[0].points.some((point) => point.value > 0));
 });
 
-test('a testosterone route with no shape argued for it gets no curve at all', () => {
-  // Fail-closed, the same way an ester outside the vocabulary gets none.
-  for (const route of ['oral', 'sublingual', 'patch'] as const) {
+test('testosterone by mouth or under the tongue gets no curve at all', () => {
+  /* Fail-closed, the same way an ester outside the vocabulary gets none. Oral
+     testosterone undecanoate has a food dependency no trapezoid here describes,
+     and sublingual testosterone is not a route in use. */
+  for (const route of ['oral', 'sublingual'] as const) {
     const result = qualitativeCurves({
       ...WINDOW,
       drug: 'testosterone',
@@ -249,6 +262,28 @@ test('a testosterone route with no shape argued for it gets no curve at all', ()
     });
     assert.deepEqual(result.curves, [], route);
   }
+});
+
+test('a testosterone patch gets its own shape, not the estradiol patch depot', () => {
+  const patch = (drug: 'estradiol' | 'testosterone') =>
+    qualitativeCurves({
+      ...WINDOW,
+      drug,
+      doses: [{ ...dose(0), route: 'patch', dose: 5 } as DoseEvent],
+      episodes: [episode({ drug, route: 'patch' })]
+    }).curves[0];
+
+  const t = patch('testosterone');
+  const e2 = patch('estradiol');
+  assert.equal(t.key, 'testosterone:patch');
+  assert.equal(e2.key, 'estradiol:patch');
+
+  /* The estradiol patch is worn for days, so it is still at its plateau three
+     days on. The testosterone one is changed daily and has fallen away by
+     then. */
+  const at = (curve: typeof t, day: number) => curve.points.find((point) => point.day >= day)!.value;
+  assert.ok(at(e2, 3) > 0, 'estradiol patch still contributing on day 3');
+  assert.equal(at(t, 3), 0);
 });
 
 test('one hormone’s gel dose never adds height to the other hormone’s gel curve', () => {
@@ -286,4 +321,63 @@ test('a drug that is neither hormone still gets nothing, however familiar its ro
   });
 
   assert.deepEqual(result.curves, []);
+});
+
+test('doses on something this app draws no curve for at all are counted', () => {
+  /* What the empty state needs to know before it points anyone at the dose log:
+     whether the reason nothing is drawn is the reader's log or this app's
+     scope. Drug-agnostic, because the question is about the whole screen. */
+  const window = { fromEpochDay: 0, toEpochDay: 20 };
+  const injection = (day: number) =>
+    ({ ...dose(day), route: 'im', dose: 100, injectionSite: null, vehicle: 'oil' }) as DoseEvent;
+
+  // Undecanoate: recognized testosterone, but no shape and no band.
+  assert.equal(
+    dosesWithNoCurve({
+      ...window,
+      doses: [injection(0), injection(7)],
+      episodes: [episode({ drug: 'testosterone', ester: 'undecanoate', route: 'IM' })]
+    }),
+    2
+  );
+
+  // Cypionate draws a shape, so it is not counted.
+  assert.equal(
+    dosesWithNoCurve({
+      ...window,
+      doses: [injection(0)],
+      episodes: [episode({ drug: 'testosterone', ester: 'cypionate', route: 'IM' })]
+    }),
+    0
+  );
+
+  // An estradiol injection draws the band, which is also a curve.
+  assert.equal(
+    dosesWithNoCurve({
+      ...window,
+      doses: [injection(0)],
+      episodes: [episode({ drug: 'estradiol', ester: 'valerate', route: 'IM' })]
+    }),
+    0
+  );
+
+  // A drug the app knows nothing about counts too.
+  assert.equal(
+    dosesWithNoCurve({
+      ...window,
+      doses: [dose(0)],
+      episodes: [episode({ drug: 'spironolactone', route: 'oral' })]
+    }),
+    1
+  );
+
+  // A skipped dose is not a dose, and neither is one outside the window.
+  assert.equal(
+    dosesWithNoCurve({
+      ...window,
+      doses: [{ ...injection(0), status: 'skipped' } as DoseEvent, injection(40)],
+      episodes: [episode({ drug: 'testosterone', ester: 'undecanoate', route: 'IM' })]
+    }),
+    0
+  );
 });
