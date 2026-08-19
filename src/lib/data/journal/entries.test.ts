@@ -154,6 +154,16 @@ test('unknown write ids throw: entry id, dimension key, tag id, body region', as
   await assert.rejects(journal.entries.upsertEntry({ id, bodyRegions: { nope: 1 } }), /unknown body region/);
 });
 
+test('an entry can log an intensity against a custom body region by its uuid', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const region = await journal.bodyRegions.addCustomRegion('scar tissue');
+
+  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { [region.id]: 70 } });
+
+  const entry = await journal.entries.getEntry(id);
+  assert.deepEqual(entry?.bodyRegions, { [region.id]: 70 });
+});
+
 test('deleting an entry moves it to trash: hidden from getEntry, but its rows and files survive; twice is success', async () => {
   const db = await migratedDb();
   const files = fakeFileStore(['p1.jpg', 'p1-thumb.jpg', 'r1.webm']);

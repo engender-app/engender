@@ -17,7 +17,6 @@
    delete - purgeExpiredTrash is what eventually takes them and their files
    with it, via the injected store. */
 
-import { BODY_REGION_KEYS } from '../bodyMap';
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
@@ -65,7 +64,7 @@ export interface EntryInput {
   note?: string;
   dims?: Record<string, number>;
   tags?: string[];
-  /** By body-region key (bodyMap.ts). Arrives as the whole set the picker
+  /** By body-region domain id (bodyRegions.ts). Arrives as the whole set the picker
       showed, and replaces - same rule as `tags`, not `dims`. */
   bodyRegions?: Record<string, number>;
   /** Photos picked in this edit, normalized and ready to store (ADR-0008).
@@ -251,14 +250,28 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     await driver.run(`INSERT INTO entry_tag (entry_id, tag_id) VALUES ${values}`, params);
   };
 
-  // A region is a fixed, built-in key rather than a stored row (bodyMap.ts),
-  // so there is no table to resolve against - just this allowlist, checked
-  // against live input the way resolveDimensionIds and resolveTagIds are.
-  const KNOWN_BODY_REGIONS = new Set<string>(BODY_REGION_KEYS);
+  // A region is a reference-data row since ticket 30, addressed by its
+  // domain id (key for a built-in, uuid for a custom) - checked against the
+  // body_region table the same way resolveTagIds checks tag ids, rather
+  // than the closed BODY_REGION_KEYS list this used to hold in code.
+  const assertKnownBodyRegions = async (bodyRegions: Record<string, number>): Promise<void> => {
+    const keys = Object.keys(bodyRegions);
+    if (keys.length === 0) return;
 
-  const assertKnownBodyRegions = (bodyRegions: Record<string, number>): void => {
-    for (const key of Object.keys(bodyRegions)) {
-      if (!KNOWN_BODY_REGIONS.has(key)) throw new Error(`unknown body region: ${key}`);
+    const unique = [...new Set(keys)];
+    const placeholders = unique.map(() => '?').join(', ');
+    const rows = await driver.query<{ key: string | null; uuid: string | null }>(
+      `SELECT key, uuid FROM body_region WHERE key IN (${placeholders}) OR uuid IN (${placeholders})`,
+      [...unique, ...unique]
+    );
+
+    const known = new Set<string>();
+    for (const row of rows) {
+      if (row.key !== null) known.add(row.key);
+      if (row.uuid !== null) known.add(row.uuid);
+    }
+    for (const key of unique) {
+      if (!known.has(key)) throw new Error(`unknown body region: ${key}`);
     }
   };
 
@@ -702,7 +715,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         // Resolved before the transaction so an unknown key aborts cleanly.
         const dimIds = await resolveDimensionIds(input.dims ?? {});
         const tagIds = input.tags && (await resolveTagIds(input.tags));
-        if (input.bodyRegions) assertKnownBodyRegions(input.bodyRegions);
+        if (input.bodyRegions) await assertKnownBodyRegions(input.bodyRegions);
         // The note that will be stored, whether this edit supplied one or
         // not - reindexing on input.note alone would blank the index for an
         // edit that only touched the mood.
@@ -788,7 +801,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       });
       const dimIds = await resolveDimensionIds(dims);
       const tagIds = await resolveTagIds(tags);
-      assertKnownBodyRegions(bodyRegions);
+      await assertKnownBodyRegions(bodyRegions);
       const stagedPhotos: StagedPhoto[] = [];
       for (const photo of attachingNew) stagedPhotos.push(await stagePhoto(files, photo));
       const stagedRecordings: StagedRecording[] = [];
