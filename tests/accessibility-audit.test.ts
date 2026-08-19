@@ -16,9 +16,9 @@ describe('phase 2 accessibility seams', () => {
 
   it('keeps chart values available as text in stats', () => {
     const stats = read('src/routes/stats/+page.svelte');
-    expect(stats).toContain('class="card chart-card"');
+    expect(stats).toContain('data-chart-card');
     expect(stats).toContain('Sheet open={valueSheet !== null}');
-    expect(stats).toContain('class="value-row"');
+    expect(stats).toContain('data-value-row');
     expect(stats).toContain('m.values_title');
   });
 
