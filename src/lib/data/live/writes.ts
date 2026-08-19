@@ -113,7 +113,12 @@ export type TableName =
   /* The binder/tucking wear log (phase 5 ticket 04). */
   | 'wearSession'
   /* The check-in's affirmation pool (phase 5 ticket 15). */
-  | 'affirmation';
+  | 'affirmation'
+  /* The body-region reference-data area (phase 5 ticket 30). An entry's
+     own body-region intensities are still announced under 'entry' - this
+     is only the region rows themselves: built-in hide/unhide and a custom
+     region being added. */
+  | 'bodyRegion';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -147,7 +152,8 @@ export const TABLE_NAMES: TableName[] = [
   'roadmapGoal',
   'checklist',
   'wearSession',
-  'affirmation'
+  'affirmation',
+  'bodyRegion'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -204,6 +210,13 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       deleteLine: ['affirmation']
     },
     reads: ['getAffirmations']
+  },
+  bodyRegions: {
+    writes: {
+      addCustomRegion: ['bodyRegion'],
+      setRegionHidden: ['bodyRegion']
+    },
+    reads: ['getBodyRegions']
   },
   dimensions: {
     writes: {

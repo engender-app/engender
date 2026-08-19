@@ -97,7 +97,8 @@ const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
   preset_dimension: 'preset',
   tag_group: 'tag',
   tag: 'tag',
-  affirmation: 'affirmation'
+  affirmation: 'affirmation',
+  body_region: 'bodyRegion'
 };
 
 test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async () => {

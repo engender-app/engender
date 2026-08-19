@@ -110,6 +110,27 @@ export const BUILT_IN_AFFIRMATION_KEYS = [
 
 export type BuiltInAffirmationKey = (typeof BUILT_IN_AFFIRMATION_KEYS)[number];
 
+/* The body regions every install starts with (phase 5 ticket 30, CONTEXT:
+   "Reference data" - amended): the original eight (bodyMap.ts's header
+   carries their own history) plus shoulders and whole body, seeded as
+   ordinary reference-data rows rather than the closed BODY_REGION_KEYS
+   list this replaces. Keys only, wording in labels.ts, the same split
+   every other built-in list here draws. */
+export const BUILT_IN_BODY_REGIONS = [
+  'face_jaw',
+  'voice_throat',
+  'chest',
+  'body_facial_hair',
+  'hands_feet',
+  'hips_waist',
+  'genitals',
+  'hairline',
+  'shoulders',
+  'whole_body'
+] as const;
+
+export type BuiltInBodyRegionKey = (typeof BUILT_IN_BODY_REGIONS)[number];
+
 export const MILESTONE_TEMPLATE_KEYS = [
   'hrt_start',
   'transition_start',

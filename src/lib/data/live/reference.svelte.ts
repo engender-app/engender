@@ -25,7 +25,7 @@
    vocabulary.ts answers "called what". */
 
 import { prefs } from '../prefs/store.svelte';
-import type { Affirmation, GenderDimension, GenderPreset, Milestone, Tag, TagGroup } from '../types';
+import type { Affirmation, BodyRegion, GenderDimension, GenderPreset, Milestone, Tag, TagGroup } from '../types';
 import type { Journal } from '../journal/journal';
 import { onTablesWritten } from './journal.svelte';
 import type { TableName } from './writes';
@@ -36,18 +36,22 @@ const mirror = $state<{
   tagGroups: TagGroup[];
   milestones: Milestone[];
   affirmations: Affirmation[];
-}>({ dimensions: [], presets: [], tagGroups: [], milestones: [], affirmations: [] });
+  bodyRegions: BodyRegion[];
+}>({ dimensions: [], presets: [], tagGroups: [], milestones: [], affirmations: [], bodyRegions: [] });
 
 /** Which slices a written table invalidates. Photos are in here because a
     milestone carries its photo on the mirrored row, so attaching one changes
     what the timeline should draw. */
-const AFFECTED: Partial<Record<TableName, ('dimensions' | 'presets' | 'tagGroups' | 'milestones' | 'affirmations')[]>> = {
+const AFFECTED: Partial<
+  Record<TableName, ('dimensions' | 'presets' | 'tagGroups' | 'milestones' | 'affirmations' | 'bodyRegions')[]>
+> = {
   dimension: ['dimensions', 'presets'],
   preset: ['presets'],
   tag: ['tagGroups'],
   milestone: ['milestones'],
   photo: ['milestones'],
-  affirmation: ['affirmations']
+  affirmation: ['affirmations'],
+  bodyRegion: ['bodyRegions']
 };
 
 let registered = false;
@@ -56,18 +60,20 @@ let registered = false;
     it: fills the mirror before the first screen renders, so nothing has to
     cope with an app whose vocabulary is briefly empty. */
 export async function hydrateReference(journal: Journal): Promise<void> {
-  const [dimensions, presets, tagGroups, milestones, affirmations] = await Promise.all([
+  const [dimensions, presets, tagGroups, milestones, affirmations, bodyRegions] = await Promise.all([
     journal.dimensions.getDimensions(),
     journal.dimensions.getPresets(),
     journal.tags.getTagGroups(),
     journal.milestones.getMilestones(),
-    journal.affirmations.getAffirmations()
+    journal.affirmations.getAffirmations(),
+    journal.bodyRegions.getBodyRegions()
   ]);
   mirror.dimensions = dimensions;
   mirror.presets = presets;
   mirror.tagGroups = tagGroups;
   mirror.milestones = milestones;
   mirror.affirmations = affirmations;
+  mirror.bodyRegions = bodyRegions;
 
   if (registered) return;
   registered = true;
@@ -85,6 +91,7 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('tagGroups')) mirror.tagGroups = await journal.tags.getTagGroups();
     if (slices.has('milestones')) mirror.milestones = await journal.milestones.getMilestones();
     if (slices.has('affirmations')) mirror.affirmations = await journal.affirmations.getAffirmations();
+    if (slices.has('bodyRegions')) mirror.bodyRegions = await journal.bodyRegions.getBodyRegions();
   } catch (error) {
     // The write itself succeeded; only the re-read failed. Keeping the stale
     // rows beats emptying the vocabulary out from under the screen.
@@ -122,6 +129,21 @@ export const reference = {
       further. */
   get visibleAffirmations(): Affirmation[] {
     return mirror.affirmations.filter((a) => !a.hidden);
+  },
+
+  /** Every body region an entry can log an intensity against, hidden ones
+      included - what an entry card or the trend chart resolves a logged
+      region's key against, so a region hidden after being logged still
+      shows and charts (CONTEXT: "Hidden"). */
+  get bodyRegions(): BodyRegion[] {
+    return mirror.bodyRegions;
+  },
+
+  /** What the entry editor and the body-map picker offer: hidden regions
+      removed, the same "not hidden" filter `visibleTagGroups` already
+      applies to tags. */
+  get visibleBodyRegions(): BodyRegion[] {
+    return mirror.bodyRegions.filter((r) => !r.hidden);
   },
 
   /** The preset the preferences point at, falling back to the first one: a
