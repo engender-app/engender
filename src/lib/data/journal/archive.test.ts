@@ -42,6 +42,7 @@ async function populated() {
   const measurement = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
   const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' });
   const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  const cycleEvent = await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   const personalEffect = await journal.personalEffects.upsertMarker({
     effect: 'breast_development',
     firstNoticedEpochDay: 19180
@@ -155,6 +156,7 @@ async function populated() {
     dosePause,
     stock,
     sideEffect,
+    cycleEvent,
     personalEffect,
     doubtEntry,
     counterevidenceSnapshot,
@@ -235,8 +237,8 @@ test('the state a user put on a built-in row travels with it', async () => {
   assert.equal(activities.tags.find((t) => t.id === 'a-therapy')!.label, 'therapy session');
 });
 
-test('milestones, lab results, measurements, tally events, side effects, reminders and regimen episodes travel whole', async () => {
-  const { journal, milestone, milestonePhoto, lab, contextLab, measurement, tally, sideEffect, personalEffect, reminder, episode } =
+test('milestones, lab results, measurements, tally events, side effects, cycle events, reminders and regimen episodes travel whole', async () => {
+  const { journal, milestone, milestonePhoto, lab, contextLab, measurement, tally, sideEffect, cycleEvent, personalEffect, reminder, episode } =
     await populated();
 
   const snapshot = await journal.archive.snapshot();
@@ -290,6 +292,7 @@ test('milestones, lab results, measurements, tally events, side effects, reminde
   assert.deepEqual(snapshot.journal.sideEffects, [
     { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000 }
   ]);
+  assert.deepEqual(snapshot.journal.cycleEvents, [{ id: cycleEvent, kind: 'spotting', epochDay: 20000 }]);
   assert.deepEqual(snapshot.journal.personalEffects, [
     { id: personalEffect, effect: 'breast_development', firstNoticedEpochDay: 19180 }
   ]);
@@ -542,6 +545,7 @@ const CARRIED: Record<string, string[]> = {
     'reminder_dismissed'
   ],
   side_effect: ['uuid', 'name', 'severity', 'epoch_day'],
+  cycle_event: ['uuid', 'kind', 'epoch_day'],
   personal_effect: ['uuid', 'effect', 'first_noticed_epoch_day'],
   hair_stage: ['uuid', 'epoch_day', 'stage'],
   hair_photo: ['uuid', 'epoch_day', 'file_path'],

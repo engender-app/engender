@@ -427,6 +427,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/cycle-events">
+      <span class="row-icon"><Icon name="calendar" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.cycle_events()}</span>
+        <span class="row-subtitle">{m.cycle_events_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
     <a class="list-row" href="/settings/effects">
       <span class="row-icon"><Icon name="sparkle" size={22} /></span>
       <span class="row-text">

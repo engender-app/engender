@@ -176,6 +176,12 @@ export interface ArchiveSideEffect {
   epochDay: number;
 }
 
+export interface ArchiveCycleEvent {
+  id: string;
+  kind: string;
+  epochDay: number;
+}
+
 export interface ArchiveDoubtEntry {
   id: string;
   epochDay: number;
@@ -367,6 +373,7 @@ export interface ArchiveJournal {
   labResults: ArchiveLabResult[];
   measurements: ArchiveMeasurement[];
   sideEffects: ArchiveSideEffect[];
+  cycleEvents: ArchiveCycleEvent[];
   personalEffects: ArchivePersonalEffect[];
   hairStages: ArchiveHairStage[];
   hairPhotos: ArchiveHairPhoto[];

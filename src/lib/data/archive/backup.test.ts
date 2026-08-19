@@ -14,6 +14,7 @@ const emptySnapshot: ArchiveSnapshot = {
     labResults: [],
     measurements: [],
     sideEffects: [],
+    cycleEvents: [],
     personalEffects: [],
     hairStages: [],
     hairPhotos: [],

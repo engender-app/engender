@@ -22,7 +22,7 @@ import type {
   EntryTemplateKey,
   MilestoneTemplateKey
 } from './builtins';
-import type { Measurement, NorwoodHamiltonStage, PersonalEffectType } from '../types';
+import type { CycleEventKind, Measurement, NorwoodHamiltonStage, PersonalEffectType } from '../types';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -115,6 +115,18 @@ const SEVERITY_NAME: Message[] = [m.severity_1, m.severity_2, m.severity_3, m.se
 
 /** The name of a severity, 1 to 5. */
 export const severityName = (value: number): string => SEVERITY_NAME[value - 1]?.() ?? String(value);
+
+/* A cycle event's three kinds (phase 5 ticket 03, CONTEXT: "Cycle event")
+   are a fixed set, not a built-in row, the same reasoning
+   MEASUREMENT_TYPE_NAME gives. */
+const CYCLE_EVENT_KIND_NAME: Record<CycleEventKind, Message> = {
+  period_occurred: m.cycle_event_kind_period_occurred,
+  spotting: m.cycle_event_kind_spotting,
+  nothing_this_month: m.cycle_event_kind_nothing_this_month
+};
+
+/** The name of a cycle event kind. */
+export const cycleEventKindName = (kind: CycleEventKind): string => CYCLE_EVENT_KIND_NAME[kind]();
 
 const PRESET_NAME: Record<BuiltInPresetKey, Message> = {
   'p-btw': m.preset_p_btw,

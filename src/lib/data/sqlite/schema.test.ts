@@ -9,7 +9,7 @@ import { migratedDb } from './test-support/migrated-db.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 18);
+  assert.equal(db.getUserVersion(), 19);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -17,6 +17,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     .map((r) => (r as { name: string }).name);
 
   for (const expected of [
+    'cycle_event',
     'entry',
     'entry_body_region',
     'entry_dimension_value',
@@ -123,7 +124,7 @@ test('milestone drops kind, order_index and photo_path; reminder drops trigger_t
 
 test('user-owned tables carry uuid and updated_at', async () => {
   const db = await migratedDb();
-  for (const table of ['entry', 'photo', 'milestone', 'lab_result', 'measurement', 'side_effect', 'reminder']) {
+  for (const table of ['entry', 'photo', 'milestone', 'lab_result', 'measurement', 'side_effect', 'reminder', 'cycle_event']) {
     const columns = (db.raw.prepare(`PRAGMA table_info(${table})`).all() as Array<{
       name: string;
       notnull: number;
@@ -219,6 +220,22 @@ test('tally_event.kind accepts only the two counters', async () => {
   assert.doesNotThrow(() => insert('misgendered'));
   assert.doesNotThrow(() => insert('correctly_gendered'));
   assert.throws(() => insert('confused'));
+});
+
+test('v19 cycle_event carries no episode reference and accepts only its three kinds', async () => {
+  const db = await migratedDb();
+  const columns = (db.raw.prepare('PRAGMA table_info(cycle_event)').all() as Array<{ name: string }>).map(
+    (c) => c.name
+  );
+  assert.ok(!columns.some((name) => name.includes('episode')), 'cycle_event must not reference a regimen episode');
+
+  const insert = (kind: string) =>
+    db.raw.exec(`INSERT INTO cycle_event (uuid, epoch_day, kind, updated_at) VALUES ('c-${kind}', 100, '${kind}', 1000)`);
+
+  assert.doesNotThrow(() => insert('period_occurred'));
+  assert.doesNotThrow(() => insert('spotting'));
+  assert.doesNotThrow(() => insert('nothing_this_month'));
+  assert.throws(() => insert('irregular'));
 });
 
 test('v11 side_effect carries no episode reference and rejects severity outside 1-5', async () => {

@@ -184,6 +184,7 @@ export async function restoreArchive(
     await applyLabResults(restoring);
     await applyMeasurements(restoring);
     await applySideEffects(restoring);
+    await applyCycleEvents(restoring);
     await applyPersonalEffects(restoring);
     await applyHairStages(restoring);
     await applyHairPhotos(restoring);
@@ -231,6 +232,7 @@ const COLLECTIONS = [
   'labResults',
   'measurements',
   'sideEffects',
+  'cycleEvents',
   'personalEffects',
   'hairStages',
   'hairPhotos',
@@ -279,6 +281,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM lab_result',
     'DELETE FROM measurement',
     'DELETE FROM side_effect',
+    'DELETE FROM cycle_event',
     'DELETE FROM personal_effect',
     'DELETE FROM hair_stage',
     'DELETE FROM hair_photo',
@@ -919,6 +922,17 @@ async function applySideEffects({ driver, journal, ts }: Restoring): Promise<voi
     driver,
     'INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at)',
     inserting.map((effect) => [effect.id, effect.name, effect.severity, effect.epochDay, ts])
+  );
+}
+
+async function applyCycleEvents({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM cycle_event');
+
+  const inserting = journal.cycleEvents.filter((event) => !present.has(event.id));
+  await insertRows(
+    driver,
+    'INSERT INTO cycle_event (uuid, kind, epoch_day, updated_at)',
+    inserting.map((event) => [event.id, event.kind, event.epochDay, ts])
   );
 }
 
