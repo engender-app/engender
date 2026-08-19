@@ -32,6 +32,7 @@ import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
 import { makePhotosArea, type PhotosArea } from './photos';
+import { makeProceduresArea, type ProceduresArea } from './procedures';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
 import { makeRoadmapArea, type RoadmapArea } from './roadmap';
@@ -169,6 +170,13 @@ export interface Journal {
       goals say is a bundled content module, not a table, so this area
       never validates a pack key it was handed. */
   roadmap: RoadmapArea;
+  /** Surgery journeys - a procedure's name, consult dates, surgery date and
+      recovery log (phase 5 ticket 07, CONTEXT: "Procedure"). Several can be
+      tracked at once. Stores no day counter: how far along recovery is comes
+      from the surgery date and today, above this seam (recoveryDay.ts). Its
+      recovery checklist is an ordinary `checklists` record owned by the
+      procedure, hence the dependency between the two below. */
+  procedures: ProceduresArea;
   /** Free-text checklists (phase 5 ticket 05, CONTEXT: "Checklist"),
       standalone or scoped to an owner record by a (kind, id) pair rather
       than a foreign key - no owner table ships with this ticket. Distinct
@@ -211,6 +219,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const dimensions = makeDimensionsArea(driver);
   const stats = makeStatsArea(driver);
   const checklists = makeChecklistsArea(driver);
+  const procedures = makeProceduresArea(driver, files, checklists);
 
   return {
     entries: makeEntriesArea(driver, files),
@@ -232,10 +241,11 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     sideEffects,
     cycleEvents: makeCycleEventsArea(driver),
     wearSessions: makeWearSessionsArea(driver, reminders),
-    clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists }),
+    clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
     hairRemoval: makeHairRemovalArea(driver, files),
+    procedures,
     doubtJournal: makeDoubtJournalArea(driver),
     tryouts: makeTryoutsArea(driver),
     letters: makeLettersArea(driver),

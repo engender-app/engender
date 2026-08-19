@@ -30,6 +30,10 @@ export interface ChecklistsArea {
       (a side-effect entry, a lab result, the appointment prep screen itself)
       never has to check whether it exists yet. */
   addToStandaloneChecklist(content: string): Promise<ChecklistItem>;
+  /** The same create-on-first-use for an owned checklist (phase 5 ticket
+      07's procedure is the first owner): the rule that a checklist appears
+      when its first item does lives here once, rather than at each owner. */
+  addToOwnedChecklist(owner: ChecklistOwner, content: string): Promise<ChecklistItem>;
   editItem(itemId: string, content: string): Promise<void>;
   setItemChecked(itemId: string, checked: boolean): Promise<void>;
   setItemCarriedForward(itemId: string, carriedForward: boolean): Promise<void>;
@@ -121,6 +125,12 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     async addToStandaloneChecklist(content) {
       const existing = await standaloneChecklist();
       const checklistId = existing ? existing.id : (await area.createChecklist()).id;
+      return area.addItem(checklistId, content);
+    },
+
+    async addToOwnedChecklist(owner, content) {
+      const existing = await area.getChecklistByOwner(owner);
+      const checklistId = existing ? existing.id : (await area.createChecklist(owner)).id;
       return area.addItem(checklistId, content);
     },
 
