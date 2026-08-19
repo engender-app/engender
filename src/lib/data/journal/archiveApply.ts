@@ -243,8 +243,16 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
 
   await insertRows(
     driver,
-    'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, updated_at)',
-    inserting.map((entry) => [entry.uuid, entry.epochDay, entry.timestamp, entry.mood, entry.note, ts])
+    'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, starred, updated_at)',
+    inserting.map((entry) => [
+      entry.uuid,
+      entry.epochDay,
+      entry.timestamp,
+      entry.mood,
+      entry.note,
+      flag(entry.starred),
+      ts
+    ])
   );
 
   const entryIds = await rowidsByUuid(
@@ -316,7 +324,7 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
     }
 
     for (const [orderIndex, photo] of (entry.photos ?? []).entries()) {
-      photoRows.push([photo.id, entryId, null, photo.fileName, orderIndex, ts]);
+      photoRows.push([photo.id, entryId, null, photo.fileName, orderIndex, flag(photo.starred), ts]);
     }
 
     for (const [orderIndex, recording] of (entry.recordings ?? []).entries()) {
@@ -339,7 +347,7 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
   await insertRows(driver, 'INSERT INTO entry_body_region (entry_id, region, intensity)', bodyRegionRows);
   await insertRows(
     driver,
-    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)',
+    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, starred, updated_at)',
     photoRows
   );
   await insertRows(
@@ -374,12 +382,12 @@ export async function applyMilestones({ driver, journal, ts }: Restoring): Promi
     if (milestoneId === undefined) {
       throw new Error(`milestone row id missing after restore insert: ${milestone.id}`);
     }
-    photoRows.push([milestone.photo.id, null, milestoneId, milestone.photo.fileName, 0, ts]);
+    photoRows.push([milestone.photo.id, null, milestoneId, milestone.photo.fileName, 0, flag(milestone.photo.starred), ts]);
   }
 
   await insertRows(
     driver,
-    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)',
+    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, starred, updated_at)',
     photoRows
   );
 }

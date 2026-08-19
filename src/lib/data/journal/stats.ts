@@ -21,6 +21,7 @@ import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Photo, TallyKind } from '../types';
+import { bool } from './support';
 
 export interface DayAverage {
   day: number;
@@ -447,9 +448,9 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
          has them: exactly one owner column is set (the photo table's
          CHECK), so a milestone's photo dates itself off the milestone and an
          entry's off the entry, in one query rather than two. */
-      const photoRows = await driver.query<{ uuid: string; file_path: string; epoch_day: number }>(
+      const photoRows = await driver.query<{ uuid: string; file_path: string; epoch_day: number; starred: number }>(
         `WITH dated AS (
-           SELECT p.uuid AS uuid, p.file_path AS file_path,
+           SELECT p.uuid AS uuid, p.file_path AS file_path, p.starred AS starred,
                   COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
                   p.order_index AS order_index, p.id AS id
            FROM photo p
@@ -459,16 +460,16 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
              AND (p.entry_id IS NULL OR e.trashed_at IS NULL)
          ),
          bucketed AS (
-           SELECT uuid, file_path, epoch_day, order_index, id,
+           SELECT uuid, file_path, starred, epoch_day, order_index, id,
                   NTILE(?) OVER (ORDER BY epoch_day, order_index, id) AS bucket
            FROM dated
          ),
          picked AS (
-           SELECT uuid, file_path, epoch_day, order_index, id,
+           SELECT uuid, file_path, starred, epoch_day, order_index, id,
                   ROW_NUMBER() OVER (PARTITION BY bucket ORDER BY epoch_day, order_index, id) AS rn
            FROM bucketed
          )
-         SELECT uuid, file_path, epoch_day FROM picked
+         SELECT uuid, file_path, starred, epoch_day FROM picked
          WHERE rn = 1
          -- The same tie-break the bucketing and the pick used, so "oldest
          -- first" means one order throughout: sorting the survivors by uuid
@@ -504,7 +505,12 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         topTags: topTagRows.map((t) => ({ id: t.id, count: t.entries })),
         milestones: milestoneRows.map((r) => ({ id: r.id, name: r.name, epochDay: r.epoch_day })),
         biggestDimensionChange,
-        photoHighlights: photoRows.map((r) => ({ id: r.uuid, fileName: r.file_path, epochDay: r.epoch_day }))
+        photoHighlights: photoRows.map((r) => ({
+          id: r.uuid,
+          fileName: r.file_path,
+          starred: bool(r.starred),
+          epochDay: r.epoch_day
+        }))
       };
     },
 

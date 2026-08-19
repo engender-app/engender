@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 25);
+  assert.equal(db.getUserVersion(), 26);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -109,6 +109,20 @@ test('v2 adds gender_dimension.hidden, defaulting to visible', async () => {
     hidden: number;
   };
   assert.equal(row.hidden, 0);
+});
+
+test('v26 adds entry.starred and photo.starred, defaulting to unstarred', async () => {
+  const db = await migratedDb();
+  db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e1', 100, 1000, '', 1000)");
+  const entryId = (db.raw.prepare("SELECT id FROM entry WHERE uuid = 'e1'").get() as { id: number }).id;
+  db.raw.exec(
+    `INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', ${entryId}, 'p1.jpg', 1000)`
+  );
+
+  const entryRow = db.raw.prepare("SELECT starred FROM entry WHERE uuid = 'e1'").get() as { starred: number };
+  const photoRow = db.raw.prepare("SELECT starred FROM photo WHERE uuid = 'p1'").get() as { starred: number };
+  assert.equal(entryRow.starred, 0);
+  assert.equal(photoRow.starred, 0);
 });
 
 test('milestone drops kind, order_index and photo_path; reminder drops trigger_time', async () => {
@@ -269,7 +283,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 25);
+  assert.equal(db.getUserVersion(), 26);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;

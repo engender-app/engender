@@ -238,7 +238,7 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal(restored.length, 1);
   assert.deepEqual(restored[0].dims, { [source.voice.key]: 7, femininity: 60 });
   assert.deepEqual(restored[0].tags.toSorted(), [source.tag.id, 'e-happy'].toSorted());
-  assert.deepEqual(restored[0].photos, [{ id: source.photo, fileName: `${source.photo}.jpg` }]);
+  assert.deepEqual(restored[0].photos, [{ id: source.photo, fileName: `${source.photo}.jpg`, starred: false }]);
   assert.deepEqual(restored[0].recordings, [{ id: source.recording, fileName: `${source.recording}.webm` }]);
   assert.deepEqual(await target.files.read(`${source.recording}.webm`), bytes('a voice note'));
   assert.deepEqual(restored[0].bodyRegions, { chest: 45 });

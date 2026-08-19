@@ -14,10 +14,10 @@ import {
 import type { DatedPhoto } from '../journal/photos.ts';
 
 const photos = (): DatedPhoto[] => [
-  { id: 'p1', fileName: 'p1.jpg', epochDay: 20000, milestoneName: null },
-  { id: 'p2', fileName: 'p2.jpg', epochDay: 20020, milestoneName: 'Started HRT' },
-  { id: 'p3', fileName: 'p3.jpg', epochDay: 20050, milestoneName: null },
-  { id: 'p4', fileName: 'p4.jpg', epochDay: 20100, milestoneName: 'Name change' }
+  { id: 'p1', fileName: 'p1.jpg', starred: false, epochDay: 20000, milestoneName: null },
+  { id: 'p2', fileName: 'p2.jpg', starred: false, epochDay: 20020, milestoneName: 'Started HRT' },
+  { id: 'p3', fileName: 'p3.jpg', starred: false, epochDay: 20050, milestoneName: null },
+  { id: 'p4', fileName: 'p4.jpg', starred: false, epochDay: 20100, milestoneName: 'Name change' }
 ];
 
 const ids = (selected: DatedPhoto[]) => selected.map((p) => p.id);

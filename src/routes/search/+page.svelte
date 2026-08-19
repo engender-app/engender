@@ -127,15 +127,20 @@
   <header class="screen-header">
     <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/calendar')}><Icon name="arrowLeft" /></button>
     <h1 class="screen-title">{m.search()}</h1>
-    <button
-      class="icon-btn"
-      aria-label={m.search_filters()}
-      data-filter-toggle
-      aria-pressed={showFilters}
-      onclick={() => (showFilters = !showFilters)}
-    >
-      <Icon name="tag" />
-    </button>
+    <div class="header-action">
+      <a class="icon-btn" href="/search/starred" aria-label={m.starred_shelf_open()}>
+        <Icon name="star" />
+      </a>
+      <button
+        class="icon-btn"
+        aria-label={m.search_filters()}
+        data-filter-toggle
+        aria-pressed={showFilters}
+        onclick={() => (showFilters = !showFilters)}
+      >
+        <Icon name="tag" />
+      </button>
+    </div>
   </header>
 
   <div class="search-box">

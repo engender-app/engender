@@ -21,14 +21,15 @@ const existingEntry = (): Entry => ({
   dims: { masculinity: 40 },
   tags: ['e-happy'],
   photos: [
-    { id: 'p1', fileName: 'p1.jpg' },
-    { id: 'p2', fileName: 'p2.jpg' }
+    { id: 'p1', fileName: 'p1.jpg', starred: false },
+    { id: 'p2', fileName: 'p2.jpg', starred: false }
   ],
   recordings: [
     { id: 'r1', fileName: 'r1.webm' },
     { id: 'r2', fileName: 'r2.webm' }
   ],
-  bodyRegions: { chest: 60 }
+  bodyRegions: { chest: 60 },
+  starred: false
 });
 
 test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {

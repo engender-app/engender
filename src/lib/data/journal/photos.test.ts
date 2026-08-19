@@ -93,7 +93,7 @@ test('the entry reads its photos back with it', async () => {
   const id = await journal.photos.attach({ entryId }, shot('x', 'X'));
 
   const entry = await journal.entries.getEntry(entryId);
-  assert.deepEqual(entry?.photos, [{ id, fileName: `${id}.jpg` }]);
+  assert.deepEqual(entry?.photos, [{ id, fileName: `${id}.jpg`, starred: false }]);
 });
 
 test('the milestone reads its photo back with it', async () => {
@@ -102,7 +102,7 @@ test('the milestone reads its photo back with it', async () => {
   const id = await journal.photos.attach({ milestoneId }, shot('y', 'Y'));
 
   const [milestone] = await journal.milestones.getMilestones();
-  assert.deepEqual(milestone.photo, { id, fileName: `${id}.jpg` });
+  assert.deepEqual(milestone.photo, { id, fileName: `${id}.jpg`, starred: false });
 });
 
 test('files are written before the row, so a failed write leaves no row at all', async () => {
@@ -269,8 +269,8 @@ test('every photo in the journal comes back dated, oldest first, naming its mile
   const first = await journal.photos.attach({ milestoneId }, shot('m1', 't1'));
 
   assert.deepEqual(await journal.photos.inJournal(), [
-    { id: first, fileName: `${first}.jpg`, epochDay: 20000, milestoneName: 'HRT start' },
-    { id: second, fileName: `${second}.jpg`, epochDay: 20100, milestoneName: null }
+    { id: first, fileName: `${first}.jpg`, starred: false, epochDay: 20000, milestoneName: 'HRT start' },
+    { id: second, fileName: `${second}.jpg`, starred: false, epochDay: 20100, milestoneName: null }
   ]);
 });
 
@@ -326,4 +326,40 @@ test('editing an entry adds the photos it brings without disturbing the ones it 
   const photos = (await journal.entries.getEntry(id))!.photos;
   assert.deepEqual(photos.map((p) => p.id), [first.id, photos[1].id]);
   assert.equal(photos.length, 2);
+});
+
+test('setStarred toggles a photo and throws on an unknown id', async () => {
+  const { journal } = await journalWithFiles();
+  const entryId = await anEntry(journal);
+  const id = await journal.photos.attach({ entryId }, shot('x', 'X'));
+
+  assert.equal((await journal.entries.getEntry(entryId))?.photos[0].starred, false);
+
+  await journal.photos.setStarred(id, true);
+  assert.equal((await journal.entries.getEntry(entryId))?.photos[0].starred, true);
+
+  await journal.photos.setStarred(id, false);
+  assert.equal((await journal.entries.getEntry(entryId))?.photos[0].starred, false);
+
+  await assert.rejects(journal.photos.setStarred('no-such-id', true), /unknown photo/);
+});
+
+test('starredPhotos lists only starred photos, oldest first, entry and milestone alike', async () => {
+  const { journal } = await journalWithFiles();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
+  const milestoneId = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 20000 });
+
+  const entryPhoto = await journal.photos.attach({ entryId }, shot('e1', 't1'));
+  const milestonePhoto = await journal.photos.attach({ milestoneId }, shot('m1', 't1'));
+  await journal.photos.attach({ entryId }, shot('e2', 't2')); // never starred - excluded
+
+  assert.deepEqual(await journal.photos.starredPhotos(), []);
+
+  await journal.photos.setStarred(milestonePhoto, true);
+  await journal.photos.setStarred(entryPhoto, true);
+
+  assert.deepEqual(
+    (await journal.photos.starredPhotos()).map((p) => p.id),
+    [milestonePhoto, entryPhoto]
+  );
 });

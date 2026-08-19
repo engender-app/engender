@@ -13,15 +13,16 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
 
   // Same limit the stats screen's tag-insight sheet reads a tag's entries
-  // with (INSIGHT_ENTRIES, +page.svelte) - counterevidence is that same
-  // query, just always on rather than opened from a sheet.
+  // with (INSIGHT_ENTRIES, +page.svelte) - counterevidence started as that
+  // same query, just always on rather than opened from a sheet, and ticket
+  // 14 widened it to include starred entries alongside the tag.
   const COUNTEREVIDENCE_LIMIT = 20;
   const HISTORY_LIMIT = 50;
 
   let today = $derived(todayEpochDay());
   let text = $state('');
 
-  let counterevidenceQuery = liveQuery(['entry', 'tag'], (j) => j.entries.entriesWithTag('g-euphoria', COUNTEREVIDENCE_LIMIT));
+  let counterevidenceQuery = liveQuery(['entry', 'tag'], (j) => j.entries.counterevidencePool('g-euphoria', COUNTEREVIDENCE_LIMIT));
   let counterevidence = $derived(counterevidenceQuery.value ?? []);
 
   let entriesQuery = liveQuery(['doubtJournal'], (j) => j.doubtJournal.getEntries(HISTORY_LIMIT));
