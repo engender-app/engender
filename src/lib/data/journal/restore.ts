@@ -226,7 +226,11 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     // Only the customs; a built-in affirmation the archive does not carry
     // keeps the wording reconciling gave it, the same reasoning tag's own
     // delete gives.
-    'DELETE FROM affirmation WHERE key IS NULL'
+    'DELETE FROM affirmation WHERE key IS NULL',
+    // Same reasoning as affirmation's own delete: only the customs, so a
+    // built-in region the archive does not carry keeps what reconciling
+    // gave it rather than losing its row entirely.
+    'DELETE FROM body_region WHERE key IS NULL'
   ];
   for (const statement of statements) await driver.run(statement);
 }

@@ -74,6 +74,11 @@ const SECTIONS = [
   section({ name: 'presets', after: ['dimensions'], read: read.readPresets, apply: apply.applyPresets }),
   section({ name: 'tagGroups', read: read.readTagGroups, apply: apply.applyTagGroups }),
   section({ name: 'affirmations', read: read.readAffirmations, apply: apply.applyAffirmations }),
+  // No `after`: entry_body_region.region stores a region's domain id
+  // directly (a plain string, not a rowid FK), so applyEntries never
+  // resolves a body region against this section's rows the way it does
+  // dimensions and tags.
+  section({ name: 'bodyRegions', read: read.readBodyRegions, apply: apply.applyBodyRegions }),
   /* Reference data first: an entry's dims and tags are resolved to rowids,
      and an archive's entry must find the archive's own vocabulary rather
      than whatever this device happened to have. */
