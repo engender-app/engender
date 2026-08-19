@@ -358,6 +358,11 @@
                 {m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: activeSchedule.dosesPerDay })}
               </span>
             {/if}
+            {#if row.slot.amount}
+              <span class="row-subtitle">
+                {m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })}
+              </span>
+            {/if}
           </span>
           <span class="row-trailing">
             {#if row.dose}

@@ -8,8 +8,8 @@
    is logged against it", and stops: no target rate, no streak, no
    good/bad. The comparison is the feature (ticket 02, out of scope). */
 
-import { epochDayFromTimestamp } from './epochDay';
-import type { DoseEvent, DosePause, DoseRoute, DoseSchedule } from './types';
+import { epochDayFromTimestamp, weekdayOfEpochDay } from './epochDay';
+import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount } from './types';
 
 /** Which routes carry a rotated injection site and a vehicle, and which
     carry a plain application site.
@@ -108,10 +108,13 @@ export type ApplicationSiteKey = (typeof APPLICATION_SITES)[number];
 
 /** One dose the schedule expects. `indexInDay` numbers a multi-dose day's
     slots in order (twice-daily oral is 0 and 1); it is a position, not a
-    time of day - the schedule says how many, never when. */
+    time of day - the schedule says how many, never when. `amount` is the
+    schedule's `doseAmounts` entry for this slot's place in the cycle, or
+    null when the schedule declares no amounts. */
 export interface DoseSlot {
   epochDay: number;
   indexInDay: number;
+  amount: DoseScheduleAmount | null;
 }
 
 /** Whether `epochDay` falls inside `pause`. An open pause (no end day)
@@ -121,27 +124,74 @@ export function pauseCoversDay(pause: DosePause, epochDay: number): boolean {
   return pause.endEpochDay === null || epochDay <= pause.endEpochDay;
 }
 
-/** The slots `schedule` expects between `fromEpochDay` and `toEpochDay`
-    inclusive, stepping every `everyNDays` from `anchorEpochDay` - the
-    episode's start day, so the progression belongs to the episode and does
-    not shift when the schedule is edited or the range scrolls.
+/** How many of `weekdays` fall in the half-open range [anchorEpochDay,
+    uptoEpochDay) - a weekday recurrence's own step count, the way an
+    every-N-days schedule already has one from dividing by its interval.
+    Whole weeks each contribute `weekdays.length` (every weekday occurs once
+    a week) and only the remainder needs a day-by-day check, so a schedule
+    running for years costs the same as one running for a week. */
+function weekdayOccurrencesBefore(anchorEpochDay: number, uptoEpochDay: number, weekdays: readonly number[]): number {
+  const totalDays = uptoEpochDay - anchorEpochDay;
+  if (totalDays <= 0) return 0;
+  const fullWeeks = Math.floor(totalDays / 7);
+  let count = fullWeeks * weekdays.length;
+  for (let day = anchorEpochDay + fullWeeks * 7; day < uptoEpochDay; day++) {
+    if (weekdays.includes(weekdayOfEpochDay(day))) count++;
+  }
+  return count;
+}
 
-    A schedule with a non-positive step or dose count expects nothing: it
-    describes no rhythm, and treating it as daily would invent one. */
+/** The slots `schedule` expects between `fromEpochDay` and `toEpochDay`
+    inclusive. An every-N-days recurrence steps from `anchorEpochDay` - the
+    episode's start day, so the progression belongs to the episode and does
+    not shift when the schedule is edited or the range scrolls. A weekdays
+    recurrence needs no anchor to hold that guarantee - a Monday is a Monday
+    regardless of when the schedule was written - so `anchorEpochDay` only
+    keeps it from generating slots before the episode began.
+
+    Either way, `doseAmounts` (when the schedule has any) cycles across the
+    slots in chronological order, counting from the anchor rather than from
+    `fromEpochDay`, so which amount lands on which day does not shift when
+    the range scrolls either.
+
+    A schedule with a non-positive dose count, a non-positive step, or an
+    empty weekday set expects nothing: it describes no rhythm, and treating
+    it as daily would invent one. */
 export function expectedSlots(
   schedule: DoseSchedule,
   anchorEpochDay: number,
   fromEpochDay: number,
   toEpochDay: number
 ): DoseSlot[] {
-  if (schedule.everyNDays < 1 || schedule.dosesPerDay < 1) return [];
+  if (schedule.dosesPerDay < 1) return [];
+
+  const amounts = schedule.doseAmounts;
+  const amountAt = (occurrence: number, indexInDay: number): DoseScheduleAmount | null =>
+    amounts && amounts.length > 0 ? amounts[(occurrence * schedule.dosesPerDay + indexInDay) % amounts.length] : null;
 
   const first = Math.max(fromEpochDay, anchorEpochDay);
-  const stepsIn = Math.ceil((first - anchorEpochDay) / schedule.everyNDays);
   const slots: DoseSlot[] = [];
-  for (let day = anchorEpochDay + stepsIn * schedule.everyNDays; day <= toEpochDay; day += schedule.everyNDays) {
+
+  if (schedule.recurrence.kind === 'everyNDays') {
+    const { everyNDays } = schedule.recurrence;
+    if (everyNDays < 1) return [];
+    const stepsIn = Math.ceil((first - anchorEpochDay) / everyNDays);
+    let occurrence = stepsIn;
+    for (let day = anchorEpochDay + stepsIn * everyNDays; day <= toEpochDay; day += everyNDays, occurrence++) {
+      for (let indexInDay = 0; indexInDay < schedule.dosesPerDay; indexInDay++) {
+        slots.push({ epochDay: day, indexInDay, amount: amountAt(occurrence, indexInDay) });
+      }
+    }
+    return slots;
+  }
+
+  const { weekdays } = schedule.recurrence;
+  if (weekdays.length === 0) return [];
+  for (let day = first; day <= toEpochDay; day++) {
+    if (!weekdays.includes(weekdayOfEpochDay(day))) continue;
+    const occurrence = weekdayOccurrencesBefore(anchorEpochDay, day, weekdays);
     for (let indexInDay = 0; indexInDay < schedule.dosesPerDay; indexInDay++) {
-      slots.push({ epochDay: day, indexInDay });
+      slots.push({ epochDay: day, indexInDay, amount: amountAt(occurrence, indexInDay) });
     }
   }
   return slots;

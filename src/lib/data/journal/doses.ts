@@ -12,7 +12,17 @@
    return; this module only knows rows. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseStatus, InjectionVehicle, ScheduledDose } from '../types';
+import type {
+  DoseEvent,
+  DosePause,
+  DoseRoute,
+  DoseSchedule,
+  DoseScheduleAmount,
+  DoseScheduleRecurrence,
+  DoseStatus,
+  InjectionVehicle,
+  ScheduledDose
+} from '../types';
 import { isInjectionDose, isTopicalDose, type ApplicationSiteKey, type InjectionSiteKey } from '../doseSchedule';
 import { startOfDayTimestamp } from '../epochDay';
 import { assertChanged, mintUuid, now } from './support';
@@ -44,8 +54,9 @@ export type DoseEventInput =
 
 export interface DoseScheduleInput {
   episodeId: string;
-  everyNDays: number;
+  recurrence: DoseScheduleRecurrence;
   dosesPerDay: number;
+  doseAmounts: DoseScheduleAmount[] | null;
 }
 
 export type DosePauseInput = Omit<DosePause, 'id'> & { id?: string };
@@ -159,6 +170,25 @@ export function makeDosesArea(driver: SqliteDriver): DosesArea {
     return rows[0].id;
   };
 
+  const weekdaysOf = async (scheduleRowId: number): Promise<number[]> => {
+    const rows = await driver.query<{ weekday: number }>(
+      'SELECT weekday FROM dose_schedule_weekday WHERE schedule_id = ? ORDER BY weekday',
+      [scheduleRowId]
+    );
+    return rows.map((r) => r.weekday);
+  };
+
+  /** Null rather than `[]` for none set: an empty cycle would have nothing
+      to index into, and this is the "no amount tracked" state every
+      schedule before this field existed is in (types.ts). */
+  const doseAmountsOf = async (scheduleRowId: number): Promise<DoseScheduleAmount[] | null> => {
+    const rows = await driver.query<{ dose: number; dose_unit: string }>(
+      'SELECT dose, dose_unit FROM dose_schedule_dose_amount WHERE schedule_id = ? ORDER BY position',
+      [scheduleRowId]
+    );
+    return rows.length > 0 ? rows.map((r) => ({ dose: r.dose, doseUnit: r.dose_unit })) : null;
+  };
+
   return {
     async getDoses(fromEpochDay, toEpochDay) {
       const rows = await driver.query<DoseRow>(
@@ -223,46 +253,89 @@ export function makeDosesArea(driver: SqliteDriver): DosesArea {
 
     async getSchedules() {
       const rows = await driver.query<{
+        id: number;
         uuid: string;
         episode_uuid: string;
-        every_n_days: number;
+        recurrence_kind: string;
+        every_n_days: number | null;
         doses_per_day: number;
       }>(
-        `SELECT s.uuid, e.uuid AS episode_uuid, s.every_n_days, s.doses_per_day
+        `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day
            FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id
           ORDER BY s.id`
       );
-      return rows.map((row) => ({
-        id: row.uuid,
-        episodeId: row.episode_uuid,
-        everyNDays: row.every_n_days,
-        dosesPerDay: row.doses_per_day
-      }));
+      return Promise.all(
+        rows.map(async (row) => ({
+          id: row.uuid,
+          episodeId: row.episode_uuid,
+          recurrence:
+            row.recurrence_kind === 'weekdays'
+              ? { kind: 'weekdays' as const, weekdays: await weekdaysOf(row.id) }
+              // The v38 CHECK guarantees every_n_days is set for this arm.
+              : { kind: 'everyNDays' as const, everyNDays: row.every_n_days as number },
+          dosesPerDay: row.doses_per_day,
+          doseAmounts: await doseAmountsOf(row.id)
+        }))
+      );
     },
 
     /* An upsert on the episode, not on a schedule id: the caller is saying
        "this episode's rhythm is X", and which row happens to hold that is
-       not something a screen should have to track. */
+       not something a screen should have to track.
+
+       Weekdays and dose amounts are replaced wholesale - delete then
+       reinsert - rather than diffed, the same "an update replaces it"
+       reasoning the schedule row itself already gets: a form save always
+       carries the full set, never a single amount or weekday to patch. */
     async upsertSchedule(input) {
       const episodeId = await episodeRowid(input.episodeId);
-      const existing = await driver.query<{ uuid: string }>('SELECT uuid FROM dose_schedule WHERE episode_id = ?', [
-        episodeId
-      ]);
-
-      if (existing.length > 0) {
-        await driver.run(
-          'UPDATE dose_schedule SET every_n_days = ?, doses_per_day = ?, updated_at = ? WHERE episode_id = ?',
-          [input.everyNDays, input.dosesPerDay, now(), episodeId]
-        );
-        return existing[0].uuid;
-      }
-
-      const uuid = mintUuid();
-      await driver.run(
-        'INSERT INTO dose_schedule (uuid, episode_id, every_n_days, doses_per_day, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [uuid, episodeId, input.everyNDays, input.dosesPerDay, now()]
+      const existing = await driver.query<{ id: number; uuid: string }>(
+        'SELECT id, uuid FROM dose_schedule WHERE episode_id = ?',
+        [episodeId]
       );
-      return uuid;
+      const everyNDays = input.recurrence.kind === 'everyNDays' ? input.recurrence.everyNDays : null;
+
+      return driver.transaction(async () => {
+        let scheduleRowId: number;
+        let uuid: string;
+        if (existing.length > 0) {
+          await driver.run(
+            'UPDATE dose_schedule SET recurrence_kind = ?, every_n_days = ?, doses_per_day = ?, updated_at = ? WHERE episode_id = ?',
+            [input.recurrence.kind, everyNDays, input.dosesPerDay, now(), episodeId]
+          );
+          scheduleRowId = existing[0].id;
+          uuid = existing[0].uuid;
+        } else {
+          uuid = mintUuid();
+          const result = await driver.run(
+            'INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [uuid, episodeId, input.recurrence.kind, everyNDays, input.dosesPerDay, now()]
+          );
+          scheduleRowId = result.lastInsertRowid;
+        }
+
+        await driver.run('DELETE FROM dose_schedule_weekday WHERE schedule_id = ?', [scheduleRowId]);
+        if (input.recurrence.kind === 'weekdays') {
+          for (const weekday of input.recurrence.weekdays) {
+            await driver.run('INSERT INTO dose_schedule_weekday (schedule_id, weekday) VALUES (?, ?)', [
+              scheduleRowId,
+              weekday
+            ]);
+          }
+        }
+
+        await driver.run('DELETE FROM dose_schedule_dose_amount WHERE schedule_id = ?', [scheduleRowId]);
+        if (input.doseAmounts) {
+          for (const [position, amount] of input.doseAmounts.entries()) {
+            await driver.run(
+              'INSERT INTO dose_schedule_dose_amount (schedule_id, position, dose, dose_unit) VALUES (?, ?, ?, ?)',
+              [scheduleRowId, position, amount.dose, amount.doseUnit]
+            );
+          }
+        }
+
+        return uuid;
+      });
     },
 
     async getPauses() {

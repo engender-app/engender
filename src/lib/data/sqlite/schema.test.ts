@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 37);
+  assert.equal(db.getUserVersion(), 38);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -341,7 +341,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 37);
+  assert.equal(db.getUserVersion(), 38);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -375,7 +375,7 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 37);
+  assert.equal(db.getUserVersion(), 38);
 
   const row = db.raw.prepare('SELECT * FROM measurement WHERE uuid = ?').get('m1') as {
     type: string;
@@ -438,7 +438,7 @@ test('v37 carries the v13 table across as Norwood-Hamilton stagings', async () =
   db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h1', 19180, '3a', 1000)");
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 37);
+  assert.equal(db.getUserVersion(), 38);
 
   const row = db.raw.prepare('SELECT * FROM hair_stage WHERE uuid = ?').get('h1') as {
     epoch_day: number;
@@ -455,6 +455,37 @@ test('v37 carries the v13 table across as Norwood-Hamilton stagings', async () =
   assert.equal(row.description, '');
   assert.equal(row.epoch_day, 19180);
   assert.equal(row.updated_at, 1000);
+});
+
+test('v38 carries the v8 dose_schedule table across as everyNDays, with no weekday or amount rows', async () => {
+  const preV38 = migrations.filter((m) => m.version <= 8);
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), preV38);
+  db.raw.exec(
+    "INSERT INTO regimen_episode (uuid, drug, dose, dose_unit, route, interval, start_epoch_day, updated_at) VALUES ('e1', 'estradiol valerate', 4, 'mg', 'im', 'every 2 weeks', 19000, 1000)"
+  );
+  db.raw.exec(
+    "INSERT INTO dose_schedule (uuid, episode_id, every_n_days, doses_per_day, updated_at) VALUES ('s1', 1, 14, 1, 1000)"
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), 38);
+
+  const row = db.raw.prepare('SELECT * FROM dose_schedule WHERE uuid = ?').get('s1') as {
+    recurrence_kind: string;
+    every_n_days: number;
+    doses_per_day: number;
+    updated_at: number;
+  };
+  // Every-N-days was the only shape there was, so a row that predates this
+  // migration keeps meaning exactly what it meant - no reinterpreting, and
+  // nothing invents a weekday or a dose amount it never had.
+  assert.equal(row.recurrence_kind, 'everyNDays');
+  assert.equal(row.every_n_days, 14);
+  assert.equal(row.doses_per_day, 1);
+  assert.equal(row.updated_at, 1000);
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM dose_schedule_weekday').get() as { n: number }).n, 0);
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM dose_schedule_dose_amount').get() as { n: number }).n, 0);
 });
 
 test('v13 hair_photo is its own table, not a third owner on photo', async () => {
