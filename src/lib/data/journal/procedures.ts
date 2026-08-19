@@ -30,7 +30,7 @@
    removeFilesOf reclaims them the same way on delete. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Checklist, ChecklistItem, ChecklistOwner, Procedure } from '../types';
+import type { Checklist, ChecklistItem, ChecklistOwner, Procedure, ProcedureConsult } from '../types';
 import type { ChecklistsArea } from './checklists';
 import type { PhotoFileStore } from './journal';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
@@ -131,18 +131,19 @@ export function makeProceduresArea(
         `SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure
          ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id`
       );
-      const consults = await driver.query<{ procedure_id: number; epoch_day: number }>(
-        'SELECT procedure_id, epoch_day FROM procedure_consult ORDER BY epoch_day, id'
+      const consultRows = await driver.query<{ uuid: string; procedure_id: number; epoch_day: number }>(
+        'SELECT uuid, procedure_id, epoch_day FROM procedure_consult ORDER BY epoch_day, id'
       );
 
       // One query for every procedure's consults rather than one per row:
       // the screen renders the whole list at once, the same reason
       // photosByMilestone (photos.ts) exists.
-      const consultDays = new Map<number, number[]>();
-      for (const consult of consults) {
-        const days = consultDays.get(consult.procedure_id);
-        if (days) days.push(consult.epoch_day);
-        else consultDays.set(consult.procedure_id, [consult.epoch_day]);
+      const consults = new Map<number, ProcedureConsult[]>();
+      for (const row of consultRows) {
+        const forProcedure = consults.get(row.procedure_id);
+        const consult = { id: row.uuid, epochDay: row.epoch_day };
+        if (forProcedure) forProcedure.push(consult);
+        else consults.set(row.procedure_id, [consult]);
       }
 
       return rows.map((row) => ({
@@ -150,7 +151,7 @@ export function makeProceduresArea(
         name: row.name,
         surgeryEpochDay: row.surgery_epoch_day,
         notes: row.notes,
-        consultEpochDays: consultDays.get(row.id) ?? []
+        consults: consults.get(row.id) ?? []
       }));
     },
 

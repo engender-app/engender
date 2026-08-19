@@ -56,6 +56,7 @@ const SECTIONS = [
   'hairStages',
   'hairPhotos',
   'hairRemovalSessions',
+  'procedures',
   'reminders',
   'tallyEvents',
   'doubtEntries',
@@ -85,7 +86,7 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 28 sections, and the customizations that
+/** A journal with something in all 29 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, and a renamed, a hidden and a switched-off built-in. */
@@ -195,8 +196,16 @@ async function everySection(): Promise<Journal> {
   });
   await journal.tryouts.addFeltSenseEntry({ tryoutId: tryout, epochDay: 19910, mood: 4, note: 'felt right' });
 
-  const checklist = await journal.checklists.createChecklist({ kind: 'procedure', id: 'proc-1' });
-  const checklistItem = await journal.checklists.addItem(checklist.id, 'buy gauze');
+  /* A real procedure now owns this checklist (phase 5 ticket 07); it was a
+     placeholder owner pair until ticket 07 shipped the first owner. */
+  const procedure = await journal.procedures.upsertProcedure({
+    name: 'top surgery',
+    surgeryEpochDay: 20050,
+    notes: 'drains out on day five'
+  });
+  await journal.procedures.addConsult(procedure, 19950);
+  await journal.procedures.addPhoto(procedure, 20052, { full: bytes('recovery'), thumb: bytes('rt') });
+  const checklistItem = await journal.procedures.addChecklistItem(procedure, 'buy gauze');
   await journal.checklists.setItemChecked(checklistItem.id, true);
 
   await journal.wearSessions.upsertSession({

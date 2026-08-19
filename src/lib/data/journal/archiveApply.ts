@@ -841,6 +841,52 @@ export async function applyHairRemovalSessions({ driver, journal, ts }: Restorin
   }
 }
 
+/* A procedure is matched and inserted directly by uuid like
+   applyHairRemovalSessions, and its consults and photos are walked in both
+   modes regardless, the same reason applyChecklists walks a checklist's
+   items even when the checklist is already here: each is its own row with
+   its own identity, and one the archive carries that this device does not
+   is exactly what Merge is for.
+
+   Its recovery checklist is not touched here. That is an ordinary
+   `checklist` row naming this procedure as its owner, and applyChecklists
+   restores it on its own - the owner pair is matched by uuid rather than
+   resolved to a rowid, so neither section has to run before the other. */
+export async function applyProcedures({ driver, journal, ts }: Restoring): Promise<void> {
+  const procedures = await presentIds(driver, 'SELECT uuid AS id FROM procedure');
+  const consults = await presentIds(driver, 'SELECT uuid AS id FROM procedure_consult');
+  const photos = await presentIds(driver, 'SELECT uuid AS id FROM procedure_photo');
+
+  for (const procedure of journal.procedures) {
+    if (!procedures.has(procedure.id)) {
+      await driver.run(
+        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, updated_at) VALUES (?, ?, ?, ?, ?)',
+        [procedure.id, procedure.name, procedure.surgeryEpochDay, procedure.notes, ts]
+      );
+    }
+
+    const procedureRowId = await rowidWhere(driver, 'procedure', 'uuid = ?', [procedure.id], 'procedure uuid');
+
+    for (const consult of procedure.consults) {
+      if (consults.has(consult.id)) continue;
+      await driver.run('INSERT INTO procedure_consult (uuid, procedure_id, epoch_day, updated_at) VALUES (?, ?, ?, ?)', [
+        consult.id,
+        procedureRowId,
+        consult.epochDay,
+        ts
+      ]);
+    }
+
+    for (const photo of procedure.photos) {
+      if (photos.has(photo.id)) continue;
+      await driver.run(
+        'INSERT INTO procedure_photo (uuid, procedure_id, epoch_day, file_path, updated_at) VALUES (?, ?, ?, ?, ?)',
+        [photo.id, procedureRowId, photo.epochDay, photo.fileName, ts]
+      );
+    }
+  }
+}
+
 export async function applyReminders({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM reminder');
 

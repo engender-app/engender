@@ -641,6 +641,15 @@ export interface Procedure {
   /** Null until a date is set, which is usually well after the record
       exists. */
   surgeryEpochDay: number | null;
-  consultEpochDays: number[];
+  consults: ProcedureConsult[];
   notes: string;
+}
+
+/** One consult on the way to a procedure (phase 5 ticket 07): a date, and
+    the minted id that lets one mistyped date be dropped on its own
+    (ADR-0002). Carries nothing else - what was said at a consult goes in
+    an ordinary Entry or the procedure's notes. */
+export interface ProcedureConsult {
+  id: string;
+  epochDay: number;
 }
