@@ -3,8 +3,10 @@ import {
   REENCODE_AUDIO_BITS,
   VIDEO_CAPTURE_BITS,
   VIDEO_MAX_DURATION_MS,
-  VIDEO_MAX_EDGE,
+  VIDEO_MAX_LONG_EDGE,
+  VIDEO_MAX_SHORT_EDGE,
   VIDEO_SIZE_CEILING,
+  frameSize,
   reencodeTarget,
   videoCaptureConstraints
 } from './limits.ts';
@@ -14,13 +16,21 @@ const bytesFor = (bitsPerSecond: number, seconds: number) => Math.round((bitsPer
 describe('the caps ticket 22 fixes', () => {
   test('are 30 seconds and 1080p, with no setting to read them from', () => {
     expect(VIDEO_MAX_DURATION_MS).toBe(30_000);
-    expect(VIDEO_MAX_EDGE).toBe(1080);
+    expect(VIDEO_MAX_SHORT_EDGE).toBe(1080);
+    expect(VIDEO_MAX_LONG_EDGE).toBe(1920);
   });
 
-  test('ask getUserMedia for 1080p and audio, capping height rather than requesting it exactly', () => {
+  test('ask getUserMedia for audio, and cap both dimensions rather than requesting either exactly', () => {
     const constraints = videoCaptureConstraints();
     expect(constraints.audio).toBe(true);
-    expect(constraints.video).toEqual({ height: { max: VIDEO_MAX_EDGE }, width: { max: 1920 } });
+    // `max` on both, not `height: 1080`: a phone held upright reports its
+    // track as 1080x1920, and capping height alone would squash that to
+    // 608x1080 - throwing away half the picture to honour a number that
+    // already described it.
+    expect(constraints.video).toEqual({
+      width: { max: VIDEO_MAX_LONG_EDGE },
+      height: { max: VIDEO_MAX_LONG_EDGE }
+    });
   });
 
   test('capture aims below the ceiling, so a nominal recording never needs re-encoding', () => {
@@ -75,5 +85,41 @@ describe('reencodeTarget', () => {
     // the lowest target rather than a division by zero.
     const unknown = reencodeTarget(VIDEO_SIZE_CEILING * 2, 0);
     expect(unknown).toEqual(reencodeTarget(VIDEO_SIZE_CEILING * 2, VIDEO_MAX_DURATION_MS));
+  });
+});
+
+describe('frameSize', () => {
+  test('leaves a capture inside the caps at its own size, never upscaling', () => {
+    expect(frameSize(1280, 720)).toEqual({ width: 1280, height: 720 });
+    expect(frameSize(640, 480)).toEqual({ width: 640, height: 480 });
+  });
+
+  test('landscape 1080p is already the cap, so it passes through', () => {
+    expect(frameSize(1920, 1080)).toEqual({ width: 1920, height: 1080 });
+  });
+
+  test('portrait 1080p passes through too - 1080 is the short edge, not the height', () => {
+    expect(frameSize(1080, 1920)).toEqual({ width: 1080, height: 1920 });
+  });
+
+  test('an oversized landscape capture comes down to the long-edge cap', () => {
+    expect(frameSize(3840, 2160)).toEqual({ width: 1920, height: 1080 });
+  });
+
+  test('an oversized portrait capture comes down the same way, keeping its shape', () => {
+    expect(frameSize(2160, 3840)).toEqual({ width: 1080, height: 1920 });
+  });
+
+  test('a square capture is bounded by the short edge, so it cannot sneak past on area', () => {
+    // 1920x1920 would be 3.7Mpx against 1080p's 2.07Mpx.
+    expect(frameSize(1920, 1920)).toEqual({ width: 1080, height: 1080 });
+  });
+
+  test('an unusually wide capture is bounded by whichever cap binds first', () => {
+    const size = frameSize(4000, 1000);
+    expect(size.width).toBeLessThanOrEqual(VIDEO_MAX_LONG_EDGE);
+    expect(Math.min(size.width, size.height)).toBeLessThanOrEqual(VIDEO_MAX_SHORT_EDGE);
+    // Aspect ratio preserved.
+    expect(size.width / size.height).toBeCloseTo(4, 1);
   });
 });

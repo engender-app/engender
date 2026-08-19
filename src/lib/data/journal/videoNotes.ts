@@ -1,8 +1,15 @@
 /* Video note staging (ticket 22, CONTEXT: "Video note"). voiceRecordings.ts's
-   twin, and deliberately a parallel copy rather than a shared generic over
-   the two tables: what they have in common today is a uuid, a file and an
-   entry, and a rename on one must not silently change what the other stores.
-   The same call compare-state.ts's header makes for the same reason.
+   twin, and for now a parallel copy rather than a shared generic over the two
+   tables: what they have in common today is a uuid, a file and an entry, and
+   a rename on one must not silently change what the other stores.
+
+   Worth being honest about: with photo, voice_recording and video_note this
+   is the third file-carrying entry table, so the rule of three is reached and
+   the copy is no longer obviously the cheaper option. Extracting it now would
+   mean rewriting voiceRecordings.ts and photos.ts in the same change - and
+   photos.ts genuinely differs, with a nullable owner pair and a thumbnail
+   sibling - so the extraction belongs in its own ticket rather than smuggled
+   into this one.
 
    Entry-only, like a recording and unlike photos.ts: ticket 22 excludes
    milestones, so there is one owner column and no owner to resolve - the

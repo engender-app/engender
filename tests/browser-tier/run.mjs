@@ -19,7 +19,19 @@ const server = await createServer({ configFile: `${here}/browser-tier.vite.confi
 await server.listen();
 const port = server.config.server.port;
 
-const browser = await launchChromium();
+/* Fake camera and microphone, for phase 5 ticket 22's probe: video notes
+   record through getUserMedia, and the only way to exercise the real capture
+   path headlessly is to give Chromium a synthetic device and pre-grant the
+   permission. Inert for every other probe here - none of them ask for a
+   media device. The fake camera produces a moving pattern with a tone on the
+   audio track, which is exactly what a re-encode has to carry over. */
+const browser = await launchChromium({
+  args: [
+    '--use-fake-device-for-media-stream',
+    '--use-fake-ui-for-media-stream',
+    '--autoplay-policy=no-user-gesture-required'
+  ]
+});
 const page = await (await browser.newContext()).newPage();
 
 /** Loads `path`, waits for `[data-...-ready]` to appear, and reads `resultGlobal`
@@ -804,9 +816,9 @@ try {
     ok('a video note is stored under an opaque <uuid>.webm, resolvable on either platform');
   else fail('a video note is stored under an opaque <uuid>.webm', r.fileName);
 
-  if (r.sourceType === 'video/webm' && r.sourceSize > 0)
-    ok(`MediaRecorder produces a real WebM here to re-encode (${(r.sourceSize / 1024) | 0}KB of noise)`);
-  else fail('MediaRecorder produces a real WebM to re-encode', `${r.sourceType}, ${r.sourceSize} bytes`);
+  if (r.captured && r.sourceSize > 0)
+    ok(`startVideoRecording() produces a real capture off the fake camera (${(r.sourceSize / 1024) | 0}KB)`);
+  else fail('startVideoRecording() produces a real capture', `captured: ${r.captured}, ${r.sourceSize} bytes`);
 
   /* The claim ticket 22 actually makes: a file over the ceiling is
      compressed further rather than accepted as-is. Size is the whole point,
@@ -830,8 +842,8 @@ try {
 
   // 480p in, 480p out. Ticket 22's 1080p is a cap, and upscaling would only
   // spend bits on detail that is not there (ADR-0008's rule for photos).
-  if (r.reencodedFrame?.height === r.sourceFrame.height && r.reencodedFrame.height < r.maxEdge)
-    ok(`a capture below the ${r.maxEdge}p cap keeps its own size rather than being upscaled to it`);
+  if (r.reencodedFrame?.height === r.sourceFrame.height && r.reencodedFrame.height < r.maxShortEdge)
+    ok(`a capture below the ${r.maxShortEdge}p cap keeps its own size rather than being upscaled to it`);
   else
     fail(
       'a capture below the cap keeps its own size',
@@ -841,6 +853,18 @@ try {
   if (r.targetForOversized && r.targetForOversized.audioBitsPerSecond > 0)
     ok('the target comes from limits.ts, so the probe exercises the real decision');
   else fail('the target comes from limits.ts', JSON.stringify(r.targetForOversized));
+
+  /* A video note is video AND audio (ticket 22's scope line). reencode.ts has
+     to mute the <video> it plays to satisfy the autoplay policy, so this is
+     the check that the mute does not also silence the track it carries over -
+     the failure it guards against would store every note without its sound. */
+  if (r.sourceHasAudio && r.reencodedHasAudio)
+    ok('the re-encode carries the audio over, so speech survives what the picture gives up');
+  else
+    fail(
+      'the re-encode carries the audio over',
+      `source had audio: ${r.sourceHasAudio}, re-encode had audio: ${r.reencodedHasAudio}`
+    );
 
   if (r.undecodableGivesNull)
     ok('and a file the browser cannot decode yields null, so an oversized capture is kept rather than lost');
