@@ -22,6 +22,10 @@ import { PREFERENCE_DEFAULTS } from '../../src/lib/data/prefs/catalogue.ts';
 import { normalizePhoto } from '../../src/lib/data/photos/normalize.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
 import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
+import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
+import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
+import { hairAnchorEpochDay } from '../../src/lib/data/hairAnchor.ts';
+import { expectedSlots, adherence } from '../../src/lib/data/doseSchedule.ts';
 import type { LongJournalSummary } from './generate.ts';
 
 export interface Measurement {
@@ -276,6 +280,103 @@ export async function measureLongJournal(
     let bytes = 0;
     for await (const chunk of packArchive(contents, EXPORT_PASSWORD)) bytes += chunk.length;
     return { result: bytes, detail: `${mb(bytes)} archive` };
+  });
+
+  // --- phase 5 features (ticket 01) ---------------------------------------
+  // Five features landed without a line here: this section checks the four
+  // that turned out to be genuinely new reads. The fifth, regimen templates
+  // (settings/regimen/+page.svelte's vocabulary.regimenTemplates), is a
+  // static built-in list with no query behind it at all, so it gets no
+  // measurement - one for form's sake would report nothing a budget could
+  // ever fail.
+
+  // On-this-day (OnThisDayHomeCard.svelte) asks isGoodDay for a fixed three
+  // candidates - a month, six months and a year back - never more of them
+  // as the journal grows. What's new here is isGoodDay's body-region EXISTS
+  // clause (phase 5 ticket 44); this measurement is what tells us whether
+  // that clause stays as cheap as the rest of the check at decade scale.
+  await measure('on-this-day-good-day', 'on-this-day, whether each lookback day clears the bar', async () => {
+    const candidates = onThisDayCandidates(today);
+    const results = await Promise.all(candidates.map((c) => journal.stats.isGoodDay(c.epochDay)));
+    return {
+      result: results,
+      detail: `${results.filter(Boolean).length} of ${results.length} lookback days clear the bar`
+    };
+  });
+
+  // The doubt journal (doubt/+page.svelte) always runs this pool, not from
+  // a sheet someone opens: the same EUPHORIA_TAG_KEYS and limit (20) the
+  // screen itself uses. Widened by the same ticket 44 to include a
+  // body-region euphoria clause alongside starred entries and euphoria
+  // tags.
+  await measure('doubt-counterevidence', 'doubt journal, the counterevidence pool', async () => {
+    const COUNTEREVIDENCE_LIMIT = 20;
+    const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT);
+    return { result: pool, detail: `${pool.length} counterevidence entries` };
+  });
+
+  // Body-region tracking (afdae70, phase 5 ticket 31): the body-map and
+  // wear screens each query one region's two axes over a range someone
+  // picked, never every region at once - unlike stats-year-series, which
+  // charts every gender dimension in one call but has never read a body
+  // region at all. 365 days is body-map's widest range, and one region
+  // ('chest') stands in for the query shape every other region shares.
+  await measure('body-region-trend', 'body map, 365 days of one region, both axes', async () => {
+    const region = 'chest';
+    const [dysphoria, euphoria] = await Promise.all([
+      journal.stats.bodyRegionTrend(region, 'dysphoria', yearStart, today),
+      journal.stats.bodyRegionTrend(region, 'euphoria', yearStart, today)
+    ]);
+    return {
+      result: [dysphoria, euphoria],
+      detail: `${dysphoria.length} dysphoria + ${euphoria.length} euphoria points on ${region}`
+    };
+  });
+
+  // Hair tracking (phase 5 ticket 33): the settings screen's own anchor
+  // read is `doses.getDoses(0, today)` - unbounded from epoch day zero,
+  // not a windowed range like every stats query above - because the
+  // fallback anchor is the earliest dose of anything ever logged. Passed
+  // no user-set anchor here, which is the fallback's own worst case: the
+  // early-return branch (a preference is set) never touches the dose log
+  // at all. getStages/getPhotos read every row, unfiltered, the same shape
+  // milestones and lab results already read at decade scale.
+  await measure('hair-progress-anchor', 'hair progress, every dose since day zero plus every staging and photo', async () => {
+    const [doses, stages, photos] = await Promise.all([
+      journal.doses.getDoses(0, today),
+      journal.hairProgress.getStages(),
+      journal.hairProgress.getPhotos()
+    ]);
+    const anchor = hairAnchorEpochDay(null, doses);
+    return {
+      result: [doses, stages, photos, anchor],
+      detail: `${doses.length} doses read for the anchor, ${stages.length} stagings, ${photos.length} photos`
+    };
+  });
+
+  // Dose schedules (schema v38, ADR-0027, phase 5 ticket 40): the dose log
+  // screen's own reads (doses/+page.svelte) - a 90-day window of doses and
+  // pauses, every schedule and every episode - fed into expectedSlots and
+  // adherence, which is where the new weekday recurrence and doseAmounts
+  // cycle actually run. Nothing here reuses the fixture's own episode id;
+  // it reads it back the same way the screen does, off getEpisodes().
+  await measure('dose-schedule-adherence', 'dose log, 90 days of the log against its schedule', async () => {
+    const ADHERENCE_WINDOW_DAYS = 90;
+    const from = today - ADHERENCE_WINDOW_DAYS;
+    const [episodes, doses, schedules, pauses] = await Promise.all([
+      journal.regimen.getEpisodes(),
+      journal.doses.getDoses(from, today),
+      journal.doses.getSchedules(),
+      journal.doses.getPauses()
+    ]);
+    const episode = episodes[0];
+    if (!episode) throw new Error('long-journal fixture did not produce a regimen episode for dose-schedule-adherence');
+    const schedule = schedules.find((s) => s.episodeId === episode.id) ?? null;
+    if (!schedule) throw new Error('long-journal fixture did not produce a dose schedule for dose-schedule-adherence');
+
+    const slots = expectedSlots(schedule, episode.startEpochDay, from, today);
+    const result = adherence(slots, doses, pauses);
+    return { result, detail: `${result.rows.length} expected slots, ${result.unmatched.length} unmatched doses` };
   });
 
   // --- write paths -------------------------------------------------------
