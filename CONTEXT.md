@@ -552,6 +552,16 @@ colour palette's flag stripes (`--motif-stripes`, `palettes.css`), the same
 token the pride aurora background already reads. Carries no data of its
 own - choosing it adds colour to the card, not a number.
 
+**Flag band**:
+Home's one decorative element: the active colour palette's flag stripes drawn
+as equal-width hard stops behind the greeting, masked so its lower edge
+dissolves into the page. Sibling to **palette art** above - the same
+`--motif-stripes` token, drawn crisp rather than as a gradient. Appears on
+Home and nowhere else, and not at all while the app is disguised (ADR-0035).
+Replaces the pride aurora, a blurred version of the same stripes that used to
+sit on ten screens including every pre-unlock gate.
+_Avoid_: Aurora (the thing it replaced), banner, hero image, wallpaper
+
 **On-this-day**:
 A daily retrospective offering what was logged a month, six months or a year
 before today. Only ever resurfaces a **good day** (below) - never a bad one.
@@ -633,6 +643,32 @@ Removed from every place a user picks things, while every past reference to it
 survives. The default meaning of removing a tag, a gender dimension or a
 measurement type.
 _Avoid_: Archived, disabled, deleted, soft-deleted
+
+### Getting around
+
+**More hub**:
+The bottom bar's fourth destination: a hub of grouped feature surfaces, with
+**Settings** as one row in it. What the app can do is listed here; what the app
+is configured to do is listed in Settings (ADR-0036). A new feature surface
+becomes a row in a group here, never a fifth tab and never a Settings row.
+_Avoid_: Menu, drawer, tools, misc
+
+**Settings**:
+Only what configures the app: appearance and accessibility, which scales and
+tag groups appear when logging, reminders, and the privacy and data controls.
+A screen that records or displays journal data is a feature surface and belongs
+in the **More hub**, however much configuration it happens to carry.
+_Avoid_: Preferences (the portable/device-local preference split owns that word),
+options
+
+**Quick add**:
+What the bottom bar's centre button opens: a sheet of the logs that are worth
+reaching from anywhere, whatever screen is open. Deliberately narrow - a log
+belongs here because it is cross-cutting, not because it exists. A feature
+surface keeps its own in-context add control, which quick add never replaces.
+_Avoid_: FAB (that is the button, not what it offers), new entry (it offers more
+than one thing), compose
+
 
 ### Reading the journal back
 
