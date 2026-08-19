@@ -12,6 +12,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { makeArchiveArea, type ArchiveArea } from './archive';
+import { makeChecklistsArea, type ChecklistsArea } from './checklists';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
 import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
@@ -147,6 +148,12 @@ export interface Journal {
       goals say is a bundled content module, not a table, so this area
       never validates a pack key it was handed. */
   roadmap: RoadmapArea;
+  /** Free-text checklists (phase 5 ticket 05, CONTEXT: "Checklist"),
+      standalone or scoped to an owner record by a (kind, id) pair rather
+      than a foreign key - no owner table ships with this ticket. Distinct
+      from `roadmap`: an item here is entirely the user's own content, with
+      nothing bundled behind it. */
+  checklists: ChecklistsArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
@@ -202,6 +209,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     tryouts: makeTryoutsArea(driver),
     letters: makeLettersArea(driver),
     roadmap: makeRoadmapArea(driver),
+    checklists: makeChecklistsArea(driver),
     stats,
     correlationCards: makeCorrelationCardsArea(stats, doses, dimensions),
     archive: makeArchiveArea(driver, files),

@@ -523,8 +523,9 @@ checked against its sources, and shows it: Polish gender-recognition procedure
 changes with legislation, so a reader needs to know how old what they are
 reading is. Only the Polish pack ships, and the structure holds another
 country's content with no schema change behind it.
-_Avoid_: Locale (a pack is a country's procedure, not a language), checklist
-(the pack is the content; the checklist is what a screen makes of it)
+_Avoid_: Locale (a pack is a country's procedure, not a language), Checklist
+(a country pack is bundled content; see **Checklist** for the stored,
+user-authored list a screen builds instead)
 
 **Roadmap track**:
 One of four groupings a roadmap goal belongs to: social, legal, presentational,
@@ -541,6 +542,24 @@ thing on every device. Says what the procedure involves and never what someone
 should do about their own situation.
 _Avoid_: Milestone (a milestone is a dated thing that happened; a goal is a step
 that may never be taken), task, to-do
+
+### Checklists
+
+**Checklist**:
+An ordered list of checklist items, standalone or scoped to one owner record.
+Distinct from a **roadmap goal**: a roadmap goal is bundled, pack-authored
+content with a fixed key, and the tick is the only part that is the user's; a
+checklist item is itself the user's content, free text with nothing shipped by
+the app behind it - the same distinction that separates **Custom** from
+**Built-in**. The transition roadmap's country pack is content a screen reads;
+a checklist is never that, however similar the two look on screen.
+_Avoid_: To-do list, task list
+
+**Checklist item**:
+One line of a checklist: free-text content, checked or not, and whether it is
+still open past whatever event closed its checklist's usual window - a visit,
+a procedure's recovery close-out. Always **Custom** - no checklist item ships
+built in.
 
 ### Privacy and access
 

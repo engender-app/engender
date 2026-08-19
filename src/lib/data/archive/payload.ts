@@ -203,6 +203,27 @@ export interface ArchiveRoadmapCheck {
   goalKey: string;
 }
 
+/** One line of a checklist (phase 5 ticket 05), named by its own uuid like
+    any other user-owned row - unlike ArchiveRoadmapCheck, an item carries
+    data of its own rather than naming bundled content. */
+export interface ArchiveChecklistItem {
+  id: string;
+  content: string;
+  checked: boolean;
+  carriedForward: boolean;
+}
+
+/** A checklist, standalone or scoped to an owner record (phase 5 ticket 05).
+    `ownerKind`/`ownerId` travel as a pair, both present or both absent, the
+    same nullable pairing the row itself keeps (migrations.ts v20) - there is
+    no owner table to resolve either against yet. */
+export interface ArchiveChecklist {
+  id: string;
+  ownerKind: string | null;
+  ownerId: string | null;
+  items: ArchiveChecklistItem[];
+}
+
 /** One counterevidence entry as it read at the moment its snapshot was
     saved (phase 4 ticket 11) - copied fields, not a reference to the
     source entry's id, the same reasoning the snapshot table itself argues
@@ -383,6 +404,7 @@ export interface ArchiveJournal {
   medicationStock: ArchiveMedicationStock[];
   tryouts: ArchiveTryout[];
   feltSenseEntries: ArchiveFeltSenseEntry[];
+  checklists: ArchiveChecklist[];
 }
 
 /** A photo file travelling in the body, and how many bytes of it there

@@ -114,7 +114,8 @@ const SECTIONS = [
     after: ['tryouts'],
     read: read.readFeltSenseEntries,
     apply: apply.applyFeltSenseEntries
-  })
+  }),
+  section({ name: 'checklists', read: read.readChecklists, apply: apply.applyChecklists })
 ] as const;
 
 /* A section on the wire type with no entry above would be written into every
