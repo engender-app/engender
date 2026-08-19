@@ -499,6 +499,45 @@ test('a severity outside the 1-5 scale is refused before it reaches the schema',
   );
 });
 
+/* cycle events (phase 5 ticket 03) */
+
+test('a cycle event round-trips with no episode reference, ordered by day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 200 });
+  const id = await journal.cycleEvents.upsertCycleEvent({ kind: 'period_occurred', epochDay: 100 });
+
+  const events = await journal.cycleEvents.getCycleEvents();
+  assert.deepEqual(events.map((e) => e.epochDay), [100, 200]);
+  assert.deepEqual(events[0], { id, kind: 'period_occurred', epochDay: 100 });
+});
+
+test('a cycle event range read returns only the days it was asked for', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.cycleEvents.upsertCycleEvent({ kind: 'period_occurred', epochDay: 100 });
+  await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 150 });
+  await journal.cycleEvents.upsertCycleEvent({ kind: 'nothing_this_month', epochDay: 200 });
+
+  const inRange = await journal.cycleEvents.getCycleEventsInRange(120, 180);
+  assert.deepEqual(inRange.map((e) => e.kind), ['spotting']);
+});
+
+test('cycle events update by id, throw on unknown ids and delete idempotently', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.cycleEvents.upsertCycleEvent({ kind: 'period_occurred', epochDay: 100 });
+
+  await journal.cycleEvents.upsertCycleEvent({ id, kind: 'spotting', epochDay: 100 });
+  assert.equal((await journal.cycleEvents.getCycleEvents())[0].kind, 'spotting');
+
+  await assert.rejects(
+    journal.cycleEvents.upsertCycleEvent({ id: 'nope', kind: 'period_occurred', epochDay: 1 }),
+    /unknown cycle event/
+  );
+
+  await journal.cycleEvents.deleteCycleEvent(id);
+  await journal.cycleEvents.deleteCycleEvent(id); // idempotent
+  assert.deepEqual(await journal.cycleEvents.getCycleEvents(), []);
+});
+
 /* personal effects timeline (phase 4 ticket 07) */
 
 test('no marker exists until an effect is set; getMarkers only returns what was marked', async () => {

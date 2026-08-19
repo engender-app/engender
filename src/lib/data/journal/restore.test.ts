@@ -78,6 +78,7 @@ async function populated() {
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
   await journal.tally.log({ epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' });
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.reminders.upsertReminder({
     title: 'injection',
@@ -253,6 +254,7 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal(restoredLab.provider, 'Diagnostyka');
   assert.deepEqual(restoredLab.timing, { route: 'im', dayOfInterval: 5 });
   assert.equal((await target.journal.sideEffects.getSideEffects()).length, 1);
+  assert.equal((await target.journal.cycleEvents.getCycleEvents()).length, 1);
   assert.equal((await target.journal.personalEffects.getMarkers()).length, 1);
   assert.equal((await target.journal.reminders.getReminders()).length, 1);
   const episodes = await target.journal.regimen.getEpisodes();

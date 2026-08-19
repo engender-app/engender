@@ -52,6 +52,7 @@ import type {
   ArchiveReminder,
   ArchiveRoadmapCheck,
   ArchiveSideEffect,
+  ArchiveCycleEvent,
   ArchiveTag,
   ArchiveTagGroup,
   ArchiveTallyEvent,
@@ -302,6 +303,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       'SELECT uuid, name, severity, epoch_day FROM side_effect ORDER BY epoch_day, id'
     );
     return rows.map((r) => ({ id: r.uuid, name: r.name, severity: r.severity, epochDay: r.epoch_day }));
+  };
+
+  const cycleEvents = async (): Promise<ArchiveCycleEvent[]> => {
+    const rows = await driver.query<{ uuid: string; kind: string; epoch_day: number }>(
+      'SELECT uuid, kind, epoch_day FROM cycle_event ORDER BY epoch_day, id'
+    );
+    return rows.map((r) => ({ id: r.uuid, kind: r.kind, epochDay: r.epoch_day }));
   };
 
   const doubtEntries = async (): Promise<ArchiveDoubtEntry[]> => {
@@ -649,6 +657,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           labResults: await labResults(),
           measurements: await measurements(),
           sideEffects: await sideEffects(),
+          cycleEvents: await cycleEvents(),
           personalEffects: await personalEffects(),
           hairStages: await hairStages(),
           hairPhotos: hairPhotos(hairPhotoRowsRead),

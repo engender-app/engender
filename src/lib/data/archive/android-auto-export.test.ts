@@ -28,6 +28,7 @@ const snapshot: ArchiveSnapshot = {
     labResults: [],
     measurements: [],
     sideEffects: [],
+    cycleEvents: [],
     personalEffects: [],
     hairStages: [],
     hairPhotos: [],

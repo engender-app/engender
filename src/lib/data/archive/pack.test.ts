@@ -346,6 +346,7 @@ const EMPTY_JOURNAL: ArchiveJournal = {
   labResults: [],
   measurements: [],
   sideEffects: [],
+  cycleEvents: [],
   personalEffects: [],
   hairStages: [],
   hairPhotos: [],
