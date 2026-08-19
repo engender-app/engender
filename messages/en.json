@@ -1663,7 +1663,6 @@
   "tryout_entries_none": "No entries logged in this range yet.",
   "tryout_entries_none_body": "Entries logged while this tryout is open will show up here.",
   "tryout_photo_section_title": "Photos",
-  "tryout_photo_hint": "Save the tryout first, then attach photos to it.",
   "tryout_photo_empty_title": "No photos yet",
   "tryout_photo_empty_body": "Photos for this tryout land here as you add them.",
   "tryout_photo_delete_sheet": "Delete photo",
