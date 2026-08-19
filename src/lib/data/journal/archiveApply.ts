@@ -933,7 +933,7 @@ export async function applyPersonalEffects({ driver, journal, ts }: Restoring): 
 
    A row with no `scale` came out of an archive written before phase 5
    ticket 33, when Norwood-Hamilton was the only vocabulary there was, so it
-   is one - the same reading migrations.ts v36 gives the rows it carried
+   is one - the same reading migrations.ts v37 gives the rows it carried
    across. Defaulting rather than dropping is what keeps an old backup whole;
    a scale this build does not know is left as it is and the schema's CHECK
    refuses it, which is the honest failure for an archive from a future
