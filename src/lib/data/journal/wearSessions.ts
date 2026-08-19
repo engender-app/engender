@@ -40,7 +40,10 @@ export interface WearSessionInput {
   reminderHoursAfterStart?: number | null;
   /** The reminder's title, used only the first time this session gets one -
       an update reuses whatever title is already on the row, the same way
-      stock.ts's reconcile only sets a title on `create`. */
+      stock.ts's reconcile only sets a title on `create`. Required whenever
+      `reminderHoursAfterStart` is non-null and no reminder exists yet: the
+      alternative default would be this session's own auto_source marker,
+      which is an id meant for matching rows, not a title meant to be read. */
   reminderTitle?: string;
 }
 
@@ -108,10 +111,14 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
       return;
     }
 
+    if (!existing && title === undefined) {
+      throw new Error(`wear session ${sessionId}: a new reminder needs a title`);
+    }
+
     const rule = ruleForHoursAfter(startTimestamp, hours);
     await reminders.upsertReminder({
       id: existing?.id,
-      title: existing?.title ?? title ?? autoSourceFor(sessionId),
+      title: existing?.title ?? (title as string),
       type: 'other',
       time: rule.time,
       recurrence: null,
