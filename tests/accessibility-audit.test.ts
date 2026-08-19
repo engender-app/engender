@@ -10,7 +10,7 @@ describe('phase 2 accessibility seams', () => {
     const chart = read('src/lib/components/LineChart.svelte');
     expect(chart).toContain('m.chart_aria');
     expect(chart).toContain('role="img"');
-    expect(chart).toContain('aria-label={chart.label}');
+    expect(chart).toContain('aria-label={ariaLabel ?? chart.label}');
     expect(chart).toContain('m.not_enough_data()');
   });
 
