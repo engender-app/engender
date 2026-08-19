@@ -413,6 +413,18 @@ an ordinary one, on a wear-specific marker, for whatever hour count the
 person sets - the app states no safe maximum and gives no advice.
 _Avoid_: Wear time (that is the duration on a session, not the record itself)
 
+**Size record**:
+What was bought and what fit: a garment category (a closed built-in list,
+never user-extensible), a free-text size, an optional free-text brand and a
+free-text fit note, dated and charted over time grouped by category. Pairs
+with, and never duplicates, **Measurement** - no body-measurement math, and
+no size normalized or converted across brands or sizing systems. Distinct
+from a **Tryout**'s `garment` kind, which is a one-off experiment with a
+felt-sense history, not an ongoing record of sizes across many purchases.
+_Avoid_: Fit alone (collides with the hormone-curve sense of how well a
+published curve fits the literature; always say "fit note" or keep it
+next to "size")
+
 ### Reflection and retrospection
 
 **Wrapped**:

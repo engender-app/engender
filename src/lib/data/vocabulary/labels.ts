@@ -32,6 +32,7 @@ import type {
   TryoutKind
 } from '../types';
 import type { HairRemovalAreaKey } from '../hairRemovalAreas';
+import type { GarmentCategoryKey } from '../garmentCategories';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -156,6 +157,25 @@ const HAIR_REMOVAL_METHOD_NAME: Record<HairRemovalMethod, Message> = {
 
 /** The name of a hair-removal method. */
 export const hairRemovalMethodName = (method: HairRemovalMethod): string => HAIR_REMOVAL_METHOD_NAME[method]();
+
+/* Garment categories (phase 5 ticket 23) are a fixed set, not a built-in
+   row, the same reasoning MEASUREMENT_TYPE_NAME gives - and their own
+   vocabulary, since a size record's category is unrelated to any other
+   closed list in the app. */
+const GARMENT_CATEGORY_NAME: Record<GarmentCategoryKey, Message> = {
+  shirts: m.size_log_category_shirts,
+  pants: m.size_log_category_pants,
+  dresses: m.size_log_category_dresses,
+  skirts: m.size_log_category_skirts,
+  bras: m.size_log_category_bras,
+  underwear: m.size_log_category_underwear,
+  shoes: m.size_log_category_shoes,
+  outerwear: m.size_log_category_outerwear
+};
+
+/** The name of a garment category, or the raw key for one an import carries
+    that this build's vocabulary no longer lists. */
+export const garmentCategoryName = (category: string): string => lookup(GARMENT_CATEGORY_NAME, category);
 
 /* A tryout's kind (phase 4 ticket 16, widened by phase 5 ticket 13) is a
    fixed set, not a built-in row, the same reasoning HAIR_REMOVAL_METHOD_NAME

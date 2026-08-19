@@ -42,6 +42,8 @@ export type TableName =
   | 'photo'
   | 'lab'
   | 'measurement'
+  /* The sizes-and-fit log (phase 5 ticket 23). */
+  | 'sizeRecord'
   | 'reminder'
   | 'tally'
   | 'regimen'
@@ -144,6 +146,7 @@ export const TABLE_NAMES: TableName[] = [
   'photo',
   'lab',
   'measurement',
+  'sizeRecord',
   'reminder',
   'tally',
   'regimen',
@@ -290,6 +293,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       setMeasurementTypeHidden: ['measurementType']
     },
     reads: ['getMeasurements', 'getSeries', 'getMeasurementsInRange', 'getMeasurementTypes']
+  },
+  sizeRecords: {
+    writes: { upsertRecord: ['sizeRecord'], deleteRecord: ['sizeRecord'] },
+    reads: ['getRecords', 'getRecordsByCategory']
   },
   sideEffects: {
     writes: { upsertSideEffect: ['sideEffect'], deleteSideEffect: ['sideEffect'] },
