@@ -17,6 +17,7 @@
    Nothing is stored. A recap is recomputed from entries, tags, milestones
    and dimension values every time it is opened (ADR-0010). */
 
+import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Photo, TallyKind } from '../types';
@@ -125,6 +126,20 @@ export interface StatsArea {
       key share no namespace, and a garbage region should read as "nothing
       logged" rather than risk colliding with a real dimension's key. */
   bodyRegionTrend(region: string, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
+  /** One point per day at least one completed wear session started in the
+      range, oldest first, both ends inclusive - the same DayAverage shape
+      as bodyRegionTrend, so a wear-time trend overlays the same chart
+      (phase 5 ticket 04). `value` is the day's average wear duration in
+      hours (native units for this metric), averaged only over sessions
+      whose duration is known - a live session still running has nothing to
+      average yet. A session is attributed to the day it started even when
+      it ran past midnight, the same rule dose_event's own timestamp-only
+      attribution follows: nothing here re-derives a different day from how
+      long a session lasted. Grouped in JS rather than SQL, because
+      wear_session carries a raw timestamp and not a stored epoch_day
+      column, the same reason dose_event has no per-day trend of its own in
+      SQL either. */
+  wearTimeTrend(fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
   /** Whether `epochDay` clears on-this-day's good-day bar (CONTEXT: Good
       day, phase 4 features ticket 03): its day average mood at or above
       the mood scale's midpoint, a euphoria capture logged that day, or
@@ -222,6 +237,27 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
     async bodyRegionTrend(region, fromEpochDay, toEpochDay) {
       return averageByDay(bodyRegionValues(region), fromEpochDay, toEpochDay);
+    },
+
+    async wearTimeTrend(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ start_timestamp: number; duration_ms: number }>(
+        `SELECT start_timestamp, duration_ms FROM wear_session
+         WHERE duration_ms IS NOT NULL AND start_timestamp >= ? AND start_timestamp < ?`,
+        [startOfDayTimestamp(fromEpochDay), startOfDayTimestamp(toEpochDay + 1)]
+      );
+
+      const byDay = new Map<number, { totalMs: number; sessions: number }>();
+      for (const row of rows) {
+        const day = epochDayFromTimestamp(row.start_timestamp);
+        const bucket = byDay.get(day) ?? { totalMs: 0, sessions: 0 };
+        bucket.totalMs += row.duration_ms;
+        bucket.sessions += 1;
+        byDay.set(day, bucket);
+      }
+
+      return [...byDay.entries()]
+        .map(([day, { totalMs, sessions }]) => ({ day, value: totalMs / sessions / 3600000, count: sessions }))
+        .sort((a, b) => a.day - b.day);
     },
 
     async tallyTrend(kind, fromEpochDay, toEpochDay) {
