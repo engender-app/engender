@@ -5,6 +5,7 @@ import type { DoseEvent, RegimenEpisode } from './types.ts';
 import {
   QUALITATIVE_LOOKBACK_DAYS,
   QUALITATIVE_ROUTES,
+  QUALITATIVE_ROUTES_BY_DRUG,
   latestQualitativeValue,
   qualitativeCurves,
   qualitativeValueAt,
@@ -39,7 +40,7 @@ function dose(epochDay: number, over: Partial<Extract<DoseEvent, { route: 'oral'
   };
 }
 
-const WINDOW = { fromEpochDay: 0, toEpochDay: 6 };
+const WINDOW = { drug: 'estradiol', fromEpochDay: 0, toEpochDay: 6 } as const;
 
 test('the four routes this ticket draws, and only those', () => {
   assert.deepEqual(QUALITATIVE_ROUTES, ['oral', 'sublingual', 'patch', 'gel']);
@@ -86,7 +87,7 @@ test('the curve is zero before the first dose and rises after it', () => {
 });
 
 test('the curve settles back towards zero well after the last dose', () => {
-  const result = qualitativeCurves({ doses: [dose(0)], episodes: [episode()], fromEpochDay: 0, toEpochDay: 3 });
+  const result = qualitativeCurves({ drug: 'estradiol', doses: [dose(0)], episodes: [episode()], fromEpochDay: 0, toEpochDay: 3 });
   const last = result.curves[0].points[result.curves[0].points.length - 1];
   assert.ok(last.value < 0.05, `oral should have settled by day 3, was ${last.value}`);
 });
@@ -211,4 +212,78 @@ test('no doses at all is an empty answer, not a flat curve at zero', () => {
   const result = qualitativeCurves({ doses: [], episodes: [episode()], ...WINDOW });
   assert.deepEqual(result.curves, []);
   assert.equal(result.dosesWithoutMilligrams, 0);
+});
+
+test('each drug draws only the routes an invented shape was actually argued for', () => {
+  /* Estradiol keeps all four. Testosterone gets gel and nothing else: a
+     testosterone patch is changed daily where the patch shape is a multi-day
+     depot, and oral testosterone undecanoate is a different absorption story
+     again, so borrowing either shape would draw something wrong rather than
+     something rough. */
+  assert.deepEqual(QUALITATIVE_ROUTES_BY_DRUG.estradiol, ['oral', 'sublingual', 'patch', 'gel']);
+  assert.deepEqual(QUALITATIVE_ROUTES_BY_DRUG.testosterone, ['gel']);
+});
+
+test('testosterone gel gets a curve of its own, on the same invented shape as estradiol gel', () => {
+  const result = qualitativeCurves({
+    ...WINDOW,
+    drug: 'testosterone',
+    doses: [{ ...dose(0), route: 'gel', dose: 50 } as DoseEvent],
+    episodes: [episode({ drug: 'testosterone', route: 'gel' })]
+  });
+
+  assert.equal(result.curves.length, 1);
+  assert.equal(result.curves[0].route, 'gel');
+  assert.equal(result.curves[0].doseCount, 1);
+  assert.ok(result.curves[0].points.some((point) => point.value > 0));
+});
+
+test('a testosterone route with no shape argued for it gets no curve at all', () => {
+  // Fail-closed, the same way an ester outside the vocabulary gets none.
+  for (const route of ['oral', 'sublingual', 'patch'] as const) {
+    const result = qualitativeCurves({
+      ...WINDOW,
+      drug: 'testosterone',
+      doses: [{ ...dose(0), route } as DoseEvent],
+      episodes: [episode({ drug: 'testosterone', route })]
+    });
+    assert.deepEqual(result.curves, [], route);
+  }
+});
+
+test('one hormone’s gel dose never adds height to the other hormone’s gel curve', () => {
+  /* The whole reason the two vocabularies are kept apart. Same route, same
+     window, two drugs - and each call sees only its own doses. */
+  const doses = [
+    { ...dose(0), route: 'gel' } as DoseEvent,
+    { ...dose(3), route: 'gel', dose: 50 } as DoseEvent
+  ];
+  const episodes = [
+    episode({ drug: 'estradiol', route: 'gel', startEpochDay: -1000 }),
+    episode({ id: 'ep2', drug: 'testosterone', route: 'gel', startEpochDay: 2 })
+  ];
+
+  const e2 = qualitativeCurves({ ...WINDOW, drug: 'estradiol', doses, episodes });
+  const t = qualitativeCurves({ ...WINDOW, drug: 'testosterone', doses, episodes });
+
+  assert.equal(e2.curves.length, 1);
+  assert.equal(e2.curves[0].doseCount, 1);
+  assert.equal(t.curves.length, 1);
+  assert.equal(t.curves[0].doseCount, 1);
+
+  // The estradiol curve has fallen back to nothing by the day the
+  // testosterone dose lands, rather than picking that dose up.
+  const at = (points: { day: number; value: number }[], day: number) => points.find((point) => point.day >= day)!.value;
+  assert.equal(at(e2.curves[0].points, 3.4), 0);
+  assert.ok(at(t.curves[0].points, 3.4) > 0);
+});
+
+test('a drug that is neither hormone still gets nothing, however familiar its route', () => {
+  const result = qualitativeCurves({
+    doses: [{ ...dose(0), route: 'gel' } as DoseEvent],
+    episodes: [episode({ drug: 'progesterone', route: 'gel' })],
+    ...WINDOW
+  });
+
+  assert.deepEqual(result.curves, []);
 });

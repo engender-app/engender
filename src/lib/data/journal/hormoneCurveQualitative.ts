@@ -17,7 +17,8 @@
    all. */
 
 import { convertLabValue } from '../labs/units';
-import { CURVE_UNIT, fractionalEpochDay } from '../hormoneCurve';
+import { CURVE_UNITS, type CurveDrug } from '../hormoneDrug';
+import { fractionalEpochDay } from '../hormoneCurve';
 import { fitScaleFactorToLabs } from '../hormoneCurveFit';
 import {
   QUALITATIVE_LOOKBACK_DAYS,
@@ -52,8 +53,9 @@ export interface QualitativeCurveView {
   /** Doses left out because their amount was not in milligrams. */
   dosesWithoutMilligrams: number;
   labPoints: QualitativeCurveLabPoint[];
-  /** Estradiol results in the window whose unit is outside ADR-0026's
-      allowlist, so there is no honest way to place them against the curve. */
+  /** Results for this curve's own hormone, in the window, whose unit is
+      outside ADR-0026's allowlist - so there is no honest way to place them
+      against the curve. */
   labPointsOffAxis: number;
   /** The factor every curve was multiplied by, or null when the curves are
       the published (invented-shape) ones with no fit applied. */
@@ -68,17 +70,29 @@ export interface QualitativeCurveArea {
       and applied; declining leaves the invented shape exactly as it is, and
       it still renders. */
   getCurves(params: {
+    /** Which hormone to draw, one per call - see QualitativeCurveInput. */
+    drug: CurveDrug;
     fromEpochDay: number;
     toEpochDay: number;
     fitToOwnLabs: boolean;
   }): Promise<QualitativeCurveView>;
 }
 
-/** Which analytes this curve can be drawn against - estradiol, the same as
-    the injectable model, since both curves describe the same hormone by a
-    different route. */
-function measuredInCurveUnit(analyte: string): boolean {
-  return convertLabValue(analyte, 1, CURVE_UNIT, CURVE_UNIT) !== null;
+/** Which analytes this hormone's curve can be drawn against. Asked of
+    ADR-0026's allowlist rather than by comparing the analyte name, for the
+    reason journal/hormoneCurve.ts gives: a result logged as "Testosterone"
+    counts the same as one logged as "testosterone", by the same identity rule
+    the conversion itself uses.
+
+    That this also keeps an estradiol result off a testosterone curve is a
+    property of the allowlist, not an extra check here: pg/mL belongs to
+    estradiol alone and ng/dL to testosterone alone, so asking for a
+    conversion into one hormone's own unit answers no for every other analyte.
+    A test pins that, so an allowlist that ever gave two analytes the same unit
+    fails there rather than quietly crossing two curves. */
+function measuredInCurveUnit(analyte: string, drug: CurveDrug): boolean {
+  const unit = CURVE_UNITS[drug];
+  return convertLabValue(analyte, 1, unit, unit) !== null;
 }
 
 /** Where a draw sits on the curve's axis, matching hormoneCurve.ts's own
@@ -94,7 +108,8 @@ export function makeQualitativeCurveArea(
   labs: LabsArea
 ): QualitativeCurveArea {
   return {
-    async getCurves({ fromEpochDay, toEpochDay, fitToOwnLabs }) {
+    async getCurves({ drug, fromEpochDay, toEpochDay, fitToOwnLabs }) {
+      const unit = CURVE_UNITS[drug];
       /* The dose log is read back past the window: a dose given before it
          opens is most of what the window's first hours are made of. */
       const [doseEvents, episodes, usedAnalytes] = await Promise.all([
@@ -103,14 +118,14 @@ export function makeQualitativeCurveArea(
         labs.getUsedAnalytes()
       ]);
 
-      const analytes = usedAnalytes.filter(measuredInCurveUnit);
+      const analytes = usedAnalytes.filter((analyte) => measuredInCurveUnit(analyte, drug));
       const results = (await Promise.all(analytes.map((analyte) => labs.getResults(analyte)))).flat();
 
       const labPoints: QualitativeCurveLabPoint[] = [];
       let labPointsOffAxis = 0;
       for (const result of results) {
         if (result.epochDay < fromEpochDay || result.epochDay > toEpochDay) continue;
-        const value = convertLabValue(result.analyte, result.value, result.unit, CURVE_UNIT);
+        const value = convertLabValue(result.analyte, result.value, result.unit, unit);
         if (value === null) {
           labPointsOffAxis += 1;
           continue;
@@ -119,7 +134,7 @@ export function makeQualitativeCurveArea(
       }
       labPoints.sort((a, b) => a.day - b.day);
 
-      const population = qualitativeCurves({ doses: doseEvents, episodes, fromEpochDay, toEpochDay });
+      const population = qualitativeCurves({ drug, doses: doseEvents, episodes, fromEpochDay, toEpochDay });
 
       /* Same rule as the injectable model: a fit is only worth taking when
          every dose that went in is drawn. A dose left out for its unit
@@ -128,7 +143,9 @@ export function makeQualitativeCurveArea(
       const modelIsComplete = population.dosesWithoutMilligrams === 0;
 
       /* Summed across the routes drawn, for the same reason hormoneCurve.ts
-         sums across esters: a lab result measures one bloodstream. */
+         sums across esters: a lab result measures one bloodstream. Across this
+         hormone's routes only - the other hormone's curves are a different
+         call, in a different unit, fitted against a different analyte. */
       const modelledAt = (day: number) =>
         population.curves.reduce((sum, curve) => sum + (qualitativeValueAt(curve, day) ?? 0), 0);
       const fit = fitToOwnLabs && modelIsComplete ? fitScaleFactorToLabs(labPoints, modelledAt) : null;
