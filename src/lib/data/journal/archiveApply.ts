@@ -552,7 +552,7 @@ export async function applyRegimenEpisodes({ driver, journal, ts }: Restoring): 
   await insertRows(
     driver,
     `INSERT INTO regimen_episode
-       (uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, hidden, updated_at)`,
+       (uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, hidden, updated_at)`,
     inserting.map((episode) => [
       episode.id,
       episode.drug,
@@ -562,6 +562,9 @@ export async function applyRegimenEpisodes({ driver, journal, ts }: Restoring): 
       episode.route,
       episode.interval,
       episode.startEpochDay,
+      // Absent on an archive from before ticket 38 - read as still
+      // ongoing, the same as every pre-existing episode's backfill (v40).
+      episode.endEpochDay ?? null,
       flag(episode.hidden),
       ts
     ])
@@ -805,7 +808,7 @@ export async function applyDoseEvents({ driver, journal, ts }: Restoring): Promi
     driver,
     `INSERT INTO dose_event
        (uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-        status, scheduled_dose, scheduled_route, scheduled_timestamp, updated_at)`,
+        status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, updated_at)`,
     inserting.map((dose) => [
       dose.id,
       dose.timestamp,
@@ -819,6 +822,9 @@ export async function applyDoseEvents({ driver, journal, ts }: Restoring): Promi
       dose.scheduledDose,
       dose.scheduledRoute,
       dose.scheduledTimestamp,
+      // Absent on an archive from before ticket 38 - null, same as every
+      // dose ever logged without one.
+      dose.drug ?? null,
       ts
     ])
   );

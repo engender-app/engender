@@ -218,10 +218,15 @@ just that it happened on a given day.
 ### HRT and medication
 
 **Regimen episode**:
-A drug, ester, dose, route and interval combination as a dated range, in effect
-until superseded by the next episode. Every entry, photo, measurement and lab
-result is attributable to whichever regimen episode was in effect when it was
-logged. Not a preference, portable or device-local: it is attributed data
+A drug, ester, dose, route and interval combination as a dated range, with an
+explicit end day the person sets by ending it - null while still going. More
+than one can be active on the same day when they are for different drugs
+(phase 5 ticket 38): starting a second regimen never silently ends the first.
+Every entry, photo, measurement and lab result attributed to one resolves
+against whichever episode or episodes were active when it was logged, and a
+record that lands on a day with more than one active episode for different
+drugs is attributed only when it can name its own drug unambiguously - never
+guessed at. Not a preference, portable or device-local: it is attributed data
 every other record resolves against by timestamp, not a setting. Not a
 Reminder either: a Reminder is a prompt to do something, while a regimen
 episode is a record of what has been true since a given day.
@@ -232,8 +237,12 @@ One dose taken, skipped or changed, at a real time of day. Its own record type,
 not an **Entry**: it carries no mood, dimension values, tags or note. What
 fields it has depends on its route - an injection also records a site and a
 vehicle, a patch or gel records an application site, and an oral or sublingual
-dose records neither. It stores no regimen episode; the one it belongs to is
-resolved from its timestamp, so backdating a dose moves it.
+dose records neither. It stores no regimen episode, and usually no drug
+either; which one it belongs to is resolved from its timestamp against the
+episode history, so backdating a dose moves it. It gains an optional drug
+field only to break a tie once concurrent episodes for different drugs make
+that resolution ambiguous (phase 5 ticket 38) - absent on nearly every dose,
+and never required to log one.
 _Avoid_: Dose alone (that is the amount, a field on this), injection (only one
 of six routes), medication log
 

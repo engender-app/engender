@@ -113,6 +113,11 @@
               {/if}
               · {m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}
             </span>
+            {#if row.projection.excludedDoses > 0}
+              <span class="row-subtitle muted small">
+                {m.stock_excluded_note({ count: String(row.projection.excludedDoses) })}
+              </span>
+            {/if}
           </span>
           <Icon name="pencil" size={18} />
         </button>

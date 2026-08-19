@@ -27,6 +27,7 @@ function episode(ester: string, over: Partial<RegimenEpisode> = {}): RegimenEpis
     route: 'IM',
     interval: 'every 7 days',
     startEpochDay: -1000,
+    endEpochDay: null,
     hidden: false,
     ...over
   };
@@ -40,6 +41,7 @@ function dose(epochDay: number, over: Partial<Extract<DoseEvent, { route: 'im' |
     doseUnit: 'mg',
     status: 'taken',
     scheduled: null,
+    drug: null,
     route: 'im',
     injectionSite: 'thigh-left',
     vehicle: 'oil',
@@ -70,7 +72,10 @@ test('one curve per ester dosed in the window, from the dose log', () => {
 test('two esters dosed in one window get a curve each, never one merged line', () => {
   const result = esterCurves({
     doses: [dose(0), dose(14, { id: 'later' })],
-    episodes: [episode('valerate'), episode('cypionate', { id: 'ep2', startEpochDay: 10 })],
+    // A switch of ester, so the first episode ends where the second
+    // starts - two concurrent episodes of the same drug on different
+    // esters would make a drug-less dose ambiguous rather than clean.
+    episodes: [episode('valerate', { endEpochDay: 9 }), episode('cypionate', { id: 'ep2', startEpochDay: 10 })],
     ...WINDOW
   });
 
@@ -82,6 +87,24 @@ test('two esters dosed in one window get a curve each, never one merged line', (
     result.curves.map((c) => c.doseCount),
     [1, 1]
   );
+});
+
+test('a drug-less injection logged while a concurrent episode of a different drug is also active is drawn into no curve (case 4)', () => {
+  /* The bug ticket 38 exists to close: before concurrency was representable,
+     a route match alone was enough to draw a dose into whichever episode
+     resolveEpisodeAt happened to return. Two concurrent injectable episodes
+     for different drugs, and a dose naming no drug of its own, must now be
+     excluded rather than guessed into either one's band. */
+  const result = esterCurves({
+    doses: [dose(0)],
+    episodes: [
+      episode('valerate', { startEpochDay: -1000 }),
+      episode('cypionate', { id: 'ep2', drug: 'testosterone', startEpochDay: -1000 })
+    ],
+    ...WINDOW
+  });
+
+  assert.equal(result.curves.length, 0);
 });
 
 test('every point of every band is a range, and a band carries no single value to draw a line from', () => {
@@ -289,7 +312,7 @@ test('a dose under a non-estradiol regimen draws nothing, ester word or not', ()
 test('each dose resolves its own episode, so a backdated dose gets the ester in effect then', () => {
   const result = esterCurves({
     doses: [dose(2), dose(20)],
-    episodes: [episode('valerate'), episode('enanthate', { id: 'ep2', startEpochDay: 15 })],
+    episodes: [episode('valerate', { endEpochDay: 14 }), episode('enanthate', { id: 'ep2', startEpochDay: 15 })],
     ...WINDOW
   });
 

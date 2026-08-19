@@ -16,6 +16,7 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay: DAY_0,
+    endEpochDay: null,
     hidden: false,
     ...overrides
   };
@@ -39,7 +40,7 @@ function dose(epochDay: number, overrides: Partial<DoseEvent> = {}): DoseEvent {
 test('cumulativeDoseTotals sums non-skipped doses in range by drug, route and unit', () => {
   const doses = [dose(DAY_0 + 1), dose(DAY_0 + 15), dose(DAY_0 + 30)];
 
-  const totals = cumulativeDoseTotals(doses, [episode()], DAY_0, DAY_0 + 30);
+  const { totals } = cumulativeDoseTotals(doses, [episode()], DAY_0, DAY_0 + 30);
 
   assert.deepEqual(totals, [{ drug: 'estradiol valerate', route: 'im', doseUnit: 'mg', total: 12 }]);
 });
@@ -47,7 +48,7 @@ test('cumulativeDoseTotals sums non-skipped doses in range by drug, route and un
 test('a skipped dose contributes nothing: it was not taken', () => {
   const doses = [dose(DAY_0 + 1), dose(DAY_0 + 15, { status: 'skipped' })];
 
-  const totals = cumulativeDoseTotals(doses, [episode()], DAY_0, DAY_0 + 30);
+  const { totals } = cumulativeDoseTotals(doses, [episode()], DAY_0, DAY_0 + 30);
 
   assert.equal(totals[0].total, 4);
 });
@@ -55,7 +56,7 @@ test('a skipped dose contributes nothing: it was not taken', () => {
 test('a changed dose still counts: it was taken, just not as scheduled', () => {
   const doses = [dose(DAY_0 + 1, { status: 'changed' })];
 
-  const totals = cumulativeDoseTotals(doses, [episode()], DAY_0, DAY_0 + 30);
+  const { totals } = cumulativeDoseTotals(doses, [episode()], DAY_0, DAY_0 + 30);
 
   assert.equal(totals[0].total, 4);
 });
@@ -63,25 +64,48 @@ test('a changed dose still counts: it was taken, just not as scheduled', () => {
 test('a dose outside the requested range is left out even when the caller hands in a wider set', () => {
   const doses = [dose(DAY_0 - 1), dose(DAY_0 + 5), dose(DAY_0 + 31)];
 
-  const totals = cumulativeDoseTotals(doses, [episode()], DAY_0, DAY_0 + 30);
+  const { totals } = cumulativeDoseTotals(doses, [episode()], DAY_0, DAY_0 + 30);
 
   assert.equal(totals[0].total, 4);
 });
 
-test('a dose with no episode to resolve against is left out: there is no drug to report it against', () => {
+test('a dose with no episode to resolve against is left out and not counted as excluded: there was nothing to attribute against before ticket 38 either', () => {
   const doses = [dose(DAY_0 - 100)];
 
-  const totals = cumulativeDoseTotals(doses, [episode({ startEpochDay: DAY_0 })], DAY_0 - 100, DAY_0 + 30);
+  const { totals, excludedDoses } = cumulativeDoseTotals(doses, [episode({ startEpochDay: DAY_0 })], DAY_0 - 100, DAY_0 + 30);
 
   assert.deepEqual(totals, []);
+  assert.equal(excludedDoses, 0);
+});
+
+test('a dose with no drug of its own is excluded and counted when two concurrent episodes name different drugs (phase 5 ticket 38)', () => {
+  const estradiol = episode({ id: 'ep-1', drug: 'estradiol', startEpochDay: DAY_0 });
+  const spiro = episode({ id: 'ep-2', drug: 'spironolactone', startEpochDay: DAY_0 });
+  const doses = [dose(DAY_0 + 1)];
+
+  const { totals, excludedDoses } = cumulativeDoseTotals(doses, [estradiol, spiro], DAY_0, DAY_0 + 30);
+
+  assert.deepEqual(totals, []);
+  assert.equal(excludedDoses, 1);
+});
+
+test('a dose with no drug of its own is not excluded when two concurrent episodes agree on the drug', () => {
+  const first = episode({ id: 'ep-1', drug: 'estradiol', dose: 2, startEpochDay: DAY_0 });
+  const second = episode({ id: 'ep-2', drug: 'estradiol', dose: 4, startEpochDay: DAY_0 });
+  const doses = [dose(DAY_0 + 1)];
+
+  const { totals, excludedDoses } = cumulativeDoseTotals(doses, [first, second], DAY_0, DAY_0 + 30);
+
+  assert.equal(excludedDoses, 0);
+  assert.deepEqual(totals, [{ drug: 'estradiol', route: 'im', doseUnit: 'mg', total: 4 }]);
 });
 
 test('a route change reports as two totals, never converted into one', () => {
-  const oral = episode({ id: 'ep-1', route: 'oral', startEpochDay: DAY_0 });
+  const oral = episode({ id: 'ep-1', route: 'oral', startEpochDay: DAY_0, endEpochDay: DAY_0 + 9 });
   const im = episode({ id: 'ep-2', route: 'im', startEpochDay: DAY_0 + 10 });
   const doses = [dose(DAY_0 + 1, { route: 'oral' }), dose(DAY_0 + 15, { route: 'im' })];
 
-  const totals = cumulativeDoseTotals(doses, [oral, im], DAY_0, DAY_0 + 30);
+  const { totals } = cumulativeDoseTotals(doses, [oral, im], DAY_0, DAY_0 + 30);
 
   assert.equal(totals.length, 2);
   assert.deepEqual(
@@ -91,11 +115,11 @@ test('a route change reports as two totals, never converted into one', () => {
 });
 
 test('two drugs across two episodes in range are reported separately, sorted by drug name', () => {
-  const spiro = episode({ id: 'ep-1', drug: 'spironolactone', route: 'oral', startEpochDay: DAY_0 });
+  const spiro = episode({ id: 'ep-1', drug: 'spironolactone', route: 'oral', startEpochDay: DAY_0, endEpochDay: DAY_0 + 9 });
   const estradiol = episode({ id: 'ep-2', drug: 'estradiol', route: 'oral', startEpochDay: DAY_0 + 10 });
   const doses = [dose(DAY_0 + 1, { route: 'oral' }), dose(DAY_0 + 11, { route: 'oral' })];
 
-  const totals = cumulativeDoseTotals(doses, [spiro, estradiol], DAY_0, DAY_0 + 20);
+  const { totals } = cumulativeDoseTotals(doses, [spiro, estradiol], DAY_0, DAY_0 + 20);
 
   assert.deepEqual(
     totals.map((t) => t.drug),
@@ -104,7 +128,7 @@ test('two drugs across two episodes in range are reported separately, sorted by 
 });
 
 test('timeOnEachRegimen reports each episode’s own overlap with the range, not a combined figure', () => {
-  const first = episode({ id: 'ep-1', startEpochDay: DAY_0 });
+  const first = episode({ id: 'ep-1', startEpochDay: DAY_0, endEpochDay: DAY_0 + 9 });
   const second = episode({ id: 'ep-2', dose: 6, startEpochDay: DAY_0 + 10 });
 
   const rows = timeOnEachRegimen([first, second], DAY_0, DAY_0 + 19);
@@ -127,7 +151,7 @@ test('the latest episode is still ongoing: its overlap runs through the range’
 });
 
 test('an episode entirely before the range contributes nothing', () => {
-  const early = episode({ id: 'ep-1', startEpochDay: DAY_0 });
+  const early = episode({ id: 'ep-1', startEpochDay: DAY_0, endEpochDay: DAY_0 + 9 });
   const later = episode({ id: 'ep-2', startEpochDay: DAY_0 + 10 });
 
   const rows = timeOnEachRegimen([early, later], DAY_0 + 10, DAY_0 + 20);
@@ -147,7 +171,7 @@ test('a hidden episode still counts: hiding is a picker filter, not a deletion f
 });
 
 test('daysOnEachRoute sums overlap days across every episode that used the route', () => {
-  const first = episode({ id: 'ep-1', route: 'oral', startEpochDay: DAY_0 });
+  const first = episode({ id: 'ep-1', route: 'oral', startEpochDay: DAY_0, endEpochDay: DAY_0 + 9 });
   const second = episode({ id: 'ep-2', route: 'oral', dose: 6, startEpochDay: DAY_0 + 10 });
 
   const rows = daysOnEachRoute([first, second], DAY_0, DAY_0 + 19);
@@ -156,7 +180,7 @@ test('daysOnEachRoute sums overlap days across every episode that used the route
 });
 
 test('two routes across the range report as two separate totals', () => {
-  const oral = episode({ id: 'ep-1', route: 'oral', startEpochDay: DAY_0 });
+  const oral = episode({ id: 'ep-1', route: 'oral', startEpochDay: DAY_0, endEpochDay: DAY_0 + 9 });
   const im = episode({ id: 'ep-2', route: 'im', startEpochDay: DAY_0 + 10 });
 
   const rows = daysOnEachRoute([oral, im], DAY_0, DAY_0 + 19);

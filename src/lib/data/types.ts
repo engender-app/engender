@@ -371,11 +371,14 @@ export interface FeltSenseEntry {
   note: string | null;
 }
 
-/* No stored end: an episode runs until the next one starts, or is ongoing
-   if it is the latest (ADR-0010, regimenEpisode.ts computes it). Not a
-   preference (ADR-0003) and not a Reminder: it is attributed data every
-   other record resolves against by timestamp, not a device setting and
-   not a prompt to log something. */
+/* An episode's end is a stored, explicit day, set only by the "end this
+   episode" action (phase 5 ticket 38) - not inferred from another episode
+   starting. Before ticket 38 the end was never stored (ADR-0010): the day
+   before the next episode's start, or "ongoing" for the latest one. That
+   derivation stops holding once two episodes for different drugs can
+   overlap on purpose - there is no longer a single "next" episode to read
+   an end off, so the person's own act of ending one is the only source
+   left for that fact. Null while an episode is still going. */
 export interface RegimenEpisode {
   id: string;
   drug: string;
@@ -386,6 +389,7 @@ export interface RegimenEpisode {
   route: string;
   interval: string;
   startEpochDay: number;
+  endEpochDay: number | null;
   /** Hidden episodes leave the picker downstream tickets offer for new
       records; records already attributed to one keep resolving to it
       (CONTEXT: "Hidden"). */
@@ -429,16 +433,28 @@ interface DoseEventFields {
   doseUnit: string;
   status: DoseStatus;
   scheduled: ScheduledDose | null;
+  /** Which drug this dose was, in the dose's own words - optional, and null
+      on almost every dose (phase 5 ticket 38). Attribution still resolves
+      from the episode history first (regimenEpisode.ts's attributeDose);
+      this only breaks a tie when more than one episode is active at the
+      dose's timestamp and names a different drug, which cannot happen
+      while at most one episode is ever active at once. A dose with no
+      drug of its own and no single active episode to fall back on is
+      attributed to nothing, not guessed at. */
+  drug: string | null;
 }
 
 /* A dose event is its own record type, not an Entry: it carries no mood, no
    dimension values, no tags and no note, and CONTEXT.md's Entry is closed
    over exactly those five fields.
 
-   Nor does it store which regimen episode it belongs to. Attribution is
-   resolveEpisodeAt(episodes, dose.timestamp) at read time (regimenEpisode.ts),
-   so backdating a dose - or inserting a corrective episode underneath it -
-   changes the answer with no stored link to rewrite (ADR-0010).
+   It stores no regimen episode of its own, and usually no drug either.
+   Attribution is attributeDose(episodes, dose) at read time
+   (regimenEpisode.ts), so backdating a dose - or inserting a corrective
+   episode underneath it - changes the answer with no stored link to
+   rewrite (ADR-0010) for the common case of one episode active at a time.
+   `drug` exists only to break the tie once concurrent episodes for
+   different drugs make that resolution ambiguous (ticket 38).
 
    A union rather than one interface with nullable fields, because which
    fields a dose has is decided by its route and nothing else: an oral dose

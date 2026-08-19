@@ -25,7 +25,7 @@ import {
 import { fitScaleFactorToLabs } from '../hormoneCurveFit';
 import { dosesWithNoCurve } from '../hormoneCurveQualitative';
 import { resolveInjectableEster, type InjectableEster } from '../hormoneEster';
-import { resolveEpisodeAt } from '../regimenEpisode';
+import { activeEpisodesAt } from '../regimenEpisode';
 import { drawInstant } from '../labTiming';
 import { startOfDayTimestamp, timestampAtLocalTime } from '../epochDay';
 import type { LabResult } from '../types';
@@ -43,10 +43,12 @@ export interface CurveLabPoint {
   /** The same result in the model's unit, for placing it against the band
       and for fitting. Never what is displayed. */
   value: number;
-  /** Which ester's chart it belongs on: the one in effect at the draw,
-      resolved the same way a dose's is. Null when no episode covers the draw
-      or its ester is not one this app knows - such a result belongs to no
-      ester in particular and is shown against all of them. */
+  /** Which ester's chart it belongs on: the sole episode in effect at the
+      draw. A lab result carries no drug of its own to break a tie the way
+      a dose's optional `drug` can (types.ts), so null covers three cases
+      alike - no episode covers the draw, more than one does, or the one
+      that resolved has no ester this app knows - and such a result is
+      shown against every ester's chart rather than none. */
   ester: InjectableEster | null;
 }
 
@@ -134,7 +136,8 @@ export function makeHormoneCurveArea(
           labPointsOffAxis += 1;
           continue;
         }
-        const episode = resolveEpisodeAt(episodes, drawInstant(result) ?? startOfDayTimestamp(result.epochDay));
+        const active = activeEpisodesAt(episodes, drawInstant(result) ?? startOfDayTimestamp(result.epochDay));
+        const episode = active.length === 1 ? active[0] : null;
         labPoints.push({
           result,
           day: drawDay(result),

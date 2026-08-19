@@ -1,10 +1,10 @@
 /* The regimen episode area (phase 4 ticket 01, CONTEXT: "Regimen episode"):
    uuid-only identity, no built-in counterpart, hide-never-delete, and the
-   ordering getEpisodes() promises resolveEpisodeAt relies on. */
+   ordering getEpisodes() promises activeEpisodesAt relies on. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { resolveEpisodeAt } from '../regimenEpisode.ts';
+import { attributeDose } from '../regimenEpisode.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 
 test('an episode gets a minted uuid id and round-trips every field', async () => {
@@ -16,7 +16,8 @@ test('an episode gets a minted uuid id and round-trips every field', async () =>
     doseUnit: 'mg',
     route: 'im',
     interval: 'every 2 weeks',
-    startEpochDay: 19000
+    startEpochDay: 19000,
+    endEpochDay: null
   });
   assert.match(id, UUID_PATTERN);
 
@@ -30,6 +31,7 @@ test('an episode gets a minted uuid id and round-trips every field', async () =>
       route: 'im',
       interval: 'every 2 weeks',
       startEpochDay: 19000,
+      endEpochDay: null,
       hidden: false
     }
   ]);
@@ -44,7 +46,8 @@ test('episodes read back ordered by start day, ties broken by insertion order', 
     doseUnit: 'mg',
     route: 'oral',
     interval: 'daily',
-    startEpochDay: 200
+    startEpochDay: 200,
+    endEpochDay: null
   });
   const earlier = await journal.regimen.upsertEpisode({
     drug: 'estradiol',
@@ -53,7 +56,8 @@ test('episodes read back ordered by start day, ties broken by insertion order', 
     doseUnit: 'mg',
     route: 'oral',
     interval: 'daily',
-    startEpochDay: 100
+    startEpochDay: 100,
+    endEpochDay: null
   });
 
   const ids = (await journal.regimen.getEpisodes()).map((e) => e.id);
@@ -69,7 +73,8 @@ test('updating by id changes the row; an unknown id throws', async () => {
     doseUnit: 'mg',
     route: 'oral',
     interval: 'daily',
-    startEpochDay: 100
+    startEpochDay: 100,
+    endEpochDay: null
   });
 
   await journal.regimen.upsertEpisode({
@@ -80,7 +85,8 @@ test('updating by id changes the row; an unknown id throws', async () => {
     doseUnit: 'mg',
     route: 'oral',
     interval: 'daily',
-    startEpochDay: 100
+    startEpochDay: 100,
+    endEpochDay: null
   });
   assert.equal((await journal.regimen.getEpisodes())[0].dose, 3);
 
@@ -93,7 +99,8 @@ test('updating by id changes the row; an unknown id throws', async () => {
       doseUnit: 'mg',
       route: 'oral',
       interval: 'daily',
-      startEpochDay: 1
+      startEpochDay: 1,
+      endEpochDay: null
     }),
     /unknown regimen episode/
   );
@@ -101,14 +108,15 @@ test('updating by id changes the row; an unknown id throws', async () => {
 
 test('a retroactive correction (a past start date) changes what an existing episode list resolves for a past record', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.regimen.upsertEpisode({
+  const estradiolId = await journal.regimen.upsertEpisode({
     drug: 'estradiol',
     ester: null,
     dose: 2,
     doseUnit: 'mg',
     route: 'oral',
     interval: 'daily',
-    startEpochDay: 100
+    startEpochDay: 100,
+    endEpochDay: 199
   });
   await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',
@@ -117,17 +125,25 @@ test('a retroactive correction (a past start date) changes what an existing epis
     doseUnit: 'mg',
     route: 'im',
     interval: 'every 2 weeks',
-    startEpochDay: 200
+    startEpochDay: 200,
+    endEpochDay: null
   });
 
   const dayTs = (day: number) => day * 86400000;
+  const record = { drug: null, timestamp: dayTs(150) };
 
   // A record logged on epoch day 150 resolves to the first episode before
   // the correction.
   const beforeCorrection = await journal.regimen.getEpisodes();
-  assert.equal(resolveEpisodeAt(beforeCorrection, dayTs(150))?.drug, 'estradiol');
+  assert.equal(attributeDose(beforeCorrection, record).episode?.drug, 'estradiol');
 
-  // A corrective episode starting on day 140, added after the fact.
+  // A corrective episode starting on day 140, added after the fact - the
+  // estradiol tablets were a mistaken record and the patch is what was
+  // really being used from day 140. Ticket 38 stores an end explicitly
+  // rather than inferring one from the next episode's start, so a real
+  // correction is two writes now, not one: the new episode, and shortening
+  // the one it corrects so the two don't sit concurrently over days that
+  // were never really concurrent.
   await journal.regimen.upsertEpisode({
     drug: 'estradiol patch',
     ester: null,
@@ -135,11 +151,23 @@ test('a retroactive correction (a past start date) changes what an existing epis
     doseUnit: 'mcg',
     route: 'patch',
     interval: 'twice weekly',
-    startEpochDay: 140
+    startEpochDay: 140,
+    endEpochDay: 199
+  });
+  await journal.regimen.upsertEpisode({
+    id: estradiolId,
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 100,
+    endEpochDay: 139
   });
 
   const afterCorrection = await journal.regimen.getEpisodes();
-  assert.equal(resolveEpisodeAt(afterCorrection, dayTs(150))?.drug, 'estradiol patch');
+  assert.equal(attributeDose(afterCorrection, record).episode?.drug, 'estradiol patch');
 });
 
 test('hiding an episode preserves it and its identity; an unknown id throws', async () => {
@@ -151,7 +179,8 @@ test('hiding an episode preserves it and its identity; an unknown id throws', as
     doseUnit: 'mg',
     route: 'oral',
     interval: 'daily',
-    startEpochDay: 100
+    startEpochDay: 100,
+    endEpochDay: null
   });
 
   await journal.regimen.setEpisodeHidden(id, true);
@@ -170,4 +199,60 @@ test('hiding an episode preserves it and its identity; an unknown id throws', as
 test('no delete operation exists: episodes hide, they never delete', async () => {
   const { journal } = await journalWithBuiltIns();
   assert.ok(!('deleteEpisode' in journal.regimen), 'no delete operation exists');
+});
+
+test('endEpisode sets an explicit end day, independent of any other episode starting; an unknown id throws', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.regimen.upsertEpisode({
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 100,
+    endEpochDay: null
+  });
+
+  await journal.regimen.endEpisode(id, 150);
+  assert.equal((await journal.regimen.getEpisodes())[0].endEpochDay, 150);
+
+  await assert.rejects(journal.regimen.endEpisode('nope', 150), /unknown regimen episode/);
+});
+
+test('two episodes for different drugs can both be active on the same day (phase 5 ticket 38)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.regimen.upsertEpisode({
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 100,
+    endEpochDay: null
+  });
+  await journal.regimen.upsertEpisode({
+    drug: 'spironolactone',
+    ester: null,
+    dose: 100,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 200,
+    endEpochDay: null
+  });
+
+  const episodes = await journal.regimen.getEpisodes();
+  const record = { drug: null, timestamp: 250 * 86400000 };
+  // Neither episode ended when the other started - starting spironolactone
+  // does not silently end estradiol - so a plain dose with no drug of its
+  // own is now genuinely ambiguous between the two.
+  assert.deepEqual(
+    episodes.map((e) => e.endEpochDay),
+    [null, null]
+  );
+  const attribution = attributeDose(episodes, record);
+  assert.equal(attribution.episode, null);
+  assert.equal(attribution.ambiguous, true);
 });

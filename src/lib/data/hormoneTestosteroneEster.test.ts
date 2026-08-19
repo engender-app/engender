@@ -20,6 +20,7 @@ function injectionWindow(ester: string) {
     doseUnit: 'mg',
     status: 'taken',
     scheduled: null,
+    drug: null,
     route: 'im',
     injectionSite: null,
     vehicle: 'oil'
@@ -28,7 +29,18 @@ function injectionWindow(ester: string) {
 }
 
 function tEpisode(drug: string, ester: string | null): RegimenEpisode {
-  return { id: 'e', drug, ester, dose: 100, doseUnit: 'mg', route: 'IM', interval: 'every 7 days', startEpochDay: 0, hidden: false };
+  return {
+    id: 'e',
+    drug,
+    ester,
+    dose: 100,
+    doseUnit: 'mg',
+    route: 'IM',
+    interval: 'every 7 days',
+    startEpochDay: 0,
+    endEpochDay: null,
+    hidden: false
+  };
 }
 
 test('isTestosteroneDrug answers the drug-identity question, in both catalogue languages', () => {

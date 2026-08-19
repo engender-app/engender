@@ -4,7 +4,18 @@ import type { RegimenEpisode } from './types.ts';
 import { INJECTABLE_ESTERS, isEstradiolDrug, resolveInjectableEster } from './hormoneEster.ts';
 
 function episode(drug: string, ester: string | null): RegimenEpisode {
-  return { id: 'e', drug, ester, dose: 5, doseUnit: 'mg', route: 'IM', interval: 'every 7 days', startEpochDay: 0, hidden: false };
+  return {
+    id: 'e',
+    drug,
+    ester,
+    dose: 5,
+    doseUnit: 'mg',
+    route: 'IM',
+    interval: 'every 7 days',
+    startEpochDay: 0,
+    endEpochDay: null,
+    hidden: false
+  };
 }
 
 test('the four esters this app draws, and only those', () => {

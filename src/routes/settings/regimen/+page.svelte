@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { resolveEpisodeAt, episodeEndEpochDay } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { pauseReasonLabel } from '$lib/data/vocabulary/doseLabels';
@@ -12,11 +12,12 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
-  /* Ordered by start day (ties by insertion order) - the order
-     resolveEpisodeAt and episodeEndEpochDay both require. */
   let episodesQuery = liveQuery(['regimen'], (j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.value ?? []);
-  let active = $derived(resolveEpisodeAt(episodes, Date.now()));
+  /* A set, not one episode (phase 5 ticket 38): more than one can be
+     active at once for different drugs, and every one of them still gets
+     the "current" badge below. */
+  let activeIds = $derived(new Set(activeEpisodesAt(episodes, Date.now()).map((e) => e.id)));
 
   /* The schedule and the pauses belong to an episode, so they are edited
      here beside it rather than on the dose log: the log holds events, this
@@ -26,10 +27,9 @@
   let editorSchedule = $derived((schedulesQuery.value ?? []).find((s) => s.episodeId === editor?.id) ?? null);
   let editorPauses = $derived((pausesQuery.value ?? []).filter((p) => p.episodeId === editor?.id));
 
-  function rangeLabel(episode: RegimenEpisode, index: number): string {
+  function rangeLabel(episode: RegimenEpisode): string {
     const start = fmtDay(episode.startEpochDay, { month: 'short', year: 'numeric' });
-    const endDay = episodeEndEpochDay(episodes, index);
-    const end = endDay === null ? m.regimen_ongoing() : fmtDay(endDay, { month: 'short', year: 'numeric' });
+    const end = episode.endEpochDay === null ? m.regimen_ongoing() : fmtDay(episode.endEpochDay, { month: 'short', year: 'numeric' });
     return `${start} – ${end}`;
   }
 
@@ -42,6 +42,8 @@
     route: string;
     interval: string;
     startDate: string;
+    /** `''` while the episode is still ongoing (types.ts's null). */
+    endDate: string;
     hidden: boolean;
   } | null>(null);
   /* Offered above manual entry when adding a new episode (CONTEXT: "Regimen
@@ -62,6 +64,7 @@
           route: episode.route,
           interval: episode.interval,
           startDate: dateInputValueFromEpochDay(episode.startEpochDay),
+          endDate: episode.endEpochDay === null ? '' : dateInputValueFromEpochDay(episode.endEpochDay),
           hidden: episode.hidden
         }
       : {
@@ -72,6 +75,7 @@
           route: template?.route ?? '',
           interval: '',
           startDate: dateInputValueFromEpochDay(todayEpochDay()),
+          endDate: '',
           hidden: false
         };
   }
@@ -90,9 +94,20 @@
       doseUnit: editor.doseUnit.trim(),
       route: editor.route.trim(),
       interval: editor.interval.trim(),
-      startEpochDay: epochDayFromDateInputValue(editor.startDate) ?? todayEpochDay()
+      startEpochDay: epochDayFromDateInputValue(editor.startDate) ?? todayEpochDay(),
+      endEpochDay: editor.endDate ? epochDayFromDateInputValue(editor.endDate) : null
     });
     editor = null;
+  }
+
+  /** The "end this episode" action (phase 5 ticket 38): sets today as the
+      episode's end day, independent of any other episode starting - not a
+      side effect of the general edit form above. */
+  async function endEpisodeToday() {
+    if (!editor?.id) return;
+    const endEpochDay = todayEpochDay();
+    await journal.regimen.endEpisode(editor.id, endEpochDay);
+    editor = { ...editor, endDate: dateInputValueFromEpochDay(endEpochDay) };
   }
 
   /** Monday-first, matching `weekdayOfEpochDay` (epochDay.ts) and the
@@ -252,8 +267,7 @@
     <Skeleton variant="block" count={1} />
   {:else if episodes.length}
     <div class="list-group">
-      {#each [...episodes].reverse() as episode, i (episode.id)}
-        {@const index = episodes.length - 1 - i}
+      {#each [...episodes].reverse() as episode (episode.id)}
         <button
           class="list-row"
           data-episode={episode.id}
@@ -263,11 +277,11 @@
           <span class="row-text">
             <span class="row-title">
               {episode.drug}
-              {#if active?.id === episode.id}<span class="notice-warn" style="padding:2px 8px;border-radius:var(--radius-pill);font-size:var(--text-xs)">{m.regimen_active_badge()}</span>{/if}
+              {#if activeIds.has(episode.id)}<span class="notice-warn" data-active-badge style="padding:2px 8px;border-radius:var(--radius-pill);font-size:var(--text-xs)">{m.regimen_active_badge()}</span>{/if}
               {#if episode.hidden}<span class="muted small">{m.regimen_hidden()}</span>{/if}
             </span>
             <span class="row-subtitle">
-              {episode.dose} {episode.doseUnit} · {episode.route} · {episode.interval} · {rangeLabel(episode, index)}
+              {episode.dose} {episode.doseUnit} · {episode.route} · {episode.interval} · {rangeLabel(episode)}
             </span>
           </span>
           <Icon name="pencil" size={18} />
@@ -344,10 +358,17 @@
         <label class="field-label" for="regimen-interval">{m.regimen_interval_label()}</label>
         <input class="input" id="regimen-interval" name="regimen-interval" placeholder={m.regimen_interval_placeholder()} bind:value={editor.interval} />
       </div>
-      <div class="field">
-        <label class="field-label" for="regimen-start">{m.regimen_start_label()}</label>
-        <input class="input" type="date" id="regimen-start" name="regimen-start" bind:value={editor.startDate} />
+      <div class="cd-endpoints">
+        <div class="field">
+          <label class="field-label" for="regimen-start">{m.regimen_start_label()}</label>
+          <input class="input" type="date" id="regimen-start" name="regimen-start" bind:value={editor.startDate} />
+        </div>
+        <div class="field">
+          <label class="field-label" for="regimen-end">{m.regimen_end_label()}</label>
+          <input class="input" type="date" id="regimen-end" name="regimen-end" bind:value={editor.endDate} />
+        </div>
       </div>
+      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.regimen_end_hint()}</p>
       {#if editor.id}
         <div class="field">
           <span class="field-label">{m.regimen_schedule_legend()}</span>
@@ -558,6 +579,11 @@
       <div class="stack-3" style="margin-top:var(--space-4)">
         <button class="btn btn-primary" data-save-regimen onclick={saveEpisode}><span>{m.regimen_save()}</span></button>
         {#if editor.id}
+          {#if editor.endDate === ''}
+            <button class="btn btn-ghost" data-end-episode onclick={endEpisodeToday}>
+              <span>{m.regimen_end_action()}</span>
+            </button>
+          {/if}
           <button class="btn btn-ghost" data-toggle-hidden onclick={toggleHidden}>
             <span>{editor.hidden ? m.regimen_show_aria({ drug: editor.drug }) : m.regimen_hide_aria({ drug: editor.drug })}</span>
           </button>
