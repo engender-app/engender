@@ -93,6 +93,11 @@ export type TableName =
      pack's ticks: they live in one table and a screen shows one pack at a
      time, so there is nothing a per-pack name would let a query skip. */
   | 'roadmapCheck'
+  /* Custom roadmap goals (phase 5 ticket 20), kept apart from
+     'roadmapCheck': a screen reading the custom goals someone added
+     should not re-query just because a bundled goal's tick changed, and
+     the reverse. */
+  | 'roadmapGoal'
   /* Checklists and their items alike (phase 5 ticket 05): nothing reads a
      checklist without its items, the same reasoning 'dose' gives. */
   | 'checklist'
@@ -126,6 +131,7 @@ export const TABLE_NAMES: TableName[] = [
   'letter',
   'voiceRecording',
   'roadmapCheck',
+  'roadmapGoal',
   'checklist',
   'wearSession'
 ];
@@ -305,8 +311,12 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     reads: ['getLetters']
   },
   roadmap: {
-    writes: { setGoalChecked: ['roadmapCheck'] },
-    reads: ['getCheckedGoals']
+    writes: {
+      setGoalStatus: ['roadmapCheck'],
+      addCustomGoal: ['roadmapGoal'],
+      setCustomGoalStatus: ['roadmapGoal']
+    },
+    reads: ['getGoalStatuses', 'getCustomGoals']
   },
   checklists: {
     writes: {
