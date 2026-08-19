@@ -504,13 +504,27 @@ with different ranges shade comparably. Never displayed as a number.
 
 **Streak**:
 The run of consecutive epoch days, ending today or yesterday, on which at least
-one entry exists. Backdating an entry into a gap repairs it.
+one entry exists. Backdating an entry into a gap repairs it, and a day inside a
+declared **Journaling pause** does the same without an entry - it bridges the
+run rather than breaking it.
 
 **Best streak**:
 The longest such run inside a stated range, wherever in the range it falls. What a
 recap reports, and a different question from the streak, which always ends at
 today. The two were confused once already: the recap showed the current streak
-capped at 28.
+capped at 28. Deliberately unaffected by a **Journaling pause**: this is a
+question about a stated range, not about the run ending today.
+
+**Journaling pause**:
+A declared, dated break from journaling: a start day and an optional end day,
+open while still running. Modeled on **Dose pause**'s shape but carries no
+episode reference and no planned/accidental reason - it is journal-wide, not
+attached to a regimen. A day inside its range bridges **Streak**'s run without
+counting as a logged day or as a gap, and silences the daily **Check-in**
+prompt and the Home streak line while it runs.
+_Avoid_: Break, gap (a gap is what a journaling pause explains, the same
+reasoning Dose pause's own _Avoid_ line gives), pause alone (ambiguous with
+Dose pause)
 
 **Milestone**:
 A dated significant day, past or future, kept separately from entries. Whether it
@@ -587,13 +601,22 @@ medical. A goal sits in exactly one. Nothing orders the tracks against each
 other, and no track has to be finished before another can start.
 
 **Roadmap goal**:
-One step of a country pack's procedure, ticked off or not. Independently
-checkable, which is the rule and not just a description: a goal never blocks or
-unblocks another, and the order within a track is how the procedure usually runs
-rather than something enforced. The tick is the only part that is the user's -
-named by its pack and goal keys rather than a uuid, since both mean the same
-thing on every device. Says what the procedure involves and never what someone
-should do about their own situation.
+One step of a track, **Built-in** or **Custom**. A built-in goal is one step of
+a country pack's procedure - named by its pack and goal keys rather than a
+uuid, since both mean the same thing on every device, and says what the
+procedure involves and never what someone should do about their own
+situation. A custom goal is free text the person added to a track themselves -
+uuid-identified, never translated, never reseeded - appended to the end of the
+track's existing order with no reorder UI, because the roadmap already refuses
+ordering between goals. Either kind is independently checkable, which is the
+rule and not just a description: a goal never blocks or unblocks another, and
+the order within a track is how the procedure usually runs (for a built-in) or
+the order goals were added (for a custom one) rather than something enforced.
+Either kind can also be marked **not part of one's path**, a third state a
+goal's tick can hold alongside unchecked and checked, so a step nobody is
+taking never reads as merely unfinished - grounded in the finding that a fixed
+goal list can itself imply one correct transition path (Chuanromanee &
+Metoyer, CHI 2023).
 _Avoid_: Milestone (a milestone is a dated thing that happened; a goal is a step
 that may never be taken), task, to-do
 
