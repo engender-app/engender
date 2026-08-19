@@ -818,6 +818,8 @@
   "ms_status_anniversary": "rocznica",
   "ms_status_in_days": "za {days}",
   "ms_status_years_ago": "{years} temu",
+  "ms_feeling_new_title": "Jak to się czuje?",
+  "ms_feeling_anniv_title": "Jak to się czuje teraz?",
   "photo_remove": "Usuń zdjęcie",
   "photo_alt": "Zdjęcie",
   "photo_review_title": "Podgląd zdjęcia",
