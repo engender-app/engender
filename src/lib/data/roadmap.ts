@@ -99,7 +99,7 @@ export type PolishGoalKey = (typeof POLISH_GOALS)[number]['key'];
 
 export const POLISH_PACK = {
   key: 'pl',
-  reviewedOn: '2026-08-18',
+  reviewedOn: '2026-08-19',
   goals: POLISH_GOALS
 } as const satisfies RoadmapPack;
 
