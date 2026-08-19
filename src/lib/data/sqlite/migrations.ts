@@ -1169,7 +1169,42 @@ CREATE INDEX idx_size_record_epoch_day ON size_record(epoch_day);
 CREATE INDEX idx_size_record_category ON size_record(category);
 `;
 
-/* v36: a second published scale beside Norwood-Hamilton, and a way to
+/* v36: a body region carries two independent intensities (phase 5 ticket
+   31, CONTEXT: "Entry" - amended). Until now a region had one unsigned
+   `intensity` that only ever meant distress, so the strongest thing a
+   person could say about a part of their body they are at peace with was
+   0, which reads the same as never having logged it. The region now holds
+   a dysphoria intensity and a euphoria intensity, both nullable and
+   independent, so "this hurt", "this felt good" and "both at once" are
+   each sayable and none of them is the absence of another.
+
+   A rebuild rather than an added column, because v4 declared `intensity
+   NOT NULL` and SQLite cannot relax that in place: a euphoria-only region
+   has no dysphoria number to store, and NOT NULL would force one. The
+   copy renames the old column to `dysphoria` and leaves every stored value
+   exactly as it was - what a person logged as distress is still distress,
+   at the same number. Nothing is reinterpreted and nothing is signed.
+
+   The CHECK keeps a row meaningful: a region present with neither
+   intensity says nothing that its absence does not already say, so the
+   editor drops it on save rather than writing a blank row. */
+const SCHEMA_V36 = `
+CREATE TABLE entry_body_region_v36 (
+  entry_id  INTEGER NOT NULL REFERENCES entry(id) ON DELETE CASCADE,
+  region    TEXT NOT NULL,
+  dysphoria INTEGER,
+  euphoria  INTEGER,
+  PRIMARY KEY (entry_id, region),
+  CHECK (dysphoria IS NOT NULL OR euphoria IS NOT NULL)
+);
+INSERT INTO entry_body_region_v36 (entry_id, region, dysphoria, euphoria)
+  SELECT entry_id, region, intensity, NULL FROM entry_body_region;
+DROP TABLE entry_body_region;
+ALTER TABLE entry_body_region_v36 RENAME TO entry_body_region;
+CREATE INDEX idx_ebr_region ON entry_body_region(region);
+`;
+
+/* v37: a second published scale beside Norwood-Hamilton, and a way to
    record a pattern neither of them describes (phase 5 ticket 33).
 
    `hair_stage` (v13) could only ever hold a Norwood-Hamilton stage, a scale
@@ -1195,8 +1230,8 @@ CREATE INDEX idx_size_record_category ON size_record(category);
    is a Norwood-Hamilton staging, since that was the only vocabulary there
    was - carried across with its `stage` unchanged so it goes on meaning
    what it meant. */
-const SCHEMA_V36 = `
-CREATE TABLE hair_stage_v36 (
+const SCHEMA_V37 = `
+CREATE TABLE hair_stage_v37 (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid        TEXT NOT NULL UNIQUE,
   epoch_day   INTEGER NOT NULL,
@@ -1211,10 +1246,10 @@ CREATE TABLE hair_stage_v36 (
     OR (scale = 'other' AND stage = '')
   )
 );
-INSERT INTO hair_stage_v36 (id, uuid, epoch_day, scale, stage, description, updated_at)
+INSERT INTO hair_stage_v37 (id, uuid, epoch_day, scale, stage, description, updated_at)
   SELECT id, uuid, epoch_day, 'norwood_hamilton', stage, '', updated_at FROM hair_stage;
 DROP TABLE hair_stage;
-ALTER TABLE hair_stage_v36 RENAME TO hair_stage;
+ALTER TABLE hair_stage_v37 RENAME TO hair_stage;
 CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
 CREATE INDEX idx_hair_stage_scale ON hair_stage(scale, epoch_day);
 `;
@@ -1255,7 +1290,8 @@ export const migrations: Migration[] = [
   { version: 33, sql: SCHEMA_V33 },
   { version: 34, sql: SCHEMA_V34 },
   { version: 35, sql: SCHEMA_V35 },
-  { version: 36, sql: SCHEMA_V36 }
+  { version: 36, sql: SCHEMA_V36 },
+  { version: 37, sql: SCHEMA_V37 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

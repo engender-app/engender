@@ -9,9 +9,9 @@
    Nothing here is a Svelte rune, so it runs and is tested under the Node
    tier the same way entryContent.ts and entries.ts already are. */
 
-import { BODY_REGION_INTENSITY_DEFAULT } from './bodyMap';
+import { bodyRegionIsLogged, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
-import type { Entry } from './types';
+import type { BodyRegionAxis, BodyRegionFeeling, Entry } from './types';
 import type { EntryInput } from './journal/entries';
 import type { NormalizedPhoto } from './journal/photos';
 import type { EditorPhoto } from '$lib/stores/photoPicking';
@@ -28,7 +28,7 @@ export interface EntryDraft {
   note: string;
   dims: Record<string, number>;
   tags: string[];
-  bodyRegions: Record<string, number>;
+  bodyRegions: Record<string, BodyRegionFeeling>;
   photos: EditorPhoto[];
   /** Stored photo ids taken off in this edit, removed on save rather than
       on the tap: nothing is committed until Save, so a removal the user
@@ -55,8 +55,11 @@ export interface EntryDraft {
       - `toggleTag`/`setDim` edit it same as anything the person picked
       themselves. */
   applyTemplate(tags: string[], dims: Record<string, number>): void;
+  /** Puts a region's sliders on screen, or takes them off. Neither axis is
+      seeded: a region picked and then left alone carries nothing and is
+      dropped on save (ticket 31), so picking one is not itself content. */
   toggleBodyRegion(key: string): void;
-  setBodyRegionIntensity(key: string, intensity: number): void;
+  setBodyRegionAxis(key: string, axis: BodyRegionAxis, intensity: number): void;
   addPhoto(photo: NormalizedPhoto): void;
   removePhoto(index: number): void;
   addRecording(bytes: Uint8Array): void;
@@ -71,6 +74,13 @@ export interface EntryDraft {
 /** A blank draft for `epochDay`, or one hydrated from `existing` - the
     one-time fill EntryEditor.svelte's `onFirstResult` applies once the
     stored entry arrives over the async round trip. */
+/** How many regions actually say something, by the one rule bodyMap.ts
+    states: a region on screen with both axes still null is a slider waiting
+    for input, not content. */
+function loggedRegionCount(bodyRegions: Record<string, BodyRegionFeeling>): number {
+  return Object.values(bodyRegions).filter(bodyRegionIsLogged).length;
+}
+
 export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: number | null): EntryDraft {
   return {
     id: existing?.id,
@@ -80,7 +90,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     note: existing?.note ?? '',
     dims: existing ? { ...existing.dims } : {},
     tags: existing ? [...existing.tags] : [],
-    bodyRegions: existing ? { ...existing.bodyRegions } : {},
+    bodyRegions: existing ? copyBodyRegions(existing.bodyRegions) : {},
     photos: existing ? existing.photos.map((photo) => ({ kind: 'stored' as const, photo })) : [],
     removedPhotoIds: [],
     recordings: existing ? existing.recordings.map((recording) => ({ kind: 'stored' as const, recording })) : [],
@@ -97,7 +107,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         photoCount: this.photos.length,
         recordingCount: this.recordings.length,
         videoCount: this.videos.length,
-        bodyRegionCount: Object.keys(this.bodyRegions).length
+        bodyRegionCount: loggedRegionCount(this.bodyRegions)
       });
     },
 
@@ -110,7 +120,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         this.photos.length === 0 &&
         this.recordings.length === 0 &&
         this.videos.length === 0 &&
-        Object.keys(this.bodyRegions).length === 0
+        loggedRegionCount(this.bodyRegions) === 0
       );
     },
 
@@ -140,12 +150,12 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         const { [key]: _removed, ...rest } = this.bodyRegions;
         this.bodyRegions = rest;
       } else {
-        this.bodyRegions = { ...this.bodyRegions, [key]: BODY_REGION_INTENSITY_DEFAULT };
+        this.bodyRegions = { ...this.bodyRegions, [key]: { dysphoria: null, euphoria: null } };
       }
     },
 
-    setBodyRegionIntensity(key, intensity) {
-      this.bodyRegions[key] = intensity;
+    setBodyRegionAxis(key, axis, intensity) {
+      this.bodyRegions[key] = { ...this.bodyRegions[key], [axis]: intensity };
     },
 
     addPhoto(photo) {

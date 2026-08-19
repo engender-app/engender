@@ -12,14 +12,29 @@
     fail-closed rule ADR-0026 applies to a lab unit. */
 const MILLIGRAM_UNITS = ['mg', 'mgs', 'milligram', 'milligrams', 'miligram', 'miligramy'];
 
-/** The dose in milligrams, or null when the unit is not one that says
-    milligrams. A dose logged by volume ("0.5 mL") is the common case for
-    null: the schema records no concentration, so there is no milligram
-    figure to be had and inventing one from a typical ampoule strength would
-    be a guess drawn as a curve. */
+/** Units this app reads as micrograms, converted at a fixed factor of 1000 -
+    the same class of conversion ADR-0026 allows for a lab unit, because a
+    microgram is a constant fraction of a milligram and not an assumption
+    about what was taken. Estradiol patches are labelled this way (25-100
+    mcg/24h), so this is the difference between a patch dose getting a curve
+    at all and getting told its strength was never recorded. */
+const MICROGRAM_UNITS = ['mcg', 'µg', 'ug', 'microgram', 'micrograms', 'mikrogram', 'mikrogramy'];
+
+const MICROGRAMS_PER_MILLIGRAM = 1000;
+
+/** The dose in milligrams, or null when the unit is not one this app can
+    convert. A dose logged by volume ("0.5 mL") is the common case for null:
+    the schema records no concentration, so there is no milligram figure to
+    be had and inventing one from a typical ampoule strength would be a guess
+    drawn as a curve. Same for a count ("1 patch"): nothing here is the
+    patch's own rate-versus-amount question, only whether a figure exists to
+    convert at all. */
 export function doseMilligrams(dose: number, doseUnit: string): number | null {
   if (!Number.isFinite(dose) || dose <= 0) return null;
-  return MILLIGRAM_UNITS.includes(doseUnit.trim().toLowerCase()) ? dose : null;
+  const unit = doseUnit.trim().toLowerCase();
+  if (MILLIGRAM_UNITS.includes(unit)) return dose;
+  if (MICROGRAM_UNITS.includes(unit)) return dose / MICROGRAMS_PER_MILLIGRAM;
+  return null;
 }
 
 /** One of the user's own lab results beside what the population-level curve

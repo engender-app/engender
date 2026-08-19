@@ -15,6 +15,7 @@
    clock and never the archive's, and the columns are what validate a value
    on the way in. */
 
+import { bodyRegionIsLogged } from '../bodyMap';
 import { foldText } from '../fold';
 import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -390,15 +391,19 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
     // the same forward-compatible treatment lab_result.analyte gets: an
     // archive from a build that knows a region this one does not still
     // restores rather than failing the whole import.
-    for (const [region, intensity] of Object.entries(entry.bodyRegions ?? {})) {
-      bodyRegionRows.push([entryId, region, intensity]);
+    for (const [region, feeling] of Object.entries(entry.bodyRegions ?? {})) {
+      const f = { dysphoria: feeling?.dysphoria ?? null, euphoria: feeling?.euphoria ?? null };
+      // Both null would fail the CHECK and says nothing the region's absence
+      // does not, so it is dropped rather than aborting the import.
+      if (!bodyRegionIsLogged(f)) continue;
+      bodyRegionRows.push([entryId, region, f.dysphoria, f.euphoria]);
     }
   }
 
   await insertRows(driver, 'INSERT INTO entry_fts (rowid, folded_text)', ftsRows);
   await insertRows(driver, 'INSERT INTO entry_dimension_value (entry_id, dimension_id, value)', dimensionRows);
   await insertRows(driver, 'INSERT INTO entry_tag (entry_id, tag_id)', tagRows);
-  await insertRows(driver, 'INSERT INTO entry_body_region (entry_id, region, intensity)', bodyRegionRows);
+  await insertRows(driver, 'INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria)', bodyRegionRows);
   await insertRows(
     driver,
     'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, starred, updated_at)',

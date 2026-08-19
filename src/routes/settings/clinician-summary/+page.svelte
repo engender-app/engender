@@ -29,6 +29,7 @@
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { clinicianSummarySectionTitle } from '$lib/data/vocabulary/clinicianSummaryLabels';
   import { recoveryDay } from '$lib/data/recoveryDay';
+  import { printCurrentPage } from '$lib/print/print';
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
   import { CLINICIAN_SUMMARY_SECTION_KEYS, type ClinicianSummary, type ClinicianSummarySectionKey } from '$lib/data/journal/clinicianSummary';
   import type { DoseEvent, LabResult } from '$lib/data/types';
@@ -82,8 +83,12 @@
     appointmentPrepItems: appointmentPrepRows
   };
 
+  /* Not window.print(): that one is a Chrome method the Android WebView
+     silently ignores, so this button did nothing on the Android build from
+     the day it was added until phase 5 ticket 17 gave both printing screens
+     a platform-aware path. */
   function printSummary() {
-    window.print();
+    void printCurrentPage(m.clinician_summary_title());
   }
 </script>
 
@@ -345,21 +350,13 @@
     margin-bottom: var(--space-4);
   }
 
-  .print-heading {
-    display: none;
-  }
+  /* .no-print and .print-heading are the shell's (app.css); this one is
+     the summary's own, so it stays here. */
   .disclaimer-print {
     display: none;
   }
 
   @media print {
-    .no-print {
-      display: none !important;
-    }
-    .print-heading {
-      display: block;
-      margin-bottom: var(--space-4);
-    }
     .disclaimer-print {
       display: block;
       margin-top: var(--space-4);

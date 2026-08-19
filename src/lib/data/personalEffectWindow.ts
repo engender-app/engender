@@ -33,12 +33,22 @@
    hair_changes': there is no reported minimum-months-until-typically-done
    to even start an open band from.
 
+   Which of the two tables a window came from is recorded per effect and
+   gates the band (phase 5 ticket 27). Both tables are keyed to a drug -
+   the feminizing one describes estradiol therapy and the masculinizing one
+   testosterone therapy - so a band only means anything when the anchoring
+   regimen episode names that drug. Until this gate existed the screen drew
+   all eight for everyone, which told someone on testosterone alone when to
+   expect their breast development to be complete, and cited the Endocrine
+   Society underneath it.
+
    Every window here is a claim about the literature, never a target for
    anyone's own experience - the acceptance criterion this file exists to
    keep honest. */
 
 import { epochDayMonthsAgo } from './epochDay';
-import type { PersonalEffectType } from './types';
+import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
+import type { PersonalEffectType, RegimenEpisode } from './types';
 
 export const PERSONAL_EFFECT_TYPES: readonly PersonalEffectType[] = [
   'breast_development',
@@ -56,7 +66,18 @@ interface MonthRange {
   max: number;
 }
 
+/** Which of Hembree's two time-course tables a window was read out of, and
+    so which hormone it is a claim about. Internal metadata, not a new
+    user-facing concept and not a field on a stored marker: the app has no
+    gender or direction field, never asks anyone which way they are going,
+    and this does not become the first one. A property of each effect
+    rather than a split of the current eight, because ticket 41 widens the
+    catalogue well past eight and a "these four versus those four"
+    predicate would have to be rewritten the day it lands. */
+export type EffectDirection = 'feminizing' | 'masculinizing';
+
 export interface EffectLiteratureWindow {
+  direction: EffectDirection;
   onsetMonths: MonthRange;
   /** Null when the literature reports no defined ceiling at all (skin).
       `max: null` means an open lower bound instead - "more than N months",
@@ -65,15 +86,47 @@ export interface EffectLiteratureWindow {
 }
 
 const EFFECT_LITERATURE_WINDOW: Record<PersonalEffectType, EffectLiteratureWindow> = {
-  breast_development: { onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
-  fat_redistribution: { onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
-  skin_softening: { onsetMonths: { min: 3, max: 6 }, completionMonths: null },
-  hair_changes: { onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 36, max: null } },
-  voice_drop: { onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 12, max: 24 } },
-  facial_body_hair: { onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 48, max: 60 } },
-  masculinizing_fat_redistribution: { onsetMonths: { min: 1, max: 6 }, completionMonths: { min: 24, max: 60 } },
-  cycle_cessation: { onsetMonths: { min: 1, max: 6 }, completionMonths: null }
+  breast_development: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
+  fat_redistribution: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
+  skin_softening: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: null },
+  hair_changes: { direction: 'feminizing', onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 36, max: null } },
+  voice_drop: { direction: 'masculinizing', onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 12, max: 24 } },
+  facial_body_hair: { direction: 'masculinizing', onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 48, max: 60 } },
+  masculinizing_fat_redistribution: {
+    direction: 'masculinizing',
+    onsetMonths: { min: 1, max: 6 },
+    completionMonths: { min: 24, max: 60 }
+  },
+  cycle_cessation: { direction: 'masculinizing', onsetMonths: { min: 1, max: 6 }, completionMonths: null }
 };
+
+/** The drug each table's timings are timings of. Hembree's feminizing table
+    is a description of estradiol therapy and the masculinizing one of
+    testosterone therapy, so this is the tables' own claim rather than a
+    mapping chosen here. */
+const DIRECTION_DRUG: Record<EffectDirection, CurveDrug> = {
+  feminizing: 'estradiol',
+  masculinizing: 'testosterone'
+};
+
+/** Whether the literature's window for `effect` is a claim about someone on
+    `drug` at all - the gate on every band this file produces.
+
+    Fails closed, the way the hormone curve does. `resolveCurveDrug` answers
+    null for a free-text drug this app cannot classify, for an antiandrogen
+    and for progesterone alone, and null matches neither direction, so those
+    episodes get no band rather than a hedged one. That is the whole point:
+    without this gate someone whose only episode is testosterone was told,
+    sourced on screen to the Endocrine Society, when to expect their breast
+    development to be complete.
+
+    Built on hormoneDrug.ts rather than on a second list of drug names, for
+    the reason hormoneEster.ts gives about sharing a matcher: one place
+    deciding what "E2-val" or "testosteron" names means the effects timeline
+    and the curve cannot disagree about the same typed text. */
+export function literatureCovers(effect: PersonalEffectType, drug: string): boolean {
+  return resolveCurveDrug(drug) === DIRECTION_DRUG[EFFECT_LITERATURE_WINDOW[effect].direction];
+}
 
 export function literatureWindow(effect: PersonalEffectType): EffectLiteratureWindow {
   return EFFECT_LITERATURE_WINDOW[effect];
@@ -105,11 +158,23 @@ function afterAnchor(anchorEpochDay: number, months: number): number {
   return epochDayMonthsAgo(anchorEpochDay, -months);
 }
 
-/** `window`'s onset and completion, as concrete epoch-day ranges counted
-    forward from `anchorEpochDay` (the earliest regimen episode's start
-    day, regimenEpisode.ts) - what a screen draws its background bands
-    from. */
-export function literatureWindowDays(effect: PersonalEffectType, anchorEpochDay: number): EffectWindowDays {
+/** `effect`'s onset and completion as concrete epoch-day ranges counted
+    forward from `anchor`, the earliest regimen episode overall
+    (regimenEpisode.ts) - what a screen draws its background bands from -
+    or null when `anchor`'s drug is not the one this effect's table
+    describes and there is no band to draw.
+
+    The anchor is the whole episode because both halves of the answer come
+    from it: its start day is where the bands are counted from and its drug
+    is what decides whether they exist. Which episode anchors is unchanged
+    (ticket 02) - it is still the earliest overall, not the active one. */
+export function literatureWindowDays(
+  effect: PersonalEffectType,
+  anchor: Pick<RegimenEpisode, 'drug' | 'startEpochDay'>
+): EffectWindowDays | null {
+  if (!literatureCovers(effect, anchor.drug)) return null;
+
+  const anchorEpochDay = anchor.startEpochDay;
   const window = EFFECT_LITERATURE_WINDOW[effect];
   const completion = window.completionMonths
     ? {

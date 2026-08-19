@@ -30,7 +30,8 @@ const DESCRIPTION: Record<ResourceKey, Message> = {
   'int-trevor': m.resources_int_trevor,
   'int-mindline-trans': m.resources_int_mindline_trans,
   'int-gdb': m.resources_int_gdb,
-  'int-transfemscience': m.resources_int_transfemscience
+  'int-transfemscience': m.resources_int_transfemscience,
+  'int-wpath-soc8': m.resources_int_wpath_soc8
 };
 
 const HOURS: Record<ResourceKey, Message | null> = {
@@ -42,7 +43,8 @@ const HOURS: Record<ResourceKey, Message | null> = {
   'int-trevor': m.resources_int_trevor_hours,
   'int-mindline-trans': m.resources_int_mindline_trans_hours,
   'int-gdb': null,
-  'int-transfemscience': null
+  'int-transfemscience': null,
+  'int-wpath-soc8': null
 };
 
 export const resourceDescription = (key: ResourceKey): string => DESCRIPTION[key]();

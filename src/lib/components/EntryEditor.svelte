@@ -383,7 +383,7 @@
       regions={vocabulary.visibleBodyRegions}
       values={entryDraft.bodyRegions}
       onToggle={(key) => entryDraft.toggleBodyRegion(key)}
-      onIntensityInput={(key, v) => entryDraft.setBodyRegionIntensity(key, v)}
+      onAxisInput={(key, axis, v) => entryDraft.setBodyRegionAxis(key, axis, v)}
     />
   </section>
 

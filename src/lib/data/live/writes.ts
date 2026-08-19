@@ -369,7 +369,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       saveSnapshot: ['doubtJournal'],
       deleteSnapshot: ['doubtJournal']
     },
-    reads: ['getEntries', 'getSnapshots']
+    reads: ['getEntries', 'getEntriesInRange', 'getSnapshots']
   },
   tryouts: {
     writes: {
@@ -469,6 +469,13 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   clinicianSummary: {
     writes: {},
     reads: ['getSummary']
+  },
+  // Read-only, the same reason clinicianSummary is: a book is assembled
+  // from entries, milestones, the doubt journal and side effects on every
+  // read and stored nowhere (phase 5 ticket 17).
+  journalBook: {
+    writes: {},
+    reads: ['getBook']
   },
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: {
