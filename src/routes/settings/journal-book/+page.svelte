@@ -3,15 +3,15 @@
      of whatever record types the person ticked.
 
      It borrows one thing from the clinician visit summary, deliberately
-     narrowly: the way that screen prints, which is window.print() over a
+     narrowly: the way that screen prints, which is a print dialog over a
      `@media print` block and a `.no-print` class on everything that is
-     controls rather than content. There is no shared print module in the
-     app and this ticket is not the place to invent one, so the convention
-     is copied rather than the code. What it does not borrow is that
-     screen's section registry (ticket 06): a doctor's five sections and a
-     keepsake's seven parts have nothing in common but the word "section",
-     and the difference that matters here has no place in that registry at
-     all - a book carries what was chosen, not what the range holds.
+     controls rather than content. Both of those now live in app.css and
+     print/print.ts, extracted when this screen became the second caller.
+     What it does not borrow is that screen's section registry (ticket 06):
+     a doctor's five sections and a keepsake's seven parts have nothing in
+     common but the word "section", and the difference that matters here
+     has no place in that registry at all - a book carries what was chosen,
+     not what the range holds.
 
      Nothing is generated anywhere but here. The bytes of a photo come off
      the local file store, the print dialog is the browser's own, and
@@ -29,6 +29,7 @@
   import { moodName, severityName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { journalBookPartName } from '$lib/data/vocabulary/journalBookLabels';
+  import { printCurrentPage } from '$lib/print/print';
   import {
     JOURNAL_BOOK_DEFAULT_INCLUSION,
     JOURNAL_BOOK_INCLUSION_KEYS,
@@ -105,7 +106,7 @@
   }
 
   function printBook() {
-    window.print();
+    void printCurrentPage(m.journal_book_title());
   }
 </script>
 
