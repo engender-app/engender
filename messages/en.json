@@ -1293,6 +1293,7 @@
   "effect_manage_types_intro": "Add your own, or hide one you don't track. Hiding keeps everything already marked against it.",
   "effect_type_show_aria": "Show {name}",
   "effect_type_hide_aria": "Hide {name}",
+  "effect_type_new_label": "Name",
   "effect_type_new_placeholder": "e.g. a feeling only you have a word for",
   "effect_type_add": "Add effect",
   "effect_type_category_label": "Category",

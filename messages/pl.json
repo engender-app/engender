@@ -1313,6 +1313,7 @@
   "effect_manage_types_intro": "Dodaj własny efekt albo ukryj taki, którego nie śledzisz. Po ukryciu wszystko, co już zaznaczono, zostaje.",
   "effect_type_show_aria": "Pokaż {name}",
   "effect_type_hide_aria": "Ukryj {name}",
+  "effect_type_new_label": "Nazwa",
   "effect_type_new_placeholder": "np. uczucie, na które masz tylko swoje słowo",
   "effect_type_add": "Dodaj efekt",
   "effect_type_category_label": "Kategoria",
