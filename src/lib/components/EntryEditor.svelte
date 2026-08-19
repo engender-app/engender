@@ -8,7 +8,8 @@
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
   import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
-  import { capturePhoto, pickPhotos } from '$lib/stores/photoPicking';
+  import { pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
+  import { photoReview } from '$lib/stores/photoReview.svelte';
   import { startRecording, type ActiveRecording } from '$lib/stores/voiceRecording';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -19,6 +20,7 @@
   import TagPicker from '$lib/components/TagPicker.svelte';
   import BodyRegionPicker from '$lib/components/BodyRegionPicker.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -153,10 +155,16 @@
     for (const photo of await pickPhotos()) entryDraft.addPhoto(photo);
   }
 
-  async function takePhoto() {
-    const photo = await capturePhoto();
-    if (photo) entryDraft.addPhoto(photo);
+  // The context is this entry: the last photo already in its own draft,
+  // stored or just picked, not the journal's last photo overall.
+  function lastDraftPhotoReference(): ReferencePhoto | null {
+    const last = entryDraft.photos.at(-1);
+    if (!last) return null;
+    if (last.kind === 'picked') return { bytes: last.photo.full };
+    return last.photo.fileName ? { fileName: last.photo.fileName } : null;
   }
+
+  const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => entryDraft.addPhoto(photo));
 
   // Unset while nothing is being recorded; the record/stop button reads
   // this to know which state it is showing (ticket 24).
@@ -346,7 +354,7 @@
       <button class="photo-add" aria-label={m.add_photo()} onclick={addPhoto}>
         <Icon name="image" size={22} /><span>{m.add_photo()}</span>
       </button>
-      <button class="photo-add" aria-label={m.add_photo_camera()} onclick={takePhoto}>
+      <button class="photo-add" aria-label={m.add_photo_camera()} onclick={entryPhotoReview.capture}>
         <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
       </button>
     </div>
@@ -399,4 +407,12 @@
       <button class="btn btn-ghost" onclick={() => (deleteOpen = false)}><span>{m.keep_it()}</span></button>
     </div>
   </Sheet>
+
+  <PhotoAlignmentReview
+    photo={entryPhotoReview.photo}
+    reference={entryPhotoReview.reference}
+    onAccept={entryPhotoReview.accept}
+    onRetake={entryPhotoReview.capture}
+    onCancel={entryPhotoReview.cancel}
+  />
 </div>

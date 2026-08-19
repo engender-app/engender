@@ -10,10 +10,12 @@
   import type { HairStage, NorwoodHamiltonStage } from '$lib/data/types';
   import type { HairPhoto } from '$lib/data/journal/hairProgress';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { capturePhoto, pickPhotos } from '$lib/stores/photoPicking';
+  import { pickPhotos } from '$lib/stores/photoPicking';
+  import { photoReview } from '$lib/stores/photoReview.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -112,9 +114,13 @@
     await storePhoto(photo ?? null);
   }
 
-  async function captureHairPhoto() {
-    await storePhoto(await capturePhoto());
-  }
+  // The context is the hair-progress log as a whole - a schedule, not a
+  // single dated entry - so its last photo is the log's last one, already
+  // loaded above for photoDue.
+  const hairPhotoReview = photoReview(
+    () => (photos.length ? { fileName: photos[photos.length - 1].fileName } : null),
+    storePhoto
+  );
 
   async function deletePhoto() {
     if (!photoDeleteTarget) return;
@@ -203,7 +209,7 @@
       <button class="photo-add" aria-label={m.add_photo()} onclick={pickHairPhoto}>
         <Icon name="image" size={20} /><span>{m.add_photo()}</span>
       </button>
-      <button class="photo-add" aria-label={m.add_photo_camera()} onclick={captureHairPhoto}>
+      <button class="photo-add" aria-label={m.add_photo_camera()} onclick={hairPhotoReview.capture}>
         <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
       </button>
     </div>
@@ -280,4 +286,12 @@
       </div>
     {/if}
   </Sheet>
+
+  <PhotoAlignmentReview
+    photo={hairPhotoReview.photo}
+    reference={hairPhotoReview.reference}
+    onAccept={hairPhotoReview.accept}
+    onRetake={hairPhotoReview.capture}
+    onCancel={hairPhotoReview.cancel}
+  />
 </div>
