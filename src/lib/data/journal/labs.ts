@@ -57,7 +57,13 @@ export interface LabsArea {
   /** The analyte of whichever result was most recently saved or edited, or
       null with no results at all. What the trend screen opens on and what
       a new result prefills to (phase 5 ticket 37) - never a hardcoded
-      hormone. */
+      hormone.
+
+      No preference backs this: the "what did they last log" memory is a
+      read over `lab_result` itself, which already travels with the journal
+      like any other result (ADR-0003 governs the `pref` table, which this
+      never touches), rather than a new device-local flag someone would
+      have to remember to reset on a fresh device. */
   getMostRecentAnalyte(): Promise<string | null>;
   getResults(analyte: string): Promise<LabResult[]>;
   /** The analyte's results split into one series per unit, oldest series

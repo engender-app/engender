@@ -378,9 +378,13 @@ try {
 /* 6d. a second unit for an analyte is a second trend, not a cliff in the
    first one (ticket 02). The persona's estradiol history is five results in
    pg/mL; one result in pmol/L is a number about 3.7 times larger, and the
-   screen has to keep it off that line. */
+   screen has to keep it off that line. Estradiol picked explicitly rather
+   than assumed as the screen's default (ticket 37 removed that default) -
+   this step is about the pg/mL/pmol/L merge, not about which analyte opens
+   the screen. */
 try {
   await fresh('/settings/labs');
+  await page.locator('[data-segment="estradiol"]').click();
   await page.waitForSelector('[data-lab-series]');
   if ((await page.locator('[data-lab-series]').count()) !== 1) throw new Error('estradiol did not start as one series');
   const resultsBefore = await page.locator('[data-lab-result]').count();
