@@ -63,6 +63,7 @@ const SECTIONS = [
   'counterevidenceSnapshots',
   'letters',
   'roadmapChecks',
+  'roadmapGoals',
   'regimenEpisodes',
   'doseEvents',
   'doseSchedules',
@@ -86,7 +87,7 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 29 sections, and the customizations that
+/** A journal with something in all 30 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, and a renamed, a hidden and a switched-off built-in. */
@@ -165,7 +166,9 @@ async function everySection(): Promise<Journal> {
   await journal.doubtJournal.addEntry({ epochDay: 20000, text: 'am I even trans enough for this' });
   await journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]);
   await journal.letters.addLetter({ epochDay: 20000, text: 'read this in a year', unlockEpochDay: 20365 });
-  await journal.roadmap.setGoalChecked('pl', 'pl-legal-court-file', true);
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
+  await journal.roadmap.addCustomGoal('social', 'Tell my sister');
 
   const episode = await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',

@@ -547,11 +547,16 @@ export async function applyLetters({ driver, journal, ts }: Restoring): Promise<
 }
 
 /* Matched on the pack/goal pair rather than a uuid, the way applyDimensions
-   matches a built-in on its key: a tick names a bundled goal, so the same
-   pair on two devices is the same tick and a merge has nothing to
+   matches a built-in on its key: a status names a bundled goal, so the
+   same pair on two devices is the same status and a merge has nothing to
    reconcile. A goal missing from the archive is left alone rather than
-   unticked - Replace already emptied the table before this ran, and a
-   merge must not undo a tick this device made. */
+   reset to unchecked - Replace already emptied the table before this ran,
+   and a merge must not undo a status this device recorded. For the same
+   reason a pair already present locally keeps its own status rather than
+   taking the archive's: two devices that recorded different statuses for
+   one goal resolve to whichever one is not overwritten, the same rule
+   that already governed a plain checked/unchecked disagreement before
+   this had a third state to disagree about. */
 export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Promise<void> {
   /* Two columns, so the present-set is built here rather than through
      presentIds, which reads a single id column. A newline joins the pair
@@ -564,8 +569,25 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
   const inserting = journal.roadmapChecks.filter((check) => !present.has(`${check.packKey}\n${check.goalKey}`));
   await insertRows(
     driver,
-    'INSERT INTO roadmap_check (pack_key, goal_key, updated_at)',
-    inserting.map((check) => [check.packKey, check.goalKey, ts])
+    'INSERT INTO roadmap_check (pack_key, goal_key, status, updated_at)',
+    inserting.map((check) => [check.packKey, check.goalKey, check.status, ts])
+  );
+}
+
+/* Uuid-identified like a checklist, so unlike applyRoadmapChecks a goal
+   already present locally is simply skipped rather than compared column
+   by column: a custom goal's text and track are fixed at creation
+   (roadmap.ts has no rename or move-track setter), so the only thing two
+   devices could disagree on is the status, and skipping it here for the
+   same reason applyRoadmapChecks does - a merge must not overwrite a
+   status this device recorded itself. */
+export async function applyRoadmapGoals({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM roadmap_goal');
+  const inserting = journal.roadmapGoals.filter((goal) => !present.has(goal.id));
+  await insertRows(
+    driver,
+    'INSERT INTO roadmap_goal (uuid, track, text, status, updated_at)',
+    inserting.map((goal) => [goal.id, goal.track, goal.text, goal.status, ts])
   );
 }
 
