@@ -431,12 +431,31 @@ export interface EntryPrompt {
   text: string;
 }
 
-/** The four fixed markers a personal effects timeline tracks (phase 4
-    ticket 07). Closed, like TallyKind: not an open-ended, user-extensible
-    list of effects. "Hair changes" here is a single first-noticed date
-    like the other three - ticket 09's Norwood-Hamilton staging and photo
-    scheduling is a separate, deeper module the two coexist alongside. */
-export type PersonalEffectType = 'breast_development' | 'fat_redistribution' | 'skin_softening' | 'hair_changes';
+/** The eight fixed markers a personal effects timeline tracks: four
+    feminizing (phase 4 ticket 07) and four masculinizing (phase 5 ticket
+    02), sharing one closed table rather than two parallel ones - one
+    timeline anchored to the earliest regimen episode overall is the right
+    shape regardless of hormone direction. Ticket 07 called this list
+    closed and not open-ended or user-extensible; ticket 02 deliberately
+    reverses that rule once, to reach trans-masc parity, and closes the
+    list again at eight - not a precedent for a ninth. "Masculinizing fat
+    redistribution" is a distinct effect from "fat redistribution" above,
+    not the same marker read two ways: the two describe different, not
+    opposite, changes, and collapsing them into one bidirectional marker
+    would need a sign or direction field this table has no room for.
+    "Hair changes" and "facial/body hair" are each a single first-noticed
+    date like the rest - ticket 09's Norwood-Hamilton staging and photo
+    scheduling is a separate, deeper module every one of them coexists
+    alongside untouched. */
+export type PersonalEffectType =
+  | 'breast_development'
+  | 'fat_redistribution'
+  | 'skin_softening'
+  | 'hair_changes'
+  | 'voice_drop'
+  | 'facial_body_hair'
+  | 'masculinizing_fat_redistribution'
+  | 'cycle_cessation';
 
 /* One row per effect (migrations.ts v12), matched exactly like
    MedicationStock's drug: a person is always answering "when did I first

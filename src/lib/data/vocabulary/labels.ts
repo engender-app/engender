@@ -74,13 +74,18 @@ const MEASUREMENT_TYPE_NAME: Record<Measurement['type'], Message> = {
 /** The name of a measurement type. */
 export const measurementTypeName = (type: Measurement['type']): string => MEASUREMENT_TYPE_NAME[type]();
 
-/* The four personal effect markers (phase 4 ticket 07) are a fixed set,
-   not a built-in row, the same reasoning MEASUREMENT_TYPE_NAME gives. */
+/* The eight personal effect markers (phase 4 ticket 07, widened by phase 5
+   ticket 02) are a fixed set, not a built-in row, the same reasoning
+   MEASUREMENT_TYPE_NAME gives. */
 const PERSONAL_EFFECT_NAME: Record<PersonalEffectType, Message> = {
   breast_development: m.effect_breast_development,
   fat_redistribution: m.effect_fat_redistribution,
   skin_softening: m.effect_skin_softening,
-  hair_changes: m.effect_hair_changes
+  hair_changes: m.effect_hair_changes,
+  voice_drop: m.effect_voice_drop,
+  facial_body_hair: m.effect_facial_body_hair,
+  masculinizing_fat_redistribution: m.effect_masculinizing_fat_redistribution,
+  cycle_cessation: m.effect_cycle_cessation
 };
 
 /** The name of a personal effect marker. */

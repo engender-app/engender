@@ -256,6 +256,27 @@ a recommendation, warning or escalation.
 _Avoid_: Symptom (this app's own term is side effect), adverse event (implies
 clinical reporting this is not)
 
+**Personal effect**:
+One of eight fixed body-change markers a person can mark a "first noticed"
+date for: four feminizing (breast development, fat redistribution, skin
+softening, hair changes) and four masculinizing (voice drop, facial/body
+hair, masculinizing fat redistribution, cycle cessation). One row per
+marker - a fresh date replaces the old one rather than logging a series of
+sightings - all eight read against the same anchor, the earliest **regimen
+episode**'s start day overall, regardless of which direction a person is on.
+Closed at eight on purpose: the masculinizing four were added as a
+deliberate, one-time reversal of the original four's own closed-list rule,
+to reach parity, and the list is closed again rather than left open to a
+ninth. Masculinizing fat redistribution is a distinct marker from fat
+redistribution, not the same one read two ways - the two describe
+different, not opposite, changes. Each marker's onset and completion
+windows, shown as background bands against the anchor, are a claim about
+the literature (Hembree et al.'s Endocrine Society guideline), never a
+target or a judgement of how fast a person is changing.
+_Avoid_: Symptom, milestone (a personal effect is a body change the
+literature has a published timeline for, not a life-event marker), effect
+alone (ambiguous with side effect)
+
 ### Reflection and retrospection
 
 **Wrapped**:
