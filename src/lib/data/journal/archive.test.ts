@@ -458,6 +458,21 @@ test('the manifest names every photo file and its thumbnail, plus every recordin
   assert.deepEqual(await snapshot.readFile(`${recording}.webm`), bytes('a recording'));
 });
 
+test('a trashed entry, and its photo and recording files, are excluded from the snapshot entirely (phase 5 ticket 19)', async () => {
+  const { journal, db, entry, photo, recording, milestonePhoto } = await populated();
+  const uuid = (await db.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [entry]))[0].uuid;
+
+  await journal.entries.deleteEntry(entry);
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.ok(!snapshot.journal.entries.some((e) => e.uuid === uuid));
+  assert.ok(!snapshot.files.some((f) => f.name === `${photo}.jpg`));
+  assert.ok(!snapshot.files.some((f) => f.name === `${recording}.webm`));
+  // Nothing else the entry did not own is affected.
+  assert.ok(snapshot.files.some((f) => f.name === `${milestonePhoto}.jpg`));
+});
+
 test('a photo row whose file is gone keeps its row and leaves the manifest alone', async () => {
   const { journal, files, photo } = await populated();
   await files.remove(`${photo}.jpg`);
@@ -578,8 +593,12 @@ const CARRIED: Record<string, string[]> = {
 /* `id` is this device's rowid and means nothing anywhere else (ADR-0002);
    `updated_at` is written by every area and read by nothing, and an
    archive that carried it would be asserting a fact about another
-   device's clock. */
-const LEFT_BEHIND = ['id', 'updated_at'];
+   device's clock. `entry.trashed_at` (phase 5 ticket 19) is the third and
+   only column-specific one: trash is out of scope for archives entirely
+   (readEntries filters it out before this ever runs), so the column
+   travelling with the row it never carries would be a column with no
+   purpose on the other end. */
+const LEFT_BEHIND = ['id', 'updated_at', 'trashed_at'];
 
 test('every column in the schema is either carried or deliberately left behind', async () => {
   const { db } = await populated();

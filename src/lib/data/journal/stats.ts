@@ -171,7 +171,7 @@ function metricValues(metric: string): { sql: string; params: (string | number)[
   if (metric === 'mood') {
     return {
       sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, e.mood AS value
-            FROM entry e WHERE e.mood IS NOT NULL`,
+            FROM entry e WHERE e.mood IS NOT NULL AND e.trashed_at IS NULL`,
       params: []
     };
   }
@@ -180,7 +180,7 @@ function metricValues(metric: string): { sql: string; params: (string | number)[
           FROM entry e
           JOIN entry_dimension_value edv ON edv.entry_id = e.id
           JOIN gender_dimension gd ON gd.id = edv.dimension_id
-          WHERE gd.key = ?`,
+          WHERE gd.key = ? AND e.trashed_at IS NULL`,
     params: [metric]
   };
 }
@@ -193,7 +193,7 @@ function bodyRegionValues(region: string): { sql: string; params: (string | numb
     sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.intensity AS value
           FROM entry e
           JOIN entry_body_region ebr ON ebr.entry_id = e.id
-          WHERE ebr.region = ?`,
+          WHERE ebr.region = ? AND e.trashed_at IS NULL`,
     params: [region]
   };
 }
@@ -222,7 +222,9 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
        Consecutive days share that difference, a gap starts a new group, so
        the largest group is the longest run. */
     const rows = await driver.query<{ n: number }>(
-      `WITH days AS (SELECT DISTINCT epoch_day AS day FROM entry WHERE epoch_day BETWEEN ? AND ?),
+      `WITH days AS (
+             SELECT DISTINCT epoch_day AS day FROM entry WHERE epoch_day BETWEEN ? AND ? AND trashed_at IS NULL
+           ),
             numbered AS (SELECT day, ROW_NUMBER() OVER (ORDER BY day) AS rn FROM days)
        SELECT COUNT(*) AS n FROM numbered GROUP BY day - rn ORDER BY n DESC LIMIT 1`,
       [fromEpochDay, toEpochDay]
@@ -273,7 +275,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     async entryCountsByDay(fromEpochDay, toEpochDay) {
       const rows = await driver.query<{ day: number; entries: number }>(
         `SELECT epoch_day AS day, COUNT(*) AS entries FROM entry
-         WHERE epoch_day BETWEEN ? AND ?
+         WHERE epoch_day BETWEEN ? AND ? AND trashed_at IS NULL
          GROUP BY epoch_day ORDER BY epoch_day`,
         [fromEpochDay, toEpochDay]
       );
@@ -359,7 +361,9 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
          streak. Entries dated in the future are excluded outright; a
          mistyped date must not inflate a streak. */
       const rows = await driver.query<{ n: number }>(
-        `WITH days AS (SELECT DISTINCT epoch_day AS day FROM entry WHERE epoch_day <= ?),
+        `WITH days AS (
+               SELECT DISTINCT epoch_day AS day FROM entry WHERE epoch_day <= ? AND trashed_at IS NULL
+             ),
               numbered AS (SELECT day, ROW_NUMBER() OVER (ORDER BY day DESC) AS rn FROM days),
               latest AS (SELECT day FROM numbered WHERE rn = 1 AND day >= ? - 1)
          SELECT COUNT(*) AS n FROM numbered, latest
@@ -381,7 +385,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
       const totals = await driver.query<{ entry_count: number; average_mood: number | null }>(
         `SELECT COUNT(*) AS entry_count, AVG(mood) AS average_mood FROM entry
-         WHERE epoch_day BETWEEN ? AND ?`,
+         WHERE epoch_day BETWEEN ? AND ? AND trashed_at IS NULL`,
         range
       );
 
@@ -393,7 +397,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
          FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
          JOIN tag t ON t.id = et.tag_id
-         WHERE e.epoch_day BETWEEN ? AND ?
+         WHERE e.epoch_day BETWEEN ? AND ? AND e.trashed_at IS NULL
          GROUP BY t.id ORDER BY entries DESC, id LIMIT 3`,
         range
       );
@@ -423,7 +427,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
            FROM entry e
            JOIN entry_dimension_value edv ON edv.entry_id = e.id
            JOIN gender_dimension gd ON gd.id = edv.dimension_id
-           WHERE e.epoch_day BETWEEN ? AND ? AND gd.hidden = 0
+           WHERE e.epoch_day BETWEEN ? AND ? AND gd.hidden = 0 AND e.trashed_at IS NULL
          )
          SELECT key, min_value, max_value,
                 MAX(CASE WHEN first_rn = 1 THEN value END) AS first_value,
@@ -452,6 +456,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
            LEFT JOIN entry e ON e.id = p.entry_id
            LEFT JOIN milestone m ON m.id = p.milestone_id
            WHERE COALESCE(e.epoch_day, m.epoch_day) BETWEEN ? AND ?
+             AND (p.entry_id IS NULL OR e.trashed_at IS NULL)
          ),
          bucketed AS (
            SELECT uuid, file_path, epoch_day, order_index, id,
@@ -513,14 +518,14 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       const rows = await driver.query<{ good: number }>(
         `SELECT
            EXISTS (
-             SELECT 1 FROM entry WHERE epoch_day = ? AND mood IS NOT NULL
+             SELECT 1 FROM entry WHERE epoch_day = ? AND mood IS NOT NULL AND trashed_at IS NULL
              GROUP BY epoch_day HAVING AVG(mood) >= ?
            )
            OR EXISTS (
              SELECT 1 FROM entry e
              JOIN entry_tag et ON et.entry_id = e.id
              JOIN tag t ON t.id = et.tag_id
-             WHERE e.epoch_day = ? AND COALESCE(t.key, t.uuid) = ?
+             WHERE e.epoch_day = ? AND COALESCE(t.key, t.uuid) = ? AND e.trashed_at IS NULL
            ) AS good`,
         [epochDay, GOOD_DAY_MOOD_FLOOR, epochDay, 'g-euphoria']
       );

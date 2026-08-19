@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
+import { purgeExpiredTrash, TRASH_WINDOW_DAYS } from './entries.ts';
 import { countingDriver, journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 
 async function countingJournalWithBuiltIns() {
@@ -151,7 +152,7 @@ test('unknown write ids throw: entry id, dimension key, tag id, body region', as
   await assert.rejects(journal.entries.upsertEntry({ id, bodyRegions: { nope: 1 } }), /unknown body region/);
 });
 
-test('deleting an entry takes its dimension values, tag links, body regions, photo rows, recording rows and files; twice is success', async () => {
+test('deleting an entry moves it to trash: hidden from getEntry, but its rows and files survive; twice is success', async () => {
   const db = await migratedDb();
   const files = fakeFileStore(['p1.jpg', 'p1-thumb.jpg', 'r1.webm']);
   const journal = openJournal(db, files);
@@ -173,11 +174,74 @@ test('deleting an entry takes its dimension values, tag links, body regions, pho
 
   assert.equal(await journal.entries.getEntry(id), undefined);
   for (const table of ['entry_dimension_value', 'entry_tag', 'entry_body_region', 'photo', 'voice_recording']) {
-    assert.equal((db.raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n, 0, table);
+    assert.equal((db.raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n, 1, table);
   }
-  assert.deepEqual(files.names(), [], 'the thumbnail and the recording go with the entry');
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry').get() as { n: number }).n, 1, 'the row itself stays');
+  assert.deepEqual(files.names().sort(), ['p1-thumb.jpg', 'p1.jpg', 'r1.webm'], 'nothing is removed on trash');
 
   await journal.entries.deleteEntry(id); // idempotent
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry').get() as { n: number }).n, 1);
+});
+
+test('restoreEntry brings a trashed entry back, photos and recordings included; a no-op on an unknown or non-trashed id', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'came back from trash' });
+
+  await journal.entries.deleteEntry(id);
+  assert.equal(await journal.entries.getEntry(id), undefined);
+
+  await journal.entries.restoreEntry(id);
+  const restored = await journal.entries.getEntry(id);
+  assert.equal(restored?.id, id);
+  assert.equal(restored?.note, 'came back from trash');
+  assert.deepEqual((await journal.entries.searchEntries('trash', [])).map((e) => e.id), [id]);
+
+  await journal.entries.restoreEntry(id); // not trashed any more: no-op
+  await journal.entries.restoreEntry(999_999); // unknown id: no-op
+  assert.equal((await journal.entries.getEntry(id))?.id, id);
+});
+
+test('purgeExpiredTrash reclaims trash past the 30-day window and leaves fresher trash alone', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore(['old.jpg', 'old-thumb.jpg']);
+  const journal = openJournal(db, files);
+  await journal.reconcileBuiltIns();
+
+  const expiredId = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, note: 'long gone' });
+  db.raw
+    .prepare("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('old', ?, 'old.jpg', 0)")
+    .run(expiredId);
+  const freshId = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: 'just trashed' });
+
+  await journal.entries.deleteEntry(expiredId);
+  await journal.entries.deleteEntry(freshId);
+
+  const justOverWindow = Date.now() - TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000 - 1;
+  db.raw.prepare('UPDATE entry SET trashed_at = ? WHERE id = ?').run(justOverWindow, expiredId);
+
+  await purgeExpiredTrash(db, files);
+
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(expiredId) as { n: number }).n, 0);
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0);
+  assert.deepEqual(files.names(), [], 'the expired entry’s photo and thumbnail go with it');
+
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(freshId) as { n: number }).n, 1);
+  assert.deepEqual((await journal.entries.trashedEntries()).map((e) => e.id), [freshId]);
+});
+
+test('a trashed entry drops out of entriesForDay, recentDays and entriesWithTag, and cannot be edited', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-happy'] });
+  const trashed = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['e-happy'] });
+
+  await journal.entries.deleteEntry(trashed);
+
+  const forDay = await journal.entries.entriesForDay(100);
+  assert.equal(forDay.length, 1);
+  assert.ok(!forDay.some((e) => e.id === trashed));
+  assert.ok(!(await journal.entries.recentDays(5)).some((e) => e.id === trashed));
+  assert.ok(!(await journal.entries.entriesWithTag('e-happy', 10)).some((e) => e.id === trashed));
+  await assert.rejects(journal.entries.upsertEntry({ id: trashed, mood: 5 }), /unknown entry/);
 });
 
 /* Voice recordings (ticket 24): entry-only, sharing the photo file store
