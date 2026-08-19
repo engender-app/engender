@@ -16,6 +16,7 @@
 import { m } from '$lib/paraglide/messages';
 import type { ApplicationSiteKey, InjectionSiteKey } from '$lib/data/doseSchedule';
 import type { DoseRoute, DoseStatus, InjectionVehicle, PauseReason } from '$lib/data/types';
+import type { RegimenTemplateKey } from './builtins';
 
 const INJECTION_SITE_LABELS: Record<InjectionSiteKey, () => string> = {
   'ventrogluteal-left': m.dose_site_ventrogluteal_left,
@@ -67,6 +68,42 @@ const PAUSE_REASON_LABELS: Record<PauseReason, () => string> = {
   accidental: m.pause_reason_accidental
 };
 
+/* A regimen template's picker-row name, and the drug/ester text it pre-fills
+   (CONTEXT: "Regimen template", phase 5 ticket 42). Route is not repeated
+   here - it pre-fills from ROUTE_LABELS below, by the DoseRoute each
+   template names, so the word matches whatever the dose log already calls
+   that route rather than drifting into a second wording for the same
+   route. Ester is absent from a template with none, the same nullable
+   shape RegimenEpisode.ester itself has. */
+const REGIMEN_TEMPLATE_NAME: Record<RegimenTemplateKey, () => string> = {
+  estradiol_valerate_im: m.tpl_regimen_estradiol_valerate_im,
+  estradiol_oral: m.tpl_regimen_estradiol_oral,
+  estradiol_gel: m.tpl_regimen_estradiol_gel,
+  testosterone_cypionate_im: m.tpl_regimen_testosterone_cypionate_im,
+  testosterone_gel: m.tpl_regimen_testosterone_gel
+};
+
+const REGIMEN_TEMPLATE_DRUG: Record<RegimenTemplateKey, () => string> = {
+  estradiol_valerate_im: m.tpl_regimen_drug_estradiol,
+  estradiol_oral: m.tpl_regimen_drug_estradiol,
+  estradiol_gel: m.tpl_regimen_drug_estradiol,
+  testosterone_cypionate_im: m.tpl_regimen_drug_testosterone,
+  testosterone_gel: m.tpl_regimen_drug_testosterone
+};
+
+const REGIMEN_TEMPLATE_ESTER: Partial<Record<RegimenTemplateKey, () => string>> = {
+  estradiol_valerate_im: m.tpl_regimen_ester_valerate,
+  testosterone_cypionate_im: m.tpl_regimen_ester_cypionate
+};
+
+const REGIMEN_TEMPLATE_ROUTE: Record<RegimenTemplateKey, DoseRoute> = {
+  estradiol_valerate_im: 'im',
+  estradiol_oral: 'oral',
+  estradiol_gel: 'gel',
+  testosterone_cypionate_im: 'im',
+  testosterone_gel: 'gel'
+};
+
 /* Both take a plain string, not the key union: a site read back from an
    older archive could name a region this build's map no longer has, and the
    raw key is a better fallback than a crash - a site nobody can read still
@@ -80,6 +117,13 @@ export const routeLabel = (route: DoseRoute): string => ROUTE_LABELS[route]?.() 
 export const statusLabel = (status: DoseStatus): string => STATUS_LABELS[status]?.() ?? status;
 export const vehicleLabel = (vehicle: InjectionVehicle): string => VEHICLE_LABELS[vehicle]?.() ?? vehicle;
 export const pauseReasonLabel = (reason: PauseReason): string => PAUSE_REASON_LABELS[reason]?.() ?? reason;
+export const regimenTemplateName = (key: string): string =>
+  REGIMEN_TEMPLATE_NAME[key as RegimenTemplateKey]?.() ?? key;
+export const regimenTemplateDrug = (key: string): string => REGIMEN_TEMPLATE_DRUG[key as RegimenTemplateKey]?.() ?? '';
+export const regimenTemplateEster = (key: string): string | null =>
+  REGIMEN_TEMPLATE_ESTER[key as RegimenTemplateKey]?.() ?? null;
+export const regimenTemplateRoute = (key: string): string =>
+  routeLabel(REGIMEN_TEMPLATE_ROUTE[key as RegimenTemplateKey] ?? 'oral');
 
 /** Route options for a picker, in the order the ticket names them: the two
     oral-ish routes, the two injections, then the two topical ones. */

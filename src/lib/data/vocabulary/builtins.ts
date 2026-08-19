@@ -13,7 +13,16 @@
    labels.ts has to cover exhaustively - a built-in added here without a
    message fails the typecheck rather than showing a raw key to someone. */
 
-import type { EntryPrompt, EntryTemplate, GenderDimension, GenderPreset, MilestoneTemplate, Tag, TagGroup } from '../types.ts';
+import type {
+  EntryPrompt,
+  EntryTemplate,
+  GenderDimension,
+  GenderPreset,
+  MilestoneTemplate,
+  RegimenTemplate,
+  Tag,
+  TagGroup
+} from '../types.ts';
 
 export const BUILT_IN_DIMENSIONS = [
   { key: 'euphoria_dysphoria', min: 0, max: 100 },
@@ -164,6 +173,22 @@ export const MILESTONE_TEMPLATE_KEYS = [
 
 export type MilestoneTemplateKey = (typeof MILESTONE_TEMPLATE_KEYS)[number];
 
+/* Five starting points across both estradiol and testosterone and more than
+   one route (phase 5 ticket 42, CONTEXT: "Regimen template"), the same
+   "keys only" shape MILESTONE_TEMPLATE_KEYS gives above - drug, ester and
+   route wording lives in doseLabels.ts, which is where the rest of a
+   regimen episode's own closed vocabulary already lives. No dose or
+   interval key exists to carry either one by accident. */
+export const REGIMEN_TEMPLATE_KEYS = [
+  'estradiol_valerate_im',
+  'estradiol_oral',
+  'estradiol_gel',
+  'testosterone_cypionate_im',
+  'testosterone_gel'
+] as const;
+
+export type RegimenTemplateKey = (typeof REGIMEN_TEMPLATE_KEYS)[number];
+
 /* Entry templates (phase 4 features ticket 17): each names the tags and
    dimension values it pre-fills, the same "data lives here, wording lives
    in labels.ts" split BUILT_IN_PRESETS uses for its own `dims`. Values sit
@@ -208,6 +233,10 @@ export function builtInPresetRows(): GenderPreset[] {
 
 export function milestoneTemplateRows(): MilestoneTemplate[] {
   return MILESTONE_TEMPLATE_KEYS.map((key) => ({ key, name: '' }));
+}
+
+export function regimenTemplateRows(): RegimenTemplate[] {
+  return REGIMEN_TEMPLATE_KEYS.map((key) => ({ key, name: '', drug: '', ester: null, route: '' }));
 }
 
 export function entryTemplateRows(): EntryTemplate[] {
