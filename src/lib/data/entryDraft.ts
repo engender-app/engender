@@ -16,6 +16,7 @@ import type { EntryInput } from './journal/entries';
 import type { NormalizedPhoto } from './journal/photos';
 import type { EditorPhoto } from '$lib/stores/photoPicking';
 import type { EditorRecording } from '$lib/stores/voiceRecording';
+import type { EditorVideo } from '$lib/stores/videoRecording';
 
 export interface EntryDraft {
   /** The entry being edited, unset for a new one. `toUpsert()` reads this
@@ -37,6 +38,10 @@ export interface EntryDraft {
   /** Stored recording ids taken off in this edit, the same removed-on-save
       rule removedPhotoIds follows. */
   removedRecordingIds: string[];
+  videos: EditorVideo[];
+  /** Stored video note ids taken off in this edit, the same removed-on-save
+      rule removedPhotoIds follows. */
+  removedVideoIds: string[];
   readonly isEmpty: boolean;
   readonly hasMoodOnlyContent: boolean;
   setMood(mood: number | null): void;
@@ -56,8 +61,10 @@ export interface EntryDraft {
   removePhoto(index: number): void;
   addRecording(bytes: Uint8Array): void;
   removeRecording(index: number): void;
-  /** The exact upsertEntry payload for the draft as it stands, including
-      photo and recording attach and remove lists. */
+  addVideo(bytes: Uint8Array): void;
+  removeVideo(index: number): void;
+  /** The exact upsertEntry payload for the draft as it stands, including the
+      photo, recording and video-note attach and remove lists. */
   toUpsert(): EntryInput;
 }
 
@@ -78,6 +85,8 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     removedPhotoIds: [],
     recordings: existing ? existing.recordings.map((recording) => ({ kind: 'stored' as const, recording })) : [],
     removedRecordingIds: [],
+    videos: existing ? existing.videos.map((video) => ({ kind: 'stored' as const, video })) : [],
+    removedVideoIds: [],
 
     get isEmpty() {
       return entryIsEmpty({
@@ -87,6 +96,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         tagCount: this.tags.length,
         photoCount: this.photos.length,
         recordingCount: this.recordings.length,
+        videoCount: this.videos.length,
         bodyRegionCount: Object.keys(this.bodyRegions).length
       });
     },
@@ -99,6 +109,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         this.tags.length === 0 &&
         this.photos.length === 0 &&
         this.recordings.length === 0 &&
+        this.videos.length === 0 &&
         Object.keys(this.bodyRegions).length === 0
       );
     },
@@ -155,6 +166,15 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       if (gone.kind === 'stored') this.removedRecordingIds.push(gone.recording.id);
     },
 
+    addVideo(bytes) {
+      this.videos.push({ kind: 'recorded', bytes });
+    },
+
+    removeVideo(index) {
+      const [gone] = this.videos.splice(index, 1);
+      if (gone.kind === 'stored') this.removedVideoIds.push(gone.video.id);
+    },
+
     toUpsert() {
       return {
         id: this.id,
@@ -170,7 +190,9 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         attachRecordings: this.recordings
           .filter((r: EditorRecording) => r.kind === 'recorded')
           .map((r) => r.bytes),
-        removeRecordingIds: this.removedRecordingIds
+        removeRecordingIds: this.removedRecordingIds,
+        attachVideos: this.videos.filter((v: EditorVideo) => v.kind === 'recorded').map((v) => v.bytes),
+        removeVideoIds: this.removedVideoIds
       };
     }
   };

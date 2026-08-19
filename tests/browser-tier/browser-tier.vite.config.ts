@@ -2,10 +2,17 @@
    from the app's own vite.config.ts on purpose, since this only exists to
    serve probe.ts to a real browser over COOP/COEP, and ticket 04 owns
    wiring SQLocal into the app itself. Named so svelte-check's project
-   auto-discovery (which globs for vite.config.*) does not pick it up and
-   fail on the missing Svelte plugin - run.mjs loads it explicitly. */
+   auto-discovery (which globs for vite.config.*) does not pick it up -
+   run.mjs loads it explicitly.
+
+   The svelte plugin is here only for `$state`: ticket 22's probe is the
+   first one to import a store (videoRecording.ts, by way of toast()), and
+   without it a rune reaches the browser unprocessed and throws. This is
+   plain @sveltejs/vite-plugin-svelte, not the sveltekit() plugin the app
+   config uses - there is no route tree here for it to need. */
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import sqlocal from 'sqlocal/vite';
 
 /* A real service worker whose bytes change on demand (phase 2 ticket 04).
@@ -78,7 +85,7 @@ interface ServerResponse {
 
 export default defineConfig({
   root: import.meta.dirname,
-  plugins: [sqlocal(), mutableServiceWorker()],
+  plugins: [svelte(), sqlocal(), mutableServiceWorker()],
   resolve: {
     alias: {
       $lib: resolve(import.meta.dirname, '../../src/lib')

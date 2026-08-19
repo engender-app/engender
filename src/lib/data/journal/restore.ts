@@ -171,6 +171,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
   const statements = [
     'DELETE FROM photo',
     'DELETE FROM voice_recording',
+    'DELETE FROM video_note',
     'DELETE FROM entry_dimension_value',
     'DELETE FROM entry_tag',
     'DELETE FROM entry_body_region',

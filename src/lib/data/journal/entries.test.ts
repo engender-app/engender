@@ -49,6 +49,7 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
       tags: ['e-happy', 'g-soc-eu'],
       photos: [],
       recordings: [],
+      videos: [],
       bodyRegions: { chest: 60, voice_throat: 30 },
       starred: false
     }

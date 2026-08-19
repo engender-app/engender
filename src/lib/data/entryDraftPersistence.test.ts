@@ -28,6 +28,10 @@ const existingEntry = (): Entry => ({
     { id: 'r1', fileName: 'r1.webm' },
     { id: 'r2', fileName: 'r2.webm' }
   ],
+  videos: [
+    { id: 'n1', fileName: 'n1.webm' },
+    { id: 'n2', fileName: 'n2.webm' }
+  ],
   bodyRegions: { chest: 60 },
   starred: false
 });
@@ -49,7 +53,8 @@ test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
     tags: ['e-happy'],
     bodyRegions: {},
     removedPhotoIds: [],
-    removedRecordingIds: []
+    removedRecordingIds: [],
+    removedVideoIds: [],
   });
 });
 
@@ -64,7 +69,8 @@ test('a persisted draft for a new entry matches by day, not by id', () => {
     tags: [],
     bodyRegions: {},
     removedPhotoIds: [],
-    removedRecordingIds: []
+    removedRecordingIds: [],
+    removedVideoIds: []
   };
   assert.equal(draftMatchesRoute(persisted, undefined, 20_001), true);
   assert.equal(draftMatchesRoute(persisted, undefined, 20_002), false);
@@ -82,7 +88,8 @@ test('a persisted draft for an existing entry matches by id, regardless of day',
     tags: [],
     bodyRegions: {},
     removedPhotoIds: [],
-    removedRecordingIds: []
+    removedRecordingIds: [],
+    removedVideoIds: []
   };
   assert.equal(draftMatchesRoute(persisted, 7, 20_000), true);
   assert.equal(draftMatchesRoute(persisted, 8, 20_000), false);
@@ -101,7 +108,8 @@ test('applying a persisted draft overlays mood, note, dims, tags and body region
     tags: ['e-happy'],
     bodyRegions: { chest: 30 },
     removedPhotoIds: [],
-    removedRecordingIds: []
+    removedRecordingIds: [],
+    removedVideoIds: []
   };
 
   applyPersistedDraft(draft, persisted);
@@ -127,7 +135,8 @@ test('applying a persisted draft drops stored photos the user had already remove
     tags: ['e-happy'],
     bodyRegions: { chest: 60 },
     removedPhotoIds: ['p1'],
-    removedRecordingIds: []
+    removedRecordingIds: [],
+    removedVideoIds: []
   };
 
   applyPersistedDraft(draft, persisted);
@@ -153,7 +162,8 @@ test('applying a persisted draft drops stored recordings the user had already re
     tags: ['e-happy'],
     bodyRegions: { chest: 60 },
     removedPhotoIds: [],
-    removedRecordingIds: ['r1']
+    removedRecordingIds: ['r1'],
+    removedVideoIds: []
   };
 
   applyPersistedDraft(draft, persisted);
@@ -162,5 +172,32 @@ test('applying a persisted draft drops stored recordings the user had already re
   assert.deepEqual(
     draft.recordings.map((r) => (r.kind === 'stored' ? r.recording.id : r.kind)),
     ['r2']
+  );
+});
+
+test('applying a persisted draft drops stored video notes the user had already removed', () => {
+  const draft = createEntryDraft(20_000, existingEntry());
+  assert.equal(draft.videos.length, 2);
+
+  const persisted: PersistedEntryDraft = {
+    id: 7,
+    epochDay: 20_000,
+    timestamp: 123,
+    mood: 3,
+    note: 'ok day',
+    dims: { masculinity: 40 },
+    tags: ['e-happy'],
+    bodyRegions: { chest: 60 },
+    removedPhotoIds: [],
+    removedRecordingIds: [],
+    removedVideoIds: ['n1']
+  };
+
+  applyPersistedDraft(draft, persisted);
+
+  assert.deepEqual(draft.removedVideoIds, ['n1']);
+  assert.deepEqual(
+    draft.videos.map((v) => (v.kind === 'stored' ? v.video.id : v.kind)),
+    ['n2']
   );
 });
