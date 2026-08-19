@@ -1626,16 +1626,22 @@ try {
 try {
   await fresh('/settings/journal-book');
   await page.waitForSelector('[data-book-entry]');
-  const switches = page.locator('[data-book-inclusion] [role="switch"]');
+  /* By part, not by position: the picker's order is a list in journalBook.ts
+     and gripping nth() would silently assert the wrong switch the day that
+     list is reordered (ADR-0029). */
+  const part = (key) => page.locator(`[data-inclusion="${key}"] [role="switch"]`);
 
   if (await page.locator('[data-book-opening]').count()) throw new Error('the opening page is on before anyone asks for it');
-  await switches.nth(3).click();
+  await part('openingPage').click();
   await page.waitForSelector('[data-book-opening] [data-wrapped-card-art]');
 
-  await switches.nth(0).click();
+  await part('entries').click();
   await page.waitForFunction(() => document.querySelectorAll('[data-book-entry]').length === 0);
+  if ((await part('photos').getAttribute('aria-checked')) !== 'false') {
+    throw new Error('photos stayed ticked with no entries to sit under');
+  }
 
-  await switches.nth(0).click();
+  await part('entries').click();
   await page.waitForSelector('[data-book-entry]');
 
   await page.emulateMedia({ media: 'print' });

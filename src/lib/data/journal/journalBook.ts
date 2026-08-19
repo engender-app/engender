@@ -136,7 +136,7 @@ async function readEntries(
     startEpochDay: fromEpochDay,
     endEpochDay: toEpochDay
   });
-  return found.reverse().map((entry: Entry) => ({
+  return [...found].reverse().map((entry: Entry) => ({
     id: entry.id,
     epochDay: entry.epochDay,
     timestamp: entry.timestamp,

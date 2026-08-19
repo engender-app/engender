@@ -345,21 +345,13 @@
     margin-bottom: var(--space-4);
   }
 
-  .print-heading {
-    display: none;
-  }
+  /* .no-print and .print-heading are the shell's (app.css); this one is
+     the summary's own, so it stays here. */
   .disclaimer-print {
     display: none;
   }
 
   @media print {
-    .no-print {
-      display: none !important;
-    }
-    .print-heading {
-      display: block;
-      margin-bottom: var(--space-4);
-    }
     .disclaimer-print {
       display: block;
       margin-top: var(--space-4);

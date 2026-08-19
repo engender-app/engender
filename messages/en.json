@@ -2141,6 +2141,6 @@
   "journal_book_include_note": "Only what you tick here is printed.",
   "journal_book_part_entries": "Entries",
   "journal_book_part_opening_page": "Opening page",
-  "journal_book_empty": "Nothing to print for this range yet.",
+  "journal_book_empty": "Nothing to print for this range.",
   "journal_book_range": "{from} to {to}"
 }
