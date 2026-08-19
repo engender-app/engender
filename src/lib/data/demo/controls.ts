@@ -32,5 +32,6 @@ export async function markFirstRun(): Promise<void> {
   prefs.onboarded = PREFERENCE_DEFAULTS.onboarded;
   prefs.name = PREFERENCE_DEFAULTS.name;
   prefs.lastBackupAt = PREFERENCE_DEFAULTS.lastBackupAt;
+  prefs.activePreset = PREFERENCE_DEFAULTS.activePreset;
   await clearJournal(journal);
 }

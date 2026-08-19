@@ -13,14 +13,14 @@
   const STEPS = 6;
   let step = $state(0);
   let name = $state('');
-  let preset = $state('p-btw');
+  let preset = $state<string | null>(null);
   let milestoneTemplate = $state<string | null>(null);
   let milestoneDate = $state('');
   let appLock = $state(false);
 
   async function finish() {
     prefs.name = name.trim();
-    prefs.activePreset = preset;
+    if (preset) prefs.activePreset = preset;
     prefs.onboarded = true;
     if (milestoneTemplate) {
       const tpl = vocabulary.milestoneTemplates.find((t) => t.key === milestoneTemplate)!;
@@ -89,7 +89,14 @@
           {/each}
         </div>
         <div class="ob-actions">
-          <button class="btn btn-primary" data-next onclick={() => step++}><span>{m.continue()}</span></button>
+          <button class="btn btn-primary" data-next disabled={preset === null} onclick={() => step++}><span>{m.continue()}</span></button>
+          <button
+            class="btn btn-ghost"
+            onclick={() => {
+              preset = null;
+              step++;
+            }}><span>{m.not_now()}</span></button
+          >
         </div>
       {:else if step === 3}
         <h1 class="ob-title">{m.ob_milestone_title()}</h1>
