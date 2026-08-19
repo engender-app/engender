@@ -118,10 +118,13 @@ export async function insertStagedRecording(
 export function makeVoiceArea(driver: SqliteDriver): VoiceArea {
   return {
     async inJournal() {
+      // Excludes a trashed entry's recordings the same way every other
+      // entry-owned read does (phase 5 ticket 19).
       const rows = await driver.query<RecordingRow & { epoch_day: number }>(
         `SELECT v.uuid, v.file_path, e.epoch_day AS epoch_day
          FROM voice_recording v
          JOIN entry e ON e.id = v.entry_id
+         WHERE e.trashed_at IS NULL
          ORDER BY epoch_day, v.order_index, v.id`
       );
       return rows.map((row) => ({ ...toRecording(row), epochDay: row.epoch_day }));

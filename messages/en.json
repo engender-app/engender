@@ -59,9 +59,31 @@
   "body_region_intensity_high": "very",
   "entry": "Entry",
   "delete_entry_q": "Delete this entry?",
-  "delete_entry_hint": "The entry, its photos and its voice recordings will be removed. This cannot be undone.",
+  "delete_entry_hint": "The entry, its photos and its voice recordings move to trash. You can restore them within 30 days, from Settings.",
   "delete_entry": "Delete entry",
   "keep_it": "Keep it",
+  "trash_title": "Trash",
+  "trash_row_sub": "Deleted entries, kept for 30 days",
+  "trash_intro": "Deleted entries stay here for 30 days before they're gone for good.",
+  "trash_empty_title": "Trash is empty",
+  "trash_empty_body": "A deleted entry shows up here for 30 days before it's gone for good.",
+  "trash_restore": "Restore",
+  "trash_restored_toast": "Entry restored",
+  "trash_days_left": [
+    {
+      "declarations": [
+        "input days",
+        "local daysPlural = days: plural"
+      ],
+      "selectors": [
+        "daysPlural"
+      ],
+      "match": {
+        "daysPlural=one": "{days} day left",
+        "daysPlural=other": "{days} days left"
+      }
+    }
+  ],
   "streak_row": "days in a row",
   "streak_with_entry": "days in a row with an entry",
   "streak_sub": "quiet consistency beats perfection",

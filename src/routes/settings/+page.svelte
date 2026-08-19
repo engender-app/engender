@@ -442,6 +442,14 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/trash">
+      <span class="row-icon"><Icon name="trash" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.trash_title()}</span>
+        <span class="row-subtitle">{m.trash_row_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
     <button class="list-row" data-about-open onclick={() => (aboutSheet = true)}>
       <span class="row-icon"><Icon name="info" size={22} /></span>
       <span class="row-text">

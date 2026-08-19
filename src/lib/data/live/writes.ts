@@ -137,11 +137,21 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       // Photos and recordings as well as the entry: a save carries
       // additions and removals of both.
       upsertEntry: ['entry', 'photo', 'voiceRecording'],
-      // Takes the entry's photo and recording rows and files with it
-      // (entries.ts).
-      deleteEntry: ['entry', 'photo', 'voiceRecording']
+      // Trashes the entry rather than removing it (phase 5 ticket 19), but
+      // still takes it out of every other read here, the same as before.
+      deleteEntry: ['entry', 'photo', 'voiceRecording'],
+      // Brings a trashed entry, its photos and its recordings back.
+      restoreEntry: ['entry', 'photo', 'voiceRecording']
     },
-    reads: ['getEntry', 'entriesForDay', 'recentDays', 'entriesWithTag', 'searchEntries', 'countSearchMatches']
+    reads: [
+      'getEntry',
+      'entriesForDay',
+      'recentDays',
+      'entriesWithTag',
+      'searchEntries',
+      'countSearchMatches',
+      'trashedEntries'
+    ]
   },
   tags: {
     writes: {

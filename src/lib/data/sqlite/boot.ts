@@ -7,7 +7,8 @@
      2. Open the database and run migrations (ticket 02) - this ticket's
         own job, fully implemented below.
      3. Load mirrored reference data into reactive state (ticket 08).
-     4. Run the photo orphan sweep (ticket 11).
+     4. Purge trash past its 30-day window, then run the photo orphan sweep
+        (ticket 11; phase 5 ticket 19).
 
    Steps 1, 3 and 4 are dependency-injected no-ops until their tickets land
    - boot() still calls them in order so the shape doesn't change later,
@@ -28,6 +29,7 @@ export interface BootDeps {
   applyBootPreferences?: () => void;
   requestPersistentStorage?: () => Promise<boolean>;
   loadReferenceData?: (driver: SqliteDriver) => Promise<void>;
+  purgeExpiredTrash?: (driver: SqliteDriver) => Promise<void>;
   sweepOrphanPhotos?: (driver: SqliteDriver) => Promise<void>;
 }
 
@@ -72,12 +74,18 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
 
   await deps.loadReferenceData?.(driver);
 
-  /* The sweep is housekeeping: it reclaims photo files no row references
-     (ticket 11). It touches OPFS, which can fail on quota or in a browser
-     without it, and none of that is a reason to withhold the app - the
-     files it did not reclaim are still there for the next boot to try
-     again. Reference data above is not like this: a screen cannot render
-     without it, so its failure stays the caller's. */
+  /* Both of these are housekeeping, the same reasoning the orphan sweep's
+     own comment below gives: a screen cannot render without reference data,
+     but the app is not withheld for either of these failing, since what
+     they did not finish is still there for the next boot to retry. The
+     purge runs first so an entry whose 30 days are up is a real delete
+     before the sweep asks what nothing references any more. */
+  try {
+    await deps.purgeExpiredTrash?.(driver);
+  } catch (error) {
+    console.warn('trash purge failed; expired entries stay trashed until the next boot', error);
+  }
+
   try {
     await deps.sweepOrphanPhotos?.(driver);
   } catch (error) {

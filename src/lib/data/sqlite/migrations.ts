@@ -771,6 +771,25 @@ CREATE TABLE hair_removal_photo (
 CREATE INDEX idx_hair_removal_photo_session ON hair_removal_photo(session_id);
 `;
 
+/* v24: entry trash with a 30-day undo window (phase 5 ticket 19). A trashed
+   entry is marked, not moved: `trashed_at` sits on the same `entry` row for
+   as long as it is trashed, so it stays covered by the same whole-database
+   encryption every other row already has (ADR-0020) - no second table, no
+   second crypto layer, the same reasoning the letter migration (v16) gives.
+   NULL means "in the journal"; every entry-reading query (entries.ts,
+   stats.ts, photos.ts, voiceRecordings.ts, archiveRead.ts) filters on it,
+   the same way a hidden tag stays out of the pickers rather than being
+   deleted. A trashed entry's photos and recordings are not touched - they
+   stay exactly as they were, and come back with the entry on restore.
+
+   The sweep that turns an expired trash row into a real delete runs at
+   boot (entries.ts's purgeExpiredTrash), the same shape sweepOrphanPhotos
+   already has. */
+const SCHEMA_V24 = `
+ALTER TABLE entry ADD COLUMN trashed_at INTEGER;
+CREATE INDEX idx_entry_trashed_at ON entry(trashed_at);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -794,7 +813,8 @@ export const migrations: Migration[] = [
   { version: 20, sql: SCHEMA_V20 },
   { version: 21, sql: SCHEMA_V21 },
   { version: 22, sql: SCHEMA_V22 },
-  { version: 23, sql: SCHEMA_V23 }
+  { version: 23, sql: SCHEMA_V23 },
+  { version: 24, sql: SCHEMA_V24 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

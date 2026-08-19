@@ -69,8 +69,15 @@ export interface SectionRead {
 export async function readRowContext(driver: SqliteDriver): Promise<SectionRead> {
   return {
     driver,
+    // A trashed entry's photo/recording is excluded here, not only from the
+    // entries section below - archive.ts builds its file manifest straight
+    // from these rows, and trash is out of scope for archives entirely
+    // (phase 5 ticket 19).
     photos: await driver.query<PhotoRow>(
-      'SELECT uuid, file_path, entry_id, milestone_id FROM photo ORDER BY order_index, id'
+      `SELECT p.uuid, p.file_path, p.entry_id, p.milestone_id FROM photo p
+       LEFT JOIN entry e ON e.id = p.entry_id
+       WHERE p.entry_id IS NULL OR e.trashed_at IS NULL
+       ORDER BY p.order_index, p.id`
     ),
     hairPhotos: await driver.query<HairPhotoRow>(
       'SELECT uuid, epoch_day, file_path FROM hair_photo ORDER BY epoch_day, id'
@@ -79,7 +86,10 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
       'SELECT uuid, session_id, file_path FROM hair_removal_photo ORDER BY session_id, id'
     ),
     recordings: await driver.query<RecordingRow>(
-      'SELECT uuid, file_path, entry_id FROM voice_recording ORDER BY order_index, id'
+      `SELECT v.uuid, v.file_path, v.entry_id FROM voice_recording v
+       JOIN entry e ON e.id = v.entry_id
+       WHERE e.trashed_at IS NULL
+       ORDER BY v.order_index, v.id`
     )
   };
 }
@@ -179,7 +189,12 @@ export async function readEntries({ driver, photos, recordings }: SectionRead): 
     timestamp: number;
     mood: number | null;
     note: string | null;
-  }>('SELECT id, uuid, epoch_day, timestamp, mood, note FROM entry ORDER BY epoch_day, timestamp, id');
+  }>(
+    // Trashed entries are excluded (phase 5 ticket 19): trash is out of
+    // scope for archives, and readRowContext has already left their photos
+    // and recordings out of `photos`/`recordings` for the same reason.
+    'SELECT id, uuid, epoch_day, timestamp, mood, note FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day, timestamp, id'
+  );
 
   const dimensionValues = await driver.query<{ entry_id: number; key: string; value: number }>(
     `SELECT edv.entry_id, gd.key, edv.value FROM entry_dimension_value edv

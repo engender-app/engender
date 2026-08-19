@@ -264,7 +264,9 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
     async inJournal() {
       /* Two left joins rather than two queries: exactly one of the owner
          columns is set (the table's CHECK), so COALESCE picks whichever day
-         applies and the other side contributes nothing. */
+         applies and the other side contributes nothing. A trashed entry's
+         photo is excluded the same way every other entry-owned read is
+         (phase 5 ticket 19); a milestone's has no such state to check. */
       const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
         `SELECT p.uuid, p.file_path,
                 COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
@@ -272,6 +274,7 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
          FROM photo p
          LEFT JOIN entry e ON e.id = p.entry_id
          LEFT JOIN milestone m ON m.id = p.milestone_id
+         WHERE p.entry_id IS NULL OR e.trashed_at IS NULL
          ORDER BY epoch_day, p.order_index, p.id`
       );
       return rows.map((row) => ({
