@@ -17,7 +17,7 @@
   let episodesQuery = liveQuery(['regimen'], (j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.value ?? []);
   /* The anchor is HRT's own start, not whichever episode is active right
-     now (ticket 07) - resolveEpisodeAt is the wrong function here, this is
+     now (ticket 07) - activeEpisodesAt is the wrong function here, this is
      the one place earliestEpisode is called from. Its drug decides which
      bands may be drawn at all (ticket 27), so the whole episode is held
      rather than only its start day. */

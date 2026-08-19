@@ -12,7 +12,7 @@
    A dose usually names no drug of its own (CONTEXT: "Dose event"); its
    drug is resolved against the episode history the same way
    stockProjection.ts's consumesStock does (regimenEpisode.ts's
-   attributedDrug). A dose with no episode to resolve against - logged
+   attributeDrug). A dose with no episode to resolve against - logged
    before any episode existed - has no drug to report a total against, so
    it is left out rather than guessed at, silently as it always was. A
    dose left ambiguous by two concurrent episodes for different drugs
@@ -33,7 +33,7 @@
    running rather than as having ended the regimen. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { attributedDrug, isAmbiguousDrug } from './regimenEpisode';
+import { attributeDrug } from './regimenEpisode';
 import type { DoseEvent, DoseRoute, RegimenEpisode } from './types';
 
 export interface DoseTotal {
@@ -93,9 +93,9 @@ export function cumulativeDoseTotals(
     const day = epochDayFromTimestamp(dose.timestamp);
     if (day < fromEpochDay || day > toEpochDay) continue;
 
-    const drug = attributedDrug(episodes, dose);
+    const { drug, ambiguous } = attributeDrug(episodes, dose);
     if (drug === null) {
-      if (isAmbiguousDrug(episodes, dose)) excludedDoses += 1;
+      if (ambiguous) excludedDoses += 1;
       continue;
     }
 

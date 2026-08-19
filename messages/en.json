@@ -1078,7 +1078,7 @@
   "doses_view_schedule": "Against the schedule",
   "doses_no_episode": "No regimen episode covers this date",
   "doses_under_episode": "under {drug}",
-  "doses_ambiguous_episode": "More than one regimen was active - drug not recorded",
+  "doses_ambiguous_episode": "More than one regimen was active: drug not recorded",
   "doses_row_aria": "Edit the {route} dose from {when}",
   "doses_window": "The last {days} days",
   "dose_route_oral": "Oral",

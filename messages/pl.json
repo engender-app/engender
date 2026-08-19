@@ -1096,7 +1096,7 @@
   "doses_view_schedule": "Na tle planu",
   "doses_no_episode": "Żaden etap kuracji nie obejmuje tej daty",
   "doses_under_episode": "etap: {drug}",
-  "doses_ambiguous_episode": "Więcej niż jeden etap był aktywny - lek nie został zapisany",
+  "doses_ambiguous_episode": "Więcej niż jeden etap był aktywny: lek nie został zapisany",
   "doses_row_aria": "Edytuj dawkę ({route}) z {when}",
   "doses_window": "Ostatnie {days} dni",
   "dose_route_oral": "Doustnie",
