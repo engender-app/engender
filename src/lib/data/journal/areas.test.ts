@@ -106,11 +106,11 @@ test('deleting a milestone takes its photo rows and files; twice is success', as
 
 test('analytes are the presets plus whatever is in use; results order by day', async () => {
   const { journal } = await journalWithBuiltIns();
-  assert.deepEqual(await journal.labs.getAnalytes(), ['estradiol', 'testosterone', 'prolactin']);
+  assert.deepEqual(await journal.labs.getAnalytes(), ['testosterone', 'estradiol', 'prolactin']);
 
   await journal.labs.upsertResult({ epochDay: 200, analyte: 'shbg', value: 60, unit: 'nmol/L' });
   const id = await journal.labs.upsertResult({ epochDay: 100, analyte: 'shbg', value: 55, unit: 'nmol/L' });
-  assert.deepEqual(await journal.labs.getAnalytes(), ['estradiol', 'testosterone', 'prolactin', 'shbg']);
+  assert.deepEqual(await journal.labs.getAnalytes(), ['testosterone', 'estradiol', 'prolactin', 'shbg']);
 
   const results = await journal.labs.getResults('shbg');
   assert.deepEqual(results.map((r) => r.epochDay), [100, 200]);
@@ -135,6 +135,23 @@ test('the analytes in use are only the ones with a result, because a trend needs
   await journal.labs.upsertResult({ epochDay: 101, analyte: 'shbg', value: 60 });
 
   assert.deepEqual(await journal.labs.getUsedAnalytes(), ['estradiol', 'shbg']);
+});
+
+test('the most recent analyte is whichever result was last saved or edited, or null with none', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.labs.getMostRecentAnalyte(), null);
+
+  await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 120 });
+  assert.equal(await journal.labs.getMostRecentAnalyte(), 'estradiol');
+
+  const id = await journal.labs.upsertResult({ epochDay: 50, analyte: 'testosterone', value: 480 });
+  assert.equal(await journal.labs.getMostRecentAnalyte(), 'testosterone', 'saved after the estradiol result despite the earlier draw day');
+
+  await journal.labs.upsertResult({ id, epochDay: 50, analyte: 'testosterone', value: 490 });
+  assert.equal(await journal.labs.getMostRecentAnalyte(), 'testosterone', 'editing it keeps it the most recent');
+
+  await journal.labs.deleteResult(id);
+  assert.equal(await journal.labs.getMostRecentAnalyte(), 'estradiol', 'the deleted result stops counting');
 });
 
 test('a lab result without a unit stays blank rather than acquiring a placeholder', async () => {
