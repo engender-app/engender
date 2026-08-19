@@ -637,6 +637,29 @@ export interface Checklist {
   items: ChecklistItem[];
 }
 
+/** The tri-state a roadmap goal's tick can hold (phase 5 ticket 20,
+    CONTEXT: "Roadmap goal"): 'unchecked' is untaken, 'checked' is done,
+    and 'not-my-path' says the step is not part of this person's own path
+    rather than left undone. Stored the same way for a bundled goal (named
+    by its pack and goal key) and a custom one (named by its uuid) - the
+    two differ only in whether the row that carries it exists because of
+    the tick or regardless of it. */
+export type RoadmapGoalStatus = 'unchecked' | 'checked' | 'not-my-path';
+
+/** A user-authored roadmap goal (phase 5 ticket 20, CONTEXT: "Roadmap
+    goal", "Custom"): free text someone added to a track themselves,
+    uuid-identified rather than named by a pack and a key the way a
+    bundled goal is, and never translated or reseeded - the split CONTEXT
+    already draws between Custom and Built-in. Appended to the end of its
+    track's order; the roadmap already refuses ordering between goals
+    (roadmap.ts), so creation order is all there is to keep. */
+export interface CustomRoadmapGoal {
+  id: string;
+  track: string;
+  text: string;
+  status: RoadmapGoalStatus;
+}
+
 /** One procedure someone is going through (phase 5 ticket 07, CONTEXT:
     "Procedure"): a free-text name, the consults leading up to it, a surgery
     date once there is one, and the recovery log's own notes. Several can

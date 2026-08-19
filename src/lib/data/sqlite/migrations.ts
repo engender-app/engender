@@ -904,6 +904,40 @@ CREATE TABLE affirmation (
 CREATE INDEX idx_affirmation_language ON affirmation(language);
 `;
 
+/* v28: a "not my path" tri-state on any roadmap goal, and a custom goal to
+   put it on (phase 5 ticket 20, CONTEXT: "Roadmap goal", "Custom").
+
+   roadmap_check's row already existed only because a goal was ticked
+   (v18); `status` widens what that existence can mean without touching
+   the pair it is keyed on, so a row still exists exactly when a bundled
+   goal has anything at all recorded against it, checked or not-my-path,
+   and deleting it is still what unchecking means. The default backfills
+   every row a device already has to 'checked', which is what its bare
+   existence meant before this column existed.
+
+   A custom goal cannot reuse that row shape: ADR-0002's amendment argues
+   a tick is safe with no uuid only because it carries no data of its own,
+   and a custom goal is nothing but the user's own free text and a track.
+   It gets the ordinary uuid treatment instead, like a custom tag, and its
+   own `status` on the same row rather than a second table to join against
+   - unlike a tick, its row exists whether or not it is checked, so
+   'unchecked' is an ordinary value here rather than a row's absence.
+   Ordered by `id` alone: appended to the end of its track on creation and
+   never reordered (the ticket's own out-of-scope line), so the rowid
+   already is the order. */
+const SCHEMA_V28 = `
+ALTER TABLE roadmap_check ADD COLUMN status TEXT NOT NULL DEFAULT 'checked';
+
+CREATE TABLE roadmap_goal (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  track      TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'unchecked',
+  updated_at INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -931,7 +965,8 @@ export const migrations: Migration[] = [
   { version: 24, sql: SCHEMA_V24 },
   { version: 25, sql: SCHEMA_V25 },
   { version: 26, sql: SCHEMA_V26 },
-  { version: 27, sql: SCHEMA_V27 }
+  { version: 27, sql: SCHEMA_V27 },
+  { version: 28, sql: SCHEMA_V28 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

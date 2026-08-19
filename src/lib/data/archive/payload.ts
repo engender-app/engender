@@ -220,14 +220,27 @@ export interface ArchiveLetter {
   unlockEpochDay: number;
 }
 
-/** One ticked-off transition-roadmap goal (phase 4 ticket 23), named by
-    its pack and its goal key rather than a uuid - both strings mean the
-    same thing on every device, so two installs that ticked the same goal
-    ticked the same goal (ADR-0002). Unticked goals travel as absence:
-    there is no row for one, here or in the journal. */
+/** One bundled transition-roadmap goal with a status recorded at all
+    (phase 4 ticket 23, widened phase 5 ticket 20 for the tri-state), named
+    by its pack and its goal key rather than a uuid - both strings mean the
+    same thing on every device, so two installs that recorded the same
+    goal recorded the same goal (ADR-0002). An unchecked goal travels as
+    absence: there is no row for one, here or in the journal. */
 export interface ArchiveRoadmapCheck {
   packKey: string;
   goalKey: string;
+  status: string;
+}
+
+/** A user-authored roadmap goal (phase 5 ticket 20), named by its own
+    uuid like any other user-owned row - unlike ArchiveRoadmapCheck, it
+    carries data of its own (a track and its text) rather than naming
+    bundled content, so it travels whether or not it is checked. */
+export interface ArchiveRoadmapGoal {
+  id: string;
+  track: string;
+  text: string;
+  status: string;
 }
 
 /** One line of a checklist (phase 5 ticket 05), named by its own uuid like
@@ -501,6 +514,7 @@ export interface ArchiveJournal {
   counterevidenceSnapshots: ArchiveCounterevidenceSnapshot[];
   letters: ArchiveLetter[];
   roadmapChecks: ArchiveRoadmapCheck[];
+  roadmapGoals: ArchiveRoadmapGoal[];
   regimenEpisodes: ArchiveRegimenEpisode[];
   doseEvents: ArchiveDoseEvent[];
   doseSchedules: ArchiveDoseSchedule[];
