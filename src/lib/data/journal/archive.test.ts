@@ -183,9 +183,10 @@ test('entries travel by uuid, with their dimension values, tags, photos and reco
     // rows are in - an entry's tags are a set, so it is the ids that
     // matter, not which of them the seed happened to create first.
     tags: ['e-happy', tag.id],
-    photos: [{ id: photo, fileName: `${photo}.jpg` }],
+    photos: [{ id: photo, fileName: `${photo}.jpg`, starred: false }],
     recordings: [{ id: recording, fileName: `${recording}.webm` }],
-    bodyRegions: { chest: 40 }
+    bodyRegions: { chest: 40 },
+    starred: false
   });
   assert.equal(snapshot.journal.entries.length, 2);
 });
@@ -249,7 +250,7 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       name: 'HRT start',
       epochDay: 19000,
       templateKey: 'hrt_start',
-      photo: { id: milestonePhoto, fileName: `${milestonePhoto}.jpg` }
+      photo: { id: milestonePhoto, fileName: `${milestonePhoto}.jpg`, starred: false }
     }
   ]);
   /* Ordered by draw day, so the one carrying a dosing context comes first.
@@ -490,11 +491,11 @@ test('a photo row whose file is gone keeps its row and leaves the manifest alone
    else in this suite would notice. A new column fails here until it is
    either carried or listed as deliberately left behind. */
 const CARRIED: Record<string, string[]> = {
-  entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note'],
+  entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred'],
   entry_dimension_value: ['entry_id', 'dimension_id', 'value'],
   entry_tag: ['entry_id', 'tag_id'],
   entry_body_region: ['entry_id', 'region', 'intensity'],
-  photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index'],
+  photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred'],
   milestone: ['uuid', 'name', 'epoch_day', 'template_key'],
   gender_dimension: ['uuid', 'key', 'name', 'low_label', 'high_label', 'min_value', 'max_value', 'is_built_in', 'hidden'],
   gender_preset: ['uuid', 'key', 'name', 'is_built_in'],

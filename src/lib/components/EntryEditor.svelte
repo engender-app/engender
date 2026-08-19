@@ -68,7 +68,35 @@
     const fresh = createEntryDraft(entry.epochDay, entry);
     restoreIfPersisted(fresh);
     entryDraft = fresh;
+    starred = entry.starred;
   });
+
+  /* Curation metadata (CONTEXT: "Starred"), read once like the rest of
+     `existing` and kept in its own local state rather than `entryDraft`:
+     starring is its own mutation (entries.ts, setEntryStarred), never part
+     of a content save, and `loaded`'s deliberately empty table list (see
+     above) means it will not refresh itself from elsewhere either. */
+  let starred = $state(false);
+
+  async function toggleStarred() {
+    if (!existing) return;
+    const next = !starred;
+    await journal.entries.setEntryStarred(existing.id, next);
+    starred = next;
+  }
+
+  /* Same reasoning as toggleStarred above, but for one stored photo: the
+     draft's copy of it has to be updated by hand too, or the star shown
+     here would go stale the moment the write lands. */
+  async function togglePhotoStarred(index: number) {
+    const item = entryDraft.photos[index];
+    if (item.kind !== 'stored') return;
+    const next = !item.photo.starred;
+    await journal.photos.setStarred(item.photo.id, next);
+    entryDraft.photos = entryDraft.photos.map((p, i) =>
+      i === index && p.kind === 'stored' ? { ...p, photo: { ...p.photo, starred: next } } : p
+    );
+  }
 
   $effect(() => {
     draftStore.write(serializeDraft(entryDraft));
@@ -202,6 +230,14 @@
     <h1 class="screen-title">{existing ? m.entry() : m.new_entry()}</h1>
     <div class="header-action">
       {#if existing}
+        <button
+          class="icon-btn"
+          aria-label={starred ? m.unstar_entry() : m.star_entry()}
+          aria-pressed={starred}
+          onclick={toggleStarred}
+        >
+          <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
+        </button>
         <button class="icon-btn" aria-label={m.delete_entry()} onclick={() => (deleteOpen = true)}>
           <Icon name="trash" size={20} />
         </button>
@@ -290,6 +326,15 @@
         <div class="photo-wrap">
           {#if p.kind === 'stored'}
             <PhotoThumb photo={p.photo} size={72} />
+            <button
+              class="photo-star"
+              class:is-starred={p.photo.starred}
+              aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
+              aria-pressed={p.photo.starred}
+              onclick={() => togglePhotoStarred(i)}
+            >
+              <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
+            </button>
           {:else}
             <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
           {/if}

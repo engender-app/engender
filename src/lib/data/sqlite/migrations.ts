@@ -857,6 +857,18 @@ CREATE TABLE procedure_photo (
 CREATE INDEX idx_procedure_photo_procedure ON procedure_photo(procedure_id, epoch_day);
 `;
 
+/* v26: `starred` on entry and photo (phase 5 ticket 14). Curation metadata,
+   the same category the uuid/identity fields already are - not one of
+   Entry's seven content fields (CONTEXT: "Entry"), so it never enters
+   entryContent.ts's closure check and starring an entry can never be what
+   keeps an otherwise-empty one from counting as deleted. Joins
+   'g-euphoria'-tagged entries in the doubt journal's counterevidence pool
+   (entries.ts's counterevidencePool). */
+const SCHEMA_V26 = `
+ALTER TABLE entry ADD COLUMN starred INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE photo ADD COLUMN starred INTEGER NOT NULL DEFAULT 0;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -882,7 +894,8 @@ export const migrations: Migration[] = [
   { version: 22, sql: SCHEMA_V22 },
   { version: 23, sql: SCHEMA_V23 },
   { version: 24, sql: SCHEMA_V24 },
-  { version: 25, sql: SCHEMA_V25 }
+  { version: 25, sql: SCHEMA_V25 },
+  { version: 26, sql: SCHEMA_V26 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

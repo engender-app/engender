@@ -23,7 +23,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { Photo } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
 import type { PhotoFileStore } from './journal';
-import { mintUuid, now } from './support';
+import { assertChanged, bool, mintUuid, now } from './support';
 
 /** A photo that has been through normalize() (ADR-0008/0015): JPEG bytes,
     resized, metadata stripped, with its thumbnail. The journal stores what
@@ -58,14 +58,21 @@ export interface PhotosArea {
       One query rather than a union assembled above the seam: both owners are
       rows in this one table (ADR-0008). */
   inJournal(): Promise<DatedPhoto[]>;
+  /** Starred photos only (CONTEXT: "Starred"), oldest first - the starred
+      shelf's photo half, reached from search. */
+  starredPhotos(): Promise<DatedPhoto[]>;
+  /** Throws on an unknown id, the same way remove() does not but a toggle
+      of curation metadata should: a typo'd id and a successful toggle must
+      not look alike. */
+  setStarred(id: string, starred: boolean): Promise<void>;
 }
 
-type PhotoRow = { uuid: string; file_path: string };
+type PhotoRow = { uuid: string; file_path: string; starred: number };
 
 export type StagedPhoto = { id: string; fileName: string };
 export type PhotoColumns = { entryId: number | null; milestoneId: number | null };
 
-const toPhoto = (row: PhotoRow): Photo => ({ id: row.uuid, fileName: row.file_path });
+const toPhoto = (row: PhotoRow): Photo => ({ id: row.uuid, fileName: row.file_path, starred: bool(row.starred) });
 
 /** Deletes every file the given photo rows owned, thumbnails included.
     Called after the rows are gone, by all three paths that delete photo
@@ -104,7 +111,7 @@ export async function photosByEntry(
   const byEntry = new Map<number, Photo[]>();
   if (entryIds.length === 0) return byEntry;
   const rows = await driver.query<PhotoRow & { entry_id: number }>(
-    `SELECT entry_id, uuid, file_path FROM photo
+    `SELECT entry_id, uuid, file_path, starred FROM photo
      WHERE entry_id IN (${entryIds.map(() => '?').join(', ')})
      ORDER BY order_index, id`,
     entryIds
@@ -123,7 +130,7 @@ export async function photosByEntry(
     would be a bug elsewhere, and the earliest wins rather than throwing. */
 export async function photosByMilestone(driver: SqliteDriver): Promise<Map<number, Photo>> {
   const rows = await driver.query<PhotoRow & { milestone_id: number }>(
-    'SELECT milestone_id, uuid, file_path FROM photo WHERE milestone_id IS NOT NULL ORDER BY order_index, id'
+    'SELECT milestone_id, uuid, file_path, starred FROM photo WHERE milestone_id IS NOT NULL ORDER BY order_index, id'
   );
   const byMilestone = new Map<number, Photo>();
   for (const row of rows) if (!byMilestone.has(row.milestone_id)) byMilestone.set(row.milestone_id, toPhoto(row));
@@ -271,7 +278,7 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
          photo is excluded the same way every other entry-owned read is
          (phase 5 ticket 19); a milestone's has no such state to check. */
       const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
-        `SELECT p.uuid, p.file_path,
+        `SELECT p.uuid, p.file_path, p.starred,
                 COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
                 m.name AS milestone_name
          FROM photo p
@@ -285,6 +292,33 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
         epochDay: row.epoch_day,
         milestoneName: row.milestone_name
       }));
+    },
+
+    async starredPhotos() {
+      const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
+        `SELECT p.uuid, p.file_path, p.starred,
+                COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
+                m.name AS milestone_name
+         FROM photo p
+         LEFT JOIN entry e ON e.id = p.entry_id
+         LEFT JOIN milestone m ON m.id = p.milestone_id
+         WHERE p.starred = 1
+         ORDER BY epoch_day, p.order_index, p.id`
+      );
+      return rows.map((row) => ({
+        ...toPhoto(row),
+        epochDay: row.epoch_day,
+        milestoneName: row.milestone_name
+      }));
+    },
+
+    async setStarred(id, starred) {
+      const result = await driver.run('UPDATE photo SET starred = ?, updated_at = ? WHERE uuid = ?', [
+        starred ? 1 : 0,
+        now(),
+        id
+      ]);
+      assertChanged(result, `photo: ${id}`);
     }
   };
 }

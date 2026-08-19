@@ -6,10 +6,11 @@
    composer screen and nothing reads one without the feature the other is
    part of.
 
-   Counterevidence itself - the user's own past euphoria-tagged entries -
-   is not read through here: it is an ordinary tag query
-   (entries.entriesWithTag('g-euphoria', …)), the same one the stats
-   screen's tag-insight sheet already uses (+page.svelte). This area only
+   Counterevidence itself - the user's own past euphoria-tagged and starred
+   entries - is not read through here: it is entries.counterevidencePool
+   (phase 5 ticket 14 widened it from a plain tag query,
+   entries.entriesWithTag('g-euphoria', …), to a union with starred
+   entries, so a person can curate their own "proof" too). This area only
    owns what it alone writes: the free-write text, and a snapshot's frozen
    copy of whatever that query returned at save time. */
 

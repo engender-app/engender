@@ -36,6 +36,14 @@ _Avoid_: Log, record, check-in (a check-in is a daily prompt, not an entry)
 An image belonging to exactly one entry or exactly one milestone, held in
 app-private storage and never in the device gallery.
 
+**Starred**:
+A boolean on an Entry or a Photo marking it as chosen counterevidence,
+sitting outside Entry's seven-field content closure - the same category the
+uuid/day/timestamp identity fields already are - so starring or unstarring
+never changes whether an entry exists. Reachable from a starred shelf off
+search, and joins euphoria-tagged entries in the doubt journal's
+counterevidence pool (see **Doubt entry**).
+
 **Voice recording**:
 An in-app audio recording belonging to exactly one entry, held in the same
 app-private storage a Photo is and covered by the same per-file encryption
@@ -415,9 +423,9 @@ doesn't clear this bar.
 **Doubt entry**:
 A free-write record for a "not trans enough" spiral, timestamped and its own
 record type - no mood, dimension values, tags or note (CONTEXT: "Entry").
-Writing one surfaces the user's own past **euphoria capture**-tagged entries as
-counterevidence, reached from a persistent Home affordance rather than the
-normal new-entry flow.
+Writing one surfaces the user's own past **euphoria capture**-tagged
+entries, alongside any **Starred** ones, as counterevidence, reached from a
+persistent Home affordance rather than the normal new-entry flow.
 
 **Counterevidence snapshot**:
 A one-tap, saved copy of the counterevidence a doubt entry's composer was

@@ -422,8 +422,8 @@ test('a range with fewer photos than the highlight count keeps all of them, olde
   const { photoHighlights } = await journal.stats.recap(100, 129);
 
   assert.deepEqual(photoHighlights, [
-    { id: first, fileName: `${first}.jpg`, epochDay: 105 },
-    { id: second, fileName: `${second}.jpg`, epochDay: 120 }
+    { id: first, fileName: `${first}.jpg`, starred: false, epochDay: 105 },
+    { id: second, fileName: `${second}.jpg`, starred: false, epochDay: 120 }
   ]);
 });
 
@@ -453,7 +453,9 @@ test("a milestone's photo is a highlight too, and a photo outside the range is n
 
   const { photoHighlights } = await journal.stats.recap(100, 129);
 
-  assert.deepEqual(photoHighlights, [{ id: milestonePhoto, fileName: `${milestonePhoto}.jpg`, epochDay: 110 }]);
+  assert.deepEqual(photoHighlights, [
+    { id: milestonePhoto, fileName: `${milestonePhoto}.jpg`, starred: false, epochDay: 110 }
+  ]);
 });
 
 test('the biggest dimension change is picked across ranges but reported in native units', async () => {
