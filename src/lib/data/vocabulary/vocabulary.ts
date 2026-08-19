@@ -137,6 +137,14 @@ export const vocabulary = {
   get activePreset(): GenderPreset {
     return localizePreset(reference.activePreset);
   },
+  /** The active preset's own lean (phase 5 ticket 43, ADR-0030) - `null`
+      when it has both `femininity` and `masculinity`, or neither, and every
+      lean-tagged picker should render unranked. Shared by every picker that
+      ranks by lean, so the derivation is computed once rather than at each
+      call site. */
+  get activeLean(): 'femme' | 'masc' | null {
+    return presetLean(this.activePreset.dims);
+  },
   get tagGroups(): TagGroup[] {
     return reference.tagGroups.map(localizeGroup);
   },
@@ -193,7 +201,7 @@ export const vocabulary = {
       matching templates first, the rest after in their existing order -
       every template still shown, just reordered. */
   get regimenTemplates(): RegimenTemplate[] {
-    return rankByLean(regimenTemplates.map(localizeRegimenTemplate), presetLean(this.activePreset.dims));
+    return rankByLean(regimenTemplates.map(localizeRegimenTemplate), this.activeLean);
   },
   /** Every body region, hidden built-ins and custom ones included, in the
       wording the user sees (ticket 09, reference-data area since ticket
@@ -259,7 +267,7 @@ export const vocabulary = {
     while (picked.length < n && pool.length) {
       picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
     }
-    return rankByLean(picked.map(localizeTemplate), presetLean(this.activePreset.dims));
+    return rankByLean(picked.map(localizeTemplate), this.activeLean);
   },
   /** The built-in templates the entry-creation flow can offer (phase 4
       features ticket 17), in the wording the current language gives them. */
