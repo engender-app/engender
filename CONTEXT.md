@@ -387,6 +387,21 @@ about a wrapped is stored; opening one always recomputes from that range's
 entries, milestones and photos.
 _Avoid_: Report, summary
 
+**Wrapped card**:
+The shared card the wrapped screen's own week/month/year views do not use
+directly - it's what ticket 17's optional book opening page and ticket 18's
+share card are built from instead, so the same visual object isn't built
+twice under two names. Composed from a user-chosen `WrappedCardContent`
+(`wrappedCard.ts`): stat tiles and, optionally, **palette art** (below), and
+nothing else - no journal text or photo, ever, because the type it's built
+from has no field for either.
+
+**Palette art**:
+A wrapped card's optional decorative element: a gradient over the active
+colour palette's flag stripes (`--motif-stripes`, `palettes.css`), the same
+token the pride aurora background already reads. Carries no data of its
+own - choosing it adds colour to the card, not a number.
+
 **On-this-day**:
 A daily retrospective offering what was logged a month, six months or a year
 before today. Only ever resurfaces a **good day** (below) - never a bad one.
