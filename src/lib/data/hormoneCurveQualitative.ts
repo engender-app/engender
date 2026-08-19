@@ -1,12 +1,16 @@
-/* The qualitative-shape hormone curve for oral, sublingual, patch and gel
-   estradiol (phase 4 ticket 11, CONTEXT: "Qualitative curve"). Pure, above
-   the journal seam and free of paraglide (ADR-0016), the same shape as
-   hormoneCurve.ts beside it.
+/* The qualitative-shape hormone curve for the non-injectable routes (phase 4
+   ticket 11, widened to testosterone by phase 5 ticket 01; CONTEXT:
+   "Qualitative curve"). Pure, above the journal seam and free of paraglide
+   (ADR-0016), the same shape as hormoneCurve.ts beside it.
+
+   One call draws one hormone. Estradiol gets all four routes; testosterone
+   gets gel, on the same invented shape, and nothing else
+   (QUALITATIVE_ROUTES_BY_DRUG says why).
 
    Ticket 10's three-compartment model exists because estrannaise.js
    publishes a posterior fit for each injectable ester - a real measure of
    how a population's levels actually move. No comparable published fit
-   exists for these four routes in the same form, so there is nothing to fit
+   exists for these routes in the same form, so there is nothing to fit
    here and this file does not pretend otherwise: each route gets one fixed,
    invented rise/plateau/fall shape, scaled by dose and superposed across the
    dose log the same way an injection is. The shape is illustrative only -
@@ -24,7 +28,7 @@
    the injectable model's estrannaise.js credit. */
 
 import { doseMilligrams } from './hormoneCurveFit';
-import { isEstradiolDrug } from './hormoneEster';
+import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
 import { fractionalEpochDay } from './hormoneCurve';
 import { resolveEpisodeAt } from './regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from './types';
@@ -35,6 +39,35 @@ import type { DoseEvent, RegimenEpisode } from './types';
 export const QUALITATIVE_ROUTES = ['oral', 'sublingual', 'patch', 'gel'] as const;
 
 export type QualitativeRoute = (typeof QUALITATIVE_ROUTES)[number];
+
+/** Which routes each hormone actually gets a shape for (phase 5 ticket 01).
+    Not every route belongs to both drugs, and the shapes below are the reason:
+    each one was argued from a particular route's relative pharmacology, so
+    lending it to a route that behaves differently would draw something wrong
+    rather than something rough.
+
+    Testosterone gets gel and nothing else. A testosterone gel is applied once
+    a day and absorbed off the skin over that day, which is the same story the
+    gel shape was invented for, so it reuses that shape unchanged. The other
+    three are not testosterone's: a testosterone patch is changed daily where
+    this patch shape is a multi-day depot, oral testosterone undecanoate is a
+    lymphatic-absorption story with a food dependency that no trapezoid here
+    describes, and sublingual testosterone is not a route in use. Each of those
+    gets no curve, the same fail-closed answer an ester outside the vocabulary
+    gets. */
+export const QUALITATIVE_ROUTES_BY_DRUG = {
+  estradiol: ['oral', 'sublingual', 'patch', 'gel'],
+  testosterone: ['gel']
+} as const satisfies Record<CurveDrug, readonly QualitativeRoute[]>;
+
+/** The hormone-and-route pairs that actually get drawn, as one union. Derived
+    from the table above rather than listed again, so a route added or removed
+    there carries through - which is what makes the wording record in
+    vocabulary/hormoneCurveLabels.ts fail to typecheck when a new pair has no
+    message, the rule labels.ts sets out. */
+export type QualitativeCurveKey = {
+  [D in CurveDrug]: `${D}:${(typeof QUALITATIVE_ROUTES_BY_DRUG)[D][number]}`;
+}[CurveDrug];
 
 interface ShapeParams {
   riseHours: number;
@@ -54,7 +87,12 @@ interface ShapeParams {
       transdermal depot that is meant to be worn for days between changes.
     - gel: rises a little slower than sublingual, plateaus while it
       is being absorbed off the skin over the day, then fades by the next
-      application. */
+      application. The one shape both hormones use: a testosterone gel is
+      applied once a day and absorbed off the skin over that day too, so the
+      story this trapezoid was invented for is the same one. It carries no
+      drug-specific claim to get wrong either way - it is unitless until a
+      per-user scale factor calibrates it against that reader's own results
+      for that hormone. */
 const SHAPES: Record<QualitativeRoute, ShapeParams> = {
   oral: { riseHours: 2, plateauHours: 3, fallHours: 15 },
   sublingual: { riseHours: 1, plateauHours: 2, fallHours: 9 },
@@ -88,6 +126,13 @@ export interface QualitativeCurves {
 }
 
 export interface QualitativeCurveInput {
+  /** Which hormone to draw. One call answers for one drug, because almost
+      everything downstream of a curve differs between the two: the unit its
+      height means anything in, the analyte a scale factor is fitted against,
+      the axis two curves may share. Asking per drug keeps each of those a
+      single unambiguous value instead of a pair the caller has to keep
+      straight. */
+  drug: CurveDrug;
   doses: readonly DoseEvent[];
   episodes: readonly RegimenEpisode[];
   fromEpochDay: number;
@@ -149,7 +194,11 @@ function curveFor(
     QUALITATIVE_ROUTES order. Each dose resolves its own episode for its
     drug, the same way an injection does (hormoneCurve.ts). */
 export function qualitativeCurves(input: QualitativeCurveInput): QualitativeCurves {
-  const { doses, episodes, fromEpochDay, toEpochDay } = input;
+  const { drug, doses, episodes, fromEpochDay, toEpochDay } = input;
+  /* Widened from the literal tuple the table declares: the tuples are there so
+     QualitativeCurveKey can be derived from them, and nothing here needs to
+     know which drug's list this is. */
+  const routes: readonly QualitativeRoute[] = QUALITATIVE_ROUTES_BY_DRUG[drug];
 
   const dosesByRoute = new Map<QualitativeRoute, { day: number; milligrams: number }[]>();
   let dosesWithoutMilligrams = 0;
@@ -159,7 +208,12 @@ export function qualitativeCurves(input: QualitativeCurveInput): QualitativeCurv
     if (dose.status === 'skipped') continue;
 
     const episode = resolveEpisodeAt(episodes, dose.timestamp);
-    if (!episode || !isEstradiolDrug(episode.drug)) continue;
+    if (!episode) continue;
+    /* The asked-for hormone and no other. A gel dose of one drug must never
+       add height to the other's gel curve, which is the whole reason the two
+       vocabularies are kept apart. */
+    if (resolveCurveDrug(episode.drug) !== drug) continue;
+    if (!routes.includes(dose.route)) continue;
 
     const milligrams = doseMilligrams(dose.dose, dose.doseUnit);
     if (milligrams === null) {
@@ -173,11 +227,13 @@ export function qualitativeCurves(input: QualitativeCurveInput): QualitativeCurv
     else dosesByRoute.set(dose.route, [entry]);
   }
 
-  const curves = QUALITATIVE_ROUTES.filter((route) => dosesByRoute.has(route)).map((route) => ({
-    route,
-    points: curveFor(SHAPES[route], dosesByRoute.get(route)!, fromEpochDay, toEpochDay),
-    doseCount: dosesByRoute.get(route)!.length
-  }));
+  const curves = routes
+    .filter((route) => dosesByRoute.has(route))
+    .map((route) => ({
+      route,
+      points: curveFor(SHAPES[route], dosesByRoute.get(route)!, fromEpochDay, toEpochDay),
+      doseCount: dosesByRoute.get(route)!.length
+    }));
 
   return { curves, dosesWithoutMilligrams };
 }
