@@ -172,7 +172,7 @@ export type PreferenceKey = keyof PreferenceValues;
 export const PREFERENCE_DEFAULTS: PreferenceValues = {
   onboarded: false,
   name: '',
-  activePreset: 'p-btw',
+  activePreset: 'p-fem-masc',
   metricKind: 'mood',
   metricDimension: null,
   theme: 'system',

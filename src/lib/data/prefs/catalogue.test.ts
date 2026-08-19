@@ -65,3 +65,7 @@ test('theme and language default to following the system, as the PRD asks', () =
 test('a fresh install has not been onboarded', () => {
   expect(PREFERENCE_DEFAULTS.onboarded).toBe(false);
 });
+
+test('a fresh journal defaults to the symmetric fem+masc preset, not a single-axis one (ticket 28)', () => {
+  expect(PREFERENCE_DEFAULTS.activePreset).toBe('p-fem-masc');
+});

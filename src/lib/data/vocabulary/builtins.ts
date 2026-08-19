@@ -26,8 +26,6 @@ export const BUILT_IN_DIMENSIONS = [
 export type BuiltInDimensionKey = (typeof BUILT_IN_DIMENSIONS)[number]['key'];
 
 export const BUILT_IN_PRESETS = [
-  { key: 'p-btw', dims: ['euphoria_dysphoria', 'femininity'] },
-  { key: 'p-masc', dims: ['euphoria_dysphoria', 'masculinity'] },
   { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] },
   { key: 'p-fluid', dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary'] },
   { key: 'p-agender', dims: ['euphoria_dysphoria', 'agender_gendered'] },
@@ -36,7 +34,9 @@ export const BUILT_IN_PRESETS = [
   {
     key: 'p-nb',
     dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary', 'agender_gendered']
-  }
+  },
+  { key: 'p-btw', dims: ['euphoria_dysphoria', 'femininity'] },
+  { key: 'p-masc', dims: ['euphoria_dysphoria', 'masculinity'] }
 ] as const;
 
 export type BuiltInPresetKey = (typeof BUILT_IN_PRESETS)[number]['key'];

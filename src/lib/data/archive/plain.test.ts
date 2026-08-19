@@ -174,6 +174,6 @@ test('the JSON reads as a file, indented, version first', () => {
   },
   "preferences": {`
   );
-  assert.match(written, /\n {4}"name": "Ola",\n {4}"activePreset": "p-btw",/);
+  assert.match(written, /\n {4}"name": "Ola",\n {4}"activePreset": "p-fem-masc",/);
   assert.match(written, /\n {4}"palette": "lesbian",/);
 });
