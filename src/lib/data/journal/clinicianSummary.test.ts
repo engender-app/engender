@@ -1,6 +1,6 @@
 /* The clinician visit summary (phase 4 ticket 12): an assembly over rows
-   regimen, doses, labs, exposure, sideEffects and checklists own, recomputed
-   on every read. */
+   regimen, doses, labs, exposure, sideEffects, checklists and procedures
+   own, recomputed on every read. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -17,7 +17,8 @@ const areasOf = (journal: Journal) => ({
   labs: journal.labs,
   exposure: journal.exposure,
   sideEffects: journal.sideEffects,
-  checklists: journal.checklists
+  checklists: journal.checklists,
+  procedures: journal.procedures
 });
 
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
@@ -118,6 +119,7 @@ test('with nothing logged at all, every field comes back empty rather than throw
     labResults: [],
     exposure: { doseTotals: [], routeDays: [], regimenDays: [] },
     sideEffects: [],
+    procedures: [],
     appointmentPrepItems: []
   });
 });
@@ -125,7 +127,7 @@ test('with nothing logged at all, every field comes back empty rather than throw
 test('a section is registered for each part of the summary, in the order it prints', async () => {
   assert.deepEqual(
     CLINICIAN_SUMMARY_SECTIONS.map((s) => s.key),
-    ['regimenEpisodes', 'doses', 'labResults', 'exposure', 'sideEffects', 'appointmentPrepItems']
+    ['regimenEpisodes', 'doses', 'labResults', 'exposure', 'sideEffects', 'procedures', 'appointmentPrepItems']
   );
 });
 
@@ -143,4 +145,48 @@ test('registering a section is enough for it to reach a generated summary, with 
   assert.deepEqual((summary as unknown as Record<string, unknown>).throwaway, [19000, 19020]);
   // The five that were hand-assembled before still come back alongside it.
   assert.equal(summary.sideEffects.length, 1);
+});
+
+test("a procedure prints its dates, notes, recovery photo days and checklist state, whatever the range", async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 18000 });
+  await journal.procedures.addConsult(id, 17900);
+  await journal.procedures.setNotes(id, 'drains out on day five');
+  await journal.procedures.addPhoto(id, 18002, { full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+  const item = await journal.procedures.addChecklistItem(id, 'buy gauze');
+  await journal.checklists.setItemChecked(item.id, true);
+
+  // A range that excludes every one of those days: a procedure is an ongoing
+  // journey rather than a dated event, so it is not filtered out of the
+  // summary the way a dose or a lab result is.
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.deepEqual(summary.procedures, [
+    {
+      id,
+      name: 'top surgery',
+      surgeryEpochDay: 18000,
+      consults: [{ id: summary.procedures[0].consults[0].id, epochDay: 17900 }],
+      notes: 'drains out on day five',
+      photoEpochDays: [18002],
+      checklistItems: [{ id: item.id, content: 'buy gauze', checked: true, carriedForward: false }]
+    }
+  ]);
+});
+
+test('a procedure with no checklist yet prints an empty one rather than nothing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.procedures.upsertProcedure({ name: 'orchiectomy' });
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.deepEqual(summary.procedures[0].checklistItems, []);
+  assert.deepEqual(summary.procedures[0].photoEpochDays, []);
+  assert.equal(summary.procedures[0].surgeryEpochDay, null);
+});
+
+test("the appointment prep list still prints last, after the procedures section", async () => {
+  const keys = CLINICIAN_SUMMARY_SECTIONS.map((s) => s.key);
+  assert.equal(keys.at(-1), 'appointmentPrepItems', 'ticket 11 asked for it as the summary\'s final page');
+  assert.ok(keys.indexOf('procedures') < keys.indexOf('appointmentPrepItems'));
 });
