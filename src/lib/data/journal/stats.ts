@@ -174,6 +174,17 @@ export interface StatsArea {
     a day's average mood has to clear for on-this-day (CONTEXT: Good day). */
 export const GOOD_DAY_MOOD_FLOOR = 3;
 
+/** The body-region intensity scale is 0 to 100 (bodyMap.ts); 50 is its
+    midpoint and the bar a single region's euphoria has to clear, on any one
+    entry, for both the good-day rule below and entries.counterevidencePool
+    (phase 5 ticket 44, CONTEXT: "Good day", "Euphoria capture" - amended).
+    Named apart from the euphoria tags' own good-day clause: a region is a
+    magnitude a person can log without a euphoria tag at all, so it needs its
+    own floor rather than reusing GOOD_DAY_MOOD_FLOOR's shape or piggybacking
+    on EUPHORIA_TAG_KEYS. Compared inclusively (`>=`), the same convention
+    GOOD_DAY_MOOD_FLOOR itself uses. */
+export const GOOD_DAY_REGION_EUPHORIA_FLOOR = 50;
+
 /* Which rows carry "the metric", as a subquery plus its parameters. Mood
    is a column on the entry and a dimension value is a row in a join table,
    so the two cannot be parameterised into one statement - but everything
@@ -574,8 +585,20 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
              JOIN entry_tag et ON et.entry_id = e.id
              JOIN tag t ON t.id = et.tag_id
              WHERE e.epoch_day = ? AND COALESCE(t.key, t.uuid) IN (${placeholders}) AND e.trashed_at IS NULL
+           )
+           OR EXISTS (
+             SELECT 1 FROM entry e
+             JOIN entry_body_region ebr ON ebr.entry_id = e.id
+             WHERE e.epoch_day = ? AND ebr.euphoria >= ? AND e.trashed_at IS NULL
            ) AS good`,
-        [epochDay, GOOD_DAY_MOOD_FLOOR, epochDay, ...EUPHORIA_TAG_KEYS]
+        [
+          epochDay,
+          GOOD_DAY_MOOD_FLOOR,
+          epochDay,
+          ...EUPHORIA_TAG_KEYS,
+          epochDay,
+          GOOD_DAY_REGION_EUPHORIA_FLOOR
+        ]
       );
       return Boolean(rows[0]?.good);
     }
