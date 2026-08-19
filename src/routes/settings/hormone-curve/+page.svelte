@@ -240,11 +240,23 @@
   {:else if injectableView.curves.length === 0 && qualSections.length === 0}
     <!-- One empty state for every way of having no curve at all, across both
          kinds: nothing in the log adds up to either one. -->
-    <EmptyState title={m.curve_empty_title()} text={m.curve_empty_body()}>
-      {#snippet action()}
-        <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
-      {/snippet}
-    </EmptyState>
+    <!-- The invitation to the dose log only when logging could actually produce
+         a curve. Someone whose doses are all on an ester this screen draws
+         nothing for has already done the thing it would be asking for, and
+         saying so again would put the limit on them rather than on this
+         screen. -->
+    {#if injectableView.dosesNoCurveAnywhere > 0}
+      <EmptyState title={m.curve_empty_title()} text={m.curve_empty_body()} />
+      <p class="muted small curve-note" data-no-curve-note>
+        {m.curve_no_curve_note({ count: String(injectableView.dosesNoCurveAnywhere) })}
+      </p>
+    {:else}
+      <EmptyState title={m.curve_empty_title()} text={m.curve_empty_body()}>
+        {#snippet action()}
+          <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
+        {/snippet}
+      </EmptyState>
+    {/if}
     {#if injectableView.dosesWithoutMilligrams > 0}
       <p class="muted small curve-note">{m.curve_volume_note({ count: String(injectableView.dosesWithoutMilligrams) })}</p>
     {/if}
@@ -254,7 +266,6 @@
     {#if qualDosesWithoutMilligrams > 0}
       <p class="muted small curve-note">{m.curve_qual_volume_note({ count: String(qualDosesWithoutMilligrams) })}</p>
     {/if}
-    <p class="muted small curve-note" data-evidence-note>{m.curve_evidence_note()}</p>
   {:else}
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.curve_intro()}</p>
 
@@ -348,11 +359,11 @@
       <!-- Keyed by hormone and route together: the same route on the two
            hormones is two cards, and a key of the route alone would collide. -->
       {#each qualSections as { drug, view } (drug)}
-        {#each view.curves as curve (`${drug}:${curve.route}`)}
+        {#each view.curves as curve (curve.key)}
           {@const lines = qualLines(drug, view, curve)}
           <div class="card curve-card">
             <div class="qual-card-head">
-              <h3 class="curve-card-heading">{qualitativeCurveLabel(drug, curve.route)}</h3>
+              <h3 class="curve-card-heading">{qualitativeCurveLabel(curve.key)}</h3>
               <span class="qual-notice">{m.curve_qual_notice()}</span>
             </div>
 
@@ -362,7 +373,7 @@
               formatValue={round}
               unitLabel={qualUnitLabel(drug, view)}
               ariaLabel={m.curve_qual_chart_aria({
-                route: qualitativeCurveLabel(drug, curve.route),
+                route: qualitativeCurveLabel(curve.key),
                 from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
                 to: fmtDay(today, { day: 'numeric', month: 'short' })
               })}
@@ -417,13 +428,16 @@
            so two unlabelled lines would read as one contradicting itself. -->
       {#each qualSections as { drug, view } (drug)}
         <p class="muted small curve-note" data-qual-fit-status={drug} aria-live="polite">
-          {curveDrugLabel(drug)}:
           {#if view.scaleFactor !== null}
-            {m.curve_qual_fit_applied({ count: String(view.fitPointCount), factor: view.scaleFactor.toFixed(2) })}
+            {m.curve_qual_fit_applied({
+              drug: curveDrugLabel(drug),
+              count: String(view.fitPointCount),
+              factor: view.scaleFactor.toFixed(2)
+            })}
           {:else if view.dosesWithoutMilligrams > 0}
-            {m.curve_qual_fit_incomplete()}
+            {m.curve_qual_fit_incomplete({ drug: curveDrugLabel(drug) })}
           {:else}
-            {m.curve_fit_no_points()}
+            {m.curve_qual_fit_no_points({ drug: curveDrugLabel(drug) })}
           {/if}
         </p>
       {/each}

@@ -19,15 +19,17 @@
    "testosterone", so one substring covers both, where estradiol's esters
    needed a list per language.
 
-   There is no list of testosterone esters here, and that is the finding of
-   ticket 01 rather than work left undone. No published testosterone fit
-   clears the bar the four estradiol esters clear, so no testosterone ester
-   gets a band and this vocabulary is empty. The bar, measured rather than
-   taken on trust: recomputing the 5th-to-95th percentile ratio of the average
-   level across estrannaise's own posterior samples gives 1.19 (enanthate),
-   1.24 (valerate), 1.28 (benzoate) and 1.29 (cypionate), against 7.64 for the
-   estradiol undecylate that was rejected for being too loose to draw. That is
-   what CONTEXT.md's "about a third" and "more than tenfold" describe.
+   No ester here gets a fitted band, and that is ticket 01's finding rather than
+   work left undone. The list below exists to pick an illustrative shape, which
+   is a far weaker claim than a band and needs no posterior behind it; what no
+   testosterone ester has is a published fit tight enough to draw a band from.
+
+   The bar, measured rather than taken on trust: recomputing the 5th-to-95th
+   percentile ratio of the average level across estrannaise's own posterior
+   samples gives 1.19 (enanthate), 1.24 (valerate), 1.28 (benzoate) and 1.29
+   (cypionate), against 7.64 for the estradiol undecylate that was rejected for
+   being too loose to draw. That is what CONTEXT.md's "about a third" and "more
+   than tenfold" describe.
 
    Two testosterone esters are tighter than any of those four and still fail,
    both on the second condition rather than on width:
@@ -91,6 +93,7 @@
    which is a judgement that paper does not license. Until then, no band. */
 
 import { mentions, normalize, type DrugNames } from './hormoneNameMatch';
+import type { RegimenEpisode } from './types';
 
 /** The drug has to be testosterone before any ester word is worth reading,
     the mirror of hormoneEster.ts's ESTRADIOL_NAMES gate.
@@ -124,4 +127,51 @@ export function isTestosteroneDrug(drug: string): boolean {
   const text = normalize(drug);
   if (mentions(text, NOT_TESTOSTERONE)) return false;
   return mentions(text, TESTOSTERONE_NAMES);
+}
+
+/** The testosterone esters this app draws a shape for. Not a band: no
+    testosterone fit clears that bar, which is what the header argues at
+    length. What these two share is a per-dose time course close enough to each
+    other to carry one illustrative shape - a peak a day or two after the
+    injection and a decline over the following week, on published half-lives of
+    about four days (cypionate) and about seven (enanthate).
+
+    Undecanoate and the Sustanon-type blends are deliberately absent, and for
+    the usual reason rather than a new one. Undecanoate is a months-long depot
+    dosed every ten to twelve weeks, so the weekly shape would be wrong by an
+    order of magnitude rather than roughly right. A blend is four esters at
+    once, and every published curve of one is composite total testosterone - no
+    paper resolves it into per-ester release, so a per-ester shape is impossible
+    in principle and the composite is a third shape again. Both would need a
+    shape of their own, argued from their own sources, and neither gets the one
+    below in the meantime. Propionate has no usable published parameters at all.
+    Order is the order screens list them in. */
+export const INJECTABLE_TESTOSTERONE_ESTERS = ['cypionate', 'enanthate'] as const;
+
+export type InjectableTestosteroneEster = (typeof INJECTABLE_TESTOSTERONE_ESTERS)[number];
+
+/** Names matched the way hormoneEster.ts matches estradiol's: the full word
+    anywhere, the abbreviation only as a whole word. The Polish forms are their
+    own words rather than the English with an accent, so both are listed. */
+const TESTOSTERONE_ESTER_NAMES: Record<InjectableTestosteroneEster, DrugNames> = {
+  cypionate: { names: ['cypionate', 'cipionate', 'cypionian'], abbreviations: ['tc', 'tcyp'] },
+  enanthate: { names: ['enanthate', 'oenanthate', 'heptanoate', 'enantan'], abbreviations: ['te', 'ten'] }
+};
+
+/** Which testosterone ester `episode` is on, or null when this app draws
+    nothing for it: the drug is not testosterone, or the ester is not one of the
+    two with a shape. The ester field is read first and the drug field second,
+    the same precedence hormoneEster.ts uses and for the same reason - someone
+    who corrects the ester without retyping the drug means the narrower field.
+
+    A null here is not a gap to fill by guessing. It is how undecanoate, the
+    blends and an unrecognized ester all end up drawn as nothing at all. */
+export function resolveTestosteroneEster(
+  episode: Pick<RegimenEpisode, 'drug' | 'ester'>
+): InjectableTestosteroneEster | null {
+  if (!isTestosteroneDrug(episode.drug)) return null;
+
+  const esterIn = (text: string) =>
+    INJECTABLE_TESTOSTERONE_ESTERS.find((ester) => mentions(text, TESTOSTERONE_ESTER_NAMES[ester])) ?? null;
+  return esterIn(normalize(episode.ester ?? '')) ?? esterIn(normalize(episode.drug));
 }

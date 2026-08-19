@@ -23,6 +23,7 @@ import {
   type EsterCurve
 } from '../hormoneCurve';
 import { fitScaleFactorToLabs } from '../hormoneCurveFit';
+import { dosesWithNoCurve } from '../hormoneCurveQualitative';
 import { resolveInjectableEster, type InjectableEster } from '../hormoneEster';
 import { resolveEpisodeAt } from '../regimenEpisode';
 import { drawInstant } from '../labTiming';
@@ -65,6 +66,13 @@ export interface HormoneCurveView {
   scaleFactor: number | null;
   /** How many of the user's own points the factor was fitted from. */
   fitPointCount: number;
+  /** Doses in the window this app draws no curve for at all, by either model.
+      A whole-screen fact rather than an estradiol one, and it lives on this
+      view because this is the call the screen makes once - the qualitative
+      area is asked per hormone, and asking it there would compute the same
+      number twice. What the empty state reads to tell "nothing logged yet"
+      apart from "logged, and outside what this app draws". */
+  dosesNoCurveAnywhere: number;
 }
 
 export interface HormoneCurveArea {
@@ -158,7 +166,8 @@ export function makeHormoneCurveArea(
         labPoints,
         labPointsOffAxis,
         scaleFactor: fit?.factor ?? null,
-        fitPointCount: fit?.pointsUsed ?? 0
+        fitPointCount: fit?.pointsUsed ?? 0,
+        dosesNoCurveAnywhere: dosesWithNoCurve({ doses: doseEvents, episodes, fromEpochDay, toEpochDay })
       };
     }
   };
