@@ -5,8 +5,8 @@
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
-  import { capturePhoto, pickPhotos, type EditorPhoto, type ReferencePhoto } from '$lib/stores/photoPicking';
-  import type { NormalizedPhoto } from '$lib/data/journal/photos';
+  import { pickPhotos, type EditorPhoto } from '$lib/stores/photoPicking';
+  import { photoReview } from '$lib/stores/photoReview.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
@@ -70,20 +70,12 @@
     if (photo && editor) editor.photo = { kind: 'picked', photo };
   }
 
-  let reviewingPhoto = $state<NormalizedPhoto | null>(null);
-  let reviewReference = $derived<ReferencePhoto | null>(
-    editor?.originalPhoto?.fileName ? { fileName: editor.originalPhoto.fileName } : null
+  const milestonePhotoReview = photoReview(
+    () => (editor?.originalPhoto?.fileName ? { fileName: editor.originalPhoto.fileName } : null),
+    (photo) => {
+      if (editor) editor.photo = { kind: 'picked', photo };
+    }
   );
-
-  async function takePhoto() {
-    const photo = await capturePhoto();
-    if (photo) reviewingPhoto = photo;
-  }
-
-  function useReviewedPhoto(photo: NormalizedPhoto) {
-    if (editor) editor.photo = { kind: 'picked', photo };
-    reviewingPhoto = null;
-  }
 
   async function saveMilestone() {
     if (!editor) return;
@@ -191,7 +183,7 @@
             <button class="photo-add" aria-label={m.add_photo()} onclick={pickPhoto}>
               <Icon name="image" size={20} /><span>{m.add_photo()}</span>
             </button>
-            <button class="photo-add" aria-label={m.add_photo_camera()} onclick={takePhoto}>
+            <button class="photo-add" aria-label={m.add_photo_camera()} onclick={milestonePhotoReview.capture}>
               <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
             </button>
           {/if}
@@ -217,10 +209,10 @@
   </Sheet>
 
   <PhotoAlignmentReview
-    photo={reviewingPhoto}
-    reference={reviewReference}
-    onAccept={useReviewedPhoto}
-    onRetake={takePhoto}
-    onCancel={() => (reviewingPhoto = null)}
+    photo={milestonePhotoReview.photo}
+    reference={milestonePhotoReview.reference}
+    onAccept={milestonePhotoReview.accept}
+    onRetake={milestonePhotoReview.capture}
+    onCancel={milestonePhotoReview.cancel}
   />
 </div>

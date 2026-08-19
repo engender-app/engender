@@ -10,7 +10,8 @@
   import { HAIR_REMOVAL_METHODS } from '$lib/data/types';
   import type { HairRemovalPhoto } from '$lib/data/journal/hairRemoval';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { capturePhoto, pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
+  import { pickPhotos } from '$lib/stores/photoPicking';
+  import { photoReview } from '$lib/stores/photoReview.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -101,20 +102,10 @@
   }
 
   // The context is this session: its own last photo, already loaded above.
-  let reviewingPhoto = $state<NormalizedPhoto | null>(null);
-  let reviewReference = $derived<ReferencePhoto | null>(
-    photos.length ? { fileName: photos[photos.length - 1].fileName } : null
+  const sessionPhotoReview = photoReview(
+    () => (photos.length ? { fileName: photos[photos.length - 1].fileName } : null),
+    storePhoto
   );
-
-  async function captureSessionPhoto() {
-    const photo = await capturePhoto();
-    if (photo) reviewingPhoto = photo;
-  }
-
-  async function useReviewedPhoto(photo: NormalizedPhoto) {
-    reviewingPhoto = null;
-    await storePhoto(photo);
-  }
 
   async function deletePhoto() {
     if (!photoDeleteTarget) return;
@@ -247,7 +238,7 @@
           <button class="photo-add" aria-label={m.add_photo()} onclick={pickSessionPhoto}>
             <Icon name="image" size={20} /><span>{m.add_photo()}</span>
           </button>
-          <button class="photo-add" aria-label={m.add_photo_camera()} onclick={captureSessionPhoto}>
+          <button class="photo-add" aria-label={m.add_photo_camera()} onclick={sessionPhotoReview.capture}>
             <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
           </button>
         </div>
@@ -302,10 +293,10 @@
   </Sheet>
 
   <PhotoAlignmentReview
-    photo={reviewingPhoto}
-    reference={reviewReference}
-    onAccept={useReviewedPhoto}
-    onRetake={captureSessionPhoto}
-    onCancel={() => (reviewingPhoto = null)}
+    photo={sessionPhotoReview.photo}
+    reference={sessionPhotoReview.reference}
+    onAccept={sessionPhotoReview.accept}
+    onRetake={sessionPhotoReview.capture}
+    onCancel={sessionPhotoReview.cancel}
   />
 </div>

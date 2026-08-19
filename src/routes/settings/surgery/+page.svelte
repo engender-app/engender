@@ -18,7 +18,8 @@
   import type { ChecklistItem, Procedure, ProcedureConsult } from '$lib/data/types';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { capturePhoto, pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
+  import { pickPhotos } from '$lib/stores/photoPicking';
+  import { photoReview } from '$lib/stores/photoReview.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -171,20 +172,10 @@
 
   // The context is this procedure's recovery log: its own last photo,
   // already loaded above.
-  let reviewingPhoto = $state<NormalizedPhoto | null>(null);
-  let reviewReference = $derived<ReferencePhoto | null>(
-    photos.length ? { fileName: photos[photos.length - 1].fileName } : null
+  const recoveryPhotoReview = photoReview(
+    () => (photos.length ? { fileName: photos[photos.length - 1].fileName } : null),
+    storePhoto
   );
-
-  async function captureRecoveryPhoto() {
-    const photo = await capturePhoto();
-    if (photo) reviewingPhoto = photo;
-  }
-
-  async function useReviewedPhoto(photo: NormalizedPhoto) {
-    reviewingPhoto = null;
-    await storePhoto(photo);
-  }
 
   async function deletePhoto() {
     if (!photoDeleteTarget) return;
@@ -449,7 +440,7 @@
       <button class="btn btn-soft" data-pick-procedure-photo onclick={pickRecoveryPhoto}>
         <span>{m.surgery_photo_pick()}</span>
       </button>
-      <button class="btn btn-soft" data-capture-procedure-photo onclick={captureRecoveryPhoto}>
+      <button class="btn btn-soft" data-capture-procedure-photo onclick={recoveryPhotoReview.capture}>
         <span>{m.surgery_photo_capture()}</span>
       </button>
     </div>
@@ -492,11 +483,11 @@
   </Sheet>
 
   <PhotoAlignmentReview
-    photo={reviewingPhoto}
-    reference={reviewReference}
-    onAccept={useReviewedPhoto}
-    onRetake={captureRecoveryPhoto}
-    onCancel={() => (reviewingPhoto = null)}
+    photo={recoveryPhotoReview.photo}
+    reference={recoveryPhotoReview.reference}
+    onAccept={recoveryPhotoReview.accept}
+    onRetake={recoveryPhotoReview.capture}
+    onCancel={recoveryPhotoReview.cancel}
   />
 </div>
 
