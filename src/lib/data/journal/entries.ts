@@ -41,7 +41,7 @@ import {
   stageRecording,
   type StagedRecording
 } from './voiceRecordings';
-import { domainIdOf, mintUuid, now, rowidByUuid } from './support';
+import { assertChanged, bool, domainIdOf, mintUuid, now, rowidByUuid } from './support';
 
 /** How long a trashed entry survives before purgeExpiredTrash reclaims it
     (phase 5 ticket 19). Fixed, like the hair-photo schedule's 28 days
@@ -89,6 +89,9 @@ export interface EntrySearchFilters {
   endEpochDay?: number | null;
   hasNote?: boolean;
   hasPhoto?: boolean;
+  /** Starred entries only (CONTEXT: "Starred") - the starred shelf's own
+      query, reached from search. */
+  starred?: boolean;
 }
 
 export interface EntriesArea {
@@ -104,6 +107,14 @@ export interface EntriesArea {
       (ADR-0002). An unknown id yields nothing rather than throwing - this
       is a read. */
   entriesWithTag(tagId: string, limit: number): Promise<Entry[]>;
+  /** Entries carrying `tagId` or starred (CONTEXT: "Starred"), newest
+      first, at most `limit` of them - the doubt journal's counterevidence
+      pool (ticket 14 widened this from a tag-only query so a person can
+      curate their own "proof" rather than relying solely on whatever
+      happened to get the tag). Not folded into entriesWithTag itself: that
+      one is also the stats screen's tag-insight query, for an arbitrary
+      tag, and starred entries have no business surfacing there. */
+  counterevidencePool(tagId: string, limit: number): Promise<Entry[]>;
   /** Notes matching the query, unioned with the entries carrying any of
       `matchingTagIds`, newest first (ADR-0005, PRD F19).
 
@@ -137,11 +148,15 @@ export interface EntriesArea {
   /** Every trashed entry, most recently trashed first - the dedicated trash
       view's only read (out of scope: any other screen surfacing them). */
   trashedEntries(): Promise<TrashedEntry[]>;
+  /** Starred sits outside upsertEntry's input (CONTEXT: "Starred"): it is
+      curation metadata, not one of the seven content fields, so it gets
+      its own toggle the way setTagHidden does rather than folding into a
+      content save. Throws on an unknown id. */
+  setEntryStarred(id: number, starred: boolean): Promise<void>;
 }
 
 export interface TrashedEntry extends Entry {
   trashedAt: number;
-}
 
 /* A type alias, not an interface: the driver's row generic is constrained
    to Record<string, unknown>, which interfaces do not structurally satisfy. */
@@ -151,6 +166,7 @@ type EntryRow = {
   timestamp: number;
   mood: number | null;
   note: string | null;
+  starred: number;
 };
 
 type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: string };
@@ -376,7 +392,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       tags: tags.get(row.id) ?? [],
       photos: photos.get(row.id) ?? [],
       recordings: recordings.get(row.id) ?? [],
-      bodyRegions: bodyRegions.get(row.id) ?? {}
+      bodyRegions: bodyRegions.get(row.id) ?? {},
+      starred: bool(row.starred)
     }));
   };
 
@@ -475,6 +492,9 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     if (filters.hasPhoto) {
       clauses.push('EXISTS (SELECT 1 FROM photo p WHERE p.entry_id = e.id)');
     }
+    if (filters.starred) {
+      clauses.push('e.starred = 1');
+    }
 
     return clauses.length === 0 ? null : { where: clauses.join(' AND '), params };
   };
@@ -495,7 +515,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
   return {
     async getEntry(id) {
       const rows = await driver.query<EntryRow>(
-        'SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE id = ? AND trashed_at IS NULL',
+        'SELECT id, epoch_day, timestamp, mood, note, starred FROM entry WHERE id = ? AND trashed_at IS NULL',
         [id]
       );
       return rows[0] && (await hydrate(rows))[0];
@@ -503,7 +523,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
 
     async entriesForDay(epochDay) {
       const rows = await driver.query<EntryRow>(
-        `SELECT id, epoch_day, timestamp, mood, note FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred FROM entry
          WHERE epoch_day = ? AND trashed_at IS NULL ORDER BY timestamp, id`,
         [epochDay]
       );
@@ -517,7 +537,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
          excluded from both: a day whose only entry is trashed must not
          count towards the days this picks. */
       const rows = await driver.query<EntryRow>(
-        `SELECT id, epoch_day, timestamp, mood, note FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred FROM entry
          WHERE trashed_at IS NULL
            AND epoch_day IN (
              SELECT DISTINCT epoch_day FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day DESC LIMIT ?
@@ -532,10 +552,35 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       // COALESCE(key, uuid) is a tag's domain id (ADR-0002), the same rule
       // searchEntries and the tag insights match on.
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
          JOIN tag t ON t.id = et.tag_id
          WHERE COALESCE(t.key, t.uuid) = ? AND e.trashed_at IS NULL
+         ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
+         LIMIT ?`,
+        [tagId, limit]
+      );
+      return hydrate(rows);
+    },
+
+    async counterevidencePool(tagId, limit) {
+      // EXISTS rather than a JOIN: a starred entry carrying several other
+      // tags would otherwise arrive once per tag row, since the tag match
+      // itself has to live in the WHERE clause (an entry need not carry
+      // `tagId` at all to qualify here) rather than the JOIN condition.
+      // Trashed entries are excluded the same way every other read here is
+      // (phase 5 ticket 19) - a trashed entry is not counterevidence for
+      // anything until it is restored.
+      const rows = await driver.query<EntryRow>(
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
+         WHERE e.trashed_at IS NULL
+           AND (
+             e.starred = 1
+             OR EXISTS (
+               SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+               WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) = ?
+             )
+           )
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
         [tagId, limit]
@@ -549,7 +594,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       if (!matches) return [];
 
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
          WHERE e.trashed_at IS NULL AND ${matches.where}
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          ${args.limit == null ? '' : 'LIMIT ?'}`,
@@ -570,7 +615,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
 
     async trashedEntries() {
       const rows = await driver.query<EntryRow & { trashed_at: number }>(
-        `SELECT id, epoch_day, timestamp, mood, note, trashed_at FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, trashed_at FROM entry
          WHERE trashed_at IS NOT NULL ORDER BY trashed_at DESC`
       );
       const trashedAtById = new Map(rows.map((row) => [row.id, row.trashed_at]));
@@ -731,6 +776,15 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       if (!current) return;
       await driver.run('UPDATE entry SET trashed_at = NULL WHERE id = ?', [id]);
       await indexEntry(id, current.note ?? '');
+    },
+
+    async setEntryStarred(id, starred) {
+      const result = await driver.run('UPDATE entry SET starred = ?, updated_at = ? WHERE id = ?', [
+        starred ? 1 : 0,
+        now(),
+        id
+      ]);
+      assertChanged(result, `entry: ${id}`);
     }
   };
 }

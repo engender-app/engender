@@ -73,6 +73,23 @@
   width: 24px; height: 24px; border-radius: 50%;
   background: var(--text);
 }
+/* Same 44px-touch-target/24px-badge shape as .photo-remove, opposite corner
+   so the two never collide. */
+.photo-star {
+  position: absolute; bottom: -16px; left: -16px;
+  width: var(--touch-target); height: var(--touch-target);
+  border: none; cursor: pointer;
+  background: none; color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+}
+.photo-star::before {
+  content: '';
+  position: absolute; inset: 0; margin: auto;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--text);
+}
+.photo-star .icon { position: relative; }
+.photo-star.is-starred { color: var(--accent); }
 .photo-add {
   width: 72px; height: 72px;
   border-radius: var(--radius-md);
@@ -473,6 +490,25 @@
   width: 22px; height: 22px; border-radius: 50%;
   background: var(--accent); color: var(--on-accent);
   display: flex; align-items: center; justify-content: center;
+}
+
+/* ---------- Starred shelf ---------- */
+.starred-photo-cell {
+  position: relative; border: none; background: none; padding: 0;
+  display: flex; flex-direction: column; gap: 4px; align-items: center;
+}
+.starred-photo-unstar {
+  position: absolute; top: -8px; right: -8px;
+  width: var(--touch-target); height: var(--touch-target);
+  border: none; cursor: pointer; background: none; color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.starred-photo-unstar .icon { position: relative; }
+.starred-photo-unstar::before {
+  content: '';
+  position: absolute; inset: 0; margin: auto;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface); box-shadow: var(--shadow-1);
 }
 .compare-gap { text-align: center; font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; margin-bottom: var(--space-5); }
 .compare-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }

@@ -19,9 +19,10 @@ const existingEntry = (): Entry => ({
   note: 'ok day',
   dims: { masculinity: 40 },
   tags: ['e-happy'],
-  photos: [{ id: 'p1', fileName: 'p1.jpg' }],
+  photos: [{ id: 'p1', fileName: 'p1.jpg', starred: false }],
   recordings: [{ id: 'r1', fileName: 'r1.webm' }],
-  bodyRegions: { chest: 60 }
+  bodyRegions: { chest: 60 },
+  starred: false
 });
 
 test('a fresh draft with no existing entry starts empty on the given day', () => {
@@ -46,7 +47,7 @@ test('a draft hydrated from an existing entry copies its fields and stored photo
   assert.equal(draft.note, 'ok day');
   assert.deepEqual(draft.dims, { masculinity: 40 });
   assert.deepEqual(draft.tags, ['e-happy']);
-  assert.deepEqual(draft.photos, [{ kind: 'stored', photo: { id: 'p1', fileName: 'p1.jpg' } }]);
+  assert.deepEqual(draft.photos, [{ kind: 'stored', photo: { id: 'p1', fileName: 'p1.jpg', starred: false } }]);
   assert.deepEqual(draft.recordings, [{ kind: 'stored', recording: { id: 'r1', fileName: 'r1.webm' } }]);
   assert.deepEqual(draft.bodyRegions, { chest: 60 });
 });
@@ -218,7 +219,7 @@ test('hydrating copies the existing entry, so a later mutation of it cannot disc
   original.note = 'clobbered';
   original.dims.masculinity = 999;
   original.tags.push('should-not-appear');
-  original.photos.push({ id: 'p2', fileName: 'p2.jpg' });
+  original.photos.push({ id: 'p2', fileName: 'p2.jpg', starred: false });
   original.recordings.push({ id: 'r2', fileName: 'r2.webm' });
   original.bodyRegions.chest = 999;
 

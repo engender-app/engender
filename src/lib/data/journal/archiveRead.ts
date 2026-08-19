@@ -52,7 +52,13 @@ import type {
 } from '../archive/payload';
 import { bool, domainIdOf } from './support';
 
-export type PhotoRow = { uuid: string; file_path: string; entry_id: number | null; milestone_id: number | null };
+export type PhotoRow = {
+  uuid: string;
+  file_path: string;
+  entry_id: number | null;
+  milestone_id: number | null;
+  starred: number;
+};
 export type RecordingRow = { uuid: string; file_path: string; entry_id: number };
 export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
 export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
@@ -79,7 +85,7 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
     // from these rows, and trash is out of scope for archives entirely
     // (phase 5 ticket 19).
     photos: await driver.query<PhotoRow>(
-      `SELECT p.uuid, p.file_path, p.entry_id, p.milestone_id FROM photo p
+      `SELECT p.uuid, p.file_path, p.entry_id, p.milestone_id, p.starred FROM photo p
        LEFT JOIN entry e ON e.id = p.entry_id
        WHERE p.entry_id IS NULL OR e.trashed_at IS NULL
        ORDER BY p.order_index, p.id`
@@ -115,7 +121,11 @@ function groupBy<Row, Value>(rows: Row[], key: (row: Row) => number, value: (row
   return grouped;
 }
 
-const toArchivePhoto = (row: PhotoRow): ArchivePhoto => ({ id: row.uuid, fileName: row.file_path });
+const toArchivePhoto = (row: PhotoRow): ArchivePhoto => ({
+  id: row.uuid,
+  fileName: row.file_path,
+  starred: bool(row.starred)
+});
 
 const toArchiveVoiceRecording = (row: RecordingRow): ArchiveVoiceRecording => ({
   id: row.uuid,
@@ -197,11 +207,12 @@ export async function readEntries({ driver, photos, recordings }: SectionRead): 
     timestamp: number;
     mood: number | null;
     note: string | null;
+    starred: number;
   }>(
     // Trashed entries are excluded (phase 5 ticket 19): trash is out of
     // scope for archives, and readRowContext has already left their photos
     // and recordings out of `photos`/`recordings` for the same reason.
-    'SELECT id, uuid, epoch_day, timestamp, mood, note FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day, timestamp, id'
+    'SELECT id, uuid, epoch_day, timestamp, mood, note, starred FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day, timestamp, id'
   );
 
   const dimensionValues = await driver.query<{ entry_id: number; key: string; value: number }>(
@@ -232,7 +243,8 @@ export async function readEntries({ driver, photos, recordings }: SectionRead): 
     tags: tags.get(r.id) ?? [],
     photos: byEntry.get(r.id) ?? [],
     recordings: recordingsByEntry.get(r.id) ?? [],
-    bodyRegions: Object.fromEntries(bodyRegions.get(r.id) ?? [])
+    bodyRegions: Object.fromEntries(bodyRegions.get(r.id) ?? []),
+    starred: bool(r.starred)
   }));
 }
 

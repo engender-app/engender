@@ -21,7 +21,7 @@ import { toast } from './toasts.svelte';
     normalized but not yet stored. The two are not interchangeable - a stored
     photo is a row to keep or remove, a picked one is bytes to write. */
 export type EditorPhoto =
-  | { kind: 'stored'; photo: { id: string; fileName: string | null } }
+  | { kind: 'stored'; photo: { id: string; fileName: string | null; starred: boolean } }
   | { kind: 'picked'; photo: NormalizedPhoto };
 
 const picker = filePhotoPicker();

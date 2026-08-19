@@ -254,7 +254,8 @@ export async function daylioPreview(
       tags: [],
       photos: [],
       recordings: [],
-      bodyRegions: {}
+      bodyRegions: {},
+      starred: false
     };
 
     if (
