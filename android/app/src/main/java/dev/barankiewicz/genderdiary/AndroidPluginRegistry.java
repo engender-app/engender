@@ -14,6 +14,7 @@ import dev.barankiewicz.genderdiary.backup.AutoExportPlugin;
 import dev.barankiewicz.genderdiary.disguise.DisguisePlugin;
 import dev.barankiewicz.genderdiary.keystore.KeystorePlugin;
 import dev.barankiewicz.genderdiary.photos.PhotosPlugin;
+import dev.barankiewicz.genderdiary.print.PrintPlugin;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
 import dev.barankiewicz.genderdiary.reminders.RemindersPlugin;
 import dev.barankiewicz.genderdiary.retrospective.RetrospectiveNotificationsPlugin;
@@ -35,6 +36,7 @@ public final class AndroidPluginRegistry {
         new PluginEntry("RetrospectiveNotifications", RetrospectiveNotificationsPlugin.class),
         new PluginEntry("Disguise", DisguisePlugin.class),
         new PluginEntry("QuickExit", QuickExitPlugin.class),
+        new PluginEntry("Print", PrintPlugin.class),
         // NAV-001/NAV-002: the official @capacitor/app plugin, registered
         // the same way as our own plugins so the Android back gesture
         // (src/lib/android/back-navigation.ts) has something real to call.
