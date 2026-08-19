@@ -19,7 +19,8 @@ const SECTION_TITLE: Record<ClinicianSummarySectionKey, () => string> = {
   doses: m.doses,
   labResults: m.lab_results,
   exposure: m.exposure_title,
-  sideEffects: m.side_effects
+  sideEffects: m.side_effects,
+  appointmentPrepItems: m.appointment_prep_title
 };
 
 /** What a section prints as its heading. */

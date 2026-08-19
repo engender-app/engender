@@ -112,3 +112,38 @@ test('reorder takes the whole order and rejects anything that is not a permutati
   await assert.rejects(journal.checklists.reorder(checklist.id, [a.id, b.id]), /permute/);
   await assert.rejects(journal.checklists.reorder('nope', reversed));
 });
+
+test('with no standalone checklist created yet, getStandaloneChecklist reads as undefined', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.checklists.getStandaloneChecklist(), undefined);
+});
+
+test('an owned checklist never answers as the standalone one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.checklists.createChecklist({ kind: 'procedure', id: 'p-1' });
+  assert.equal(await journal.checklists.getStandaloneChecklist(), undefined);
+});
+
+test('addToStandaloneChecklist creates the standalone checklist on first use', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const item = await journal.checklists.addToStandaloneChecklist('ask about spironolactone dose');
+
+  assert.match(item.id, UUID_PATTERN);
+  assert.deepEqual(item, { id: item.id, content: 'ask about spironolactone dose', checked: false, carriedForward: false });
+
+  const checklist = await journal.checklists.getStandaloneChecklist();
+  assert.equal(checklist?.owner, null);
+  assert.deepEqual(checklist?.items, [item]);
+});
+
+test('addToStandaloneChecklist reuses the same checklist on later calls', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.checklists.addToStandaloneChecklist('first question');
+  await journal.checklists.addToStandaloneChecklist('second question');
+
+  const checklist = await journal.checklists.getStandaloneChecklist();
+  assert.deepEqual(
+    checklist?.items.map((i) => i.content),
+    ['first question', 'second question']
+  );
+});

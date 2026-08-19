@@ -25,7 +25,8 @@
    never what any one of them means. */
 
 import { episodeEndEpochDay } from '../regimenEpisode';
-import type { DoseEvent, LabResult, RegimenEpisode, SideEffect } from '../types';
+import type { ChecklistItem, DoseEvent, LabResult, RegimenEpisode, SideEffect } from '../types';
+import type { ChecklistsArea } from './checklists';
 import type { DosesArea } from './doses';
 import type { ExposureArea, ExposureCounters } from './exposure';
 import type { LabsArea } from './labs';
@@ -47,6 +48,10 @@ export interface ClinicianSummary {
   labResults: LabResult[];
   exposure: ExposureCounters;
   sideEffects: SideEffect[];
+  /** The appointment prep list's items (phase 5 ticket 11), as they stand
+      right now - not range-filtered like the sections above it, since the
+      list has no date of its own to filter by. */
+  appointmentPrepItems: ChecklistItem[];
 }
 
 export type ClinicianSummarySectionKey = keyof ClinicianSummary;
@@ -61,6 +66,7 @@ export interface ClinicianSummaryAreas {
   labs: LabsArea;
   exposure: ExposureArea;
   sideEffects: SideEffectsArea;
+  checklists: ChecklistsArea;
 }
 
 /** What every section's read is given: the areas, and the range to read
@@ -114,6 +120,15 @@ async function readLabResults({ labs, fromEpochDay, toEpochDay }: ClinicianSumma
     .sort((a, b) => a.epochDay - b.epochDay);
 }
 
+/* The appointment prep list has no date to filter by - it prints whatever it
+   currently holds, the same way its own screen shows it, rather than a slice
+   of some range (ticket 11). Declared last so it prints as the summary's
+   final page. */
+async function readAppointmentPrepItems({ checklists }: ClinicianSummaryReading) {
+  const checklist = await checklists.getStandaloneChecklist();
+  return checklist?.items ?? [];
+}
+
 const SECTIONS = [
   section({ key: 'regimenEpisodes', read: readRegimenEpisodes }),
   section({ key: 'doses', read: ({ doses, fromEpochDay, toEpochDay }) => doses.getDoses(fromEpochDay, toEpochDay) }),
@@ -122,7 +137,8 @@ const SECTIONS = [
   section({
     key: 'sideEffects',
     read: ({ sideEffects, fromEpochDay, toEpochDay }) => sideEffects.getSideEffectsInRange(fromEpochDay, toEpochDay)
-  })
+  }),
+  section({ key: 'appointmentPrepItems', read: readAppointmentPrepItems })
 ] as const;
 
 /* A part of `ClinicianSummary` with no entry above would be missing from

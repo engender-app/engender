@@ -4,6 +4,7 @@
   import { severityName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { toast } from '$lib/stores/toasts.svelte';
   import type { SideEffect } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -50,6 +51,15 @@
     const id = deleteTarget.id;
     deleteTarget = null;
     await journal.sideEffects.deleteSideEffect(id);
+  }
+
+  /* Ticket 11's second entry point into the appointment prep list: a
+     one-tap add, seeded from what is already on screen, rather than a
+     detour through that list's own editor. */
+  async function addToAppointmentPrep() {
+    if (!editor) return;
+    await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name: editor.name }));
+    toast(m.appointment_prep_added_toast());
   }
 </script>
 
@@ -117,6 +127,7 @@
       <div class="stack-3">
         <button class="btn btn-primary" data-save-side-effect onclick={saveEffect}><span>{m.side_effect_save()}</span></button>
         {#if editor.id}
+          <button class="btn btn-soft" data-add-to-appointment-prep onclick={addToAppointmentPrep}><span>{m.appointment_prep_add_button()}</span></button>
           <button class="btn btn-ghost" data-delete-side-effect onclick={askToDelete}><span>{m.side_effect_delete()}</span></button>
         {/if}
       </div>
