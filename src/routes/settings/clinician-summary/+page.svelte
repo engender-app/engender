@@ -45,7 +45,7 @@
 
   let range = $derived(customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput)));
 
-  let summaryQuery = liveQuery(['regimen', 'dose', 'lab', 'sideEffect'], (j) =>
+  let summaryQuery = liveQuery(['regimen', 'dose', 'lab', 'sideEffect', 'checklist'], (j) =>
     range ? j.clinicianSummary.getSummary(range.start, range.end) : Promise.resolve(null)
   );
   let summary = $derived(summaryQuery.value);
@@ -76,7 +76,8 @@
     doses: doseRows,
     labResults: labResultRows,
     exposure: exposureRows,
-    sideEffects: sideEffectRows
+    sideEffects: sideEffectRows,
+    appointmentPrepItems: appointmentPrepRows
   };
 
   function printSummary() {
@@ -216,6 +217,25 @@
     </div>
   {:else}
     <p class="muted small section-block">{m.clinician_summary_side_effects_empty()}</p>
+  {/if}
+{/snippet}
+
+<!-- Prints whatever the list currently holds - not filtered to the chosen
+     range, since a question to ask has no date of its own (ticket 11). -->
+{#snippet appointmentPrepRows(s: ClinicianSummary)}
+  {#if s.appointmentPrepItems.length}
+    <div class="list-group section-block">
+      {#each s.appointmentPrepItems as item (item.id)}
+        <div class="list-row">
+          <span class="row-text">
+            <span class="row-title" style={item.checked ? 'text-decoration:line-through' : ''}>{item.content}</span>
+            {#if item.carriedForward}<span class="row-subtitle">{m.appointment_prep_carried_forward_badge()}</span>{/if}
+          </span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small section-block">{m.clinician_summary_appointment_prep_empty()}</p>
   {/if}
 {/snippet}
 

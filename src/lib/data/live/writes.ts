@@ -277,13 +277,14 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       createChecklist: ['checklist'],
       deleteChecklist: ['checklist'],
       addItem: ['checklist'],
+      addToStandaloneChecklist: ['checklist'],
       editItem: ['checklist'],
       setItemChecked: ['checklist'],
       setItemCarriedForward: ['checklist'],
       deleteItem: ['checklist'],
       reorder: ['checklist']
     },
-    reads: ['getChecklist', 'getChecklistByOwner']
+    reads: ['getChecklist', 'getChecklistByOwner', 'getStandaloneChecklist']
   },
   tally: {
     writes: { log: ['tally'], setContext: ['tally'], deleteEvent: ['tally'] },

@@ -278,6 +278,16 @@
     deleteTarget = null;
     await journal.labs.deleteResult(id);
   }
+
+  /* Ticket 11's other entry point into the appointment prep list: a one-tap
+     add, seeded from the analyte already on screen. */
+  async function addToAppointmentPrep() {
+    if (!editor) return;
+    const resultAnalyte = editor.analyte === 'custom' ? editor.customAnalyte : editor.analyte;
+    if (!resultAnalyte) return;
+    await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_lab_item({ analyte: resultAnalyte }));
+    toast(m.appointment_prep_added_toast());
+  }
 </script>
 
 <div class="screen">
@@ -488,6 +498,7 @@
       <div class="stack-3">
         <button class="btn btn-primary" data-save-lab onclick={saveResult}><span>{m.labs_save()}</span></button>
         {#if editor.id}
+          <button class="btn btn-soft" data-add-to-appointment-prep onclick={addToAppointmentPrep}><span>{m.appointment_prep_add_button()}</span></button>
           <button class="btn btn-ghost" data-delete-lab onclick={askToDelete}><span>{m.labs_delete()}</span></button>
         {/if}
       </div>
