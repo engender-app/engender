@@ -166,7 +166,18 @@ async function everySection(): Promise<Journal> {
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
-  await journal.hairProgress.upsertStage({ epochDay: 19200, stage: '2a' });
+  // One staging per scale, including the escape hatch: the scale column is
+  // what keeps two published classifications from being read as one series
+  // (ticket 33), and a fixture with only one scale in it could not notice a
+  // restore that lost it.
+  await journal.hairProgress.upsertStage({ epochDay: 19200, scale: 'norwood_hamilton', stage: '2a' });
+  await journal.hairProgress.upsertStage({ epochDay: 19230, scale: 'sinclair', stage: '2' });
+  await journal.hairProgress.upsertStage({
+    epochDay: 19260,
+    scale: 'other',
+    stage: '',
+    description: 'thinner all over the top'
+  });
   await journal.hairProgress.addPhoto(19200, { full: bytes('hairline'), thumb: bytes('ht') });
   const hairRemovalSession = await journal.hairRemoval.upsertSession({
     epochDay: 20000,

@@ -24,13 +24,8 @@ import type {
   EntryTemplateKey,
   MilestoneTemplateKey
 } from './builtins';
-import type {
-  CycleEventKind,
-  HairRemovalMethod,
-  NorwoodHamiltonStage,
-  PersonalEffectType,
-  TryoutKind
-} from '../types';
+import type { CycleEventKind, HairRemovalMethod, PersonalEffectType, TryoutKind } from '../types';
+import type { HairScale, NorwoodHamiltonStage, SinclairGrade } from '../hairStageScales';
 import type { HairRemovalAreaKey } from '../hairRemovalAreas';
 import type { GarmentCategoryKey } from '../garmentCategories';
 
@@ -103,7 +98,7 @@ export const personalEffectName = (effect: PersonalEffectType): string => PERSON
    ticket 09) are a fixed set, not a built-in row, the same reasoning
    MEASUREMENT_TYPE_NAME gives - what changes with the language is the
    surrounding word ("Stage 3a"), not the stage code itself. */
-const HAIR_STAGE_NAME: Record<NorwoodHamiltonStage, Message> = {
+const NORWOOD_HAMILTON_STAGE_NAME: Record<NorwoodHamiltonStage, Message> = {
   '1': m.hair_stage_1,
   '2': m.hair_stage_2,
   '2a': m.hair_stage_2a,
@@ -118,8 +113,58 @@ const HAIR_STAGE_NAME: Record<NorwoodHamiltonStage, Message> = {
   '7': m.hair_stage_7
 };
 
-/** The name of a Norwood-Hamilton stage. */
-export const hairStageName = (stage: NorwoodHamiltonStage): string => HAIR_STAGE_NAME[stage]();
+/* Sinclair's five grades (phase 5 ticket 33), keyed separately from
+   Norwood-Hamilton's rather than folded into one map: '1' through '5' are
+   codes on both scales and mean different things on each, so one lookup
+   over both would silently hand back the wrong scale's wording. */
+const SINCLAIR_GRADE_NAME: Record<SinclairGrade, Message> = {
+  '1': m.hair_sinclair_1,
+  '2': m.hair_sinclair_2,
+  '3': m.hair_sinclair_3,
+  '4': m.hair_sinclair_4,
+  '5': m.hair_sinclair_5
+};
+
+/* Keyed by scale rather than reached by a ternary, so a scale can only ever
+   be read against its own wording: a lookup that fell back to one scale's
+   map would hand back the wrong classification's label, which is the exact
+   confusion this file exists to prevent. 'other' publishes no grades, so its
+   map is empty by construction rather than by convention. */
+const HAIR_GRADE_NAME: Record<HairScale, Record<string, Message>> = {
+  norwood_hamilton: NORWOOD_HAMILTON_STAGE_NAME,
+  sinclair: SINCLAIR_GRADE_NAME,
+  other: {}
+};
+
+/** The name of a staging's grade, under the scale it belongs to, or the raw
+    grade for a pair this build's vocabulary does not list. Empty for a scale
+    that publishes no grades - a staging under that one shows the person's
+    own words instead (isGradedScale, hairStageScales.ts). */
+export const hairStageName = (scale: string, stage: string): string =>
+  lookup(HAIR_GRADE_NAME[scale as HairScale] ?? {}, stage);
+
+const HAIR_SCALE_NAME: Record<HairScale, Message> = {
+  norwood_hamilton: m.hair_scale_norwood_hamilton,
+  sinclair: m.hair_scale_sinclair,
+  other: m.hair_scale_other
+};
+
+/** The name of a published scale, or of the option for a pattern neither
+    of them describes. */
+export const hairScaleName = (scale: string): string => lookup(HAIR_SCALE_NAME, scale);
+
+/* One descriptive line per scale, so a person can tell which one describes
+   what they see without leaving the screen to look either up. What each
+   scale is read off, and how many grades it has - never what a grade
+   means, and never a word about what follows from one. */
+const HAIR_SCALE_SUB: Record<HairScale, Message> = {
+  norwood_hamilton: m.hair_scale_norwood_hamilton_sub,
+  sinclair: m.hair_scale_sinclair_sub,
+  other: m.hair_scale_other_sub
+};
+
+/** What a scale is read off, in a line. */
+export const hairScaleSub = (scale: string): string => lookup(HAIR_SCALE_SUB, scale);
 
 /* A side effect's severity (phase 4 ticket 06, CONTEXT: "Side effect") is a
    1-5 ordered scale like mood, and its five names are vocabulary the same

@@ -1,13 +1,15 @@
-/* The hair-progress area (phase 4 ticket 09): Norwood-Hamilton self-staging
-   and scheduled fixed-position photos.
+/* The hair-progress area (phase 4 ticket 09): self-staging against a
+   published scale, and scheduled fixed-position photos. Two scales since
+   phase 5 ticket 33, plus a third option for a pattern neither describes -
+   a staging carries the scale it belongs to and the two are never merged
+   (hairStageScales.ts).
 
    Stages are a dated series like measurement (ticket 08) - a person
    re-stages over time, never replacing one date's value in place. No
    episode or anchor reference: what a screen reads staging and photos
-   against - the earliest finasteride/dutasteride/minoxidil dose - is
-   resolved above this seam (hairTreatmentAnchor.ts's
-   earliestHairTreatmentDoseEpochDay), the same reason personalEffects.ts
-   and measurements.ts carry none either.
+   against is resolved above this seam (hairAnchor.ts's
+   hairAnchorEpochDay), the same reason personalEffects.ts and
+   measurements.ts carry none either.
 
    Hair photos are their own table rather than a third owner on `photo`
    (migrations.ts v13 explains why: SQLite cannot widen that table's
@@ -18,7 +20,8 @@
    delete - only the row naming the files lives here. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { HairStage, NorwoodHamiltonStage } from '../types';
+import { isGradedScale, isHairStaging } from '../hairStageScales';
+import type { HairStage } from '../types';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import type { PhotoFileStore } from './journal';
 import { assertChanged, mintUuid, now } from './support';
@@ -26,7 +29,14 @@ import { assertChanged, mintUuid, now } from './support';
 export interface HairStageInput {
   id?: string;
   epochDay: number;
-  stage: NorwoodHamiltonStage;
+  /** A scale and one of its published grades, or 'other' with an empty
+      `stage` and whatever the person wrote in `description`. Validated
+      here, not by the caller (hairStageScales.ts's isHairStaging). */
+  scale: string;
+  stage: string;
+  /** Free text, and only ever under 'other' - the schema refuses it on a
+      graded staging (migrations.ts v36). Defaults to empty. */
+  description?: string;
 }
 
 /** A hair-progress photo placed in time. Its own shape rather than
@@ -55,38 +65,61 @@ export interface HairProgressArea {
   deletePhoto(id: string): Promise<void>;
 }
 
-type HairStageRow = { uuid: string; epoch_day: number; stage: NorwoodHamiltonStage };
+type HairStageRow = { uuid: string; epoch_day: number; scale: string; stage: string; description: string };
 type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
 
-const toHairStage = (row: HairStageRow): HairStage => ({ id: row.uuid, epochDay: row.epoch_day, stage: row.stage });
+const toHairStage = (row: HairStageRow): HairStage => ({
+  id: row.uuid,
+  epochDay: row.epoch_day,
+  scale: row.scale,
+  stage: row.stage,
+  description: row.description
+});
+
+/* Rejected here rather than left to the schema's CHECK, the same seam
+   hairRemoval.ts validates an area at: the CHECK is the backstop that also
+   covers a restore, and a caller that got the pair wrong deserves the name
+   of what it got wrong. The description is dropped rather than refused
+   when the scale publishes grades - the caller is switching a staging back
+   to a graded scale and the prose has nowhere to live. */
+function checkedStaging(input: HairStageInput): { scale: string; stage: string; description: string } {
+  if (!isHairStaging(input.scale, input.stage)) {
+    throw new Error(`hair stage: ${input.stage || '(none)'} is not a grade on ${input.scale}`);
+  }
+  return {
+    scale: input.scale,
+    stage: input.stage,
+    description: isGradedScale(input.scale) ? '' : (input.description ?? '')
+  };
+}
 const toHairPhoto = (row: HairPhotoRow): HairPhoto => ({ id: row.uuid, epochDay: row.epoch_day, fileName: row.file_path });
 
 export function makeHairProgressArea(driver: SqliteDriver, files: PhotoFileStore): HairProgressArea {
   return {
     async getStages() {
-      const rows = await driver.query<HairStageRow>('SELECT uuid, epoch_day, stage FROM hair_stage ORDER BY epoch_day, id');
+      const rows = await driver.query<HairStageRow>(
+        'SELECT uuid, epoch_day, scale, stage, description FROM hair_stage ORDER BY epoch_day, id'
+      );
       return rows.map(toHairStage);
     },
 
     async upsertStage(input) {
+      const staging = checkedStaging(input);
+
       if (input.id) {
-        const result = await driver.run('UPDATE hair_stage SET epoch_day = ?, stage = ?, updated_at = ? WHERE uuid = ?', [
-          input.epochDay,
-          input.stage,
-          now(),
-          input.id
-        ]);
+        const result = await driver.run(
+          'UPDATE hair_stage SET epoch_day = ?, scale = ?, stage = ?, description = ?, updated_at = ? WHERE uuid = ?',
+          [input.epochDay, staging.scale, staging.stage, staging.description, now(), input.id]
+        );
         assertChanged(result, `hair stage: ${input.id}`);
         return input.id;
       }
 
       const uuid = mintUuid();
-      await driver.run('INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES (?, ?, ?, ?)', [
-        uuid,
-        input.epochDay,
-        input.stage,
-        now()
-      ]);
+      await driver.run(
+        'INSERT INTO hair_stage (uuid, epoch_day, scale, stage, description, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [uuid, input.epochDay, staging.scale, staging.stage, staging.description, now()]
+      );
       return uuid;
     },
 
