@@ -580,9 +580,18 @@ export interface WearSession {
    type: the `DB` object the demo store held went with it in ticket 08, and
    what an archive carries is the archive module's own shape. */
 
+/** Which of a preset's two directional dimensions a roadmap goal, milestone
+    template, or regimen template speaks to most (phase 5 ticket 43, CONTEXT:
+    "Lean") - `femme`, `masc`, or `neutral` when it speaks to neither.
+    Authored by hand per item, since none of the three has dimensions of its
+    own to derive one from. Never used to hide, filter, or gate: it only
+    orders a picker so whichever matches the active preset sorts first. */
+export type Lean = 'femme' | 'masc' | 'neutral';
+
 export interface MilestoneTemplate {
   key: string;
   name: string;
+  lean: Lean;
 }
 
 /** A built-in suggestion for an entry (phase 4 features ticket 17): picking
@@ -620,6 +629,7 @@ export interface RegimenTemplate {
   drug: string;
   ester: string | null;
   route: string;
+  lean: Lean;
 }
 
 /** The eight fixed markers a personal effects timeline tracks: four

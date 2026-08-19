@@ -22,6 +22,8 @@
    is the order the procedure usually runs in, and it is a suggestion the
    screen renders rather than a rule anything enforces. */
 
+import type { Lean } from './types';
+
 export const ROADMAP_TRACKS = ['social', 'legal', 'presentational', 'medical'] as const;
 
 export type RoadmapTrack = (typeof ROADMAP_TRACKS)[number];
@@ -33,6 +35,13 @@ export type RoadmapTrack = (typeof ROADMAP_TRACKS)[number];
 export interface RoadmapGoal<K extends string = string> {
   readonly key: K;
   readonly track: RoadmapTrack;
+  /** CONTEXT: "Lean" (phase 5 ticket 43). Most of the Polish pack is
+      `neutral`: it describes a legal procedure common to any transition
+      direction. `pl-presentational-voice` and `pl-presentational-hair` are
+      the exceptions - voice training and hair removal are, in practice,
+      feminizing-transition work, since testosterone's own effects cover
+      the masculinizing equivalent of both without training. */
+  readonly lean: Lean;
 }
 
 export interface RoadmapPack<K extends string = string> {
@@ -51,48 +60,56 @@ export interface RoadmapPack<K extends string = string> {
 /* Polish pack. Sources and the reasoning behind the wording are in
    vocabulary/roadmapLabels.ts, next to the text itself. */
 const POLISH_GOALS = [
-  /* social */
-  { key: 'pl-social-tell-one-person', track: 'social' },
-  { key: 'pl-social-close-people', track: 'social' },
-  { key: 'pl-social-name-at-work', track: 'social' },
-  { key: 'pl-social-community', track: 'social' },
-  /* legal */
-  { key: 'pl-legal-birth-certificate', track: 'legal' },
-  { key: 'pl-legal-which-court', track: 'legal' },
-  { key: 'pl-legal-court-fee', track: 'legal' },
-  { key: 'pl-legal-application', track: 'legal' },
-  { key: 'pl-legal-file-it', track: 'legal' },
-  { key: 'pl-legal-formal-defects', track: 'legal' },
-  { key: 'pl-legal-remote-hearing', track: 'legal' },
-  { key: 'pl-legal-closed-hearing', track: 'legal' },
-  { key: 'pl-legal-fee-waiver', track: 'legal' },
-  { key: 'pl-legal-expert', track: 'legal' },
-  { key: 'pl-legal-written-reasons', track: 'legal' },
-  { key: 'pl-legal-appeal', track: 'legal' },
-  { key: 'pl-legal-final-copy', track: 'legal' },
-  { key: 'pl-legal-pesel', track: 'legal' },
-  { key: 'pl-legal-new-birth-copy', track: 'legal' },
-  { key: 'pl-legal-name-usc', track: 'legal' },
-  { key: 'pl-legal-id-card', track: 'legal' },
-  { key: 'pl-legal-passport', track: 'legal' },
-  { key: 'pl-legal-driving-licence', track: 'legal' },
-  { key: 'pl-legal-zus-ceidg', track: 'legal' },
-  { key: 'pl-legal-diplomas', track: 'legal' },
-  { key: 'pl-legal-institutions', track: 'legal' },
-  { key: 'pl-legal-document-set', track: 'legal' },
-  /* presentational */
-  { key: 'pl-presentational-clothes', track: 'presentational' },
-  { key: 'pl-presentational-voice', track: 'presentational' },
-  { key: 'pl-presentational-hair', track: 'presentational' },
-  { key: 'pl-presentational-photo', track: 'presentational' },
-  /* medical */
-  { key: 'pl-medical-two-specialists', track: 'medical' },
-  { key: 'pl-medical-psychologist', track: 'medical' },
-  { key: 'pl-medical-psych-opinion', track: 'medical' },
-  { key: 'pl-medical-doctor-opinion', track: 'medical' },
-  { key: 'pl-medical-diagnosis-code', track: 'medical' },
-  { key: 'pl-medical-bloodwork', track: 'medical' },
-  { key: 'pl-medical-keep-opinions', track: 'medical' }
+  /* social - none of this is direction-specific: telling someone, being
+     out at work or finding community reads the same regardless of which
+     way a person is transitioning. */
+  { key: 'pl-social-tell-one-person', track: 'social', lean: 'neutral' },
+  { key: 'pl-social-close-people', track: 'social', lean: 'neutral' },
+  { key: 'pl-social-name-at-work', track: 'social', lean: 'neutral' },
+  { key: 'pl-social-community', track: 'social', lean: 'neutral' },
+  /* legal - the court procedure Poland runs is one procedure, the same
+     steps and documents whichever direction the applicant is transitioning. */
+  { key: 'pl-legal-birth-certificate', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-which-court', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-court-fee', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-application', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-file-it', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-formal-defects', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-remote-hearing', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-closed-hearing', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-fee-waiver', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-expert', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-written-reasons', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-appeal', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-final-copy', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-pesel', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-new-birth-copy', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-name-usc', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-id-card', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-passport', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-driving-licence', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-zus-ceidg', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-diplomas', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-institutions', track: 'legal', lean: 'neutral' },
+  { key: 'pl-legal-document-set', track: 'legal', lean: 'neutral' },
+  /* presentational - clothes and a document photo are direction-neutral
+     asks. Voice training and hair removal are, in practice, feminizing
+     work: testosterone drops pitch and grows facial hair on its own, so a
+     masculinizing transition rarely needs either as an active step. */
+  { key: 'pl-presentational-clothes', track: 'presentational', lean: 'neutral' },
+  { key: 'pl-presentational-voice', track: 'presentational', lean: 'femme' },
+  { key: 'pl-presentational-hair', track: 'presentational', lean: 'femme' },
+  { key: 'pl-presentational-photo', track: 'presentational', lean: 'neutral' },
+  /* medical - the diagnosis and its paperwork are one pathway under Polish
+     law (the same F64.0/HA60 code, the same two opinions) regardless of
+     which hormone or direction it clears the way for. */
+  { key: 'pl-medical-two-specialists', track: 'medical', lean: 'neutral' },
+  { key: 'pl-medical-psychologist', track: 'medical', lean: 'neutral' },
+  { key: 'pl-medical-psych-opinion', track: 'medical', lean: 'neutral' },
+  { key: 'pl-medical-doctor-opinion', track: 'medical', lean: 'neutral' },
+  { key: 'pl-medical-diagnosis-code', track: 'medical', lean: 'neutral' },
+  { key: 'pl-medical-bloodwork', track: 'medical', lean: 'neutral' },
+  { key: 'pl-medical-keep-opinions', track: 'medical', lean: 'neutral' }
 ] as const satisfies readonly RoadmapGoal[];
 
 export type PolishGoalKey = (typeof POLISH_GOALS)[number]['key'];
