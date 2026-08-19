@@ -5,11 +5,14 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { migratedDb } from './test-support/migrated-db.ts';
+import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
+import { runMigrations } from './migration-runner.ts';
+import { migrations } from './migrations.ts';
+import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 18);
+  assert.equal(db.getUserVersion(), 19);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -236,6 +239,40 @@ test('v11 side_effect carries no episode reference and rejects severity outside 
   );
   assert.throws(() =>
     db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s3', 'nausea', 6, 100, 1000)")
+  );
+});
+
+test('v19 widens personal_effect to eight markers, preserving rows the v12 table already held', async () => {
+  const preV19 = migrations.filter((m) => m.version <= 12);
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), preV19);
+  db.raw.exec(
+    "INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe1', 'breast_development', 19180, 1000)"
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), 19);
+
+  const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
+    effect: string;
+    first_noticed_epoch_day: number;
+    updated_at: number;
+  };
+  assert.deepEqual(row.effect, 'breast_development');
+  assert.equal(row.first_noticed_epoch_day, 19180);
+  assert.equal(row.updated_at, 1000);
+
+  for (const effect of ['voice_drop', 'facial_body_hair', 'masculinizing_fat_redistribution', 'cycle_cessation']) {
+    assert.doesNotThrow(() =>
+      db.raw.exec(
+        `INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe-${effect}', '${effect}', 100, 1000)`
+      )
+    );
+  }
+  assert.throws(() =>
+    db.raw.exec(
+      "INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe-bad', 'not_a_real_effect', 100, 1000)"
+    )
   );
 });
 
