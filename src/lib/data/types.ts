@@ -665,3 +665,25 @@ export interface ProcedureConsult {
   id: string;
   epochDay: number;
 }
+
+/** One line in the pool the check-in draws its affirming line from (phase 5
+    ticket 15, CONTEXT: "Affirmation"). A built-in carries a stable key and
+    empty text - its wording lives in the message catalogue and applies
+    whatever language is active - the same split BUILT_IN_TAG_GROUPS gives
+    Tag (ADR-0002, CONTEXT: "Built-in"). A custom line carries a minted uuid,
+    the text the person actually wrote, and the one language it was written
+    in: it is never translated to the other (CONTEXT: "Custom"). Hiding a
+    built-in takes it out of the pool without touching a check-in already
+    sent with it (CONTEXT: "Hidden"); a custom line has no bundled
+    counterpart to preserve, so it deletes outright instead - the same
+    asymmetry Tag draws between the two. */
+export interface Affirmation {
+  id: string;
+  /** Null for a built-in; 'en' or 'pl' for a custom. */
+  language: 'en' | 'pl' | null;
+  /** '' for a built-in - the message catalogue holds its wording, looked up
+      by id - the written line for a custom. */
+  text: string;
+  builtIn: boolean;
+  hidden: boolean;
+}

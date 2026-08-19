@@ -10,9 +10,11 @@
   import { assets } from '$app/paths';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import { getLocale } from '$lib/paraglide/runtime';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { journal, onTablesWritten } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
   import { bootGate, isErrorState, isReadyState } from '$lib/stores/boot-state';
@@ -270,7 +272,14 @@
       androidDisguise,
       androidQuickExit,
       androidBackButton: AndroidAppPlugin,
-      affirmationLines,
+      // Hidden built-ins and this language's custom lines are read fresh on
+      // every call (phase 5 ticket 15) rather than captured once here, so a
+      // change lands on the next sync without needing this effect to restart.
+      affirmationLines: () =>
+        affirmationLines(
+          new Set(vocabulary.affirmations.filter((a) => a.builtIn && a.hidden).map((a) => a.id)),
+          vocabulary.customAffirmations(getLocale()).map((a) => a.text)
+        ),
       reminderTexts: () => ({
         channelReminders: m.reminders(),
         channelCheckIn: m.checkin_title(),

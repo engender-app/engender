@@ -14,6 +14,7 @@
 import { m } from '$lib/paraglide/messages';
 import type { BodyRegionKey } from '../bodyMap';
 import type {
+  BuiltInAffirmationKey,
   BuiltInDimensionKey,
   BuiltInPresetKey,
   BuiltInTagGroupKey,
@@ -212,6 +213,26 @@ const TAG_LABEL: Record<BuiltInTagKey, Message> = {
   'dt-presentational': m.tag_dt_presentational,
   'dt-existential': m.tag_dt_existential
 };
+
+const AFFIRMATION_TEXT: Record<BuiltInAffirmationKey, Message> = {
+  affirmation_1: m.affirmation_1,
+  affirmation_2: m.affirmation_2,
+  affirmation_3: m.affirmation_3,
+  affirmation_4: m.affirmation_4,
+  affirmation_5: m.affirmation_5,
+  affirmation_6: m.affirmation_6,
+  affirmation_7: m.affirmation_7,
+  affirmation_8: m.affirmation_8,
+  affirmation_9: m.affirmation_9,
+  affirmation_10: m.affirmation_10,
+  affirmation_11: m.affirmation_11,
+  affirmation_12: m.affirmation_12,
+  affirmation_13: m.affirmation_13,
+  affirmation_14: m.affirmation_14
+};
+
+/** The wording of a built-in affirmation line. */
+export const affirmationText = (key: string) => lookup(AFFIRMATION_TEXT, key);
 
 /* Dysphoria types only: the seven category names are not self-explanatory
    on their own (CONTEXT: Dysphoria type - "societal" vs "social"), so each

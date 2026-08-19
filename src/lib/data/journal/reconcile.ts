@@ -11,7 +11,12 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { TableName } from '../live/writes';
-import { BUILT_IN_DIMENSIONS, BUILT_IN_PRESETS, BUILT_IN_TAG_GROUPS } from '../vocabulary/builtins';
+import {
+  BUILT_IN_AFFIRMATION_KEYS,
+  BUILT_IN_DIMENSIONS,
+  BUILT_IN_PRESETS,
+  BUILT_IN_TAG_GROUPS
+} from '../vocabulary/builtins';
 import { now } from './support';
 
 /** The tables this module writes, single-sourced here because this is the
@@ -20,7 +25,7 @@ import { now } from './support';
     invalidation (ticket 28). Reconciling usually finds nothing to do, and
     announcing these three tables for a no-op is cheaper than asking it to
     report what it actually changed. */
-export const RECONCILE_TABLES: TableName[] = ['tag', 'dimension', 'preset'];
+export const RECONCILE_TABLES: TableName[] = ['tag', 'dimension', 'preset', 'affirmation'];
 
 async function presentKeys(driver: SqliteDriver, table: string): Promise<Set<string>> {
   const rows = await driver.query<{ key: string }>(`SELECT key FROM ${table} WHERE key IS NOT NULL`);
@@ -84,5 +89,11 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
         [tagKey, tagIndex, ts, g.key]
       );
     }
+  }
+
+  const affirmationKeys = await presentKeys(driver, 'affirmation');
+  for (const key of BUILT_IN_AFFIRMATION_KEYS) {
+    if (affirmationKeys.has(key)) continue;
+    await driver.run(`INSERT INTO affirmation (key, text, updated_at) VALUES (?, '', ?)`, [key, ts]);
   }
 }

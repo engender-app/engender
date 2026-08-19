@@ -46,6 +46,7 @@ const SECTIONS = [
   'dimensions',
   'presets',
   'tagGroups',
+  'affirmations',
   'entries',
   'milestones',
   'labResults',
@@ -108,6 +109,8 @@ async function everySection(): Promise<Journal> {
   await journal.tags.renameTag('a-therapy', 'therapy session');
   await journal.tags.setTagHidden('a-work', true);
   await journal.tags.setGroupEnabled('activities', false);
+  await journal.affirmations.addLine('en', 'You get to take up space, today too.');
+  await journal.affirmations.setHidden('affirmation_2', true);
 
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
