@@ -23,7 +23,10 @@
     underbust: m.measurement_protocol_underbust
   };
 
-  let type = $state<string>('waist');
+  // Falls back off 'waist' when it has been hidden - the picker below only
+  // ever offers a visible type, and defaulting to a hidden one would open
+  // on a selection Segmented has no button for.
+  let type = $state<string>(vocabulary.visibleMeasurementTypes[0]?.key ?? 'waist');
   let typeOptions = $derived(vocabulary.visibleMeasurementTypes.map((t) => ({ value: t.key, label: t.name })));
 
   let measurementsQuery = liveQuery(['measurement'], (j) => j.measurements.getMeasurements(type));
