@@ -49,7 +49,7 @@
   "stop_video": "Stop",
   "video_remove": "Remove video note",
   "video_recording_hint": "Up to 30 seconds.",
-  "video_compressing": "Shortening the file so backups stay manageable…",
+  "video_compressing": "Compressing…",
   "video_camera_failed": "Couldn't open the camera.",
   "video_unsupported": "Video recording isn't supported in this browser.",
   "gender_label": "Gender",
