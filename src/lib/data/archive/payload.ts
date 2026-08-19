@@ -203,6 +203,12 @@ export interface ArchiveCycleEvent {
   epochDay: number;
 }
 
+export interface ArchiveJournalingPause {
+  id: string;
+  startEpochDay: number;
+  endEpochDay: number | null;
+}
+
 export interface ArchiveDoubtEntry {
   id: string;
   epochDay: number;
@@ -503,6 +509,7 @@ export interface ArchiveJournal {
   measurements: ArchiveMeasurement[];
   sideEffects: ArchiveSideEffect[];
   cycleEvents: ArchiveCycleEvent[];
+  journalingPauses: ArchiveJournalingPause[];
   personalEffects: ArchivePersonalEffect[];
   hairStages: ArchiveHairStage[];
   hairPhotos: ArchiveHairPhoto[];

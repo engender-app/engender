@@ -29,6 +29,7 @@ import type {
   ArchiveHairRemovalPhoto,
   ArchiveHairRemovalSession,
   ArchiveHairStage,
+  ArchiveJournalingPause,
   ArchiveLabResult,
   ArchiveLetter,
   ArchiveMeasurement,
@@ -354,6 +355,13 @@ export async function readCycleEvents({ driver }: SectionRead): Promise<ArchiveC
     'SELECT uuid, kind, epoch_day FROM cycle_event ORDER BY epoch_day, id'
   );
   return rows.map((r) => ({ id: r.uuid, kind: r.kind, epochDay: r.epoch_day }));
+}
+
+export async function readJournalingPauses({ driver }: SectionRead): Promise<ArchiveJournalingPause[]> {
+  const rows = await driver.query<{ uuid: string; start_epoch_day: number; end_epoch_day: number | null }>(
+    'SELECT uuid, start_epoch_day, end_epoch_day FROM journaling_pause ORDER BY start_epoch_day, id'
+  );
+  return rows.map((r) => ({ id: r.uuid, startEpochDay: r.start_epoch_day, endEpochDay: r.end_epoch_day }));
 }
 
 export async function readDoubtEntries({ driver }: SectionRead): Promise<ArchiveDoubtEntry[]> {
