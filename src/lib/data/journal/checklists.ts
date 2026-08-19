@@ -17,10 +17,19 @@ export interface ChecklistsArea {
   createChecklist(owner?: ChecklistOwner): Promise<Checklist>;
   getChecklist(id: string): Promise<Checklist | undefined>;
   getChecklistByOwner(owner: ChecklistOwner): Promise<Checklist | undefined>;
+  /** The one standalone checklist behind the appointment prep list (phase 5
+      ticket 11): looked up by having no owner at all, rather than by an
+      owner pair, since nothing else in the app creates a standalone
+      checklist to be confused with it. */
+  getStandaloneChecklist(): Promise<Checklist | undefined>;
   /** Idempotent: deleting an already-gone checklist is success. Takes its
       items along. */
   deleteChecklist(id: string): Promise<void>;
   addItem(checklistId: string, content: string): Promise<ChecklistItem>;
+  /** Adds to the standalone checklist, creating it on first use so a caller
+      (a side-effect entry, a lab result, the appointment prep screen itself)
+      never has to check whether it exists yet. */
+  addToStandaloneChecklist(content: string): Promise<ChecklistItem>;
   editItem(itemId: string, content: string): Promise<void>;
   setItemChecked(itemId: string, checked: boolean): Promise<void>;
   setItemCarriedForward(itemId: string, carriedForward: boolean): Promise<void>;
@@ -57,7 +66,14 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     items: await itemsOf(row.id)
   });
 
-  return {
+  const standaloneChecklist = async (): Promise<Checklist | undefined> => {
+    const rows = await driver.query<ChecklistRow>(
+      'SELECT id, uuid, owner_kind, owner_uuid FROM checklist WHERE owner_kind IS NULL LIMIT 1'
+    );
+    return rows[0] ? toChecklist(rows[0]) : undefined;
+  };
+
+  const area: ChecklistsArea = {
     async createChecklist(owner) {
       const uuid = mintUuid();
       await driver.run('INSERT INTO checklist (uuid, owner_kind, owner_uuid, updated_at) VALUES (?, ?, ?, ?)', [
@@ -85,6 +101,8 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
       return rows[0] ? toChecklist(rows[0]) : undefined;
     },
 
+    getStandaloneChecklist: standaloneChecklist,
+
     async deleteChecklist(id) {
       await driver.run('DELETE FROM checklist WHERE uuid = ?', [id]);
     },
@@ -98,6 +116,12 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
         [uuid, checklistRowId, content, checklistRowId, now()]
       );
       return { id: uuid, content, checked: false, carriedForward: false };
+    },
+
+    async addToStandaloneChecklist(content) {
+      const existing = await standaloneChecklist();
+      const checklistId = existing ? existing.id : (await area.createChecklist()).id;
+      return area.addItem(checklistId, content);
     },
 
     async editItem(itemId, content) {
@@ -151,4 +175,6 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
       });
     }
   };
+
+  return area;
 }
