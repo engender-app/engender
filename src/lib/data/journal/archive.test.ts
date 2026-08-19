@@ -126,12 +126,14 @@ async function populated() {
     startEpochDay: 19900,
     endEpochDay: null
   });
-  const feltSense = await journal.tryouts.addFeltSenseEntry({
-    tryoutId: tryout,
-    epochDay: 19910,
-    mood: 4,
-    note: 'felt right at the pharmacy'
-  });
+  const feltSense = await journal.feltSense.add(
+    { tryoutId: tryout },
+    { epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
+  );
+  const milestoneFeltSense = await journal.feltSense.add(
+    { milestoneId: milestone },
+    { epochDay: 19365, mood: 5, note: 'a year on, still relieved' }
+  );
   const tryoutPhoto = await journal.tryouts.addPhoto(tryout, 19905, { full: bytes('presenting'), thumb: bytes('pt') });
 
   return {
@@ -168,6 +170,7 @@ async function populated() {
     counterevidenceSnapshot,
     tryout,
     feltSense,
+    milestoneFeltSense,
     tryoutPhoto
   };
 }
@@ -373,8 +376,8 @@ test('a doubt entry travels whole, and a counterevidence snapshot travels with i
   ]);
 });
 
-test('a tryout travels whole with its photos, and its felt-sense entry travels by the tryout\'s own uuid', async () => {
-  const { journal, tryout, feltSense, tryoutPhoto } = await populated();
+test("a tryout travels whole with its photos, and a felt-sense entry travels by whichever owner's own uuid it has", async () => {
+  const { journal, tryout, milestone, feltSense, milestoneFeltSense, tryoutPhoto } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -390,7 +393,15 @@ test('a tryout travels whole with its photos, and its felt-sense entry travels b
     }
   ]);
   assert.deepEqual(snapshot.journal.feltSenseEntries, [
-    { id: feltSense, tryoutId: tryout, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
+    {
+      id: milestoneFeltSense,
+      tryoutId: null,
+      milestoneId: milestone,
+      epochDay: 19365,
+      mood: 5,
+      note: 'a year on, still relieved'
+    },
+    { id: feltSense, tryoutId: tryout, milestoneId: null, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
   ]);
 });
 
@@ -627,9 +638,9 @@ const CARRIED: Record<string, string[]> = {
   // bundled content (ADR-0002).
   roadmap_goal: ['uuid', 'track', 'text', 'status'],
   tryout: ['uuid', 'kind', 'label', 'description', 'start_epoch_day', 'end_epoch_day'],
-  // tryout_id travels as the tryout's own uuid, the way dose_pause's
-  // episode_id does (ADR-0002).
-  tryout_felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
+  // Exactly one of tryout_id/milestone_id travels, each as that owner's own
+  // uuid, the same shape `photo`'s entry_id/milestone_id pair carries.
+  felt_sense: ['uuid', 'tryout_id', 'milestone_id', 'epoch_day', 'mood', 'note'],
   tryout_photo: ['uuid', 'tryout_id', 'epoch_day', 'file_path'],
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
   video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],

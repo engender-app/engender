@@ -1,15 +1,20 @@
 /* Tryouts (phase 4 ticket 16, widened past name/pronoun by phase 5 ticket
-   13, CONTEXT: "Tryout", "Felt-sense entry"). Three tables, one area - the
-   same shape doubtJournal.ts uses for its snapshots - since a tryout's own
-   fields, its felt-sense history and its photos all belong to the same
-   screen and nothing reads one without the others.
+   13, CONTEXT: "Tryout"). Two tables, one area - the same shape
+   doubtJournal.ts uses for its snapshots - since a tryout's own fields and
+   its photos belong to the same screen and nothing reads one without the
+   other.
 
    Which entries fall inside a tryout's date range is not read through
    here: it is an ordinary date-range search
    (entries.searchEntries('', [], { startEpochDay, endEpochDay })), the
    same filter the search screen's date chip already produces. This area
-   only owns what it alone writes - the tryout's own fields, its
-   felt-sense observations and its photos.
+   only owns what it alone writes - the tryout's own fields and its photos.
+
+   A tryout's felt-sense history lives in feltSense.ts instead (CONTEXT:
+   "Felt-sense entry"), phase 5 ticket 24: once a milestone could own one
+   too, felt-sense stopped being a fact about tryouts alone, the same
+   reasoning photos.ts gives for owning entry and milestone photos in one
+   place rather than each in the module that happens to use them.
 
    Tryout photos are their own table (tryout_photo) rather than a third
    owner arm on `photo`, the same reasoning procedures.ts gives for
@@ -20,7 +25,7 @@
    reclaims them the same way on delete. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { FeltSenseEntry, Tryout, TryoutKind, TryoutPhoto } from '../types';
+import type { Tryout, TryoutKind, TryoutPhoto } from '../types';
 import type { PhotoFileStore } from './journal';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now, rowidByUuid } from './support';
@@ -34,13 +39,6 @@ export interface TryoutInput {
   endEpochDay: number | null;
 }
 
-export interface FeltSenseInput {
-  tryoutId: string;
-  epochDay: number;
-  mood: number;
-  note?: string | null;
-}
-
 export interface TryoutsArea {
   /** Most recently started first: several tryouts can be open at once, and
       the one someone just started is what they came here to check on. */
@@ -49,13 +47,6 @@ export interface TryoutsArea {
   upsertTryout(input: TryoutInput): Promise<string>;
   /** Idempotent. Takes the tryout's felt-sense history and photos with it. */
   deleteTryout(id: string): Promise<void>;
-  /** Newest first, the same order doubtJournal's history reads in. */
-  getFeltSenseEntries(tryoutId: string): Promise<FeltSenseEntry[]>;
-  /** Returns the entry's id. Throws on an unknown tryout or a mood outside
-      the five-level scale. */
-  addFeltSenseEntry(input: FeltSenseInput): Promise<string>;
-  /** Idempotent. */
-  deleteFeltSenseEntry(id: string): Promise<void>;
   /** A tryout's photos, oldest first. */
   getPhotos(tryoutId: string): Promise<TryoutPhoto[]>;
   /** Normalizes nothing itself - `photo` must already be through
@@ -75,14 +66,6 @@ type TryoutRow = {
   end_epoch_day: number | null;
 };
 
-type FeltSenseRow = {
-  uuid: string;
-  tryout_uuid: string;
-  epoch_day: number;
-  mood: number;
-  note: string | null;
-};
-
 const toTryout = (row: TryoutRow): Tryout => ({
   id: row.uuid,
   kind: row.kind,
@@ -90,14 +73,6 @@ const toTryout = (row: TryoutRow): Tryout => ({
   description: row.description,
   startEpochDay: row.start_epoch_day,
   endEpochDay: row.end_epoch_day
-});
-
-const toFeltSenseEntry = (row: FeltSenseRow): FeltSenseEntry => ({
-  id: row.uuid,
-  tryoutId: row.tryout_uuid,
-  epochDay: row.epoch_day,
-  mood: row.mood,
-  note: row.note
 });
 
 export function makeTryoutsArea(driver: SqliteDriver, files: PhotoFileStore): TryoutsArea {
@@ -140,42 +115,11 @@ export function makeTryoutsArea(driver: SqliteDriver, files: PhotoFileStore): Tr
         [id]
       );
       await driver.transaction(async () => {
-        await driver.run('DELETE FROM tryout_felt_sense WHERE tryout_id IN (SELECT id FROM tryout WHERE uuid = ?)', [
-          id
-        ]);
+        await driver.run('DELETE FROM felt_sense WHERE tryout_id IN (SELECT id FROM tryout WHERE uuid = ?)', [id]);
         await driver.run('DELETE FROM tryout_photo WHERE tryout_id IN (SELECT id FROM tryout WHERE uuid = ?)', [id]);
         await driver.run('DELETE FROM tryout WHERE uuid = ?', [id]);
       });
       await removeFilesOf(files, photos);
-    },
-
-    async getFeltSenseEntries(tryoutId) {
-      const rows = await driver.query<FeltSenseRow>(
-        `SELECT f.uuid, t.uuid AS tryout_uuid, f.epoch_day, f.mood, f.note
-           FROM tryout_felt_sense f JOIN tryout t ON t.id = f.tryout_id
-          WHERE t.uuid = ?
-          ORDER BY f.epoch_day DESC, f.id DESC`,
-        [tryoutId]
-      );
-      return rows.map(toFeltSenseEntry);
-    },
-
-    async addFeltSenseEntry(input) {
-      if (!Number.isInteger(input.mood) || input.mood < 1 || input.mood > 5) {
-        throw new Error(`invalid mood: ${input.mood}`);
-      }
-      const tryoutId = await rowidByUuid(driver, 'tryout', input.tryoutId);
-
-      const uuid = mintUuid();
-      await driver.run(
-        'INSERT INTO tryout_felt_sense (uuid, tryout_id, epoch_day, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [uuid, tryoutId, input.epochDay, input.mood, input.note ?? null, now()]
-      );
-      return uuid;
-    },
-
-    async deleteFeltSenseEntry(id) {
-      await driver.run('DELETE FROM tryout_felt_sense WHERE uuid = ?', [id]);
     },
 
     async getPhotos(tryoutId) {

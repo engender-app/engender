@@ -724,26 +724,37 @@ export async function applyTryouts({ driver, journal, ts }: Restoring): Promise<
   }
 }
 
-/* Resolves its tryout by uuid against what applyTryouts just inserted, the
-   same shape applyDosePauses uses for its episode. A row whose tryout is
-   not there is dropped rather than inserted against a guessed one. */
+/* Resolves its owner - a tryout or a milestone - by uuid against what
+   applyTryouts/applyMilestones just inserted, the same shape
+   applyDosePauses uses for its episode. A row whose owner is not there is
+   dropped rather than inserted against a guessed one. */
 export async function applyFeltSenseEntries({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM tryout_felt_sense');
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM felt_sense');
   const tryoutIds = await rowidsByUuid(
     driver,
     'tryout',
-    journal.feltSenseEntries.map((entry) => entry.tryoutId)
+    journal.feltSenseEntries.flatMap((entry) => (entry.tryoutId ? [entry.tryoutId] : []))
+  );
+  const milestoneIds = await rowidsByUuid(
+    driver,
+    'milestone',
+    journal.feltSenseEntries.flatMap((entry) => (entry.milestoneId ? [entry.milestoneId] : []))
   );
 
   const rows: unknown[][] = [];
   for (const entry of journal.feltSenseEntries) {
     if (present.has(entry.id)) continue;
-    const tryoutId = tryoutIds.get(entry.tryoutId);
-    if (tryoutId === undefined) continue;
-    rows.push([entry.id, tryoutId, entry.epochDay, entry.mood, entry.note, ts]);
+    const tryoutId = entry.tryoutId ? tryoutIds.get(entry.tryoutId) : undefined;
+    const milestoneId = entry.milestoneId ? milestoneIds.get(entry.milestoneId) : undefined;
+    if (tryoutId === undefined && milestoneId === undefined) continue;
+    rows.push([entry.id, tryoutId ?? null, milestoneId ?? null, entry.epochDay, entry.mood, entry.note, ts]);
   }
 
-  await insertRows(driver, 'INSERT INTO tryout_felt_sense (uuid, tryout_id, epoch_day, mood, note, updated_at)', rows);
+  await insertRows(
+    driver,
+    'INSERT INTO felt_sense (uuid, tryout_id, milestone_id, epoch_day, mood, note, updated_at)',
+    rows
+  );
 }
 
 export async function applyDoseEvents({ driver, journal, ts }: Restoring): Promise<void> {

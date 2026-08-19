@@ -143,12 +143,10 @@ async function populated() {
     startEpochDay: 19900,
     endEpochDay: null
   });
-  const feltSense = await journal.tryouts.addFeltSenseEntry({
-    tryoutId: tryout,
-    epochDay: 19910,
-    mood: 4,
-    note: 'felt right at the pharmacy'
-  });
+  const feltSense = await journal.feltSense.add(
+    { tryoutId: tryout },
+    { epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
+  );
 
   return {
     ...made,
@@ -269,9 +267,9 @@ test('merge adds what this device does not have and leaves what it has alone', a
   const tryouts = await target.journal.tryouts.getTryouts();
   assert.equal(tryouts.length, 1);
   assert.equal(tryouts[0].label, 'Alex');
-  const feltSense = await target.journal.tryouts.getFeltSenseEntries(tryouts[0].id);
+  const feltSense = await target.journal.feltSense.forTryout(tryouts[0].id);
   assert.deepEqual(feltSense, [
-    { id: source.feltSense, tryoutId: tryouts[0].id, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
+    { id: source.feltSense, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
   ]);
 });
 
@@ -321,7 +319,7 @@ test('merging the same archive twice duplicates neither a tryout nor its felt-se
 
   const tryouts = await target.journal.tryouts.getTryouts();
   assert.equal(tryouts.length, 1);
-  assert.equal((await target.journal.tryouts.getFeltSenseEntries(tryouts[0].id)).length, 1);
+  assert.equal((await target.journal.feltSense.forTryout(tryouts[0].id)).length, 1);
 });
 
 test('a dose log travels with its schedule and pauses, still hung off the right episode', async () => {
