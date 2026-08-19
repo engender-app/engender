@@ -25,7 +25,7 @@
    vocabulary.ts answers "called what". */
 
 import { prefs } from '../prefs/store.svelte';
-import type { Affirmation, BodyRegion, GenderDimension, GenderPreset, Milestone, Tag, TagGroup } from '../types';
+import type { Affirmation, BodyRegion, GenderDimension, GenderPreset, MeasurementType, Milestone, Tag, TagGroup } from '../types';
 import type { Journal } from '../journal/journal';
 import { onTablesWritten } from './journal.svelte';
 import type { TableName } from './writes';
@@ -37,13 +37,25 @@ const mirror = $state<{
   milestones: Milestone[];
   affirmations: Affirmation[];
   bodyRegions: BodyRegion[];
-}>({ dimensions: [], presets: [], tagGroups: [], milestones: [], affirmations: [], bodyRegions: [] });
+  measurementTypes: MeasurementType[];
+}>({
+  dimensions: [],
+  presets: [],
+  tagGroups: [],
+  milestones: [],
+  affirmations: [],
+  bodyRegions: [],
+  measurementTypes: []
+});
 
 /** Which slices a written table invalidates. Photos are in here because a
     milestone carries its photo on the mirrored row, so attaching one changes
     what the timeline should draw. */
 const AFFECTED: Partial<
-  Record<TableName, ('dimensions' | 'presets' | 'tagGroups' | 'milestones' | 'affirmations' | 'bodyRegions')[]>
+  Record<
+    TableName,
+    ('dimensions' | 'presets' | 'tagGroups' | 'milestones' | 'affirmations' | 'bodyRegions' | 'measurementTypes')[]
+  >
 > = {
   dimension: ['dimensions', 'presets'],
   preset: ['presets'],
@@ -51,7 +63,8 @@ const AFFECTED: Partial<
   milestone: ['milestones'],
   photo: ['milestones'],
   affirmation: ['affirmations'],
-  bodyRegion: ['bodyRegions']
+  bodyRegion: ['bodyRegions'],
+  measurementType: ['measurementTypes']
 };
 
 let registered = false;
@@ -60,13 +73,14 @@ let registered = false;
     it: fills the mirror before the first screen renders, so nothing has to
     cope with an app whose vocabulary is briefly empty. */
 export async function hydrateReference(journal: Journal): Promise<void> {
-  const [dimensions, presets, tagGroups, milestones, affirmations, bodyRegions] = await Promise.all([
+  const [dimensions, presets, tagGroups, milestones, affirmations, bodyRegions, measurementTypes] = await Promise.all([
     journal.dimensions.getDimensions(),
     journal.dimensions.getPresets(),
     journal.tags.getTagGroups(),
     journal.milestones.getMilestones(),
     journal.affirmations.getAffirmations(),
-    journal.bodyRegions.getBodyRegions()
+    journal.bodyRegions.getBodyRegions(),
+    journal.measurements.getMeasurementTypes()
   ]);
   mirror.dimensions = dimensions;
   mirror.presets = presets;
@@ -74,6 +88,7 @@ export async function hydrateReference(journal: Journal): Promise<void> {
   mirror.milestones = milestones;
   mirror.affirmations = affirmations;
   mirror.bodyRegions = bodyRegions;
+  mirror.measurementTypes = measurementTypes;
 
   if (registered) return;
   registered = true;
@@ -92,6 +107,7 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('milestones')) mirror.milestones = await journal.milestones.getMilestones();
     if (slices.has('affirmations')) mirror.affirmations = await journal.affirmations.getAffirmations();
     if (slices.has('bodyRegions')) mirror.bodyRegions = await journal.bodyRegions.getBodyRegions();
+    if (slices.has('measurementTypes')) mirror.measurementTypes = await journal.measurements.getMeasurementTypes();
   } catch (error) {
     // The write itself succeeded; only the re-read failed. Keeping the stale
     // rows beats emptying the vocabulary out from under the screen.
@@ -144,6 +160,12 @@ export const reference = {
       applies to tags. */
   get visibleBodyRegions(): BodyRegion[] {
     return mirror.bodyRegions.filter((r) => !r.hidden);
+  },
+
+  /** Every measurement type, hidden ones included - what the measurements
+      settings screen manages (phase 5 ticket 29, CONTEXT: "Hidden"). */
+  get measurementTypes(): MeasurementType[] {
+    return mirror.measurementTypes;
   },
 
   /** The preset the preferences point at, falling back to the first one: a

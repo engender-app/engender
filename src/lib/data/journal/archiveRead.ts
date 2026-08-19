@@ -34,6 +34,7 @@ import type {
   ArchiveLabResult,
   ArchiveLetter,
   ArchiveMeasurement,
+  ArchiveMeasurementType,
   ArchiveMedicationStock,
   ArchiveMilestone,
   ArchivePersonalEffect,
@@ -352,6 +353,13 @@ export async function readLabResults({ driver }: SectionRead): Promise<ArchiveLa
     timingHours: r.timing_hours,
     timingDayOfInterval: r.timing_day_of_interval
   }));
+}
+
+export async function readMeasurementTypes({ driver }: SectionRead): Promise<ArchiveMeasurementType[]> {
+  const rows = await driver.query<{ key: string; name: string; is_built_in: number; hidden: number }>(
+    'SELECT key, name, is_built_in, hidden FROM measurement_type ORDER BY id'
+  );
+  return rows.map((r) => ({ key: r.key, name: r.name, builtIn: bool(r.is_built_in), hidden: bool(r.hidden) }));
 }
 
 export async function readMeasurements({ driver }: SectionRead): Promise<ArchiveMeasurement[]> {

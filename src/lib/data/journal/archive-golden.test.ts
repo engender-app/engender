@@ -51,6 +51,7 @@ const SECTIONS = [
   'entries',
   'milestones',
   'labResults',
+  'measurementTypes',
   'measurements',
   'sideEffects',
   'cycleEvents',
@@ -90,12 +91,13 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 33 sections, and the customizations that
+/** A journal with something in all 34 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
-    built-in group, and a renamed and a hidden built-in tag, dimension,
-    affirmation and body region, plus a custom body region logged on the
-    entry alongside a built-in one. */
+    built-in group, a renamed and a hidden built-in tag, a hidden dimension, a
+    hidden affirmation, a custom body region logged on the entry alongside a
+    built-in one, and a custom measurement type alongside a hidden built-in
+    one. */
 async function everySection(): Promise<Journal> {
   const journal = await emptyDevice();
 
@@ -149,6 +151,9 @@ async function everySection(): Promise<Journal> {
     provider: 'Diagnostyka'
   });
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
+  const shoulders = await journal.measurements.addCustomMeasurementType('Shoulders');
+  await journal.measurements.setMeasurementTypeHidden('underbust', true);
+  await journal.measurements.upsertMeasurement({ type: shoulders.key, epochDay: 20000, value: 41, unit: 'cm' });
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });

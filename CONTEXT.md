@@ -130,6 +130,14 @@ refusing to draw it, because the series-folding rule considers only the unit.
 Points where a figure is simply absent are not a disagreement.
 _Avoid_: Warning, invalid series, unreliable
 
+**Measurement type**:
+What a body measurement is of. The set is open, the same way a gender dimension's
+is: waist, hips, chest and underbust are built in, and a person can add their own
+alongside them (phase 5 ticket 29). Weight and height are deliberately absent from
+the built-in four - the two most likely to pull a BMI figure in behind them - so
+anyone who wants either adds it as their own.
+_Avoid_: Metric (metric means something else here)
+
 **Mood**:
 One of five discrete levels. Distinct from a gender dimension: it has no endpoint
 labels and no configurable range.
@@ -502,7 +510,8 @@ Created by the user. Never translated, never reseeded.
 
 **Hidden**:
 Removed from every place a user picks things, while every past reference to it
-survives. The default meaning of removing a tag or a gender dimension.
+survives. The default meaning of removing a tag, a gender dimension or a
+measurement type.
 _Avoid_: Archived, disabled, deleted, soft-deleted
 
 ### Reading the journal back

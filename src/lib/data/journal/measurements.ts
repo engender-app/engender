@@ -1,18 +1,27 @@
-/* The measurements area (phase 4 ticket 08). Four fixed types - waist,
-   hips, chest/bust and underbust - each a dated value carried in the unit
-   it was logged in, never converted or interpreted (ADR-0012), the same
-   rule labs.ts applies to an analyte's unit. No regimen-episode reference:
-   a measurement has to work whether or not an episode exists. */
+/* The measurements area (phase 4 ticket 08). Each dated value is carried
+   in the unit it was logged in, never converted or interpreted
+   (ADR-0012), the same rule labs.ts applies to an analyte's unit. No
+   regimen-episode reference: a measurement has to work whether or not an
+   episode exists.
+
+   The type a measurement is logged under is its own open vocabulary
+   (phase 5 ticket 29, `measurement_type`) rather than the four fixed
+   values it started as: a built-in hides rather than deletes, and a
+   custom is minted with a uuid that doubles as its key, exactly
+   addCustomDimension's pattern (dimensions.ts). Nothing here validates
+   `type` against that table - the same free-text-but-matched-by-key
+   treatment `entry_body_region.region` and `lab_result.analyte` already
+   get - so a measurement logged under a type since hidden, or one an
+   older build minted before a newer one renamed nothing, still round-
+   trips exactly as logged. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Measurement } from '../types';
-import { assertChanged, mintUuid, now } from './support';
-
-export const MEASUREMENT_TYPES = ['waist', 'hips', 'chest', 'underbust'] as const satisfies readonly Measurement['type'][];
+import type { Measurement, MeasurementType } from '../types';
+import { assertChanged, bool, mintUuid, now } from './support';
 
 export interface MeasurementInput {
   id?: string;
-  type: Measurement['type'];
+  type: string;
   epochDay: number;
   value: number;
   unit: string;
@@ -29,10 +38,10 @@ export interface MeasurementSeries {
 }
 
 export interface MeasurementsArea {
-  getMeasurements(type: Measurement['type']): Promise<Measurement[]>;
+  getMeasurements(type: string): Promise<Measurement[]>;
   /** This type's measurements split into one series per unit, oldest series
       first. */
-  getSeries(type: Measurement['type']): Promise<MeasurementSeries[]>;
+  getSeries(type: string): Promise<MeasurementSeries[]>;
   /** Every type at once within a day range, for the photo-compare combined
       view (ticket 08): the same date range the two anchor photos span. */
   getMeasurementsInRange(fromEpochDay: number, toEpochDay: number): Promise<Measurement[]>;
@@ -40,15 +49,41 @@ export interface MeasurementsArea {
   upsertMeasurement(input: MeasurementInput): Promise<string>;
   /** Idempotent. */
   deleteMeasurement(id: string): Promise<void>;
+  /** Every measurement type, built-in and custom, hidden ones included -
+      what the settings screen manages. Built-in first (insertion order),
+      then customs in the order they were added. */
+  getMeasurementTypes(): Promise<MeasurementType[]>;
+  /** The minted uuid doubles as the key, exactly addCustomDimension's
+      pattern (dimensions.ts). */
+  addCustomMeasurementType(name: string): Promise<MeasurementType>;
+  /** Built-in and custom alike hide, never delete (CONTEXT: "Hidden") -
+      every measurement already logged against a hidden type survives and
+      still charts, it is only the picker that stops offering the type. */
+  setMeasurementTypeHidden(key: string, hidden: boolean): Promise<void>;
 }
 
 type MeasurementRow = {
   uuid: string;
   epoch_day: number;
-  type: Measurement['type'];
+  type: string;
   value: number;
   unit: string;
 };
+
+type MeasurementTypeRow = {
+  uuid: string | null;
+  key: string;
+  name: string;
+  is_built_in: number;
+  hidden: number;
+};
+
+const toMeasurementType = (row: MeasurementTypeRow): MeasurementType => ({
+  key: row.key,
+  name: row.name,
+  builtIn: bool(row.is_built_in),
+  hidden: bool(row.hidden)
+});
 
 const toMeasurement = (row: MeasurementRow): Measurement => ({
   id: row.uuid,
@@ -59,7 +94,7 @@ const toMeasurement = (row: MeasurementRow): Measurement => ({
 });
 
 export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
-  const measurementsFor = async (type: Measurement['type']): Promise<Measurement[]> => {
+  const measurementsFor = async (type: string): Promise<Measurement[]> => {
     const rows = await driver.query<MeasurementRow>(
       'SELECT uuid, epoch_day, type, value, unit FROM measurement WHERE type = ? ORDER BY epoch_day, id',
       [type]
@@ -110,6 +145,35 @@ export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
 
     async deleteMeasurement(id) {
       await driver.run('DELETE FROM measurement WHERE uuid = ?', [id]);
+    },
+
+    async getMeasurementTypes() {
+      const rows = await driver.query<MeasurementTypeRow>(
+        'SELECT uuid, key, name, is_built_in, hidden FROM measurement_type ORDER BY id'
+      );
+      return rows.map(toMeasurementType);
+    },
+
+    async addCustomMeasurementType(name) {
+      // The minted uuid doubles as the key: measurement_type.key is NOT
+      // NULL for built-ins' sake, and one identity is enough for a custom.
+      const uuid = mintUuid();
+      await driver.run('INSERT INTO measurement_type (uuid, key, name, is_built_in, updated_at) VALUES (?, ?, ?, 0, ?)', [
+        uuid,
+        uuid,
+        name,
+        now()
+      ]);
+      return { key: uuid, name, builtIn: false, hidden: false };
+    },
+
+    async setMeasurementTypeHidden(key, hidden) {
+      const result = await driver.run('UPDATE measurement_type SET hidden = ?, updated_at = ? WHERE key = ?', [
+        hidden ? 1 : 0,
+        now(),
+        key
+      ]);
+      assertChanged(result, `measurement type: ${key}`);
     }
   };
 }

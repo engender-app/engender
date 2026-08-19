@@ -193,13 +193,26 @@ export interface ArchiveLabResult {
 
 export interface ArchiveMeasurement {
   id: string;
-  /** Loosened from Measurement['type'], the way ArchiveReminder loosens
-      `type` and `recurrence`: the schema's CHECK is what enforces this on
-      the way back in (restore.ts), not this boundary type. */
+  /** Names an ArchiveMeasurementType by key - a built-in's stable key or a
+      custom's minted uuid - the same way an ArchiveEntry's dims name an
+      ArchiveDimension (phase 5 ticket 29). Nothing here resolves it to a
+      rowid on the way back in (restore.ts), the same free-text treatment
+      it always had. */
   type: string;
   epochDay: number;
   value: number;
   unit: string;
+}
+
+/** A measurement type (phase 5 ticket 29), the same `key` NOT NULL /
+    `uuid` nullable shape ArchiveDimension gives a gender dimension: a
+    built-in's own stable key, or a custom's minted uuid doubling as its
+    key. */
+export interface ArchiveMeasurementType {
+  key: string;
+  name: string;
+  builtIn: boolean;
+  hidden: boolean;
 }
 
 export interface ArchiveTallyEvent {
@@ -546,6 +559,7 @@ export interface ArchiveJournal {
   entries: ArchiveEntry[];
   milestones: ArchiveMilestone[];
   labResults: ArchiveLabResult[];
+  measurementTypes: ArchiveMeasurementType[];
   measurements: ArchiveMeasurement[];
   sideEffects: ArchiveSideEffect[];
   cycleEvents: ArchiveCycleEvent[];
