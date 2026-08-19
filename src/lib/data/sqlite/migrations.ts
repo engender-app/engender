@@ -1254,6 +1254,59 @@ CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
 CREATE INDEX idx_hair_stage_scale ON hair_stage(scale, epoch_day);
 `;
 
+/* v38: a dose schedule can express a weekday recurrence and per-slot dose
+   amounts (phase 5 ticket 40, CONTEXT: "Dose schedule"). Until now a
+   schedule was only "every N days, M doses per day", which cannot say
+   "Monday and Thursday" without drifting, and carried no dose amount at
+   all, so an alternating 2mg/1mg regimen was unrepresentable.
+
+   A rebuild rather than an added column, same reason v36 needed one: v8
+   declared `every_n_days NOT NULL`, and a weekday schedule has no every-N
+   step to put there. `recurrence_kind` names which shape a row is, and the
+   CHECK keeps `every_n_days` present for exactly the arm that uses it - the
+   same discriminated-union guarantee `DoseScheduleRecurrence` gives in code,
+   enforced again here so a row cannot claim one shape while carrying the
+   other's data. Existing rows all become `everyNDays` with their
+   `every_n_days` copied across unchanged - nothing is reinterpreted.
+
+   Weekdays and dose amounts are child tables, not columns, the same
+   relational shape `dose_pause` and `checklist_item` already use for a
+   one-to-many: a schedule has zero or more of each. `weekday` is
+   Monday-first (0-6, epochDay.ts's `weekdayOfEpochDay`), and
+   `dose_schedule_dose_amount.position` is the cycle order `expectedSlots`
+   reads them back in - both empty for a schedule that does not use the
+   shape they belong to. */
+const SCHEMA_V38 = `
+CREATE TABLE dose_schedule_v38 (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  episode_id      INTEGER NOT NULL UNIQUE REFERENCES regimen_episode(id) ON DELETE CASCADE,
+  recurrence_kind TEXT NOT NULL DEFAULT 'everyNDays' CHECK (recurrence_kind IN ('everyNDays', 'weekdays')),
+  every_n_days    INTEGER,
+  doses_per_day   INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL,
+  CHECK ((recurrence_kind = 'everyNDays') = (every_n_days IS NOT NULL))
+);
+INSERT INTO dose_schedule_v38 (id, uuid, episode_id, recurrence_kind, every_n_days, doses_per_day, updated_at)
+  SELECT id, uuid, episode_id, 'everyNDays', every_n_days, doses_per_day, updated_at FROM dose_schedule;
+DROP TABLE dose_schedule;
+ALTER TABLE dose_schedule_v38 RENAME TO dose_schedule;
+
+CREATE TABLE dose_schedule_weekday (
+  schedule_id INTEGER NOT NULL REFERENCES dose_schedule(id) ON DELETE CASCADE,
+  weekday     INTEGER NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+  PRIMARY KEY (schedule_id, weekday)
+);
+
+CREATE TABLE dose_schedule_dose_amount (
+  schedule_id INTEGER NOT NULL REFERENCES dose_schedule(id) ON DELETE CASCADE,
+  position    INTEGER NOT NULL,
+  dose        REAL NOT NULL,
+  dose_unit   TEXT NOT NULL,
+  PRIMARY KEY (schedule_id, position)
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1291,7 +1344,8 @@ export const migrations: Migration[] = [
   { version: 34, sql: SCHEMA_V34 },
   { version: 35, sql: SCHEMA_V35 },
   { version: 36, sql: SCHEMA_V36 },
-  { version: 37, sql: SCHEMA_V37 }
+  { version: 37, sql: SCHEMA_V37 },
+  { version: 38, sql: SCHEMA_V38 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

@@ -255,19 +255,27 @@ _Avoid_: Regimen (ambiguous - see Regimen episode), suggested dose, preset
 regimen
 
 **Dose schedule**:
-How often one regimen episode expects a dose: every so many days, so many doses
-per day. Structured, unlike the episode's own free-text interval, because slots
-are generated from it. Counted from the episode's start day, so editing a
-schedule does not shift the slots already generated. One per episode.
+How often one regimen episode expects a dose, either of two shapes: every so
+many days, or on specific days of the week - never both at once - and either
+way, so many doses per day. Structured, unlike the episode's own free-text
+interval, because slots are generated from it. An every-N-days schedule is
+counted from the episode's start day, so editing it does not shift the slots
+already generated; a weekday schedule needs no such counting to hold that
+same guarantee, because which days are Mondays never depends on when the
+schedule was last saved. Can also carry a sequence of dose amounts that
+cycles across the slots it generates, in order, for an alternating regimen -
+2 mg one day, 1 mg the next - that a single amount cannot describe. One per
+episode.
 _Avoid_: Reminder (that is a prompt to act; this expects nothing of the user),
 regimen interval
 
 **Dose slot**:
 One dose a **dose schedule** expected, on a given day and in a given position
-within that day. Nothing stores a slot; they are computed from the schedule for
-whatever range is being looked at. A slot is compared against what was logged,
-and the comparison is presented without a target rate, a streak or a pass/fail
-reading.
+within that day, carrying the schedule's dose amount for that position when
+the schedule tracks one. Nothing stores a slot; they are computed from the
+schedule for whatever range is being looked at. A slot is compared against
+what was logged, and the comparison is presented without a target rate, a
+streak or a pass/fail reading.
 _Avoid_: Missed dose (a judgement; a slot with nothing logged is just that)
 
 **Dose pause**:

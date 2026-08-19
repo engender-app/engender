@@ -150,6 +150,13 @@ export function epochDayMonthsAgo(epochDay: number, months: number): number {
   return clampedEpochDay(year, month, d.getDate());
 }
 
+/** Monday-first day of the week for an epoch day: 0 = Monday … 6 = Sunday.
+    Same `+3` shift `previousCalendarWeekRange` below uses, for the same
+    reason - epoch day 0 was a Thursday. */
+export function weekdayOfEpochDay(epochDay: number): number {
+  return (((epochDay + 3) % 7) + 7) % 7;
+}
+
 export interface CalendarWeekRange {
   start: number;
   end: number;

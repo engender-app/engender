@@ -781,21 +781,45 @@ export async function readDoseEvents({ driver }: SectionRead): Promise<ArchiveDo
    device can match an episode by. */
 export async function readDoseSchedules({ driver }: SectionRead): Promise<ArchiveDoseSchedule[]> {
   const rows = await driver.query<{
+    id: number;
     uuid: string;
     episode_uuid: string;
-    every_n_days: number;
+    recurrence_kind: string;
+    every_n_days: number | null;
     doses_per_day: number;
   }>(
-    `SELECT s.uuid, e.uuid AS episode_uuid, s.every_n_days, s.doses_per_day
+    `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day
        FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id
       ORDER BY s.id`
   );
-  return rows.map((r) => ({
-    id: r.uuid,
-    episodeId: r.episode_uuid,
-    everyNDays: r.every_n_days,
-    dosesPerDay: r.doses_per_day
-  }));
+
+  const weekdaysOf = async (scheduleId: number): Promise<number[] | null> => {
+    const weekdayRows = await driver.query<{ weekday: number }>(
+      'SELECT weekday FROM dose_schedule_weekday WHERE schedule_id = ? ORDER BY weekday',
+      [scheduleId]
+    );
+    return weekdayRows.length > 0 ? weekdayRows.map((row) => row.weekday) : null;
+  };
+
+  const doseAmountsOf = async (scheduleId: number): Promise<{ dose: number; doseUnit: string }[] | null> => {
+    const amountRows = await driver.query<{ dose: number; dose_unit: string }>(
+      'SELECT dose, dose_unit FROM dose_schedule_dose_amount WHERE schedule_id = ? ORDER BY position',
+      [scheduleId]
+    );
+    return amountRows.length > 0 ? amountRows.map((row) => ({ dose: row.dose, doseUnit: row.dose_unit })) : null;
+  };
+
+  return Promise.all(
+    rows.map(async (r) => ({
+      id: r.uuid,
+      episodeId: r.episode_uuid,
+      recurrenceKind: r.recurrence_kind,
+      everyNDays: r.every_n_days,
+      weekdays: await weekdaysOf(r.id),
+      dosesPerDay: r.doses_per_day,
+      doseAmounts: await doseAmountsOf(r.id)
+    }))
+  );
 }
 
 export async function readDosePauses({ driver }: SectionRead): Promise<ArchiveDosePause[]> {

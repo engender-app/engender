@@ -239,21 +239,98 @@ test('a schedule belongs to an episode, one per episode, and an update replaces 
   const { journal } = await journalWithBuiltIns();
   const episodeId = await episode(journal, 100, 'estradiol');
 
-  const id = await journal.doses.upsertSchedule({ episodeId, everyNDays: 1, dosesPerDay: 2 });
-  assert.deepEqual(await journal.doses.getSchedules(), [{ id, episodeId, everyNDays: 1, dosesPerDay: 2 }]);
+  const id = await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 2,
+    doseAmounts: null
+  });
+  assert.deepEqual(await journal.doses.getSchedules(), [
+    { id, episodeId, recurrence: { kind: 'everyNDays', everyNDays: 1 }, dosesPerDay: 2, doseAmounts: null }
+  ]);
 
-  await journal.doses.upsertSchedule({ episodeId, everyNDays: 14, dosesPerDay: 1 });
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 14 },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
   const schedules = await journal.doses.getSchedules();
   assert.equal(schedules.length, 1, 'one schedule per episode');
-  assert.equal(schedules[0].everyNDays, 14);
+  assert.deepEqual(schedules[0].recurrence, { kind: 'everyNDays', everyNDays: 14 });
 });
 
 test('a schedule against an unknown episode is refused', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(
-    journal.doses.upsertSchedule({ episodeId: 'nope', everyNDays: 1, dosesPerDay: 1 }),
+    journal.doses.upsertSchedule({
+      episodeId: 'nope',
+      recurrence: { kind: 'everyNDays', everyNDays: 1 },
+      dosesPerDay: 1,
+      doseAmounts: null
+    }),
     /unknown regimen episode/
   );
+});
+
+test('a weekday schedule round-trips its weekdays, and switching shape drops the old one\'s', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await episode(journal, 100, 'estradiol');
+
+  const id = await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'weekdays', weekdays: [3, 0] },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+  const [schedule] = await journal.doses.getSchedules();
+  // Read back sorted, not in write order: the set is what matters, not the
+  // order it was typed in.
+  assert.deepEqual(schedule, {
+    id,
+    episodeId,
+    recurrence: { kind: 'weekdays', weekdays: [0, 3] },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 7 },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+  const [switched] = await journal.doses.getSchedules();
+  assert.deepEqual(switched.recurrence, { kind: 'everyNDays', everyNDays: 7 });
+});
+
+test('doseAmounts round-trips in cycle order, and is null again once cleared', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await episode(journal, 100, 'estradiol');
+
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: [
+      { dose: 2, doseUnit: 'mg' },
+      { dose: 1, doseUnit: 'mg' }
+    ]
+  });
+  const [withAmounts] = await journal.doses.getSchedules();
+  assert.deepEqual(withAmounts.doseAmounts, [
+    { dose: 2, doseUnit: 'mg' },
+    { dose: 1, doseUnit: 'mg' }
+  ]);
+
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+  const [cleared] = await journal.doses.getSchedules();
+  assert.equal(cleared.doseAmounts, null);
 });
 
 test('a pause is a dated range on an episode with a planned or accidental reason', async () => {

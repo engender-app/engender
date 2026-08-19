@@ -124,7 +124,7 @@ async function populated() {
     provider: 'Diagnostyka'
   });
 
-  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, everyNDays: 14, dosesPerDay: 1 });
+  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null });
   const dosePause = await journal.doses.upsertPause({
     episodeId: episode,
     startEpochDay: 19100,
@@ -339,10 +339,42 @@ test('a dose log travels with its schedule and pauses, still hung off the right 
   assert.equal(dose.route === 'im' ? dose.vehicle : null, 'oil');
 
   assert.deepEqual(await target.journal.doses.getSchedules(), [
-    { id: source.schedule, episodeId: source.episode, everyNDays: 14, dosesPerDay: 1 }
+    { id: source.schedule, episodeId: source.episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null }
   ]);
   assert.deepEqual(await target.journal.doses.getPauses(), [
     { id: source.dosePause, episodeId: source.episode, startEpochDay: 19100, endEpochDay: null, reason: 'planned' }
+  ]);
+});
+
+test('a weekday schedule and its dose amounts survive an export/import round trip', async () => {
+  const source = await device();
+  const episode = await source.journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'twice weekly',
+    startEpochDay: 19000
+  });
+  await source.journal.doses.upsertSchedule({
+    episodeId: episode,
+    recurrence: { kind: 'weekdays', weekdays: [0, 3] },
+    dosesPerDay: 1,
+    doseAmounts: [
+      { dose: 2, doseUnit: 'mg' },
+      { dose: 1, doseUnit: 'mg' }
+    ]
+  });
+
+  const target = await device();
+  await target.journal.archive.merge(await exported(source.journal));
+
+  const [schedule] = await target.journal.doses.getSchedules();
+  assert.deepEqual(schedule.recurrence, { kind: 'weekdays', weekdays: [0, 3] });
+  assert.deepEqual(schedule.doseAmounts, [
+    { dose: 2, doseUnit: 'mg' },
+    { dose: 1, doseUnit: 'mg' }
   ]);
 });
 
