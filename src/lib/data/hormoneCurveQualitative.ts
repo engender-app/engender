@@ -35,15 +35,6 @@ import { fractionalEpochDay } from './hormoneCurve';
 import { resolveEpisodeAt } from './regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from './types';
 
-/** The routes ticket 11 draws a qualitative curve for estradiol. Injectable
-    routes (im, sc) are ticket 10's for that drug and excluded here the same way
-    this ticket's own doses are excluded from esterCurves
-    (hormoneCurve.test.ts). Testosterone's routes are not these - see
-    QUALITATIVE_CURVE_KEYS. */
-export const QUALITATIVE_ROUTES = ['oral', 'sublingual', 'patch', 'gel'] as const;
-
-export type QualitativeRoute = (typeof QUALITATIVE_ROUTES)[number];
-
 /** What each qualitative curve is a curve of (phase 5 ticket 01). One closed
     vocabulary, because a route alone stopped identifying a curve once
     testosterone arrived: the same route belongs to both hormones, and injected

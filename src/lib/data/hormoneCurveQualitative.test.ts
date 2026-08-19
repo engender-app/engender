@@ -6,7 +6,6 @@ import {
   QUALITATIVE_LOOKBACK_DAYS,
   QUALITATIVE_CURVE_KEYS,
   dosesWithNoCurve,
-  QUALITATIVE_ROUTES,
   latestQualitativeValue,
   qualitativeCurves,
   qualitativeValueAt,
@@ -42,10 +41,6 @@ function dose(epochDay: number, over: Partial<Extract<DoseEvent, { route: 'oral'
 }
 
 const WINDOW = { drug: 'estradiol', fromEpochDay: 0, toEpochDay: 6 } as const;
-
-test('the four routes this ticket draws, and only those', () => {
-  assert.deepEqual(QUALITATIVE_ROUTES, ['oral', 'sublingual', 'patch', 'gel']);
-});
 
 test('one curve per route dosed in the window, from the dose log', () => {
   const result = qualitativeCurves({ doses: [dose(0), dose(1), dose(2)], episodes: [episode()], ...WINDOW });
