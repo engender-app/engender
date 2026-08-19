@@ -15,10 +15,13 @@
    resolution III CZP 6/24 of 4 March 2025, the Ombudsman's guide to
    ustalenie plci proceedings, and the relevant gov.pl pages, on the date
    POLISH_PACK.reviewedOn records. What that check turned up is said out
-   loud in roadmap_caveat_pl rather than hidden: there is still no gender
-   recognition statute, whether identity alone grounds a change is pending
-   before the Supreme Court as III CZP 20/26, and the recorded sex marker
-   itself only ever holds K or M, so no procedure produces a third value.
+   loud rather than hidden: roadmap_caveat_pl names that there is still no
+   gender recognition statute and that whether identity alone grounds a
+   change is pending before the Supreme Court as III CZP 20/26, and
+   roadmap_marker_note_pl names that the recorded sex marker itself only
+   ever holds K or M, so no procedure produces a third value. Both are
+   their own strings rather than one long caveat, on docs/ui-copy.md's
+   sentence-count rule for an explanation.
 
    Every item describes procedure. None of them tells anyone what to do
    about their own case, which is the ticket's out-of-scope line and the
@@ -45,6 +48,14 @@ const PACK_NAME: Record<RoadmapPackKey, Message> = {
    country's answer will be a different one. */
 const PACK_CAVEAT: Record<RoadmapPackKey, Message> = {
   pl: m.roadmap_caveat_pl
+};
+
+/* The recorded sex marker's binary range, said as its own sentence pair
+   rather than folded into PACK_CAVEAT, which was already at
+   docs/ui-copy.md's two-sentence cap for an explanation before this fact
+   existed. */
+const PACK_MARKER_NOTE: Record<RoadmapPackKey, Message> = {
+  pl: m.roadmap_marker_note_pl
 };
 
 const PACK_SOURCES: Record<RoadmapPackKey, Message> = {
@@ -128,6 +139,14 @@ const GOAL_NOTE: Partial<Record<RoadmapGoalKey, Message>> = {
   'pl-legal-document-set': m.roadmap_note_pl_legal_document_set
 };
 
+/* A second, independent note for a goal whose first note is already at the
+   two-sentence cap. Partial and keyed the same way GOAL_NOTE is: today only
+   pl-medical-diagnosis-code needs one, to say what F64.0's own criteria
+   describe without folding a third sentence into the existing note. */
+const GOAL_NOTE_SECONDARY: Partial<Record<RoadmapGoalKey, Message>> = {
+  'pl-medical-diagnosis-code': m.roadmap_note_pl_medical_diagnosis_code_criteria
+};
+
 /** The name of a track: social, legal, presentational or medical. */
 export const roadmapTrackName = (track: RoadmapTrack): string => TRACK_NAME[track]();
 
@@ -137,6 +156,9 @@ export const roadmapPackName = (pack: RoadmapPackKey): string => PACK_NAME[pack]
 /** What the pack's procedure rests on, and what about it is unsettled. */
 export const roadmapPackCaveat = (pack: RoadmapPackKey): string => PACK_CAVEAT[pack]();
 
+/** What values the recorded marker this pack's procedure changes can hold. */
+export const roadmapPackMarkerNote = (pack: RoadmapPackKey): string => PACK_MARKER_NOTE[pack]();
+
 /** Where the pack's content was taken from. */
 export const roadmapPackSources = (pack: RoadmapPackKey): string => PACK_SOURCES[pack]();
 
@@ -145,3 +167,7 @@ export const roadmapGoalTitle = (goal: RoadmapGoalKey): string => GOAL_TITLE[goa
 
 /** The procedural detail behind a goal, where it has one. */
 export const roadmapGoalNote = (goal: RoadmapGoalKey): string | null => GOAL_NOTE[goal]?.() ?? null;
+
+/** A second, independent line for a goal whose first note has one. */
+export const roadmapGoalNoteSecondary = (goal: RoadmapGoalKey): string | null =>
+  GOAL_NOTE_SECONDARY[goal]?.() ?? null;
