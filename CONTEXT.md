@@ -402,6 +402,27 @@ _Avoid_: Symptom, milestone (a personal effect is a body change the
 literature has a published timeline for, not a life-event marker), effect
 alone (ambiguous with side effect)
 
+**Hair staging**:
+A dated series of self-recorded observations about hair, each one carrying
+the published scale it was read against: Norwood-Hamilton's twelve stages,
+Sinclair's five grades, or neither of the two, which carries the person's own
+words instead of a grade. The two scales are separate published
+classifications and are never merged, compared or converted into one
+another - '1' through '5' are grade codes on both and mean different things
+on each, so a stage without its scale says nothing. Neither is extended
+either: an in-between grade would be invented clinical vocabulary, which is
+why a pattern neither describes gets its own option rather than a new stage.
+What the series is read against is a start date the person set, or failing
+that their earliest logged dose of anything - never a named hair-loss drug,
+because hair change is not assumed to be damage being fought. Staging and
+photos work with no anchor at all; they lose the week counts and nothing
+else. The screen records what someone says they see and never says what it
+means or what follows from it.
+_Avoid_: Norwood staging (there are two scales, and naming one as the
+default is the assumption this area exists without), hair loss (the screen
+makes no claim about which direction anyone is going), severity,
+progression
+
 **Wear session**:
 A tracked stretch of binder or tucking wear time, logged either as a live
 start/stop timer or as a backfilled start day plus duration, with an optional
