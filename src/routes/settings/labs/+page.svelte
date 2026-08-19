@@ -24,7 +24,9 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
-  let analyte = $state('estradiol');
+  /* No hormone assumed: the screen opens on whatever the journal actually
+     has, and stays empty until getMostRecentAnalyte resolves (ticket 37). */
+  let analyte = $state('');
 
   /* Two lists, two questions: the picker offers analytes with results behind
      them, because a trend needs data, while the editor offers those plus the
@@ -33,8 +35,15 @@
   let usedQuery = liveQuery(['lab'], (j) => j.labs.getUsedAnalytes());
   let analytes = $derived(usedQuery.value ?? []);
   let offeredQuery = liveQuery(['lab'], (j) => j.labs.getAnalytes());
+  /* Which analyte the screen opens on, or falls back to after the one on
+     screen stops having results (ticket 37). Gated on both queries loading:
+     deciding early off usedQuery alone would settle on analytes[0] before
+     mostRecentQuery answers, and never revisit it once analyte is no longer
+     "missing". */
+  let mostRecentQuery = liveQuery(['lab'], (j) => j.labs.getMostRecentAnalyte());
   $effect(() => {
-    if (analytes.length && !analytes.includes(analyte)) analyte = analytes[0];
+    if (usedQuery.loading || mostRecentQuery.loading) return;
+    if (analytes.length && !analytes.includes(analyte)) analyte = mostRecentQuery.value ?? analytes[0];
   });
 
   /* The list is every result this analyte has, in order. The charts are those
@@ -194,10 +203,15 @@
       : {
           date: dateInputValueFromEpochDay(todayEpochDay()),
           time: '',
-          analyte: 'estradiol',
+          /* Whatever the screen is already showing - itself the most
+             recently logged analyte, or none - rather than a hormone
+             (ticket 37). Unit likewise: a set preferred unit wins, then the
+             last unit this analyte was actually recorded in, the same
+             fallback the measurements screen uses for its own unit. */
+          analyte,
           customAnalyte: '',
           value: '',
-          unit: defaultUnitForAnalyte('estradiol', prefs.preferredLabUnits),
+          unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results.at(-1)?.unit ?? ''),
           note: '',
           provider: '',
           timing: null
@@ -445,6 +459,9 @@
       <div class="field">
         <label class="field-label" for="lab-analyte">{m.labs_analyte_label()}</label>
         <select class="input" id="lab-analyte" value={editor.analyte} onchange={(e) => changeEditorAnalyte((e.target as HTMLSelectElement).value)}>
+          {#if !editor.analyte}
+            <option value="">{m.labs_analyte_choose()}</option>
+          {/if}
           {#each offeredQuery.value ?? [] as a (a)}
             <option value={a}>{a}</option>
           {/each}

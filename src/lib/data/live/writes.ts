@@ -283,7 +283,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   },
   labs: {
     writes: { upsertResult: ['lab'], deleteResult: ['lab'] },
-    reads: ['getAnalytes', 'getUsedAnalytes', 'getResults', 'getSeries']
+    reads: ['getAnalytes', 'getUsedAnalytes', 'getMostRecentAnalyte', 'getResults', 'getSeries']
   },
   measurements: {
     writes: {
