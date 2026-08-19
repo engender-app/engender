@@ -14,13 +14,26 @@ import {
 } from './doseSchedule.ts';
 import type { InjectionSiteKey } from './doseSchedule.ts';
 import { startOfDayTimestamp } from './epochDay.ts';
-import type { DoseEvent, DosePause, DoseSchedule } from './types.ts';
+import type { DoseEvent, DosePause, DoseSchedule, DoseScheduleAmount } from './types.ts';
 
-const schedule = (everyNDays: number, dosesPerDay: number): DoseSchedule => ({
+const schedule = (
+  everyNDays: number,
+  dosesPerDay: number,
+  doseAmounts: DoseScheduleAmount[] | null = null
+): DoseSchedule => ({
   id: 's1',
   episodeId: 'e1',
-  everyNDays,
-  dosesPerDay
+  recurrence: { kind: 'everyNDays', everyNDays },
+  dosesPerDay,
+  doseAmounts
+});
+
+const weekdaySchedule = (weekdays: number[], dosesPerDay = 1, doseAmounts: DoseScheduleAmount[] | null = null): DoseSchedule => ({
+  id: 's1',
+  episodeId: 'e1',
+  recurrence: { kind: 'weekdays', weekdays },
+  dosesPerDay,
+  doseAmounts
 });
 
 const pause = (startEpochDay: number, endEpochDay: number | null): DosePause => ({
@@ -47,27 +60,27 @@ const dose = (epochDay: number, hour: number, over: Partial<DoseEvent> = {}): Do
 test('a once-daily schedule puts one slot on every day of the range', () => {
   const slots = expectedSlots(schedule(1, 1), 100, 100, 103);
   assert.deepEqual(slots, [
-    { epochDay: 100, indexInDay: 0 },
-    { epochDay: 101, indexInDay: 0 },
-    { epochDay: 102, indexInDay: 0 },
-    { epochDay: 103, indexInDay: 0 }
+    { epochDay: 100, indexInDay: 0, amount: null },
+    { epochDay: 101, indexInDay: 0, amount: null },
+    { epochDay: 102, indexInDay: 0, amount: null },
+    { epochDay: 103, indexInDay: 0, amount: null }
   ]);
 });
 
 test('a twice-daily schedule puts two numbered slots on each day', () => {
   const slots = expectedSlots(schedule(1, 2), 100, 100, 101);
   assert.deepEqual(slots, [
-    { epochDay: 100, indexInDay: 0 },
-    { epochDay: 100, indexInDay: 1 },
-    { epochDay: 101, indexInDay: 0 },
-    { epochDay: 101, indexInDay: 1 }
+    { epochDay: 100, indexInDay: 0, amount: null },
+    { epochDay: 100, indexInDay: 1, amount: null },
+    { epochDay: 101, indexInDay: 0, amount: null },
+    { epochDay: 101, indexInDay: 1, amount: null }
   ]);
 });
 
 test('an every-N-days schedule steps from the anchor, not from the range start', () => {
   // Anchored on day 100, asked about 101-115: slots land on 114, not 101.
   const slots = expectedSlots(schedule(14, 1), 100, 101, 115);
-  assert.deepEqual(slots, [{ epochDay: 114, indexInDay: 0 }]);
+  assert.deepEqual(slots, [{ epochDay: 114, indexInDay: 0, amount: null }]);
 });
 
 test('no slot falls before the anchor day', () => {
@@ -81,6 +94,96 @@ test('no slot falls before the anchor day', () => {
 test('a nonsense schedule generates nothing rather than looping forever', () => {
   assert.deepEqual(expectedSlots(schedule(0, 1), 100, 100, 110), []);
   assert.deepEqual(expectedSlots(schedule(1, 0), 100, 100, 110), []);
+  assert.deepEqual(expectedSlots(weekdaySchedule([]), 100, 100, 110), []);
+});
+
+test('a weekday schedule puts slots on exactly those weekdays, with no drift over multiple weeks', () => {
+  // Epoch day 100 is a Saturday; Monday/Thursday (0/3) inside 100-110 fall
+  // on 102, 105 and 109 - each exactly a week after the same weekday before it.
+  const slots = expectedSlots(weekdaySchedule([0, 3]), 100, 100, 110);
+  assert.deepEqual(
+    slots.map((s) => s.epochDay),
+    [102, 105, 109]
+  );
+});
+
+test('a weekday schedule generates nothing before the anchor day', () => {
+  const slots = expectedSlots(weekdaySchedule([0, 3]), 100, 90, 101);
+  assert.deepEqual(
+    slots.map((s) => s.epochDay),
+    []
+  );
+});
+
+test('a weekday schedule needs no anchor to stay in phase: scrolling the window changes nothing about which days match', () => {
+  const full = expectedSlots(weekdaySchedule([0, 3]), 100, 100, 120);
+  const scrolled = expectedSlots(weekdaySchedule([0, 3]), 100, 110, 120);
+  assert.deepEqual(
+    scrolled.map((s) => s.epochDay),
+    full.map((s) => s.epochDay).filter((d) => d >= 110)
+  );
+});
+
+test('doseAmounts cycles across an every-N-days schedule\'s slots in order: 2mg one day, 1mg the next', () => {
+  const amounts: DoseScheduleAmount[] = [
+    { dose: 2, doseUnit: 'mg' },
+    { dose: 1, doseUnit: 'mg' }
+  ];
+  const slots = expectedSlots(schedule(1, 1, amounts), 100, 100, 103);
+  assert.deepEqual(
+    slots.map((s) => s.amount),
+    [amounts[0], amounts[1], amounts[0], amounts[1]]
+  );
+});
+
+test('doseAmounts cycles by slot, not by day: a twice-daily schedule can alternate within the day instead', () => {
+  const amounts: DoseScheduleAmount[] = [
+    { dose: 2, doseUnit: 'mg' },
+    { dose: 1, doseUnit: 'mg' }
+  ];
+  const slots = expectedSlots(schedule(1, 2, amounts), 100, 100, 101);
+  assert.deepEqual(
+    slots.map((s) => s.amount),
+    [amounts[0], amounts[1], amounts[0], amounts[1]]
+  );
+});
+
+test('doseAmounts on a weekday schedule cycles by occurrence, not by calendar day', () => {
+  const amounts: DoseScheduleAmount[] = [
+    { dose: 2, doseUnit: 'mg' },
+    { dose: 1, doseUnit: 'mg' }
+  ];
+  const slots = expectedSlots(weekdaySchedule([0, 3], 1, amounts), 100, 100, 110);
+  assert.deepEqual(
+    slots.map((s) => [s.epochDay, s.amount]),
+    [
+      [102, amounts[0]],
+      [105, amounts[1]],
+      [109, amounts[0]]
+    ]
+  );
+});
+
+test('the doseAmounts cycle is counted from the anchor, not from where the window starts', () => {
+  const amounts: DoseScheduleAmount[] = [
+    { dose: 2, doseUnit: 'mg' },
+    { dose: 1, doseUnit: 'mg' }
+  ];
+  // Anchored on 100 same as the full-window test above; asking only about
+  // 102-103 must not restart the cycle at 102.
+  const slots = expectedSlots(schedule(1, 1, amounts), 100, 102, 103);
+  assert.deepEqual(
+    slots.map((s) => s.amount),
+    [amounts[0], amounts[1]]
+  );
+});
+
+test('no doseAmounts means no amount on any slot, same as every schedule before this field existed', () => {
+  const slots = expectedSlots(schedule(1, 1), 100, 100, 101);
+  assert.deepEqual(
+    slots.map((s) => s.amount),
+    [null, null]
+  );
 });
 
 test('a pause covers its endpoints, and an open pause covers everything after its start', () => {

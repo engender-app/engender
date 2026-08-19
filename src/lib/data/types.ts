@@ -464,17 +464,40 @@ export type DoseEvent =
       applicationSite: string | null;
     });
 
+/** One or the other, never both: a fixed step from the episode's start day,
+    or a set of calendar weekdays that needs no anchor to stay in phase.
+    `weekdays` is Monday-first (0 = Monday … 6 = Sunday, epochDay.ts'
+    `weekdayOfEpochDay`), matching the calendar heat-map's own week. */
+export type DoseScheduleRecurrence =
+  | { kind: 'everyNDays'; everyNDays: number }
+  | { kind: 'weekdays'; weekdays: number[] };
+
+/** One amount in a schedule's `doseAmounts` cycle. */
+export interface DoseScheduleAmount {
+  dose: number;
+  doseUnit: string;
+}
+
 /** How often an episode expects a dose, structured enough to generate
-    slots from - which the episode's own free-text `interval` is not.
-    Anchored to the episode's start day, so the progression is fixed by the
-    episode rather than by when the schedule was written. One per episode. */
+    slots from - which the episode's own free-text `interval` is not. An
+    every-N-days recurrence is anchored to the episode's start day, so the
+    progression is fixed by the episode rather than by when the schedule was
+    written; editing it does not shift the slots already generated, and a
+    weekday recurrence needs no such anchor to hold that same guarantee.
+    One per episode.
+
+    `doseAmounts`, when set, cycles across every slot the schedule generates,
+    in order - the 2mg/1mg alternation this exists for. Null means the
+    schedule tracks no target amount at all, which is every schedule from
+    before this field existed. */
 export interface DoseSchedule {
   id: string;
   /** A RegimenEpisode id. */
   episodeId: string;
-  everyNDays: number;
+  recurrence: DoseScheduleRecurrence;
   /** Twice-daily oral is 2. */
   dosesPerDay: number;
+  doseAmounts: DoseScheduleAmount[] | null;
 }
 
 /** Planned is a break someone chose or a clinician directed; accidental is
