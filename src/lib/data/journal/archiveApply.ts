@@ -233,6 +233,29 @@ export async function applyTagGroups({ driver, mode, journal, ts }: Restoring): 
   }
 }
 
+/** No children to walk, unlike applyTagGroups: an affirmation is a flat row,
+    so a matched one is simply updated (Replace) or left alone (Merge), the
+    same "matched rows are skipped in Merge" rule every other flat section
+    follows (restore.ts's header). */
+export async function applyAffirmations({ driver, mode, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT COALESCE(key, uuid) AS id FROM affirmation');
+
+  for (const a of journal.affirmations) {
+    if (present.has(a.id)) {
+      if (mode === 'merge') continue;
+      await driver.run(
+        'UPDATE affirmation SET language = ?, text = ?, hidden = ?, updated_at = ? WHERE COALESCE(key, uuid) = ?',
+        [a.language, a.text, flag(a.hidden), ts, a.id]
+      );
+      continue;
+    }
+    await driver.run(
+      'INSERT INTO affirmation (uuid, key, language, text, hidden, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [a.builtIn ? null : a.id, a.builtIn ? a.id : null, a.language, a.text, flag(a.hidden), ts]
+    );
+  }
+}
+
 export async function applyEntries({ driver, journal, ts }: Restoring): Promise<void> {
   // Merge skips a matched entry whole, photos included: leaving the row alone
   // and adding its photos would be a half-merge of one entry.

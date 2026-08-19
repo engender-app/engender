@@ -17,6 +17,7 @@ import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
 import { entryPromptRows, entryTemplateRows, milestoneTemplateRows } from './builtins';
 import type {
+  Affirmation,
   EntryPrompt,
   EntryTemplate,
   GenderDimension,
@@ -27,6 +28,7 @@ import type {
   TagGroup
 } from '../types';
 import {
+  affirmationText,
   bodyRegionName,
   dimensionHigh,
   dimensionLow,
@@ -44,6 +46,10 @@ import {
 function localizeDimension(d: GenderDimension): GenderDimension {
   if (!d.builtIn) return d;
   return { ...d, name: dimensionName(d.key), low: dimensionLow(d.key), high: dimensionHigh(d.key) };
+}
+
+function localizeAffirmation(a: Affirmation): Affirmation {
+  return a.builtIn ? { ...a, text: affirmationText(a.id) } : a;
 }
 
 function localizeTag(t: Tag): Tag {
@@ -117,6 +123,16 @@ export const vocabulary = {
   },
   get milestones(): Milestone[] {
     return reference.milestones;
+  },
+  /** Every affirmation line, hidden built-ins included, in the wording the
+      current language gives a built-in - what the settings screen manages. */
+  get affirmations(): Affirmation[] {
+    return reference.affirmations.map(localizeAffirmation);
+  },
+  /** One language's custom lines, in the order they were added - never
+      localized, since a custom line is never translated (CONTEXT: "Custom"). */
+  customAffirmations(language: 'en' | 'pl'): Affirmation[] {
+    return reference.affirmations.filter((a) => !a.builtIn && a.language === language);
   },
   get milestoneTemplates(): MilestoneTemplate[] {
     return milestoneTemplates.map(localizeTemplate);

@@ -118,6 +118,19 @@ export interface ArchiveTagGroup {
   tags: ArchiveTag[];
 }
 
+/** One line of the check-in's affirmation pool (phase 5 ticket 15). `id` is
+    the built-in's key or the custom's uuid, matching ArchiveTag's own
+    convention. `language` is null for a built-in - its wording is looked
+    up fresh on the importing device - and 'en' or 'pl' for a custom, which
+    travels verbatim since it is never translated (CONTEXT: "Custom"). */
+export interface ArchiveAffirmation {
+  id: string;
+  language: 'en' | 'pl' | null;
+  text: string;
+  builtIn: boolean;
+  hidden: boolean;
+}
+
 export interface ArchiveMilestone {
   id: string;
   name: string;
@@ -470,6 +483,7 @@ export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
   presets: ArchivePreset[];
   tagGroups: ArchiveTagGroup[];
+  affirmations: ArchiveAffirmation[];
   entries: ArchiveEntry[];
   milestones: ArchiveMilestone[];
   labResults: ArchiveLabResult[];

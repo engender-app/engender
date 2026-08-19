@@ -87,6 +87,29 @@ export const BUILT_IN_TAG_GROUPS = [
 export type BuiltInTagGroupKey = (typeof BUILT_IN_TAG_GROUPS)[number]['key'];
 export type BuiltInTagKey = (typeof BUILT_IN_TAG_GROUPS)[number]['tags'][number];
 
+/* The check-in's built-in affirmation pool (phase 5 ticket 15). Fourteen
+   stable keys, one per line the message catalogue carries
+   (messages/en.json, messages/pl.json) - the wording is looked up by key at
+   display time (labels.ts), the same split every other built-in here gets. */
+export const BUILT_IN_AFFIRMATION_KEYS = [
+  'affirmation_1',
+  'affirmation_2',
+  'affirmation_3',
+  'affirmation_4',
+  'affirmation_5',
+  'affirmation_6',
+  'affirmation_7',
+  'affirmation_8',
+  'affirmation_9',
+  'affirmation_10',
+  'affirmation_11',
+  'affirmation_12',
+  'affirmation_13',
+  'affirmation_14'
+] as const;
+
+export type BuiltInAffirmationKey = (typeof BUILT_IN_AFFIRMATION_KEYS)[number];
+
 export const MILESTONE_TEMPLATE_KEYS = [
   'hrt_start',
   'transition_start',
