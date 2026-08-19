@@ -15,6 +15,7 @@
   let {
     value,
     lastUsed = null,
+    recency,
     onChange
   }: {
     /** `''` before anything is tapped. */
@@ -23,6 +24,11 @@
         can be rotated away from it. Null when there is no history yet, or
         when that injection was imported with a site this build cannot place. */
     lastUsed?: string | null;
+    /** Days since each site was last used, or null for a site never used
+        (ticket 10: doseSchedule.ts's siteRecency). Omitted where the caller
+        has no dose history at hand - the map still renders, just without
+        the recency list below it. */
+    recency?: Record<InjectionSiteKey, number | null>;
     onChange: (site: InjectionSiteKey) => void;
   } = $props();
 
@@ -90,6 +96,23 @@
   <p class="muted small site-map-caption">{injectionSiteLabel(value)}</p>
 {/if}
 
+<!-- Ticket 10: recency for every site, not just the tapped one, so it lives
+     as a list rather than crowding the map's dots - PLACEMENT above already
+     runs the silhouette at its tightest fit. -->
+{#if recency}
+  <ul class="site-recency-list" aria-label={m.dose_site_recency_aria()}>
+    {#each INJECTION_SITES as site (site.key)}
+      {@const days = recency[site.key]}
+      <li class="site-recency-row" data-site={site.key}>
+        <span>{injectionSiteLabel(site.key)}</span>
+        <span class="muted">
+          {days === null ? m.dose_site_never_used() : m.dose_site_days_ago({ days: m.n_days({ n: days }) })}
+        </span>
+      </li>
+    {/each}
+  </ul>
+{/if}
+
 <style>
   .site-map {
     position: relative;
@@ -150,5 +173,21 @@
   .site-map-caption {
     text-align: center;
     margin-bottom: var(--space-3);
+  }
+  .site-recency-list {
+    list-style: none;
+    margin: 0 0 var(--space-3);
+    padding: 0;
+    display: grid;
+    gap: var(--space-1);
+  }
+  .site-recency-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+  .site-recency-row span:last-child {
+    white-space: nowrap;
   }
 </style>

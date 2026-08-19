@@ -62,6 +62,35 @@ export const INJECTION_SITES: InjectionSite[] = INJECTION_SITE_REGIONS.flatMap((
   { key: `${region}-right` as const, region, side: 'right' as const }
 ]);
 
+/** Days since each rotation site was last injected, or `null` for a site
+    the dose log has never recorded a dose against (ticket 10). A distinct
+    state rather than a large number or zero, because neither would read as
+    "never" - and deliberately just that: no verdict on which sites are due,
+    matching the rest of this file (see the header comment).
+
+    Every entry in `doses` is scanned, not only ones naming a site this
+    build's map can place: an imported or otherwise siteless injection dose
+    still cannot move a site's recency, but it must not throw either. */
+export function siteRecency(
+  doses: readonly DoseEvent[],
+  todayEpochDay: number
+): Record<InjectionSiteKey, number | null> {
+  const lastUsedDay = new Map<string, number>();
+  for (const dose of doses) {
+    if (!isInjectionDose(dose) || dose.injectionSite === null) continue;
+    const day = epochDayFromTimestamp(dose.timestamp);
+    const seen = lastUsedDay.get(dose.injectionSite);
+    if (seen === undefined || day > seen) lastUsedDay.set(dose.injectionSite, day);
+  }
+
+  const recency = {} as Record<InjectionSiteKey, number | null>;
+  for (const site of INJECTION_SITES) {
+    const lastDay = lastUsedDay.get(site.key);
+    recency[site.key] = lastDay === undefined ? null : todayEpochDay - lastDay;
+  }
+  return recency;
+}
+
 /** Where a patch or gel went. A flat list, not the rotation map: a patch
     site is not rotated on an injection site's schedule, so sides and
     muscle layers are precision nobody applying a gel needs. */
