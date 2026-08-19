@@ -780,14 +780,11 @@ try {
 
   await page.locator('[data-preset="p-nb"]').click();
   await page.locator('[data-next]').click();
-  await page.locator('[data-tpl="hrt_start"]').click();
-  await page.locator('[data-next]').click();
   await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
   const greet = await page.locator('[data-home-hello]').textContent();
   if (!greet.includes('Ola')) throw new Error('greeting: ' + greet);
-  if ((await page.locator('[data-milestone-card]').count()) < 1) throw new Error('no milestone on Home');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
 
@@ -839,7 +836,6 @@ try {
     throw new Error('onboarding step 2 Continue was enabled before a preset was tapped');
   }
   await page.getByRole('button', { name: 'Not now' }).click();
-  await page.locator('[data-next]').click();
   await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
