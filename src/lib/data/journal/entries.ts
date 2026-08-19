@@ -17,6 +17,7 @@
    delete - purgeExpiredTrash is what eventually takes them and their files
    with it, via the injected store. */
 
+import { bodyRegionIsLogged } from '../bodyMap';
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
@@ -277,11 +278,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     }
   };
 
-  // Only a region with something on at least one axis counts as content: a
-  // region the picker put on screen but nobody filled in must not be what
-  // keeps an otherwise-empty entry from being rejected.
   const countLoggedRegions = (bodyRegions: Record<string, BodyRegionFeeling>): number =>
-    Object.values(bodyRegions).filter((f) => f.dysphoria !== null || f.euphoria !== null).length;
+    Object.values(bodyRegions).filter(bodyRegionIsLogged).length;
 
   // A region whose two axes are both null says nothing its absence does not
   // already say, so it never reaches the table - the v33 CHECK would reject
@@ -289,7 +287,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
   // filled in; dropping it here is what stops a picked-then-ignored region
   // from being saved as a blank row.
   const insertBodyRegions = async (entryId: number, bodyRegions: Record<string, BodyRegionFeeling>): Promise<void> => {
-    const entries = Object.entries(bodyRegions).filter(([, f]) => f.dysphoria !== null || f.euphoria !== null);
+    const entries = Object.entries(bodyRegions).filter(([, f]) => bodyRegionIsLogged(f));
     if (entries.length === 0) return;
     const values = entries.map(() => '(?, ?, ?, ?)').join(', ');
     const params = entries.flatMap(([region, f]) => [entryId, region, f.dysphoria, f.euphoria]);

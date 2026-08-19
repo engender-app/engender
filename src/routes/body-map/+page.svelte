@@ -72,6 +72,11 @@
           overlay={euphoria}
           min={BODY_REGION_INTENSITY_MIN}
           max={BODY_REGION_INTENSITY_MAX}
+          ariaLabel={m.body_map_chart_aria({
+            region: regions.find((r) => r.id === region)?.name ?? '',
+            first: m.body_region_axis_dysphoria(),
+            second: m.body_region_axis_euphoria()
+          })}
         />
         <!-- Which line is which. Listed, not ranked: the two are separate
              readings of the same spot and the screen never adds them up. -->

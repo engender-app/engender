@@ -21,16 +21,9 @@ import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { isPausedOn } from '../journalingPause';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { BodyRegionFeeling, Photo, TallyKind } from '../types';
+import type { BodyRegionAxis, Photo, TallyKind } from '../types';
 import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins';
 import { bool } from './support';
-
-/** Which of a body region's two independent intensities a trend is asking
-    for (phase 5 ticket 31). Neither is the default and neither is derived
-    from the other; there is deliberately no third value meaning "both
-    combined", because a net figure across the two would rank one against
-    the other. */
-export type BodyRegionAxis = keyof BodyRegionFeeling;
 
 export interface DayAverage {
   day: number;
@@ -220,12 +213,11 @@ function bodyRegionValues(
   region: string,
   axis: BodyRegionAxis
 ): { sql: string; params: (string | number)[] } {
-  const column = axis === 'euphoria' ? 'euphoria' : 'dysphoria';
   return {
-    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.${column} AS value
+    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.${axis} AS value
           FROM entry e
           JOIN entry_body_region ebr ON ebr.entry_id = e.id
-          WHERE ebr.region = ? AND ebr.${column} IS NOT NULL AND e.trashed_at IS NULL`,
+          WHERE ebr.region = ? AND ebr.${axis} IS NOT NULL AND e.trashed_at IS NULL`,
     params: [region]
   };
 }

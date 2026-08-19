@@ -3,8 +3,7 @@
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import Icon from './Icon.svelte';
   import DimensionSlider from './DimensionSlider.svelte';
-  import type { BodyRegionFeeling } from '$lib/data/types';
-  import type { BodyRegionAxis } from '$lib/data/journal/stats';
+  import type { BodyRegionAxis, BodyRegionFeeling } from '$lib/data/types';
 
   let {
     regions,
@@ -47,7 +46,7 @@
     {#each AXES as a (a.axis)}
       <DimensionSlider
         dim={{
-          name: `${r.name}: ${a.label()}`,
+          name: m.body_region_axis_slider({ region: r.name, axis: a.label() }),
           low: m.body_region_intensity_low(),
           high: m.body_region_intensity_high(),
           min: BODY_REGION_INTENSITY_MIN,

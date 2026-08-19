@@ -15,6 +15,7 @@
    clock and never the archive's, and the columns are what validate a value
    on the way in. */
 
+import { bodyRegionIsLogged } from '../bodyMap';
 import { foldText } from '../fold';
 import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -391,12 +392,11 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
     // archive from a build that knows a region this one does not still
     // restores rather than failing the whole import.
     for (const [region, feeling] of Object.entries(entry.bodyRegions ?? {})) {
-      const dysphoria = feeling?.dysphoria ?? null;
-      const euphoria = feeling?.euphoria ?? null;
-      // Both null would fail the v33 CHECK and says nothing the region's
-      // absence does not, so it is dropped rather than aborting the import.
-      if (dysphoria === null && euphoria === null) continue;
-      bodyRegionRows.push([entryId, region, dysphoria, euphoria]);
+      const f = { dysphoria: feeling?.dysphoria ?? null, euphoria: feeling?.euphoria ?? null };
+      // Both null would fail the CHECK and says nothing the region's absence
+      // does not, so it is dropped rather than aborting the import.
+      if (!bodyRegionIsLogged(f)) continue;
+      bodyRegionRows.push([entryId, region, f.dysphoria, f.euphoria]);
     }
   }
 

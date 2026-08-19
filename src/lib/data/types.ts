@@ -61,6 +61,12 @@ export interface BodyRegionFeeling {
   euphoria: number | null;
 }
 
+/** Which of a body region's two intensities something is asking for.
+    Neither is the default and neither is derived from the other; there is
+    deliberately no third value meaning "both combined", because a net
+    figure across the two would rank one axis against the other. */
+export type BodyRegionAxis = keyof BodyRegionFeeling;
+
 export interface Entry {
   id: number;
   epochDay: number;

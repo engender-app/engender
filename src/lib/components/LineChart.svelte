@@ -27,13 +27,16 @@
     ariaLabel,
   }: {
     points: Point[];
-    /** A second series on the same y scale, drawn as a line over the first
-        (phase 5 ticket 31). Same scale because the two callers that use it
-        - a body region's dysphoria and its euphoria - are both 0-100; a
-        series in other units belongs on WearTrendChart's twin axes instead.
-        No area fill for this one: two translucent fills over each other
-        read as a third value that nobody logged. The two series keep their
-        own days, so one can have points where the other has none. */
+    /** A second series on the same y scale (phase 5 ticket 31). Same scale
+        because the two callers that use it - a body region's dysphoria and
+        its euphoria - are both 0-100; a series in other units belongs on
+        WearTrendChart's twin axes instead. The two series keep their own
+        days, so one can have points where the other has none.
+
+        Once there are two, the first drops its area fill and both are drawn
+        as plain lines of equal weight. A filled series next to an unfilled
+        one reads as the main reading with an annotation, and neither of
+        these two is the other's annotation. */
     overlay?: Point[];
     min?: number;
     max?: number;
@@ -75,7 +78,7 @@
     const areaGen = d3area<Point>().x((p) => x(p.day)).y0(height - P).y1((p) => y(p.value));
     return {
       line: points.length >= 2 ? lineGen(points) ?? '' : '',
-      area: points.length >= 2 ? areaGen(points) ?? '' : '',
+      area: overlay.length === 0 && points.length >= 2 ? areaGen(points) ?? '' : '',
       overlay: overlay.length >= 2 ? lineGen(overlay) ?? '' : '',
       dots: points.map((p) => ({ cx: x(p.day), cy: y(p.value) })),
       // Skipped once ariaLabel overrides it: fmtDay would format a bucketed

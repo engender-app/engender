@@ -12,6 +12,7 @@
    same reason: its bytes are not small either, and a removed stored
    recording's id survives the same way a removed stored photo's does. */
 
+import { copyBodyRegions } from './bodyMap';
 import type { EntryDraft } from './entryDraft';
 import type { BodyRegionFeeling } from './types';
 
@@ -39,7 +40,7 @@ export function serializeDraft(draft: EntryDraft): PersistedEntryDraft {
     note: draft.note,
     dims: { ...draft.dims },
     tags: [...draft.tags],
-    bodyRegions: structuredClone(draft.bodyRegions),
+    bodyRegions: copyBodyRegions(draft.bodyRegions),
     removedPhotoIds: [...draft.removedPhotoIds],
     removedRecordingIds: [...draft.removedRecordingIds],
     removedVideoIds: [...draft.removedVideoIds]
@@ -63,7 +64,7 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
   draft.note = persisted.note;
   draft.dims = { ...persisted.dims };
   draft.tags = [...persisted.tags];
-  draft.bodyRegions = structuredClone(persisted.bodyRegions);
+  draft.bodyRegions = copyBodyRegions(persisted.bodyRegions);
   draft.removedPhotoIds = [...persisted.removedPhotoIds];
   draft.photos = draft.photos.filter((p) => p.kind !== 'stored' || !draft.removedPhotoIds.includes(p.photo.id));
   draft.removedRecordingIds = [...persisted.removedRecordingIds];
