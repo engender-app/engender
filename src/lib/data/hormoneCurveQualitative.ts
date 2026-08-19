@@ -34,7 +34,7 @@ import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
 import { resolveInjectableEster } from './hormoneEster';
 import { resolveTestosteroneEster } from './hormoneTestosteroneEster';
 import { fractionalEpochDay } from './hormoneCurve';
-import { resolveEpisodeAt } from './regimenEpisode';
+import { attributeDose } from './regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from './types';
 
 /** What each qualitative curve is a curve of (phase 5 ticket 01). One closed
@@ -242,8 +242,13 @@ export function qualitativeCurves(input: QualitativeCurveInput): QualitativeCurv
   for (const dose of doses) {
     if (dose.status === 'skipped') continue;
 
-    const episode = resolveEpisodeAt(episodes, dose.timestamp);
-    if (!episode) continue;
+    /* A dose ticket 38's concurrency left ambiguous is skipped the same as
+       one with no episode at all - counted, but by dosesWithNoCurve below,
+       the one whole-screen tally this app already shows for a dose it
+       draws nothing for, not by a second counter here. */
+    const attribution = attributeDose(episodes, dose);
+    if (!attribution.episode) continue;
+    const episode = attribution.episode;
 
     /* The asked-for hormone and no other. A dose of one must never add height
        to the other's curve, which is the whole reason the two ester
@@ -317,7 +322,8 @@ export function latestQualitativeValue(curve: QualitativeCurve): number | null {
 }
 
 /** How many doses in the window this app draws no curve for at all - neither
-    the fitted band nor a shape.
+    the fitted band nor a shape, including a dose ticket 38's concurrency
+    made ambiguous to attribute in the first place.
 
     Deliberately drug-agnostic, unlike everything else here: the question it
     answers is about the whole screen rather than one hormone. The empty state
@@ -325,6 +331,8 @@ export function latestQualitativeValue(curve: QualitativeCurve): number | null {
     reader's next step, and pointing them at the dose log helps. A log full of
     doses on an ester this app has no curve for is this app's limit, and the same
     invitation would be asking someone to do again what they have already done.
+    A dose this app could not even tell the drug of belongs in the same bucket
+    as both: either way, this screen has nothing to show for it.
 
     Counts doses, not esters, because that is what the reader recognizes: they
     know how many injections they gave, not how many vocabularies missed.
@@ -343,8 +351,15 @@ export function dosesWithNoCurve(input: Omit<QualitativeCurveInput, 'drug'>): nu
     const day = fractionalEpochDay(dose.timestamp);
     if (day < fromEpochDay || day >= toEpochDay + 1) continue;
 
-    const episode = resolveEpisodeAt(episodes, dose.timestamp);
-    if (!episode) continue;
+    const attribution = attributeDose(episodes, dose);
+    if (!attribution.episode) {
+      /* Ambiguous counts (concurrency left more than one plausible drug and
+         nothing broke the tie); "no episode at all" does not - that silence
+         predates ticket 38 and already meant "nothing logged yet" here. */
+      if (attribution.ambiguous) count += 1;
+      continue;
+    }
+    const episode = attribution.episode;
 
     /* Only a hormone this app curves at all. Someone whose log holds nothing
        but an antiandrogen has not yet logged anything this screen could ever

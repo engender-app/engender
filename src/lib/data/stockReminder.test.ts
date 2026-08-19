@@ -6,7 +6,7 @@ import { RUN_OUT_LEAD_DAYS, type StockProjection } from './stockProjection';
 const TODAY = 20000;
 
 function projection(runOutEpochDay: number | null): StockProjection {
-  return { remaining: 3, dailyRate: 1, runOutEpochDay };
+  return { remaining: 3, dailyRate: 1, runOutEpochDay, excludedDoses: 0 };
 }
 
 test('a fresh projection with no reminder yet creates one dated RUN_OUT_LEAD_DAYS before run-out', () => {

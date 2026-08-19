@@ -61,6 +61,11 @@
   {:else}
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.exposure_dose_totals_empty()}</p>
   {/if}
+  {#if counters && counters.excludedDoses > 0}
+    <p class="muted small" style="margin-bottom:var(--space-4)">
+      {m.exposure_excluded_note({ count: String(counters.excludedDoses) })}
+    </p>
+  {/if}
 
   <SectionTitle text={m.exposure_route_days_title()} />
   {#if countersQuery.loading}

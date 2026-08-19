@@ -751,9 +751,10 @@ export async function readRegimenEpisodes({ driver }: SectionRead): Promise<Arch
     route: string;
     interval: string;
     start_epoch_day: number;
+    end_epoch_day: number | null;
     hidden: number;
   }>(
-    `SELECT uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, hidden
+    `SELECT uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, hidden
      FROM regimen_episode ORDER BY start_epoch_day, id`
   );
   return rows.map((r) => ({
@@ -765,6 +766,7 @@ export async function readRegimenEpisodes({ driver }: SectionRead): Promise<Arch
     route: r.route,
     interval: r.interval,
     startEpochDay: r.start_epoch_day,
+    endEpochDay: r.end_epoch_day,
     hidden: bool(r.hidden)
   }));
 }
@@ -783,9 +785,10 @@ export async function readDoseEvents({ driver }: SectionRead): Promise<ArchiveDo
     scheduled_dose: number | null;
     scheduled_route: string | null;
     scheduled_timestamp: number | null;
+    drug: string | null;
   }>(
     `SELECT uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-            status, scheduled_dose, scheduled_route, scheduled_timestamp
+            status, scheduled_dose, scheduled_route, scheduled_timestamp, drug
        FROM dose_event ORDER BY timestamp, id`
   );
   return rows.map((r) => ({
@@ -800,7 +803,8 @@ export async function readDoseEvents({ driver }: SectionRead): Promise<ArchiveDo
     status: r.status,
     scheduledDose: r.scheduled_dose,
     scheduledRoute: r.scheduled_route,
-    scheduledTimestamp: r.scheduled_timestamp
+    scheduledTimestamp: r.scheduled_timestamp,
+    drug: r.drug
   }));
 }
 

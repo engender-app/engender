@@ -3,9 +3,10 @@
    episode expects them on, and the pauses during which it expects none.
 
    A dose event is its own record type, not an Entry, and it stores no
-   regimen episode. Attribution is resolveEpisodeAt(episodes, timestamp)
-   above this seam (regimenEpisode.ts), which is what makes backdating a
-   dose re-resolve rather than carry a stale link.
+   regimen episode. Attribution is attributeDose(episodes, dose) above this
+   seam (regimenEpisode.ts), which is what makes backdating a dose
+   re-resolve rather than carry a stale link - `drug` (phase 5 ticket 38)
+   only ever breaks a tie that attribution could not resolve on its own.
 
    Nothing here judges adherence. The comparison is assembled from
    expectedSlots and adherence (doseSchedule.ts) over what these reads
@@ -36,6 +37,10 @@ interface DoseInputFields {
   status?: DoseStatus;
   /** `changed` doses only. */
   scheduled?: ScheduledDose | null;
+  /** Which drug this dose was, in its own words (phase 5 ticket 38).
+      Defaults to null - needed only to break an attribution tie between
+      concurrent episodes for different drugs. */
+  drug?: string | null;
 }
 
 /** A dose to write. Arms mirror the domain union (types.ts), so passing a
@@ -98,6 +103,7 @@ type DoseRow = {
   scheduled_dose: number | null;
   scheduled_route: string | null;
   scheduled_timestamp: number | null;
+  drug: string | null;
 };
 
 const scheduledOf = (row: DoseRow): ScheduledDose | null =>
@@ -115,7 +121,8 @@ export function toDoseEvent(row: DoseRow): DoseEvent {
     dose: row.dose,
     doseUnit: row.dose_unit,
     status: row.status as DoseStatus,
-    scheduled: scheduledOf(row)
+    scheduled: scheduledOf(row),
+    drug: row.drug
   };
   const route = row.route as DoseRoute;
 
@@ -158,7 +165,7 @@ function routeColumns(input: DoseEventInput): {
 }
 
 const DOSE_COLUMNS = `uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-                      status, scheduled_dose, scheduled_route, scheduled_timestamp`;
+                      status, scheduled_dose, scheduled_route, scheduled_timestamp, drug`;
 
 export function makeDosesArea(driver: SqliteDriver): DosesArea {
   /** An episode's rowid, by its travelling uuid. Refused here rather than
@@ -220,6 +227,7 @@ export function makeDosesArea(driver: SqliteDriver): DosesArea {
         scheduled?.dose ?? null,
         scheduled?.route ?? null,
         scheduled?.timestamp ?? null,
+        input.drug ?? null,
         now()
       ];
 
@@ -228,7 +236,7 @@ export function makeDosesArea(driver: SqliteDriver): DosesArea {
           `UPDATE dose_event
               SET timestamp = ?, route = ?, dose = ?, dose_unit = ?, injection_site = ?, vehicle = ?,
                   application_site = ?, status = ?, scheduled_dose = ?, scheduled_route = ?,
-                  scheduled_timestamp = ?, updated_at = ?
+                  scheduled_timestamp = ?, drug = ?, updated_at = ?
             WHERE uuid = ?`,
           [...values, input.id]
         );
@@ -239,8 +247,8 @@ export function makeDosesArea(driver: SqliteDriver): DosesArea {
       const uuid = mintUuid();
       await driver.run(
         `INSERT INTO dose_event (timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-                                 status, scheduled_dose, scheduled_route, scheduled_timestamp, updated_at, uuid)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                 status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, updated_at, uuid)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [...values, uuid]
       );
       return uuid;

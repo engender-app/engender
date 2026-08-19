@@ -1675,6 +1675,92 @@ try {
   ok('a journal book carries what the picker was told to carry, and prints as more than one page');
 } catch (e) { await page.emulateMedia({ media: 'screen' }); fail('journal book', e); }
 
+/* Concurrent regimen episodes and dose-drug attribution (phase 5 ticket
+   38): two episodes for different drugs can both be active without one
+   reading as ended, logging a dose while both are active prompts for
+   which drug it was, and ending one drops it out of the active set again
+   - the disambiguation this ticket exists to force before a dose can be
+   drawn into the wrong drug's curve. */
+try {
+  await fresh('/settings/regimen');
+
+  const addOwnEpisode = async (drug, dose, unit) => {
+    await page.click('[data-add]');
+    await page.click('[data-own]');
+    await page.fill('#regimen-drug', drug);
+    await page.fill('#regimen-dose', dose);
+    await page.fill('#regimen-dose-unit', unit);
+    await page.fill('#regimen-route', 'oral');
+    await page.fill('#regimen-interval', 'daily');
+    await page.click('[data-save-regimen]');
+  };
+
+  // Scoped to these two rows by name throughout, not a page-wide badge
+  // count: a demo persona seeded by an earlier flow may already carry its
+  // own regimen episode, and this flow only ever claims something about
+  // the two it created.
+  const estradiolRow = () => page.locator('[data-episode]', { hasText: 'Estradiol' }); // text-under-test: the drug I just typed
+  const spiroRow = () => page.locator('[data-episode]', { hasText: 'Spironolactone' }); // text-under-test: the drug I just typed
+
+  await addOwnEpisode('Estradiol', '4', 'mg');
+  await page.waitForSelector('[data-episode]');
+  await addOwnEpisode('Spironolactone', '100', 'mg');
+  await page.waitForSelector('[data-episode]:nth-of-type(2)');
+
+  if ((await estradiolRow().locator('[data-active-badge]').count()) !== 1 || (await spiroRow().locator('[data-active-badge]').count()) !== 1) {
+    throw new Error('both concurrently active episodes should read Current, not just the latest one');
+  }
+
+  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.click('[data-add]');
+  if ((await page.locator('[data-dose-drug]').count()) !== 2) {
+    throw new Error('logging a dose with two active episodes should prompt for which drug it was');
+  }
+  if (!(await page.isDisabled('[data-save-dose]'))) throw new Error('save should be disabled until a drug is picked');
+
+  await page.click('[data-dose-drug="Spironolactone"]');
+  await page.click('[data-save-dose]');
+  await page.waitForSelector('[data-dose]');
+  const doseRow = await page.locator('[data-dose]').first().innerText();
+  if (!doseRow.includes('Spironolactone')) throw new Error(`the logged dose should be labelled Spironolactone, got: ${doseRow}`);
+
+  // Ending one episode drops it out of today's active set, so the next new
+  // dose is unchanged from a single-episode journal - no prompt at all.
+  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  const localDateInput = (daysAgo = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  await estradiolRow().click();
+  await page.click('[data-end-episode]');
+  // endEpisode() writes to the DB asynchronously and only then updates the
+  // end-date field's own value via Svelte's reactive binding - filling it
+  // before that settles gets clobbered right back to today's date.
+  const today = localDateInput();
+  await page.waitForFunction((expected) => document.querySelector('#regimen-end')?.value === expected, today);
+  await page.fill('#regimen-end', localDateInput(1));
+  await page.click('[data-save-regimen]');
+  await page.waitForFunction(() => {
+    const row = [...document.querySelectorAll('[data-episode]')].find((el) => el.textContent.includes('Estradiol'));
+    return row && !row.querySelector('[data-active-badge]');
+  });
+  if ((await spiroRow().locator('[data-active-badge]').count()) !== 1) {
+    throw new Error('ending the estradiol episode should not touch spironolactone, which is still active');
+  }
+
+  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.click('[data-add]');
+  if ((await page.locator('[data-dose-drug]').count()) !== 0) {
+    throw new Error('logging a dose with exactly one active episode should not prompt for a drug');
+  }
+
+  ok('two concurrent regimen episodes stay active together, a dose logged during the overlap is attributed by an explicit pick, and ending one restores single-episode behaviour');
+} catch (e) {
+  fail('concurrent regimen episodes and dose attribution', e);
+}
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');

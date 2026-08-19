@@ -24,7 +24,6 @@
    registry decides which sections exist and in what order they print,
    never what any one of them means. */
 
-import { episodeEndEpochDay } from '../regimenEpisode';
 import type { ChecklistItem, DoseEvent, LabResult, Procedure, RegimenEpisode, SideEffect } from '../types';
 import type { ChecklistsArea } from './checklists';
 import type { DosesArea } from './doses';
@@ -34,14 +33,10 @@ import type { ProceduresArea } from './procedures';
 import type { RegimenArea } from './regimen';
 import type { SideEffectsArea } from './sideEffects';
 
-/** A regimen episode plus its derived end day (regimenEpisode.ts), computed
-    against the full episode history before the range filter runs - so a
-    superseded episode still in range reports the day it ended rather than
-    reading as ongoing just because the episode that superseded it fell
-    outside the window. */
-export interface ClinicianSummaryEpisode extends RegimenEpisode {
-  endEpochDay: number | null;
-}
+/** A regimen episode as the summary prints it - its own stored end day
+    (types.ts), unchanged: an episode's end no longer needs deriving
+    against the full history the way it did before ticket 38 stored it. */
+export type ClinicianSummaryEpisode = RegimenEpisode;
 
 /** A procedure as the summary prints it (phase 5 ticket 07): the record
     itself, plus the two things it owns elsewhere - its recovery checklist's
@@ -109,19 +104,14 @@ function section<Key extends ClinicianSummarySectionKey>(declared: {
   return declared;
 }
 
-/* episodes is regimen.getEpisodes()'s own order - ascending by
-   startEpochDay - which episodeEndEpochDay requires (regimenEpisode.ts).
-   Each episode's end is derived against that full, correctly-ordered
-   history first, so a superseded episode still in range keeps the end day
-   its successor gives it even though that successor itself may fall outside
-   the window. An episode belongs in the history if any part of its dated
-   range overlaps the window - the same overlap exposureCounters.ts's own
-   overlapDays tests, kept here as a filter rather than a count. */
+/* An episode belongs in the history if any part of its dated range overlaps
+   the window - the same overlap exposureCounters.ts's own overlapDays
+   tests, kept here as a filter rather than a count. */
 async function readRegimenEpisodes({ regimen, fromEpochDay, toEpochDay }: ClinicianSummaryReading) {
   const episodes = await regimen.getEpisodes();
-  return episodes
-    .map((episode, index) => ({ ...episode, endEpochDay: episodeEndEpochDay(episodes, index) }))
-    .filter((episode) => episode.startEpochDay <= toEpochDay && (episode.endEpochDay === null || episode.endEpochDay >= fromEpochDay));
+  return episodes.filter(
+    (episode) => episode.startEpochDay <= toEpochDay && (episode.endEpochDay === null || episode.endEpochDay >= fromEpochDay)
+  );
 }
 
 /* labs.ts has no cross-analyte range read (unlike doses and side effects),

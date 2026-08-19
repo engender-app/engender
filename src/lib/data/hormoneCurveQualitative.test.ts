@@ -22,6 +22,7 @@ function episode(over: Partial<RegimenEpisode> = {}): RegimenEpisode {
     route: 'oral',
     interval: 'every day',
     startEpochDay: -1000,
+    endEpochDay: null,
     hidden: false,
     ...over
   };
@@ -35,6 +36,7 @@ function dose(epochDay: number, over: Partial<Extract<DoseEvent, { route: 'oral'
     doseUnit: 'mg',
     status: 'taken',
     scheduled: null,
+    drug: null,
     route: 'oral',
     ...over
   };
@@ -313,10 +315,14 @@ test('a testosterone patch gets its own shape, not the estradiol patch depot', (
 
 test('one hormone’s gel dose never adds height to the other hormone’s gel curve', () => {
   /* The whole reason the two vocabularies are kept apart. Same route, same
-     window, two drugs - and each call sees only its own doses. */
+     window, two drugs - and each call sees only its own doses. Both
+     episodes are concurrently active from day 2 on (phase 5 ticket 38),
+     so the second dose names its own drug the way the dose editor would
+     have prompted for it - a drug-less dose in that window would be
+     genuinely ambiguous, which is a different, already-covered case. */
   const doses = [
     { ...dose(0), route: 'gel' } as DoseEvent,
-    { ...dose(3), route: 'gel', dose: 50 } as DoseEvent
+    { ...dose(3), route: 'gel', dose: 50, drug: 'testosterone' } as DoseEvent
   ];
   const episodes = [
     episode({ drug: 'estradiol', route: 'gel', startEpochDay: -1000 }),

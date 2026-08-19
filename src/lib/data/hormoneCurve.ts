@@ -39,7 +39,7 @@ import { curveUnit, type CurveDrug } from './hormoneDrug';
 import { INJECTABLE_ESTERS, resolveInjectableEster, type InjectableEster } from './hormoneEster';
 import { ESTER_POSTERIORS, type PkSample } from './hormoneCurveModels';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
-import { resolveEpisodeAt } from './regimenEpisode';
+import { attributeDose } from './regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from './types';
 
 /** The unit the model works in. Not a lab result's unit: a lab result keeps
@@ -243,9 +243,16 @@ export function esterCurves(input: CurveInput): HormoneCurves {
     if (dose.route !== 'im' && dose.route !== 'sc') continue;
     if (dose.status === 'skipped') continue;
 
-    const episode = resolveEpisodeAt(episodes, dose.timestamp);
-    if (!episode) continue;
-    const ester = resolveInjectableEster(episode);
+    /* A dose ticket 38's concurrency left ambiguous to attribute is skipped
+       the same as one with no episode at all - both are left out of the
+       band. It is counted, just not here: dosesWithNoCurve
+       (hormoneCurveQualitative.ts) is the whole-screen, drug-agnostic tally
+       this app already shows for "a dose this screen draws nothing for",
+       and an ambiguous injection belongs in exactly that bucket rather
+       than a second counter next to it. */
+    const attribution = attributeDose(episodes, dose);
+    if (!attribution.episode) continue;
+    const ester = resolveInjectableEster(attribution.episode);
     if (!ester) continue;
 
     const milligrams = doseMilligrams(dose.dose, dose.doseUnit);

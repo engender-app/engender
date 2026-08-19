@@ -32,7 +32,7 @@
    the direction box 3 asks for. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { resolveEpisodeAt } from './regimenEpisode';
+import { attributedDrug, isAmbiguousDrug } from './regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from './types';
 
 /** How many trailing days of the dose log the consumption rate is
@@ -71,6 +71,14 @@ export interface StockProjection {
       from, or the rate is zero - nothing consumed in the window, so at
       this pace the stock never runs out. */
   runOutEpochDay: number | null;
+  /** Doses in `[stock.recordedEpochDay, asOfEpochDay]` left out of every
+      stock's count because more than one concurrent regimen episode was
+      active and the dose named no drug of its own to break the tie (phase
+      5 ticket 38). Whole-window rather than this drug's own, since an
+      ambiguous dose cannot be told apart for any drug, not just this one -
+      the same figure appears on every entry's projection for the window it
+      shares. */
+  excludedDoses: number;
 }
 
 const isConsuming = (dose: DoseEvent) => dose.status !== 'skipped';
@@ -78,13 +86,13 @@ const isConsuming = (dose: DoseEvent) => dose.status !== 'skipped';
 const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
 
 /** Whether `dose` counts against `stock`'s drug: taken or changed - a
-    skipped dose used nothing - and resolved (regimenEpisode.ts) to an
-    episode naming this drug, not necessarily the episode active when the
-    stock was recorded. */
+    skipped dose used nothing - and attributed (regimenEpisode.ts) to this
+    drug, not necessarily to the episode active when the stock was
+    recorded. */
 function consumesStock(dose: DoseEvent, stock: StockEntry, episodes: readonly RegimenEpisode[]): boolean {
   if (!isConsuming(dose)) return false;
-  const episode = resolveEpisodeAt(episodes, dose.timestamp);
-  return episode !== null && drugsMatch(episode.drug, stock.drug);
+  const drug = attributedDrug(episodes, dose);
+  return drug !== null && drugsMatch(drug, stock.drug);
 }
 
 /** `stock`'s projection as of `asOfEpochDay`. `doses` need only cover
@@ -99,18 +107,23 @@ export function projectStock(
   episodes: readonly RegimenEpisode[],
   asOfEpochDay: number
 ): StockProjection {
-  const consumed = doses.filter((dose) => {
+  const inWindow = (dose: DoseEvent) => {
     const day = epochDayFromTimestamp(dose.timestamp);
-    return day >= stock.recordedEpochDay && day <= asOfEpochDay && consumesStock(dose, stock, episodes);
-  });
+    return day >= stock.recordedEpochDay && day <= asOfEpochDay;
+  };
+
+  const consumed = doses.filter((dose) => inWindow(dose) && consumesStock(dose, stock, episodes));
   const remaining = stock.quantity - consumed.length;
+  const excludedDoses = doses.filter(
+    (dose) => inWindow(dose) && isConsuming(dose) && isAmbiguousDrug(episodes, dose)
+  ).length;
 
   const windowStart = Math.max(stock.recordedEpochDay, asOfEpochDay - TRAILING_WINDOW_DAYS + 1);
   const windowDays = asOfEpochDay - windowStart + 1;
   const consumedInWindow = consumed.filter((dose) => epochDayFromTimestamp(dose.timestamp) >= windowStart);
   const dailyRate = windowDays > 0 ? consumedInWindow.length / windowDays : null;
 
-  if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay };
-  if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null };
-  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate) };
+  if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
+  if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
+  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate), excludedDoses };
 }

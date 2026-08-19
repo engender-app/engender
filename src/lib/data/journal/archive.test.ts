@@ -69,7 +69,8 @@ async function populated() {
     doseUnit: 'mg',
     route: 'im',
     interval: 'every 2 weeks',
-    startEpochDay: 19000
+    startEpochDay: 19000,
+    endEpochDay: null
   });
 
   const dose = await journal.doses.upsertDose({
@@ -365,6 +366,7 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       route: 'im',
       interval: 'every 2 weeks',
       startEpochDay: 19000,
+      endEpochDay: null,
       hidden: false
     }
   ]);
@@ -440,7 +442,8 @@ test('dose events travel whole, including the route-conditional fields and a cha
       status: 'taken',
       scheduledDose: null,
       scheduledRoute: null,
-      scheduledTimestamp: null
+      scheduledTimestamp: null,
+      drug: null
     },
     {
       id: changedDose,
@@ -454,7 +457,8 @@ test('dose events travel whole, including the route-conditional fields and a cha
       status: 'changed',
       scheduledDose: 2,
       scheduledRoute: 'oral',
-      scheduledTimestamp: 1_700_090_000_000
+      scheduledTimestamp: 1_700_090_000_000,
+      drug: null
     }
   ]);
 });
@@ -609,7 +613,18 @@ const CARRIED: Record<string, string[]> = {
   measurement_type: ['uuid', 'key', 'name', 'is_built_in', 'hidden'],
   size_record: ['uuid', 'epoch_day', 'category', 'size', 'brand', 'fit_note'],
   tally_event: ['uuid', 'epoch_day', 'kind', 'context'],
-  regimen_episode: ['uuid', 'drug', 'ester', 'dose', 'dose_unit', 'route', 'interval', 'start_epoch_day', 'hidden'],
+  regimen_episode: [
+    'uuid',
+    'drug',
+    'ester',
+    'dose',
+    'dose_unit',
+    'route',
+    'interval',
+    'start_epoch_day',
+    'end_epoch_day',
+    'hidden'
+  ],
   dose_event: [
     'uuid',
     'timestamp',
@@ -622,7 +637,8 @@ const CARRIED: Record<string, string[]> = {
     'status',
     'scheduled_dose',
     'scheduled_route',
-    'scheduled_timestamp'
+    'scheduled_timestamp',
+    'drug'
   ],
   // episode_id travels as the episode's uuid, the way preset_dimension's
   // rowids travel as keys (ADR-0002).
