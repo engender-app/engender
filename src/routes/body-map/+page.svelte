@@ -12,10 +12,10 @@
   const RANGES = [7, 14, 30, 90, 180, 365];
   let range = $state(30);
 
-  let regions = $derived(vocabulary.bodyRegions);
-  let region = $state(vocabulary.bodyRegions[0]?.key ?? '');
+  let regions = $derived(vocabulary.visibleBodyRegions);
+  let region = $state(vocabulary.visibleBodyRegions[0]?.id ?? '');
   $effect(() => {
-    if (regions.length && !regions.some((r) => r.key === region)) region = regions[0].key;
+    if (regions.length && !regions.some((r) => r.id === region)) region = regions[0].id;
   });
 
   // Same inclusive-range rule as the stats screen (ticket 10): the journal
@@ -38,7 +38,7 @@
   {#if regions.length}
     <Segmented
       name={m.body_regions_group()}
-      options={regions.map((r) => ({ value: r.key, label: r.name }))}
+      options={regions.map((r) => ({ value: r.id, label: r.name }))}
       value={region}
       onChange={(v) => (region = v)}
     />
@@ -60,7 +60,7 @@
     {:else}
       <div class="card chart-card">
         <div class="spread">
-          <span class="chart-title">{regions.find((r) => r.key === region)?.name}</span>
+          <span class="chart-title">{regions.find((r) => r.id === region)?.name}</span>
         </div>
         <LineChart points={trend} min={BODY_REGION_INTENSITY_MIN} max={BODY_REGION_INTENSITY_MAX} />
       </div>

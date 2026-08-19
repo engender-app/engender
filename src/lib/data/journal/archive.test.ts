@@ -540,6 +540,7 @@ const CARRIED: Record<string, string[]> = {
   tag_group: ['uuid', 'key', 'name', 'enabled', 'order_index'],
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
   affirmation: ['uuid', 'key', 'language', 'text', 'hidden'],
+  body_region: ['uuid', 'key', 'name', 'hidden'],
   reminder: [
     'uuid',
     'title',

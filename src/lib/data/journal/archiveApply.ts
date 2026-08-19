@@ -256,6 +256,32 @@ export async function applyAffirmations({ driver, mode, journal, ts }: Restoring
   }
 }
 
+/** A flat row, like applyAffirmations - a matched one is simply updated
+    (Replace) or left alone (Merge). */
+export async function applyBodyRegions({ driver, mode, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT COALESCE(key, uuid) AS id FROM body_region');
+
+  for (const r of journal.bodyRegions) {
+    if (present.has(r.id)) {
+      if (mode === 'merge') continue;
+      await driver.run('UPDATE body_region SET name = ?, hidden = ?, updated_at = ? WHERE COALESCE(key, uuid) = ?', [
+        r.name,
+        flag(r.hidden),
+        ts,
+        r.id
+      ]);
+      continue;
+    }
+    await driver.run('INSERT INTO body_region (uuid, key, name, hidden, updated_at) VALUES (?, ?, ?, ?, ?)', [
+      r.builtIn ? null : r.id,
+      r.builtIn ? r.id : null,
+      r.name,
+      flag(r.hidden),
+      ts
+    ]);
+  }
+}
+
 export async function applyEntries({ driver, journal, ts }: Restoring): Promise<void> {
   // Merge skips a matched entry whole, photos included: leaving the row alone
   // and adding its photos would be a half-merge of one entry.

@@ -5,6 +5,7 @@
 
 import { test, expect } from 'vitest';
 import {
+  BUILT_IN_BODY_REGIONS,
   BUILT_IN_DIMENSIONS,
   BUILT_IN_PRESETS,
   BUILT_IN_TAG_GROUPS,
@@ -25,11 +26,16 @@ const allKeys = [
   ...BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags),
   ...MILESTONE_TEMPLATE_KEYS,
   ...ENTRY_TEMPLATES.map((t) => t.key),
-  ...ENTRY_PROMPT_KEYS
+  ...ENTRY_PROMPT_KEYS,
+  ...BUILT_IN_BODY_REGIONS
 ];
 
 test('every built-in carries a key', () => {
   expect(allKeys.every((key) => typeof key === 'string' && key.length > 0)).toBe(true);
+});
+
+test('every body region carries a unique key', () => {
+  expect(new Set(BUILT_IN_BODY_REGIONS).size).toBe(BUILT_IN_BODY_REGIONS.length);
 });
 
 test('tag keys are unique across groups, so a tag belongs to exactly one', () => {
