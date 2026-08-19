@@ -103,6 +103,14 @@
   let dimChange = $derived(recap ? recapDimChange(recap) : null);
   let topTags = $derived(recap ? recapTopTags(recap) : []);
 
+  /* The share button (ticket 18) only appears once there is a real wrapped
+     on screen to share - the same floor the content below it is gated on,
+     so the button never opens onto the "not much to look back on yet"
+     notice or the off/unknown states. */
+  let canShare = $derived(
+    prefs.wrappedEnabled && !!period && !!recap && recap.entryCount >= WRAPPED_ENTRY_FLOOR
+  );
+
   /* The journey anchor (phase 5 ticket 25, ADR-0010): independent of the
      period a wrapped screen happens to be showing, so it reads the same
      whichever cadence tab is open - recomputed from the anchor's own date
@@ -118,7 +126,13 @@
   <header class="screen-header">
     <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/')}><Icon name="arrowLeft" /></button>
     <h1 class="screen-title">{m.wrapped()}</h1>
-    <div class="header-action"></div>
+    <div class="header-action">
+      {#if canShare}
+        <a class="icon-btn" href="/wrapped/{cadence}/share" aria-label={m.wrapped_share_open()}>
+          <Icon name="share" size={22} />
+        </a>
+      {/if}
+    </div>
   </header>
 
   {#if prefs.wrappedEnabled && cadence}

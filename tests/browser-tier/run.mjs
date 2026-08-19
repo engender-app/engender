@@ -873,6 +873,39 @@ try {
   fail('phase 5 ticket 22 video note re-encode', e.message ?? String(e));
 }
 
+// --- Phase 5 ticket 18: rasterizing the wrapped share card -----------------
+try {
+  const r = await load('/share-card.html', 'data-share-card-probe-ready', '__shareCardProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  if (r.fullType === 'image/png') ok('the wrapped card rasterizes to a real PNG, not a canvas nobody encoded');
+  else fail('the wrapped card rasterizes to a real PNG', r.fullType);
+
+  if (r.fullSize.width > 0 && r.fullSize.height > 0)
+    ok(`the rasterized card has a real size (${r.fullSize.width}x${r.fullSize.height})`);
+  else fail('the rasterized card has a real size', JSON.stringify(r.fullSize));
+
+  // Near white would mean the gradient never painted - the art strip is
+  // captured from what WrappedCard.svelte and the app's own palette CSS
+  // actually rendered, not redrawn by this rasterizer.
+  const nearWhite = r.artPixel.every((channel) => channel > 240);
+  if (!nearWhite) ok(`the palette art strip rasterizes with real colour, not a blank div (${JSON.stringify(r.artPixel)})`);
+  else fail('the palette art strip rasterizes with real colour', JSON.stringify(r.artPixel));
+
+  if (r.statText === '12') ok('a picked stat tile carries its own text into the rasterized card');
+  else fail('a picked stat tile carries its own text into the rasterized card', JSON.stringify(r.statText));
+
+  if (!r.emptyHasArt && !r.emptyHasStats)
+    ok('a card with nothing picked has no art strip and no stat tile to rasterize in the first place');
+  else fail('a card with nothing picked has no art or stats', JSON.stringify({ art: r.emptyHasArt, stats: r.emptyHasStats }));
+
+  if (r.emptySize.width > 0 && r.emptySize.height > 0 && r.emptySize.height < r.fullSize.height)
+    ok(`a card with nothing picked still rasterizes (its own padding), smaller than one with content (${r.emptySize.height}px vs ${r.fullSize.height}px)`);
+  else fail('a card with nothing picked still rasterizes, smaller than one with content', JSON.stringify({ empty: r.emptySize, full: r.fullSize }));
+} catch (e) {
+  fail('phase 5 ticket 18 wrapped share card', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 
