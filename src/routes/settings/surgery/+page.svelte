@@ -96,7 +96,12 @@
     });
     editor = null;
     selectedId = id;
-    notesDraft = procedures.find((p) => p.id === id)?.notes ?? notesDraft;
+    /* Falls back to empty rather than to the draft in hand: the live list has
+       not re-run yet, so a procedure just created is not in it - and empty is
+       exactly what its notes are. Keeping the draft would open the new
+       record showing the previously selected one's notes, and Save notes
+       would then write them onto it. */
+    notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
   }
 
   function askToDelete() {
@@ -199,7 +204,7 @@
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.surgery_journey_title()}</h1>
     <div class="header-action">
-      <button class="icon-btn" data-add aria-label={m.surgery_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn" data-add aria-label={m.surgery_add()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     </div>
@@ -235,7 +240,7 @@
   {:else}
     <EmptyState title={m.surgery_empty_title()} text={m.surgery_empty_body()}>
       {#snippet action()}
-        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.surgery_empty_action()}</span></button>
+        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.surgery_add()}</span></button>
       {/snippet}
     </EmptyState>
   {/if}
@@ -478,24 +483,11 @@
     margin-top: var(--space-4);
   }
 
-  .procedure-open {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    flex: 1;
-    min-width: 0;
-    background: none;
-    border: none;
-    padding: 0;
-    text-align: left;
-    font: inherit;
-    color: inherit;
-    cursor: pointer;
-  }
-
-  /* Same checkbox-square treatment the appointment prep list uses for its
-     items, and the same struck-through-when-done rule: a ticked item is
-     marked handled, never hidden. */
+  /* Both are a whole row made tappable: one opens a procedure's recovery
+     log, the other ticks a checklist item. The checkbox square and the
+     struck-through-when-done rule below are the appointment prep list's,
+     where a ticked item is marked handled rather than hidden. */
+  .procedure-open,
   .item-toggle {
     display: flex;
     align-items: center;

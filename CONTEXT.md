@@ -596,9 +596,12 @@ One operation someone is going through, with the consults leading up to it, a
 surgery date once there is one, and a recovery log. Free text: the app ships no
 list of procedures and never matches two spellings of one. Several coexist -
 top surgery and facial feminization surgery are tracked independently - so
-nothing about it is a singleton, and a person can have none.
-_Avoid_: Surgery (the operation is one day of a procedure, not the record),
-operation, journey
+nothing about it is a singleton, and a person can have none. Screens say
+**surgery journey** for the area and name the record after whatever the person
+typed; everything the project says to itself says procedure, the same split
+**Gender dimension** keeps with scale.
+_Avoid_: Surgery as the name of the record (the operation is one day of a
+procedure), case, patient
 
 **Recovery log**:
 What a **Procedure** accumulates after its surgery date: a day counter, dated

@@ -77,6 +77,15 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     return rows[0] ? toChecklist(rows[0]) : undefined;
   };
 
+  /* The one create-on-first-item rule, for both entry points: an owner pair
+     is looked up by that pair and a standalone checklist by having no owner
+     at all, and either way the checklist appears when its first item does. */
+  const addToLazyChecklist = async (owner: ChecklistOwner | undefined, content: string): Promise<ChecklistItem> => {
+    const existing = owner ? await area.getChecklistByOwner(owner) : await standaloneChecklist();
+    const checklistId = existing ? existing.id : (await area.createChecklist(owner)).id;
+    return area.addItem(checklistId, content);
+  };
+
   const area: ChecklistsArea = {
     async createChecklist(owner) {
       const uuid = mintUuid();
@@ -122,17 +131,9 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
       return { id: uuid, content, checked: false, carriedForward: false };
     },
 
-    async addToStandaloneChecklist(content) {
-      const existing = await standaloneChecklist();
-      const checklistId = existing ? existing.id : (await area.createChecklist()).id;
-      return area.addItem(checklistId, content);
-    },
+    addToStandaloneChecklist: (content) => addToLazyChecklist(undefined, content),
 
-    async addToOwnedChecklist(owner, content) {
-      const existing = await area.getChecklistByOwner(owner);
-      const checklistId = existing ? existing.id : (await area.createChecklist(owner)).id;
-      return area.addItem(checklistId, content);
-    },
+    addToOwnedChecklist: (owner, content) => addToLazyChecklist(owner, content),
 
     async editItem(itemId, content) {
       const result = await driver.run('UPDATE checklist_item SET content = ?, updated_at = ? WHERE uuid = ?', [
