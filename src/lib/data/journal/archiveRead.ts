@@ -503,18 +503,22 @@ export async function readTryouts({ driver, tryoutPhotos }: SectionRead): Promis
 export async function readFeltSenseEntries({ driver }: SectionRead): Promise<ArchiveFeltSenseEntry[]> {
   const rows = await driver.query<{
     uuid: string;
-    tryout_uuid: string;
+    tryout_uuid: string | null;
+    milestone_uuid: string | null;
     epoch_day: number;
     mood: number;
     note: string | null;
   }>(
-    `SELECT f.uuid, t.uuid AS tryout_uuid, f.epoch_day, f.mood, f.note
-       FROM tryout_felt_sense f JOIN tryout t ON t.id = f.tryout_id
+    `SELECT f.uuid, t.uuid AS tryout_uuid, ms.uuid AS milestone_uuid, f.epoch_day, f.mood, f.note
+       FROM felt_sense f
+       LEFT JOIN tryout t ON t.id = f.tryout_id
+       LEFT JOIN milestone ms ON ms.id = f.milestone_id
       ORDER BY f.epoch_day, f.id`
   );
   return rows.map((r) => ({
     id: r.uuid,
     tryoutId: r.tryout_uuid,
+    milestoneId: r.milestone_uuid,
     epochDay: r.epoch_day,
     mood: r.mood,
     note: r.note

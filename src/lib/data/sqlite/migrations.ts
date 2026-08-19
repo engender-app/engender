@@ -1066,6 +1066,39 @@ CREATE TABLE body_region (
 );
 `;
 
+/* v33: felt-sense on milestones too (phase 5 ticket 24, CONTEXT:
+   "Felt-sense entry"), the same critique ticket 24 is grounded in -
+   Chuanromanee & Metoyer (CHI 2023) found a transition app that tracked
+   which milestones were reached but not how they felt.
+
+   `tryout_felt_sense.tryout_id` was `NOT NULL`, so widening it to a second
+   owner needs the same rebuild v31's own header gives for `photo`'s CHECK:
+   SQLite cannot ALTER a table-level CHECK in place. Rather than a third
+   per-owner table the way `tryout_photo`/`procedure_photo` answer that
+   same limitation, this follows `photo` itself - one table, two nullable
+   owner columns, a CHECK that exactly one is set - because a felt-sense row
+   needs only a second arm, the same count `photo` widened from at v1, not a
+   third one. The table is renamed `felt_sense` in the process: a name that
+   said "tryout" stopped being true the moment a milestone could own one. */
+const SCHEMA_V33 = `
+CREATE TABLE felt_sense (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid         TEXT NOT NULL UNIQUE,
+  tryout_id    INTEGER REFERENCES tryout(id) ON DELETE CASCADE,
+  milestone_id INTEGER REFERENCES milestone(id) ON DELETE CASCADE,
+  epoch_day    INTEGER NOT NULL,
+  mood         INTEGER NOT NULL CHECK (mood BETWEEN 1 AND 5),
+  note         TEXT,
+  updated_at   INTEGER NOT NULL,
+  CHECK ((tryout_id IS NOT NULL) + (milestone_id IS NOT NULL) = 1)
+);
+INSERT INTO felt_sense (id, uuid, tryout_id, milestone_id, epoch_day, mood, note, updated_at)
+  SELECT id, uuid, tryout_id, NULL, epoch_day, mood, note, updated_at FROM tryout_felt_sense;
+DROP TABLE tryout_felt_sense;
+CREATE INDEX idx_felt_sense_tryout ON felt_sense(tryout_id);
+CREATE INDEX idx_felt_sense_milestone ON felt_sense(milestone_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1098,7 +1131,8 @@ export const migrations: Migration[] = [
   { version: 29, sql: SCHEMA_V29 },
   { version: 30, sql: SCHEMA_V30 },
   { version: 31, sql: SCHEMA_V31 },
-  { version: 32, sql: SCHEMA_V32 }
+  { version: 32, sql: SCHEMA_V32 },
+  { version: 33, sql: SCHEMA_V33 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

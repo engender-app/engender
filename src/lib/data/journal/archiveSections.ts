@@ -130,11 +130,11 @@ const SECTIONS = [
   // Inserts its own photo children, the same reasoning `hairRemovalSessions`
   // and `procedures` above give.
   section({ name: 'tryouts', read: read.readTryouts, apply: apply.applyTryouts }),
-  // A felt-sense row hangs off a tryout rowid, the same way a dose schedule
-  // hangs off an episode's.
+  // A felt-sense row hangs off a tryout or a milestone rowid (phase 5
+  // ticket 24), the same way a dose schedule hangs off an episode's.
   section({
     name: 'feltSenseEntries',
-    after: ['tryouts'],
+    after: ['tryouts', 'milestones'],
     read: read.readFeltSenseEntries,
     apply: apply.applyFeltSenseEntries
   }),

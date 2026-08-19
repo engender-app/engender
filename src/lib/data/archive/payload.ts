@@ -494,13 +494,17 @@ export interface ArchiveTryout {
   photos: ArchiveTryoutPhoto[];
 }
 
-/** One point in a tryout's felt-sense history (phase 4 ticket 16). Named
-    by the tryout's own travelling uuid, not its rowid: the rowid means
-    nothing on the device importing this (ADR-0002), the same rule
-    ArchiveDosePause's `episodeId` follows. */
+/** One point in a tryout's or a milestone's felt-sense history (phase 4
+    ticket 16, widened to milestones by phase 5 ticket 24). Exactly one of
+    `tryoutId`/`milestoneId` is set, each named by that owner's own
+    travelling uuid rather than its rowid, which means nothing on the
+    device importing this (ADR-0002) - the same rule ArchiveDosePause's
+    `episodeId` follows, and the same flat, always-both-fields shape
+    ArchiveDoseEvent's own header gives for a forward-compatible union. */
 export interface ArchiveFeltSenseEntry {
   id: string;
-  tryoutId: string;
+  tryoutId: string | null;
+  milestoneId: string | null;
   epochDay: number;
   mood: number;
   note: string | null;

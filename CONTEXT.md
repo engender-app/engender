@@ -463,9 +463,15 @@ carry photos of its own. Which entries fall inside a tryout's dates is read
 by date overlap alone, never a stored link.
 
 **Felt-sense entry**:
-One point in a tryout's running record of how it has felt, on the app's
-one **mood** scale. A tryout holds as many of these as someone adds over
-its life, not a single rating fixed when it was created.
+One point in the running record of how a **tryout** or a **milestone** has
+felt, on the app's one **mood** scale - belonging to exactly one of the
+two, the same shape a **photo** already has. Its owner holds as many of
+these as someone adds over its life, not a single rating fixed when it
+was created. On a milestone, adding one is offered - never required - at
+the milestone's own creation and again each time its **anniversary**
+shows: tracking that a milestone was reached without ever asking how it
+felt is the gap Chuanromanee & Metoyer (CHI 2023) named in a transition
+app they studied.
 
 **Time-capsule letter**:
 A free-write note to the person's future self, sealed until a chosen

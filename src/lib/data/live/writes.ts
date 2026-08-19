@@ -80,9 +80,17 @@ export type TableName =
      4 ticket 11): both belong to the same doubt-journal screen, the same
      reasoning 'hairProgress' gives. */
   | 'doubtJournal'
-  /* One name for a tryout and its felt-sense history alike (phase 4
-     ticket 16), the same reasoning 'doubtJournal' gives. */
+  /* A tryout's own fields (phase 4 ticket 16). Its felt-sense history is
+     'feltSense' instead, below: once a milestone could own one too (phase
+     5 ticket 24), folding it into 'tryout' the way 'doubtJournal' folds
+     its own two tables would make every milestone read stale whenever a
+     tryout's felt-sense history changed, and vice versa. */
   | 'tryout'
+  /* A felt-sense entry's own name, the same reason 'photo' gets one
+     instead of folding into 'entry'/'milestone': either owner's screen
+     has to invalidate on a write to this table, and which one is a
+     property of the call, not of the method (phase 5 ticket 24). */
+  | 'feltSense'
   /* Time-capsule letters (phase 4 ticket 19). */
   | 'letter'
   /* Voice recordings (phase 4 ticket 24). Its own name rather than folded
@@ -145,6 +153,7 @@ export const TABLE_NAMES: TableName[] = [
   'procedure',
   'doubtJournal',
   'tryout',
+  'feltSense',
   'letter',
   'voiceRecording',
   'videoNote',
@@ -230,7 +239,8 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     writes: {
       // A milestone save can preserve, remove or replace its photo.
       upsertMilestone: ['milestone', 'photo'],
-      deleteMilestone: ['milestone', 'photo']
+      // Takes its felt-sense history along too (phase 5 ticket 24).
+      deleteMilestone: ['milestone', 'photo', 'feltSense']
     },
     reads: ['getMilestones']
   },
@@ -346,13 +356,22 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   tryouts: {
     writes: {
       upsertTryout: ['tryout'],
-      deleteTryout: ['tryout'],
-      addFeltSenseEntry: ['tryout'],
-      deleteFeltSenseEntry: ['tryout'],
+      // Takes its felt-sense history along too.
+      deleteTryout: ['tryout', 'feltSense'],
       addPhoto: ['tryout'],
       deletePhoto: ['tryout']
     },
-    reads: ['getTryouts', 'getFeltSenseEntries', 'getPhotos']
+    reads: ['getTryouts', 'getPhotos']
+  },
+  feltSense: {
+    /* Which owner a felt-sense write belongs to is a property of the call,
+       not of the method, so both `feltSense` and the owner's own name are
+       announced - the same reasoning `photos` gives for `entry`/`milestone`. */
+    writes: {
+      add: ['feltSense', 'tryout', 'milestone'],
+      remove: ['feltSense', 'tryout', 'milestone']
+    },
+    reads: ['forTryout', 'forMilestone']
   },
   letters: {
     writes: { addLetter: ['letter'], deleteLetter: ['letter'] },
