@@ -593,8 +593,9 @@ export type HairRemovalMethod = (typeof HAIR_REMOVAL_METHODS)[number];
     rather than a literal union here, the same treatment DoseEvent's
     `injectionSite` gets: it is validated against hairRemovalAreas.ts's own
     closed vocabulary above the schema seam (journal/hairRemoval.ts), which
-    is never BODY_REGION_KEYS (bodyMap.ts) - see that module's header for
-    why the two stay separate. `painRating` is the same 1-5 scale
+    is never the body-region vocabulary (BodyRegion above) - see
+    hairRemovalAreas.ts's header for why the two stay separate. `painRating`
+    is the same 1-5 scale
     SideEffect.severity uses. `cost` and `provider` are both free text,
     matching LabResult.provider's own no-list, no-normalization treatment -
     there is no ledger here, only a per-session note of what was paid and to
@@ -753,6 +754,22 @@ export interface Affirmation {
   /** '' for a built-in - the message catalogue holds its wording, looked up
       by id - the written line for a custom. */
   text: string;
+  builtIn: boolean;
+  hidden: boolean;
+}
+
+/** One row of the body-region reference-data area (phase 5 ticket 30,
+    CONTEXT: "Reference data" - amended). Flat, like Affirmation: a
+    built-in's `name` is '' and its wording comes from the message
+    catalogue by `id`; a custom region carries the name the person typed
+    and is never translated. No location on the body-map illustration -
+    a custom region is a named row with an intensity, listed rather than
+    positioned. Hides rather than deletes, the same as a Tag or a
+    GenderDimension, so a region's logged intensities keep resolving and
+    charting after it is hidden (CONTEXT: "Hidden"). */
+export interface BodyRegion {
+  id: string;
+  name: string;
   builtIn: boolean;
   hidden: boolean;
 }

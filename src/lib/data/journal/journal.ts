@@ -13,6 +13,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import { makeAffirmationsArea, type AffirmationsArea } from './affirmations';
 import { makeArchiveArea, type ArchiveArea } from './archive';
+import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';
 import { makeChecklistsArea, type ChecklistsArea } from './checklists';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
 import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
@@ -83,6 +84,14 @@ export interface Journal {
       custom lines are additive to the pool the check-in draws from
       (reminders/affirmations.ts), never a replacement for it. */
   affirmations: AffirmationsArea;
+  /** Every body region an entry can log an intensity against (phase 5
+      ticket 30, CONTEXT: "Reference data" - amended): built-in rows seeded
+      by key the same way tags and dimensions are, and a custom row a
+      person adds of their own, addressed by a minted uuid. Hides rather
+      than deletes - entries.ts validates an incoming region key against
+      this area's rows instead of the closed BODY_REGION_KEYS list it used
+      to hold in code. */
+  bodyRegions: BodyRegionsArea;
   dimensions: DimensionsArea;
   milestones: MilestonesArea;
   photos: PhotosArea;
@@ -164,9 +173,9 @@ export interface Journal {
   /** Electrolysis/laser sessions - date, area, method, pain rating, cost,
       free-text provider and optional photos (phase 5 ticket 08). Its own
       closed area vocabulary (hairRemovalAreas.ts), distinct from
-      hairProgress's Norwood-Hamilton staging and never merged with
-      BODY_REGION_KEYS. No episode reference, the same reason sideEffects
-      has none. */
+      hairProgress's Norwood-Hamilton staging and never merged with the
+      body-region vocabulary (bodyRegions.ts). No episode reference, the
+      same reason sideEffects has none. */
   hairRemoval: HairRemovalArea;
   /** Free-write doubt entries and their saved counterevidence snapshots
       (phase 4 ticket 11). Reads the counterevidence itself through
@@ -245,6 +254,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     entries: makeEntriesArea(driver, files),
     tags: makeTagsArea(driver),
     affirmations: makeAffirmationsArea(driver),
+    bodyRegions: makeBodyRegionsArea(driver),
     dimensions,
     milestones: makeMilestonesArea(driver, files),
     photos: makePhotosArea(driver, files),
