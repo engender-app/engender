@@ -7,8 +7,11 @@ import { drawUpperBound, labTimingFor, type LabDraw } from '../labTiming';
 import { assertChanged, mintUuid, now } from './support';
 
 /** The analytes offered before any result exists. Lowercase scientific
-    names shown as-is, like every stored analyte. */
-export const ANALYTE_PRESETS = ['estradiol', 'testosterone', 'prolactin'];
+    names shown as-is, like every stored analyte. Order is cosmetic - it
+    only decides which comes first in a fresh picker - and is not
+    alphabetical on purpose, so the list does not read as estradiol plus
+    two afterthoughts (phase 5 ticket 37). */
+export const ANALYTE_PRESETS = ['testosterone', 'estradiol', 'prolactin'];
 
 /** No `timing`: the dosing context is not something a caller supplies. It
     is derived here, from the dose log as it stands when the result is
@@ -51,6 +54,17 @@ export interface LabsArea {
       needs data, so a preset with no result behind it is not a trend to
       switch to. */
   getUsedAnalytes(): Promise<string[]>;
+  /** The analyte of whichever result was most recently saved or edited, or
+      null with no results at all. What the trend screen opens on and what
+      a new result prefills to (phase 5 ticket 37) - never a hardcoded
+      hormone.
+
+      No preference backs this: the "what did they last log" memory is a
+      read over `lab_result` itself, which already travels with the journal
+      like any other result (ADR-0003 governs the `pref` table, which this
+      never touches), rather than a new device-local flag someone would
+      have to remember to reset on a fresh device. */
+  getMostRecentAnalyte(): Promise<string | null>;
   getResults(analyte: string): Promise<LabResult[]>;
   /** The analyte's results split into one series per unit, oldest series
       first. A result logged in ng/dL and one logged in nmol/L differ by a
@@ -159,6 +173,13 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
     },
 
     getUsedAnalytes: usedAnalytes,
+
+    async getMostRecentAnalyte() {
+      const rows = await driver.query<{ analyte: string }>(
+        'SELECT analyte FROM lab_result ORDER BY updated_at DESC, id DESC LIMIT 1'
+      );
+      return rows[0]?.analyte ?? null;
+    },
 
     getResults: resultsFor,
 
