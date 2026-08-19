@@ -82,6 +82,34 @@
   );
   let correlationCards = $derived(correlationCardsQuery.value ?? []);
 
+  /* Interval mood pattern (phase 5 ticket 09) - two bucket-and-average
+     shapes over a cyclical position, kept apart from correlation cards on
+     purpose (../data/intervalMoodPattern.ts). Neither card names a target
+     or a verdict: both say only where days fell.
+
+     Both read across the journal's whole history rather than the segmented
+     range above (the same Number.MIN_SAFE_INTEGER convention stats.ts's
+     bestStreakEver uses for "ever"), not just the visible window: an
+     injection interval is commonly 14-28 days, so a completed one rarely
+     recurs three times inside even the 90-day preset, and the ticket asks
+     for a pattern "across injectable regimen history" in the first place. */
+  let intervalMoodQuery = liveQuery(['entry', 'dose'], (j) =>
+    j.intervalMoodPattern.dayOfInterval(Number.MIN_SAFE_INTEGER, today)
+  );
+  let intervalMoodPattern = $derived(intervalMoodQuery.value ?? []);
+
+  let customIntervalLength = $state(28);
+  // A boundary clamp, not a save-time validation: the field can sit blank or
+  // negative mid-edit, and the chart underneath has to show something for
+  // every keystroke rather than the query throwing on a bad value.
+  let safeCustomIntervalLength = $derived(
+    Number.isFinite(customIntervalLength) && customIntervalLength >= 2 ? Math.floor(customIntervalLength) : 28
+  );
+  let customIntervalQuery = liveQuery(['entry'], (j) =>
+    j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, safeCustomIntervalLength)
+  );
+  let customIntervalPattern = $derived(customIntervalQuery.value ?? []);
+
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
   const occurrenceLabel = (card: CorrelationCard) =>
@@ -201,6 +229,63 @@
     </div>
   {:else}
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.correlation_cards_empty()}</p>
+  {/if}
+
+  <SectionTitle text={m.interval_mood_title()}>
+    {#snippet aside()}{m.interval_mood_sub()}{/snippet}
+  </SectionTitle>
+  {#if intervalMoodQuery.loading}
+    <Skeleton variant="block" />
+  {:else if intervalMoodPattern.length}
+    <div class="card chart-card" style="margin-bottom:var(--space-4)">
+      <LineChart
+        points={intervalMoodPattern.map((p) => ({ day: p.position, value: p.value }))}
+        min={1}
+        max={5}
+        ariaLabel={m.interval_mood_chart_aria({
+          count: String(intervalMoodPattern.length),
+          from: String(intervalMoodPattern[0].position),
+          to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
+        })}
+      />
+    </div>
+  {:else}
+    <p class="muted small" style="margin-bottom:var(--space-4)">{m.interval_mood_empty()}</p>
+  {/if}
+
+  <SectionTitle text={m.custom_interval_title()}>
+    {#snippet aside()}{m.custom_interval_sub()}{/snippet}
+  </SectionTitle>
+  <div class="field" style="margin-bottom:var(--space-3)">
+    <label class="field-label" for="custom-interval-length">{m.custom_interval_length_label()}</label>
+    <input
+      class="input"
+      type="number"
+      min="2"
+      id="custom-interval-length"
+      name="custom-interval-length"
+      inputmode="numeric"
+      bind:value={customIntervalLength}
+    />
+  </div>
+  {#if customIntervalQuery.loading}
+    <Skeleton variant="block" />
+  {:else if customIntervalPattern.length}
+    <div class="card chart-card" style="margin-bottom:var(--space-4)">
+      <LineChart
+        points={customIntervalPattern.map((p) => ({ day: p.position, value: p.value }))}
+        min={1}
+        max={5}
+        ariaLabel={m.custom_interval_chart_aria({
+          days: String(safeCustomIntervalLength),
+          count: String(customIntervalPattern.length),
+          from: String(customIntervalPattern[0].position),
+          to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
+        })}
+      />
+    </div>
+  {:else}
+    <p class="muted small" style="margin-bottom:var(--space-4)">{m.custom_interval_empty()}</p>
   {/if}
 
   <SectionTitle text={m.body_map_title()} />
