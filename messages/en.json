@@ -2128,5 +2128,18 @@
   "journaling_pause_history_title": "Past pauses",
   "journaling_pause_range_to": "to",
   "journaling_pause_ongoing": "still going",
-  "journaling_pause_delete_aria": "Delete the pause starting {from}"
+  "journaling_pause_delete_aria": "Delete the pause starting {from}",
+  "journal_book_row": "Journal book",
+  "journal_book_row_sub": "A print of a chosen range, to keep or to hand over",
+  "journal_book_title": "Journal book",
+  "journal_book_intro": "The print is made here on the device, and nothing is sent anywhere. It's something to keep or hand over, not a backup: a printed book can't be read back into the app. Restoring a journal still takes an archive file.",
+  "journal_book_range_start_label": "Start date",
+  "journal_book_range_end_label": "End date",
+  "journal_book_range_required": "Pick a start and end date to see the print.",
+  "journal_book_print": "Print",
+  "journal_book_include_title": "What goes in",
+  "journal_book_include_note": "Only what you tick here is printed.",
+  "journal_book_part_entries": "Entries",
+  "journal_book_part_opening_page": "Opening page",
+  "journal_book_empty": "Nothing to print for this range yet."
 }
