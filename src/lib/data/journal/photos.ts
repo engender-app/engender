@@ -162,13 +162,14 @@ export async function photosByMilestone(driver: SqliteDriver): Promise<Map<numbe
    read but whose row landed before the list would look like an orphan.
    Boot is the only caller and runs before any screen can write. */
 export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
-  const [photoRows, hairPhotoRows, recordingRows] = await Promise.all([
+  const [photoRows, hairPhotoRows, hairRemovalPhotoRows, recordingRows] = await Promise.all([
     driver.query<{ file_path: string }>('SELECT file_path FROM photo'),
     driver.query<{ file_path: string }>('SELECT file_path FROM hair_photo'),
+    driver.query<{ file_path: string }>('SELECT file_path FROM hair_removal_photo'),
     driver.query<{ file_path: string }>('SELECT file_path FROM voice_recording')
   ]);
   const referenced = new Set([
-    ...[...photoRows, ...hairPhotoRows].flatMap((row) => filesOf(row.file_path)),
+    ...[...photoRows, ...hairPhotoRows, ...hairRemovalPhotoRows].flatMap((row) => filesOf(row.file_path)),
     ...recordingRows.map((row) => row.file_path)
   ]);
   for (const name of await files.list()) {

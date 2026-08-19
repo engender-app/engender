@@ -549,6 +549,10 @@ const CARRIED: Record<string, string[]> = {
   personal_effect: ['uuid', 'effect', 'first_noticed_epoch_day'],
   hair_stage: ['uuid', 'epoch_day', 'stage'],
   hair_photo: ['uuid', 'epoch_day', 'file_path'],
+  hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'cost', 'provider'],
+  // session_id travels as the session's own uuid, the way dose_pause's
+  // episode_id does (ADR-0002).
+  hair_removal_photo: ['uuid', 'session_id', 'file_path'],
   doubt_entry: ['uuid', 'epoch_day', 'timestamp', 'text'],
   doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
   doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],

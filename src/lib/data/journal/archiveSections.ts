@@ -85,6 +85,13 @@ const SECTIONS = [
   section({ name: 'personalEffects', read: read.readPersonalEffects, apply: apply.applyPersonalEffects }),
   section({ name: 'hairStages', read: read.readHairStages, apply: apply.applyHairStages }),
   section({ name: 'hairPhotos', read: read.readHairPhotos, apply: apply.applyHairPhotos }),
+  // Inserts its own photo children, the same reasoning `hairPhotos` and
+  // `counterevidenceSnapshots` give - it depends on no other section.
+  section({
+    name: 'hairRemovalSessions',
+    read: read.readHairRemovalSessions,
+    apply: apply.applyHairRemovalSessions
+  }),
   section({ name: 'reminders', read: read.readReminders, apply: apply.applyReminders }),
   section({ name: 'tallyEvents', read: read.readTallyEvents, apply: apply.applyTallyEvents }),
   section({ name: 'doubtEntries', read: read.readDoubtEntries, apply: apply.applyDoubtEntries }),

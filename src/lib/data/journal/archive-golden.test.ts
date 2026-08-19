@@ -55,6 +55,7 @@ const SECTIONS = [
   'personalEffects',
   'hairStages',
   'hairPhotos',
+  'hairRemovalSessions',
   'reminders',
   'tallyEvents',
   'doubtEntries',
@@ -84,7 +85,7 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 27 sections, and the customizations that
+/** A journal with something in all 28 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, and a renamed, a hidden and a switched-off built-in. */
@@ -140,6 +141,15 @@ async function everySection(): Promise<Journal> {
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.hairProgress.upsertStage({ epochDay: 19200, stage: '2a' });
   await journal.hairProgress.addPhoto(19200, { full: bytes('hairline'), thumb: bytes('ht') });
+  const hairRemovalSession = await journal.hairRemoval.upsertSession({
+    epochDay: 20000,
+    area: 'upper_lip',
+    method: 'laser',
+    painRating: 2,
+    cost: '250 PLN',
+    provider: 'Klinika Laserowa'
+  });
+  await journal.hairRemoval.addPhoto(hairRemovalSession, { full: bytes('session'), thumb: bytes('st') });
   await journal.reminders.upsertReminder({
     title: 'injection',
     type: 'injection',

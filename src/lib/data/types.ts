@@ -522,6 +522,35 @@ export interface HairStage {
   stage: NorwoodHamiltonStage;
 }
 
+/** A hair-removal session's method (phase 5 ticket 08): a small closed set
+    rather than free text, so `hairRemovalMethodName` can give it a
+    translated label the way `NorwoodHamiltonStage` does - 'other' is the
+    escape hatch for anything the two named methods do not cover. */
+export const HAIR_REMOVAL_METHODS = ['laser', 'electrolysis', 'other'] as const;
+export type HairRemovalMethod = (typeof HAIR_REMOVAL_METHODS)[number];
+
+/** One electrolysis/laser session (phase 5 ticket 08, CONTEXT: pending). A
+    dated series like Measurement and HairStage above, not a single replaced
+    value: a person logs many sessions over time. `area` is a plain string
+    rather than a literal union here, the same treatment DoseEvent's
+    `injectionSite` gets: it is validated against hairRemovalAreas.ts's own
+    closed vocabulary above the schema seam (journal/hairRemoval.ts), which
+    is never BODY_REGION_KEYS (bodyMap.ts) - see that module's header for
+    why the two stay separate. `painRating` is the same 1-5 scale
+    SideEffect.severity uses. `cost` and `provider` are both free text,
+    matching LabResult.provider's own no-list, no-normalization treatment -
+    there is no ledger here, only a per-session note of what was paid and to
+    whom. */
+export interface HairRemovalSession {
+  id: string;
+  epochDay: number;
+  area: string;
+  method: HairRemovalMethod;
+  painRating: number;
+  cost: string;
+  provider: string;
+}
+
 /** What a person last reported having of one drug (phase 4 ticket 04,
     CONTEXT: pending). One per drug, matched exactly (`RegimenEpisode.drug`'s
     own convention) rather than per episode - see migrations.ts v7. Neither

@@ -63,6 +63,10 @@ export type TableName =
      nothing reads one without the other, the same reasoning 'dose' gives -
      the screen shows both against the same anchor. */
   | 'hairProgress'
+  /* One name for hair-removal sessions and their photos alike (phase 5
+     ticket 08): nothing reads one without the other, the same reasoning
+     'hairProgress' gives. */
+  | 'hairRemoval'
   /* One name for doubt entries and counterevidence snapshots alike (phase
      4 ticket 11): both belong to the same doubt-journal screen, the same
      reasoning 'hairProgress' gives. */
@@ -109,6 +113,7 @@ export const TABLE_NAMES: TableName[] = [
   'personalEffect',
   'cycleEvent',
   'hairProgress',
+  'hairRemoval',
   'doubtJournal',
   'tryout',
   'letter',
@@ -227,6 +232,15 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       deletePhoto: ['hairProgress']
     },
     reads: ['getStages', 'getPhotos']
+  },
+  hairRemoval: {
+    writes: {
+      upsertSession: ['hairRemoval'],
+      deleteSession: ['hairRemoval'],
+      addPhoto: ['hairRemoval'],
+      deletePhoto: ['hairRemoval']
+    },
+    reads: ['getSessions', 'getPhotos']
   },
   reminders: {
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },

@@ -24,6 +24,7 @@ import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeHormoneCurveArea, type HormoneCurveArea } from './hormoneCurve';
 import { makeQualitativeCurveArea, type QualitativeCurveArea } from './hormoneCurveQualitative';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
+import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeLettersArea, type LettersArea } from './letters';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
@@ -139,6 +140,13 @@ export interface Journal {
       from personalEffects' single "hair changes" marker - the two are not
       merged. */
   hairProgress: HairProgressArea;
+  /** Electrolysis/laser sessions - date, area, method, pain rating, cost,
+      free-text provider and optional photos (phase 5 ticket 08). Its own
+      closed area vocabulary (hairRemovalAreas.ts), distinct from
+      hairProgress's Norwood-Hamilton staging and never merged with
+      BODY_REGION_KEYS. No episode reference, the same reason sideEffects
+      has none. */
+  hairRemoval: HairRemovalArea;
   /** Free-write doubt entries and their saved counterevidence snapshots
       (phase 4 ticket 11). Reads the counterevidence itself through
       entries.entriesWithTag('g-euphoria', …), the same tag query the stats
@@ -219,6 +227,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects }),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
+    hairRemoval: makeHairRemovalArea(driver, files),
     doubtJournal: makeDoubtJournalArea(driver),
     tryouts: makeTryoutsArea(driver),
     letters: makeLettersArea(driver),
