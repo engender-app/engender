@@ -5,7 +5,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from './epochDay';
-import { completedInjectionIntervals, dayOfIntervalPattern, foldByPeriod } from './intervalMoodPattern';
+import { completedInjectionIntervals, dayOfIntervalPattern, foldByCustomInterval } from './intervalMoodPattern';
 import type { DayAverage } from './journal/stats';
 import type { DoseEvent } from './types';
 
@@ -100,17 +100,21 @@ test('dayOfIntervalPattern leaves a day too short an interval never reached out 
   assert.deepEqual(pattern, []);
 });
 
-test('foldByPeriod folds every periodLengthDays days starting from fromEpochDay, with no claim of a cycle', () => {
+test('foldByCustomInterval folds every intervalLengthDays days starting from fromEpochDay, with no claim of a cycle', () => {
+  // A multiple of 14, so position 1 falls on it - the anchor is the epoch
+  // itself (epochDayFromTimestamp counts from 1970-01-01), not this test's
+  // own start day.
+  const BASE = 20006;
   const days = [
-    point(DAY_0, 4),
-    point(DAY_0 + 7, 4),
-    point(DAY_0 + 14, 2),
-    point(DAY_0 + 21, 2),
-    point(DAY_0 + 28, 3),
-    point(DAY_0 + 35, 3)
+    point(BASE, 4),
+    point(BASE + 7, 4),
+    point(BASE + 14, 2),
+    point(BASE + 21, 2),
+    point(BASE + 28, 3),
+    point(BASE + 35, 3)
   ];
 
-  const pattern = foldByPeriod(days, DAY_0, 14);
+  const pattern = foldByCustomInterval(days, 14);
 
   assert.deepEqual(pattern, [
     { position: 1, value: 3, count: 3 },

@@ -4,7 +4,7 @@
    ../intervalMoodPattern.ts, tested without a driver; this file only wires
    it to the rest of the journal. */
 
-import { completedInjectionIntervals, dayOfIntervalPattern, foldByPeriod, type PatternPoint } from '../intervalMoodPattern';
+import { completedInjectionIntervals, dayOfIntervalPattern, foldByCustomInterval, type PatternPoint } from '../intervalMoodPattern';
 import type { DosesArea } from './doses';
 import type { StatsArea } from './stats';
 
@@ -14,10 +14,10 @@ export interface IntervalMoodPatternArea {
       here is stored, every point is recomputed from the dose log and
       entries each time (ADR-0010). */
   dayOfInterval(fromEpochDay: number, toEpochDay: number): Promise<PatternPoint[]>;
-  /** The same bucket-and-average shape, folded by `periodLengthDays` from
-      `fromEpochDay` instead of by the regimen's own interval - no claim
-      that a cycle exists. */
-  byPeriod(fromEpochDay: number, toEpochDay: number, periodLengthDays: number): Promise<PatternPoint[]>;
+  /** The same bucket-and-average shape over `[fromEpochDay, toEpochDay]`,
+      folded by `intervalLengthDays` against the epoch day itself instead of
+      by the regimen's own interval - no claim that a cycle exists. */
+  byCustomInterval(fromEpochDay: number, toEpochDay: number, intervalLengthDays: number): Promise<PatternPoint[]>;
 }
 
 export function makeIntervalMoodPatternArea(stats: StatsArea, doses: DosesArea): IntervalMoodPatternArea {
@@ -30,9 +30,9 @@ export function makeIntervalMoodPatternArea(stats: StatsArea, doses: DosesArea):
       return dayOfIntervalPattern(dayAverages, completedInjectionIntervals(doseEvents));
     },
 
-    async byPeriod(fromEpochDay, toEpochDay, periodLengthDays) {
+    async byCustomInterval(fromEpochDay, toEpochDay, intervalLengthDays) {
       const dayAverages = await stats.dayAverages('mood', fromEpochDay, toEpochDay);
-      return foldByPeriod(dayAverages, fromEpochDay, periodLengthDays);
+      return foldByCustomInterval(dayAverages, intervalLengthDays);
     }
   };
 }
