@@ -143,6 +143,13 @@ export interface ArchiveAffirmation {
   hidden: boolean;
 }
 
+export interface ArchiveBodyRegion {
+  id: string;
+  name: string;
+  builtIn: boolean;
+  hidden: boolean;
+}
+
 export interface ArchiveMilestone {
   id: string;
   name: string;
@@ -531,6 +538,7 @@ export interface ArchiveJournal {
   presets: ArchivePreset[];
   tagGroups: ArchiveTagGroup[];
   affirmations: ArchiveAffirmation[];
+  bodyRegions: ArchiveBodyRegion[];
   entries: ArchiveEntry[];
   milestones: ArchiveMilestone[];
   labResults: ArchiveLabResult[];

@@ -47,6 +47,7 @@ const SECTIONS = [
   'presets',
   'tagGroups',
   'affirmations',
+  'bodyRegions',
   'entries',
   'milestones',
   'labResults',
@@ -89,10 +90,12 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 32 sections, and the customizations that
+/** A journal with something in all 33 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
-    built-in group, and a renamed, a hidden and a switched-off built-in. */
+    built-in group, and a renamed and a hidden built-in tag, dimension,
+    affirmation and body region, plus a custom body region logged on the
+    entry alongside a built-in one. */
 async function everySection(): Promise<Journal> {
   const journal = await emptyDevice();
 
@@ -113,6 +116,8 @@ async function everySection(): Promise<Journal> {
   await journal.tags.setGroupEnabled('activities', false);
   await journal.affirmations.addLine('en', 'You get to take up space, today too.');
   await journal.affirmations.setHidden('affirmation_2', true);
+  const bodyRegion = await journal.bodyRegions.addCustomRegion('scar tissue');
+  await journal.bodyRegions.setRegionHidden('hairline', true);
 
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
@@ -121,7 +126,7 @@ async function everySection(): Promise<Journal> {
     note: 'a good day, zażółć gęślą jaźń',
     dims: { [voice.key]: 7, femininity: 60 },
     tags: [tag.id, 'e-happy'],
-    bodyRegions: { chest: 45 }
+    bodyRegions: { chest: 45, [bodyRegion.id]: 30 }
   });
   await journal.photos.attach({ entryId: entry }, { full: bytes('full photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });

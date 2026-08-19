@@ -14,6 +14,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
   ArchiveAffirmation,
+  ArchiveBodyRegion,
   ArchiveChecklist,
   ArchiveChecklistItem,
   ArchiveCounterevidenceSnapshot,
@@ -237,6 +238,18 @@ export async function readAffirmations({ driver }: SectionRead): Promise<Archive
     text: a.text,
     builtIn: a.key !== null,
     hidden: bool(a.hidden)
+  }));
+}
+
+export async function readBodyRegions({ driver }: SectionRead): Promise<ArchiveBodyRegion[]> {
+  const rows = await driver.query<{ id: number; uuid: string | null; key: string | null; name: string; hidden: number }>(
+    'SELECT id, uuid, key, name, hidden FROM body_region ORDER BY id'
+  );
+  return rows.map((r) => ({
+    id: domainIdOf(r, 'body region'),
+    name: r.name,
+    builtIn: r.key !== null,
+    hidden: bool(r.hidden)
   }));
 }
 
