@@ -181,8 +181,12 @@ try {
   const thumb = page.locator('[data-melt-slider]').first();
   await thumb.focus();
   await page.keyboard.press('ArrowRight');
+  // A number, not "anything but the unset marker": comparing against the
+  // marker's wording made this pass for free the moment that copy changed.
   const out = await page.locator('[data-dim-value]').first().textContent();
-  if (out.trim() === '—') throw new Error('slider value did not update');
+  if (!Number.isFinite(Number(out.trim()))) {
+    throw new Error('slider value did not update: ' + JSON.stringify(out));
+  }
   ok('melt slider responds to keyboard');
 } catch (e) { fail('melt slider', e); }
 
@@ -1422,8 +1426,12 @@ try {
 
   await page.locator('[data-entry-card]').first().click();
   await page.waitForSelector('[data-dim-value]');
+  // Asserted as "is this a number", not against the unset marker's wording:
+  // that marker is ordinary UI copy and changed once already (ticket 31).
   const values = await page.locator('[data-dim-value]').allTextContents();
-  if (values.some((v) => v.trim() === '—')) throw new Error('a scale value from the prompt did not save');
+  if (values.some((v) => !Number.isFinite(Number(v.trim())))) {
+    throw new Error('a scale value from the prompt did not save: ' + JSON.stringify(values));
+  }
   ok('quick log dims prompt saves typed scale values onto the just-saved entry');
 } catch (e) { fail('quick log dims prompt (save)', e); }
 
@@ -1442,7 +1450,9 @@ try {
   await page.locator('[data-entry-card]').first().click();
   await page.waitForSelector('[data-dim-value]');
   const values = await page.locator('[data-dim-value]').allTextContents();
-  if (!values.every((v) => v.trim() === '—')) throw new Error('declining the prompt still wrote a scale value');
+  if (values.some((v) => Number.isFinite(Number(v.trim())))) {
+    throw new Error('declining the prompt still wrote a scale value: ' + JSON.stringify(values));
+  }
   ok('declining the quick log dims prompt leaves the saved entry untouched');
 } catch (e) { fail('quick log dims prompt (decline)', e); }
 
@@ -1616,6 +1626,43 @@ try {
   await page.waitForSelector('[data-home-streak]');
   ok('the streak line quiets while a journaling pause covers today, and resuming brings it back the same day');
 } catch (e) { fail('journaling pause', e); }
+
+/* 27. the journal book (phase 5 ticket 17): what the inclusion picker says
+   is what the pages hold, and the print layout is many sheets rather than
+   one. The second half is the part no unit test can reach - the app shell
+   is a fixed-height frame with one scrolling region, so before the print
+   rules in app.css the document laid out to exactly one viewport and every
+   page after the first was silently dropped. */
+try {
+  await fresh('/settings/journal-book');
+  await page.waitForSelector('[data-book-entry]');
+  /* By part, not by position: the picker's order is a list in journalBook.ts
+     and gripping nth() would silently assert the wrong switch the day that
+     list is reordered (ADR-0029). */
+  const part = (key) => page.locator(`[data-inclusion="${key}"] [role="switch"]`);
+
+  if (await page.locator('[data-book-opening]').count()) throw new Error('the opening page is on before anyone asks for it');
+  await part('openingPage').click();
+  await page.waitForSelector('[data-book-opening] [data-wrapped-card-art]');
+
+  await part('entries').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-book-entry]').length === 0);
+  if ((await part('photos').getAttribute('aria-checked')) !== 'false') {
+    throw new Error('photos stayed ticked with no entries to sit under');
+  }
+
+  await part('entries').click();
+  await page.waitForSelector('[data-book-entry]');
+
+  await page.emulateMedia({ media: 'print' });
+  if (await page.locator('[data-book-inclusion]').isVisible()) throw new Error('the inclusion picker prints');
+  if (await page.locator('[data-app-nav]').isVisible()) throw new Error('the navigation bar prints');
+  const sheets = await page.evaluate(() => document.documentElement.scrollHeight / window.innerHeight);
+  if (sheets < 2) throw new Error(`the printed document is ${sheets.toFixed(1)} viewports tall, so it fits on one page`);
+  await page.emulateMedia({ media: 'screen' });
+
+  ok('a journal book carries what the picker was told to carry, and prints as more than one page');
+} catch (e) { await page.emulateMedia({ media: 'screen' }); fail('journal book', e); }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 

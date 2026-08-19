@@ -133,6 +133,29 @@ test('a dose logged by volume is counted out loud rather than guessed at', () =>
   assert.equal(result.dosesWithoutMilligrams, 1);
 });
 
+test('a patch dose logged in mcg reaches the qualitative curve at the right milligram value', () => {
+  // Patches are labelled in mcg/24h (25-100), so this is the case ticket 39
+  // exists for: a microgram dose must produce the same curve a milligram
+  // dose of the same underlying strength would.
+  const patchEpisode = episode({ drug: 'estradiol', route: 'patch' });
+  const mg = qualitativeCurves({
+    ...WINDOW,
+    doses: [{ ...dose(0), route: 'patch', dose: 0.05, doseUnit: 'mg' } as DoseEvent],
+    episodes: [patchEpisode]
+  });
+  const mcg = qualitativeCurves({
+    ...WINDOW,
+    doses: [{ ...dose(0), route: 'patch', dose: 50, doseUnit: 'mcg' } as DoseEvent],
+    episodes: [patchEpisode]
+  });
+
+  assert.equal(mcg.dosesWithoutMilligrams, 0);
+  assert.equal(mcg.curves[0].key, 'estradiol:patch');
+  for (const [i, point] of mg.curves[0].points.entries()) {
+    assert.ok(Math.abs(mcg.curves[0].points[i].value - point.value) < 1e-9);
+  }
+});
+
 test('a dose under a non-estradiol regimen draws nothing', () => {
   const result = qualitativeCurves({ doses: [dose(0)], episodes: [episode({ drug: 'progesterone' })], ...WINDOW });
   assert.deepEqual(result.curves, []);

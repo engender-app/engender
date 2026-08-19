@@ -30,10 +30,21 @@ _Avoid_: Metadata, lookup data, config
 
 **Entry**:
 One logged moment, carrying a mood, gender dimension values, tags, a note,
-photos, voice recordings, and body-region intensities. A day can hold
+photos, voice recordings, and body-region feelings. A day can hold
 several. Always holds at least one of those seven; an entry with none of
 them does not exist.
 _Avoid_: Log, record, check-in (a check-in is a daily prompt, not an entry)
+
+**Body-region feeling**:
+What one entry says about one body region: a dysphoria intensity, a euphoria
+intensity, or both, each 0-100 and each optional. The two are independent
+readings of the same part, not two ends of one scale, because both can be
+true of it on the same day. Saying nothing on an axis is not scoring it 0,
+which is what lets someone record that a region felt good rather than only
+that it did not hurt. Never combined: the app derives no net, balance or
+score across the two, and neither axis is the better one to have.
+_Avoid_: Intensity on its own (it no longer says which of the two), pain
+score, body dysphoria rating
 
 **Photo**:
 An image belonging to exactly one entry or exactly one milestone, held in
@@ -388,7 +399,14 @@ softening, hair changes) and four masculinizing (voice drop, facial/body
 hair, masculinizing fat redistribution, cycle cessation). One row per
 marker - a fresh date replaces the old one rather than logging a series of
 sightings - all eight read against the same anchor, the earliest **regimen
-episode**'s start day overall, regardless of which direction a person is on.
+episode** overall, regardless of which direction a person is on. That same
+episode's drug decides which bands may be drawn: the feminizing four only
+where it names estradiol, the masculinizing four only where it names
+testosterone, and none at all for a drug the app cannot classify - a
+blocker, progesterone alone or free text no list matches - even when a
+later episode names a hormone the tables do describe. The gate is on the
+band and never on the row, so every marker stays loggable and keeps showing
+a date already recorded whichever drug the anchor names.
 Closed at eight on purpose: the masculinizing four were added as a
 deliberate, one-time reversal of the original four's own closed-list rule,
 to reach parity, and the list is closed again rather than left open to a
@@ -427,7 +445,7 @@ A tracked stretch of binder or tucking wear time, logged either as a live
 start/stop timer or as a backfilled start day plus duration, with an optional
 comfort/pain note. Its own record type, not an Entry: no mood, dimension
 values, tags or note beyond that one free-text field. Charted against the
-existing built-in `chest` and `genitals` body regions' intensity trend rather
+existing built-in `chest` and `genitals` body regions' dysphoria trend rather
 than against a region key of its own. Its optional Reminder is
 an ordinary one, on a wear-specific marker, for whatever hour count the
 person sets - the app states no safe maximum and gives no advice.
@@ -462,6 +480,23 @@ twice under two names. Composed from a user-chosen `WrappedCardContent`
 (`wrappedCard.ts`): stat tiles and, optionally, **palette art** (below), and
 nothing else - no journal text or photo, ever, because the type it's built
 from has no field for either.
+
+**Journal book**:
+A print of a chosen range, made of the record types the person ticked before
+generating it and no others. A keepsake rather than a copy: it leaves the
+device in a form anyone can read, and nothing reads it back, so an **archive**
+stays the only way to restore a journal. Not a second **clinician summary** -
+different audience, different parts, and a book carries what was chosen rather
+than what the range holds.
+_Avoid_: Export (the archive owns that word), report, backup
+
+**Book part**:
+One kind of record a journal book may carry - entries, their photos, tags,
+milestones, doubt entries, side effects, or the opening page. Every part is
+answered before the book is assembled, and an unchosen part is never read, so
+it cannot reach the page by way of something drawing it anyway.
+_Avoid_: Section (a clinician summary section prints because it registers; a
+book part prints because it was picked)
 
 **Palette art**:
 A wrapped card's optional decorative element: a gradient over the active

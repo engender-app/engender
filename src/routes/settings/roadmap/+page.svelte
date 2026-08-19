@@ -7,8 +7,10 @@
   import type { RoadmapGoalStatus } from '$lib/data/types';
   import {
     roadmapGoalNote,
+    roadmapGoalNoteSecondary,
     roadmapGoalTitle,
     roadmapPackCaveat,
+    roadmapPackMarkerNote,
     roadmapPackName,
     roadmapPackSources,
     roadmapTrackName
@@ -76,6 +78,7 @@
   <div class="card" style="margin:var(--space-3) 0">
     <p class="quicklog-title">{roadmapPackName(pack.key)}</p>
     <p class="small" style="margin:0">{roadmapPackCaveat(pack.key)}</p>
+    <p class="small" style="margin:var(--space-2) 0 0">{roadmapPackMarkerNote(pack.key)}</p>
     <p class="small" style="margin:var(--space-2) 0 0">{m.roadmap_not_advice()}</p>
     <p class="muted small" style="margin:var(--space-2) 0 0">
       {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
@@ -114,6 +117,9 @@
               </span>
               {#if roadmapGoalNote(goal.key)}
                 <span class="row-subtitle">{roadmapGoalNote(goal.key)}</span>
+              {/if}
+              {#if roadmapGoalNoteSecondary(goal.key)}
+                <span class="row-subtitle">{roadmapGoalNoteSecondary(goal.key)}</span>
               {/if}
             </span>
           </button>

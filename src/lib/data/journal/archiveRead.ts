@@ -279,13 +279,20 @@ export async function readEntries({ driver, photos, recordings, videos }: Sectio
     `SELECT et.entry_id, t.key, t.uuid FROM entry_tag et
      JOIN tag t ON t.id = et.tag_id ORDER BY et.entry_id, t.id`
   );
-  const bodyRegionValues = await driver.query<{ entry_id: number; region: string; intensity: number }>(
-    'SELECT entry_id, region, intensity FROM entry_body_region ORDER BY entry_id, region'
-  );
+  const bodyRegionValues = await driver.query<{
+    entry_id: number;
+    region: string;
+    dysphoria: number | null;
+    euphoria: number | null;
+  }>('SELECT entry_id, region, dysphoria, euphoria FROM entry_body_region ORDER BY entry_id, region');
 
   const dims = groupBy(dimensionValues, (v) => v.entry_id, (v) => [v.key, v.value] as const);
   const tags = groupBy(tagLinks, (t) => t.entry_id, (t) => domainIdOf(t, 'tag'));
-  const bodyRegions = groupBy(bodyRegionValues, (v) => v.entry_id, (v) => [v.region, v.intensity] as const);
+  const bodyRegions = groupBy(
+    bodyRegionValues,
+    (v) => v.entry_id,
+    (v) => [v.region, { dysphoria: v.dysphoria, euphoria: v.euphoria }] as const
+  );
   const byEntry = groupBy(photos.filter((p) => p.entry_id !== null), (p) => p.entry_id!, toArchivePhoto);
   const recordingsByEntry = groupBy(recordings, (r) => r.entry_id, toArchiveVoiceRecording);
   const videosByEntry = groupBy(videos, (v) => v.entry_id, toArchiveVideoNote);

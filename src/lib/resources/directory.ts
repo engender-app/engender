@@ -47,7 +47,7 @@ interface ResourceShape {
 }
 
 /** The day a person last checked every number and address below. */
-export const RESOURCES_REVIEWED_ON = '2026-08-18';
+export const RESOURCES_REVIEWED_ON = '2026-08-19';
 
 const ENTRIES = [
   {
@@ -123,6 +123,17 @@ const ENTRIES = [
     kind: 'info',
     name: 'Transfeminine Science',
     url: 'https://transfemscience.org/'
+  },
+  {
+    key: 'int-wpath-soc8',
+    region: 'int',
+    kind: 'info',
+    name: 'WPATH Standards of Care, Version 8',
+    /* Free-to-read on PMC (NIH), the copy that will still resolve if the
+       publisher's own tandfonline.com page ever goes behind a harder
+       paywall. Chapter 12 covers hormone therapy in every direction;
+       chapter 8 covers non-binary and low-dose approaches specifically. */
+    url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC9553112/'
   }
 ] as const satisfies readonly ResourceShape[];
 

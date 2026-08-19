@@ -64,7 +64,7 @@ async function populated() {
     note: 'a good day, zażółć',
     dims: { [voice.key]: 7, femininity: 60 },
     tags: [tag.id, 'e-happy'],
-    bodyRegions: { chest: 45 }
+    bodyRegions: { chest: { dysphoria: 45, euphoria: null } }
   });
   const photo = await journal.photos.attach({ entryId: entry }, { full: bytes('full-photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });
@@ -244,7 +244,7 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.deepEqual(restored[0].photos, [{ id: source.photo, fileName: `${source.photo}.jpg`, starred: false }]);
   assert.deepEqual(restored[0].recordings, [{ id: source.recording, fileName: `${source.recording}.webm` }]);
   assert.deepEqual(await target.files.read(`${source.recording}.webm`), bytes('a voice note'));
-  assert.deepEqual(restored[0].bodyRegions, { chest: 45 });
+  assert.deepEqual(restored[0].bodyRegions, { chest: { dysphoria: 45, euphoria: null } });
   assert.equal(restored[0].note, 'a good day, zażółć');
   assert.equal((await target.journal.milestones.getMilestones()).length, 1);
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
