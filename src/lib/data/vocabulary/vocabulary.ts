@@ -14,7 +14,7 @@ import { MOOD_RANGE, type MetricRange } from '../metricRange';
 import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
-import { entryPromptRows, entryTemplateRows, milestoneTemplateRows } from './builtins';
+import { entryPromptRows, entryTemplateRows, milestoneTemplateRows, regimenTemplateRows } from './builtins';
 import type {
   Affirmation,
   BodyRegion,
@@ -25,6 +25,7 @@ import type {
   MeasurementType,
   Milestone,
   MilestoneTemplate,
+  RegimenTemplate,
   Tag,
   TagGroup
 } from '../types';
@@ -44,6 +45,7 @@ import {
   tagGroupName,
   tagLabel
 } from './labels';
+import { regimenTemplateDrug, regimenTemplateEster, regimenTemplateName, regimenTemplateRoute } from './doseLabels';
 
 function localizeDimension(d: GenderDimension): GenderDimension {
   if (!d.builtIn) return d;
@@ -81,6 +83,16 @@ function localizeTemplate(t: MilestoneTemplate): MilestoneTemplate {
   return { ...t, name: milestoneTemplateName(t.key) };
 }
 
+function localizeRegimenTemplate(t: RegimenTemplate): RegimenTemplate {
+  return {
+    ...t,
+    name: regimenTemplateName(t.key),
+    drug: regimenTemplateDrug(t.key),
+    ester: regimenTemplateEster(t.key),
+    route: regimenTemplateRoute(t.key)
+  };
+}
+
 function localizeEntryTemplate(t: EntryTemplate): EntryTemplate {
   return { ...t, name: entryTemplateName(t.key) };
 }
@@ -92,6 +104,10 @@ function localizeEntryPrompt(p: EntryPrompt): EntryPrompt {
 /** Keys only; the names come from the message catalogue below. Not stored
     rows at all - a template is a suggestion the app ships (ticket 05). */
 const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
+
+/** Same shape as `milestoneTemplates` above, for regimen episodes (phase 5
+    ticket 42, CONTEXT: "Regimen template"). */
+const regimenTemplates: RegimenTemplate[] = regimenTemplateRows();
 
 /** Same shape as `milestoneTemplates` above, for entries rather than
     milestones (phase 4 features ticket 17). */
@@ -168,6 +184,12 @@ export const vocabulary = {
   },
   get milestoneTemplates(): MilestoneTemplate[] {
     return milestoneTemplates.map(localizeTemplate);
+  },
+  /** The built-in regimen episode suggestions (phase 5 ticket 42, CONTEXT:
+      "Regimen template"), in the wording the current language gives them -
+      what the regimen editor's "add new" picker offers above manual entry. */
+  get regimenTemplates(): RegimenTemplate[] {
+    return regimenTemplates.map(localizeRegimenTemplate);
   },
   /** Every body region, hidden built-ins and custom ones included, in the
       wording the user sees (ticket 09, reference-data area since ticket
