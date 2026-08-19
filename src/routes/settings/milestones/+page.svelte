@@ -10,6 +10,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
+  import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -33,6 +34,11 @@
     templateKey: string | null;
   } | null>(null);
   let deleteTarget = $state<Milestone | null>(null);
+  /* Offered, never required, right after a brand-new milestone is created
+     (CONTEXT: "Felt-sense entry") - editing an existing one never opens
+     this, the same reasoning ticket 24 gives for the anniversary showing
+     on MilestoneCard being its own separate offer, not this one repeated. */
+  let feelingOfferId = $state<string | null>(null);
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let sorted = $derived(vocabulary.milestones);
@@ -80,6 +86,7 @@
   async function saveMilestone() {
     if (!editor) return;
     const draft = { ...editor };
+    const isNew = !draft.id;
     const photo =
       draft.photo?.kind === 'picked'
         ? { action: 'replace' as const, photo: draft.photo.photo }
@@ -87,7 +94,7 @@
           ? { action: 'remove' as const }
           : { action: 'preserve' as const };
 
-    await journal.milestones.upsertMilestone({
+    const id = await journal.milestones.upsertMilestone({
       id: draft.id,
       name: draft.name.trim() || m.ms_default_name(),
       epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
@@ -95,6 +102,13 @@
       photo
     });
     editor = null;
+    if (isNew) feelingOfferId = id;
+  }
+
+  async function saveFeelingOffer(input: { mood: number; note: string | null }) {
+    if (!feelingOfferId) return;
+    await journal.feltSense.add({ milestoneId: feelingOfferId }, { epochDay: todayEpochDay(), ...input });
+    feelingOfferId = null;
   }
 </script>
 
@@ -214,5 +228,12 @@
     onAccept={milestonePhotoReview.accept}
     onRetake={milestonePhotoReview.capture}
     onCancel={milestonePhotoReview.cancel}
+  />
+
+  <FeltSenseOfferSheet
+    open={feelingOfferId !== null}
+    title={m.ms_feeling_new_title()}
+    onSave={saveFeelingOffer}
+    onSkip={() => (feelingOfferId = null)}
   />
 </div>

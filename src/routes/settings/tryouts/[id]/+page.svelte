@@ -106,7 +106,7 @@
   }
 
   const HISTORY_LIMIT = 50;
-  let feelingQuery = liveQuery(['tryout'], (j) => (isNew ? Promise.resolve([]) : j.tryouts.getFeltSenseEntries(tryoutId)));
+  let feelingQuery = liveQuery(['feltSense'], (j) => (isNew ? Promise.resolve([]) : j.feltSense.forTryout(tryoutId)));
   let feeling = $derived(feelingQuery.value ?? []);
 
   let entriesQuery = liveQuery(['entry'], (j) =>
@@ -120,12 +120,10 @@
   let feelingNote = $state('');
   async function addFeeling() {
     if (feelingMood == null) return;
-    await journal.tryouts.addFeltSenseEntry({
-      tryoutId,
-      epochDay: todayEpochDay(),
-      mood: feelingMood,
-      note: feelingNote.trim() || null
-    });
+    await journal.feltSense.add(
+      { tryoutId },
+      { epochDay: todayEpochDay(), mood: feelingMood, note: feelingNote.trim() || null }
+    );
     feelingMood = null;
     feelingNote = '';
   }
@@ -135,7 +133,7 @@
     if (!feelingDeleteTarget) return;
     const id = feelingDeleteTarget.id;
     feelingDeleteTarget = null;
-    await journal.tryouts.deleteFeltSenseEntry(id);
+    await journal.feltSense.remove(id);
   }
 </script>
 

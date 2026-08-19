@@ -800,6 +800,8 @@
   "ms_status_anniversary": "anniversary",
   "ms_status_in_days": "in {days}",
   "ms_status_years_ago": "{years} ago",
+  "ms_feeling_new_title": "How does it feel?",
+  "ms_feeling_anniv_title": "How does it feel now?",
   "photo_remove": "Remove photo",
   "photo_alt": "Photo",
   "photo_review_title": "Review photo",
