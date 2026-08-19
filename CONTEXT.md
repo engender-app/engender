@@ -19,13 +19,15 @@ is held, not where)
 
 **Reference data**:
 The part of the journal that is bounded at tens of rows and never paginated: gender
-dimensions, presets, tag groups and tags, milestones, body regions, and
-preferences. Held in memory and read synchronously, in contrast to entry data -
-entries, search, stats, tag insights, recap - which is unbounded and read a query
-at a time. The split decides which screens have a loading state. Body regions
-joined this list in ticket 30: the set is open, not the closed eight-key list it
-started as - a built-in hides the same way a tag or a gender dimension does, and
-a custom region is added the same way a custom tag is.
+dimensions, presets, tag groups and tags, milestones, body regions, measurement
+types, effect categories and the personal-effects catalogue, and preferences. Held
+in memory and read synchronously, in contrast to entry data - entries, search,
+stats, tag insights, recap - which is unbounded and read a query at a time. The
+split decides which screens have a loading state. Body regions joined this list in
+ticket 30: the set is open, not the closed eight-key list it started as - a
+built-in hides the same way a tag or a gender dimension does, and a custom region
+is added the same way a custom tag is. The personal-effects catalogue joined it in
+ticket 41, the same move.
 _Avoid_: Metadata, lookup data, config
 
 **Entry**:
@@ -406,32 +408,65 @@ _Avoid_: Period tracker, menstrual cycle (implies a regularity this makes no
 assumption of), fertility window
 
 **Personal effect**:
-One of eight fixed body-change markers a person can mark a "first noticed"
-date for: four feminizing (breast development, fat redistribution, skin
-softening, hair changes) and four masculinizing (voice drop, facial/body
-hair, masculinizing fat redistribution, cycle cessation). One row per
-marker - a fresh date replaces the old one rather than logging a series of
-sightings - all eight read against the same anchor, the earliest **regimen
-episode** overall, regardless of which direction a person is on. That same
-episode's drug decides which bands may be drawn: the feminizing four only
-where it names estradiol, the masculinizing four only where it names
-testosterone, and none at all for a drug the app cannot classify - a
-blocker, progesterone alone or free text no list matches - even when a
-later episode names a hormone the tables do describe. The gate is on the
-band and never on the row, so every marker stays loggable and keeps showing
-a date already recorded whichever drug the anchor names.
-Closed at eight on purpose: the masculinizing four were added as a
-deliberate, one-time reversal of the original four's own closed-list rule,
-to reach parity, and the list is closed again rather than left open to a
-ninth. Masculinizing fat redistribution is a distinct marker from fat
+A body-change marker a person can mark a "first noticed" date for, from an
+open catalogue (ticket 41) rather than the closed eight the screen started
+with (ticket 07's original four, widened once to eight by ticket 02). One
+row per marker - a fresh date replaces the old one rather than logging a
+series of sightings - every marker read against the same anchor, the
+earliest **regimen episode** overall, regardless of which direction a
+person is on.
+
+Roughly forty feminizing and thirty masculinizing built-ins, transcribed
+from genderdysphoria.fyi's two second-puberty pages, plus whatever a person
+adds of their own. This is the **third** revisit of this list's closure -
+ticket 07 closed it at four and called it closed, ticket 02 reopened it
+once to reach trans-masc parity and closed it again at eight, calling that
+final. Ticket 41 stops closing it: two closures in two phases was the
+argument that a fixed list was never going to be the right length.
+
+Every built-in belongs to one **effect category** and carries a source
+tier: tier 1 (roughly twenty, a published guideline window - Hembree et
+al.'s Endocrine Society table for the original eight, widened by GenderGP's
+WPATH-sourced HRT timeline tables) draws a shaded band, gated exactly as
+before on the anchoring episode's drug (feminizing bands only where it
+names estradiol, masculinizing only where it names testosterone, none at
+all for a drug the app cannot classify). Tier 2 (named by the community
+catalogue, or a guideline entry whose figure is "variable" with no usable
+range) gets a marker and a date, cited to its source, never a band. Tier 3
+- a person's own addition - gets a marker and a date, no source, no
+direction pushed onto it. The gate is always on the band, never on the
+row: every marker stays loggable and keeps showing a date already
+recorded regardless of tier or drug.
+
+Masculinizing fat redistribution stays a distinct marker from fat
 redistribution, not the same one read two ways - the two describe
-different, not opposite, changes. Each marker's onset and completion
-windows, shown as background bands against the anchor, are a claim about
-the literature (Hembree et al.'s Endocrine Society guideline), never a
-target or a judgement of how fast a person is changing.
-_Avoid_: Symptom, milestone (a personal effect is a body change the
-literature has a published timeline for, not a life-event marker), effect
-alone (ambiguous with side effect)
+different, not opposite, changes, the same reasoning that gives body
+odour, facial features and hands/feet their own key per direction where
+the source names both. Every existing key from the original eight is
+unchanged, and their windows are a claim about the literature (never a
+target or a judgement of how fast a person is changing) exactly as before.
+_Avoid_: Symptom, milestone (a personal effect is a body change one of
+three sources names, not a life-event marker), effect alone (ambiguous
+with side effect)
+
+**Effect category**:
+A named, toggleable collection over the personal-effects catalogue (ticket
+41) - "body shape and composition", "skin and hair", "genital and sexual",
+"cognitive and emotional", "sensory" - the same semantics as **tag group**:
+turning one off hides its effects from the timeline and the "mark a
+change" picker without touching any marker already recorded against them.
+Built-in only, unlike tag group: no custom-category creation is offered.
+Body shape and composition, and skin and hair, ship on by default -
+together they hold every one of the eight effects that predate this
+ticket, so an existing journal loses no visible effect and a new journal's
+screen stays no longer than the eight-row screen it replaces. Genital and
+sexual, cognitive and emotional, and sensory ship off by default, a
+privacy and comfort decision as much as a length one: genital and sexual
+in particular names ejaculate changes, orgasm changes and genital odour,
+on a screen in an app whose disguise mode exists because its readers
+sometimes hand their phone to someone.
+_Avoid_: Tag (an effect category groups the effect catalogue, not an
+entry)
 
 **Hair staging**:
 A dated series of self-recorded observations about hair, each one carrying
