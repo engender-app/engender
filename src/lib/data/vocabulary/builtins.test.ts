@@ -12,8 +12,10 @@ import {
   ENTRY_PROMPT_KEYS,
   ENTRY_TEMPLATES,
   MILESTONE_TEMPLATE_KEYS,
+  REGIMEN_TEMPLATE_KEYS,
   entryPromptRows,
   entryTemplateRows,
+  regimenTemplateRows,
   withBuiltInDimensions,
   withBuiltInTagGroups
 } from './builtins.ts';
@@ -25,6 +27,7 @@ const allKeys = [
   ...BUILT_IN_TAG_GROUPS.map((g) => g.key),
   ...BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags),
   ...MILESTONE_TEMPLATE_KEYS,
+  ...REGIMEN_TEMPLATE_KEYS,
   ...ENTRY_TEMPLATES.map((t) => t.key),
   ...ENTRY_PROMPT_KEYS,
   ...BUILT_IN_BODY_REGIONS
@@ -158,6 +161,17 @@ test('the euphoria tag lives in the gender group, separate from every dysphoria 
 
   expect(gender.tags.map((t) => t.id)).toContain('g-euphoria');
   expect(dysphoriaTypeKeys.has('g-euphoria')).toBe(false);
+});
+
+test('regimen template keys are unique', () => {
+  expect(new Set(REGIMEN_TEMPLATE_KEYS).size).toBe(REGIMEN_TEMPLATE_KEYS.length);
+});
+
+test('regimen templates seed with no display text, because wording is resolved by key', () => {
+  const rows = regimenTemplateRows();
+
+  expect(rows).toHaveLength(REGIMEN_TEMPLATE_KEYS.length);
+  expect(rows.every((t) => t.name === '' && t.drug === '' && t.ester === null && t.route === '')).toBe(true);
 });
 
 test('entry template keys are unique', () => {
