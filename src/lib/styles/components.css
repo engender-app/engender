@@ -404,6 +404,14 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
    line segments rather than the heat legend's squares, because that is what
    they stand for, and the dashed one repeats the chart's own dash so the
    pairing survives for anyone who cannot separate the two colours. */
+/* An unset slider (ticket 31). The thumb has to rest somewhere, and where it
+   rests is not a value anyone logged - on a body region both axes start this
+   way, so a mid-track thumb would otherwise read as a middling score. Dimmed
+   rather than hidden: the control is still there to be used. */
+.dim-slider.is-unset .melt-track,
+.dim-slider.is-unset .melt-thumb { opacity: 0.45; }
+.dim-slider.is-unset .dim-value { font-style: italic; color: var(--text-2); }
+
 .chart-legend {
   display: flex; gap: var(--space-4); flex-wrap: wrap;
   list-style: none; padding: 0; margin: var(--space-3) 0 0;
@@ -411,7 +419,7 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 }
 .chart-legend li { display: inline-flex; align-items: center; gap: 6px; }
 .legend-swatch-line { width: 18px; height: 0; border-radius: 0; border-top: 2.5px solid var(--chart-line); }
-.legend-swatch-overlay { width: 18px; height: 0; border-radius: 0; border-top: 2px dashed var(--accent-2); }
+.legend-swatch-overlay { width: 18px; height: 0; border-radius: 0; border-top: 2.5px dashed var(--accent-2); }
 
 /* ---------- week strip ---------- */
 .week-strip { display: flex; gap: var(--space-2); justify-content: space-between; }
@@ -429,8 +437,10 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 /* The second series (ticket 31), told apart the way WearTrendChart tells its
    two apart: accent-2 and a dash, not a second weight of the same colour.
    Dashed as well as recoloured so the two lines stay distinguishable without
-   relying on hue alone. */
-.chart-line-overlay { fill: none; stroke: var(--accent-2); stroke-width: 2; stroke-dasharray: 4 3; stroke-linecap: round; stroke-linejoin: round; }
+   relying on hue alone. Same stroke width as the first, and the first gives
+   up its area fill whenever this one is present: two readings of one spot,
+   neither of them the other's footnote. */
+.chart-line-overlay { fill: none; stroke: var(--accent-2); stroke-width: 2.5; stroke-dasharray: 5 4; stroke-linecap: round; stroke-linejoin: round; }
 .chart-gridline { stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 4; }
 .chart-dot { fill: var(--surface); stroke: var(--chart-line); stroke-width: 2; }
 .chart-dot.is-selected { fill: var(--chart-line); stroke-width: 4; }

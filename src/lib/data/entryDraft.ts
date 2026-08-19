@@ -9,8 +9,9 @@
    Nothing here is a Svelte rune, so it runs and is tested under the Node
    tier the same way entryContent.ts and entries.ts already are. */
 
+import { bodyRegionIsLogged, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
-import type { BodyRegionFeeling, Entry } from './types';
+import type { BodyRegionAxis, BodyRegionFeeling, Entry } from './types';
 import type { EntryInput } from './journal/entries';
 import type { NormalizedPhoto } from './journal/photos';
 import type { EditorPhoto } from '$lib/stores/photoPicking';
@@ -58,7 +59,7 @@ export interface EntryDraft {
       seeded: a region picked and then left alone carries nothing and is
       dropped on save (ticket 31), so picking one is not itself content. */
   toggleBodyRegion(key: string): void;
-  setBodyRegionAxis(key: string, axis: keyof BodyRegionFeeling, intensity: number): void;
+  setBodyRegionAxis(key: string, axis: BodyRegionAxis, intensity: number): void;
   addPhoto(photo: NormalizedPhoto): void;
   removePhoto(index: number): void;
   addRecording(bytes: Uint8Array): void;
@@ -73,12 +74,11 @@ export interface EntryDraft {
 /** A blank draft for `epochDay`, or one hydrated from `existing` - the
     one-time fill EntryEditor.svelte's `onFirstResult` applies once the
     stored entry arrives over the async round trip. */
-/** How many regions actually say something. A region on screen with both
-    axes still null is a slider waiting for input, not content, so it does
-    not keep an otherwise-empty entry alive - the same rule entries.ts
-    applies on save. */
+/** How many regions actually say something, by the one rule bodyMap.ts
+    states: a region on screen with both axes still null is a slider waiting
+    for input, not content. */
 function loggedRegionCount(bodyRegions: Record<string, BodyRegionFeeling>): number {
-  return Object.values(bodyRegions).filter((f) => f.dysphoria !== null || f.euphoria !== null).length;
+  return Object.values(bodyRegions).filter(bodyRegionIsLogged).length;
 }
 
 export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: number | null): EntryDraft {
@@ -90,7 +90,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     note: existing?.note ?? '',
     dims: existing ? { ...existing.dims } : {},
     tags: existing ? [...existing.tags] : [],
-    bodyRegions: existing ? structuredClone(existing.bodyRegions) : {},
+    bodyRegions: existing ? copyBodyRegions(existing.bodyRegions) : {},
     photos: existing ? existing.photos.map((photo) => ({ kind: 'stored' as const, photo })) : [],
     removedPhotoIds: [],
     recordings: existing ? existing.recordings.map((recording) => ({ kind: 'stored' as const, recording })) : [],
