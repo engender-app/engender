@@ -3,7 +3,7 @@
    regimenEpisode.ts and exposureCounters.ts: nothing here reads a clock or
    a database, and the anchor is never stored (ADR-0010) - the screen
    recomputes it from a preference and the dose log on every read, the same
-   way ticket 07's earliest episode start is recomputed from episodes
+   way ticket 07's earliestEpisode is recomputed from episodes
    alone.
 
    Ticket 09 built this as the first dose logged against finasteride,
@@ -23,7 +23,7 @@
      `episodes` at all: with every drug qualifying there is nothing left to
      look a dose's drug up for.
 
-   Still distinct from the earliest episode start (regimenEpisode.ts), and
+   Still distinct from earliestEpisode (regimenEpisode.ts), and
    for ticket 09's original reason: the anchor is the dose event, not the
    episode's own start day, because a person can log an episode before its
    first dose actually lands. The timeline's zero point is when something

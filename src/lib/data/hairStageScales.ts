@@ -128,7 +128,7 @@ export function isHairStaging(scale: string, stage: string): boolean {
 
     A row naming something that is not a scale cannot exist - the schema's
     CHECK refuses it on the way in, on a write and on a restore alike
-    (migrations.ts v36) - so there is no fallback group for one here. */
+    (migrations.ts v37) - so there is no fallback group for one here. */
 export function stagesByScale<T extends { scale: string }>(
   stages: readonly T[]
 ): { scale: HairScale; stages: T[] }[] {
