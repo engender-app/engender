@@ -644,6 +644,76 @@ test('a day averaging below the midpoint with no euphoria capture is not a good 
   assert.equal(await journal.stats.isGoodDay(100), false);
 });
 
+test('a trashed entry\'s body-region euphoria does not make a day good', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const trashed = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 1,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 90 } }
+  });
+  await journal.entries.deleteEntry(trashed);
+
+  assert.equal(await journal.stats.isGoodDay(100), false);
+});
+
+test('a body region logged with high euphoria makes a day good, with no euphoria tag at all', async () => {
+  // The case ticket 44 was found by: someone whose good day shows up as a
+  // high euphoria on a body region and never a tag.
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 1,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 70 } }
+  });
+
+  assert.equal(await journal.stats.isGoodDay(100), true);
+});
+
+test('the region-euphoria floor is inclusive: exactly 50 clears it, 49 does not', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 1,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 50 } }
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 101,
+    mood: 1,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 49 } }
+  });
+
+  assert.equal(await journal.stats.isGoodDay(100), true);
+  assert.equal(await journal.stats.isGoodDay(101), false);
+});
+
+test('a region logged as high dysphoria does not make a day good', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 1,
+    bodyRegions: { chest: { dysphoria: 90, euphoria: null } }
+  });
+
+  assert.equal(await journal.stats.isGoodDay(100), false);
+});
+
+test('a low euphoria on one region and a low euphoria on another do not average up to the floor', async () => {
+  // The reason the region clause is EXISTS and not AVG: a region's values
+  // are a vector per entry, so two regions at 30 must not read as one
+  // region at 60.
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 1,
+    bodyRegions: {
+      chest: { dysphoria: null, euphoria: 30 },
+      hairline: { dysphoria: null, euphoria: 30 }
+    }
+  });
+
+  assert.equal(await journal.stats.isGoodDay(100), false);
+});
+
 test('a euphoria capture on one of several entries is enough, even with a low day average', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 1 });
