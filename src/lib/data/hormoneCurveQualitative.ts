@@ -1,11 +1,13 @@
-/* The qualitative-shape hormone curve for the non-injectable routes (phase 4
-   ticket 11, widened to testosterone by phase 5 ticket 01; CONTEXT:
-   "Qualitative curve"). Pure, above the journal seam and free of paraglide
-   (ADR-0016), the same shape as hormoneCurve.ts beside it.
+/* The qualitative-shape hormone curve (phase 4 ticket 11, widened to
+   testosterone by phase 5 ticket 01; CONTEXT: "Qualitative curve"). Pure, above
+   the journal seam and free of paraglide (ADR-0016), the same shape as
+   hormoneCurve.ts beside it.
 
-   One call draws one hormone. Estradiol gets all four routes; testosterone
-   gets gel, on the same invented shape, and nothing else
-   (QUALITATIVE_ROUTES_BY_DRUG says why).
+   One call draws one hormone. Estradiol gets its four non-injectable routes,
+   because its injections have a published posterior and get the fitted band
+   instead; testosterone gets injections, patch and gel, because none of its
+   esters has a fit that band could rest on. QUALITATIVE_CURVE_KEYS is the whole
+   list and says why for each.
 
    Ticket 10's three-compartment model exists because estrannaise.js
    publishes a posterior fit for each injectable ester - a real measure of
@@ -234,9 +236,9 @@ function curveFor(
   }));
 }
 
-/** One qualitative curve per route dosed in `[fromEpochDay, toEpochDay]`, in
-    the order QUALITATIVE_ROUTES_BY_DRUG lists that hormone's routes. Each dose resolves its own episode for its
-    drug, the same way an injection does (hormoneCurve.ts). */
+/** One qualitative curve per key dosed in `[fromEpochDay, toEpochDay]`, in
+    QUALITATIVE_CURVE_KEYS order. Each dose resolves its own episode for its
+    drug and ester, the same way an injection does (hormoneCurve.ts). */
 export function qualitativeCurves(input: QualitativeCurveInput): QualitativeCurves {
   const { drug, doses, episodes, fromEpochDay, toEpochDay } = input;
 
