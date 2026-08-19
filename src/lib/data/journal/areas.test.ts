@@ -751,35 +751,34 @@ test('clearing a marker is the undo for a mistaken date, and is idempotent', asy
 
 /* hair progress (phase 4 ticket 09) */
 
+const nh = (epochDay: number, stage: string) => ({ epochDay, scale: 'norwood_hamilton', stage });
+
 test('a staging round-trips with no anchor reference, ordered by day', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage({ epochDay: 200, stage: '3v' });
-  const id = await journal.hairProgress.upsertStage({ epochDay: 100, stage: '2' });
+  await journal.hairProgress.upsertStage(nh(200, '3v'));
+  const id = await journal.hairProgress.upsertStage(nh(100, '2'));
 
   const stages = await journal.hairProgress.getStages();
   assert.deepEqual(stages.map((s) => s.epochDay), [100, 200]);
-  assert.deepEqual(stages[0], { id, epochDay: 100, stage: '2' });
+  assert.deepEqual(stages[0], { id, epochDay: 100, scale: 'norwood_hamilton', stage: '2', description: '' });
 });
 
 test('re-staging adds a row rather than replacing the last one - it is a series', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage({ epochDay: 100, stage: '2' });
-  await journal.hairProgress.upsertStage({ epochDay: 200, stage: '3' });
+  await journal.hairProgress.upsertStage(nh(100, '2'));
+  await journal.hairProgress.upsertStage(nh(200, '3'));
 
   assert.equal((await journal.hairProgress.getStages()).length, 2);
 });
 
 test('stagings update by id, throw on unknown ids and delete idempotently', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.hairProgress.upsertStage({ epochDay: 100, stage: '2' });
+  const id = await journal.hairProgress.upsertStage(nh(100, '2'));
 
-  await journal.hairProgress.upsertStage({ id, epochDay: 100, stage: '2a' });
+  await journal.hairProgress.upsertStage({ id, ...nh(100, '2a') });
   assert.equal((await journal.hairProgress.getStages())[0].stage, '2a');
 
-  await assert.rejects(
-    journal.hairProgress.upsertStage({ id: 'nope', epochDay: 1, stage: '1' }),
-    /unknown hair stage/
-  );
+  await assert.rejects(journal.hairProgress.upsertStage({ id: 'nope', ...nh(1, '1') }), /unknown hair stage/);
 
   await journal.hairProgress.deleteStage(id);
   await journal.hairProgress.deleteStage(id); // idempotent
@@ -788,7 +787,88 @@ test('stagings update by id, throw on unknown ids and delete idempotently', asyn
 
 test('an unrecognized stage is refused before it reaches the schema', async () => {
   const { journal } = await journalWithBuiltIns();
-  await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, stage: 'not_a_real_stage' as never }));
+  await assert.rejects(journal.hairProgress.upsertStage(nh(100, 'not_a_real_stage')));
+});
+
+/* ticket 33: a second scale, and a pattern neither describes */
+
+test('a staging keeps the scale it was recorded against', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.hairProgress.upsertStage(nh(100, '3'));
+  await journal.hairProgress.upsertStage({ epochDay: 200, scale: 'sinclair', stage: '3' });
+
+  const stages = await journal.hairProgress.getStages();
+  // Both say '3' and neither means what the other means.
+  assert.deepEqual(
+    stages.map((s) => [s.scale, s.stage]),
+    [
+      ['norwood_hamilton', '3'],
+      ['sinclair', '3']
+    ]
+  );
+});
+
+test("a grade from the wrong scale is refused, though it is a grade somewhere", async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, scale: 'sinclair', stage: '3v' }), /sinclair/);
+  await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, scale: 'ludwig', stage: 'ii' }), /ludwig/);
+});
+
+test('a pattern neither scale describes is recorded in the person own words', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.hairProgress.upsertStage({
+    epochDay: 100,
+    scale: 'other',
+    stage: '',
+    description: 'thinner all over the top, parting unchanged'
+  });
+
+  assert.deepEqual((await journal.hairProgress.getStages())[0], {
+    id,
+    epochDay: 100,
+    scale: 'other',
+    stage: '',
+    description: 'thinner all over the top, parting unchanged'
+  });
+});
+
+test('neither of these, with nothing written down, is still a record', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.hairProgress.upsertStage({ epochDay: 100, scale: 'other', stage: '' });
+
+  assert.equal((await journal.hairProgress.getStages())[0].description, '');
+});
+
+test('changing a staging scale keeps the stagings recorded under the other one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const kept = await journal.hairProgress.upsertStage(nh(100, '3'));
+  const moving = await journal.hairProgress.upsertStage(nh(200, '4'));
+
+  await journal.hairProgress.upsertStage({ id: moving, epochDay: 200, scale: 'sinclair', stage: '2' });
+
+  const stages = await journal.hairProgress.getStages();
+  assert.deepEqual(
+    stages.map((s) => [s.id, s.scale, s.stage]),
+    [
+      [kept, 'norwood_hamilton', '3'],
+      [moving, 'sinclair', '2']
+    ]
+  );
+});
+
+test('prose does not survive a move back onto a graded scale', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.hairProgress.upsertStage({
+    epochDay: 100,
+    scale: 'other',
+    stage: '',
+    description: 'thinner all over'
+  });
+
+  await journal.hairProgress.upsertStage({ id, ...nh(100, '3'), description: 'thinner all over' });
+
+  assert.equal((await journal.hairProgress.getStages())[0].description, '');
 });
 
 test('a hair photo writes both files and its own row, distinct from the shared photo table', async () => {

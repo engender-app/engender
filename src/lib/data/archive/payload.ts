@@ -376,14 +376,22 @@ export interface ArchivePersonalEffect {
   firstNoticedEpochDay: number;
 }
 
-/** One Norwood-Hamilton staging (phase 4 ticket 09). `stage` is loosened
-    from NorwoodHamiltonStage, the way ArchiveMeasurement loosens `type`:
-    the schema's CHECK enforces it on the way back in (restore.ts), not
-    this boundary type. */
+/** One staging against a published scale (phase 4 ticket 09, two scales
+    since phase 5 ticket 33). `scale` and `stage` are loose strings the way
+    ArchiveMeasurement's `type` is: the schema's CHECK enforces the pair on
+    the way back in (restore.ts), not this boundary type.
+
+    `scale` and `description` are optional because archives written before
+    ticket 33 carry neither. An archive that predates it holds
+    Norwood-Hamilton stagings and nothing else, since that was the only
+    vocabulary there was, and applyHairStages reads a missing `scale` as
+    exactly that rather than dropping the row. */
 export interface ArchiveHairStage {
   id: string;
   epochDay: number;
+  scale?: string;
   stage: string;
+  description?: string;
 }
 
 /** One scheduled fixed-position hair photo (phase 4 ticket 09). Its own

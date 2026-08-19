@@ -1169,6 +1169,56 @@ CREATE INDEX idx_size_record_epoch_day ON size_record(epoch_day);
 CREATE INDEX idx_size_record_category ON size_record(category);
 `;
 
+/* v36: a second published scale beside Norwood-Hamilton, and a way to
+   record a pattern neither of them describes (phase 5 ticket 33).
+
+   `hair_stage` (v13) could only ever hold a Norwood-Hamilton stage, a scale
+   defined on men. Someone with the other common pattern had no vocabulary
+   at all, and someone with diffuse thinning, which is what many people on
+   estrogen and many AFAB people actually have, had nothing to write down.
+   `scale` says which published classification a row's `stage` is a grade of
+   (hairStageScales.ts carries the citations and the cross-check), so two
+   scales' stages are never read as one series and nothing converts between
+   them.
+
+   The CHECK pairs the two columns rather than checking each alone, because
+   '1' through '5' are grade codes on both scales and mean different things
+   on each - a bare `stage IN (...)` would let a Norwood-Hamilton '3v'
+   through as a Sinclair grade. `description` is the escape hatch's free
+   text and the same CHECK keeps it to `scale = 'other'`: a graded staging
+   has nothing to write prose about, and allowing it on one would invite a
+   note that reinterprets a published grade.
+
+   A table-level CHECK cannot be altered in place, so this is the copy,
+   drop, rename shape v31 and v34 use, and the index goes with the old table
+   and is recreated after the rename. Every row that predates this migration
+   is a Norwood-Hamilton staging, since that was the only vocabulary there
+   was - carried across with its `stage` unchanged so it goes on meaning
+   what it meant. */
+const SCHEMA_V36 = `
+CREATE TABLE hair_stage_v36 (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  epoch_day   INTEGER NOT NULL,
+  scale       TEXT NOT NULL,
+  stage       TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  updated_at  INTEGER NOT NULL,
+  CHECK (
+    (scale = 'norwood_hamilton' AND description = ''
+      AND stage IN ('1','2','2a','3','3v','3a','4','4a','5','5a','6','7'))
+    OR (scale = 'sinclair' AND description = '' AND stage IN ('1','2','3','4','5'))
+    OR (scale = 'other' AND stage = '')
+  )
+);
+INSERT INTO hair_stage_v36 (id, uuid, epoch_day, scale, stage, description, updated_at)
+  SELECT id, uuid, epoch_day, 'norwood_hamilton', stage, '', updated_at FROM hair_stage;
+DROP TABLE hair_stage;
+ALTER TABLE hair_stage_v36 RENAME TO hair_stage;
+CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
+CREATE INDEX idx_hair_stage_scale ON hair_stage(scale, epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1204,7 +1254,8 @@ export const migrations: Migration[] = [
   { version: 32, sql: SCHEMA_V32 },
   { version: 33, sql: SCHEMA_V33 },
   { version: 34, sql: SCHEMA_V34 },
-  { version: 35, sql: SCHEMA_V35 }
+  { version: 35, sql: SCHEMA_V35 },
+  { version: 36, sql: SCHEMA_V36 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

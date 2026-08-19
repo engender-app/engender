@@ -924,15 +924,30 @@ export async function applyPersonalEffects({ driver, journal, ts }: Restoring): 
 }
 
 /* Matched by uuid, like applyMeasurements: a staging is a dated series
-   entry, not a single replaced value like personal_effect. */
+   entry, not a single replaced value like personal_effect.
+
+   A row with no `scale` came out of an archive written before phase 5
+   ticket 33, when Norwood-Hamilton was the only vocabulary there was, so it
+   is one - the same reading migrations.ts v36 gives the rows it carried
+   across. Defaulting rather than dropping is what keeps an old backup whole;
+   a scale this build does not know is left as it is and the schema's CHECK
+   refuses it, which is the honest failure for an archive from a future
+   build. */
 export async function applyHairStages({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM hair_stage');
 
   const inserting = journal.hairStages.filter((stage) => !present.has(stage.id));
   await insertRows(
     driver,
-    'INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at)',
-    inserting.map((stage) => [stage.id, stage.epochDay, stage.stage, ts])
+    'INSERT INTO hair_stage (uuid, epoch_day, scale, stage, description, updated_at)',
+    inserting.map((stage) => [
+      stage.id,
+      stage.epochDay,
+      stage.scale ?? 'norwood_hamilton',
+      stage.stage,
+      stage.description ?? '',
+      ts
+    ])
   );
 }
 
