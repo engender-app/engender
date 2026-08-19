@@ -487,6 +487,30 @@ export async function applyLabResults({ driver, journal, ts }: Restoring): Promi
   );
 }
 
+export async function applyMeasurementTypes({ driver, mode, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT key AS id FROM measurement_type');
+
+  for (const type of journal.measurementTypes) {
+    if (present.has(type.key)) {
+      if (mode === 'merge') continue;
+      await driver.run('UPDATE measurement_type SET name = ?, hidden = ?, updated_at = ? WHERE key = ?', [
+        type.name,
+        flag(type.hidden),
+        ts,
+        type.key
+      ]);
+      continue;
+    }
+    // A custom type's key is its own uuid (measurements.ts): the column is
+    // NOT NULL for the built-ins' sake, and one identity is enough for a
+    // row the user made.
+    await driver.run(
+      'INSERT INTO measurement_type (uuid, key, name, is_built_in, hidden, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [type.builtIn ? null : type.key, type.key, type.name, flag(type.builtIn), flag(type.hidden), ts]
+    );
+  }
+}
+
 export async function applyMeasurements({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM measurement');
 

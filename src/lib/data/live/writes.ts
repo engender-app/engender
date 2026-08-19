@@ -126,7 +126,12 @@ export type TableName =
      own body-region intensities are still announced under 'entry' - this
      is only the region rows themselves: built-in hide/unhide and a custom
      region being added. */
-  | 'bodyRegion';
+  | 'bodyRegion'
+  /* Measurement types (phase 5 ticket 29): the vocabulary a measurement's
+     `type` names, built-in and custom alike. Its own name rather than
+     folded into 'measurement': a screen adding or hiding a type has not
+     touched a single logged reading, and the reverse. */
+  | 'measurementType';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -162,7 +167,8 @@ export const TABLE_NAMES: TableName[] = [
   'checklist',
   'wearSession',
   'affirmation',
-  'bodyRegion'
+  'bodyRegion',
+  'measurementType'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -277,8 +283,13 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     reads: ['getAnalytes', 'getUsedAnalytes', 'getResults', 'getSeries']
   },
   measurements: {
-    writes: { upsertMeasurement: ['measurement'], deleteMeasurement: ['measurement'] },
-    reads: ['getMeasurements', 'getSeries', 'getMeasurementsInRange']
+    writes: {
+      upsertMeasurement: ['measurement'],
+      deleteMeasurement: ['measurement'],
+      addCustomMeasurementType: ['measurementType'],
+      setMeasurementTypeHidden: ['measurementType']
+    },
+    reads: ['getMeasurements', 'getSeries', 'getMeasurementsInRange', 'getMeasurementTypes']
   },
   sideEffects: {
     writes: { upsertSideEffect: ['sideEffect'], deleteSideEffect: ['sideEffect'] },

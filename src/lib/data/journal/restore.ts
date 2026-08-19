@@ -232,7 +232,13 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     // Same reasoning as affirmation's own delete: only the customs, so a
     // built-in region the archive does not carry keeps what reconciling
     // gave it rather than losing its row entirely.
-    'DELETE FROM body_region WHERE key IS NULL'
+    'DELETE FROM body_region WHERE key IS NULL',
+    // Measurements reference a type by key (measurements.ts), not by rowid,
+    // so unlike the child-table deletes above this needs no companion
+    // statement for rows that named a custom type just removed here - they
+    // simply keep a key nothing resolves any more, the same forward-
+    // compatible treatment lab_result.analyte already gets.
+    'DELETE FROM measurement_type WHERE is_built_in = 0'
   ];
   for (const statement of statements) await driver.run(statement);
 }

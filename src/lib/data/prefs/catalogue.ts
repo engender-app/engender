@@ -122,9 +122,13 @@ export interface PreferenceValues {
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone' | 'prolactin', string>>;
   /** Which measurement types have had their capture-protocol guidance
-      dismissed (ticket 08). Guidance is opt-in, never required to save a
-      measurement, so this only ever hides a card - it blocks nothing. */
-  measurementProtocolDismissed: Partial<Record<'waist' | 'hips' | 'chest' | 'underbust', boolean>>;
+      dismissed (ticket 08), keyed by measurement type key. Guidance is
+      opt-in, never required to save a measurement, so this only ever
+      hides a card - it blocks nothing. Widened from the four built-in
+      keys to any string (phase 5 ticket 29): a custom type never has
+      guidance to dismiss in the first place, so it never populates this
+      at all, built-in or not. */
+  measurementProtocolDismissed: Partial<Record<string, boolean>>;
   /** Whether the hair-photo capture-protocol guidance has been dismissed
       (phase 4 ticket 09). A plain boolean rather than measurementProtocolDismissed's
       per-type record: hair progress has only the one photo kind. Guidance

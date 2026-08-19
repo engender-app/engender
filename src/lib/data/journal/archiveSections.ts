@@ -85,6 +85,7 @@ const SECTIONS = [
   section({ name: 'entries', after: ['dimensions', 'tagGroups'], read: read.readEntries, apply: apply.applyEntries }),
   section({ name: 'milestones', read: read.readMilestones, apply: apply.applyMilestones }),
   section({ name: 'labResults', read: read.readLabResults, apply: apply.applyLabResults }),
+  section({ name: 'measurementTypes', read: read.readMeasurementTypes, apply: apply.applyMeasurementTypes }),
   section({ name: 'measurements', read: read.readMeasurements, apply: apply.applyMeasurements }),
   section({ name: 'sideEffects', read: read.readSideEffects, apply: apply.applySideEffects }),
   section({ name: 'cycleEvents', read: read.readCycleEvents, apply: apply.applyCycleEvents }),
