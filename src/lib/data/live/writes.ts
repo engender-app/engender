@@ -97,7 +97,9 @@ export type TableName =
      checklist without its items, the same reasoning 'dose' gives. */
   | 'checklist'
   /* The binder/tucking wear log (phase 5 ticket 04). */
-  | 'wearSession';
+  | 'wearSession'
+  /* The check-in's affirmation pool (phase 5 ticket 15). */
+  | 'affirmation';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -127,7 +129,8 @@ export const TABLE_NAMES: TableName[] = [
   'voiceRecording',
   'roadmapCheck',
   'checklist',
-  'wearSession'
+  'wearSession',
+  'affirmation'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -173,6 +176,15 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       deleteTag: ['tag', 'entry']
     },
     reads: ['getTagGroups']
+  },
+  affirmations: {
+    writes: {
+      addLine: ['affirmation'],
+      editLine: ['affirmation'],
+      setHidden: ['affirmation'],
+      deleteLine: ['affirmation']
+    },
+    reads: ['getAffirmations']
   },
   dimensions: {
     writes: {

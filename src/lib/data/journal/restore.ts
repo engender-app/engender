@@ -218,7 +218,11 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     // A custom tag group carries a uuid and a built-in one does not; its key
     // is that same uuid, so the uuid is what tells them apart (tags.ts).
     'DELETE FROM tag_group WHERE uuid IS NOT NULL',
-    'DELETE FROM gender_dimension WHERE is_built_in = 0'
+    'DELETE FROM gender_dimension WHERE is_built_in = 0',
+    // Only the customs; a built-in affirmation the archive does not carry
+    // keeps the wording reconciling gave it, the same reasoning tag's own
+    // delete gives.
+    'DELETE FROM affirmation WHERE key IS NULL'
   ];
   for (const statement of statements) await driver.run(statement);
 }

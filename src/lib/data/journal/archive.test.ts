@@ -501,6 +501,7 @@ const CARRIED: Record<string, string[]> = {
   preset_dimension: ['preset_id', 'dimension_id', 'order_index'],
   tag_group: ['uuid', 'key', 'name', 'enabled', 'order_index'],
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
+  affirmation: ['uuid', 'key', 'language', 'text', 'hidden'],
   reminder: [
     'uuid',
     'title',

@@ -857,6 +857,41 @@ CREATE TABLE procedure_photo (
 CREATE INDEX idx_procedure_photo_procedure ON procedure_photo(procedure_id, epoch_day);
 `;
 
+/* v26: custom affirmations (phase 5 ticket 15, CONTEXT: "Affirmation"). The
+   check-in's affirming line has been a pool of fourteen hardcoded message
+   keys with no database row at all (reminders/affirmations.ts); this gives
+   it the same built-in/custom split tags already have (ADR-0002) so a
+   person can add their own lines and hide an individual built-in one.
+
+   `key`/`uuid` is the same dual identity `tag` uses: a built-in row is
+   seeded by reconcileBuiltIns with `text = ''` (its wording lives in the
+   message catalogue, looked up by key) and a custom row carries a minted
+   uuid and the line the person actually wrote. No order_index: the check-in
+   picks a line by `epochDay % pool.length()` (ReminderAlarmReceiver.java),
+   never by a position a person chose, so there is nothing here for a drag
+   to reorder.
+
+   `language` is null for a built-in - its wording is looked up fresh in
+   whatever language is active, the same as any other built-in row - and
+   'en' or 'pl' for a custom, which is authored once and never translated
+   (CONTEXT: "Custom"). The CHECK is the same closed-set treatment
+   `tally_event.kind` gets; nothing here enforces language and key/uuid
+   moving together; the write path (journal/affirmations.ts) is what keeps
+   a built-in's language null and a custom's key null, the same way `tag`
+   leaves that pairing to tags.ts rather than a table-level CHECK. */
+const SCHEMA_V26 = `
+CREATE TABLE affirmation (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT UNIQUE,
+  key        TEXT UNIQUE,
+  language   TEXT CHECK (language IN ('en', 'pl')),
+  text       TEXT NOT NULL DEFAULT '',
+  hidden     INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_affirmation_language ON affirmation(language);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -882,7 +917,8 @@ export const migrations: Migration[] = [
   { version: 22, sql: SCHEMA_V22 },
   { version: 23, sql: SCHEMA_V23 },
   { version: 24, sql: SCHEMA_V24 },
-  { version: 25, sql: SCHEMA_V25 }
+  { version: 25, sql: SCHEMA_V25 },
+  { version: 26, sql: SCHEMA_V26 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database
