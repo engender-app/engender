@@ -24,6 +24,8 @@
 
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
+import type { BodyRegionFeeling } from '../../src/lib/data/types.ts';
+import { weekdayOfEpochDay } from '../../src/lib/data/epochDay.ts';
 
 /** Days in ten years, two of them leap. The unit is in the name because the
     option it is passed to takes days, and `{ days: TEN_YEARS }` read as
@@ -66,6 +68,17 @@ export interface LongJournalSummary {
       comes from the message catalogue above this seam (ADR-0016). */
   tagWord: string;
   tagWordEntries: number;
+  /** Entries carrying a body-region feeling whose euphoria clears
+      GOOD_DAY_REGION_EUPHORIA_FLOOR (stats.ts) - what isGoodDay's and
+      counterevidencePool's region clause (phase 5 ticket 44) needs to
+      actually match something, rather than costing a query plan for a
+      clause that never does. */
+  regionEuphoriaEntries: number;
+  /** Hair-progress stagings (phase 5 ticket 33). */
+  hairStagings: number;
+  /** Doses logged against the fixture's one regimen episode (phase 5
+      ticket 40). */
+  doseEvents: number;
 }
 
 /* Deterministic and cheap. Not a cryptographic generator and does not need
@@ -170,6 +183,28 @@ const DIMENSION_KEYS = [
   'agender_gendered'
 ];
 
+/* Built-in body regions (phase 5 ticket 30/31/44), a handful rather than
+   all ten - the good-day and counterevidence measurements need a mix of
+   floors cleared and not, not every region logged on every day. */
+const BODY_REGION_KEYS = ['chest', 'hairline', 'genitals', 'voice_throat', 'face_jaw'];
+
+/* Hair tracking (phase 5 ticket 33): a staging every ~200 days, the real
+   cadence a self-staging screen sees - nobody re-stages weekly. */
+const HAIR_STAGE_SCALE = 'norwood_hamilton';
+const HAIR_STAGES = ['1', '2', '2a', '3', '3v', '3a', '4', '4a', '5', '5a', '6', '7'];
+const HAIR_STAGE_STEP_DAYS = 200;
+
+/* The dose schedule (schema v38, ADR-0027, phase 5 ticket 40): one episode
+   on a Monday/Wednesday/Friday recurrence with a two-amount cycle, starting
+   a month into the fixture so expectedSlots also has to clip to the
+   episode's own start day rather than the window's edge. Weekdays are
+   Monday-first (epochDay.ts's weekdayOfEpochDay), same as the calendar. */
+const REGIMEN_WEEKDAYS = [0, 2, 4];
+const REGIMEN_DOSE_AMOUNTS = [
+  { dose: 2, doseUnit: 'mg' },
+  { dose: 1, doseUnit: 'mg' }
+];
+
 /* One analyte in two unit spellings on purpose: mixed units are two series
    and never one line (ticket 02), and a ten-year journal is where a person
    changes labs and the spelling comes back different. */
@@ -223,7 +258,10 @@ export async function generateLongJournal(
     rareWord: RARE_WORD,
     rareWordEntries: 0,
     tagWord: CUSTOM_TAG_LABELS[0].label,
-    tagWordEntries: 0
+    tagWordEntries: 0,
+    regionEuphoriaEntries: 0,
+    hairStagings: 0,
+    doseEvents: 0
   };
 
   const customTags = await Promise.all(
@@ -263,6 +301,19 @@ export async function generateLongJournal(
       const attachPhotos = random() < 0.12 ? [await makePhoto(summary.photos)] : undefined;
       if (attachPhotos) summary.photos++;
 
+      // A body region on roughly one entry in six, its euphoria clearing
+      // GOOD_DAY_REGION_EUPHORIA_FLOOR about half the time - a mix, not an
+      // always-true or always-false clause.
+      const bodyRegions: Record<string, BodyRegionFeeling> = {};
+      if (random() < 0.16) {
+        const clearsFloor = random() < 0.5;
+        bodyRegions[pick(BODY_REGION_KEYS)] = {
+          euphoria: clearsFloor ? between(50, 100) : between(0, 49),
+          dysphoria: random() < 0.5 ? between(0, 100) : null
+        };
+        if (clearsFloor) summary.regionEuphoriaEntries++;
+      }
+
       await journal.entries.upsertEntry({
         epochDay: day,
         /* From the day and the entry's place in it, never from a clock.
@@ -276,6 +327,7 @@ export async function generateLongJournal(
         note,
         dims,
         tags,
+        bodyRegions,
         attachPhotos
       });
       summary.entries++;
@@ -306,6 +358,63 @@ export async function generateLongJournal(
     if (day > lastEpochDay + 400) break;
     await journal.milestones.upsertMilestone({ name: MILESTONE_NAMES[i], epochDay: day });
     summary.milestones++;
+  }
+
+  // Hair-progress stagings, spread across the decade rather than clustered:
+  // hairAnchorEpochDay and the settings screen it feeds read every staging,
+  // and a handful all on one day would not exercise that any differently
+  // from a single row. A few dated photos alongside them, its own table
+  // (hairProgress.ts) rather than the entry photos above - getPhotos()
+  // would otherwise be reading an empty table at any journal size.
+  let hairPhotoIndex = 0;
+  for (let day = firstEpochDay, i = 0; day <= lastEpochDay; day += HAIR_STAGE_STEP_DAYS, i++) {
+    await journal.hairProgress.upsertStage({
+      epochDay: day,
+      scale: HAIR_STAGE_SCALE,
+      stage: HAIR_STAGES[i % HAIR_STAGES.length]
+    });
+    summary.hairStagings++;
+
+    // One photo every fourth staging - about every 800 days, a photo shoot
+    // being rarer than a self-staging.
+    if (i % 4 === 0) {
+      await journal.hairProgress.addPhoto(day, await makePhoto(hairPhotoIndex));
+      hairPhotoIndex++;
+    }
+  }
+
+  // The regimen episode and its schedule (schema v38, ADR-0027). Doses
+  // follow the schedule's own weekdays, one in twenty left unlogged so the
+  // adherence view has something to report as missing rather than a
+  // perfect record no real journal keeps.
+  const regimenStartEpochDay = firstEpochDay + 30;
+  const episodeId = await journal.regimen.upsertEpisode({
+    drug: 'Estradiol',
+    ester: null,
+    dose: REGIMEN_DOSE_AMOUNTS[0].dose,
+    doseUnit: REGIMEN_DOSE_AMOUNTS[0].doseUnit,
+    route: 'oral',
+    interval: 'Monday, Wednesday, Friday',
+    startEpochDay: regimenStartEpochDay
+  });
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'weekdays', weekdays: REGIMEN_WEEKDAYS },
+    dosesPerDay: 1,
+    doseAmounts: REGIMEN_DOSE_AMOUNTS
+  });
+  for (let day = regimenStartEpochDay; day <= lastEpochDay; day++) {
+    if (!REGIMEN_WEEKDAYS.includes(weekdayOfEpochDay(day))) continue;
+    if (random() < 0.05) continue;
+    const amount = REGIMEN_DOSE_AMOUNTS[summary.doseEvents % REGIMEN_DOSE_AMOUNTS.length];
+    await journal.doses.upsertDose({
+      timestamp: (day * 24 + 8) * 3_600_000,
+      route: 'oral',
+      dose: amount.dose,
+      doseUnit: amount.doseUnit,
+      status: 'taken'
+    });
+    summary.doseEvents++;
   }
 
   return summary;
