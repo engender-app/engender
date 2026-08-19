@@ -67,8 +67,10 @@
 
   const labContextLine = (r: LabResult) => [r.timing ? labTimingLabel(r.timing) : '', r.provider.trim()].filter(Boolean).join(' · ');
 
-  /* The rows for each registered section. Top-level snippets, so they can be
-     collected here and looked up by the same key the registry declares. */
+  /* The rows for each registered section, looked up by the same key the
+     registry declares. Svelte makes a snippet declared at the top level of
+     the markup visible in here, which is what lets the map live beside the
+     rest of the screen's wiring rather than in the template. */
   const SECTION_ROWS: Record<ClinicianSummarySectionKey, Snippet<[ClinicianSummary]>> = {
     regimenEpisodes: regimenRows,
     doses: doseRows,
