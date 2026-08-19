@@ -23,6 +23,7 @@ import { makeDoubtJournalArea, type DoubtJournalArea } from './doubtJournal';
 import { makeDosesArea, type DosesArea } from './doses';
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
+import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
 import { makeHormoneCurveArea, type HormoneCurveArea } from './hormoneCurve';
 import { makeQualitativeCurveArea, type QualitativeCurveArea } from './hormoneCurveQualitative';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
@@ -184,12 +185,18 @@ export interface Journal {
       list itself from 'g-euphoria' alone to all three euphoria tags) -
       this area owns only what it alone writes. */
   doubtJournal: DoubtJournalArea;
-  /** Name and pronoun tryouts and their felt-sense history (phase 4 ticket
-      16). Reads the entries in a tryout's date range through
-      entries.searchEntries('', [], { startEpochDay, endEpochDay }) rather
-      than owning a link of its own (ADR-0010) - this area owns only what
-      it alone writes. */
+  /** Name and pronoun tryouts (phase 4 ticket 16). Reads the entries in a
+      tryout's date range through entries.searchEntries('', [], {
+      startEpochDay, endEpochDay }) rather than owning a link of its own
+      (ADR-0010) - this area owns only what it alone writes. Its
+      felt-sense history lives in `feltSense` instead (phase 5 ticket 24). */
   tryouts: TryoutsArea;
+  /** One table for a tryout's felt-sense history and a milestone's alike
+      (phase 5 ticket 24, CONTEXT: "Felt-sense entry"), the same shape
+      `photos` already has for an entry's and a milestone's photos. Never
+      required - offering one is `tryouts`' and `milestones`' screens'
+      business, not this area's. */
+  feltSense: FeltSenseArea;
   /** Free-write letters to the person's future self, sealed until a
       chosen unlock day (phase 4 ticket 19). Stores the text and the
       unlock day and nothing else - letterStatus.ts derives sealed/
@@ -282,6 +289,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     procedures,
     doubtJournal: makeDoubtJournalArea(driver),
     tryouts: makeTryoutsArea(driver, files),
+    feltSense: makeFeltSenseArea(driver),
     letters: makeLettersArea(driver),
     roadmap: makeRoadmapArea(driver),
     checklists,

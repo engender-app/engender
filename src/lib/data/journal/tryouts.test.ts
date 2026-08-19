@@ -97,65 +97,14 @@ test('a tryout updates by id, and closing it out sets an end day', async () => {
 test('deleting a tryout is idempotent and takes its felt-sense history with it', async () => {
   const { journal, db } = await journalWithBuiltIns();
   const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', startEpochDay: 100, endEpochDay: null });
-  await journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 100, mood: 4 });
+  await journal.feltSense.add({ tryoutId: id }, { epochDay: 100, mood: 4 });
 
   await journal.tryouts.deleteTryout(id);
   await journal.tryouts.deleteTryout(id); // idempotent
 
   assert.deepEqual(await journal.tryouts.getTryouts(), []);
-  const rows = await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM tryout_felt_sense');
+  const rows = await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM felt_sense');
   assert.equal(rows[0].n, 0);
-});
-
-test('a felt-sense entry round-trips its mood and note, newest first', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', startEpochDay: 100, endEpochDay: null });
-
-  const earlier = await journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 100, mood: 2, note: 'awkward' });
-  const later = await journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 110, mood: 4 });
-
-  assert.match(later, UUID_PATTERN);
-  const history = await journal.tryouts.getFeltSenseEntries(id);
-  assert.deepEqual(history, [
-    { id: later, tryoutId: id, epochDay: 110, mood: 4, note: null },
-    { id: earlier, tryoutId: id, epochDay: 100, mood: 2, note: 'awkward' }
-  ]);
-});
-
-test('a tryout can carry more than one felt-sense observation over its lifespan', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.tryouts.upsertTryout({ kind: 'pronouns', label: 'they/them', startEpochDay: 100, endEpochDay: null });
-
-  await journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 100, mood: 3 });
-  await journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 120, mood: 4 });
-  await journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 140, mood: 5 });
-
-  assert.equal((await journal.tryouts.getFeltSenseEntries(id)).length, 3);
-});
-
-test('an unknown tryout and an out-of-range mood are refused before either reaches the schema', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', startEpochDay: 100, endEpochDay: null });
-
-  await assert.rejects(journal.tryouts.addFeltSenseEntry({ tryoutId: 'nope', epochDay: 100, mood: 3 }));
-  await assert.rejects(journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 100, mood: 0 }), /invalid mood/);
-  await assert.rejects(journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 100, mood: 6 }), /invalid mood/);
-});
-
-test('deleting a felt-sense entry is idempotent and leaves the tryout and its other entries alone', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', startEpochDay: 100, endEpochDay: null });
-  const gone = await journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 100, mood: 2 });
-  const kept = await journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 110, mood: 4 });
-
-  await journal.tryouts.deleteFeltSenseEntry(gone);
-  await journal.tryouts.deleteFeltSenseEntry(gone); // idempotent
-
-  assert.deepEqual(
-    (await journal.tryouts.getFeltSenseEntries(id)).map((e) => e.id),
-    [kept]
-  );
-  assert.equal((await journal.tryouts.getTryouts()).length, 1);
 });
 
 test('entries in a tryout\'s date range are read by date overlap, not a stored link', async () => {
@@ -260,7 +209,7 @@ test('removing a tryout photo drops the row and both its files, idempotently', a
 test('deleting a tryout takes its photo files and their thumbnails with it, alongside its felt-sense history', async () => {
   const { db, files, journal } = await journalWithFiles();
   const id = await journal.tryouts.upsertTryout({ kind: 'style', label: 'layered look', startEpochDay: 100, endEpochDay: null });
-  await journal.tryouts.addFeltSenseEntry({ tryoutId: id, epochDay: 100, mood: 3 });
+  await journal.feltSense.add({ tryoutId: id }, { epochDay: 100, mood: 3 });
   await journal.tryouts.addPhoto(id, 100, shot('d', 'D'));
 
   await journal.tryouts.deleteTryout(id);

@@ -302,9 +302,12 @@ export interface TryoutPhoto {
     none. `mood` reuses the app's one five-level mood scale (CONTEXT:
     "Mood") rather than inventing a second one for the same kind of
     judgement. */
+/** Belongs to exactly one Tryout or Milestone (CONTEXT: "Felt-sense
+    entry"); which owner never travels here, the same reasoning `Photo`
+    carries no `entryId`/`milestoneId` of its own - the caller already
+    knows which owner it asked for. */
 export interface FeltSenseEntry {
   id: string;
-  tryoutId: string;
   epochDay: number;
   mood: number;
   note: string | null;
