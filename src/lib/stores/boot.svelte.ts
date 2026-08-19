@@ -28,6 +28,7 @@ import { isAndroid } from '../platform';
 import { InterruptedRestoreError, SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
 import { markJournalBusy } from '../data/journal-busy';
 import { openJournal, type PhotoFileStore } from '../data/journal/journal';
+import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { hydrateReference } from '../data/live/reference.svelte';
@@ -543,6 +544,7 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
     },
     // Step 4: after the database is open and migrated, so the rows it
     // compares against are the current ones (ADR-0008).
+    purgeExpiredTrash: (opened) => purgeExpiredTrash(opened, photoFiles),
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles)
   }).then(async (result) => {
     if (result.phase === 'error') {

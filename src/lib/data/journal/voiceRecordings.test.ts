@@ -44,6 +44,28 @@ test('a journal with no recordings yields an empty list, not a broken join', asy
   assert.deepEqual(await journal.voice.inJournal(), []);
 });
 
+test("a trashed entry's recording drops out of inJournal (phase 5 ticket 19)", async () => {
+  const { journal } = await journalWithFiles();
+  const kept = await journal.entries.upsertEntry({
+    epochDay: 20000,
+    mood: 3,
+    attachRecordings: [new Uint8Array([1])]
+  });
+  const trashed = await journal.entries.upsertEntry({
+    epochDay: 20100,
+    mood: 4,
+    attachRecordings: [new Uint8Array([2])]
+  });
+  const keptRecording = (await journal.entries.getEntry(kept))!.recordings[0];
+
+  await journal.entries.deleteEntry(trashed);
+
+  assert.deepEqual(
+    (await journal.voice.inJournal()).map((r) => r.id),
+    [keptRecording.id]
+  );
+});
+
 test('an entry with several recordings orders them oldest first alongside another entry', async () => {
   const { journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({

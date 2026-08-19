@@ -169,10 +169,14 @@ export async function runJournalContract(
     /* Against the entries that actually have note text rather than against a
        number written here: a literal would be asserting that the database was
        empty when the suite started, which is a precondition nothing gives it
-       and which would fail as a search bug the first time it was not true. */
+       and which would fail as a search bug the first time it was not true.
+       Trashed rows are excluded from `noted` (phase 5 ticket 19): deleteEntry
+       leaves the row and its note in place but drops it from the index the
+       same way it drops it from every other read, so ids[1] above widens
+       the two counts apart unless trash is left out of both sides. */
     const [indexed] = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM entry_fts');
     const [noted] = await driver.query<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM entry WHERE note IS NOT NULL AND note != ''"
+      "SELECT COUNT(*) AS n FROM entry WHERE note IS NOT NULL AND note != '' AND trashed_at IS NULL"
     );
     r.equal('the index holds one row per entry that has note text', indexed.n, noted.n);
 

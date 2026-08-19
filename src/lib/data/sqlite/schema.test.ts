@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 23);
+  assert.equal(db.getUserVersion(), 24);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -269,7 +269,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 23);
+  assert.equal(db.getUserVersion(), 24);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -345,4 +345,21 @@ test('deleting an entry cascades to its photos, dimension values, tag links and 
   // The tag and dimension themselves are reference data and must survive.
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM tag').get()?.['n'], 1);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM gender_dimension').get()?.['n'], 1);
+});
+
+test('v24 entry gets a nullable trashed_at column, indexed, defaulting to NULL', async () => {
+  const db = await migratedDb();
+  const columns = (db.raw.prepare('PRAGMA table_info(entry)').all() as Array<{
+    name: string;
+    notnull: number;
+  }>);
+  const trashedAt = columns.find((c) => c.name === 'trashed_at');
+  assert.ok(trashedAt, 'entry.trashed_at should exist');
+  assert.equal(trashedAt!.notnull, 0);
+
+  db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e1', 1, 1000, 1000)");
+  assert.equal(db.raw.prepare('SELECT trashed_at FROM entry WHERE uuid = ?').get('e1')?.['trashed_at'], null);
+
+  const indexes = (db.raw.prepare("PRAGMA index_list(entry)").all() as Array<{ name: string }>).map((i) => i.name);
+  assert.ok(indexes.includes('idx_entry_trashed_at'));
 });

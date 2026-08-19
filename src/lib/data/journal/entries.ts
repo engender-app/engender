@@ -12,8 +12,10 @@
    shows every option every time, so an id or region key missing from a
    save is the user deselecting it.
 
-   Photos become writable in ticket 11; their rows are already cleaned up
-   on delete here, files included, via the injected store. */
+   Photos become writable in ticket 11; their rows travel with the entry
+   into trash and back (phase 5 ticket 19) rather than being cleaned up on
+   delete - purgeExpiredTrash is what eventually takes them and their files
+   with it, via the injected store. */
 
 import { BODY_REGION_KEYS } from '../bodyMap';
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
@@ -40,6 +42,12 @@ import {
   type StagedRecording
 } from './voiceRecordings';
 import { domainIdOf, mintUuid, now, rowidByUuid } from './support';
+
+/** How long a trashed entry survives before purgeExpiredTrash reclaims it
+    (phase 5 ticket 19). Fixed, like the hair-photo schedule's 28 days
+    (hairPhotoSchedule.ts) - no per-user setting. */
+export const TRASH_WINDOW_DAYS = 30;
+const TRASH_WINDOW_MS = TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
 export interface EntryInput {
   id?: number;
@@ -117,10 +125,22 @@ export interface EntriesArea {
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
-  /** Idempotent. Takes the entry's dimension values, tag links, body-region
-      values, photo rows, photo files, recording rows and recording files
-      with it. */
+  /** Idempotent. Moves the entry to trash for TRASH_WINDOW_DAYS (phase 5
+      ticket 19): its dimension values, tag links and body regions stay as
+      they are, its photos and recordings are left untouched, and it drops
+      out of every other read this area offers until it is restored or
+      purgeExpiredTrash reclaims it for good. */
   deleteEntry(id: number): Promise<void>;
+  /** Brings a trashed entry back, photos and recordings included. A no-op
+      on an unknown id or one that is not trashed. */
+  restoreEntry(id: number): Promise<void>;
+  /** Every trashed entry, most recently trashed first - the dedicated trash
+      view's only read (out of scope: any other screen surfacing them). */
+  trashedEntries(): Promise<TrashedEntry[]>;
+}
+
+export interface TrashedEntry extends Entry {
+  trashedAt: number;
 }
 
 /* A type alias, not an interface: the driver's row generic is constrained
@@ -475,7 +495,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
   return {
     async getEntry(id) {
       const rows = await driver.query<EntryRow>(
-        'SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE id = ?',
+        'SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE id = ? AND trashed_at IS NULL',
         [id]
       );
       return rows[0] && (await hydrate(rows))[0];
@@ -483,7 +503,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
 
     async entriesForDay(epochDay) {
       const rows = await driver.query<EntryRow>(
-        'SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE epoch_day = ? ORDER BY timestamp, id',
+        `SELECT id, epoch_day, timestamp, mood, note FROM entry
+         WHERE epoch_day = ? AND trashed_at IS NULL ORDER BY timestamp, id`,
         [epochDay]
       );
       return hydrate(rows);
@@ -492,10 +513,15 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     async recentDays(dayCount) {
       /* The inner select picks the days, the outer one takes their entries
          whole. Filtering on a day list rather than on `LIMIT` is what keeps
-         a two-entry day from arriving as one entry. */
+         a two-entry day from arriving as one entry. Trashed entries are
+         excluded from both: a day whose only entry is trashed must not
+         count towards the days this picks. */
       const rows = await driver.query<EntryRow>(
         `SELECT id, epoch_day, timestamp, mood, note FROM entry
-         WHERE epoch_day IN (SELECT DISTINCT epoch_day FROM entry ORDER BY epoch_day DESC LIMIT ?)
+         WHERE trashed_at IS NULL
+           AND epoch_day IN (
+             SELECT DISTINCT epoch_day FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day DESC LIMIT ?
+           )
          ORDER BY epoch_day DESC, timestamp DESC, id DESC`,
         [dayCount]
       );
@@ -509,7 +535,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
          JOIN tag t ON t.id = et.tag_id
-         WHERE COALESCE(t.key, t.uuid) = ?
+         WHERE COALESCE(t.key, t.uuid) = ? AND e.trashed_at IS NULL
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
         [tagId, limit]
@@ -524,7 +550,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
 
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note FROM entry e
-         WHERE ${matches.where}
+         WHERE e.trashed_at IS NULL AND ${matches.where}
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          ${args.limit == null ? '' : 'LIMIT ?'}`,
         args.limit == null ? matches.params : [...matches.params, args.limit]
@@ -536,18 +562,29 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const matches = searchMatches(query, matchingTagIds, filters);
       if (!matches) return 0;
       const rows = await driver.query<{ n: number }>(
-        `SELECT COUNT(*) AS n FROM entry e WHERE ${matches.where}`,
+        `SELECT COUNT(*) AS n FROM entry e WHERE e.trashed_at IS NULL AND ${matches.where}`,
         matches.params
       );
       return rows[0].n;
     },
 
+    async trashedEntries() {
+      const rows = await driver.query<EntryRow & { trashed_at: number }>(
+        `SELECT id, epoch_day, timestamp, mood, note, trashed_at FROM entry
+         WHERE trashed_at IS NOT NULL ORDER BY trashed_at DESC`
+      );
+      const trashedAtById = new Map(rows.map((row) => [row.id, row.trashed_at]));
+      const hydrated = await hydrate(rows);
+      return hydrated.map((entry) => ({ ...entry, trashedAt: trashedAtById.get(entry.id)! }));
+    },
+
     async upsertEntry(input) {
       if (input.id != null) {
         const current = (
-          await driver.query<EntryRow>('SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE id = ?', [
-            input.id
-          ])
+          await driver.query<EntryRow>(
+            'SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE id = ? AND trashed_at IS NULL',
+            [input.id]
+          )
         )[0];
         if (!current) throw new Error(`unknown entry: ${input.id}`);
         const mood = input.mood !== undefined ? input.mood : current.mood;
@@ -677,25 +714,61 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     },
 
     async deleteEntry(id) {
-      const photos = await driver.query<{ file_path: string }>('SELECT file_path FROM photo WHERE entry_id = ?', [
-        id
-      ]);
-      const recordings = await driver.query<{ file_path: string }>(
-        'SELECT file_path FROM voice_recording WHERE entry_id = ?',
+      // Marks the row rather than removing it (phase 5 ticket 19): the
+      // dimension values, tag links, body regions, photo rows and
+      // recording rows all stay exactly as they are, so restoreEntry has
+      // them to bring back. Only the search index drops the entry now -
+      // trashed_at IS NULL on every other read is what hides the rest.
+      await driver.run('UPDATE entry SET trashed_at = ? WHERE id = ? AND trashed_at IS NULL', [now(), id]);
+      await driver.run('DELETE FROM entry_fts WHERE rowid = ?', [id]);
+    },
+
+    async restoreEntry(id) {
+      const current = (await driver.query<{ note: string | null }>(
+        'SELECT note FROM entry WHERE id = ? AND trashed_at IS NOT NULL',
         [id]
-      );
-      await driver.transaction(async () => {
-        await driver.run('DELETE FROM photo WHERE entry_id = ?', [id]);
-        await driver.run('DELETE FROM voice_recording WHERE entry_id = ?', [id]);
-        await driver.run('DELETE FROM entry_dimension_value WHERE entry_id = ?', [id]);
-        await driver.run('DELETE FROM entry_tag WHERE entry_id = ?', [id]);
-        await driver.run('DELETE FROM entry_body_region WHERE entry_id = ?', [id]);
-        await driver.run('DELETE FROM entry WHERE id = ?', [id]);
-      });
-      // After the commit: a failed file removal must not resurrect rows,
-      // and an orphaned file is what the boot sweep (ticket 11) reclaims.
-      await removeFilesOf(files, photos);
-      await removeRecordingFilesOf(files, recordings);
+      ))[0];
+      if (!current) return;
+      await driver.run('UPDATE entry SET trashed_at = NULL WHERE id = ?', [id]);
+      await indexEntry(id, current.note ?? '');
     }
   };
+}
+
+/** Reclaims every entry trashed more than TRASH_WINDOW_DAYS ago, the same
+    hard delete deleteEntry used to do directly (dimension values, tag
+    links, body regions, photo/recording rows and files), run once at boot
+    after migrations (boot.ts), mirroring sweepOrphanPhotos's shape. */
+export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
+  const cutoff = now() - TRASH_WINDOW_MS;
+  const expired = await driver.query<{ id: number }>(
+    'SELECT id FROM entry WHERE trashed_at IS NOT NULL AND trashed_at <= ?',
+    [cutoff]
+  );
+  if (expired.length === 0) return;
+  const ids = expired.map((row) => row.id);
+  const placeholders = ids.map(() => '?').join(', ');
+
+  const photos = await driver.query<{ file_path: string }>(
+    `SELECT file_path FROM photo WHERE entry_id IN (${placeholders})`,
+    ids
+  );
+  const recordings = await driver.query<{ file_path: string }>(
+    `SELECT file_path FROM voice_recording WHERE entry_id IN (${placeholders})`,
+    ids
+  );
+
+  await driver.transaction(async () => {
+    await driver.run(`DELETE FROM photo WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM voice_recording WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM entry_dimension_value WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM entry_tag WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM entry_body_region WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM entry WHERE id IN (${placeholders})`, ids);
+  });
+  // After the commit, the same reasoning deleteEntry's old hard delete gave:
+  // a failed file removal must not resurrect rows, and an orphaned file is
+  // what the boot orphan sweep (sweepOrphanPhotos) reclaims next.
+  await removeFilesOf(files, photos);
+  await removeRecordingFilesOf(files, recordings);
 }

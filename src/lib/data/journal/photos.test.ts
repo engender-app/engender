@@ -132,15 +132,19 @@ test('removing a photo drops the row and both its files', async () => {
   await journal.photos.remove(id);
 });
 
-test('deleting an entry takes its photo files and their thumbnails', async () => {
+test('deleting an entry leaves its photo files alone - they go with it to trash, not to removeFilesOf', async () => {
+  // Phase 5 ticket 19: deleteEntry moves the entry to trash rather than
+  // removing it, so a restore within the window has its files to give back.
+  // purgeExpiredTrash (entries.test.ts) is what eventually takes them.
   const { files, journal } = await journalWithFiles();
   const entryId = await anEntry(journal);
   await journal.photos.attach({ entryId }, shot('1', 'a'));
   await journal.photos.attach({ entryId }, shot('2', 'b'));
+  const before = files.names();
 
   await journal.entries.deleteEntry(entryId);
 
-  assert.deepEqual(files.names(), [], 'thumbnails go with the photos they belong to');
+  assert.deepEqual(files.names(), before);
 });
 
 test('deleting a milestone takes its photo files and their thumbnails', async () => {
@@ -274,6 +278,20 @@ test('a journal with no photos yields an empty list, not a broken join', async (
   const { journal } = await journalWithFiles();
   await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
   assert.deepEqual(await journal.photos.inJournal(), []);
+});
+
+test("a trashed entry's photo drops out of inJournal; a milestone's is unaffected (phase 5 ticket 19)", async () => {
+  const { journal } = await journalWithFiles();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
+  const milestoneId = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 20000 });
+  const entryPhoto = await journal.photos.attach({ entryId }, shot('e2', 't2'));
+  const milestonePhoto = await journal.photos.attach({ milestoneId }, shot('m1', 't1'));
+
+  await journal.entries.deleteEntry(entryId);
+
+  const ids = (await journal.photos.inJournal()).map((p) => p.id);
+  assert.deepEqual(ids, [milestonePhoto]);
+  assert.ok(!ids.includes(entryPhoto));
 });
 
 /* Saving an entry is one action (PRD F1), and a photo on its own is enough
