@@ -70,7 +70,7 @@ export type QualitativeRoute = (typeof QUALITATIVE_ROUTES)[number];
     testosterone resolves to no curve rather than to a shape standing in for a
     band, and hormoneTestosteroneEster.test.ts pins that. */
 export const QUALITATIVE_ROUTES_BY_DRUG = {
-  estradiol: ['oral', 'sublingual', 'patch', 'gel'],
+  estradiol: QUALITATIVE_ROUTES,
   testosterone: ['gel']
 } as const satisfies Record<CurveDrug, readonly QualitativeRoute[]>;
 
@@ -205,7 +205,7 @@ function curveFor(
 }
 
 /** One qualitative curve per route dosed in `[fromEpochDay, toEpochDay]`, in
-    QUALITATIVE_ROUTES order. Each dose resolves its own episode for its
+    the order QUALITATIVE_ROUTES_BY_DRUG lists that hormone's routes. Each dose resolves its own episode for its
     drug, the same way an injection does (hormoneCurve.ts). */
 export function qualitativeCurves(input: QualitativeCurveInput): QualitativeCurves {
   const { drug, doses, episodes, fromEpochDay, toEpochDay } = input;
