@@ -80,7 +80,10 @@ export type TableName =
   /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
      pack's ticks: they live in one table and a screen shows one pack at a
      time, so there is nothing a per-pack name would let a query skip. */
-  | 'roadmapCheck';
+  | 'roadmapCheck'
+  /* Checklists and their items alike (phase 5 ticket 05): nothing reads a
+     checklist without its items, the same reasoning 'dose' gives. */
+  | 'checklist';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -105,7 +108,8 @@ export const TABLE_NAMES: TableName[] = [
   'tryout',
   'letter',
   'voiceRecording',
-  'roadmapCheck'
+  'roadmapCheck',
+  'checklist'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -233,6 +237,19 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   roadmap: {
     writes: { setGoalChecked: ['roadmapCheck'] },
     reads: ['getCheckedGoals']
+  },
+  checklists: {
+    writes: {
+      createChecklist: ['checklist'],
+      deleteChecklist: ['checklist'],
+      addItem: ['checklist'],
+      editItem: ['checklist'],
+      setItemChecked: ['checklist'],
+      setItemCarriedForward: ['checklist'],
+      deleteItem: ['checklist'],
+      reorder: ['checklist']
+    },
+    reads: ['getChecklist', 'getChecklistByOwner']
   },
   tally: {
     writes: { log: ['tally'], setContext: ['tally'], deleteEvent: ['tally'] },

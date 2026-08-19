@@ -12,6 +12,8 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
+  ArchiveChecklist,
+  ArchiveChecklistItem,
   ArchiveCounterevidenceSnapshot,
   ArchiveDimension,
   ArchiveDoseEvent,
@@ -321,6 +323,31 @@ export async function readRoadmapChecks({ driver }: SectionRead): Promise<Archiv
     'SELECT pack_key, goal_key FROM roadmap_check ORDER BY pack_key, goal_key'
   );
   return rows.map((r) => ({ packKey: r.pack_key, goalKey: r.goal_key }));
+}
+
+export async function readChecklists({ driver }: SectionRead): Promise<ArchiveChecklist[]> {
+  const checklists = await driver.query<{ id: number; uuid: string; owner_kind: string | null; owner_uuid: string | null }>(
+    'SELECT id, uuid, owner_kind, owner_uuid FROM checklist ORDER BY id'
+  );
+  const items = await driver.query<{ checklist_id: number; uuid: string; content: string; checked: number; carried_forward: number }>(
+    'SELECT checklist_id, uuid, content, checked, carried_forward FROM checklist_item ORDER BY order_index, id'
+  );
+  const byChecklist = groupBy(
+    items,
+    (i) => i.checklist_id,
+    (i): ArchiveChecklistItem => ({
+      id: i.uuid,
+      content: i.content,
+      checked: bool(i.checked),
+      carriedForward: bool(i.carried_forward)
+    })
+  );
+  return checklists.map((c) => ({
+    id: c.uuid,
+    ownerKind: c.owner_kind,
+    ownerId: c.owner_uuid,
+    items: byChecklist.get(c.id) ?? []
+  }));
 }
 
 export async function readTryouts({ driver }: SectionRead): Promise<ArchiveTryout[]> {
