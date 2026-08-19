@@ -101,7 +101,7 @@
   function include(key: JournalBookInclusionKey, value: boolean) {
     inclusion =
       key === 'entries' && !value
-        ? { ...inclusion, entries: false, photos: false, tags: false }
+        ? { ...inclusion, entries: false, photos: false, tags: false, dysphoriaEuphoriaTags: false }
         : { ...inclusion, [key]: value };
   }
 

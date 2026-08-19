@@ -26,6 +26,14 @@ import type { EntriesArea } from './entries';
 import type { MilestonesArea } from './milestones';
 import type { SideEffectsArea } from './sideEffects';
 import type { StatsArea } from './stats';
+import type { TagsArea } from './tags';
+
+/* Which tag groups carry what the ticket calls out by name as its own
+   sensitive category, distinct from an ordinary tag: gender (dysphoria,
+   euphoria, misgendering) and the seven named dysphoria types. Read from
+   the live groups rather than a fixed id list, so a tag added to either
+   group later is covered without this file changing. */
+const SENSITIVE_TAG_GROUP_KEYS = new Set(['gender', 'dysphoria_type']);
 
 /** What a book may carry, each answered before it is generated. Photos and
     tags qualify entries rather than standing alone: a photo belongs to the
@@ -35,6 +43,10 @@ export interface JournalBookInclusion {
   entries: boolean;
   photos: boolean;
   tags: boolean;
+  /** A tag in the gender or dysphoria-type group, kept apart from an
+      ordinary tag (an emotion, an activity) so ticking one never opts the
+      other in. */
+  dysphoriaEuphoriaTags: boolean;
   milestones: boolean;
   doubtEntries: boolean;
   sideEffects: boolean;
@@ -44,7 +56,7 @@ export interface JournalBookInclusion {
 export type JournalBookInclusionKey = keyof JournalBookInclusion;
 
 /** The picker's order, so the screen never hand-lists the choices: the safe
-    minimal set first, then the opening page, then the three a book does not
+    minimal set first, then the opening page, then the four a book does not
     take unless it is asked to. */
 export const JOURNAL_BOOK_INCLUSION_KEYS: readonly JournalBookInclusionKey[] = [
   'entries',
@@ -52,6 +64,7 @@ export const JOURNAL_BOOK_INCLUSION_KEYS: readonly JournalBookInclusionKey[] = [
   'milestones',
   'openingPage',
   'tags',
+  'dysphoriaEuphoriaTags',
   'doubtEntries',
   'sideEffects'
 ];
@@ -68,6 +81,7 @@ export const JOURNAL_BOOK_DEFAULT_INCLUSION: JournalBookInclusion = {
   entries: true,
   photos: true,
   tags: false,
+  dysphoriaEuphoriaTags: false,
   milestones: true,
   doubtEntries: false,
   sideEffects: false,
@@ -119,6 +133,7 @@ export interface JournalBookAreas {
   doubtJournal: DoubtJournalArea;
   sideEffects: SideEffectsArea;
   stats: StatsArea;
+  tags: TagsArea;
 }
 
 /* searchEntries with no query and no tags is the entries area's own range
@@ -127,15 +142,15 @@ export interface JournalBookAreas {
    entries, as every read there does (ticket 19), and answers newest first,
    so a book turns it around. */
 async function readEntries(
-  { entries }: JournalBookAreas,
+  { entries, tags }: JournalBookAreas,
   fromEpochDay: number,
   toEpochDay: number,
   inclusion: JournalBookInclusion
 ): Promise<JournalBookEntry[]> {
-  const found = await entries.searchEntries('', [], {
-    startEpochDay: fromEpochDay,
-    endEpochDay: toEpochDay
-  });
+  const [found, sensitiveTagIds] = await Promise.all([
+    entries.searchEntries('', [], { startEpochDay: fromEpochDay, endEpochDay: toEpochDay }),
+    inclusion.tags || inclusion.dysphoriaEuphoriaTags ? sensitiveTagIdsOf(tags) : new Set<string>()
+  ]);
   return [...found].reverse().map((entry: Entry) => ({
     id: entry.id,
     epochDay: entry.epochDay,
@@ -143,8 +158,19 @@ async function readEntries(
     mood: entry.mood,
     note: entry.note,
     photos: inclusion.photos ? entry.photos : [],
-    tags: inclusion.tags ? entry.tags : []
+    tags: entry.tags.filter((id) =>
+      sensitiveTagIds.has(id) ? inclusion.dysphoriaEuphoriaTags : inclusion.tags
+    )
   }));
+}
+
+/** Every tag id currently in the gender or dysphoria-type group, read live
+    so a tag added to either after this file was written is still caught. */
+async function sensitiveTagIdsOf(tags: TagsArea): Promise<Set<string>> {
+  const groups = await tags.getTagGroups();
+  return new Set(
+    groups.filter((g) => SENSITIVE_TAG_GROUP_KEYS.has(g.key)).flatMap((g) => g.tags.map((t) => t.id))
+  );
 }
 
 /* milestones.ts has no range read (nothing else needs one - the milestones

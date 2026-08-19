@@ -2173,6 +2173,7 @@
   "journal_book_include_note": "Drukuje się tylko to, co tu zaznaczysz.",
   "journal_book_part_entries": "Wpisy",
   "journal_book_part_opening_page": "Bilans na otwarcie",
+  "journal_book_part_dysphoria_euphoria_tags": "Tagi dysforii i eufori",
   "journal_book_empty": "W tym zakresie nie ma nic do wydruku.",
   "journal_book_range": "od {from} do {to}"
 }
