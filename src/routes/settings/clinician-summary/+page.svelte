@@ -1,10 +1,18 @@
 <script lang="ts">
   /* The clinician visit summary (phase 4 ticket 12): a one-shot, printable
-     assembly of everything tickets 01, 02, 03, 05 and 06 already read for a
-     chosen range (journal.clinicianSummary.getSummary). Nothing here is
-     computed beyond that read path's own range filter, and nothing this
-     screen does writes anything back to the journal - picking a range and
-     printing are the only two actions it offers. */
+     assembly of everything the registered sections already read for a chosen
+     range (journal.clinicianSummary.getSummary). Nothing here is computed
+     beyond those read paths' own range filter, and nothing this screen does
+     writes anything back to the journal - picking a range and printing are
+     the only two actions it offers.
+
+     Which sections print, and in what order, is the registry's answer
+     (clinicianSummary.ts, ADR-0031): this screen iterates it for the order
+     and looks each heading up by key, and holds one snippet per section for
+     the rows themselves, which genuinely differ - a dose row and a lab row
+     have nothing in common but their shape on the page. A section registered
+     with no snippet here is a typecheck failure, not a heading over
+     nothing. */
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import {
@@ -19,8 +27,11 @@
   import { applicationSiteLabel, injectionSiteLabel, routeLabel, statusLabel, vehicleLabel } from '$lib/data/vocabulary/doseLabels';
   import { severityName } from '$lib/data/vocabulary/labels';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
+  import { clinicianSummarySectionTitle } from '$lib/data/vocabulary/clinicianSummaryLabels';
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
+  import { CLINICIAN_SUMMARY_SECTION_KEYS, type ClinicianSummary, type ClinicianSummarySectionKey } from '$lib/data/journal/clinicianSummary';
   import type { DoseEvent, LabResult } from '$lib/data/types';
+  import type { Snippet } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -56,10 +67,155 @@
 
   const labContextLine = (r: LabResult) => [r.timing ? labTimingLabel(r.timing) : '', r.provider.trim()].filter(Boolean).join(' · ');
 
+  /* The rows for each registered section. Top-level snippets, so they can be
+     collected here and looked up by the same key the registry declares. */
+  const SECTION_ROWS: Record<ClinicianSummarySectionKey, Snippet<[ClinicianSummary]>> = {
+    regimenEpisodes: regimenRows,
+    doses: doseRows,
+    labResults: labResultRows,
+    exposure: exposureRows,
+    sideEffects: sideEffectRows
+  };
+
   function printSummary() {
     window.print();
   }
 </script>
+
+{#snippet regimenRows(s: ClinicianSummary)}
+  {#if s.regimenEpisodes.length}
+    <div class="list-group section-block">
+      {#each s.regimenEpisodes as episode (episode.id)}
+        <div class="list-row">
+          <span class="row-text">
+            <span class="row-title">{episode.drug}</span>
+            <span class="row-subtitle">
+              {episode.dose} {episode.doseUnit} · {episode.route} · {episode.interval} · {episodeRangeLabel(episode.endEpochDay, episode.startEpochDay)}
+            </span>
+          </span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small section-block">{m.clinician_summary_regimen_episodes_empty()}</p>
+  {/if}
+{/snippet}
+
+{#snippet doseRows(s: ClinicianSummary)}
+  {#if s.doses.length}
+    <div class="list-group section-block">
+      {#each s.doses as dose (dose.id)}
+        {@const site = siteOf(dose)}
+        <div class="list-row">
+          <span class="row-text">
+            <span class="row-title">
+              {dose.dose} {dose.doseUnit} · {routeLabel(dose.route)}
+              {#if dose.status !== 'taken'}· {statusLabel(dose.status)}{/if}
+            </span>
+            <span class="row-subtitle">
+              {whenOf(dose)}
+              {#if site}· {site}{/if}
+              {#if isInjectionDose(dose) && dose.vehicle}· {vehicleLabel(dose.vehicle)}{/if}
+            </span>
+          </span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small section-block">{m.clinician_summary_doses_empty()}</p>
+  {/if}
+{/snippet}
+
+{#snippet labResultRows(s: ClinicianSummary)}
+  {#if s.labResults.length}
+    <div class="list-group section-block">
+      {#each s.labResults as result (result.id)}
+        {@const context = labContextLine(result)}
+        <div class="list-row">
+          <span class="row-text">
+            <span class="row-title">{result.analyte}: {result.value} <span class="muted small">{result.unit}</span></span>
+            <span class="row-subtitle">
+              {dayLong(result.epochDay)}{result.note ? ' · ' + result.note : ''}
+            </span>
+            {#if context}<span class="row-subtitle">{context}</span>{/if}
+          </span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small section-block">{m.clinician_summary_labs_empty()}</p>
+  {/if}
+{/snippet}
+
+<!-- Three counters under one heading (phase 4 ticket 05), each with its own
+     sub-heading: they are one section because they are one area's read. -->
+{#snippet exposureRows(s: ClinicianSummary)}
+  <SectionTitle text={m.exposure_dose_totals_title()} />
+  {#if s.exposure.doseTotals.length}
+    <div class="list-group section-block">
+      {#each s.exposure.doseTotals as t (`${t.drug}-${t.route}-${t.doseUnit}`)}
+        <div class="list-row">
+          <span class="row-text">
+            <span class="row-title">{t.drug}</span>
+            <span class="row-subtitle">
+              {m.exposure_dose_total_sub({ route: routeLabel(t.route), total: String(t.total), unit: t.doseUnit })}
+            </span>
+          </span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small section-block">{m.exposure_dose_totals_empty()}</p>
+  {/if}
+
+  <SectionTitle text={m.exposure_route_days_title()} />
+  {#if s.exposure.routeDays.length}
+    <div class="list-group section-block">
+      {#each s.exposure.routeDays as r (r.route)}
+        <div class="list-row">
+          <span class="row-text"><span class="row-title">{r.route}</span></span>
+          <span class="muted small">{m.exposure_days_count({ days: String(r.days) })}</span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small section-block">{m.exposure_route_days_empty()}</p>
+  {/if}
+
+  <SectionTitle text={m.exposure_regimen_days_title()} />
+  {#if s.exposure.regimenDays.length}
+    <div class="list-group section-block">
+      {#each s.exposure.regimenDays as rd (rd.episodeId)}
+        <div class="list-row">
+          <span class="row-text">
+            <span class="row-title">{rd.drug}</span>
+            <span class="row-subtitle">{m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}</span>
+          </span>
+          <span class="muted small">{m.exposure_days_count({ days: String(rd.days) })}</span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small section-block">{m.exposure_regimen_days_empty()}</p>
+  {/if}
+{/snippet}
+
+{#snippet sideEffectRows(s: ClinicianSummary)}
+  {#if s.sideEffects.length}
+    <div class="list-group section-block">
+      {#each s.sideEffects as effect (effect.id)}
+        <div class="list-row">
+          <span class="row-text">
+            <span class="row-title">{effect.name}</span>
+            <span class="row-subtitle">{dayLong(effect.epochDay)} · {severityName(effect.severity)}</span>
+          </span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small section-block">{m.clinician_summary_side_effects_empty()}</p>
+  {/if}
+{/snippet}
 
 <div class="screen">
   <header class="screen-header no-print">
@@ -102,133 +258,10 @@
   {:else if summaryQuery.loading || !summary}
     <Skeleton variant="block" count={4} />
   {:else}
-    <SectionTitle text={m.regimen()} />
-    {#if summary.regimenEpisodes.length}
-      <div class="list-group" style="margin-bottom:var(--space-4)">
-        {#each summary.regimenEpisodes as episode (episode.id)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{episode.drug}</span>
-              <span class="row-subtitle">
-                {episode.dose} {episode.doseUnit} · {episode.route} · {episode.interval} · {episodeRangeLabel(episode.endEpochDay, episode.startEpochDay)}
-              </span>
-            </span>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.clinician_summary_regimen_episodes_empty()}</p>
-    {/if}
-
-    <SectionTitle text={m.doses()} />
-    {#if summary.doses.length}
-      <div class="list-group" style="margin-bottom:var(--space-4)">
-        {#each summary.doses as dose (dose.id)}
-          {@const site = siteOf(dose)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">
-                {dose.dose} {dose.doseUnit} · {routeLabel(dose.route)}
-                {#if dose.status !== 'taken'}· {statusLabel(dose.status)}{/if}
-              </span>
-              <span class="row-subtitle">
-                {whenOf(dose)}
-                {#if site}· {site}{/if}
-                {#if isInjectionDose(dose) && dose.vehicle}· {vehicleLabel(dose.vehicle)}{/if}
-              </span>
-            </span>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.clinician_summary_doses_empty()}</p>
-    {/if}
-
-    <SectionTitle text={m.lab_results()} />
-    {#if summary.labResults.length}
-      <div class="list-group" style="margin-bottom:var(--space-4)">
-        {#each summary.labResults as result (result.id)}
-          {@const context = labContextLine(result)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{result.analyte}: {result.value} <span class="muted small">{result.unit}</span></span>
-              <span class="row-subtitle">
-                {dayLong(result.epochDay)}{result.note ? ' · ' + result.note : ''}
-              </span>
-              {#if context}<span class="row-subtitle">{context}</span>{/if}
-            </span>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.clinician_summary_labs_empty()}</p>
-    {/if}
-
-    <SectionTitle text={m.exposure_title()} />
-    <SectionTitle text={m.exposure_dose_totals_title()} />
-    {#if summary.exposure.doseTotals.length}
-      <div class="list-group" style="margin-bottom:var(--space-4)">
-        {#each summary.exposure.doseTotals as t (`${t.drug}-${t.route}-${t.doseUnit}`)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{t.drug}</span>
-              <span class="row-subtitle">
-                {m.exposure_dose_total_sub({ route: routeLabel(t.route), total: String(t.total), unit: t.doseUnit })}
-              </span>
-            </span>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.exposure_dose_totals_empty()}</p>
-    {/if}
-
-    <SectionTitle text={m.exposure_route_days_title()} />
-    {#if summary.exposure.routeDays.length}
-      <div class="list-group" style="margin-bottom:var(--space-4)">
-        {#each summary.exposure.routeDays as r (r.route)}
-          <div class="list-row">
-            <span class="row-text"><span class="row-title">{r.route}</span></span>
-            <span class="muted small">{m.exposure_days_count({ days: String(r.days) })}</span>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.exposure_route_days_empty()}</p>
-    {/if}
-
-    <SectionTitle text={m.exposure_regimen_days_title()} />
-    {#if summary.exposure.regimenDays.length}
-      <div class="list-group" style="margin-bottom:var(--space-4)">
-        {#each summary.exposure.regimenDays as rd (rd.episodeId)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{rd.drug}</span>
-              <span class="row-subtitle">{m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}</span>
-            </span>
-            <span class="muted small">{m.exposure_days_count({ days: String(rd.days) })}</span>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.exposure_regimen_days_empty()}</p>
-    {/if}
-
-    <SectionTitle text={m.side_effects()} />
-    {#if summary.sideEffects.length}
-      <div class="list-group">
-        {#each summary.sideEffects as effect (effect.id)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{effect.name}</span>
-              <span class="row-subtitle">{dayLong(effect.epochDay)} · {severityName(effect.severity)}</span>
-            </span>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="muted small">{m.clinician_summary_side_effects_empty()}</p>
-    {/if}
+    {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
+      <SectionTitle text={clinicianSummarySectionTitle(key)} />
+      {@render SECTION_ROWS[key](summary)}
+    {/each}
 
     <p class="muted small no-print" style="margin-top:var(--space-4)">{m.clinician_summary_disclaimer()}</p>
     <p class="disclaimer-print">{m.clinician_summary_disclaimer()}</p>
@@ -236,6 +269,13 @@
 </div>
 
 <style>
+  /* Every section's rows are followed by the next section's heading, and
+     which one comes last is the registry's business rather than this file's,
+     so the gap is uniform instead of dropped on the final block. */
+  .section-block {
+    margin-bottom: var(--space-4);
+  }
+
   .print-heading {
     display: none;
   }

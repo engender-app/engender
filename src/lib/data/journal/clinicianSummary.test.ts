@@ -6,7 +6,20 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
+import { assembleClinicianSummary, CLINICIAN_SUMMARY_SECTIONS, type ClinicianSummarySection } from './clinicianSummary.ts';
 import type { Journal } from './journal.ts';
+
+/* The areas a section reads through, bound to a range - what openJournal
+   hands the area, assembled here so a test can add a section of its own. */
+const readingFor = (journal: Journal, fromEpochDay: number, toEpochDay: number) => ({
+  fromEpochDay,
+  toEpochDay,
+  regimen: journal.regimen,
+  doses: journal.doses,
+  labs: journal.labs,
+  exposure: journal.exposure,
+  sideEffects: journal.sideEffects
+});
 
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
 
@@ -94,4 +107,26 @@ test('with nothing logged at all, every field comes back empty rather than throw
     exposure: { doseTotals: [], routeDays: [], regimenDays: [] },
     sideEffects: []
   });
+});
+
+test('a section is registered for each part of the summary, in the order it prints', async () => {
+  assert.deepEqual(
+    CLINICIAN_SUMMARY_SECTIONS.map((s) => s.key),
+    ['regimenEpisodes', 'doses', 'labResults', 'exposure', 'sideEffects']
+  );
+});
+
+test('registering a section is enough for it to reach a generated summary, with no change to the assembly', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006 });
+
+  const throwaway: ClinicianSummarySection = {
+    key: 'throwaway',
+    read: async ({ fromEpochDay, toEpochDay }) => [fromEpochDay, toEpochDay]
+  };
+  const summary = await assembleClinicianSummary(readingFor(journal, 19000, 19020), [...CLINICIAN_SUMMARY_SECTIONS, throwaway]);
+
+  assert.deepEqual((summary as unknown as Record<string, unknown>).throwaway, [19000, 19020]);
+  // The five that were hand-assembled before still come back alongside it.
+  assert.equal(summary.sideEffects.length, 1);
 });
