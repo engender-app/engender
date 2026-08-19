@@ -18,6 +18,7 @@
    with it, via the injected store. */
 
 import { bodyRegionIsLogged } from '../bodyMap';
+import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats';
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
@@ -645,6 +646,12 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       // condition. Trashed entries are excluded the same way every other
       // read here is (phase 5 ticket 19) - a trashed entry is not
       // counterevidence for anything until it is restored.
+      //
+      // The body-region clause (phase 5 ticket 44) needs no day-level
+      // aggregation the way isGoodDay's does: this is already a per-entry
+      // check, so any one of an entry's logged regions clearing the floor
+      // is enough, the same inclusive floor and the same constant isGoodDay
+      // reads.
       const placeholders = tagIds.map(() => '?').join(', ');
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
@@ -655,10 +662,14 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
                SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
                WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) IN (${placeholders})
              )
+             OR EXISTS (
+               SELECT 1 FROM entry_body_region ebr
+               WHERE ebr.entry_id = e.id AND ebr.euphoria >= ?
+             )
            )
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
-        [...tagIds, limit]
+        [...tagIds, GOOD_DAY_REGION_EUPHORIA_FLOOR, limit]
       );
       return hydrate(rows);
     },

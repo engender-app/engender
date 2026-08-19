@@ -201,6 +201,11 @@ pursuing body changes tags social euphoria far more than the general tag, so
 anything asking "did this day carry a euphoria capture" - the doubt journal's
 counterevidence pool, the good-day rule below - checks all three.
 
+A **body-region feeling**'s own euphoria intensity also qualifies, at or above
+50 on any single logged region (phase 5 ticket 44, `GOOD_DAY_REGION_EUPHORIA_FLOOR`)
+- someone whose good days are entirely a body-region reading and never a tag
+clears the same bar a tag would.
+
 **Tally event**:
 One tap of the misgendering or correct-gendering counter, carrying only its kind
 and an optional free-text context. Its own record type, not a variant of Entry
@@ -511,16 +516,21 @@ before today. Only ever resurfaces a **good day** (below) - never a bad one.
 **Good day**:
 The bar a day must clear for on-this-day to resurface it: a day average mood at
 or above the mood scale's midpoint, any of the three euphoria capture tags
-(`g-euphoria`, `g-soc-eu`, `g-body-eu`) logged that day, or either. The rule,
-not just a definition: on-this-day must never show a day that doesn't clear
-this bar.
+(`g-euphoria`, `g-soc-eu`, `g-body-eu`) logged that day, a body-region euphoria
+of at least 50 on any one entry that day, or any of the three. The rule, not
+just a definition: on-this-day must never show a day that doesn't clear this
+bar. Neither the region's own dysphoria intensity nor a combination of the two
+ever enters this rule, matching ticket 31's refusal of any net or scored
+figure across a region's two axes.
 
 **Doubt entry**:
 A free-write record for a "not trans enough" spiral, timestamped and its own
 record type - no mood, dimension values, tags or note (CONTEXT: "Entry").
-Writing one surfaces the user's own past **euphoria capture**-tagged
-entries, alongside any **Starred** ones, as counterevidence, reached from a
-persistent Home affordance rather than the normal new-entry flow.
+Writing one surfaces the user's own past **euphoria capture**-tagged entries
+and entries carrying a body region at or above the same euphoria floor
+(CONTEXT: "Euphoria capture"), alongside any **Starred** ones, as
+counterevidence, reached from a persistent Home affordance rather than the
+normal new-entry flow.
 
 **Counterevidence snapshot**:
 A one-tap, saved copy of the counterevidence a doubt entry's composer was

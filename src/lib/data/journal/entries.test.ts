@@ -640,6 +640,53 @@ test('counterevidencePool stops at the limit it is given, keeping the newest', a
   assert.equal((await journal.entries.counterevidencePool(['e-happy'], 2)).length, 2);
 });
 
+test('a trashed entry\'s body-region euphoria does not enter the counterevidence pool', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const trashed = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 4,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 90 } }
+  });
+  await journal.entries.deleteEntry(trashed);
+
+  assert.deepEqual(await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10), []);
+});
+
+test('counterevidencePool includes an entry whose body-region euphoria clears the floor, with no euphoria tag', async () => {
+  // The case ticket 44 was found by.
+  const { journal } = await journalWithBuiltIns();
+  const byRegion = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 4,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 70 } }
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 101,
+    mood: 4,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 49 } }
+  }); // below the floor - excluded
+
+  const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
+  assert.deepEqual(pool.map((e) => e.id), [byRegion]);
+});
+
+test('counterevidencePool\'s region-euphoria floor is inclusive: exactly 50 clears it, 49 does not', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const atFloor = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 4,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 50 } }
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 101,
+    mood: 4,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 49 } }
+  });
+
+  const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
+  assert.deepEqual(pool.map((e) => e.id), [atFloor]);
+});
+
 test('counterevidencePool matches any tag id it is given, not just the first', async () => {
   const { journal } = await journalWithBuiltIns();
   const social = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['g-soc-eu'] });
