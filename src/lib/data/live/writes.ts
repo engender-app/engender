@@ -92,6 +92,12 @@ export type TableName =
      recordings without reading the rest of an entry, the same reason
      'photo' gets its own name instead of folding into 'entry' too. */
   | 'voiceRecording'
+  /* Video notes (phase 5 ticket 22). Its own name rather than folded into
+     'entry' or shared with 'voiceRecording', for the reason that one gives:
+     a screen could read video notes without reading recordings or the rest
+     of an entry, and a shared name would make every recording read stale
+     whenever a video note changed. */
+  | 'videoNote'
   /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
      pack's ticks: they live in one table and a screen shows one pack at a
      time, so there is nothing a per-pack name would let a query skip. */
@@ -136,6 +142,7 @@ export const TABLE_NAMES: TableName[] = [
   'tryout',
   'letter',
   'voiceRecording',
+  'videoNote',
   'roadmapCheck',
   'roadmapGoal',
   'checklist',
@@ -154,14 +161,14 @@ export const TABLE_NAMES: TableName[] = [
 const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>; reads: string[] }> = {
   entries: {
     writes: {
-      // Photos and recordings as well as the entry: a save carries
-      // additions and removals of both.
-      upsertEntry: ['entry', 'photo', 'voiceRecording'],
+      // Photos, recordings and video notes as well as the entry: a save
+      // carries additions and removals of all three.
+      upsertEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
       // Trashes the entry rather than removing it (phase 5 ticket 19), but
       // still takes it out of every other read here, the same as before.
-      deleteEntry: ['entry', 'photo', 'voiceRecording'],
-      // Brings a trashed entry, its photos and its recordings back.
-      restoreEntry: ['entry', 'photo', 'voiceRecording'],
+      deleteEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
+      // Brings a trashed entry, its photos, recordings and video notes back.
+      restoreEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
       setEntryStarred: ['entry']
     },
     reads: [
@@ -233,6 +240,12 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   // there), and this area only reads it back dated for the compare picker
   // (ticket 25).
   voice: {
+    writes: {},
+    reads: ['inJournal']
+  },
+  // Read-only for the same reason `voice` is: a video note's row is owned by
+  // upsertEntry/deleteEntry, which already announce 'videoNote'.
+  videos: {
     writes: {},
     reads: ['inJournal']
   },

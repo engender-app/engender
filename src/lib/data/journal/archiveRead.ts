@@ -50,6 +50,7 @@ import type {
   ArchiveTagGroup,
   ArchiveTallyEvent,
   ArchiveTryout,
+  ArchiveVideoNote,
   ArchiveVoiceRecording,
   ArchiveWearSession
 } from '../archive/payload';
@@ -63,16 +64,18 @@ export type PhotoRow = {
   starred: number;
 };
 export type RecordingRow = { uuid: string; file_path: string; entry_id: number };
+export type VideoRow = { uuid: string; file_path: string; entry_id: number };
 export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
 export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
 export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string };
 
-/** What every section reader is given: the connection, and the five
+/** What every section reader is given: the connection, and the six
     file-owning tables read once up front. */
 export interface SectionRead {
   driver: SqliteDriver;
   photos: PhotoRow[];
   recordings: RecordingRow[];
+  videos: VideoRow[];
   hairPhotos: HairPhotoRow[];
   hairRemovalPhotos: HairRemovalPhotoRow[];
   procedurePhotos: ProcedurePhotoRow[];
@@ -107,6 +110,12 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
        JOIN entry e ON e.id = v.entry_id
        WHERE e.trashed_at IS NULL
        ORDER BY v.order_index, v.id`
+    ),
+    videos: await driver.query<VideoRow>(
+      `SELECT n.uuid, n.file_path, n.entry_id FROM video_note n
+       JOIN entry e ON e.id = n.entry_id
+       WHERE e.trashed_at IS NULL
+       ORDER BY n.order_index, n.id`
     )
   };
 }
@@ -131,6 +140,11 @@ const toArchivePhoto = (row: PhotoRow): ArchivePhoto => ({
 });
 
 const toArchiveVoiceRecording = (row: RecordingRow): ArchiveVoiceRecording => ({
+  id: row.uuid,
+  fileName: row.file_path
+});
+
+const toArchiveVideoNote = (row: VideoRow): ArchiveVideoNote => ({
   id: row.uuid,
   fileName: row.file_path
 });
@@ -220,7 +234,7 @@ export async function readAffirmations({ driver }: SectionRead): Promise<Archive
   }));
 }
 
-export async function readEntries({ driver, photos, recordings }: SectionRead): Promise<ArchiveEntry[]> {
+export async function readEntries({ driver, photos, recordings, videos }: SectionRead): Promise<ArchiveEntry[]> {
   const rows = await driver.query<{
     id: number;
     uuid: string;
@@ -253,6 +267,7 @@ export async function readEntries({ driver, photos, recordings }: SectionRead): 
   const bodyRegions = groupBy(bodyRegionValues, (v) => v.entry_id, (v) => [v.region, v.intensity] as const);
   const byEntry = groupBy(photos.filter((p) => p.entry_id !== null), (p) => p.entry_id!, toArchivePhoto);
   const recordingsByEntry = groupBy(recordings, (r) => r.entry_id, toArchiveVoiceRecording);
+  const videosByEntry = groupBy(videos, (v) => v.entry_id, toArchiveVideoNote);
 
   return rows.map((r) => ({
     uuid: r.uuid,
@@ -264,6 +279,7 @@ export async function readEntries({ driver, photos, recordings }: SectionRead): 
     tags: tags.get(r.id) ?? [],
     photos: byEntry.get(r.id) ?? [],
     recordings: recordingsByEntry.get(r.id) ?? [],
+    videos: videosByEntry.get(r.id) ?? [],
     bodyRegions: Object.fromEntries(bodyRegions.get(r.id) ?? []),
     starred: bool(r.starred)
   }));

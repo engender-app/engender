@@ -11,6 +11,8 @@
   import { pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
   import { startRecording, type ActiveRecording } from '$lib/stores/voiceRecording';
+  import { startVideoRecording, type ActiveVideoRecording } from '$lib/stores/videoRecording';
+  import { VIDEO_MAX_DURATION_MS } from '$lib/data/videoNotes/limits';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import type { EntryPrompt, EntryTemplate, GenderDimension } from '$lib/data/types';
@@ -22,6 +24,7 @@
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
+  import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -180,10 +183,73 @@
     activeRecording = await startRecording();
   }
 
+  /* Video notes (ticket 22). Three pieces of state where a voice recording
+     needs one: the live capture for the preview, the countdown, and a flag
+     for the wait while an oversized capture is compressed - that step runs in
+     real time (videoNotes/reencode.ts), so a 30-second note takes another 30
+     seconds and a silent editor would look broken. */
+  let activeVideo = $state<ActiveVideoRecording | null>(null);
+  let videoSecondsLeft = $state(0);
+  let compressingVideo = $state(false);
+
+  const VIDEO_MAX_SECONDS = Math.round(VIDEO_MAX_DURATION_MS / 1000);
+
+  async function finishVideo(active: ActiveVideoRecording) {
+    activeVideo = null;
+    compressingVideo = true;
+    try {
+      const bytes = await active.stop();
+      if (bytes) entryDraft.addVideo(bytes);
+    } finally {
+      compressingVideo = false;
+    }
+  }
+
+  async function toggleVideo() {
+    if (activeVideo) {
+      await finishVideo(activeVideo);
+      return;
+    }
+    const started = await startVideoRecording();
+    if (!started) return;
+    activeVideo = started;
+    videoSecondsLeft = VIDEO_MAX_SECONDS;
+    /* The cap is enforced in the store, not here (videoRecording.ts): this
+       only mirrors it, so a note that hits 30 seconds is collected the same
+       way a tapped Stop collects one. */
+    started.capped.then(() => {
+      if (activeVideo === started) void finishVideo(started);
+    });
+  }
+
+  /* The countdown, which exists only while something is recording - an
+     interval that outlived the capture would keep the editor re-rendering
+     for nothing. */
+  $effect(() => {
+    if (!activeVideo) return;
+    const tick = setInterval(() => {
+      videoSecondsLeft = Math.max(0, videoSecondsLeft - 1);
+    }, 1000);
+    return () => clearInterval(tick);
+  });
+
+  /* Binds the live stream to the preview element. srcObject cannot be set as
+     an attribute, so it takes an effect rather than markup. */
+  function previewStream(node: HTMLVideoElement, stream: MediaStream) {
+    node.srcObject = stream;
+    return {
+      destroy() {
+        node.srcObject = null;
+      }
+    };
+  }
+
   // A recording still running when the editor unmounts (navigating away
-  // mid-recording) must not leave the microphone open behind the screen.
+  // mid-recording) must not leave the microphone or the camera open behind
+  // the screen.
   onDestroy(() => {
     activeRecording?.stop();
+    activeVideo?.stop();
   });
 
   let moodMissing = $derived(entryDraft.mood == null);
@@ -381,6 +447,47 @@
     <button class="photo-add" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={toggleRecording}>
       <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
       <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
+    </button>
+  </section>
+
+  <section class="card editor-section">
+    <h2 class="editor-heading">{m.videos_label()}</h2>
+    {#if entryDraft.videos.length > 0}
+      <div class="recording-list">
+        {#each entryDraft.videos as v, i (v)}
+          <div class="video-row">
+            {#if v.kind === 'stored'}
+              <VideoNotePlayer fileName={v.video.fileName} />
+            {:else}
+              <VideoNotePlayer bytes={v.bytes} />
+            {/if}
+            <button class="recording-remove" aria-label={m.video_remove()} onclick={() => entryDraft.removeVideo(i)}>
+              <Icon name="x" size={16} />
+            </button>
+          </div>
+        {/each}
+      </div>
+    {/if}
+    {#if activeVideo}
+      <div class="video-preview">
+        <!-- Muted: routing the microphone back to the speaker would howl. -->
+        <!-- svelte-ignore a11y_media_has_caption -->
+        <video use:previewStream={activeVideo.stream} muted autoplay playsinline></video>
+        <span class="video-countdown">0:{videoSecondsLeft.toString().padStart(2, '0')}</span>
+      </div>
+    {:else if compressingVideo}
+      <p class="video-hint">{m.video_compressing()}</p>
+    {:else}
+      <p class="video-hint">{m.video_recording_hint()}</p>
+    {/if}
+    <button
+      class="photo-add"
+      disabled={compressingVideo}
+      aria-label={activeVideo ? m.stop_video() : m.add_video()}
+      onclick={toggleVideo}
+    >
+      <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
+      <span>{activeVideo ? m.stop_video() : m.add_video()}</span>
     </button>
   </section>
 

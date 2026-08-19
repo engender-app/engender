@@ -25,6 +25,7 @@ export interface PersistedEntryDraft {
   bodyRegions: Record<string, number>;
   removedPhotoIds: string[];
   removedRecordingIds: string[];
+  removedVideoIds: string[];
 }
 
 /** The subset of `draft` that is worth mirroring outside the component. */
@@ -39,7 +40,8 @@ export function serializeDraft(draft: EntryDraft): PersistedEntryDraft {
     tags: [...draft.tags],
     bodyRegions: { ...draft.bodyRegions },
     removedPhotoIds: [...draft.removedPhotoIds],
-    removedRecordingIds: [...draft.removedRecordingIds]
+    removedRecordingIds: [...draft.removedRecordingIds],
+    removedVideoIds: [...draft.removedVideoIds]
   };
 }
 
@@ -67,4 +69,6 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
   draft.recordings = draft.recordings.filter(
     (r) => r.kind !== 'stored' || !draft.removedRecordingIds.includes(r.recording.id)
   );
+  draft.removedVideoIds = [...persisted.removedVideoIds];
+  draft.videos = draft.videos.filter((v) => v.kind !== 'stored' || !draft.removedVideoIds.includes(v.video.id));
 }

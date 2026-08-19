@@ -7,7 +7,9 @@
 
    `recordingCount` joined the other six at ticket 24: a voice recording is
    first-class entry media alongside a photo, so a recording-only entry is
-   as valid as a photo-only one already was. */
+   as valid as a photo-only one already was. `videoCount` joined at phase 5
+   ticket 22 on the same grounds - a video note is the third citizen of that
+   set, so a video-only entry is a real entry too. */
 
 export interface EntryContent {
   mood: number | null;
@@ -16,6 +18,7 @@ export interface EntryContent {
   tagCount: number;
   photoCount: number;
   recordingCount: number;
+  videoCount: number;
   bodyRegionCount: number;
 }
 
@@ -27,9 +30,10 @@ export function entryIsEmpty(e: EntryContent): boolean {
     e.tagCount === 0 &&
     e.photoCount === 0 &&
     e.recordingCount === 0 &&
+    e.videoCount === 0 &&
     e.bodyRegionCount === 0
   );
 }
 
 export const EMPTY_ENTRY_ERROR =
-  'an entry needs a mood, a dimension value, a tag, a note, a photo, a voice recording or a body-region intensity';
+  'an entry needs a mood, a dimension value, a tag, a note, a photo, a voice recording, a video note or a body-region intensity';
