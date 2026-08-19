@@ -23,6 +23,7 @@
     selected = null,
     onSelect,
     pointLabel,
+    ariaLabel,
   }: {
     points: Point[];
     min?: number;
@@ -38,6 +39,10 @@
         onSelect: a tappable dot with no name is a control a screen reader
         cannot announce. */
     pointLabel?: (index: number) => string;
+    /** Overrides the computed "from X to Y" label (chart_aria) for a chart
+        whose `day` is not an epoch day - a bucketed position, say - and so
+        has no date to format. */
+    ariaLabel?: string;
   } = $props();
 
   /* Tied to showDots: the hit areas are invisible, so without the dots under
@@ -70,7 +75,7 @@
 </script>
 
 {#if chart}
-  <svg class="line-chart" data-line-chart viewBox="0 0 {width} {height}" preserveAspectRatio="none" role="img" aria-label={chart.label}>
+  <svg class="line-chart" data-line-chart viewBox="0 0 {width} {height}" preserveAspectRatio="none" role="img" aria-label={ariaLabel ?? chart.label}>
     {#each gridYs as f (f)}
       <line x1={P} x2={width - P} y1={P + f * (height - 2 * P)} y2={P + f * (height - 2 * P)} class="chart-gridline" />
     {/each}

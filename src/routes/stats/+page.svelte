@@ -82,6 +82,21 @@
   );
   let correlationCards = $derived(correlationCardsQuery.value ?? []);
 
+  /* Interval mood pattern (phase 5 ticket 09) - two bucket-and-average
+     shapes over a cyclical position, kept apart from correlation cards on
+     purpose (../data/intervalMoodPattern.ts). Neither card names a target
+     or a verdict: both say only where days fell. */
+  let intervalMoodQuery = liveQuery(['entry', 'dose'], (j) => j.intervalMoodPattern.dayOfInterval(from, today));
+  let intervalMoodPattern = $derived(intervalMoodQuery.value ?? []);
+
+  let periodLength = $state(28);
+  // A boundary clamp, not a save-time validation: the field can sit blank or
+  // negative mid-edit, and the chart underneath has to show something for
+  // every keystroke rather than the query throwing on a bad value.
+  let safePeriodLength = $derived(Number.isFinite(periodLength) && periodLength >= 2 ? Math.floor(periodLength) : 28);
+  let freePeriodQuery = liveQuery(['entry'], (j) => j.intervalMoodPattern.byPeriod(from, today, safePeriodLength));
+  let freePeriodPattern = $derived(freePeriodQuery.value ?? []);
+
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
   const occurrenceLabel = (card: CorrelationCard) =>
@@ -201,6 +216,63 @@
     </div>
   {:else}
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.correlation_cards_empty()}</p>
+  {/if}
+
+  <SectionTitle text={m.interval_mood_title()}>
+    {#snippet aside()}{m.interval_mood_sub()}{/snippet}
+  </SectionTitle>
+  {#if intervalMoodQuery.loading}
+    <Skeleton variant="block" />
+  {:else if intervalMoodPattern.length}
+    <div class="card chart-card" style="margin-bottom:var(--space-4)">
+      <LineChart
+        points={intervalMoodPattern.map((p) => ({ day: p.position, value: p.value }))}
+        min={1}
+        max={5}
+        ariaLabel={m.interval_mood_chart_aria({
+          count: String(intervalMoodPattern.length),
+          from: String(intervalMoodPattern[0].position),
+          to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
+        })}
+      />
+    </div>
+  {:else}
+    <p class="muted small" style="margin-bottom:var(--space-4)">{m.interval_mood_empty()}</p>
+  {/if}
+
+  <SectionTitle text={m.free_period_title()}>
+    {#snippet aside()}{m.free_period_sub()}{/snippet}
+  </SectionTitle>
+  <div class="field" style="margin-bottom:var(--space-3)">
+    <label class="field-label" for="free-period-length">{m.free_period_length_label()}</label>
+    <input
+      class="input"
+      type="number"
+      min="2"
+      id="free-period-length"
+      name="free-period-length"
+      inputmode="numeric"
+      bind:value={periodLength}
+    />
+  </div>
+  {#if freePeriodQuery.loading}
+    <Skeleton variant="block" />
+  {:else if freePeriodPattern.length}
+    <div class="card chart-card" style="margin-bottom:var(--space-4)">
+      <LineChart
+        points={freePeriodPattern.map((p) => ({ day: p.position, value: p.value }))}
+        min={1}
+        max={5}
+        ariaLabel={m.free_period_chart_aria({
+          days: String(safePeriodLength),
+          count: String(freePeriodPattern.length),
+          from: String(freePeriodPattern[0].position),
+          to: String(freePeriodPattern[freePeriodPattern.length - 1].position)
+        })}
+      />
+    </div>
+  {:else}
+    <p class="muted small" style="margin-bottom:var(--space-4)">{m.free_period_empty()}</p>
   {/if}
 
   <SectionTitle text={m.body_map_title()} />
