@@ -1459,16 +1459,19 @@ try {
   ok('two independently picked periods compare side by side with no computed delta');
 } catch (e) { fail('compare two periods', e); }
 
-/* Flow: the transition roadmap (phase 4 ticket 23). Two acceptance boxes
-   need a real browser rather than a unit test: that a tick survives a
-   reload, and that a bundled country pack makes no network request at all.
-   The request log is armed only around the ticking, after the reload has
-   finished, so what it asserts is exact - zero requests of any origin, not
-   just none off-origin. Boot's own document, modules and SQLite wasm are
-   all behind it by then. */
+/* Flow: the transition roadmap (phase 4 ticket 23, widened phase 5 ticket
+   20 for the "not my path" tri-state and custom goals). Acceptance boxes
+   that need a real browser rather than a unit test: that a status
+   survives a reload, that a bundled country pack makes no network request
+   at all, and that a custom goal appends to a track and ticks through the
+   same tri-state a bundled goal does. The request log is armed only
+   around the ticking, after the reload has finished, so what it asserts
+   is exact - zero requests of any origin, not just none off-origin.
+   Boot's own document, modules and SQLite wasm are all behind it by
+   then. */
 try {
   await fresh('/settings/roadmap');
-  await page.waitForSelector('[role="checkbox"]');
+  await page.waitForSelector('[data-goal]');
 
   const tracks = (await page.locator('[data-section-title]').allTextContents()).map((t) => t.trim());
   for (const track of ['Social', 'Legal', 'Presentation', 'Medical']) {
@@ -1478,35 +1481,93 @@ try {
   if (!(await page.getByText(/III CZP 20\/26/).count())) throw new Error('the unsettled-law caveat is not shown'); // text-under-test: the caveat itself
   if (!(await page.getByText(/checked against its sources/i).count())) throw new Error('the review date is not shown'); // text-under-test: the review note itself
 
-  const boxes = page.locator('[role="checkbox"]');
+  const boxes = page.locator('[data-goal]');
   const before = await boxes.count();
   if (before < 30) throw new Error('the Polish pack rendered only ' + before + ' goals');
 
-  await page.locator('[data-goal="pl-legal-written-reasons"]').click();
-  await page.waitForFunction(() => document.querySelectorAll('[role="checkbox"][aria-checked="true"]').length === 1);
+  const target = page.locator('[data-goal="pl-legal-written-reasons"]');
+  await target.click(); // unchecked -> checked
+  await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
 
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('[role="checkbox"][aria-checked="true"]');
-  const stillTicked = await page.locator('[role="checkbox"][aria-checked="true"]').count();
-  if (stillTicked !== 1) throw new Error('after a reload ' + stillTicked + ' goals read as ticked');
+  await page.waitForSelector('[data-goal][data-status="checked"]');
+  const stillChecked = await page.locator('[data-goal][data-status="checked"]').count();
+  if (stillChecked !== 1) throw new Error('after a reload ' + stillChecked + ' goals read as checked');
 
-  /* Every other goal is untouched by that one tick: they are independently
-     checkable, not a run that fills in behind the furthest one. */
+  /* Every other goal is untouched by that one status: they are
+     independently checkable, not a run that fills in behind the
+     furthest one. */
   const after = await boxes.count();
   if (after !== before) throw new Error('the goal count changed from ' + before + ' to ' + after);
 
   const requested = [];
   page.on('request', (request) => requested.push(request.url()));
 
-  await page.locator('[role="checkbox"][aria-checked="true"]').first().click();
-  await page.waitForFunction(() => document.querySelectorAll('[role="checkbox"][aria-checked="true"]').length === 0);
-  await page.locator('[role="checkbox"]').last().click();
-  await page.waitForFunction(() => document.querySelectorAll('[role="checkbox"][aria-checked="true"]').length === 1);
+  const target2 = page.locator('[data-goal="pl-legal-written-reasons"]');
+  await target2.click(); // checked -> not-my-path
+  await page.waitForFunction(
+    () => document.querySelector('[data-goal="pl-legal-written-reasons"]')?.getAttribute('data-status') === 'not-my-path'
+  );
+  if (await page.locator('[data-goal][data-status="checked"]').count()) {
+    throw new Error('not-my-path still reads as checked');
+  }
+
+  await target2.click(); // not-my-path -> unchecked, leaving zero checked
+  await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 0);
+  await page.locator('[data-goal]').last().click(); // a different goal, unchecked -> checked
+  await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
 
   if (requested.length) throw new Error('the roadmap made requests: ' + JSON.stringify(requested.slice(0, 4)));
-  ok('the roadmap ticks and unticks one goal at a time, offline, and remembers it across a reload');
-} catch (e) { fail('transition roadmap', e); }
+  ok('the roadmap cycles a goal through checked, not-my-path and unchecked, offline, and remembers it across a reload');
+} catch (e) { fail('transition roadmap tri-state', e); }
+
+/* Custom goals (phase 5 ticket 20): a person can add their own goal to a
+   track, it appends after the bundled ones, and it ticks through the same
+   tri-state. Scoped to this one goal's own data-status rather than a
+   global checked count: the tri-state flow above already leaves one
+   bundled goal checked in this same browser session, since fresh() only
+   clears localStorage and never the journal itself. */
+try {
+  await fresh('/settings/roadmap');
+  await page.waitForSelector('[data-goal]');
+
+  const before = await page.locator('[data-goal]').count();
+  const addGoalButton = page.locator('[data-add-goal="social"]');
+  // The social track's own list-group, so "appended to the end" is checked
+  // against that track alone - `[data-goal]` on the whole page ends inside
+  // whichever track renders last (medical), not the one this goal was
+  // added to.
+  const socialGroup = addGoalButton.locator('xpath=..');
+
+  await addGoalButton.click();
+  await page.getByPlaceholder('Your step').fill('Tell my sister');
+  await page.getByRole('button', { name: 'Add goal' }).click();
+
+  await page.waitForFunction((n) => document.querySelectorAll('[data-goal]').length === n, before + 1);
+  const customRow = socialGroup.locator('[data-goal]').filter({ hasText: 'Tell my sister' }); // text-under-test: the goal I just typed
+  if (!(await customRow.count())) throw new Error('the custom goal did not render inside the social track');
+
+  const idsInOrder = await socialGroup.locator('[data-goal]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('data-goal')));
+  const customGoalId = await customRow.getAttribute('data-goal');
+  if (idsInOrder[idsInOrder.length - 1] !== customGoalId) {
+    throw new Error('the custom goal did not append to the end of its track');
+  }
+
+  await customRow.click(); // unchecked -> checked
+  await page.waitForFunction(
+    (id) => document.querySelector(`[data-goal="${id}"]`)?.getAttribute('data-status') === 'checked',
+    customGoalId
+  );
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector(`[data-goal="${customGoalId}"]`);
+  const afterReload = await page.locator(`[data-goal="${customGoalId}"]`).getAttribute('data-status');
+  if (afterReload !== 'checked') throw new Error('the custom goal did not survive a reload, checked');
+
+  ok('a custom goal appends to its track and ticks through the same tri-state a bundled goal does');
+} catch (e) { fail('transition roadmap custom goal', e); }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
