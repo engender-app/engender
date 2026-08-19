@@ -309,6 +309,67 @@ test('a custom measurement type hides on the same terms as a built-in', async ()
   assert.equal((await journal.measurements.getMeasurementTypes()).find((t) => t.key === created.key)?.hidden, true);
 });
 
+/* size records */
+
+test('a size record round-trips with no episode reference, ordered by day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.sizeRecords.upsertRecord({ epochDay: 200, category: 'pants', size: '32', brand: 'Levi\'s', fitNote: 'true to size' });
+  const id = await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'pants', size: '30', brand: '', fitNote: '' });
+
+  const records = await journal.sizeRecords.getRecords();
+  assert.deepEqual(records.map((r) => r.epochDay), [100, 200]);
+  assert.deepEqual(records[0], { id, epochDay: 100, category: 'pants', size: '30', brand: '', fitNote: '' });
+});
+
+test('each category keeps its own records; another category is not returned', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'shirts', size: 'M', brand: '', fitNote: '' });
+  await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'shoes', size: '9', brand: '', fitNote: '' });
+
+  assert.equal((await journal.sizeRecords.getRecordsByCategory('shirts')).length, 1);
+  assert.equal((await journal.sizeRecords.getRecordsByCategory('shoes')).length, 1);
+  assert.deepEqual(await journal.sizeRecords.getRecordsByCategory('pants'), []);
+});
+
+test('size records update by id, throw on unknown ids and delete idempotently', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'shirts', size: 'M', brand: '', fitNote: '' });
+
+  await journal.sizeRecords.upsertRecord({ id, epochDay: 100, category: 'shirts', size: 'L', brand: '', fitNote: '' });
+  assert.equal((await journal.sizeRecords.getRecords())[0].size, 'L');
+
+  await assert.rejects(
+    journal.sizeRecords.upsertRecord({ id: 'nope', epochDay: 1, category: 'shirts', size: 'M', brand: '', fitNote: '' }),
+    /unknown size record/
+  );
+
+  await journal.sizeRecords.deleteRecord(id);
+  await journal.sizeRecords.deleteRecord(id); // idempotent
+  assert.deepEqual(await journal.sizeRecords.getRecords(), []);
+});
+
+test('a category outside the closed vocabulary is refused before it reaches the schema', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'upper_lip', size: 'M', brand: '', fitNote: '' }),
+    /invalid garment category/
+  );
+});
+
+test('brand and fit note are stored as typed, with no list and no normalization', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'shirts', size: 'M', brand: '  Uniqlo ', fitNote: 'Runs Small' });
+  await journal.sizeRecords.upsertRecord({ epochDay: 101, category: 'shirts', size: 'L' });
+
+  assert.deepEqual(
+    (await journal.sizeRecords.getRecords()).map((r) => [r.brand, r.fitNote]),
+    [
+      ['  Uniqlo ', 'Runs Small'],
+      ['', '']
+    ]
+  );
+});
+
 /* lab draw context (phase 4 ticket 03) */
 
 const DRAW_DAY = 20000;

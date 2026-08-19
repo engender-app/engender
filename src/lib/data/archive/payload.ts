@@ -215,6 +215,17 @@ export interface ArchiveMeasurementType {
   hidden: boolean;
 }
 
+export interface ArchiveSizeRecord {
+  id: string;
+  epochDay: number;
+  /** Loosened from GarmentCategoryKey, the way ArchiveMeasurement loosens
+      `type`: the schema's CHECK is the backstop on the way back in. */
+  category: string;
+  size: string;
+  brand: string;
+  fitNote: string;
+}
+
 export interface ArchiveTallyEvent {
   id: string;
   epochDay: number;
@@ -561,6 +572,7 @@ export interface ArchiveJournal {
   labResults: ArchiveLabResult[];
   measurementTypes: ArchiveMeasurementType[];
   measurements: ArchiveMeasurement[];
+  sizeRecords: ArchiveSizeRecord[];
   sideEffects: ArchiveSideEffect[];
   cycleEvents: ArchiveCycleEvent[];
   journalingPauses: ArchiveJournalingPause[];

@@ -41,6 +41,7 @@ import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
 import { makeRoadmapArea, type RoadmapArea } from './roadmap';
 import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
+import { makeSizeRecordsArea, type SizeRecordsArea } from './sizeRecords';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeStockArea, type StockArea } from './stock';
 import { makeTagsArea, type TagsArea } from './tags';
@@ -108,6 +109,11 @@ export interface Journal {
   videos: VideoArea;
   labs: LabsArea;
   measurements: MeasurementsArea;
+  /** What was bought and what fit - category, size, an optional brand and a
+      fit note (phase 5 ticket 23, CONTEXT: "Size record"). Pairs with
+      measurements above without duplicating it: no body-measurement math,
+      and no size normalized or converted across brands or systems. */
+  sizeRecords: SizeRecordsArea;
   reminders: RemindersArea;
   /** Misgendering and correct-gendering events (CONTEXT: "Tally event").
       Its own record type, never an Entry or a quick log. */
@@ -270,6 +276,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     videos: makeVideoArea(driver),
     labs,
     measurements: makeMeasurementsArea(driver),
+    sizeRecords: makeSizeRecordsArea(driver),
     reminders,
     tally: makeTallyArea(driver),
     regimen,
