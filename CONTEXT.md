@@ -388,7 +388,14 @@ softening, hair changes) and four masculinizing (voice drop, facial/body
 hair, masculinizing fat redistribution, cycle cessation). One row per
 marker - a fresh date replaces the old one rather than logging a series of
 sightings - all eight read against the same anchor, the earliest **regimen
-episode**'s start day overall, regardless of which direction a person is on.
+episode** overall, regardless of which direction a person is on. That same
+episode's drug decides which bands may be drawn: the feminizing four only
+where it names estradiol, the masculinizing four only where it names
+testosterone, and none at all for a drug the app cannot classify - a
+blocker, progesterone alone or free text no list matches - even when a
+later episode names a hormone the tables do describe. The gate is on the
+band and never on the row, so every marker stays loggable and keeps showing
+a date already recorded whichever drug the anchor names.
 Closed at eight on purpose: the masculinizing four were added as a
 deliberate, one-time reversal of the original four's own closed-list rule,
 to reach parity, and the list is closed again rather than left open to a

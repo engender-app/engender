@@ -43,13 +43,20 @@ export function episodeEndEpochDay(episodes: readonly RegimenEpisode[], index: n
   return next ? next.startEpochDay - 1 : null;
 }
 
-/** The start day of HRT overall - the first episode there has ever been -
-    not of whichever episode is active right now. Ticket 07's personal
-    effects timeline anchors against this and nothing else, so it does not
+/** The first episode there has ever been - the one HRT overall started
+    with, not whichever is active right now. Ticket 07's personal effects
+    timeline anchors against this and nothing else, so the anchor does not
     shift when a second, different episode starts later. `episodes` must be
     in the same sorted order resolveEpisodeAt expects; hidden episodes
     still count, the same as they still resolve. Null when there is no
-    episode at all yet. */
-export function earliestEpisodeStartEpochDay(episodes: readonly RegimenEpisode[]): number | null {
-  return episodes[0]?.startEpochDay ?? null;
+    episode at all yet.
+
+    The whole episode rather than only its start day, which is what this
+    returned until phase 5 ticket 27: the effects timeline reads the
+    anchor's `drug` as well, because the drug decides which literature
+    table it is allowed to draw a band from, and its start day decides
+    where that band is counted from. Both answers come off one episode, so
+    the caller takes the episode. */
+export function earliestEpisode(episodes: readonly RegimenEpisode[]): RegimenEpisode | null {
+  return episodes[0] ?? null;
 }
