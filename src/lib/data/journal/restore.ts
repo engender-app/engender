@@ -196,6 +196,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM doubt_snapshot',
     'DELETE FROM letter',
     'DELETE FROM roadmap_check',
+    'DELETE FROM roadmap_goal',
     'DELETE FROM checklist_item',
     'DELETE FROM checklist',
     'DELETE FROM tryout_felt_sense',

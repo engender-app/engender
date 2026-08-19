@@ -43,6 +43,7 @@ import type {
   ArchiveRegimenEpisode,
   ArchiveReminder,
   ArchiveRoadmapCheck,
+  ArchiveRoadmapGoal,
   ArchiveSideEffect,
   ArchiveTag,
   ArchiveTagGroup,
@@ -390,10 +391,17 @@ export async function readLetters({ driver }: SectionRead): Promise<ArchiveLette
 }
 
 export async function readRoadmapChecks({ driver }: SectionRead): Promise<ArchiveRoadmapCheck[]> {
-  const rows = await driver.query<{ pack_key: string; goal_key: string }>(
-    'SELECT pack_key, goal_key FROM roadmap_check ORDER BY pack_key, goal_key'
+  const rows = await driver.query<{ pack_key: string; goal_key: string; status: string }>(
+    'SELECT pack_key, goal_key, status FROM roadmap_check ORDER BY pack_key, goal_key'
   );
-  return rows.map((r) => ({ packKey: r.pack_key, goalKey: r.goal_key }));
+  return rows.map((r) => ({ packKey: r.pack_key, goalKey: r.goal_key, status: r.status }));
+}
+
+export async function readRoadmapGoals({ driver }: SectionRead): Promise<ArchiveRoadmapGoal[]> {
+  const rows = await driver.query<{ uuid: string; track: string; text: string; status: string }>(
+    'SELECT uuid, track, text, status FROM roadmap_goal ORDER BY id'
+  );
+  return rows.map((r) => ({ id: r.uuid, track: r.track, text: r.text, status: r.status }));
 }
 
 export async function readChecklists({ driver }: SectionRead): Promise<ArchiveChecklist[]> {

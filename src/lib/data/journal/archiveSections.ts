@@ -108,6 +108,7 @@ const SECTIONS = [
   }),
   section({ name: 'letters', read: read.readLetters, apply: apply.applyLetters }),
   section({ name: 'roadmapChecks', read: read.readRoadmapChecks, apply: apply.applyRoadmapChecks }),
+  section({ name: 'roadmapGoals', read: read.readRoadmapGoals, apply: apply.applyRoadmapGoals }),
   section({ name: 'regimenEpisodes', read: read.readRegimenEpisodes, apply: apply.applyRegimenEpisodes }),
   section({ name: 'doseEvents', read: read.readDoseEvents, apply: apply.applyDoseEvents }),
   // Both hang off an episode rowid, and the rows applyRegimenEpisodes just

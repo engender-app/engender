@@ -582,7 +582,11 @@ const CARRIED: Record<string, string[]> = {
   // No uuid: a tick is named by its pack and goal keys, which mean the
   // same thing on every device, the way a built-in tag travels as its key
   // (ADR-0002).
-  roadmap_check: ['pack_key', 'goal_key'],
+  roadmap_check: ['pack_key', 'goal_key', 'status'],
+  // Uuid-identified like a checklist item: unlike roadmap_check, this row
+  // carries data of its own (a track and its text) rather than naming
+  // bundled content (ADR-0002).
+  roadmap_goal: ['uuid', 'track', 'text', 'status'],
   tryout: ['uuid', 'kind', 'label', 'start_epoch_day', 'end_epoch_day'],
   // tryout_id travels as the tryout's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
