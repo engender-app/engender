@@ -724,9 +724,10 @@ CREATE INDEX idx_wear_session_start ON wear_session(start_timestamp);
    episode exists.
 
    `area` is a closed CHECK over hairRemovalAreas.ts's own vocabulary,
-   deliberately separate from `entry_body_region.region`'s BODY_REGION_KEYS
-   (v4) - a treatment area is finer-grained and procedural, not a dysphoria
-   hotspot, so this never reuses or widens that list. `method` is a small
+   deliberately separate from `entry_body_region.region` (v4, opened to a
+   reference-data area by v32) - a treatment area is finer-grained and
+   procedural, not a dysphoria hotspot, so this never reuses or widens that
+   list. `method` is a small
    closed CHECK the same way. `pain_rating` gets the identical CHECK
    `side_effect.severity` does - the area validates it before the write, and
    the schema is the backstop. `cost` and `provider` are plain TEXT with no
@@ -1043,6 +1044,28 @@ CREATE TABLE tryout_photo (
 CREATE INDEX idx_tryout_photo_tryout ON tryout_photo(tryout_id, epoch_day);
 `;
 
+/* v32: body regions become a reference-data area (phase 5 ticket 30,
+   CONTEXT: "Reference data" - amended). `entry_body_region.region` (v4)
+   stays plain TEXT with no CHECK, exactly as the ticket asks - this table
+   is what a region key is validated against now, in place of the
+   BODY_REGION_KEYS constant entries.ts used to hold in code. Same shape as
+   `affirmation` (v27), the flat area closest to this one: `key` seeds the
+   eight existing regions plus shoulders and whole body as built-ins,
+   `uuid` mints a custom region's own travelling identity, and a row is
+   built-in exactly when its key is not null. No `language` column -
+   nothing here is per-locale the way an affirmation line is - and no
+   `order_index`: the ticket asks for hide and add, never a reorder. */
+const SCHEMA_V32 = `
+CREATE TABLE body_region (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT UNIQUE,
+  key        TEXT UNIQUE,
+  name       TEXT NOT NULL DEFAULT '',
+  hidden     INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1074,7 +1097,8 @@ export const migrations: Migration[] = [
   { version: 28, sql: SCHEMA_V28 },
   { version: 29, sql: SCHEMA_V29 },
   { version: 30, sql: SCHEMA_V30 },
-  { version: 31, sql: SCHEMA_V31 }
+  { version: 31, sql: SCHEMA_V31 },
+  { version: 32, sql: SCHEMA_V32 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

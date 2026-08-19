@@ -19,10 +19,13 @@ is held, not where)
 
 **Reference data**:
 The part of the journal that is bounded at tens of rows and never paginated: gender
-dimensions, presets, tag groups and tags, milestones, and preferences. Held in
-memory and read synchronously, in contrast to entry data - entries, search, stats,
-tag insights, recap - which is unbounded and read a query at a time. The split
-decides which screens have a loading state.
+dimensions, presets, tag groups and tags, milestones, body regions, and
+preferences. Held in memory and read synchronously, in contrast to entry data -
+entries, search, stats, tag insights, recap - which is unbounded and read a query
+at a time. The split decides which screens have a loading state. Body regions
+joined this list in ticket 30: the set is open, not the closed eight-key list it
+started as - a built-in hides the same way a tag or a gender dimension does, and
+a custom region is added the same way a custom tag is.
 _Avoid_: Metadata, lookup data, config
 
 **Entry**:
@@ -396,8 +399,8 @@ A tracked stretch of binder or tucking wear time, logged either as a live
 start/stop timer or as a backfilled start day plus duration, with an optional
 comfort/pain note. Its own record type, not an Entry: no mood, dimension
 values, tags or note beyond that one free-text field. Charted against the
-existing `chest` and `genitals` `BODY_REGION_KEYS` (bodyMap.ts) intensity
-trend rather than against a region key of its own. Its optional Reminder is
+existing built-in `chest` and `genitals` body regions' intensity trend rather
+than against a region key of its own. Its optional Reminder is
 an ordinary one, on a wear-specific marker, for whatever hour count the
 person sets - the app states no safe maximum and gives no advice.
 _Avoid_: Wear time (that is the duration on a session, not the record itself)

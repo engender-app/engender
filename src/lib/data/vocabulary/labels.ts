@@ -12,9 +12,9 @@
    wording, and vocabulary.ts joins them for the screens. */
 
 import { m } from '$lib/paraglide/messages';
-import type { BodyRegionKey } from '../bodyMap';
 import type {
   BuiltInAffirmationKey,
+  BuiltInBodyRegionKey,
   BuiltInDimensionKey,
   BuiltInPresetKey,
   BuiltInTagGroupKey,
@@ -272,7 +272,7 @@ const TAG_DESCRIPTION: Partial<Record<BuiltInTagKey, Message>> = {
   'dt-existential': m.tagdesc_dt_existential
 };
 
-const BODY_REGION_NAME: Record<BodyRegionKey, Message> = {
+const BODY_REGION_NAME: Record<BuiltInBodyRegionKey, Message> = {
   face_jaw: m.region_face_jaw,
   voice_throat: m.region_voice_throat,
   chest: m.region_chest,
@@ -280,7 +280,9 @@ const BODY_REGION_NAME: Record<BodyRegionKey, Message> = {
   hands_feet: m.region_hands_feet,
   hips_waist: m.region_hips_waist,
   genitals: m.region_genitals,
-  hairline: m.region_hairline
+  hairline: m.region_hairline,
+  shoulders: m.region_shoulders,
+  whole_body: m.region_whole_body
 };
 
 const TEMPLATE_NAME: Record<MilestoneTemplateKey, Message> = {

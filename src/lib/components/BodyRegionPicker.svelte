@@ -10,27 +10,27 @@
     onToggle,
     onIntensityInput,
   }: {
-    regions: { key: string; name: string }[];
+    regions: { id: string; name: string }[];
     values: Record<string, number>;
-    onToggle: (key: string) => void;
-    onIntensityInput: (key: string, value: number) => void;
+    onToggle: (id: string) => void;
+    onIntensityInput: (id: string, value: number) => void;
   } = $props();
 </script>
 
 <div class="tag-picker">
   <div class="tag-row" role="group" aria-label={m.body_regions_group()}>
-    {#each regions as r (r.key)}
+    {#each regions as r (r.id)}
       <button
         class="tag-chip"
-        class:is-selected={r.key in values}
-        aria-pressed={r.key in values}
-        onclick={() => onToggle(r.key)}
+        class:is-selected={r.id in values}
+        aria-pressed={r.id in values}
+        onclick={() => onToggle(r.id)}
       >
-        {#if r.key in values}<Icon name="check" size={14} />{/if}{r.name}
+        {#if r.id in values}<Icon name="check" size={14} />{/if}{r.name}
       </button>
     {/each}
   </div>
-  {#each regions.filter((r) => r.key in values) as r (r.key)}
+  {#each regions.filter((r) => r.id in values) as r (r.id)}
     <DimensionSlider
       dim={{
         name: r.name,
@@ -39,8 +39,8 @@
         min: BODY_REGION_INTENSITY_MIN,
         max: BODY_REGION_INTENSITY_MAX
       }}
-      value={values[r.key]}
-      onInput={(v) => onIntensityInput(r.key, v)}
+      value={values[r.id]}
+      onInput={(v) => onIntensityInput(r.id, v)}
     />
   {/each}
 </div>

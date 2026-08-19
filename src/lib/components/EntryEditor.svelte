@@ -380,7 +380,7 @@
     <h2 class="editor-heading">{m.body_map_label()}</h2>
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.body_map_hint()}</p>
     <BodyRegionPicker
-      regions={vocabulary.bodyRegions}
+      regions={vocabulary.visibleBodyRegions}
       values={entryDraft.bodyRegions}
       onToggle={(key) => entryDraft.toggleBodyRegion(key)}
       onIntensityInput={(key, v) => entryDraft.setBodyRegionIntensity(key, v)}
