@@ -15,7 +15,9 @@ import {
   BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_BODY_REGIONS,
   BUILT_IN_DIMENSIONS,
+  BUILT_IN_EFFECT_CATEGORIES,
   BUILT_IN_MEASUREMENT_TYPES,
+  BUILT_IN_PERSONAL_EFFECT_TYPES,
   BUILT_IN_PRESETS,
   BUILT_IN_TAG_GROUPS
 } from '../vocabulary/builtins';
@@ -33,7 +35,9 @@ export const RECONCILE_TABLES: TableName[] = [
   'preset',
   'affirmation',
   'bodyRegion',
-  'measurementType'
+  'measurementType',
+  'effectCategory',
+  'personalEffectType'
 ];
 
 async function presentKeys(driver: SqliteDriver, table: string): Promise<Set<string>> {
@@ -119,5 +123,24 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
       t.key,
       ts
     ]);
+  }
+
+  const effectCategoryKeys = await presentKeys(driver, 'effect_category');
+  for (const c of BUILT_IN_EFFECT_CATEGORIES) {
+    if (effectCategoryKeys.has(c.key)) continue;
+    await driver.run(`INSERT INTO effect_category (key, name, enabled, updated_at) VALUES (?, '', ?, ?)`, [
+      c.key,
+      c.defaultEnabled ? 1 : 0,
+      ts
+    ]);
+  }
+
+  const personalEffectTypeKeys = await presentKeys(driver, 'personal_effect_type');
+  for (const e of BUILT_IN_PERSONAL_EFFECT_TYPES) {
+    if (personalEffectTypeKeys.has(e.key)) continue;
+    await driver.run(
+      `INSERT INTO personal_effect_type (key, name, is_built_in, category_key, direction, updated_at) VALUES (?, '', 1, ?, ?, ?)`,
+      [e.key, e.category, e.direction, ts]
+    );
   }
 }

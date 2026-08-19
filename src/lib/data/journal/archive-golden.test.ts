@@ -57,6 +57,8 @@ const SECTIONS = [
   'sideEffects',
   'cycleEvents',
   'journalingPauses',
+  'effectCategories',
+  'personalEffectTypes',
   'personalEffects',
   'hairStages',
   'hairPhotos',
@@ -92,13 +94,14 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 35 sections, and the customizations that
+/** A journal with something in all 37 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, a renamed and a hidden built-in tag, a hidden dimension, a
     hidden affirmation, a custom body region logged on the entry alongside a
-    built-in one, and a custom measurement type alongside a hidden built-in
-    one. */
+    built-in one, a custom measurement type alongside a hidden built-in one,
+    a disabled effect category, and a custom effect type alongside a hidden
+    built-in one. */
 async function everySection(): Promise<Journal> {
   const journal = await emptyDevice();
 
@@ -165,7 +168,11 @@ async function everySection(): Promise<Journal> {
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });
+  await journal.effectCategories.setCategoryEnabled('sensory', true);
+  const customEffect = await journal.personalEffects.addCustomEffectType('a feeling only I have a word for', 'body_shape');
+  await journal.personalEffects.setEffectTypeHidden('improved_smell_feminizing', true);
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
+  await journal.personalEffects.upsertMarker({ effect: customEffect.key, firstNoticedEpochDay: 19190 });
   // One staging per scale, including the escape hatch: the scale column is
   // what keeps two published classifications from being read as one series
   // (ticket 33), and a fixture with only one scale in it could not notice a

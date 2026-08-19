@@ -19,6 +19,7 @@ import { entryPromptRows, entryTemplateRows, milestoneTemplateRows, regimenTempl
 import type {
   Affirmation,
   BodyRegion,
+  EffectCategory,
   EntryPrompt,
   EntryTemplate,
   GenderDimension,
@@ -26,6 +27,7 @@ import type {
   MeasurementType,
   Milestone,
   MilestoneTemplate,
+  PersonalEffectCatalogEntry,
   RegimenTemplate,
   Tag,
   TagGroup
@@ -36,11 +38,13 @@ import {
   dimensionHigh,
   dimensionLow,
   dimensionName,
+  effectCategoryName,
   entryPromptText,
   entryTemplateName,
   measurementTypeName,
   milestoneTemplateName,
   moodName,
+  personalEffectName,
   presetName,
   tagDescription,
   tagGroupName,
@@ -78,6 +82,14 @@ function localizePreset(p: GenderPreset): GenderPreset {
 
 function localizeMeasurementType(t: MeasurementType): MeasurementType {
   return t.builtIn ? { ...t, name: measurementTypeName(t.key) } : t;
+}
+
+function localizeEffectCategory(c: EffectCategory): EffectCategory {
+  return { ...c, name: effectCategoryName(c.key) };
+}
+
+function localizePersonalEffectType(e: PersonalEffectCatalogEntry): PersonalEffectCatalogEntry {
+  return e.builtIn ? { ...e, name: personalEffectName(e.key) } : e;
 }
 
 function localizeTemplate(t: MilestoneTemplate): MilestoneTemplate {
@@ -174,6 +186,32 @@ export const vocabulary = {
       defensive fallback `presetDimensionNames` gives a dimension key. */
   measurementTypeName(key: string): string {
     return this.measurementTypes.find((t) => t.key === key)?.name ?? key;
+  },
+  /** All five (or six) effect categories, in seed order, in the wording the
+      current language gives them (phase 5 ticket 41, CONTEXT: "Effect
+      category") - what the effects settings screen manages. */
+  get effectCategories(): EffectCategory[] {
+    return reference.effectCategories.map(localizeEffectCategory);
+  },
+  /** Every personal-effect catalogue entry, built-in and custom, hidden
+      ones and every tier included - what the effects settings screen
+      manages (CONTEXT: "Hidden", "Personal effect"). */
+  get personalEffectTypes(): PersonalEffectCatalogEntry[] {
+    return reference.personalEffectTypes.map(localizePersonalEffectType);
+  },
+  /** What the "mark a change" picker and the timeline offer: a hidden
+      effect or one whose category is off removed, the same "not hidden"
+      filter `visibleMeasurementTypes` already applies, widened with the
+      category toggle. */
+  get visiblePersonalEffectTypes(): PersonalEffectCatalogEntry[] {
+    return reference.visiblePersonalEffectTypes.map(localizePersonalEffectType);
+  },
+  /** What a personal effect is called, hidden or not - a timeline row for
+      an effect since hidden still needs its name. Falls back to the key
+      itself for one this install has never heard of, the same defensive
+      fallback `measurementTypeName` gives. */
+  personalEffectTypeName(key: string): string {
+    return this.personalEffectTypes.find((e) => e.key === key)?.name ?? key;
   },
   get milestones(): Milestone[] {
     return reference.milestones;

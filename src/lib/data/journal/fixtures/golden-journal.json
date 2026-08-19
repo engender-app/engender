@@ -51,7 +51,7 @@
       "hidden": false
     },
     {
-      "key": "0c3f52fc-b33f-408f-a5c6-eb9084135cdc",
+      "key": "b2bfc3e3-208b-44e5-b1a1-df0701e13888",
       "name": "Voice comfort",
       "low": "off",
       "high": "mine",
@@ -143,11 +143,11 @@
       ]
     },
     {
-      "id": "ab0169ac-2626-4428-bf79-a3526f509c98",
+      "id": "3f9a2ab4-e055-4b69-84da-7dba159d86dd",
       "name": "Mine",
       "builtIn": false,
       "dims": [
-        "0c3f52fc-b33f-408f-a5c6-eb9084135cdc",
+        "b2bfc3e3-208b-44e5-b1a1-df0701e13888",
         "femininity"
       ]
     }
@@ -252,7 +252,7 @@
           "hidden": false
         },
         {
-          "id": "66afd444-e453-4b04-93bb-eba55f770e6f",
+          "id": "d3f7f047-63be-4176-86fe-97be93a09674",
           "label": "wired",
           "builtIn": false,
           "hidden": false
@@ -367,13 +367,13 @@
       ]
     },
     {
-      "key": "22c65553-c734-42c8-a5c5-cd80b11fc9ab",
+      "key": "1312df47-63db-416b-ac29-1b2692fca713",
       "name": "Appointments",
       "enabled": true,
       "builtIn": false,
       "tags": [
         {
-          "id": "d0c36e39-2355-40a6-8310-903002b3aca7",
+          "id": "e7c4fdcd-b521-496a-b914-b0d185156d7f",
           "label": "endo",
           "builtIn": false,
           "hidden": false
@@ -481,7 +481,7 @@
       "hidden": false
     },
     {
-      "id": "db8f5981-babf-4d7c-97f0-bf23b7ebc4b3",
+      "id": "5346de9e-4008-4dc3-a767-35d40481f8a9",
       "language": "en",
       "text": "You get to take up space, today too.",
       "builtIn": false,
@@ -550,7 +550,7 @@
       "hidden": false
     },
     {
-      "id": "631072ef-c6e8-41ec-bff2-345a8c8aa923",
+      "id": "7ba09519-fba2-49d4-ab8e-f0d9bf3a97d7",
       "name": "scar tissue",
       "builtIn": false,
       "hidden": false
@@ -558,40 +558,40 @@
   ],
   "entries": [
     {
-      "uuid": "1f197f1d-c5f2-4409-8c59-367d9de95fdc",
+      "uuid": "0c5aeee3-88b0-4445-9dff-605af01ecbd3",
       "epochDay": 20000,
       "timestamp": 1700000000000,
       "mood": 4,
       "note": "a good day, zażółć gęślą jaźń",
       "dims": {
         "femininity": 60,
-        "0c3f52fc-b33f-408f-a5c6-eb9084135cdc": 7
+        "b2bfc3e3-208b-44e5-b1a1-df0701e13888": 7
       },
       "tags": [
         "e-happy",
-        "d0c36e39-2355-40a6-8310-903002b3aca7"
+        "e7c4fdcd-b521-496a-b914-b0d185156d7f"
       ],
       "photos": [
         {
-          "id": "003af1a1-08ee-46ac-b1c6-b1facd70754e",
-          "fileName": "003af1a1-08ee-46ac-b1c6-b1facd70754e.jpg",
+          "id": "aed00859-d3ef-43b6-bdb0-9479febae918",
+          "fileName": "aed00859-d3ef-43b6-bdb0-9479febae918.jpg",
           "starred": false
         }
       ],
       "recordings": [
         {
-          "id": "c5de649e-0615-4d11-be62-b8acc5d32f39",
-          "fileName": "c5de649e-0615-4d11-be62-b8acc5d32f39.webm"
+          "id": "4766ae33-7ba0-4439-a686-2633208844ee",
+          "fileName": "4766ae33-7ba0-4439-a686-2633208844ee.webm"
         }
       ],
       "videos": [
         {
-          "id": "f3376dbb-da73-4089-8d9e-2c8f525231ee",
-          "fileName": "f3376dbb-da73-4089-8d9e-2c8f525231ee.webm"
+          "id": "50c31a46-cb0d-4670-b526-844a50ff3b44",
+          "fileName": "50c31a46-cb0d-4670-b526-844a50ff3b44.webm"
         }
       ],
       "bodyRegions": {
-        "631072ef-c6e8-41ec-bff2-345a8c8aa923": {
+        "7ba09519-fba2-49d4-ab8e-f0d9bf3a97d7": {
           "dysphoria": 30,
           "euphoria": 55
         },
@@ -609,20 +609,20 @@
   ],
   "milestones": [
     {
-      "id": "cf2279bc-e3f7-4a73-9121-c22844cfdee9",
+      "id": "cdb21db4-8732-4a0e-a038-916477e178b9",
       "name": "HRT start",
       "epochDay": 19000,
       "templateKey": "hrt_start",
       "photo": {
-        "id": "5418b925-4b36-432a-8e6e-c4559c0a228d",
-        "fileName": "5418b925-4b36-432a-8e6e-c4559c0a228d.jpg",
+        "id": "2258da46-b964-4510-ac8b-9e281e9a0d12",
+        "fileName": "2258da46-b964-4510-ac8b-9e281e9a0d12.jpg",
         "starred": false
       }
     }
   ],
   "labResults": [
     {
-      "id": "1a7c9295-4eb8-406f-9827-93fe460d7d23",
+      "id": "c474329b-3adb-45ee-9f05-a52ccddd7679",
       "epochDay": 20004,
       "analyte": "estradiol",
       "value": 412.5,
@@ -661,7 +661,7 @@
       "hidden": true
     },
     {
-      "key": "428a28ff-c2f8-4f86-86e2-31d97ae6ecae",
+      "key": "a749698b-dda2-423d-a728-0214db70d0a8",
       "name": "Shoulders",
       "builtIn": false,
       "hidden": false
@@ -669,15 +669,15 @@
   ],
   "measurements": [
     {
-      "id": "46926428-fcab-4e26-b6a0-0af902c44f92",
+      "id": "ce02311c-a8fe-4787-b3db-e887b4e6e894",
       "type": "waist",
       "epochDay": 20000,
       "value": 79,
       "unit": "cm"
     },
     {
-      "id": "bce850ec-7f2d-485b-84fa-dc55ce332ce4",
-      "type": "428a28ff-c2f8-4f86-86e2-31d97ae6ecae",
+      "id": "bc59f75c-a0ab-4c03-ad17-4340a2c15776",
+      "type": "a749698b-dda2-423d-a728-0214db70d0a8",
       "epochDay": 20000,
       "value": 41,
       "unit": "cm"
@@ -685,7 +685,7 @@
   ],
   "sizeRecords": [
     {
-      "id": "17169756-bdca-497e-8f6b-94e1bf43d8b6",
+      "id": "fc147e71-1498-4e7e-9e88-a086c7d94489",
       "epochDay": 20000,
       "category": "pants",
       "size": "32",
@@ -695,7 +695,7 @@
   ],
   "sideEffects": [
     {
-      "id": "6f32cfca-7534-4f4d-8480-6445d2a2bce9",
+      "id": "3543ce09-7a7d-4dd0-8f0e-2a1f1bd5733f",
       "name": "hot flashes",
       "severity": 3,
       "epochDay": 20000
@@ -703,42 +703,636 @@
   ],
   "cycleEvents": [
     {
-      "id": "fce87bb9-5168-48b9-b414-79cbd59b8b37",
+      "id": "5ec5e2fd-0a4e-4909-b044-ca14965036d2",
       "kind": "spotting",
       "epochDay": 20000
     }
   ],
   "journalingPauses": [
     {
-      "id": "4af023cb-87db-4179-8ee6-4d1cd1c387f9",
+      "id": "8dadd587-cd1d-4d37-8436-3028ee0ac98f",
       "startEpochDay": 19700,
       "endEpochDay": null
     }
   ],
+  "effectCategories": [
+    {
+      "key": "body_shape",
+      "name": "",
+      "enabled": true
+    },
+    {
+      "key": "skin_hair",
+      "name": "",
+      "enabled": true
+    },
+    {
+      "key": "genital_sexual",
+      "name": "",
+      "enabled": false
+    },
+    {
+      "key": "cognitive_emotional",
+      "name": "",
+      "enabled": false
+    },
+    {
+      "key": "sensory",
+      "name": "",
+      "enabled": true
+    }
+  ],
+  "personalEffectTypes": [
+    {
+      "key": "breast_development",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "feminizing"
+    },
+    {
+      "key": "fat_redistribution",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "feminizing"
+    },
+    {
+      "key": "skin_softening",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "feminizing"
+    },
+    {
+      "key": "hair_changes",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "feminizing"
+    },
+    {
+      "key": "decreased_muscle_mass_strength",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "feminizing"
+    },
+    {
+      "key": "decreased_libido",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "decreased_spontaneous_erections",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "decreased_testicular_volume",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "male_pattern_baldness_ceasing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "feminizing"
+    },
+    {
+      "key": "increased_flexibility_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "feminizing"
+    },
+    {
+      "key": "slimmer_hands_feet_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "feminizing"
+    },
+    {
+      "key": "softer_fingernails_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "feminizing"
+    },
+    {
+      "key": "temperature_sensitivity_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "sensory",
+      "direction": "feminizing"
+    },
+    {
+      "key": "perspiration_pattern_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "feminizing"
+    },
+    {
+      "key": "body_odor_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "feminizing"
+    },
+    {
+      "key": "facial_feature_changes_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "feminizing"
+    },
+    {
+      "key": "pelvic_tilt_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "feminizing"
+    },
+    {
+      "key": "reduced_substance_tolerance_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "feminizing"
+    },
+    {
+      "key": "mental_clarity_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "feminizing"
+    },
+    {
+      "key": "adhd_symptom_change_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "feminizing"
+    },
+    {
+      "key": "emotional_expansion_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "feminizing"
+    },
+    {
+      "key": "mood_swings_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "feminizing"
+    },
+    {
+      "key": "appetite_change_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "feminizing"
+    },
+    {
+      "key": "sleep_change_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "feminizing"
+    },
+    {
+      "key": "increased_extroversion_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "feminizing"
+    },
+    {
+      "key": "improved_smell_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": true,
+      "categoryKey": "sensory",
+      "direction": "feminizing"
+    },
+    {
+      "key": "improved_color_perception_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "sensory",
+      "direction": "feminizing"
+    },
+    {
+      "key": "improved_spatial_awareness_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "sensory",
+      "direction": "feminizing"
+    },
+    {
+      "key": "taste_perception_change_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "sensory",
+      "direction": "feminizing"
+    },
+    {
+      "key": "reduced_confidence_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "feminizing"
+    },
+    {
+      "key": "genital_sensitivity_increase_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "genital_moisture_odor_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "genital_skin_texture_change_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "fewer_erections_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "ejaculate_change_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "testicular_atrophy_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "heightened_erogenous_zones_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "orgasm_change_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "attraction_change_feminizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "feminizing"
+    },
+    {
+      "key": "voice_drop",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "facial_body_hair",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "masculinizing_fat_redistribution",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "cycle_cessation",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "skin_oiliness_acne_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "increased_muscle_mass_strength_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "clitoral_enlargement_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "vaginal_atrophy_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "scalp_hair_loss_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "larger_hands_feet_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "thicker_stronger_nails_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "facial_feature_changes_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "increased_substance_tolerance_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "adhd_symptom_change_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "mental_clarity_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "increased_appetite_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "sleep_change_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "increased_confidence_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "increased_extroversion_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "cognitive_emotional",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "temperature_sensitivity_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "sensory",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "perspiration_pattern_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "body_odor_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "decreased_lubrication_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "increased_ejaculate_emissions_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "genital_sensitivity_change_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "increased_libido_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "orgasm_change_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "attraction_change_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "genital_sexual",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "epidermis_thickening_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "vein_prominence_masculinizing",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "categoryKey": "skin_hair",
+      "direction": "masculinizing"
+    },
+    {
+      "key": "f4701b1e-2236-4f25-8c1c-a18e85c51b18",
+      "name": "a feeling only I have a word for",
+      "builtIn": false,
+      "hidden": false,
+      "categoryKey": "body_shape",
+      "direction": null
+    }
+  ],
   "personalEffects": [
     {
-      "id": "9eab69ed-aa90-4a50-9a89-795889a5410e",
+      "id": "11f695be-24db-45f7-8bd2-5c389c01761f",
       "effect": "breast_development",
       "firstNoticedEpochDay": 19180
+    },
+    {
+      "id": "56178434-b677-46f0-8e4c-ba7aa5338e71",
+      "effect": "f4701b1e-2236-4f25-8c1c-a18e85c51b18",
+      "firstNoticedEpochDay": 19190
     }
   ],
   "hairStages": [
     {
-      "id": "5a120f34-f150-4fe7-913c-b1a066dedbbe",
+      "id": "d98b808a-7349-499f-aab7-8ed93cfd7a98",
       "epochDay": 19200,
       "scale": "norwood_hamilton",
       "stage": "2a",
       "description": ""
     },
     {
-      "id": "6df4d857-60a7-4b87-b189-5ce5b9713046",
+      "id": "ab60b12e-16e5-4894-af0e-8bd04adca739",
       "epochDay": 19230,
       "scale": "sinclair",
       "stage": "2",
       "description": ""
     },
     {
-      "id": "05d19e11-9f3b-4165-9ba1-5f3b6c7ffe7c",
+      "id": "cc3fba57-2e65-4708-94fb-a7b11e651042",
       "epochDay": 19260,
       "scale": "other",
       "stage": "",
@@ -747,14 +1341,14 @@
   ],
   "hairPhotos": [
     {
-      "id": "52e8f4a0-1e27-4f1b-a0ea-703915a7a32b",
+      "id": "0142119f-65a2-4137-8e57-4bea8f411369",
       "epochDay": 19200,
-      "fileName": "52e8f4a0-1e27-4f1b-a0ea-703915a7a32b.jpg"
+      "fileName": "0142119f-65a2-4137-8e57-4bea8f411369.jpg"
     }
   ],
   "hairRemovalSessions": [
     {
-      "id": "38e20972-c280-4470-9fe9-8091b153ee4b",
+      "id": "6e8ea732-3432-4a6a-9c5a-d12ff87a4106",
       "epochDay": 20000,
       "area": "upper_lip",
       "method": "laser",
@@ -763,36 +1357,36 @@
       "provider": "Klinika Laserowa",
       "photos": [
         {
-          "id": "1e56edbe-14e7-46f6-ad86-6a6b9f3235ee",
-          "fileName": "1e56edbe-14e7-46f6-ad86-6a6b9f3235ee.jpg"
+          "id": "ca043706-01a0-4b54-8baf-43571d205917",
+          "fileName": "ca043706-01a0-4b54-8baf-43571d205917.jpg"
         }
       ]
     }
   ],
   "procedures": [
     {
-      "id": "dd9276e4-e216-49d1-a941-7c0f426ddd18",
+      "id": "07d89d04-390d-4f90-aca1-b3ec0d4330d8",
       "name": "top surgery",
       "surgeryEpochDay": 20050,
       "consults": [
         {
-          "id": "f6e4c7c1-f47b-4244-a4a4-e4d1c4f0a2f6",
+          "id": "7f2a415a-3745-4495-ad39-ef8fc8bc6249",
           "epochDay": 19950
         }
       ],
       "notes": "drains out on day five",
       "photos": [
         {
-          "id": "1d384211-1bee-4477-b4bd-c0a349dda511",
+          "id": "df48f799-0ebe-4ca9-96c5-276ebab9be4b",
           "epochDay": 20052,
-          "fileName": "1d384211-1bee-4477-b4bd-c0a349dda511.jpg"
+          "fileName": "df48f799-0ebe-4ca9-96c5-276ebab9be4b.jpg"
         }
       ]
     }
   ],
   "reminders": [
     {
-      "id": "4bf8635f-9c1c-4b57-a1c2-79f8342d19f8",
+      "id": "25a0d127-e2f1-40a1-80de-556c6607ef5a",
       "title": "injection",
       "type": "injection",
       "time": "08:00",
@@ -804,7 +1398,7 @@
       "autoSource": null
     },
     {
-      "id": "b3373910-dc3f-4235-b1a4-fb222a4073d8",
+      "id": "9ac3090a-2b8c-4be0-8a0a-a80c90994bb4",
       "title": "binder check-in",
       "type": "other",
       "time": "07:13",
@@ -813,12 +1407,12 @@
       "anchorEpochDay": null,
       "epochDay": 19676,
       "enabled": true,
-      "autoSource": "wear:41ed59bb-e996-4509-8f3e-bfc10ebdd328"
+      "autoSource": "wear:d835ebad-e94a-4549-9199-1a09642f3794"
     }
   ],
   "tallyEvents": [
     {
-      "id": "c3202244-8d64-4b88-a263-f3f89ec507c0",
+      "id": "6ef10902-959b-4b0b-92a2-2e9cfb624e55",
       "epochDay": 20000,
       "kind": "misgendered",
       "context": "wrong pronoun at the pharmacy"
@@ -826,17 +1420,17 @@
   ],
   "doubtEntries": [
     {
-      "id": "ac8473b1-1813-443e-8a7d-bc47d04f3368",
+      "id": "4b04a39d-c613-4af1-967d-447b2acdf23a",
       "epochDay": 20000,
-      "timestamp": 1787166606506,
+      "timestamp": 1787168521732,
       "text": "am I even trans enough for this"
     }
   ],
   "counterevidenceSnapshots": [
     {
-      "id": "6905b7b8-1617-4369-a334-f9eac9a6e879",
+      "id": "6d2b7ea4-8dcc-4d12-b7ef-bb559dd6e7b1",
       "epochDay": 20000,
-      "timestamp": 1787166606506,
+      "timestamp": 1787168521732,
       "items": [
         {
           "epochDay": 19500,
@@ -848,7 +1442,7 @@
   ],
   "letters": [
     {
-      "id": "0ed6a3b2-9cbb-480c-8fdb-5f3925192b69",
+      "id": "aefff556-9938-4ee1-81ec-75f8222fcd82",
       "epochDay": 20000,
       "text": "read this in a year",
       "unlockEpochDay": 20365
@@ -868,7 +1462,7 @@
   ],
   "roadmapGoals": [
     {
-      "id": "398d2ff5-9d83-46df-8653-633b58b8b039",
+      "id": "4d6e9d2e-53c9-4aea-a3df-e8a3161c053c",
       "track": "social",
       "text": "Tell my sister",
       "status": "unchecked"
@@ -876,7 +1470,7 @@
   ],
   "regimenEpisodes": [
     {
-      "id": "bcfe8c9b-05cc-467c-ba7f-67cce28fda6d",
+      "id": "b28d4f63-f436-47a6-9d04-40a7282eb36b",
       "drug": "estradiol valerate",
       "ester": "valerate",
       "dose": 4,
@@ -889,7 +1483,7 @@
   ],
   "doseEvents": [
     {
-      "id": "22eb2a2a-31bd-4939-b2f3-99c48c9dbd3d",
+      "id": "b44d2de6-5f7e-4bf8-8625-a06ba1911e9f",
       "timestamp": 1700000000000,
       "route": "im",
       "dose": 4,
@@ -905,8 +1499,8 @@
   ],
   "doseSchedules": [
     {
-      "id": "1d54f687-8b84-4bbb-ae14-ed42c7dab13b",
-      "episodeId": "bcfe8c9b-05cc-467c-ba7f-67cce28fda6d",
+      "id": "1fe846ef-be23-4606-9013-432d52d4f144",
+      "episodeId": "b28d4f63-f436-47a6-9d04-40a7282eb36b",
       "recurrenceKind": "everyNDays",
       "everyNDays": 14,
       "weekdays": null,
@@ -916,8 +1510,8 @@
   ],
   "dosePauses": [
     {
-      "id": "9d86842a-a081-49db-a75d-58c6bf89b7d6",
-      "episodeId": "bcfe8c9b-05cc-467c-ba7f-67cce28fda6d",
+      "id": "77a567fb-5c3a-48ec-9dbd-c04cce2e0cbc",
+      "episodeId": "b28d4f63-f436-47a6-9d04-40a7282eb36b",
       "startEpochDay": 19100,
       "endEpochDay": null,
       "reason": "planned"
@@ -925,7 +1519,7 @@
   ],
   "medicationStock": [
     {
-      "id": "eeeb7fba-9a0d-4f89-acf5-9a5982fe53c7",
+      "id": "01529566-e08d-4730-a369-1caf0e0d5b6f",
       "drug": "estradiol valerate",
       "quantity": 5,
       "unit": "ampoules",
@@ -936,7 +1530,7 @@
   ],
   "tryouts": [
     {
-      "id": "1c234bd0-07d7-4211-a0e5-44e88e30c852",
+      "id": "e85fbddd-d54d-4838-89fb-0c504d50b6d9",
       "kind": "style",
       "label": "layered look",
       "description": "cardigan over a fitted top",
@@ -944,25 +1538,25 @@
       "endEpochDay": null,
       "photos": [
         {
-          "id": "f630ef1e-eb03-4bb9-b7c7-49ca0cbeb32d",
+          "id": "ce425429-a488-44bc-8bc1-1c8d45134d0a",
           "epochDay": 19905,
-          "fileName": "f630ef1e-eb03-4bb9-b7c7-49ca0cbeb32d.jpg"
+          "fileName": "ce425429-a488-44bc-8bc1-1c8d45134d0a.jpg"
         }
       ]
     }
   ],
   "feltSenseEntries": [
     {
-      "id": "06d659a9-6aed-4cff-b997-dbf3672285fe",
+      "id": "f66984ec-9964-4664-ae1f-e41793feefa2",
       "tryoutId": null,
-      "milestoneId": "cf2279bc-e3f7-4a73-9121-c22844cfdee9",
+      "milestoneId": "cdb21db4-8732-4a0e-a038-916477e178b9",
       "epochDay": 19365,
       "mood": 5,
       "note": "a year on"
     },
     {
-      "id": "79dfd6d2-1787-40fb-98e2-bdd272925429",
-      "tryoutId": "1c234bd0-07d7-4211-a0e5-44e88e30c852",
+      "id": "d6bfb9b9-6f2d-4def-9041-aeca39cd2f7d",
+      "tryoutId": "e85fbddd-d54d-4838-89fb-0c504d50b6d9",
       "milestoneId": null,
       "epochDay": 19910,
       "mood": 4,
@@ -971,12 +1565,12 @@
   ],
   "checklists": [
     {
-      "id": "577033ed-8316-4505-b188-51144e1c6aea",
+      "id": "2e40e1c7-b8ce-41d3-bcb6-189e3cbbb7b8",
       "ownerKind": "procedure",
-      "ownerId": "dd9276e4-e216-49d1-a941-7c0f426ddd18",
+      "ownerId": "07d89d04-390d-4f90-aca1-b3ec0d4330d8",
       "items": [
         {
-          "id": "8c949bc6-b597-4537-9bd8-fbf4564d934a",
+          "id": "9b2e3df4-1283-4872-ac03-2736dc67a64f",
           "content": "buy gauze",
           "checked": true,
           "carriedForward": false
@@ -986,7 +1580,7 @@
   ],
   "wearSessions": [
     {
-      "id": "41ed59bb-e996-4509-8f3e-bfc10ebdd328",
+      "id": "d835ebad-e94a-4549-9199-1a09642f3794",
       "startTimestamp": 1700000000000,
       "durationMs": 21600000,
       "note": "a bit tight by the end"

@@ -380,14 +380,31 @@ export interface ArchiveCounterevidenceSnapshot {
   items: ArchiveCounterevidenceEntry[];
 }
 
-/** One of the four fixed "first noticed" markers (phase 4 ticket 07).
-    `effect` is loosened from PersonalEffectType, the way ArchiveMeasurement
-    loosens `type`: the schema's CHECK enforces it on the way back in
-    (restore.ts), not this boundary type. */
+/** A "first noticed" marker against the open effect catalogue (phase 4
+    ticket 07, widened phase 5 ticket 41). `effect` was already loosened
+    from PersonalEffectType to a plain string before that type itself
+    opened up (migrations.ts v39 drops the CHECK that used to enforce it
+    on the way back in); restore.ts now validates against
+    ArchivePersonalEffectType rows carried in the same journal instead. */
 export interface ArchivePersonalEffect {
   id: string;
   effect: string;
   firstNoticedEpochDay: number;
+}
+
+export interface ArchiveEffectCategory {
+  key: string;
+  name: string;
+  enabled: boolean;
+}
+
+export interface ArchivePersonalEffectType {
+  key: string;
+  name: string;
+  builtIn: boolean;
+  hidden: boolean;
+  categoryKey: string | null;
+  direction: 'feminizing' | 'masculinizing' | null;
 }
 
 /** One staging against a published scale (phase 4 ticket 09, two scales
@@ -611,6 +628,8 @@ export interface ArchiveJournal {
   cycleEvents: ArchiveCycleEvent[];
   journalingPauses: ArchiveJournalingPause[];
   personalEffects: ArchivePersonalEffect[];
+  effectCategories: ArchiveEffectCategory[];
+  personalEffectTypes: ArchivePersonalEffectType[];
   hairStages: ArchiveHairStage[];
   hairPhotos: ArchiveHairPhoto[];
   hairRemovalSessions: ArchiveHairRemovalSession[];

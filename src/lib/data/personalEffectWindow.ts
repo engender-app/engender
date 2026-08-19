@@ -42,39 +42,37 @@
    expect their breast development to be complete, and cited the Endocrine
    Society underneath it.
 
+   Phase 5 ticket 41 widens tier 1 from these eight to roughly twenty,
+   adding figures read out of GenderGP's HRT timeline tables
+   (gendergp.com/blog/hrt-timelines-hormones-effects/, fetched
+   2026-08-19), which cite WPATH Standards of Care v7 - the same guideline
+   lineage as Hembree's tables, reproduced by a private provider rather
+   than a second, independent source. Where the two disagree this file
+   keeps following the primary guideline figure, per the facial/body hair
+   resolution above; no new disagreement surfaced in the entries GenderGP
+   adds. One guideline entry GenderGP tables - masculinising scalp hair
+   loss - gives no usable completion figure ("variable", no range), so
+   per this ticket's own tier rule it is catalogued at tier 2 (named,
+   no band) rather than added here; every other new entry below carries a
+   real bounded range and sits at tier 1 alongside the original eight.
+
    Every window here is a claim about the literature, never a target for
    anyone's own experience - the acceptance criterion this file exists to
-   keep honest. */
+   keep honest. Tier 2 and tier 3 effects (personalEffectCatalog.ts) carry
+   no entry here at all: `literatureCovers`/`literatureWindow` answer
+   "no band" for any key this record does not list, which is the ordinary
+   case once the catalogue is open past twenty. */
 
 import { epochDayMonthsAgo } from './epochDay';
 import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
-import type { PersonalEffectType, RegimenEpisode } from './types';
+import type { EffectDirection, PersonalEffectType, RegimenEpisode } from './types';
 
-export const PERSONAL_EFFECT_TYPES: readonly PersonalEffectType[] = [
-  'breast_development',
-  'fat_redistribution',
-  'skin_softening',
-  'hair_changes',
-  'voice_drop',
-  'facial_body_hair',
-  'masculinizing_fat_redistribution',
-  'cycle_cessation'
-];
+export type { EffectDirection };
 
 interface MonthRange {
   min: number;
   max: number;
 }
-
-/** Which of Hembree's two time-course tables a window was read out of, and
-    so which hormone it is a claim about. Internal metadata, not a new
-    user-facing concept and not a field on a stored marker: the app has no
-    gender or direction field, never asks anyone which way they are going,
-    and this does not become the first one. A property of each effect
-    rather than a split of the current eight, because ticket 41 widens the
-    catalogue well past eight and a "these four versus those four"
-    predicate would have to be rewritten the day it lands. */
-export type EffectDirection = 'feminizing' | 'masculinizing';
 
 export interface EffectLiteratureWindow {
   direction: EffectDirection;
@@ -85,7 +83,10 @@ export interface EffectLiteratureWindow {
   completionMonths: { min: number; max: number | null } | null;
 }
 
-const EFFECT_LITERATURE_WINDOW: Record<PersonalEffectType, EffectLiteratureWindow> = {
+/** Tier 1 only (personalEffectCatalog.ts's `tier` field) - a partial map,
+    not exhaustive over every catalogue key, because tier 2 and tier 3
+    effects have no literature window by definition. */
+const EFFECT_LITERATURE_WINDOW: Partial<Record<PersonalEffectType, EffectLiteratureWindow>> = {
   breast_development: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
   fat_redistribution: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
   skin_softening: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: null },
@@ -97,7 +98,50 @@ const EFFECT_LITERATURE_WINDOW: Record<PersonalEffectType, EffectLiteratureWindo
     onsetMonths: { min: 1, max: 6 },
     completionMonths: { min: 24, max: 60 }
   },
-  cycle_cessation: { direction: 'masculinizing', onsetMonths: { min: 1, max: 6 }, completionMonths: null }
+  cycle_cessation: { direction: 'masculinizing', onsetMonths: { min: 1, max: 6 }, completionMonths: null },
+
+  // Ticket 41's tier-1 widening, from GenderGP's WPATH-sourced tables.
+  decreased_muscle_mass_strength: {
+    direction: 'feminizing',
+    onsetMonths: { min: 3, max: 6 },
+    completionMonths: { min: 12, max: 24 }
+  },
+  decreased_libido: { direction: 'feminizing', onsetMonths: { min: 1, max: 3 }, completionMonths: { min: 12, max: 24 } },
+  decreased_spontaneous_erections: {
+    direction: 'feminizing',
+    onsetMonths: { min: 1, max: 3 },
+    completionMonths: { min: 3, max: 6 }
+  },
+  decreased_testicular_volume: {
+    direction: 'feminizing',
+    onsetMonths: { min: 3, max: 6 },
+    completionMonths: { min: 24, max: 36 }
+  },
+  male_pattern_baldness_ceasing: {
+    direction: 'feminizing',
+    onsetMonths: { min: 1, max: 3 },
+    completionMonths: { min: 12, max: 24 }
+  },
+  skin_oiliness_acne_masculinizing: {
+    direction: 'masculinizing',
+    onsetMonths: { min: 1, max: 6 },
+    completionMonths: { min: 12, max: 24 }
+  },
+  increased_muscle_mass_strength_masculinizing: {
+    direction: 'masculinizing',
+    onsetMonths: { min: 6, max: 12 },
+    completionMonths: { min: 24, max: 60 }
+  },
+  clitoral_enlargement_masculinizing: {
+    direction: 'masculinizing',
+    onsetMonths: { min: 3, max: 6 },
+    completionMonths: { min: 12, max: 24 }
+  },
+  vaginal_atrophy_masculinizing: {
+    direction: 'masculinizing',
+    onsetMonths: { min: 3, max: 6 },
+    completionMonths: { min: 12, max: 24 }
+  }
 };
 
 /** The drug each table's timings are timings of. Hembree's feminizing table
@@ -123,12 +167,18 @@ const DIRECTION_DRUG: Record<EffectDirection, CurveDrug> = {
     Built on hormoneDrug.ts rather than on a second list of drug names, for
     the reason hormoneEster.ts gives about sharing a matcher: one place
     deciding what "E2-val" or "testosteron" names means the effects timeline
-    and the curve cannot disagree about the same typed text. */
+    and the curve cannot disagree about the same typed text.
+
+    Also answers false for any key with no tier-1 window at all - a tier 2
+    or tier 3 effect, or a custom one - which is the ordinary case once
+    the catalogue is open past twenty (ticket 41). */
 export function literatureCovers(effect: PersonalEffectType, drug: string): boolean {
-  return resolveCurveDrug(drug) === DIRECTION_DRUG[EFFECT_LITERATURE_WINDOW[effect].direction];
+  const window = EFFECT_LITERATURE_WINDOW[effect];
+  return window !== undefined && resolveCurveDrug(drug) === DIRECTION_DRUG[window.direction];
 }
 
-export function literatureWindow(effect: PersonalEffectType): EffectLiteratureWindow {
+/** Undefined for any key with no tier-1 window - see `literatureCovers`. */
+export function literatureWindow(effect: PersonalEffectType): EffectLiteratureWindow | undefined {
   return EFFECT_LITERATURE_WINDOW[effect];
 }
 
@@ -175,7 +225,7 @@ export function literatureWindowDays(
   if (!literatureCovers(effect, anchor.drug)) return null;
 
   const anchorEpochDay = anchor.startEpochDay;
-  const window = EFFECT_LITERATURE_WINDOW[effect];
+  const window = EFFECT_LITERATURE_WINDOW[effect]!;
   const completion = window.completionMonths
     ? {
         start: afterAnchor(anchorEpochDay, window.completionMonths.min),

@@ -25,7 +25,18 @@
    vocabulary.ts answers "called what". */
 
 import { prefs } from '../prefs/store.svelte';
-import type { Affirmation, BodyRegion, GenderDimension, GenderPreset, MeasurementType, Milestone, Tag, TagGroup } from '../types';
+import type {
+  Affirmation,
+  BodyRegion,
+  EffectCategory,
+  GenderDimension,
+  GenderPreset,
+  MeasurementType,
+  Milestone,
+  PersonalEffectCatalogEntry,
+  Tag,
+  TagGroup
+} from '../types';
 import type { Journal } from '../journal/journal';
 import { onTablesWritten } from './journal.svelte';
 import type { TableName } from './writes';
@@ -38,6 +49,8 @@ const mirror = $state<{
   affirmations: Affirmation[];
   bodyRegions: BodyRegion[];
   measurementTypes: MeasurementType[];
+  effectCategories: EffectCategory[];
+  personalEffectTypes: PersonalEffectCatalogEntry[];
 }>({
   dimensions: [],
   presets: [],
@@ -45,18 +58,26 @@ const mirror = $state<{
   milestones: [],
   affirmations: [],
   bodyRegions: [],
-  measurementTypes: []
+  measurementTypes: [],
+  effectCategories: [],
+  personalEffectTypes: []
 });
+
+type MirrorSlice =
+  | 'dimensions'
+  | 'presets'
+  | 'tagGroups'
+  | 'milestones'
+  | 'affirmations'
+  | 'bodyRegions'
+  | 'measurementTypes'
+  | 'effectCategories'
+  | 'personalEffectTypes';
 
 /** Which slices a written table invalidates. Photos are in here because a
     milestone carries its photo on the mirrored row, so attaching one changes
     what the timeline should draw. */
-const AFFECTED: Partial<
-  Record<
-    TableName,
-    ('dimensions' | 'presets' | 'tagGroups' | 'milestones' | 'affirmations' | 'bodyRegions' | 'measurementTypes')[]
-  >
-> = {
+const AFFECTED: Partial<Record<TableName, MirrorSlice[]>> = {
   dimension: ['dimensions', 'presets'],
   preset: ['presets'],
   tag: ['tagGroups'],
@@ -64,7 +85,9 @@ const AFFECTED: Partial<
   photo: ['milestones'],
   affirmation: ['affirmations'],
   bodyRegion: ['bodyRegions'],
-  measurementType: ['measurementTypes']
+  measurementType: ['measurementTypes'],
+  effectCategory: ['effectCategories'],
+  personalEffectType: ['personalEffectTypes']
 };
 
 let registered = false;
@@ -73,15 +96,18 @@ let registered = false;
     it: fills the mirror before the first screen renders, so nothing has to
     cope with an app whose vocabulary is briefly empty. */
 export async function hydrateReference(journal: Journal): Promise<void> {
-  const [dimensions, presets, tagGroups, milestones, affirmations, bodyRegions, measurementTypes] = await Promise.all([
-    journal.dimensions.getDimensions(),
-    journal.dimensions.getPresets(),
-    journal.tags.getTagGroups(),
-    journal.milestones.getMilestones(),
-    journal.affirmations.getAffirmations(),
-    journal.bodyRegions.getBodyRegions(),
-    journal.measurements.getMeasurementTypes()
-  ]);
+  const [dimensions, presets, tagGroups, milestones, affirmations, bodyRegions, measurementTypes, effectCategories, personalEffectTypes] =
+    await Promise.all([
+      journal.dimensions.getDimensions(),
+      journal.dimensions.getPresets(),
+      journal.tags.getTagGroups(),
+      journal.milestones.getMilestones(),
+      journal.affirmations.getAffirmations(),
+      journal.bodyRegions.getBodyRegions(),
+      journal.measurements.getMeasurementTypes(),
+      journal.effectCategories.getEffectCategories(),
+      journal.personalEffects.getEffectTypes()
+    ]);
   mirror.dimensions = dimensions;
   mirror.presets = presets;
   mirror.tagGroups = tagGroups;
@@ -89,6 +115,8 @@ export async function hydrateReference(journal: Journal): Promise<void> {
   mirror.affirmations = affirmations;
   mirror.bodyRegions = bodyRegions;
   mirror.measurementTypes = measurementTypes;
+  mirror.effectCategories = effectCategories;
+  mirror.personalEffectTypes = personalEffectTypes;
 
   if (registered) return;
   registered = true;
@@ -108,6 +136,8 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('affirmations')) mirror.affirmations = await journal.affirmations.getAffirmations();
     if (slices.has('bodyRegions')) mirror.bodyRegions = await journal.bodyRegions.getBodyRegions();
     if (slices.has('measurementTypes')) mirror.measurementTypes = await journal.measurements.getMeasurementTypes();
+    if (slices.has('effectCategories')) mirror.effectCategories = await journal.effectCategories.getEffectCategories();
+    if (slices.has('personalEffectTypes')) mirror.personalEffectTypes = await journal.personalEffects.getEffectTypes();
   } catch (error) {
     // The write itself succeeded; only the re-read failed. Keeping the stale
     // rows beats emptying the vocabulary out from under the screen.
@@ -166,6 +196,32 @@ export const reference = {
       settings screen manages (phase 5 ticket 29, CONTEXT: "Hidden"). */
   get measurementTypes(): MeasurementType[] {
     return mirror.measurementTypes;
+  },
+
+  /** All five (or six) effect categories, in seed order (phase 5 ticket 41,
+      CONTEXT: "Effect category") - what the effects settings screen manages. */
+  get effectCategories(): EffectCategory[] {
+    return mirror.effectCategories;
+  },
+
+  /** Every personal-effect catalogue entry, hidden ones and every tier
+      included - what the effects settings screen manages
+      (CONTEXT: "Hidden", "Personal effect"). */
+  get personalEffectTypes(): PersonalEffectCatalogEntry[] {
+    return mirror.personalEffectTypes;
+  },
+
+  /** What the "mark a change" picker and the timeline offer: hidden effects
+      removed, and effects whose category is disabled removed too - the same
+      "not hidden" filter `visibleTagGroups`/`visibleBodyRegions` apply,
+      widened with the category toggle this catalogue adds. A custom effect
+      with no category survives the category filter; nothing hides it but
+      its own `hidden` flag. */
+  get visiblePersonalEffectTypes(): PersonalEffectCatalogEntry[] {
+    const disabledCategories = new Set(mirror.effectCategories.filter((c) => !c.enabled).map((c) => c.key));
+    return mirror.personalEffectTypes.filter(
+      (e) => !e.hidden && !(e.categoryKey !== null && disabledCategories.has(e.categoryKey))
+    );
   },
 
   /** The preset the preferences point at, falling back to the first one: a
