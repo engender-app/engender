@@ -32,7 +32,8 @@
   import {
     JOURNAL_BOOK_DEFAULT_INCLUSION,
     JOURNAL_BOOK_INCLUSION_KEYS,
-    type JournalBookInclusion
+    type JournalBookInclusion,
+    type JournalBookInclusionKey
   } from '$lib/data/journal/journalBook';
   import type { WrappedCardContent } from '$lib/data/wrappedCard';
   import Icon from '$lib/components/Icon.svelte';
@@ -92,6 +93,17 @@
 
   const tagName = (id: string) => vocabulary.tag(id)?.label ?? id;
 
+  /* Photos and tags qualify an entry rather than standing alone - both are
+     drawn under the day they belong to - so turning entries off takes them
+     with it. Otherwise ticking Photos and unticking Entries prints nothing
+     and says nothing about why. */
+  function include(key: JournalBookInclusionKey, value: boolean) {
+    inclusion =
+      key === 'entries' && !value
+        ? { ...inclusion, entries: false, photos: false, tags: false }
+        : { ...inclusion, [key]: value };
+  }
+
   function printBook() {
     window.print();
   }
@@ -102,7 +114,7 @@
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.journal_book_title()}</h1>
     <div class="header-action">
-      <button class="icon-btn" data-print-book aria-label={m.journal_book_print()} onclick={printBook}>
+      <button class="icon-btn" aria-label={m.journal_book_print()} onclick={printBook}>
         <Icon name="share" size={22} />
       </button>
     </div>
@@ -130,12 +142,12 @@
     <div class="card" data-book-inclusion style="margin-bottom:var(--space-4)">
       <p class="muted small" style="margin-bottom:var(--space-3)">{m.journal_book_include_note()}</p>
       {#each JOURNAL_BOOK_INCLUSION_KEYS as key (key)}
-        <div class="spread inclusion-row">
+        <div class="spread inclusion-row" data-inclusion={key}>
           <span>{journalBookPartName(key)}</span>
           <Switch
             checked={inclusion[key]}
             label={journalBookPartName(key)}
-            onChange={(v) => (inclusion = { ...inclusion, [key]: v })}
+            onChange={(v) => include(key, v)}
           />
         </div>
       {/each}
@@ -250,18 +262,7 @@
     white-space: pre-wrap;
   }
 
-  .print-heading {
-    display: none;
-  }
-
   @media print {
-    .no-print {
-      display: none !important;
-    }
-    .print-heading {
-      display: block;
-      margin-bottom: var(--space-4);
-    }
     /* An opening page is an opening page: whatever follows starts on the
        next sheet. */
     .opening-page {

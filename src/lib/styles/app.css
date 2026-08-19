@@ -196,9 +196,18 @@ body {
    whatever the app is wearing on screen.
 
    Navigation is not part of a document, so the rail, the bottom bar and the
-   skip link do not print. What each screen decides for itself, through its
-   own `.no-print` class, is which of its controls are also not content.
+   skip link do not print. `.no-print` and `.print-heading` live here beside
+   them rather than in each printing screen's own scoped block: both screens
+   had written the same two rules, and a third would have written them again.
+   What each screen still decides for itself is which of its elements carry
+   those classes, and how its own content breaks across sheets.
    ============================================================ */
+
+/* Paper-only, so it is hidden until the print block below turns it on. */
+.print-heading {
+  display: none;
+}
+
 @media print {
   /* The screen's own horizontal padding goes below, so the margin of a
      printed page is the page's, not a phone layout's. Stated rather than
@@ -230,8 +239,16 @@ body {
 
   .app-rail,
   .app-nav,
-  .skip-link {
+  .skip-link,
+  .no-print {
     display: none !important;
+  }
+
+  /* A heading a screen shows only on paper: the title and range a reader
+     needs on a printed page and already has in the header on screen. */
+  .print-heading {
+    display: block;
+    margin-bottom: var(--space-4);
   }
 
   .screen {
