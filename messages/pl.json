@@ -1061,7 +1061,7 @@
   "regimen_hidden": "ukryty",
   "regimen_row_aria": "Edytuj etap kuracji: {drug} od {date}",
   "regimen_template_sheet_title": "Dodaj etap kuracji",
-  "regimen_own_title": "Wpisz samodzielnie",
+  "regimen_own_title": "Wpisz własny",
   "regimen_own_sub": "dowolny lek, dawka i sposób podania",
   "regimen_new_sheet": "Nowy etap kuracji",
   "regimen_edit_sheet": "Edytuj etap kuracji",
