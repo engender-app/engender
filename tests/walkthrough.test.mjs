@@ -181,8 +181,12 @@ try {
   const thumb = page.locator('[data-melt-slider]').first();
   await thumb.focus();
   await page.keyboard.press('ArrowRight');
+  // A number, not "anything but the unset marker": comparing against the
+  // marker's wording made this pass for free the moment that copy changed.
   const out = await page.locator('[data-dim-value]').first().textContent();
-  if (out.trim() === '—') throw new Error('slider value did not update');
+  if (!Number.isFinite(Number(out.trim()))) {
+    throw new Error('slider value did not update: ' + JSON.stringify(out));
+  }
   ok('melt slider responds to keyboard');
 } catch (e) { fail('melt slider', e); }
 
@@ -1422,8 +1426,12 @@ try {
 
   await page.locator('[data-entry-card]').first().click();
   await page.waitForSelector('[data-dim-value]');
+  // Asserted as "is this a number", not against the unset marker's wording:
+  // that marker is ordinary UI copy and changed once already (ticket 31).
   const values = await page.locator('[data-dim-value]').allTextContents();
-  if (values.some((v) => v.trim() === '—')) throw new Error('a scale value from the prompt did not save');
+  if (values.some((v) => !Number.isFinite(Number(v.trim())))) {
+    throw new Error('a scale value from the prompt did not save: ' + JSON.stringify(values));
+  }
   ok('quick log dims prompt saves typed scale values onto the just-saved entry');
 } catch (e) { fail('quick log dims prompt (save)', e); }
 
@@ -1442,7 +1450,9 @@ try {
   await page.locator('[data-entry-card]').first().click();
   await page.waitForSelector('[data-dim-value]');
   const values = await page.locator('[data-dim-value]').allTextContents();
-  if (!values.every((v) => v.trim() === '—')) throw new Error('declining the prompt still wrote a scale value');
+  if (values.some((v) => Number.isFinite(Number(v.trim())))) {
+    throw new Error('declining the prompt still wrote a scale value: ' + JSON.stringify(values));
+  }
   ok('declining the quick log dims prompt leaves the saved entry untouched');
 } catch (e) { fail('quick log dims prompt (decline)', e); }
 

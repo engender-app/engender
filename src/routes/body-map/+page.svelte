@@ -24,8 +24,13 @@
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
 
-  let trendQuery = liveQuery(['entry'], (j) => j.stats.bodyRegionTrend(region, from, today));
-  let trend = $derived(trendQuery.value ?? []);
+  // One query per axis rather than one returning both: the two are
+  // independent series with their own days, and nothing here pairs them up
+  // or combines them into a figure (ticket 31).
+  let dysphoriaQuery = liveQuery(['entry'], (j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today));
+  let euphoriaQuery = liveQuery(['entry'], (j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today));
+  let dysphoria = $derived(dysphoriaQuery.value ?? []);
+  let euphoria = $derived(euphoriaQuery.value ?? []);
 </script>
 
 <div class="screen">
@@ -55,14 +60,30 @@
       {/each}
     </div>
 
-    {#if trendQuery.loading}
+    {#if dysphoriaQuery.loading || euphoriaQuery.loading}
       <Skeleton variant="block" count={1} />
     {:else}
       <div class="card chart-card">
         <div class="spread">
           <span class="chart-title">{regions.find((r) => r.id === region)?.name}</span>
         </div>
-        <LineChart points={trend} min={BODY_REGION_INTENSITY_MIN} max={BODY_REGION_INTENSITY_MAX} />
+        <LineChart
+          points={dysphoria}
+          overlay={euphoria}
+          min={BODY_REGION_INTENSITY_MIN}
+          max={BODY_REGION_INTENSITY_MAX}
+          ariaLabel={m.body_map_chart_aria({
+            region: regions.find((r) => r.id === region)?.name ?? '',
+            first: m.body_region_axis_dysphoria(),
+            second: m.body_region_axis_euphoria()
+          })}
+        />
+        <!-- Which line is which. Listed, not ranked: the two are separate
+             readings of the same spot and the screen never adds them up. -->
+        <ul class="chart-legend">
+          <li><span class="legend-swatch legend-swatch-line"></span>{m.body_region_axis_dysphoria()}</li>
+          <li><span class="legend-swatch legend-swatch-overlay"></span>{m.body_region_axis_euphoria()}</li>
+        </ul>
       </div>
     {/if}
   {/if}

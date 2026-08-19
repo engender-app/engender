@@ -32,7 +32,7 @@ const existingEntry = (): Entry => ({
     { id: 'n1', fileName: 'n1.webm' },
     { id: 'n2', fileName: 'n2.webm' }
   ],
-  bodyRegions: { chest: 60 },
+  bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
   starred: false
 });
 
@@ -106,7 +106,7 @@ test('applying a persisted draft overlays mood, note, dims, tags and body region
     note: 'restored',
     dims: { femininity: 70 },
     tags: ['e-happy'],
-    bodyRegions: { chest: 30 },
+    bodyRegions: { chest: { dysphoria: 30, euphoria: null } },
     removedPhotoIds: [],
     removedRecordingIds: [],
     removedVideoIds: []
@@ -118,7 +118,7 @@ test('applying a persisted draft overlays mood, note, dims, tags and body region
   assert.equal(draft.note, 'restored');
   assert.deepEqual(draft.dims, { femininity: 70 });
   assert.deepEqual(draft.tags, ['e-happy']);
-  assert.deepEqual(draft.bodyRegions, { chest: 30 });
+  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 30, euphoria: null } });
 });
 
 test('applying a persisted draft drops stored photos the user had already removed', () => {
@@ -133,7 +133,7 @@ test('applying a persisted draft drops stored photos the user had already remove
     note: 'ok day',
     dims: { masculinity: 40 },
     tags: ['e-happy'],
-    bodyRegions: { chest: 60 },
+    bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
     removedPhotoIds: ['p1'],
     removedRecordingIds: [],
     removedVideoIds: []
@@ -160,7 +160,7 @@ test('applying a persisted draft drops stored recordings the user had already re
     note: 'ok day',
     dims: { masculinity: 40 },
     tags: ['e-happy'],
-    bodyRegions: { chest: 60 },
+    bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
     removedPhotoIds: [],
     removedRecordingIds: ['r1'],
     removedVideoIds: []
@@ -187,7 +187,7 @@ test('applying a persisted draft drops stored video notes the user had already r
     note: 'ok day',
     dims: { masculinity: 40 },
     tags: ['e-happy'],
-    bodyRegions: { chest: 60 },
+    bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
     removedPhotoIds: [],
     removedRecordingIds: [],
     removedVideoIds: ['n1']

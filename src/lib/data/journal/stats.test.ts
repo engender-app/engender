@@ -98,25 +98,55 @@ test('an entry without the metric contributes nothing, and neither does a day ou
 
 test('a body-region trend reports per-day averages the same way dayAverages does', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, bodyRegions: { chest: 20 } });
-  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 3, bodyRegions: { chest: 40 } });
-  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, bodyRegions: { chest: 60, hairline: 10 } });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, bodyRegions: { chest: { dysphoria: 20, euphoria: null } } });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 3, bodyRegions: { chest: { dysphoria: 40, euphoria: null } } });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, bodyRegions: { chest: { dysphoria: 60, euphoria: null }, hairline: { dysphoria: 10, euphoria: null } } });
   await journal.entries.upsertEntry({ epochDay: 102, mood: 3 }); // no body regions at all
 
-  assert.deepEqual(await journal.stats.bodyRegionTrend('chest', 100, 102), [
+  assert.deepEqual(await journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102), [
     { day: 100, value: 30, count: 2 },
     { day: 101, value: 60, count: 1 }
   ]);
-  assert.deepEqual(await journal.stats.bodyRegionTrend('hairline', 100, 102), [
+  assert.deepEqual(await journal.stats.bodyRegionTrend('hairline', 'dysphoria', 100, 102), [
     { day: 101, value: 10, count: 1 }
+  ]);
+});
+
+test('the two axes of a region trend independently, and an unlogged axis is absent rather than zero', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: 80, euphoria: null } }
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 101,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: null, euphoria: 60 } }
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 102,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: 20, euphoria: 40 } }
+  });
+
+  // Day 101 said nothing about dysphoria, so it is missing from that series
+  // rather than dragging it towards 0 - and the same for euphoria on 100.
+  assert.deepEqual(await journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102), [
+    { day: 100, value: 80, count: 1 },
+    { day: 102, value: 20, count: 1 }
+  ]);
+  assert.deepEqual(await journal.stats.bodyRegionTrend('chest', 'euphoria', 100, 102), [
+    { day: 101, value: 60, count: 1 },
+    { day: 102, value: 40, count: 1 }
   ]);
 });
 
 test('a region nothing was ever logged against comes back empty rather than throwing', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: 50 } });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: { dysphoria: 50, euphoria: null } } });
 
-  assert.deepEqual(await journal.stats.bodyRegionTrend('genitals', 100, 100), []);
+  assert.deepEqual(await journal.stats.bodyRegionTrend('genitals', 'dysphoria', 100, 100), []);
 });
 
 /* wear-time trend (phase 5 ticket 04) */

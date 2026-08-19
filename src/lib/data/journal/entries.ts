@@ -17,11 +17,12 @@
    delete - purgeExpiredTrash is what eventually takes them and their files
    with it, via the injected store. */
 
+import { bodyRegionIsLogged } from '../bodyMap';
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Entry, Photo, VideoNote, VoiceRecording } from '../types';
+import type { BodyRegionFeeling, Entry, Photo, VideoNote, VoiceRecording } from '../types';
 import type { PhotoFileStore } from './journal';
 import {
   insertStagedPhoto,
@@ -66,7 +67,7 @@ export interface EntryInput {
   tags?: string[];
   /** By body-region domain id (bodyRegions.ts). Arrives as the whole set the picker
       showed, and replaces - same rule as `tags`, not `dims`. */
-  bodyRegions?: Record<string, number>;
+  bodyRegions?: Record<string, BodyRegionFeeling>;
   /** Photos picked in this edit, normalized and ready to store (ADR-0008).
       They arrive with the save rather than in a call after it, for two
       reasons: an entry is committed as one action (PRD F1), and a photo on
@@ -256,7 +257,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
   // domain id (key for a built-in, uuid for a custom) - checked against the
   // body_region table the same way resolveTagIds checks tag ids, rather
   // than the closed BODY_REGION_KEYS list this used to hold in code.
-  const assertKnownBodyRegions = async (bodyRegions: Record<string, number>): Promise<void> => {
+  const assertKnownBodyRegions = async (bodyRegions: Record<string, BodyRegionFeeling>): Promise<void> => {
     const keys = Object.keys(bodyRegions);
     if (keys.length === 0) return;
 
@@ -277,12 +278,23 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     }
   };
 
-  const insertBodyRegions = async (entryId: number, bodyRegions: Record<string, number>): Promise<void> => {
-    const entries = Object.entries(bodyRegions);
+  const countLoggedRegions = (bodyRegions: Record<string, BodyRegionFeeling>): number =>
+    Object.values(bodyRegions).filter(bodyRegionIsLogged).length;
+
+  // A region whose two axes are both null says nothing its absence does not
+  // already say, so it never reaches the table - the v33 CHECK would reject
+  // it anyway. The editor keeps such a region on screen while it is being
+  // filled in; dropping it here is what stops a picked-then-ignored region
+  // from being saved as a blank row.
+  const insertBodyRegions = async (entryId: number, bodyRegions: Record<string, BodyRegionFeeling>): Promise<void> => {
+    const entries = Object.entries(bodyRegions).filter(([, f]) => bodyRegionIsLogged(f));
     if (entries.length === 0) return;
-    const values = entries.map(() => '(?, ?, ?)').join(', ');
-    const params = entries.flatMap(([region, intensity]) => [entryId, region, intensity]);
-    await driver.run(`INSERT INTO entry_body_region (entry_id, region, intensity) VALUES ${values}`, params);
+    const values = entries.map(() => '(?, ?, ?, ?)').join(', ');
+    const params = entries.flatMap(([region, f]) => [entryId, region, f.dysphoria, f.euphoria]);
+    await driver.run(
+      `INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES ${values}`,
+      params
+    );
   };
 
   const dimsOf = async (entryId: number): Promise<Record<string, number>> => {
@@ -302,12 +314,12 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     return rows.map((r) => domainIdOf(r, 'tag'));
   };
 
-  const bodyRegionsOf = async (entryId: number): Promise<Record<string, number>> => {
-    const rows = await driver.query<{ region: string; intensity: number }>(
-      'SELECT region, intensity FROM entry_body_region WHERE entry_id = ?',
+  const bodyRegionsOf = async (entryId: number): Promise<Record<string, BodyRegionFeeling>> => {
+    const rows = await driver.query<{ region: string; dysphoria: number | null; euphoria: number | null }>(
+      'SELECT region, dysphoria, euphoria FROM entry_body_region WHERE entry_id = ?',
       [entryId]
     );
-    return Object.fromEntries(rows.map((r) => [r.region, r.intensity]));
+    return Object.fromEntries(rows.map((r) => [r.region, { dysphoria: r.dysphoria, euphoria: r.euphoria }]));
   };
 
   const photoCountOf = async (entryId: number): Promise<number> => {
@@ -392,7 +404,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     const photos = new Map<number, Photo[]>();
     const recordings = new Map<number, VoiceRecording[]>();
     const videos = new Map<number, VideoNote[]>();
-    const bodyRegions = new Map<number, Record<string, number>>();
+    const bodyRegions = new Map<number, Record<string, BodyRegionFeeling>>();
 
     for (let from = 0; from < rows.length; from += ID_CHUNK) {
       const ids = rows.slice(from, from + ID_CHUNK).map((row) => row.id);
@@ -427,13 +439,18 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       for (const [entryId, forEntry] of await recordingsByEntry(driver, ids)) recordings.set(entryId, forEntry);
       for (const [entryId, forEntry] of await videosByEntry(driver, ids)) videos.set(entryId, forEntry);
 
-      const bodyRegionRows = await driver.query<{ entry_id: number; region: string; intensity: number }>(
-        `SELECT entry_id, region, intensity FROM entry_body_region WHERE entry_id IN (${placeholders})`,
+      const bodyRegionRows = await driver.query<{
+        entry_id: number;
+        region: string;
+        dysphoria: number | null;
+        euphoria: number | null;
+      }>(
+        `SELECT entry_id, region, dysphoria, euphoria FROM entry_body_region WHERE entry_id IN (${placeholders})`,
         ids
       );
       for (const row of bodyRegionRows) {
         const forEntry = bodyRegions.get(row.entry_id) ?? {};
-        forEntry[row.region] = row.intensity;
+        forEntry[row.region] = { dysphoria: row.dysphoria, euphoria: row.euphoria };
         bodyRegions.set(row.entry_id, forEntry);
       }
     }
@@ -712,7 +729,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           recordingCount:
             (await recordingCountOf(current.id)) - removedRecordings.length + attachingRecordings.length,
           videoCount: (await videoCountOf(current.id)) - removedVideos.length + attachingVideos.length,
-          bodyRegionCount: Object.keys(bodyRegions).length
+          bodyRegionCount: countLoggedRegions(bodyRegions)
         });
 
         // Resolved before the transaction so an unknown key aborts cleanly.
@@ -800,7 +817,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         photoCount: attachingNew.length,
         recordingCount: attachingRecordingsNew.length,
         videoCount: attachingVideosNew.length,
-        bodyRegionCount: Object.keys(bodyRegions).length
+        bodyRegionCount: countLoggedRegions(bodyRegions)
       });
       const dimIds = await resolveDimensionIds(dims);
       const tagIds = await resolveTagIds(tags);

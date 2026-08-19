@@ -30,7 +30,7 @@ async function populated() {
     note: 'a good day',
     dims: { [voice.key]: 7, femininity: 60 },
     tags: [tag.id, 'e-happy'],
-    bodyRegions: { chest: 40 }
+    bodyRegions: { chest: { dysphoria: 40, euphoria: null } }
   });
   const photo = await journal.photos.attach({ entryId: entry }, { full: bytes('full-photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a recording')] });
@@ -199,7 +199,7 @@ test('entries travel by uuid, with their dimension values, tags, photos, recordi
     photos: [{ id: photo, fileName: `${photo}.jpg`, starred: false }],
     recordings: [{ id: recording, fileName: `${recording}.webm` }],
     videos: [{ id: videoNote, fileName: `${videoNote}.webm` }],
-    bodyRegions: { chest: 40 },
+    bodyRegions: { chest: { dysphoria: 40, euphoria: null } },
     starred: false
   });
   assert.equal(snapshot.journal.entries.length, 2);
@@ -559,7 +559,7 @@ const CARRIED: Record<string, string[]> = {
   entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred'],
   entry_dimension_value: ['entry_id', 'dimension_id', 'value'],
   entry_tag: ['entry_id', 'tag_id'],
-  entry_body_region: ['entry_id', 'region', 'intensity'],
+  entry_body_region: ['entry_id', 'region', 'dysphoria', 'euphoria'],
   photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred'],
   milestone: ['uuid', 'name', 'epoch_day', 'template_key'],
   gender_dimension: ['uuid', 'key', 'name', 'low_label', 'high_label', 'min_value', 'max_value', 'is_built_in', 'hidden'],
