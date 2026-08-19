@@ -5,10 +5,11 @@
    for the two reasons archive.ts's header gives - travelling identity, and
    one query per table for the whole journal instead of one per row.
 
-   Three tables are read once and handed to every section that needs them,
-   rather than queried per section: photo, voice_recording and hair_photo.
-   The file manifest is built from the same rows (archive.ts), so a second
-   read would be a second answer to the same question. */
+   Four tables are read once and handed to every section that needs them,
+   rather than queried per section: photo, voice_recording, hair_photo and
+   hair_removal_photo. The file manifest is built from the same rows
+   (archive.ts), so a second read would be a second answer to the same
+   question. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
@@ -24,6 +25,8 @@ import type {
   ArchiveEntry,
   ArchiveFeltSenseEntry,
   ArchiveHairPhoto,
+  ArchiveHairRemovalPhoto,
+  ArchiveHairRemovalSession,
   ArchiveHairStage,
   ArchiveLabResult,
   ArchiveLetter,
@@ -49,14 +52,16 @@ import { bool, domainIdOf } from './support';
 export type PhotoRow = { uuid: string; file_path: string; entry_id: number | null; milestone_id: number | null };
 export type RecordingRow = { uuid: string; file_path: string; entry_id: number };
 export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
+export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
 
-/** What every section reader is given: the connection, and the three
+/** What every section reader is given: the connection, and the four
     file-owning tables read once up front. */
 export interface SectionRead {
   driver: SqliteDriver;
   photos: PhotoRow[];
   recordings: RecordingRow[];
   hairPhotos: HairPhotoRow[];
+  hairRemovalPhotos: HairRemovalPhotoRow[];
 }
 
 /** The shared reads, in one place so the manifest and the sections that name
@@ -69,6 +74,9 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
     ),
     hairPhotos: await driver.query<HairPhotoRow>(
       'SELECT uuid, epoch_day, file_path FROM hair_photo ORDER BY epoch_day, id'
+    ),
+    hairRemovalPhotos: await driver.query<HairRemovalPhotoRow>(
+      'SELECT uuid, session_id, file_path FROM hair_removal_photo ORDER BY session_id, id'
     ),
     recordings: await driver.query<RecordingRow>(
       'SELECT uuid, file_path, entry_id FROM voice_recording ORDER BY order_index, id'
@@ -416,6 +424,39 @@ export async function readHairStages({ driver }: SectionRead): Promise<ArchiveHa
    manifest, and one read of the table serves both. */
 export async function readHairPhotos({ hairPhotos }: SectionRead): Promise<ArchiveHairPhoto[]> {
   return hairPhotos.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, fileName: r.file_path }));
+}
+
+export async function readHairRemovalSessions({
+  driver,
+  hairRemovalPhotos
+}: SectionRead): Promise<ArchiveHairRemovalSession[]> {
+  const sessions = await driver.query<{
+    id: number;
+    uuid: string;
+    epoch_day: number;
+    area: string;
+    method: string;
+    pain_rating: number;
+    cost: string;
+    provider: string;
+  }>('SELECT id, uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session ORDER BY epoch_day, id');
+
+  const byId = groupBy(
+    hairRemovalPhotos,
+    (photo) => photo.session_id,
+    (photo): ArchiveHairRemovalPhoto => ({ id: photo.uuid, fileName: photo.file_path })
+  );
+
+  return sessions.map((session) => ({
+    id: session.uuid,
+    epochDay: session.epoch_day,
+    area: session.area,
+    method: session.method,
+    painRating: session.pain_rating,
+    cost: session.cost,
+    provider: session.provider,
+    photos: byId.get(session.id) ?? []
+  }));
 }
 
 export async function readReminders({ driver }: SectionRead): Promise<ArchiveReminder[]> {

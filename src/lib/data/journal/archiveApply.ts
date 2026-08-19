@@ -793,6 +793,54 @@ export async function applyHairPhotos({ driver, journal, ts }: Restoring): Promi
   );
 }
 
+/* A session is matched and inserted directly by uuid like applySideEffects
+   - nothing about one changes once logged, so there is no UPDATE branch to
+   write. Its photos are walked in both modes regardless, the same reason
+   applyChecklists walks a checklist's items even when the checklist itself
+   is already here: a photo is its own row with its own identity, and one
+   the archive carries that this device does not is exactly what Merge is
+   for. */
+export async function applyHairRemovalSessions({ driver, journal, ts }: Restoring): Promise<void> {
+  const sessions = await presentIds(driver, 'SELECT uuid AS id FROM hair_removal_session');
+  const photos = await presentIds(driver, 'SELECT uuid AS id FROM hair_removal_photo');
+
+  for (const session of journal.hairRemovalSessions) {
+    if (!sessions.has(session.id)) {
+      await driver.run(
+        `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, cost, provider, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          session.id,
+          session.epochDay,
+          session.area,
+          session.method,
+          session.painRating,
+          session.cost,
+          session.provider,
+          ts
+        ]
+      );
+    }
+
+    const sessionRowId = await rowidWhere(
+      driver,
+      'hair_removal_session',
+      'uuid = ?',
+      [session.id],
+      'hair removal session uuid'
+    );
+    for (const photo of session.photos) {
+      if (photos.has(photo.id)) continue;
+      await driver.run('INSERT INTO hair_removal_photo (uuid, session_id, file_path, updated_at) VALUES (?, ?, ?, ?)', [
+        photo.id,
+        sessionRowId,
+        photo.fileName,
+        ts
+      ]);
+    }
+  }
+}
+
 export async function applyReminders({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM reminder');
 
