@@ -785,6 +785,60 @@ try {
   fail('ticket 27 photo journey export', e.message ?? String(e));
 }
 
+// --- Phase 5 ticket 22: the video note re-encode ---------------------------
+try {
+  const r = await load('/video-notes.html', 'data-video-note-probe-ready', '__videoNoteProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  if (r.fileName === '11111111-2222-3333-4444-555555555555.webm')
+    ok('a video note is stored under an opaque <uuid>.webm, resolvable on either platform');
+  else fail('a video note is stored under an opaque <uuid>.webm', r.fileName);
+
+  if (r.sourceType === 'video/webm' && r.sourceSize > 0)
+    ok(`MediaRecorder produces a real WebM here to re-encode (${(r.sourceSize / 1024) | 0}KB of noise)`);
+  else fail('MediaRecorder produces a real WebM to re-encode', `${r.sourceType}, ${r.sourceSize} bytes`);
+
+  /* The claim ticket 22 actually makes: a file over the ceiling is
+     compressed further rather than accepted as-is. Size is the whole point,
+     so this is the assertion that matters. */
+  if (r.reencodedSize !== null && r.reencodedSize < r.sourceSize)
+    ok(
+      `re-encoding compresses an oversized capture rather than accepting it (${(r.sourceSize / 1024) | 0}KB to ${(r.reencodedSize / 1024) | 0}KB)`
+    );
+  else fail('re-encoding compresses an oversized capture', `${r.sourceSize} to ${r.reencodedSize}`);
+
+  if (r.reencodedType === 'video/webm')
+    ok('and it lands in the same container, so the stored .webm means what its name says');
+  else fail('the re-encode lands in the same container', String(r.reencodedType));
+
+  /* Smaller alone would also describe a black file, so the marker quadrant
+     has to survive: this proves the re-encode carried the picture over. */
+  const green = ([, g]) => g > 120;
+  if (r.reencodedFrame && green(r.reencodedFrame.marker))
+    ok('the re-encoded file is still the same video, not an empty one of the right length');
+  else fail('the re-encoded file is still the same video', JSON.stringify(r.reencodedFrame));
+
+  // 480p in, 480p out. Ticket 22's 1080p is a cap, and upscaling would only
+  // spend bits on detail that is not there (ADR-0008's rule for photos).
+  if (r.reencodedFrame?.height === r.sourceFrame.height && r.reencodedFrame.height < r.maxEdge)
+    ok(`a capture below the ${r.maxEdge}p cap keeps its own size rather than being upscaled to it`);
+  else
+    fail(
+      'a capture below the cap keeps its own size',
+      `${JSON.stringify(r.sourceFrame)} to ${JSON.stringify(r.reencodedFrame)}`
+    );
+
+  if (r.targetForOversized && r.targetForOversized.audioBitsPerSecond > 0)
+    ok('the target comes from limits.ts, so the probe exercises the real decision');
+  else fail('the target comes from limits.ts', JSON.stringify(r.targetForOversized));
+
+  if (r.undecodableGivesNull)
+    ok('and a file the browser cannot decode yields null, so an oversized capture is kept rather than lost');
+  else fail('a file the browser cannot decode yields null', `got ${r.undecodableGivesNull}`);
+} catch (e) {
+  fail('phase 5 ticket 22 video note re-encode', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 
