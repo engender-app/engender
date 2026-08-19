@@ -1,0 +1,154 @@
+/* The checklists area (phase 5 ticket 05, CONTEXT: "Checklist"). A checklist
+   item is entirely the user's own free text with no bundled counterpart, so
+   both a checklist and its items carry a minted uuid like any other
+   user-owned row (ADR-0002) - unlike `roadmap_check`, which needs neither
+   because a tick names bundled content instead of holding data of its own.
+
+   A checklist's owner is looked up by (kind, id) rather than resolved to a
+   foreign key: no owner table ships with this ticket, so the pair is stored
+   and matched as given, the same reasoning roadmap.ts gives for storing
+   `packKey`/`goalKey` as plain strings. */
+
+import type { SqliteDriver } from '../sqlite/driver';
+import type { Checklist, ChecklistItem, ChecklistOwner } from '../types';
+import { assertChanged, mintUuid, now, rowidByUuid } from './support';
+
+export interface ChecklistsArea {
+  createChecklist(owner?: ChecklistOwner): Promise<Checklist>;
+  getChecklist(id: string): Promise<Checklist | undefined>;
+  getChecklistByOwner(owner: ChecklistOwner): Promise<Checklist | undefined>;
+  /** Idempotent: deleting an already-gone checklist is success. Takes its
+      items along. */
+  deleteChecklist(id: string): Promise<void>;
+  addItem(checklistId: string, content: string): Promise<ChecklistItem>;
+  editItem(itemId: string, content: string): Promise<void>;
+  setItemChecked(itemId: string, checked: boolean): Promise<void>;
+  setItemCarriedForward(itemId: string, carriedForward: boolean): Promise<void>;
+  /** Idempotent: deleting an already-gone item is success. */
+  deleteItem(itemId: string): Promise<void>;
+  /** The whole order at once, the same reason TagsArea.reorder takes it
+      (tags.ts) - a per-click mutation cannot express a drag. `orderedItemIds`
+      must permute the checklist's items. */
+  reorder(checklistId: string, orderedItemIds: string[]): Promise<void>;
+}
+
+type ChecklistRow = { id: number; uuid: string; owner_kind: string | null; owner_uuid: string | null };
+type ItemRow = { uuid: string; content: string; checked: number; carried_forward: number };
+
+const toItem = (row: ItemRow): ChecklistItem => ({
+  id: row.uuid,
+  content: row.content,
+  checked: row.checked === 1,
+  carriedForward: row.carried_forward === 1
+});
+
+export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
+  const itemsOf = async (checklistRowId: number): Promise<ChecklistItem[]> => {
+    const rows = await driver.query<ItemRow>(
+      'SELECT uuid, content, checked, carried_forward FROM checklist_item WHERE checklist_id = ? ORDER BY order_index, id',
+      [checklistRowId]
+    );
+    return rows.map(toItem);
+  };
+
+  const toChecklist = async (row: ChecklistRow): Promise<Checklist> => ({
+    id: row.uuid,
+    owner: row.owner_kind !== null && row.owner_uuid !== null ? { kind: row.owner_kind, id: row.owner_uuid } : null,
+    items: await itemsOf(row.id)
+  });
+
+  return {
+    async createChecklist(owner) {
+      const uuid = mintUuid();
+      await driver.run('INSERT INTO checklist (uuid, owner_kind, owner_uuid, updated_at) VALUES (?, ?, ?, ?)', [
+        uuid,
+        owner?.kind ?? null,
+        owner?.id ?? null,
+        now()
+      ]);
+      return { id: uuid, owner: owner ?? null, items: [] };
+    },
+
+    async getChecklist(id) {
+      const rows = await driver.query<ChecklistRow>(
+        'SELECT id, uuid, owner_kind, owner_uuid FROM checklist WHERE uuid = ?',
+        [id]
+      );
+      return rows[0] ? toChecklist(rows[0]) : undefined;
+    },
+
+    async getChecklistByOwner(owner) {
+      const rows = await driver.query<ChecklistRow>(
+        'SELECT id, uuid, owner_kind, owner_uuid FROM checklist WHERE owner_kind = ? AND owner_uuid = ?',
+        [owner.kind, owner.id]
+      );
+      return rows[0] ? toChecklist(rows[0]) : undefined;
+    },
+
+    async deleteChecklist(id) {
+      await driver.run('DELETE FROM checklist WHERE uuid = ?', [id]);
+    },
+
+    async addItem(checklistId, content) {
+      const checklistRowId = await rowidByUuid(driver, 'checklist', checklistId);
+      const uuid = mintUuid();
+      await driver.run(
+        `INSERT INTO checklist_item (uuid, checklist_id, content, order_index, updated_at)
+         VALUES (?, ?, ?, (SELECT COALESCE(MAX(order_index), -1) + 1 FROM checklist_item WHERE checklist_id = ?), ?)`,
+        [uuid, checklistRowId, content, checklistRowId, now()]
+      );
+      return { id: uuid, content, checked: false, carriedForward: false };
+    },
+
+    async editItem(itemId, content) {
+      const result = await driver.run('UPDATE checklist_item SET content = ?, updated_at = ? WHERE uuid = ?', [
+        content,
+        now(),
+        itemId
+      ]);
+      assertChanged(result, `checklist item: ${itemId}`);
+    },
+
+    async setItemChecked(itemId, checked) {
+      const result = await driver.run('UPDATE checklist_item SET checked = ?, updated_at = ? WHERE uuid = ?', [
+        checked ? 1 : 0,
+        now(),
+        itemId
+      ]);
+      assertChanged(result, `checklist item: ${itemId}`);
+    },
+
+    async setItemCarriedForward(itemId, carriedForward) {
+      const result = await driver.run('UPDATE checklist_item SET carried_forward = ?, updated_at = ? WHERE uuid = ?', [
+        carriedForward ? 1 : 0,
+        now(),
+        itemId
+      ]);
+      assertChanged(result, `checklist item: ${itemId}`);
+    },
+
+    async deleteItem(itemId) {
+      await driver.run('DELETE FROM checklist_item WHERE uuid = ?', [itemId]);
+    },
+
+    async reorder(checklistId, orderedItemIds) {
+      const checklistRowId = await rowidByUuid(driver, 'checklist', checklistId);
+      const rows = await driver.query<{ uuid: string }>('SELECT uuid FROM checklist_item WHERE checklist_id = ?', [
+        checklistRowId
+      ]);
+      const current = new Set(rows.map((r) => r.uuid));
+      if (orderedItemIds.length !== rows.length || !orderedItemIds.every((id) => current.has(id))) {
+        throw new Error(`reorder of checklist ${checklistId} does not permute its items`);
+      }
+      await driver.transaction(async () => {
+        for (const [orderIndex, id] of orderedItemIds.entries()) {
+          await driver.run('UPDATE checklist_item SET order_index = ?, updated_at = ? WHERE uuid = ?', [
+            orderIndex,
+            now(),
+            id
+          ]);
+        }
+      });
+    }
+  };
+}
