@@ -51,11 +51,7 @@
       "hidden": false
     },
     {
-<<<<<<< HEAD
-      "key": "c0808644-c0d2-45e7-b0f8-543992f074c1",
-=======
-      "key": "67d158f8-4f1f-4de5-8a22-caac905de138",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "key": "fc9d5294-2ebf-448b-bbd9-2e753a96777c",
       "name": "Voice comfort",
       "low": "off",
       "high": "mine",
@@ -147,19 +143,11 @@
       ]
     },
     {
-<<<<<<< HEAD
-      "id": "ab78403e-352d-44bf-8093-91151afe11c5",
+      "id": "ef207f3f-7382-4dfe-9b66-642b0b583f27",
       "name": "Mine",
       "builtIn": false,
       "dims": [
-        "c0808644-c0d2-45e7-b0f8-543992f074c1",
-=======
-      "id": "82a85778-29ab-4381-b78d-0f8a0a8bb5dd",
-      "name": "Mine",
-      "builtIn": false,
-      "dims": [
-        "67d158f8-4f1f-4de5-8a22-caac905de138",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+        "fc9d5294-2ebf-448b-bbd9-2e753a96777c",
         "femininity"
       ]
     }
@@ -264,11 +252,7 @@
           "hidden": false
         },
         {
-<<<<<<< HEAD
-          "id": "1f13b237-f81c-4590-a891-05063f82b595",
-=======
-          "id": "71d5d3e0-ef84-48ee-8aae-0af767391030",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+          "id": "092d0993-139f-47c2-aa36-027a9e73c647",
           "label": "wired",
           "builtIn": false,
           "hidden": false
@@ -383,21 +367,13 @@
       ]
     },
     {
-<<<<<<< HEAD
-      "key": "d762d24f-3a32-49a8-99c5-d2792b71d011",
-=======
-      "key": "50040ed6-7054-4d99-85e5-33776ac8edfa",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "key": "9a7df39e-9125-4bc8-aa8c-aa7e90f72667",
       "name": "Appointments",
       "enabled": true,
       "builtIn": false,
       "tags": [
         {
-<<<<<<< HEAD
-          "id": "cb99a4e3-5551-4ff5-83f7-120ce582a327",
-=======
-          "id": "7197a057-90e7-48d5-91aa-c80c6c2b5931",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+          "id": "eecbe5f7-4862-4e73-9c63-a5731c495c69",
           "label": "endo",
           "builtIn": false,
           "hidden": false
@@ -505,11 +481,7 @@
       "hidden": false
     },
     {
-<<<<<<< HEAD
-      "id": "01ac2bf6-489a-4a7e-9537-afe2a32a2027",
-=======
-      "id": "e3c1af66-ede5-49b6-aaa7-56b5bc6b5f9e",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "81eef3db-a010-45d8-b091-da9e47b29d8a",
       "language": "en",
       "text": "You get to take up space, today too.",
       "builtIn": false,
@@ -578,11 +550,7 @@
       "hidden": false
     },
     {
-<<<<<<< HEAD
-      "id": "62c87228-e6e1-4b37-9ab2-bb13799e9ce1",
-=======
-      "id": "16deb3bf-f3dd-4202-a21c-7596c0d9a807",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "8a162472-8761-43dc-b9eb-414b5f48ceb4",
       "name": "scar tissue",
       "builtIn": false,
       "hidden": false
@@ -590,71 +558,40 @@
   ],
   "entries": [
     {
-<<<<<<< HEAD
-      "uuid": "efa64244-a58d-46f6-8c15-af40540bb83a",
-=======
-      "uuid": "85d0ee4c-ad0f-44ef-980d-de20c271b957",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "uuid": "48677159-cb0e-4a75-82ab-00fd1719b82e",
       "epochDay": 20000,
       "timestamp": 1700000000000,
       "mood": 4,
       "note": "a good day, zażółć gęślą jaźń",
       "dims": {
         "femininity": 60,
-<<<<<<< HEAD
-        "c0808644-c0d2-45e7-b0f8-543992f074c1": 7
+        "fc9d5294-2ebf-448b-bbd9-2e753a96777c": 7
       },
       "tags": [
         "e-happy",
-        "cb99a4e3-5551-4ff5-83f7-120ce582a327"
+        "eecbe5f7-4862-4e73-9c63-a5731c495c69"
       ],
       "photos": [
         {
-          "id": "351d815a-ce6d-4348-b6ff-99cecf2c6989",
-          "fileName": "351d815a-ce6d-4348-b6ff-99cecf2c6989.jpg",
-=======
-        "67d158f8-4f1f-4de5-8a22-caac905de138": 7
-      },
-      "tags": [
-        "e-happy",
-        "7197a057-90e7-48d5-91aa-c80c6c2b5931"
-      ],
-      "photos": [
-        {
-          "id": "ee36f45a-61cd-4722-8ab4-4a4425344f6b",
-          "fileName": "ee36f45a-61cd-4722-8ab4-4a4425344f6b.jpg",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+          "id": "90cf7f45-50dd-4093-9dd5-e08ceb95f880",
+          "fileName": "90cf7f45-50dd-4093-9dd5-e08ceb95f880.jpg",
           "starred": false
         }
       ],
       "recordings": [
         {
-<<<<<<< HEAD
-          "id": "216facff-3115-4062-afcd-d590e96de1cb",
-          "fileName": "216facff-3115-4062-afcd-d590e96de1cb.webm"
-=======
-          "id": "b4a10bf5-5df7-4905-b901-db5dfb03b66f",
-          "fileName": "b4a10bf5-5df7-4905-b901-db5dfb03b66f.webm"
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+          "id": "4935b7b1-8c60-482e-acf3-3331e8966a0c",
+          "fileName": "4935b7b1-8c60-482e-acf3-3331e8966a0c.webm"
         }
       ],
       "videos": [
         {
-<<<<<<< HEAD
-          "id": "c29aab3f-d944-4ad1-9b39-26bcad48d3d0",
-          "fileName": "c29aab3f-d944-4ad1-9b39-26bcad48d3d0.webm"
+          "id": "a3e85a4f-5ef9-4dc2-b09b-ee04a0065035",
+          "fileName": "a3e85a4f-5ef9-4dc2-b09b-ee04a0065035.webm"
         }
       ],
       "bodyRegions": {
-        "62c87228-e6e1-4b37-9ab2-bb13799e9ce1": 30,
-=======
-          "id": "4150fee9-a6cf-46ea-92b7-713724b559e6",
-          "fileName": "4150fee9-a6cf-46ea-92b7-713724b559e6.webm"
-        }
-      ],
-      "bodyRegions": {
-        "16deb3bf-f3dd-4202-a21c-7596c0d9a807": 30,
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+        "8a162472-8761-43dc-b9eb-414b5f48ceb4": 30,
         "chest": 45
       },
       "starred": false
@@ -662,33 +599,20 @@
   ],
   "milestones": [
     {
-<<<<<<< HEAD
-      "id": "b8637acb-1d72-4514-baed-20f0b0ee095c",
-=======
-      "id": "bebcf317-505a-485c-8b1b-ef7ab6fc72e3",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "84b447ab-bcf8-4322-828f-9172ae4550f0",
       "name": "HRT start",
       "epochDay": 19000,
       "templateKey": "hrt_start",
       "photo": {
-<<<<<<< HEAD
-        "id": "622bced8-398f-48e6-aa2b-d9ac798182ce",
-        "fileName": "622bced8-398f-48e6-aa2b-d9ac798182ce.jpg",
-=======
-        "id": "4132289d-64d8-4d7a-9de5-f5ac7da7b3aa",
-        "fileName": "4132289d-64d8-4d7a-9de5-f5ac7da7b3aa.jpg",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+        "id": "dfdaf577-a1e9-400b-917c-a837d881e147",
+        "fileName": "dfdaf577-a1e9-400b-917c-a837d881e147.jpg",
         "starred": false
       }
     }
   ],
   "labResults": [
     {
-<<<<<<< HEAD
-      "id": "2cf347f3-ecd5-43be-8990-585ae7d04cba",
-=======
-      "id": "eafb14f8-4017-412a-bff6-afd8cde170cf",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "3bef0bee-4be4-4089-95a2-a6cd0d01882e",
       "epochDay": 20004,
       "analyte": "estradiol",
       "value": 412.5,
@@ -727,7 +651,7 @@
       "hidden": true
     },
     {
-      "key": "e874a8c9-e2ce-4936-9806-c258cce3ace0",
+      "key": "2965b817-7dba-43ec-b300-adf21ee0759a",
       "name": "Shoulders",
       "builtIn": false,
       "hidden": false
@@ -735,19 +659,15 @@
   ],
   "measurements": [
     {
-<<<<<<< HEAD
-      "id": "6a2cd14a-a957-420b-afb5-71548d83438f",
-=======
-      "id": "f2a8a152-a0f4-472d-8e92-0cf3c4385502",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "fef6a871-a052-4ba4-b7cb-7215c0aaa3b8",
       "type": "waist",
       "epochDay": 20000,
       "value": 79,
       "unit": "cm"
     },
     {
-      "id": "1c4140d6-fd36-4ef9-8bcd-4bd56e16d238",
-      "type": "e874a8c9-e2ce-4936-9806-c258cce3ace0",
+      "id": "dbaa4384-ef1f-493c-a870-ea072f55532f",
+      "type": "2965b817-7dba-43ec-b300-adf21ee0759a",
       "epochDay": 20000,
       "value": 41,
       "unit": "cm"
@@ -755,11 +675,7 @@
   ],
   "sideEffects": [
     {
-<<<<<<< HEAD
-      "id": "2cc6f5e2-8a2b-456f-a489-9760cf233501",
-=======
-      "id": "f1aada64-4d20-45a1-b3b8-d3a622d662c2",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "14f74235-1494-4217-b1dc-ddb9a4043b78",
       "name": "hot flashes",
       "severity": 3,
       "epochDay": 20000
@@ -767,68 +683,42 @@
   ],
   "cycleEvents": [
     {
-<<<<<<< HEAD
-      "id": "679f9d41-a730-436c-8d20-1626220fa782",
-=======
-      "id": "998d7336-75ce-43a0-9fb1-bfcc6d565e75",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "e78a63a0-20e2-44ce-bffc-c0846fc17e28",
       "kind": "spotting",
       "epochDay": 20000
     }
   ],
   "journalingPauses": [
     {
-<<<<<<< HEAD
-      "id": "3eea7b82-02ac-4358-8501-e892e7d23cc1",
-=======
-      "id": "02d77566-71af-4027-9b45-e4a91dbc92ff",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "927909be-f95d-4352-b234-39bd49b11be9",
       "startEpochDay": 19700,
       "endEpochDay": null
     }
   ],
   "personalEffects": [
     {
-<<<<<<< HEAD
-      "id": "58a11650-bc43-4e9b-a1a2-0be30d971961",
-=======
-      "id": "f1f9fe1b-c30c-4b04-a0ae-3a33db062c0a",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "814a4f0b-05dd-4aa4-bd08-141fecba996a",
       "effect": "breast_development",
       "firstNoticedEpochDay": 19180
     }
   ],
   "hairStages": [
     {
-<<<<<<< HEAD
-      "id": "4972fe4c-a09b-47ad-8591-6043f4ba21e8",
-=======
-      "id": "b21f0a11-308c-4902-be1c-53e54df1dbda",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "683db00d-71b7-47f8-8a48-08662f536e8f",
       "epochDay": 19200,
       "stage": "2a"
     }
   ],
   "hairPhotos": [
     {
-<<<<<<< HEAD
-      "id": "51bbddff-4c14-4e4e-a33d-22b7dee3aeae",
+      "id": "3523d031-7ad6-43a5-aeda-8dc8b38cd0e7",
       "epochDay": 19200,
-      "fileName": "51bbddff-4c14-4e4e-a33d-22b7dee3aeae.jpg"
-=======
-      "id": "7ffff468-6395-43be-806c-c392057c76b1",
-      "epochDay": 19200,
-      "fileName": "7ffff468-6395-43be-806c-c392057c76b1.jpg"
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "fileName": "3523d031-7ad6-43a5-aeda-8dc8b38cd0e7.jpg"
     }
   ],
   "hairRemovalSessions": [
     {
-<<<<<<< HEAD
-      "id": "4b3adf80-45fd-4c3b-b558-c0c94d718bd9",
-=======
-      "id": "d6e04f5a-8efc-49d9-9310-8e5ae08f17f9",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "da8195b6-44b7-45a9-815d-55d7fd68044c",
       "epochDay": 20000,
       "area": "upper_lip",
       "method": "laser",
@@ -837,59 +727,36 @@
       "provider": "Klinika Laserowa",
       "photos": [
         {
-<<<<<<< HEAD
-          "id": "9e7385a1-0b1a-475f-a8a9-dfd225de425c",
-          "fileName": "9e7385a1-0b1a-475f-a8a9-dfd225de425c.jpg"
-=======
-          "id": "c0f11d81-2445-4767-93fb-2c970a9ed5b1",
-          "fileName": "c0f11d81-2445-4767-93fb-2c970a9ed5b1.jpg"
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+          "id": "4ccd8820-c825-460c-874b-cec83b22d655",
+          "fileName": "4ccd8820-c825-460c-874b-cec83b22d655.jpg"
         }
       ]
     }
   ],
   "procedures": [
     {
-<<<<<<< HEAD
-      "id": "0c413d47-8bef-44d5-afb4-146faa7edd62",
-=======
-      "id": "ada6f4ba-78e7-4fc7-86fc-c616455f0547",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "3ac4b68e-4222-4437-a32a-14c45c6a9c41",
       "name": "top surgery",
       "surgeryEpochDay": 20050,
       "consults": [
         {
-<<<<<<< HEAD
-          "id": "aac3283b-0b33-4fce-85a5-16cfd02060f8",
-=======
-          "id": "9f343dcd-5386-43a8-9ac8-a9c137e16bd9",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+          "id": "80f85fb0-796c-4f2e-a4f9-f2b3637dc90e",
           "epochDay": 19950
         }
       ],
       "notes": "drains out on day five",
       "photos": [
         {
-<<<<<<< HEAD
-          "id": "a8877995-8fd3-4c50-9786-31f1de1cedc4",
+          "id": "43cc7ece-5f65-4b27-bb86-6779279a53a8",
           "epochDay": 20052,
-          "fileName": "a8877995-8fd3-4c50-9786-31f1de1cedc4.jpg"
-=======
-          "id": "64add830-6aa1-4004-aeb7-ae5ab8155ce0",
-          "epochDay": 20052,
-          "fileName": "64add830-6aa1-4004-aeb7-ae5ab8155ce0.jpg"
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+          "fileName": "43cc7ece-5f65-4b27-bb86-6779279a53a8.jpg"
         }
       ]
     }
   ],
   "reminders": [
     {
-<<<<<<< HEAD
-      "id": "e6434638-5949-4ece-9eb0-340f171376ef",
-=======
-      "id": "df898d00-1272-495c-a460-8591977e7025",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "46cf9d99-d37c-4c79-8a78-11e3d3e16b84",
       "title": "injection",
       "type": "injection",
       "time": "08:00",
@@ -901,11 +768,7 @@
       "autoSource": null
     },
     {
-<<<<<<< HEAD
-      "id": "aa8de186-5f83-40ed-b793-2507ab1f1901",
-=======
-      "id": "846fc29d-8f01-43cd-a9ff-38330175846d",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "cc4f30a1-e8f5-4638-a556-f45880c3d584",
       "title": "binder check-in",
       "type": "other",
       "time": "07:13",
@@ -914,20 +777,12 @@
       "anchorEpochDay": null,
       "epochDay": 19676,
       "enabled": true,
-<<<<<<< HEAD
-      "autoSource": "wear:1c8d8ebd-ec93-406d-93b8-6e773852621b"
-=======
-      "autoSource": "wear:b2e5b18e-2318-42db-964f-923078ede4dc"
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "autoSource": "wear:b551893d-d90c-4490-bddd-b06af84cc692"
     }
   ],
   "tallyEvents": [
     {
-<<<<<<< HEAD
-      "id": "713bf2b2-99ed-4d8b-8dd2-3559f1ba9ef5",
-=======
-      "id": "16831c98-efc9-44be-991f-1c4cc9d676cd",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "d3857410-64ce-4999-a55b-170812844e3e",
       "epochDay": 20000,
       "kind": "misgendered",
       "context": "wrong pronoun at the pharmacy"
@@ -935,29 +790,17 @@
   ],
   "doubtEntries": [
     {
-<<<<<<< HEAD
-      "id": "542a2cb9-1818-4f9d-b67b-45416b0a0278",
+      "id": "c50502dc-635c-43e3-8b60-c443b26cb4d3",
       "epochDay": 20000,
-      "timestamp": 1787156872489,
-=======
-      "id": "e9c92697-1a31-42b4-a78c-f61cf57627ab",
-      "epochDay": 20000,
-      "timestamp": 1787157381867,
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "timestamp": 1787157596554,
       "text": "am I even trans enough for this"
     }
   ],
   "counterevidenceSnapshots": [
     {
-<<<<<<< HEAD
-      "id": "361aea7a-e85f-405f-8e27-4228f5b9b8e7",
+      "id": "6c23eb75-fcd2-4f42-9010-47b563c040e7",
       "epochDay": 20000,
-      "timestamp": 1787156872489,
-=======
-      "id": "6a66888f-23ed-43c2-8c2d-765857c7b458",
-      "epochDay": 20000,
-      "timestamp": 1787157381867,
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "timestamp": 1787157596554,
       "items": [
         {
           "epochDay": 19500,
@@ -969,11 +812,7 @@
   ],
   "letters": [
     {
-<<<<<<< HEAD
-      "id": "6488daa3-9095-467a-8676-3ea56fb215fc",
-=======
-      "id": "8c4acab4-275d-4a62-b6ce-3bc402cd87d0",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "a892c774-902f-4d94-90d9-7f0410abecd2",
       "epochDay": 20000,
       "text": "read this in a year",
       "unlockEpochDay": 20365
@@ -993,11 +832,7 @@
   ],
   "roadmapGoals": [
     {
-<<<<<<< HEAD
-      "id": "b9ae018a-f604-4e88-a917-3a604fa7fc18",
-=======
-      "id": "98d4559d-3d34-4953-8b38-aeaab7a97dac",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "7255f557-ccb0-40fc-90e0-196229efb925",
       "track": "social",
       "text": "Tell my sister",
       "status": "unchecked"
@@ -1005,11 +840,7 @@
   ],
   "regimenEpisodes": [
     {
-<<<<<<< HEAD
-      "id": "d14239ee-53de-4c9d-9573-fd1aa42201ef",
-=======
-      "id": "52264e74-a1e0-4157-9659-0dab2c9106a6",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "135095b1-620f-4942-aeb2-c7595393b7fc",
       "drug": "estradiol valerate",
       "ester": "valerate",
       "dose": 4,
@@ -1022,11 +853,7 @@
   ],
   "doseEvents": [
     {
-<<<<<<< HEAD
-      "id": "db9234c3-c4f0-4e82-9da3-3bb436e54921",
-=======
-      "id": "18b604a7-cab3-4e29-8f9c-a649757da0c6",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "8ab866fd-3f3e-490d-9140-31f68fbf8068",
       "timestamp": 1700000000000,
       "route": "im",
       "dose": 4,
@@ -1042,26 +869,16 @@
   ],
   "doseSchedules": [
     {
-<<<<<<< HEAD
-      "id": "e415f8de-ad57-4f54-b937-3bd4d3125a26",
-      "episodeId": "d14239ee-53de-4c9d-9573-fd1aa42201ef",
-=======
-      "id": "c30e9650-b127-4aaa-993e-37889216af80",
-      "episodeId": "52264e74-a1e0-4157-9659-0dab2c9106a6",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "381a6f86-0dc3-4a0c-8598-e0cd48d85721",
+      "episodeId": "135095b1-620f-4942-aeb2-c7595393b7fc",
       "everyNDays": 14,
       "dosesPerDay": 1
     }
   ],
   "dosePauses": [
     {
-<<<<<<< HEAD
-      "id": "4c0b7227-2b5b-4b39-bb9b-3de45911cfde",
-      "episodeId": "d14239ee-53de-4c9d-9573-fd1aa42201ef",
-=======
-      "id": "a65be86f-4a74-4d2b-8c0f-9da5273864fc",
-      "episodeId": "52264e74-a1e0-4157-9659-0dab2c9106a6",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "a5ffa975-11ad-4f60-bafc-34a0bfbf16d1",
+      "episodeId": "135095b1-620f-4942-aeb2-c7595393b7fc",
       "startEpochDay": 19100,
       "endEpochDay": null,
       "reason": "planned"
@@ -1069,11 +886,7 @@
   ],
   "medicationStock": [
     {
-<<<<<<< HEAD
-      "id": "e30adb3b-7b71-4d65-8ca8-e5ab1f9338f8",
-=======
-      "id": "8759e81e-9fb9-4429-9b7c-ae7c4d8b56d4",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "687a7e6a-3990-4d7f-9110-adbca8214322",
       "drug": "estradiol valerate",
       "quantity": 5,
       "unit": "ampoules",
@@ -1084,11 +897,7 @@
   ],
   "tryouts": [
     {
-<<<<<<< HEAD
-      "id": "34b59a5f-579e-4b90-8539-6b8093c2c203",
-=======
-      "id": "6da20b1f-3bce-4f3d-9ca5-613fae63241c",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "e57348ff-72f0-4b2a-853e-a72067193a2c",
       "kind": "style",
       "label": "layered look",
       "description": "cardigan over a fitted top",
@@ -1096,37 +905,26 @@
       "endEpochDay": null,
       "photos": [
         {
-<<<<<<< HEAD
-          "id": "a48b67d9-85f1-444a-bae0-3171503189a8",
+          "id": "8faea1ce-2cd1-464e-a9ce-bc8db2b5af20",
           "epochDay": 19905,
-          "fileName": "a48b67d9-85f1-444a-bae0-3171503189a8.jpg"
-=======
-          "id": "fc6cf5a0-c807-404e-b803-7cbe6f7df0f4",
-          "epochDay": 19905,
-          "fileName": "fc6cf5a0-c807-404e-b803-7cbe6f7df0f4.jpg"
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+          "fileName": "8faea1ce-2cd1-464e-a9ce-bc8db2b5af20.jpg"
         }
       ]
     }
   ],
   "feltSenseEntries": [
     {
-<<<<<<< HEAD
-      "id": "c78b3d17-11fb-4c1b-a462-de8e50a709a3",
+      "id": "0ca4ac6a-f954-4d73-bf75-0441aa697719",
       "tryoutId": null,
-      "milestoneId": "b8637acb-1d72-4514-baed-20f0b0ee095c",
+      "milestoneId": "84b447ab-bcf8-4322-828f-9172ae4550f0",
       "epochDay": 19365,
       "mood": 5,
       "note": "a year on"
     },
     {
-      "id": "8b429ac1-0555-424f-a560-d871cc908ab1",
-      "tryoutId": "34b59a5f-579e-4b90-8539-6b8093c2c203",
+      "id": "38963cdd-03dd-47fa-acb9-a5ff53844977",
+      "tryoutId": "e57348ff-72f0-4b2a-853e-a72067193a2c",
       "milestoneId": null,
-=======
-      "id": "47fb5a27-b460-4ff1-96eb-139107796903",
-      "tryoutId": "6da20b1f-3bce-4f3d-9ca5-613fae63241c",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
       "epochDay": 19910,
       "mood": 4,
       "note": "felt right"
@@ -1134,21 +932,12 @@
   ],
   "checklists": [
     {
-<<<<<<< HEAD
-      "id": "fc3c595c-9e21-495b-8115-5a820d85f792",
+      "id": "f9bc2f90-004a-42d6-88d0-2740113f31d6",
       "ownerKind": "procedure",
-      "ownerId": "0c413d47-8bef-44d5-afb4-146faa7edd62",
+      "ownerId": "3ac4b68e-4222-4437-a32a-14c45c6a9c41",
       "items": [
         {
-          "id": "cf7b94c4-3a86-4544-9da6-b0803f2a36f2",
-=======
-      "id": "6706db72-4ce9-4248-a7d8-235db7df3d2a",
-      "ownerKind": "procedure",
-      "ownerId": "ada6f4ba-78e7-4fc7-86fc-c616455f0547",
-      "items": [
-        {
-          "id": "ec8bf8d7-57f1-4600-93f0-b7cee73da2d3",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+          "id": "bfdae3b7-4c0a-4e60-aa51-0604e167bc4c",
           "content": "buy gauze",
           "checked": true,
           "carriedForward": false
@@ -1158,11 +947,7 @@
   ],
   "wearSessions": [
     {
-<<<<<<< HEAD
-      "id": "1c8d8ebd-ec93-406d-93b8-6e773852621b",
-=======
-      "id": "b2e5b18e-2318-42db-964f-923078ede4dc",
->>>>>>> a28f92d (Open the measurement type vocabulary to custom types and hiding)
+      "id": "b551893d-d90c-4490-bddd-b06af84cc692",
       "startTimestamp": 1700000000000,
       "durationMs": 21600000,
       "note": "a bit tight by the end"
