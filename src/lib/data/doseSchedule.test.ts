@@ -9,8 +9,10 @@ import {
   INJECTION_SITES,
   adherence,
   expectedSlots,
-  pauseCoversDay
+  pauseCoversDay,
+  siteRecency
 } from './doseSchedule.ts';
+import type { InjectionSiteKey } from './doseSchedule.ts';
 import { startOfDayTimestamp } from './epochDay.ts';
 import type { DoseEvent, DosePause, DoseSchedule } from './types.ts';
 
@@ -192,4 +194,60 @@ test('the injection rotation map and the application-site list are different voc
   // regions come in left/right pairs; an application site does not.
   assert.ok(INJECTION_SITES.some((site) => site.side === 'left'));
   assert.ok(INJECTION_SITES.some((site) => site.side === 'right'));
+});
+
+/** An IM dose at `site` on `epochDay`. `site` is `null` to model a dose
+    imported with a site this build cannot place - `injectionSite` reads
+    back looser than it writes (doseSchedule.ts, doses.ts). */
+const injectionDose = (epochDay: number, site: InjectionSiteKey | null): DoseEvent =>
+  ({
+    id: `i-${epochDay}-${site}`,
+    timestamp: startOfDayTimestamp(epochDay) + 8 * 3600000,
+    route: 'im',
+    dose: 50,
+    doseUnit: 'mg',
+    status: 'taken',
+    scheduled: null,
+    injectionSite: site,
+    vehicle: null
+  }) as DoseEvent;
+
+test('siteRecency has an entry for every site the rotation map knows, even with no doses at all', () => {
+  const recency = siteRecency([], 100);
+  assert.deepEqual(
+    Object.keys(recency).sort(),
+    INJECTION_SITES.map((s) => s.key).sort()
+  );
+  assert.ok(Object.values(recency).every((days) => days === null));
+});
+
+test('siteRecency counts days back from the most recent dose at each site', () => {
+  const doses = [injectionDose(90, 'thigh-right'), injectionDose(95, 'deltoid-left'), injectionDose(98, 'deltoid-left')];
+
+  const recency = siteRecency(doses, 100);
+
+  assert.equal(recency['deltoid-left'], 2); // the later of the two deltoid-left doses, 100 - 98
+  assert.equal(recency['thigh-right'], 10);
+  assert.equal(recency['abdomen-left'], null);
+});
+
+test('siteRecency does not care what order the doses arrive in', () => {
+  const forward = siteRecency([injectionDose(95, 'thigh-left'), injectionDose(98, 'thigh-left')], 100);
+  const backward = siteRecency([injectionDose(98, 'thigh-left'), injectionDose(95, 'thigh-left')], 100);
+
+  assert.equal(forward['thigh-left'], 2);
+  assert.equal(backward['thigh-left'], 2);
+});
+
+test('siteRecency counts a dose logged today as zero days since use', () => {
+  const recency = siteRecency([injectionDose(100, 'abdomen-right')], 100);
+  assert.equal(recency['abdomen-right'], 0);
+});
+
+test('siteRecency ignores oral doses and injection doses with no site on record', () => {
+  const doses = [dose(99, 8), injectionDose(99, null)];
+
+  const recency = siteRecency(doses, 100);
+
+  assert.ok(Object.values(recency).every((days) => days === null));
 });
