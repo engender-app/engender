@@ -183,6 +183,8 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM personal_effect',
     'DELETE FROM hair_stage',
     'DELETE FROM hair_photo',
+    'DELETE FROM hair_removal_photo',
+    'DELETE FROM hair_removal_session',
     'DELETE FROM reminder',
     'DELETE FROM tally_event',
     'DELETE FROM doubt_entry',

@@ -689,6 +689,60 @@ CREATE TABLE cycle_event (
 CREATE INDEX idx_cycle_event_epoch_day ON cycle_event(epoch_day);
 `;
 
+/* v22: hair-removal sessions (phase 5 ticket 08). An electrolysis/laser
+   session log - date, area, method, pain rating, cost, provider - the same
+   reasoning `side_effect` (v11) and `cycle_event` (v21) are their own
+   tables for: no episode reference, so it works whether or not a regimen
+   episode exists.
+
+   `area` is a closed CHECK over hairRemovalAreas.ts's own vocabulary,
+   deliberately separate from `entry_body_region.region`'s BODY_REGION_KEYS
+   (v4) - a treatment area is finer-grained and procedural, not a dysphoria
+   hotspot, so this never reuses or widens that list. `method` is a small
+   closed CHECK the same way. `pain_rating` gets the identical CHECK
+   `side_effect.severity` does - the area validates it before the write, and
+   the schema is the backstop. `cost` and `provider` are plain TEXT with no
+   CHECK, the same free-text treatment `lab_result.provider` already gets.
+
+   `hair_removal_photo` is its own table rather than a third owner arm on
+   `photo` (SCHEMA_V1, ADR-0008) - the same reason `hair_photo` (v13) is:
+   `photo`'s exactly-one-owner CHECK cannot be widened in place. Unlike
+   `hair_photo`, though, a session photo genuinely belongs to one session -
+   a before/after picture of that treatment - so it carries a `session_id`
+   foreign key rather than standing as its own independently dated series.
+   The shared pipeline is still reused exactly as the ticket asks:
+   normalizePhoto and photos.ts's stagePhoto write the same normalized,
+   metadata-stripped bytes through the same file-before-row order, and
+   removeFilesOf reclaims them the same way on delete
+   (journal/hairRemoval.ts) - the boot orphan sweep (sweepOrphanPhotos,
+   photos.ts) reads this table too so a session photo's files are reclaimed
+   exactly like any other's. */
+const SCHEMA_V22 = `
+CREATE TABLE hair_removal_session (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  area       TEXT NOT NULL
+             CHECK (area IN ('upper_lip','chin','neck','underarms','chest','abdomen','back','arms','legs','bikini_line')),
+  method     TEXT NOT NULL CHECK (method IN ('laser','electrolysis','other')),
+  pain_rating INTEGER NOT NULL CHECK (pain_rating BETWEEN 1 AND 5),
+  cost       TEXT NOT NULL,
+  provider   TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_hair_removal_session_epoch_day ON hair_removal_session(epoch_day);
+CREATE INDEX idx_hair_removal_session_area ON hair_removal_session(area);
+
+CREATE TABLE hair_removal_photo (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  session_id INTEGER NOT NULL REFERENCES hair_removal_session(id) ON DELETE CASCADE,
+  file_path  TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_hair_removal_photo_session ON hair_removal_photo(session_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -710,7 +764,8 @@ export const migrations: Migration[] = [
   { version: 18, sql: SCHEMA_V18 },
   { version: 19, sql: SCHEMA_V19 },
   { version: 20, sql: SCHEMA_V20 },
-  { version: 21, sql: SCHEMA_V21 }
+  { version: 21, sql: SCHEMA_V21 },
+  { version: 22, sql: SCHEMA_V22 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

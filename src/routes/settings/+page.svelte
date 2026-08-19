@@ -68,6 +68,7 @@
     { key: 'regimen', icon: 'timeline', title: () => m.regimen(), subtitle: () => m.regimen_row_sub(), href: '/settings/regimen' },
     { key: 'side-effects', icon: 'zap', title: () => m.side_effects(), subtitle: () => m.side_effects_sub(), href: '/settings/side-effects' },
     { key: 'cycle-events', icon: 'calendar', title: () => m.cycle_events(), subtitle: () => m.cycle_events_sub(), href: '/settings/cycle-events' },
+    { key: 'hair-removal', icon: 'clock', title: () => m.hair_removal(), subtitle: () => m.hair_removal_sub(), href: '/settings/hair-removal' },
     { key: 'effects', icon: 'sparkle', title: () => m.effects_timeline(), subtitle: () => m.effects_timeline_sub(), href: '/settings/effects' },
     { key: 'tryouts', icon: 'tag', title: () => m.tryout_title(), subtitle: () => m.tryout_row_sub(), href: '/settings/tryouts' },
     { key: 'letters', icon: 'book', title: () => m.letters_title(), subtitle: () => m.letters_row_sub(), href: '/settings/letters' },
