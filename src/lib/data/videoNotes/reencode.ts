@@ -20,17 +20,7 @@
        yields null and the caller keeps the capture. Storing a too-big file
        is a better outcome than losing the recording. */
 
-import { VIDEO_MAX_EDGE, type VideoBitrates } from './limits';
-
-/** Scales the frame to fit inside 1080p without upscaling, keeping the aspect
-    ratio - fitContain's rule (photos/journey.ts) for the one case here, where
-    the source and the frame are the same shape. A capture already inside the
-    cap keeps its own size: re-encoding is about bitrate, and drawing a 720p
-    source into a 1080p canvas would only cost bits. */
-function frameSize(width: number, height: number): { width: number; height: number } {
-  const scale = Math.min(1, VIDEO_MAX_EDGE / height);
-  return { width: Math.round(width * scale), height: Math.round(height * scale) };
-}
+import { frameSize, type VideoBitrates } from './limits';
 
 /** A `<video>` wound up to the point where its dimensions are known and it is
     ready to play. Detached from the document: nothing should see it. */

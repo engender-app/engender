@@ -118,12 +118,17 @@
    The list wrapper is .recording-list either way - the gap and the column are
    the same, and a second class with the same rules would only drift. */
 .video-row { display: flex; align-items: flex-start; gap: var(--space-2); }
-.video-hint { margin: 0 0 var(--space-3); color: var(--text-2); font-size: 0.85rem; }
-.video-preview { position: relative; margin-bottom: var(--space-3); }
-.video-preview video {
+/* The stored note and the live preview are the same box, so the rules live
+   once here rather than half in VideoNotePlayer.svelte's own <style> - the
+   drift this file's other comments keep warning about. */
+.video-note-player, .video-preview video {
   width: 100%; max-height: 40vh;
   border-radius: var(--radius-md);
   background: #000;
+}
+.video-hint { margin: 0 0 var(--space-3); color: var(--text-2); font-size: 0.85rem; }
+.video-preview { position: relative; margin-bottom: var(--space-3); }
+.video-preview video {
   /* Mirrored, because a preview of your own face that moves the wrong way
      when you do is disorienting. The recording itself is not flipped - only
      what the person sees while framing it. */

@@ -13,10 +13,17 @@
    user can turn up, because the thing being protected is the backup, not
    the picture. */
 
-/** Ticket 22's two fixed caps. 1080p is the height; 1920 is the width that
-    goes with it, which is what a landscape phone hands over. */
+/** Ticket 22's fixed caps.
+
+    "1080p" is a claim about the short edge, not about height: a phone held
+    upright reports its track as 1080x1920, which is 1080p by any ordinary
+    reading, and capping height at 1080 would squash it to 608x1080 - half
+    the picture thrown away to honour a number that already described it. So
+    the pair of caps is short edge 1080, long edge 1920, in whichever
+    orientation the camera hands them over. */
 export const VIDEO_MAX_DURATION_MS = 30_000;
-export const VIDEO_MAX_EDGE = 1080;
+export const VIDEO_MAX_SHORT_EDGE = 1080;
+export const VIDEO_MAX_LONG_EDGE = 1920;
 
 /** The size a stored video note may not exceed.
 
@@ -51,9 +58,33 @@ export interface VideoBitrates {
 
 /** What getUserMedia is asked for. `max` rather than `ideal` or an exact
     value: 1080p is a ceiling, and a camera that only does 720p should be
-    used at 720p rather than refused. */
+    used at 720p rather than refused.
+
+    Both dimensions are capped at the long edge rather than one at each,
+    because a constraint cannot say "short edge 1080, long edge 1920" and a
+    per-dimension cap would refuse one orientation or squash the other. In
+    practice no camera offers a mode between 1920x1080 and 1080x1920, so this
+    admits exactly the two 1080p orientations; frameSize below is what
+    enforces the real rule on anything that slips past. */
 export function videoCaptureConstraints(): { video: MediaTrackConstraints; audio: true } {
-  return { video: { height: { max: VIDEO_MAX_EDGE }, width: { max: 1920 } }, audio: true };
+  return {
+    video: { width: { max: VIDEO_MAX_LONG_EDGE }, height: { max: VIDEO_MAX_LONG_EDGE } },
+    audio: true
+  };
+}
+
+/** The size a stored frame is drawn at: inside both caps, in whichever
+    orientation it arrived, with the aspect ratio kept and never upscaled.
+
+    Never upscaling is normalize.ts's rule for the same reason (ADR-0008):
+    there is no detail left to recover, so a bigger draw only buys a softer
+    picture and a bigger file. A capture already inside the caps keeps its own
+    size - re-encoding is about bitrate, not about resolution. */
+export function frameSize(width: number, height: number): { width: number; height: number } {
+  const shortEdge = Math.min(width, height);
+  const longEdge = Math.max(width, height);
+  const scale = Math.min(1, VIDEO_MAX_SHORT_EDGE / shortEdge, VIDEO_MAX_LONG_EDGE / longEdge);
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
 }
 
 /** The rates to re-encode at, or null when the captured file already fits.

@@ -57,12 +57,3 @@
   <!-- svelte-ignore a11y_media_has_caption -->
   <video class="video-note-player" controls preload="metadata" src={url}></video>
 {/if}
-
-<style>
-  .video-note-player {
-    width: 100%;
-    max-height: 40vh;
-    border-radius: var(--radius-md);
-    background: #000;
-  }
-</style>
