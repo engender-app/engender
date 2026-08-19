@@ -6,6 +6,11 @@
      other, since the acceptance criterion this file exists to keep is that
      nothing here reads as "ahead" or "behind" the bands.
 
+     A row whose caller passed no onset window draws no band at all, and
+     draws nothing in its place either (phase 5 ticket 27): an empty track
+     is the literature having nothing to say about that change, and the
+     screen must not turn that into a gap in the person.
+
      Purely a renderer, the same philosophy LineChart states for itself:
      every row's label is resolved by the caller (personalEffectName), and
      the chart adds only its own fixed wording (the legend, the two edge
@@ -21,10 +26,14 @@
   export interface EffectTimelineRow {
     key: string;
     label: string;
-    onset: { start: number; end: number };
-    /** Null when the literature gives no completion window at all. A
-        completion whose own `end` is null is open-ended - "more than N
-        months", rendered as a band that fades out rather than stopping. */
+    /** Null when the literature has nothing to say about this change for
+        this person's regimen (phase 5 ticket 27) - the row still draws its
+        label, its axis and their own marker, and simply carries no band. */
+    onset: { start: number; end: number } | null;
+    /** Null when the literature gives no completion window at all, and
+        always null where `onset` is. A completion whose own `end` is null
+        is open-ended - "more than N months", rendered as a band that fades
+        out rather than stopping. */
     completion: { start: number; end: number | null } | null;
     /** The person's own first-noticed day, or null when not yet marked. */
     markerDay: number | null;
@@ -63,7 +72,7 @@
   let x = $derived.by(() => {
     const candidates = [todayEpochDay, anchorEpochDay + MIN_SPAN_DAYS];
     for (const row of rows) {
-      candidates.push(row.onset.end);
+      if (row.onset) candidates.push(row.onset.end);
       if (row.completion) candidates.push(completionRenderEnd(row.completion));
       if (row.markerDay != null) candidates.push(row.markerDay);
     }
@@ -97,13 +106,15 @@
       <span class="effect-row-label">{row.label}</span>
       <svg class="effect-row-track" viewBox="0 0 {WIDTH} {ROW_H}" preserveAspectRatio="none" aria-hidden="true">
         <line class="track-baseline" x1={P} x2={WIDTH - P} y1={ROW_H / 2} y2={ROW_H / 2} />
-        <rect
-          class="band-onset"
-          x={x(row.onset.start)}
-          y={BAND_Y}
-          width={Math.max(0, x(row.onset.end) - x(row.onset.start))}
-          height={BAND_H}
-        />
+        {#if row.onset}
+          <rect
+            class="band-onset"
+            x={x(row.onset.start)}
+            y={BAND_Y}
+            width={Math.max(0, x(row.onset.end) - x(row.onset.start))}
+            height={BAND_H}
+          />
+        {/if}
         {#if row.completion}
           <rect
             class="band-completion"
