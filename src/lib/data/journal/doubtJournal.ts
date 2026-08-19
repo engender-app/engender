@@ -10,9 +10,11 @@
    entries - is not read through here: it is entries.counterevidencePool
    (phase 5 ticket 14 widened it from a plain tag query,
    entries.entriesWithTag('g-euphoria', …), to a union with starred
-   entries, so a person can curate their own "proof" too). This area only
-   owns what it alone writes: the free-write text, and a snapshot's frozen
-   copy of whatever that query returned at save time. */
+   entries, so a person can curate their own "proof" too; ticket 32 widened
+   the tag query itself to EUPHORIA_TAG_KEYS, all three euphoria tags
+   rather than the general one alone). This area only owns what it alone
+   writes: the free-write text, and a snapshot's frozen copy of whatever
+   that query returned at save time. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { CounterevidenceEntry, CounterevidenceSnapshot, DoubtEntry } from '../types';

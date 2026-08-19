@@ -10,6 +10,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { purgeExpiredTrash, TRASH_WINDOW_DAYS } from './entries.ts';
 import { countingDriver, journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
+import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins.ts';
 
 async function countingJournalWithBuiltIns() {
   const db = await migratedDb();
@@ -563,7 +564,7 @@ test('counterevidencePool unions the tag and starred entries, newest first, with
   await journal.entries.setEntryStarred(starredOnly, true);
   await journal.entries.setEntryStarred(both, true);
 
-  const pool = await journal.entries.counterevidencePool('e-happy', 10);
+  const pool = await journal.entries.counterevidencePool(['e-happy'], 10);
   // `both` carries two tags, so a naive join would return it twice.
   assert.deepEqual(pool.map((e) => e.id), [both, starredOnly, tagOnly]);
 });
@@ -575,5 +576,15 @@ test('counterevidencePool stops at the limit it is given, keeping the newest', a
     await journal.entries.setEntryStarred(id, true);
   }
 
-  assert.equal((await journal.entries.counterevidencePool('e-happy', 2)).length, 2);
+  assert.equal((await journal.entries.counterevidencePool(['e-happy'], 2)).length, 2);
+});
+
+test('counterevidencePool matches any tag id it is given, not just the first', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const social = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['g-soc-eu'] });
+  const body = await journal.entries.upsertEntry({ epochDay: 101, mood: 4, tags: ['g-body-eu'] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 4, tags: ['e-sad'] }); // neither - excluded
+
+  const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
+  assert.deepEqual(pool.map((e) => e.id), [body, social]);
 });
