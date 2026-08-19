@@ -229,12 +229,18 @@ _Avoid_: Pause alone (ambiguous - always a pause in dosing), break, gap (a gap
 is what a dose pause explains), stopping HRT
 
 **Hormone curve**:
-An estradiol curve over the dose log, drawn one of two ways depending on the
-route. Injectable doses on one of the four **injectable esters** get a fitted
-band; oral, sublingual, patch and gel doses get a **qualitative curve** instead,
-because no published fit like the injectable one exists for these routes.
-Nothing about either is stored - both are recomputed from the dose log and the
-regimen episode history on every read. Descriptive, like everything else in
+An estradiol or testosterone curve over the dose log, drawn one of two ways
+depending on how good the published evidence for it is. Injectable estradiol
+doses on one of the four **injectable esters** get a fitted band, because a
+published posterior exists for them. Everything else this app draws at all gets
+a **qualitative curve**: estradiol by any other route, and testosterone by every
+route it is drawn for. The split is by evidence and not by route, which is why
+the two sections on screen are named for it - a testosterone injection sits with
+the shapes, not with the bands. One curve is of one drug: a testosterone dose
+never adds height to an estradiol curve, the two are drawn in their own units,
+and each is calibrated against the reader's own results for that hormone alone.
+Nothing about any of it is stored - all of it is recomputed from the dose log and
+the regimen episode history on every read. Descriptive, like everything else in
 this track: no point on either is a target, an expected level or a normal one.
 _Avoid_: Predicted level, estimated level, simulation (all claim more than
 either curve does), hormone graph
@@ -254,18 +260,60 @@ _Avoid_: Ester alone (that is the free-text field on a regimen episode; this is
 the closed vocabulary read out of it), unsupported ester (nothing is missing -
 the published data is not good enough)
 
+**Injectable testosterone ester**:
+Which testosterone ester a **regimen episode** is on, out of the two this app
+draws a shape for: cypionate and enanthate. Its own closed vocabulary, parallel
+to **injectable ester** and never merged with it - the two drugs share the ester
+words and share the IM and SC routes, so one list covering both would let a
+testosterone dose reach estradiol's parameters. Read from the episode's
+free-text drug and ester fields, the same fail-closed rule ADR-0026 applies to
+an analyte.
+
+What it selects is a **qualitative curve**, never a band, and that is the whole
+point of it being a separate term. No published testosterone fit clears the bar
+the four estradiol esters clear, so nothing here earns a band - and not because
+the fits are loose. Cypionate (Bi et al. 2018, doi:10.1002/psp4.12287) pins the
+average level to about 1.16-fold, tighter than any ester this app draws, and
+undecanoate (Pastuszak et al. 2021, doi:10.1002/jcph.1939) to about 1.3-fold.
+Both fail on what is published around the fit instead. Cypionate publishes only
+marginal confidence intervals, so a band drawn from them would assert an
+independence between parameters its source does not support, and its raw data is
+not published for the posterior to be re-derived. Most of what undecanoate's
+model predicts is endogenous production a transmasculine reader does not have,
+with no published basis for rescaling it. Enanthate's absorption rate is not
+identifiable at all - unestimable in 6 of 10 transmasculine subjects (Ichihara
+et al. 2020, doi:10.1089/andro.2020.0002). `hormoneTestosteroneEster.ts` carries
+the argument ester by ester.
+
+Undecanoate, the Sustanon-type blends and propionate get no curve of any kind.
+Undecanoate is a months-long depot where these two act over a week, a blend is
+four esters whose published curves are composite only, and propionate has no
+usable parameters at all - each needs a shape of its own that nothing here
+argues, and none of them borrows this one in the meantime.
+_Avoid_: Injectable ester (that is estradiol's list; these are never one
+vocabulary), unsupported ester, missing testosterone curve (nothing is missing -
+no published fit is good enough to draw a band, and the shape says so)
+
 **Qualitative curve**:
-A rise/plateau/fall shape over the dose log, for oral, sublingual, patch or gel
-estradiol, with no compartment model or uncertainty math behind it - the
-published fit the **injectable ester** curve rests on does not exist in that
-form for these routes. Always a single line, the opposite of the injectable
-curve's band: it carries no width to claim, because there is no posterior to
-draw one from. Its height means nothing in pg/mL until an optional per-user
-scale factor calibrates it against the reader's own lab results; unfitted, it
-is drawn with no unit at all rather than a number this app cannot back up. On
+A rise/plateau/fall shape over the dose log, with no compartment model or
+uncertainty math behind it - the published fit the **injectable ester** curve
+rests on does not exist in that form for anything drawn this way. Drawn for oral,
+sublingual, patch and gel estradiol, and for testosterone by injection, patch or
+gel. Always a single line, the opposite of the injectable curve's band: it
+carries no width to claim, because there is no posterior to draw one from. Its
+height means nothing in pg/mL or ng/dL until an optional per-user scale factor
+calibrates it against the reader's own lab results for that same hormone;
+unfitted, it is drawn with no unit at all rather than a number this app cannot
+back up.
+
+Which shape a dose gets is decided by whichever of route or ester actually
+determines it: the route for everything topical or swallowed, and the
+**injectable testosterone ester** for an injection, because cypionate and
+enanthate act over a week where undecanoate acts over months. An estradiol
+injection is never drawn this way - it has a real fit and gets the band. On
 screen it is labelled and shaped so it cannot be mistaken for the injectable
-curve's band at a glance - its own heading, a permanent notice on every card, a
-dashed line instead of a filled shape.
+curve's band at a glance - its own heading naming it illustrative, a permanent
+notice on every card, a dashed line instead of a filled shape.
 _Avoid_: Predicted level, estimated level, band, hormone graph (the injectable
 curve's words), hypothetical curve (a different, removed idea - ticket 10's
 undecylate curve was a real fit judged too loose to draw; this has no fit at

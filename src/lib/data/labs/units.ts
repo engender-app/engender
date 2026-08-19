@@ -15,6 +15,15 @@ export const ALLOWED_PREFERRED_UNITS: Record<PreferredUnitAnalyte, readonly stri
   prolactin: ['ng/mL', 'mIU/L']
 };
 
+/** The unit an analyte's allowlist is written around: the first of its allowed
+    units, which every factor table below is expressed relative to. Named rather
+    than indexed at each call site, because "[0] means base" is a convention two
+    unrelated readers had to know - the canonicalizer and the hormone curve,
+    which draws in whatever unit its parameters were published in. */
+export function baseUnitFor(analyte: PreferredUnitAnalyte): string {
+  return ALLOWED_PREFERRED_UNITS[analyte][0];
+}
+
 const FACTORS: Record<PreferredUnitAnalyte, Record<string, number>> = {
   estradiol: {
     'pg/ml': 1,
@@ -87,7 +96,7 @@ export function canonicalizeLabMeasurement(analyte: string, value: number, unit:
   const canonicalUnit = canonicalUnitFor(known, unit);
   if (!canonicalUnit) return { value, unit: normalizeUnit(unit) };
 
-  const baseUnit = ALLOWED_PREFERRED_UNITS[known][0];
+  const baseUnit = baseUnitFor(known);
   const converted = convertLabValue(known, value, canonicalUnit, baseUnit);
   return { value: converted ?? value, unit: baseUnit };
 }

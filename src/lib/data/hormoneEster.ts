@@ -17,6 +17,7 @@
    an accent on them - "walerianian estradiolu" shares no ester word with
    "estradiol valerate". */
 
+import { mentions, normalize, type DrugNames } from './hormoneNameMatch';
 import type { RegimenEpisode } from './types';
 
 /** The esters this app draws. Four, and every one of them has a published
@@ -34,15 +35,7 @@ export const INJECTABLE_ESTERS = ['benzoate', 'valerate', 'cypionate', 'enanthat
 
 export type InjectableEster = (typeof INJECTABLE_ESTERS)[number];
 
-/** Names matched anywhere in the text, and abbreviations matched only as a
-    whole word. "EV" inside a longer word is a coincidence; "walerianian"
-    inside "walerianian estradiolu" is not. */
-interface EsterNames {
-  names: readonly string[];
-  abbreviations: readonly string[];
-}
-
-const ESTER_NAMES: Record<InjectableEster, EsterNames> = {
+const ESTER_NAMES: Record<InjectableEster, DrugNames> = {
   benzoate: { names: ['benzoate', 'benzoesan'], abbreviations: ['eb', 'e2b'] },
   valerate: { names: ['valerate', 'valerianate', 'walerianian'], abbreviations: ['ev', 'e2v'] },
   cypionate: { names: ['cypionate', 'cipionate', 'cypionian'], abbreviations: ['ec', 'e2c'] },
@@ -57,18 +50,6 @@ const ESTER_NAMES: Record<InjectableEster, EsterNames> = {
    the substring test covers them without a list of endings. */
 const ESTRADIOL_NAMES = ['estradiol'] as const;
 const ESTRADIOL_ABBREVIATIONS = ['e2'] as const;
-
-/** Lowercased, with everything that is not a letter or digit turned into a
-    space, so "E2-valerate" and "estradiol (valerate)" read the same. */
-function normalize(text: string): string {
-  return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-}
-
-function mentions(text: string, { names, abbreviations }: EsterNames): boolean {
-  if (names.some((name) => text.includes(name))) return true;
-  const words = text.split(' ');
-  return abbreviations.some((abbreviation) => words.includes(abbreviation));
-}
 
 function esterIn(text: string): InjectableEster | null {
   return INJECTABLE_ESTERS.find((ester) => mentions(text, ESTER_NAMES[ester])) ?? null;

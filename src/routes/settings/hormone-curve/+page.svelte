@@ -22,9 +22,9 @@
   import { CURVE_ANALYTE, CURVE_UNIT, bandRangeAt, latestBandPoint, type EsterCurve } from '$lib/data/hormoneCurve';
   import type { CurveLabPoint } from '$lib/data/journal/hormoneCurve';
   import type { InjectableEster } from '$lib/data/hormoneEster';
-  import { esterLabel } from '$lib/data/vocabulary/hormoneCurveLabels';
   import { latestQualitativeValue, type QualitativeCurve } from '$lib/data/hormoneCurveQualitative';
-  import { routeLabel } from '$lib/data/vocabulary/doseLabels';
+  import { CURVE_DRUGS, curveUnit, type CurveDrug } from '$lib/data/hormoneDrug';
+  import { curveDrugLabel, esterLabel, qualitativeCurveLabel } from '$lib/data/vocabulary/hormoneCurveLabels';
   import { secondaryLabValue } from '$lib/data/labs/units';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { fmtDay, intlLocale } from '$lib/data/dates';
@@ -57,14 +57,51 @@
   );
   let injectableView = $derived(injectableQuery.value ?? null);
 
-  let qualQuery = liveQuery(['dose', 'regimen', 'lab'], (j) =>
-    j.qualitativeCurve.getCurves({
-      fromEpochDay: today - windowDays + 1,
-      toEpochDay: today,
-      fitToOwnLabs: prefs.hormoneCurveFitToOwnLabs
-    })
+  /* One query per hormone, because one call draws one hormone
+     (journal/hormoneCurveQualitative.ts): the unit a curve's height means
+     anything in, the analyte its scale factor is fitted against and the axis
+     its curves may share all differ between the two. CURVE_DRUGS is a closed
+     vocabulary, so these are created once and not in a reactive loop. */
+  const qualQueries = CURVE_DRUGS.map((drug) =>
+    liveQuery(['dose', 'regimen', 'lab'], (j) =>
+      j.qualitativeCurve.getCurves({
+        drug,
+        fromEpochDay: today - windowDays + 1,
+        toEpochDay: today,
+        fitToOwnLabs: prefs.hormoneCurveFitToOwnLabs
+      })
+    )
   );
-  let qualView = $derived(qualQuery.value ?? null);
+  type QualView = NonNullable<(typeof qualQueries)[number]['value']>;
+  let qualLoading = $derived(qualQueries.some((query) => query.loading));
+  /** Whether every hormone's query has actually produced a view. Not the same
+      question as `qualLoading`: a query that failed reports itself done with no
+      value, and the screen must show the skeleton rather than read fields off
+      what is not there. */
+  let qualAnswered = $derived(qualQueries.every((query) => query.value !== undefined));
+  /** Only the hormones with something to draw, so a section appears for a
+      hormone the reader actually takes. */
+  let qualSections = $derived(
+    CURVE_DRUGS.map((drug, i) => ({ drug, view: qualQueries[i].value })).filter(
+      (section): section is { drug: CurveDrug; view: QualView } =>
+        section.view != null && section.view.curves.length > 0
+    )
+  );
+  /* `undefined` and not null: a LiveQuery's value is `T | undefined` until its
+     first result lands, and stays undefined if the query errors
+     (live/journal.svelte.ts). Testing for null here would drop nothing and
+     narrow nothing, and the sums below would then read a field off undefined
+     on that error path. */
+  let qualViews = $derived(
+    qualQueries.map((query) => query.value).filter((view): view is QualView => view !== undefined)
+  );
+  /* Summed across the hormones: these two notes count records the model left
+     out, and a reader wants one number for "doses the curve is missing", not
+     one per hormone. */
+  let qualDosesWithoutMilligrams = $derived(
+    qualViews.reduce((sum, view) => sum + view.dosesWithoutMilligrams, 0)
+  );
+  let qualLabPointsOffAxis = $derived(qualViews.reduce((sum, view) => sum + view.labPointsOffAxis, 0));
 
   /* One scale across every injectable chart, so two esters drawn one under
      the other can be read against each other. Headroom above the tallest
@@ -80,30 +117,38 @@
     return tops.length ? Math.max(...tops) * 1.1 : 400;
   });
 
-  /** A shared scale across the qualitative charts, but only once a fit gives
-      their height a real pg/mL meaning - before that the number on any one
-      curve has nothing to do with the number on another, and sharing a scale
-      would imply a comparison this app has no basis for. Unfitted, each
-      curve is scaled to its own tallest point instead (qualMaxFor). */
-  let qualAxisMax = $derived.by(() => {
-    if (!qualView || qualView.scaleFactor === null) return null;
-    const tops = qualView.curves.flatMap((curve) => curve.points.map((point) => point.value));
-    return tops.length ? Math.max(...tops) * 1.1 : null;
-  });
+  /** A shared scale across one hormone's qualitative charts, but only once a
+      fit gives their height a real meaning in that hormone's unit - before
+      that the number on any one curve has nothing to do with the number on
+      another, and sharing a scale would imply a comparison this app has no
+      basis for. Unfitted, each curve is scaled to its own tallest point
+      instead (qualMaxFor).
 
-  function qualMaxFor(curve: QualitativeCurve): number {
-    if (qualAxisMax !== null) return qualAxisMax;
+      Per hormone rather than across all of them, because the two are drawn in
+      different units: putting a pg/mL curve and a ng/dL curve on one axis
+      would be a comparison with no meaning at all, fit or no fit. */
+  function qualAxisMax(view: QualView): number | null {
+    if (view.scaleFactor === null) return null;
+    const tops = view.curves.flatMap((curve) => curve.points.map((point) => point.value));
+    return tops.length ? Math.max(...tops) * 1.1 : null;
+  }
+
+  function qualMaxFor(view: QualView, curve: QualitativeCurve): number {
+    const shared = qualAxisMax(view);
+    if (shared !== null) return shared;
     const top = Math.max(0, ...curve.points.map((point) => point.value));
     return top > 0 ? top * 1.1 : 1;
   }
 
-  /** Real pg/mL only once a fit has calibrated this curve's amplitude
+  /** A real unit only once a fit has calibrated this curve's amplitude
       against the user's own results (journal/hormoneCurveQualitative.ts) -
       before that, `curve.points` are an invented amplitude with no honest
-      unit at all, and printing "pg/mL" beside one would claim a precision
-      this ticket exists to avoid. Null tells QualitativeCurveChart to draw
-      the shape with no axis numbers. */
-  let qualUnitLabel = $derived(qualView?.scaleFactor !== null ? CURVE_UNIT : null);
+      unit at all, and printing one beside it would claim a precision this
+      ticket exists to avoid. Null tells QualitativeCurveChart to draw the
+      shape with no axis numbers. */
+  function qualUnitLabel(drug: CurveDrug, view: QualView): string | null {
+    return view.scaleFactor !== null ? curveUnit(drug) : null;
+  }
 
   /** Localized, like every other number this app shows (labContextLabel.ts's
       fmtHours): a Polish reader expects "1 234", not "1,234". Bare
@@ -144,14 +189,18 @@
   }
 
   /** The qualitative curve's own reading at the end of the window, only once
-      a fit has given it a real unit - see qualUnitLabel. */
-  function qualLines(curve: QualitativeCurve): { native: string; converted: string | null } | null {
+      a fit has given it a real unit - see qualUnitLabel. In that hormone's own
+      unit, and converted by ADR-0026's allowlist the same way a result of the
+      user's own is: a curve's analyte is the drug it models
+      (hormoneDrug.ts). */
+  function qualLines(drug: CurveDrug, view: QualView, curve: QualitativeCurve): { native: string; converted: string | null } | null {
     const value = latestQualitativeValue(curve);
-    if (value === null || qualUnitLabel === null) return null;
+    const unit = qualUnitLabel(drug, view);
+    if (value === null || unit === null) return null;
 
-    const secondary = secondaryLabValue(CURVE_ANALYTE, value, CURVE_UNIT);
+    const secondary = secondaryLabValue(drug, value, unit);
     return {
-      native: m.curve_value({ value: round(value), unit: CURVE_UNIT }),
+      native: m.curve_value({ value: round(value), unit }),
       converted: secondary ? m.curve_converted({ value: round(secondary.value), unit: secondary.unit }) : null
     };
   }
@@ -180,30 +229,49 @@
   }
 </script>
 
+<!-- The invitation to the dose log, passed only when logging could actually
+     produce a curve. Someone whose doses are all on an ester this screen draws
+     nothing for has already done the thing it would be asking for, and saying
+     so again would put the limit on them rather than on this screen. -->
+{#snippet doseLogAction()}
+  <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
+{/snippet}
+
 <div class="screen">
   <header class="screen-header">
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.curve_title()}</h1>
   </header>
 
-  {#if injectableQuery.loading || qualQuery.loading || !injectableView || !qualView}
+  {#if injectableQuery.loading || qualLoading || !injectableView || !qualAnswered}
     <Skeleton variant="block" count={2} />
-  {:else if injectableView.curves.length === 0 && qualView.curves.length === 0}
+  {:else if injectableView.curves.length === 0 && qualSections.length === 0}
     <!-- One empty state for every way of having no curve at all, across both
          kinds: nothing in the log adds up to either one. -->
-    <EmptyState title={m.curve_empty_title()} text={m.curve_empty_body()}>
-      {#snippet action()}
-        <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
-      {/snippet}
-    </EmptyState>
+    <!-- The invitation to the dose log only when logging could actually produce
+         a curve. Someone whose doses are all on an ester this screen draws
+         nothing for has already done the thing it would be asking for, and
+         saying so again would put the limit on them rather than on this
+         screen. -->
+    {@const futile = injectableView.dosesNoCurveAnywhere > 0}
+    <EmptyState
+      title={m.curve_empty_title()}
+      text={m.curve_empty_body()}
+      action={futile ? undefined : doseLogAction}
+    />
+    {#if futile}
+      <p class="muted small curve-note" data-no-curve-note>
+        {m.curve_no_curve_note({ count: String(injectableView.dosesNoCurveAnywhere) })}
+      </p>
+    {/if}
     {#if injectableView.dosesWithoutMilligrams > 0}
       <p class="muted small curve-note">{m.curve_volume_note({ count: String(injectableView.dosesWithoutMilligrams) })}</p>
     {/if}
     {#if injectableView.labPointsOffAxis > 0}
       <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(injectableView.labPointsOffAxis) })}</p>
     {/if}
-    {#if qualView.dosesWithoutMilligrams > 0}
-      <p class="muted small curve-note">{m.curve_qual_volume_note({ count: String(qualView.dosesWithoutMilligrams) })}</p>
+    {#if qualDosesWithoutMilligrams > 0}
+      <p class="muted small curve-note">{m.curve_qual_volume_note({ count: String(qualDosesWithoutMilligrams) })}</p>
     {/if}
   {:else}
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.curve_intro()}</p>
@@ -293,42 +361,46 @@
       <p class="muted small curve-note">{m.curve_band_note()}</p>
     {/if}
 
-    {#if qualView.curves.length > 0}
+    {#if qualSections.length > 0}
       <h2 class="curve-section-heading">{m.curve_qual_heading()}</h2>
-      {#each qualView.curves as curve (curve.route)}
-        <div class="card curve-card">
-          <div class="qual-card-head">
-            <h3 class="curve-card-heading">{routeLabel(curve.route)}</h3>
-            <span class="qual-notice">{m.curve_qual_notice()}</span>
-          </div>
-
-          <QualitativeCurveChart
-            points={curve.points}
-            max={qualMaxFor(curve)}
-            formatValue={round}
-            unitLabel={qualUnitLabel}
-            ariaLabel={m.curve_qual_chart_aria({
-              route: routeLabel(curve.route),
-              from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
-              to: fmtDay(today, { day: 'numeric', month: 'short' })
-            })}
-          />
-
-          <div class="curve-legend">
-            <span class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</span>
-          </div>
-
-          {#if qualLines(curve)}
-            {@const lines = qualLines(curve)}
-            <div class="curve-readout">
-              <p class="readout-label">
-                {m.curve_qual_readout_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-              </p>
-              <p class="readout-value">{lines!.native}</p>
-              {#if lines!.converted}<p class="muted small">{lines!.converted}</p>{/if}
+      <!-- Keyed by hormone and route together: the same route on the two
+           hormones is two cards, and a key of the route alone would collide. -->
+      {#each qualSections as { drug, view } (drug)}
+        {#each view.curves as curve (curve.key)}
+          {@const lines = qualLines(drug, view, curve)}
+          <div class="card curve-card">
+            <div class="qual-card-head">
+              <h3 class="curve-card-heading">{qualitativeCurveLabel(curve.key)}</h3>
+              <span class="qual-notice">{m.curve_qual_notice()}</span>
             </div>
-          {/if}
-        </div>
+
+            <QualitativeCurveChart
+              points={curve.points}
+              max={qualMaxFor(view, curve)}
+              formatValue={round}
+              unitLabel={qualUnitLabel(drug, view)}
+              ariaLabel={m.curve_qual_chart_aria({
+                curve: qualitativeCurveLabel(curve.key),
+                from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
+                to: fmtDay(today, { day: 'numeric', month: 'short' })
+              })}
+            />
+
+            <div class="curve-legend">
+              <span class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</span>
+            </div>
+
+            {#if lines}
+              <div class="curve-readout">
+                <p class="readout-label">
+                  {m.curve_qual_readout_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+                </p>
+                <p class="readout-value">{lines.native}</p>
+                {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
+              </div>
+            {/if}
+          </div>
+        {/each}
       {/each}
 
       <p class="muted small curve-note">{m.curve_qual_note()}</p>
@@ -357,16 +429,25 @@
         {/if}
       </p>
     {/if}
-    {#if prefs.hormoneCurveFitToOwnLabs && qualView.curves.length > 0}
-      <p class="muted small curve-note" data-qual-fit-status aria-live="polite">
-        {#if qualView.scaleFactor !== null}
-          {m.curve_qual_fit_applied({ count: String(qualView.fitPointCount), factor: qualView.scaleFactor.toFixed(2) })}
-        {:else if qualView.dosesWithoutMilligrams > 0}
-          {m.curve_qual_fit_incomplete()}
-        {:else}
-          {m.curve_fit_no_points()}
-        {/if}
-      </p>
+    {#if prefs.hormoneCurveFitToOwnLabs}
+      <!-- One line per hormone drawn, each naming its own: two hormones are
+           fitted separately, against their own analyte and in their own unit,
+           so two unlabelled lines would read as one contradicting itself. -->
+      {#each qualSections as { drug, view } (drug)}
+        <p class="muted small curve-note" data-qual-fit-status={drug} aria-live="polite">
+          {#if view.scaleFactor !== null}
+            {m.curve_qual_fit_applied({
+              drug: curveDrugLabel(drug),
+              count: String(view.fitPointCount),
+              factor: view.scaleFactor.toFixed(2)
+            })}
+          {:else if view.dosesWithoutMilligrams > 0}
+            {m.curve_qual_fit_incomplete({ drug: curveDrugLabel(drug) })}
+          {:else}
+            {m.curve_qual_fit_no_points({ drug: curveDrugLabel(drug) })}
+          {/if}
+        </p>
+      {/each}
     {/if}
 
     {#if injectableView.dosesWithoutMilligrams > 0}
@@ -378,13 +459,22 @@
     {#if injectableView.subcutaneousDoses > 0}
       <p class="muted small curve-note">{m.curve_sc_note({ count: String(injectableView.subcutaneousDoses) })}</p>
     {/if}
-    {#if qualView.dosesWithoutMilligrams > 0}
-      <p class="muted small curve-note">{m.curve_qual_volume_note({ count: String(qualView.dosesWithoutMilligrams) })}</p>
+    <!-- Also on the populated screen, not only when nothing drew: someone with
+         an estradiol curve and undecanoate injections beside it would otherwise
+         watch those doses vanish without a word. -->
+    {#if injectableView.dosesNoCurveAnywhere > 0}
+      <p class="muted small curve-note" data-no-curve-note>
+        {m.curve_no_curve_note({ count: String(injectableView.dosesNoCurveAnywhere) })}
+      </p>
     {/if}
-    {#if qualView.labPointsOffAxis > 0}
-      <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(qualView.labPointsOffAxis) })}</p>
+    {#if qualDosesWithoutMilligrams > 0}
+      <p class="muted small curve-note">{m.curve_qual_volume_note({ count: String(qualDosesWithoutMilligrams) })}</p>
+    {/if}
+    {#if qualLabPointsOffAxis > 0}
+      <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(qualLabPointsOffAxis) })}</p>
     {/if}
 
+    <p class="muted small curve-note" data-evidence-note>{m.curve_evidence_note()}</p>
     {#if injectableView.curves.length > 0}
       <p class="muted small curve-note">{m.curve_source()}</p>
     {/if}
