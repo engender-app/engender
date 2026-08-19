@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { startOfDayTimestamp } from './epochDay.ts';
+import { esterCurves } from './hormoneCurve.ts';
+import { qualitativeCurves } from './hormoneCurveQualitative.ts';
+import type { DoseEvent, RegimenEpisode } from './types.ts';
 import { isTestosteroneDrug } from './hormoneTestosteroneEster.ts';
 
 test('isTestosteroneDrug answers the drug-identity question, in both catalogue languages', () => {
@@ -40,4 +44,44 @@ test('another androgen is not testosterone, however close its name or its route'
   assert.equal(isTestosteroneDrug('boldenone undecylenate'), false);
   assert.equal(isTestosteroneDrug('methyltestosterone'), false);
   assert.equal(isTestosteroneDrug('metylotestosteron'), false);
+});
+
+test('an injectable testosterone dose draws nothing, in either model', () => {
+  /* Phase 5 ticket 01's fail-closed outcome, pinned so it cannot be lost by
+     accident. No published testosterone fit clears the bar the four estradiol
+     esters clear (see this module's header), and ticket 01 reserves the
+     qualitative curve for non-injectable routes - so an injection of
+     testosterone resolves to no curve at all rather than to a band built from
+     estradiol's parameters or a shape standing in for one. */
+  const episodes: RegimenEpisode[] = [
+    {
+      id: 'ep',
+      drug: 'testosterone',
+      ester: 'cypionate',
+      dose: 100,
+      doseUnit: 'mg',
+      route: 'IM',
+      interval: 'every 7 days',
+      startEpochDay: -100,
+      hidden: false
+    }
+  ];
+  const doses: DoseEvent[] = [0, 7, 14].map((day) => ({
+    id: `d${day}`,
+    timestamp: startOfDayTimestamp(day) + 8 * 3600000,
+    dose: 100,
+    doseUnit: 'mg',
+    status: 'taken',
+    scheduled: null,
+    route: 'im',
+    injectionSite: null,
+    vehicle: 'oil'
+  }));
+  const window = { doses, episodes, fromEpochDay: 0, toEpochDay: 20 };
+
+  // The estradiol band: the drug gate refuses it, ester word notwithstanding.
+  assert.deepEqual(esterCurves(window).curves, []);
+  // The qualitative shape: injectable routes are not in either drug's list.
+  assert.deepEqual(qualitativeCurves({ ...window, drug: 'testosterone' }).curves, []);
+  assert.deepEqual(qualitativeCurves({ ...window, drug: 'estradiol' }).curves, []);
 });

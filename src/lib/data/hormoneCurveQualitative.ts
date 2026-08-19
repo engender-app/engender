@@ -48,13 +48,27 @@ export type QualitativeRoute = (typeof QUALITATIVE_ROUTES)[number];
 
     Testosterone gets gel and nothing else. A testosterone gel is applied once
     a day and absorbed off the skin over that day, which is the same story the
-    gel shape was invented for, so it reuses that shape unchanged. The other
-    three are not testosterone's: a testosterone patch is changed daily where
-    this patch shape is a multi-day depot, oral testosterone undecanoate is a
-    lymphatic-absorption story with a food dependency that no trapezoid here
-    describes, and sublingual testosterone is not a route in use. Each of those
-    gets no curve, the same fail-closed answer an ester outside the vocabulary
-    gets. */
+    gel shape was invented for, so it reuses that shape unchanged.
+
+    The other three are not testosterone's. Oral testosterone undecanoate is a
+    lymphatic-absorption story with a food dependency no trapezoid here
+    describes - meal fat alone moves its average level 2.4-fold - and
+    sublingual testosterone is not a route in use. A testosterone patch is
+    changed daily where this patch shape is a multi-day depot, so borrowing it
+    would draw something wrong rather than something rough. That last one is a
+    scope decision and not a shortage of evidence: the 2011 Androderm label
+    (FDA NDA 020489 s025, a US government work) publishes an observed mean
+    concentration-time table good enough to argue a daily shape from, and a
+    later ticket wanting a testosterone patch curve should start there rather
+    than from this table. Adding it means a shape per hormone and route, not
+    per route as here.
+
+    Injectable testosterone gets nothing at all, which is ticket 01's own
+    answer rather than an omission: no published testosterone fit clears the
+    band bar (hormoneTestosteroneEster.ts argues each ester), and the ticket
+    reserves this curve for the non-injectable routes. So an injection of
+    testosterone resolves to no curve rather than to a shape standing in for a
+    band, and hormoneTestosteroneEster.test.ts pins that. */
 export const QUALITATIVE_ROUTES_BY_DRUG = {
   estradiol: ['oral', 'sublingual', 'patch', 'gel'],
   testosterone: ['gel']
