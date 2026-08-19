@@ -1318,14 +1318,14 @@ CREATE TABLE dose_schedule_dose_amount (
    `enabled` rather than tag_group's fuller shape.
 
    `personal_effect_type` gives an effect its own vocabulary row, the
-   `key` nullable / `uuid` nullable / builtIn-when-key-is-not-null shape
-   `body_region` uses (v32): a built-in's `name` stays '' and is looked up
-   by key at display time, a custom's `uuid` doubles as its `key` per this
-   ticket's own scope. `category_key` is nullable - a custom effect may be
-   added uncategorised - and `direction` is nullable for the same reason:
-   only a built-in's direction is a claim from the source material, and a
-   custom effect gets no direction pushed onto it that nobody asked it to
-   have.
+   `key` NOT NULL / `uuid` nullable / is_built_in-when-uuid-is-null shape
+   `measurement_type` uses (v34): a built-in's `name` stays '' and is
+   looked up by key at display time, a custom's minted uuid doubles as
+   both columns, exactly this ticket's own scope text. `category_key` is
+   nullable - a custom effect may be added uncategorised - and `direction`
+   is nullable for the same reason: only a built-in's direction is a claim
+   from the source material, and a custom effect gets no direction pushed
+   onto it that nobody asked it to have.
 
    `personal_effect.effect` cannot keep v19's CHECK once the catalogue is
    open past its eight named keys to whatever `personal_effect_type` grows
@@ -1346,8 +1346,9 @@ CREATE TABLE effect_category (
 CREATE TABLE personal_effect_type (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid         TEXT UNIQUE,
-  key          TEXT UNIQUE,
+  key          TEXT NOT NULL UNIQUE,
   name         TEXT NOT NULL DEFAULT '',
+  is_built_in  INTEGER NOT NULL DEFAULT 0,
   category_key TEXT REFERENCES effect_category(key),
   direction    TEXT CHECK (direction IN ('feminizing', 'masculinizing') OR direction IS NULL),
   hidden       INTEGER NOT NULL DEFAULT 0,
