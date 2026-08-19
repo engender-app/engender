@@ -96,6 +96,17 @@ export const BUILT_IN_TAG_GROUPS = [
 export type BuiltInTagGroupKey = (typeof BUILT_IN_TAG_GROUPS)[number]['key'];
 export type BuiltInTagKey = (typeof BUILT_IN_TAG_GROUPS)[number]['tags'][number];
 
+/* The four measurement types every install started with (phase 4 ticket
+   08), now the built-in half of an open vocabulary (phase 5 ticket 29):
+   waist, hips, chest/bust and underbust. Weight and height are
+   deliberately absent - the two most commonly requested, and the two
+   most likely to pull a BMI calculation in behind them - a person who
+   wants them adds them as custom types, same as anything else this list
+   does not name. */
+export const BUILT_IN_MEASUREMENT_TYPES = [{ key: 'waist' }, { key: 'hips' }, { key: 'chest' }, { key: 'underbust' }] as const;
+
+export type BuiltInMeasurementTypeKey = (typeof BUILT_IN_MEASUREMENT_TYPES)[number]['key'];
+
 /* The check-in's built-in affirmation pool (phase 5 ticket 15). Fourteen
    stable keys, one per line the message catalogue carries
    (messages/en.json, messages/pl.json) - the wording is looked up by key at

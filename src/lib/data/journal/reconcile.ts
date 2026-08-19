@@ -15,6 +15,7 @@ import {
   BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_BODY_REGIONS,
   BUILT_IN_DIMENSIONS,
+  BUILT_IN_MEASUREMENT_TYPES,
   BUILT_IN_PRESETS,
   BUILT_IN_TAG_GROUPS
 } from '../vocabulary/builtins';
@@ -26,7 +27,14 @@ import { now } from './support';
     invalidation (ticket 28). Reconciling usually finds nothing to do, and
     announcing these three tables for a no-op is cheaper than asking it to
     report what it actually changed. */
-export const RECONCILE_TABLES: TableName[] = ['tag', 'dimension', 'preset', 'affirmation', 'bodyRegion'];
+export const RECONCILE_TABLES: TableName[] = [
+  'tag',
+  'dimension',
+  'preset',
+  'affirmation',
+  'bodyRegion',
+  'measurementType'
+];
 
 async function presentKeys(driver: SqliteDriver, table: string): Promise<Set<string>> {
   const rows = await driver.query<{ key: string }>(`SELECT key FROM ${table} WHERE key IS NOT NULL`);
@@ -102,5 +110,14 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
   for (const key of BUILT_IN_BODY_REGIONS) {
     if (bodyRegionKeys.has(key)) continue;
     await driver.run(`INSERT INTO body_region (key, name, updated_at) VALUES (?, '', ?)`, [key, ts]);
+  }
+
+  const measurementTypeKeys = await presentKeys(driver, 'measurement_type');
+  for (const t of BUILT_IN_MEASUREMENT_TYPES) {
+    if (measurementTypeKeys.has(t.key)) continue;
+    await driver.run(`INSERT INTO measurement_type (key, name, is_built_in, updated_at) VALUES (?, '', 1, ?)`, [
+      t.key,
+      ts
+    ]);
   }
 }

@@ -272,6 +272,43 @@ test('measurements update by id, throw on unknown ids and delete idempotently', 
   assert.deepEqual(await journal.measurements.getMeasurements('waist'), []);
 });
 
+/* measurement types (phase 5 ticket 29) */
+
+test('a custom measurement type gets a minted key and reads back; built-ins are marked', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const created = await journal.measurements.addCustomMeasurementType('Shoulders');
+
+  const types = await journal.measurements.getMeasurementTypes();
+  assert.deepEqual(types.find((t) => t.key === created.key), {
+    key: created.key,
+    name: 'Shoulders',
+    builtIn: false,
+    hidden: false
+  });
+  assert.equal(types.find((t) => t.key === 'waist')?.builtIn, true);
+});
+
+test('measurement types hide rather than delete, and their logged rows survive hiding', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 80, unit: 'cm' });
+
+  await journal.measurements.setMeasurementTypeHidden('waist', true);
+
+  assert.equal((await journal.measurements.getMeasurementTypes()).find((t) => t.key === 'waist')?.hidden, true);
+  assert.deepEqual((await journal.measurements.getMeasurements('waist')).map((m) => m.id), [id]);
+  assert.ok(!('deleteMeasurementType' in journal.measurements), 'no delete operation exists');
+  await assert.rejects(journal.measurements.setMeasurementTypeHidden('nope', true), /unknown measurement type/);
+});
+
+test('a custom measurement type hides on the same terms as a built-in', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const created = await journal.measurements.addCustomMeasurementType('Shoulders');
+
+  await journal.measurements.setMeasurementTypeHidden(created.key, true);
+
+  assert.equal((await journal.measurements.getMeasurementTypes()).find((t) => t.key === created.key)?.hidden, true);
+});
+
 /* lab draw context (phase 4 ticket 03) */
 
 const DRAW_DAY = 20000;

@@ -20,6 +20,8 @@ async function populated() {
   const tag = await journal.tags.addTag(group.key, 'endo');
   await journal.tags.setTagHidden('a-work', true);
   await journal.tags.renameTag('a-therapy', 'therapy session');
+  const measurementType = await journal.measurements.addCustomMeasurementType('Shoulders');
+  await journal.measurements.setMeasurementTypeHidden('hips', true);
 
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
@@ -153,6 +155,7 @@ async function populated() {
     milestonePhoto,
     lab,
     measurement,
+    measurementType,
     tally,
     contextLab,
     reminder,
@@ -236,6 +239,20 @@ test('built-in rows travel by key and custom rows by uuid (ADR-0002)', async () 
   const appointments = snapshot.journal.tagGroups.find((g) => g.key === group.key)!;
   assert.equal(appointments.builtIn, false);
   assert.deepEqual(appointments.tags, [{ id: tag.id, label: 'endo', builtIn: false, hidden: false }]);
+});
+
+test('a custom measurement type travels by uuid and a hidden built-in travels hidden (phase 5 ticket 29)', async () => {
+  const { journal, measurementType } = await populated();
+
+  const snapshot = await journal.archive.snapshot();
+
+  const waist = snapshot.journal.measurementTypes.find((t) => t.key === 'waist')!;
+  assert.equal(waist.builtIn, true);
+  assert.equal(waist.hidden, false);
+  const hips = snapshot.journal.measurementTypes.find((t) => t.key === 'hips')!;
+  assert.equal(hips.hidden, true);
+  const custom = snapshot.journal.measurementTypes.find((t) => t.key === measurementType.key)!;
+  assert.deepEqual(custom, { key: measurementType.key, name: 'Shoulders', builtIn: false, hidden: false });
 });
 
 test('the state a user put on a built-in row travels with it', async () => {
@@ -581,6 +598,7 @@ const CARRIED: Record<string, string[]> = {
     'timing_day_of_interval'
   ],
   measurement: ['uuid', 'epoch_day', 'type', 'value', 'unit'],
+  measurement_type: ['uuid', 'key', 'name', 'is_built_in', 'hidden'],
   tally_event: ['uuid', 'epoch_day', 'kind', 'context'],
   regimen_episode: ['uuid', 'drug', 'ester', 'dose', 'dose_unit', 'route', 'interval', 'start_epoch_day', 'hidden'],
   dose_event: [

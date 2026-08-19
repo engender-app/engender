@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 33);
+  assert.equal(db.getUserVersion(), 34);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -32,6 +32,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'hair_stage',
     'lab_result',
     'measurement',
+    'measurement_type',
     'medication_stock',
     'milestone',
     'personal_effect',
@@ -217,7 +218,7 @@ test('reminder shape: one-off needs epoch_day, EVERY_N_DAYS needs interval and a
   );
 });
 
-test('v5 measurement carries no episode reference and rejects a type outside the fixed four', async () => {
+test('v5 measurement carries no episode reference; v34 opens its type past the built-in four', async () => {
   const db = await migratedDb();
   const columns = (db.raw.prepare('PRAGMA table_info(measurement)').all() as Array<{ name: string }>).map(
     (c) => c.name
@@ -227,8 +228,29 @@ test('v5 measurement carries no episode reference and rejects a type outside the
   assert.doesNotThrow(() =>
     db.raw.exec("INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m1', 100, 'waist', 79, 'cm', 1000)")
   );
-  assert.throws(() =>
+  // The v5 CHECK enumerated four types; v34 drops it, so a custom type's
+  // minted uuid (or, as here, any other key) inserts cleanly.
+  assert.doesNotThrow(() =>
     db.raw.exec("INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m2', 100, 'thigh', 50, 'cm', 1000)")
+  );
+});
+
+test('v34 gives measurement_type the same key NOT NULL / uuid nullable shape gender_dimension has', async () => {
+  const db = await migratedDb();
+  const columns = (db.raw.prepare('PRAGMA table_info(measurement_type)').all() as Array<{
+    name: string;
+    notnull: number;
+  }>).map((c) => ({ name: c.name, notnull: c.notnull }));
+  assert.ok(columns.some((c) => c.name === 'key' && c.notnull === 1), 'key must be NOT NULL');
+  assert.ok(columns.some((c) => c.name === 'uuid' && c.notnull === 0), 'uuid must be nullable');
+
+  assert.doesNotThrow(() =>
+    db.raw.exec("INSERT INTO measurement_type (key, name, is_built_in, updated_at) VALUES ('waist', '', 1, 1000)")
+  );
+  assert.doesNotThrow(() =>
+    db.raw.exec(
+      "INSERT INTO measurement_type (uuid, key, name, is_built_in, updated_at) VALUES ('u1', 'u1', 'Shoulders', 0, 1000)"
+    )
   );
 });
 
@@ -285,7 +307,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 33);
+  assert.equal(db.getUserVersion(), 34);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -306,6 +328,35 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   assert.throws(() =>
     db.raw.exec(
       "INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe-bad', 'not_a_real_effect', 100, 1000)"
+    )
+  );
+});
+
+test('v34 drops the CHECK on measurement.type, preserving rows the v5 table already held', async () => {
+  const preV34 = migrations.filter((m) => m.version <= 5);
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), preV34);
+  db.raw.exec(
+    "INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m1', 19180, 'waist', 78, 'cm', 1000)"
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), 34);
+
+  const row = db.raw.prepare('SELECT * FROM measurement WHERE uuid = ?').get('m1') as {
+    type: string;
+    value: number;
+    unit: string;
+  };
+  assert.deepEqual(row.type, 'waist');
+  assert.equal(row.value, 78);
+  assert.equal(row.unit, 'cm');
+
+  // The CHECK is gone: a key that was never in the closed set - including
+  // one shaped like a custom type's minted uuid - now inserts cleanly.
+  assert.doesNotThrow(() =>
+    db.raw.exec(
+      "INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m2', 19180, 'a1b2c3d4-uuid', 30, 'cm', 1000)"
     )
   );
 });

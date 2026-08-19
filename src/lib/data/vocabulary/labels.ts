@@ -16,6 +16,7 @@ import type {
   BuiltInAffirmationKey,
   BuiltInBodyRegionKey,
   BuiltInDimensionKey,
+  BuiltInMeasurementTypeKey,
   BuiltInPresetKey,
   BuiltInTagGroupKey,
   BuiltInTagKey,
@@ -26,7 +27,6 @@ import type {
 import type {
   CycleEventKind,
   HairRemovalMethod,
-  Measurement,
   NorwoodHamiltonStage,
   PersonalEffectType,
   TryoutKind
@@ -69,19 +69,17 @@ const MOOD_NAME: Message[] = [m.mood_1, m.mood_2, m.mood_3, m.mood_4, m.mood_5];
 /** The name of a mood, 1 to 5. */
 export const moodName = (value: number): string => MOOD_NAME[value - 1]?.() ?? String(value);
 
-/* A measurement's type (phase 4 ticket 08) is a fixed set of four, not a
-   built-in row - there is nothing to seed and nothing to hide - but the
-   name is still wording that changes with the language, so it lives here
-   like severity's does. */
-const MEASUREMENT_TYPE_NAME: Record<Measurement['type'], Message> = {
+/* A measurement type's four built-ins (phase 4 ticket 08, opened to a
+   custom one in phase 5 ticket 29) - keys only, the same "data lives in
+   builtins.ts, wording lives here" split every other built-in gets. A
+   custom type's name is never looked up here; it is the stored row's own
+   name, the same split GenderDimension's name gets (vocabulary.ts). */
+const MEASUREMENT_TYPE_NAME: Record<BuiltInMeasurementTypeKey, Message> = {
   waist: m.measurement_type_waist,
   hips: m.measurement_type_hips,
   chest: m.measurement_type_chest,
   underbust: m.measurement_type_underbust
 };
-
-/** The name of a measurement type. */
-export const measurementTypeName = (type: Measurement['type']): string => MEASUREMENT_TYPE_NAME[type]();
 
 /* The eight personal effect markers (phase 4 ticket 07, widened by phase 5
    ticket 02) are a fixed set, not a built-in row, the same reasoning
@@ -342,6 +340,11 @@ export const tagLabels = (key: string): string[] => {
   const message = (TAG_LABEL as Record<string, Message | undefined>)[key];
   return message ? [message({}, { locale: 'en' }), message({}, { locale: 'pl' })] : [key];
 };
+/** The name of a built-in measurement type. Never called for a custom
+    one - vocabulary.ts reads a custom's name from its own stored row -
+    but falls back to the key like dimensionName does, for a built-in
+    key a newer build seeded that this one does not know the wording of. */
+export const measurementTypeName = (key: string) => lookup(MEASUREMENT_TYPE_NAME, key);
 export const milestoneTemplateName = (key: string) => lookup(TEMPLATE_NAME, key);
 export const bodyRegionName = (key: string) => lookup(BODY_REGION_NAME, key);
 export const entryTemplateName = (key: string) => lookup(ENTRY_TEMPLATE_NAME, key);

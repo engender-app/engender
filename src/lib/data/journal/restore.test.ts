@@ -53,6 +53,8 @@ async function populated() {
   await journal.tags.renameTag('a-therapy', 'therapy session');
   await journal.tags.setGroupEnabled('activities', false);
   await journal.dimensions.setDimensionHidden('masculinity', true);
+  const measurementType = await journal.measurements.addCustomMeasurementType('Shoulders');
+  await journal.measurements.setMeasurementTypeHidden('underbust', true);
 
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
@@ -155,6 +157,7 @@ async function populated() {
     group,
     tag,
     sharedGroupTag,
+    measurementType,
     photo,
     recording,
     milestone,
@@ -448,6 +451,7 @@ test("replace installs the archive's journal and discards this device's", async 
     max: 5
   });
   const myMilestone = await target.journal.milestones.upsertMilestone({ name: 'mine', epochDay: 19500 });
+  const myMeasurementType = await target.journal.measurements.addCustomMeasurementType('Mine');
   await target.journal.tally.log({ epochDay: 19500, kind: 'correctly_gendered' });
   await target.journal.doubtJournal.addEntry({ epochDay: 19500, text: 'mine' });
   const myTryout = await target.journal.tryouts.upsertTryout({
@@ -476,6 +480,14 @@ test("replace installs the archive's journal and discards this device's", async 
   const dimensions = await target.journal.dimensions.getDimensions();
   assert.equal(dimensions.some((d) => d.key === myDimension.key), false, 'a custom dimension this device had is gone');
   assert.ok(dimensions.some((d) => d.key === source.voice.key), "the archive's custom dimension is here");
+  const measurementTypes = await target.journal.measurements.getMeasurementTypes();
+  assert.equal(
+    measurementTypes.some((t) => t.key === myMeasurementType.key),
+    false,
+    "a custom measurement type this device had is gone"
+  );
+  assert.ok(measurementTypes.some((t) => t.key === source.measurementType.key), "the archive's custom measurement type is here");
+  assert.equal(measurementTypes.find((t) => t.key === 'underbust')?.hidden, true, "the archive's hidden built-in stays hidden");
   assert.equal((await target.journal.entries.entriesForDay(20000)).length, 1);
   assert.equal((await target.journal.milestones.getMilestones()).length, 1);
 });
@@ -496,6 +508,8 @@ test('replace keeps built-in rows by key rather than deleting them, and never du
   assert.equal(presets.filter((p) => p.id === 'p-btw').length, 1);
   assert.deepEqual(presets.find((p) => p.id === 'p-btw')?.dims, ['euphoria_dysphoria', 'femininity']);
   assert.deepEqual(presets.find((p) => p.id === source.preset.id)?.dims, [source.voice.key, 'femininity']);
+  const measurementTypes = await target.journal.measurements.getMeasurementTypes();
+  assert.equal(measurementTypes.filter((t) => t.key === 'waist').length, 1);
 });
 
 test('merge does not duplicate built-ins either, however they arrived', async () => {
@@ -508,6 +522,7 @@ test('merge does not duplicate built-ins either, however they arrived', async ()
   assert.equal(await rowCount(target.db, "tag WHERE key = 'e-happy'"), 1);
   assert.equal(await rowCount(target.db, "tag_group WHERE key = 'activities'"), 1);
   assert.equal(await rowCount(target.db, "gender_preset WHERE key = 'p-nb'"), 1);
+  assert.equal(await rowCount(target.db, "measurement_type WHERE key = 'waist'"), 1);
   assert.equal(
     await rowCount(target.db, 'preset_dimension'),
     BUILT_IN_PRESETS.reduce((sum, preset) => sum + preset.dims.length, 0) + 2

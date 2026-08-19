@@ -122,7 +122,7 @@ test('reconciling built-ins announces the reference tables it may have filled', 
 
   await journal.reconcileBuiltIns();
 
-  assert.deepEqual(announced, [['tag', 'dimension', 'preset', 'affirmation', 'bodyRegion']]);
+  assert.deepEqual(announced, [['tag', 'dimension', 'preset', 'affirmation', 'bodyRegion', 'measurementType']]);
 });
 
 test('an import announces every table, because a restore rewrites the journal', async () => {

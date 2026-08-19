@@ -1,10 +1,9 @@
 /* The literature's onset/completion windows for the personal effects
    timeline's eight markers, and the pure arithmetic that turns them into
    epoch-day bands against a given anchor. No journal, no clock, no
-   paraglide (ADR-0016): a window is a fixed fact about the literature, the
-   same way MEASUREMENT_TYPES is a fixed fact about what a measurement can
-   be, and converting one to a concrete band needs only the anchor day it
-   is asked about - not a live read of anything.
+   paraglide (ADR-0016): a window is a fixed fact about the literature,
+   and converting one to a concrete band needs only the anchor day it is
+   asked about - not a live read of anything.
 
    The four feminizing markers (phase 4 ticket 07) come from the
    feminizing time-course table in Hembree WC et al., "Endocrine Treatment
