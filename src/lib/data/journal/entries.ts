@@ -123,14 +123,16 @@ export interface EntriesArea {
       (ADR-0002). An unknown id yields nothing rather than throwing - this
       is a read. */
   entriesWithTag(tagId: string, limit: number): Promise<Entry[]>;
-  /** Entries carrying `tagId` or starred (CONTEXT: "Starred"), newest
-      first, at most `limit` of them - the doubt journal's counterevidence
-      pool (ticket 14 widened this from a tag-only query so a person can
-      curate their own "proof" rather than relying solely on whatever
-      happened to get the tag). Not folded into entriesWithTag itself: that
+  /** Entries carrying any of `tagIds` or starred (CONTEXT: "Starred"),
+      newest first, at most `limit` of them - the doubt journal's
+      counterevidence pool (ticket 14 widened this from a tag-only query so
+      a person can curate their own "proof" rather than relying solely on
+      whatever happened to get the tag; ticket 32 widened `tagId` to
+      `tagIds` so the caller can pass all three euphoria tags rather than
+      just the general one). Not folded into entriesWithTag itself: that
       one is also the stats screen's tag-insight query, for an arbitrary
       tag, and starred entries have no business surfacing there. */
-  counterevidencePool(tagId: string, limit: number): Promise<Entry[]>;
+  counterevidencePool(tagIds: readonly string[], limit: number): Promise<Entry[]>;
   /** Notes matching the query, unioned with the entries carrying any of
       `matchingTagIds`, newest first (ADR-0005, PRD F19).
 
@@ -605,14 +607,15 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       return hydrate(rows);
     },
 
-    async counterevidencePool(tagId, limit) {
+    async counterevidencePool(tagIds, limit) {
       // EXISTS rather than a JOIN: a starred entry carrying several other
       // tags would otherwise arrive once per tag row, since the tag match
       // itself has to live in the WHERE clause (an entry need not carry
-      // `tagId` at all to qualify here) rather than the JOIN condition.
-      // Trashed entries are excluded the same way every other read here is
-      // (phase 5 ticket 19) - a trashed entry is not counterevidence for
-      // anything until it is restored.
+      // any of `tagIds` at all to qualify here) rather than the JOIN
+      // condition. Trashed entries are excluded the same way every other
+      // read here is (phase 5 ticket 19) - a trashed entry is not
+      // counterevidence for anything until it is restored.
+      const placeholders = tagIds.map(() => '?').join(', ');
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
          WHERE e.trashed_at IS NULL
@@ -620,12 +623,12 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
              e.starred = 1
              OR EXISTS (
                SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
-               WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) = ?
+               WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) IN (${placeholders})
              )
            )
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
-        [tagId, limit]
+        [...tagIds, limit]
       );
       return hydrate(rows);
     },
