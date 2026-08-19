@@ -271,13 +271,19 @@ an analyte.
 
 What it selects is a **qualitative curve**, never a band, and that is the whole
 point of it being a separate term. No published testosterone fit clears the bar
-the four estradiol esters clear, so nothing here earns a band: cypionate and
-undecanoate both pin the average level about as tightly as those four, and both
-fail on what is published around the fit rather than on its width - cypionate
-publishes only marginal confidence intervals, so a band drawn from them would
-assert an independence between parameters its source does not support, and most
-of what undecanoate's model predicts is endogenous production a transmasculine
-reader does not have. Enanthate's absorption rate is not identifiable at all.
+the four estradiol esters clear, so nothing here earns a band - and not because
+the fits are loose. Cypionate (Bi et al. 2018, doi:10.1002/psp4.12287) pins the
+average level to about 1.16-fold, tighter than any ester this app draws, and
+undecanoate (Pastuszak et al. 2021, doi:10.1002/jcph.1939) to about 1.3-fold.
+Both fail on what is published around the fit instead. Cypionate publishes only
+marginal confidence intervals, so a band drawn from them would assert an
+independence between parameters its source does not support, and its raw data is
+not published for the posterior to be re-derived. Most of what undecanoate's
+model predicts is endogenous production a transmasculine reader does not have,
+with no published basis for rescaling it. Enanthate's absorption rate is not
+identifiable at all - unestimable in 6 of 10 transmasculine subjects (Ichihara
+et al. 2020, doi:10.1089/andro.2020.0002). `hormoneTestosteroneEster.ts` carries
+the argument ester by ester.
 
 Undecanoate, the Sustanon-type blends and propionate get no curve of any kind.
 Undecanoate is a months-long depot where these two act over a week, a blend is

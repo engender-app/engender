@@ -64,12 +64,6 @@ export const QUALITATIVE_CURVE_KEYS = [
 
 export type QualitativeCurveKey = (typeof QUALITATIVE_CURVE_KEYS)[number];
 
-/** Which hormone a key belongs to, read off the key rather than stored beside
-    it so the two cannot disagree. */
-export function drugOfKey(key: QualitativeCurveKey): CurveDrug {
-  return key.split(':')[0] as CurveDrug;
-}
-
 interface ShapeParams {
   riseHours: number;
   plateauHours: number;
@@ -253,9 +247,13 @@ export function qualitativeCurves(input: QualitativeCurveInput): QualitativeCurv
 
     /* The asked-for hormone and no other. A dose of one must never add height
        to the other's curve, which is the whole reason the two ester
-       vocabularies are kept apart. */
+       vocabularies are kept apart. Asked before the key is resolved, so the
+       hormone is read from the episode once rather than encoded into a string
+       and parsed back out. */
+    if (resolveCurveDrug(episode.drug) !== drug) continue;
+
     const key = resolveQualitativeKey(episode, dose.route);
-    if (!key || drugOfKey(key) !== drug) continue;
+    if (!key) continue;
 
     const milligrams = doseMilligrams(dose.dose, dose.doseUnit);
     if (milligrams === null) {
@@ -329,18 +327,30 @@ export function latestQualitativeValue(curve: QualitativeCurve): number | null {
     invitation would be asking someone to do again what they have already done.
 
     Counts doses, not esters, because that is what the reader recognizes: they
-    know how many injections they gave, not how many vocabularies missed. */
+    know how many injections they gave, not how many vocabularies missed.
+
+    Here rather than beside the band it also asks about, because hormoneCurve.ts
+    cannot import this module - this one already imports it for
+    fractionalEpochDay, and the cycle would be immediate. */
 export function dosesWithNoCurve(input: Omit<QualitativeCurveInput, 'drug'>): number {
   const { doses, episodes, fromEpochDay, toEpochDay } = input;
   let count = 0;
 
   for (const dose of doses) {
     if (dose.status === 'skipped') continue;
+    /* Half-open, because an epoch day is [d, d+1) (ADR-0001): a dose at
+       midnight after the window belongs to the next day, not this one. */
     const day = fractionalEpochDay(dose.timestamp);
-    if (day < fromEpochDay || day > toEpochDay + 1) continue;
+    if (day < fromEpochDay || day >= toEpochDay + 1) continue;
 
     const episode = resolveEpisodeAt(episodes, dose.timestamp);
     if (!episode) continue;
+
+    /* Only a hormone this app curves at all. Someone whose log holds nothing
+       but an antiandrogen has not yet logged anything this screen could ever
+       draw, so their silence is the "nothing logged yet" kind and the dose log
+       is still worth offering them. */
+    if (!resolveCurveDrug(episode.drug)) continue;
 
     /* Either model drawing it is enough. The band is checked through the same
        resolver esterCurves uses, so the two cannot disagree about whether an

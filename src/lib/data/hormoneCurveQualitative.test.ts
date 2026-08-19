@@ -165,12 +165,19 @@ test('each dose resolves its own episode', () => {
   );
 });
 
-test('the lookback is set by the widest shape, which is the injected one', () => {
-  /* The other shapes act over hours and a day or two; a testosterone injection
-     is still contributing a week and more later, so it is what decides how far
-     back the dose log has to be read. Still far shorter than the injectable
-     band's own lookback, which the published posteriors put at 63 days. */
-  assert.equal(QUALITATIVE_LOOKBACK_DAYS, 11);
+test('the lookback reaches at least as far as the widest shape still contributes', () => {
+  /* A testosterone injection is still contributing a week and more after it is
+     given, where the topical shapes are spent within a day or two - so the
+     lookback has to cover the injection or a window's first days would be drawn
+     without the dose that made them. Derived rather than picked, so it follows
+     the shapes if any of them changes. */
+  const injectedReachDays = (36 + 12 + 216) / 24;
+  assert.ok(
+    QUALITATIVE_LOOKBACK_DAYS >= injectedReachDays,
+    `lookback ${QUALITATIVE_LOOKBACK_DAYS} must cover ${injectedReachDays}`
+  );
+  // And still far shorter than the fitted band's, which the posteriors put at 63.
+  assert.ok(QUALITATIVE_LOOKBACK_DAYS < 63);
 });
 
 test('a scale factor multiplies the curve and nothing else about it', () => {
@@ -356,14 +363,28 @@ test('doses on something this app draws no curve for at all are counted', () => 
     0
   );
 
-  // A drug the app knows nothing about counts too.
+  /* A drug this app curves for neither hormone is not counted. Someone logging
+     only an antiandrogen has not yet logged anything this screen could draw, so
+     the dose log is still worth offering them - the count exists to tell that
+     apart from a log full of doses on an ester with no curve. */
   assert.equal(
     dosesWithNoCurve({
       ...window,
       doses: [dose(0)],
       episodes: [episode({ drug: 'spironolactone', route: 'oral' })]
     }),
-    1
+    0
+  );
+
+  // A dose at midnight after the window belongs to the next day (ADR-0001).
+  assert.equal(
+    dosesWithNoCurve({
+      fromEpochDay: 0,
+      toEpochDay: 6,
+      doses: [{ ...injection(0), timestamp: startOfDayTimestamp(7) } as DoseEvent],
+      episodes: [episode({ drug: 'testosterone', ester: 'undecanoate', route: 'IM' })]
+    }),
+    0
   );
 
   // A skipped dose is not a dose, and neither is one outside the window.

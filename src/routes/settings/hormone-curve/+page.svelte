@@ -229,6 +229,14 @@
   }
 </script>
 
+<!-- The invitation to the dose log, passed only when logging could actually
+     produce a curve. Someone whose doses are all on an ester this screen draws
+     nothing for has already done the thing it would be asking for, and saying
+     so again would put the limit on them rather than on this screen. -->
+{#snippet doseLogAction()}
+  <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
+{/snippet}
+
 <div class="screen">
   <header class="screen-header">
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
@@ -245,17 +253,16 @@
          nothing for has already done the thing it would be asking for, and
          saying so again would put the limit on them rather than on this
          screen. -->
-    {#if injectableView.dosesNoCurveAnywhere > 0}
-      <EmptyState title={m.curve_empty_title()} text={m.curve_empty_body()} />
+    {@const futile = injectableView.dosesNoCurveAnywhere > 0}
+    <EmptyState
+      title={m.curve_empty_title()}
+      text={m.curve_empty_body()}
+      action={futile ? undefined : doseLogAction}
+    />
+    {#if futile}
       <p class="muted small curve-note" data-no-curve-note>
         {m.curve_no_curve_note({ count: String(injectableView.dosesNoCurveAnywhere) })}
       </p>
-    {:else}
-      <EmptyState title={m.curve_empty_title()} text={m.curve_empty_body()}>
-        {#snippet action()}
-          <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
-        {/snippet}
-      </EmptyState>
     {/if}
     {#if injectableView.dosesWithoutMilligrams > 0}
       <p class="muted small curve-note">{m.curve_volume_note({ count: String(injectableView.dosesWithoutMilligrams) })}</p>
@@ -373,7 +380,7 @@
               formatValue={round}
               unitLabel={qualUnitLabel(drug, view)}
               ariaLabel={m.curve_qual_chart_aria({
-                route: qualitativeCurveLabel(curve.key),
+                curve: qualitativeCurveLabel(curve.key),
                 from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
                 to: fmtDay(today, { day: 'numeric', month: 'short' })
               })}
@@ -451,6 +458,14 @@
     {/if}
     {#if injectableView.subcutaneousDoses > 0}
       <p class="muted small curve-note">{m.curve_sc_note({ count: String(injectableView.subcutaneousDoses) })}</p>
+    {/if}
+    <!-- Also on the populated screen, not only when nothing drew: someone with
+         an estradiol curve and undecanoate injections beside it would otherwise
+         watch those doses vanish without a word. -->
+    {#if injectableView.dosesNoCurveAnywhere > 0}
+      <p class="muted small curve-note" data-no-curve-note>
+        {m.curve_no_curve_note({ count: String(injectableView.dosesNoCurveAnywhere) })}
+      </p>
     {/if}
     {#if qualDosesWithoutMilligrams > 0}
       <p class="muted small curve-note">{m.curve_qual_volume_note({ count: String(qualDosesWithoutMilligrams) })}</p>
