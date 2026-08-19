@@ -123,7 +123,7 @@
   let todayInput = $derived(dateInputValueFromEpochDay(todayEpochDay()));
 </script>
 
-<div class="screen">
+<div class="screen" data-screen>
   <header class="screen-header">
     <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/calendar')}><Icon name="arrowLeft" /></button>
     <h1 class="screen-title">{m.search()}</h1>

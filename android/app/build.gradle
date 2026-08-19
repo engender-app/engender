@@ -23,6 +23,14 @@ if (requireSigning && !hasReleaseSigning) {
 android {
     namespace = "dev.barankiewicz.genderdiary"
     compileSdk = rootProject.ext.compileSdkVersion
+    // Launch-route contract fixture (phase 5 deepening ticket 03, ADR-0028):
+    // the JVM unit test reads the same launch-routes.json the TypeScript
+    // test does, rather than a copy of it.
+    sourceSets {
+        test {
+            resources.srcDirs += ['../../src/lib/android/fixtures']
+        }
+    }
     defaultConfig {
         applicationId "dev.barankiewicz.genderdiary"
         minSdkVersion rootProject.ext.minSdkVersion

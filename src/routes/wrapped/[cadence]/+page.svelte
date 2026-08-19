@@ -116,7 +116,7 @@
          cadence is its own screen at its own URL, so switching between them
          is navigation and belongs in history. `/recap`'s picker is a
          radiogroup because it changes one screen's range in place. -->
-    <nav class="segmented wrapped-cadences" aria-label={m.wrapped_cadence_group()}>
+    <nav class="segmented wrapped-cadences" data-wrapped-cadences aria-label={m.wrapped_cadence_group()}>
       {#each CADENCE_TABS as tab (tab.key)}
         <a
           class="segment"
@@ -132,7 +132,7 @@
     <div class="notice notice-info" role="status">
       <Icon name="info" size={20} />
       <div class="notice-body">
-        <span class="notice-title">{m.wrapped_off_title()}</span>
+        <span class="notice-title" data-notice-title>{m.wrapped_off_title()}</span>
         {m.wrapped_off_body()} <a href="/settings">{m.nav_settings()}</a>
       </div>
     </div>
@@ -140,7 +140,7 @@
     <div class="notice notice-info" role="status">
       <Icon name="info" size={20} />
       <div class="notice-body">
-        <span class="notice-title">{m.wrapped_unknown_title()}</span>
+        <span class="notice-title" data-notice-title>{m.wrapped_unknown_title()}</span>
         {m.wrapped_unknown_body()}
       </div>
     </div>
@@ -154,8 +154,8 @@
     <!-- The same floor Home applies before offering the card. Reachable
          anyway through a bookmark or a hand-typed URL, and saying why is
          better than a screen of zeroes. -->
-    <div class="wrapped-thin">
-      <h2 class="wrapped-title">{m.wrapped_thin_title()}</h2>
+    <div class="wrapped-thin" data-wrapped-thin>
+      <h2 class="wrapped-title" data-wrapped-title>{m.wrapped_thin_title()}</h2>
       <p class="muted">
         {m.wrapped_thin_body({ count: recap?.entryCount ?? 0, floor: String(WRAPPED_ENTRY_FLOOR) })}
       </p>

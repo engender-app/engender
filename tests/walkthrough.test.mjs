@@ -32,7 +32,7 @@ page.on('pageerror', (e) => errors.push(e.message));
    persona's 150 days, and because those are written oldest-first, what went
    missing was the recent data the stats and calendar flows assert on. */
 async function booted() {
-  await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
 }
 
 async function fresh(path = '/') {
@@ -83,13 +83,13 @@ function parseCsv(text) {
 /* 1. quick log */
 try {
   await fresh('/');
-  const beforeCards = await page.locator('.entry-card').count();
-  await page.locator('.quicklog .mood-btn[data-mood="4"]').click();
+  const beforeCards = await page.locator('[data-entry-card]').count();
+  await page.locator('[data-mood="4"]').click();
   await page.waitForSelector('#ed-note');
-  await page.waitForSelector('.mood-picker:not(.is-compact) .mood-btn[data-mood="4"].is-selected');
-  await page.locator('a.icon-btn[href="/"]').click();
-  await page.waitForSelector('.entry-card');
-  const afterCards = await page.locator('.entry-card').count();
+  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
+  await page.locator('[data-editor-back]').click();
+  await page.waitForSelector('[data-entry-card]');
+  const afterCards = await page.locator('[data-entry-card]').count();
   if (afterCards !== beforeCards) throw new Error(`home entry count changed: ${beforeCards} -> ${afterCards}`);
   ok('home quick mood opens an unsaved seeded editor');
 } catch (e) { fail('quick log', e); }
@@ -97,15 +97,15 @@ try {
 /* 2. full entry flow via FAB */
 try {
   await fresh('/');
-  await page.locator('.nav-fab').click();
+  await page.locator('[data-nav-fab]').click();
   await page.locator('[data-choose="today"]').click();
   await page.waitForSelector('#ed-note');
-  await page.locator('.mood-picker .mood-btn[data-mood="5"]').click();
-  await page.locator('.tag-chip:has-text("social euphoria")').first().click();
+  await page.locator('[data-mood="5"]').click();
+  await page.locator('[data-tag="g-soc-eu"]').click();
   await page.locator('#ed-note').fill('Playwright wrote this entry.');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('.entry-card .entry-note');
-  const note = await page.locator('.entry-card .entry-note').first().textContent();
+  await page.waitForSelector('[data-entry-note]');
+  const note = await page.locator('[data-entry-note]').first().textContent();
   if (!note.includes('Playwright')) throw new Error('new entry not first');
   ok('new entry chooser → editor → save → Home');
 } catch (e) { fail('entry flow', e); }
@@ -135,18 +135,18 @@ try {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
 
-  await page.locator('.nav-fab').click();
+  await page.locator('[data-nav-fab]').click();
   await page.locator('[data-choose="today"]').click();
   await page.waitForSelector('#ed-note');
-  await page.locator('.mood-picker .mood-btn[data-mood="2"]').click();
+  await page.locator('[data-mood="2"]').click();
   await page.locator('[data-save]').click();
-  // Waits for a toast whose own text is the save confirmation, not just
+  // Waits for a toast whose own kind is the save confirmation, not just
   // any new toast: the no-persistent-storage boot warning (boot.svelte.ts)
   // can already be on screen, so counting toasts or taking ".last()" before
   // the save toast lands can pick that one up instead and see no action.
-  await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('Saved')));
-  const nudgeToast = page.locator('.toast', { hasText: 'Saved' }).last();
-  if ((await nudgeToast.locator('.toast-action').count()) === 0) {
+  await page.waitForFunction(() => document.querySelectorAll('[data-toast-kind="saved"]').length > 0);
+  const nudgeToast = page.locator('[data-toast-kind="saved"]').last();
+  if ((await nudgeToast.locator('[data-toast-action]').count()) === 0) {
     throw new Error('nudge action missing while nudges are enabled');
   }
 
@@ -156,10 +156,10 @@ try {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
 
-  await page.locator('.nav-fab').click();
+  await page.locator('[data-nav-fab]').click();
   await page.locator('[data-choose="today"]').click();
   await page.waitForSelector('#ed-note');
-  await page.locator('.mood-picker .mood-btn[data-mood="3"]').click();
+  await page.locator('[data-mood="3"]').click();
   await page.locator('[data-save]').click();
   /* Ticket 09: counting toasts before/after used to race the earlier save's
      toast, which auto-dismisses on its own 4-second timer - whether it was
@@ -168,8 +168,8 @@ try {
      actually being quiet. Waiting for a Saved toast with no action present
      asserts the actual behavior under test instead of a timing accident. */
   await page.waitForFunction(() =>
-    [...document.querySelectorAll('.toast')].some(
-      (t) => t.textContent.includes('Saved') && !t.querySelector('.toast-action')
+    [...document.querySelectorAll('[data-toast-kind="saved"]')].some(
+      (t) => !t.querySelector('[data-toast-action]')
     )
   );
   ok('mood-only save nudges when enabled and stays quiet when disabled');
@@ -178,10 +178,10 @@ try {
 /* 3. melt slider keyboard interaction */
 try {
   await fresh('/entry/new/today');
-  const thumb = page.locator('.melt-slider').first();
+  const thumb = page.locator('[data-melt-slider]').first();
   await thumb.focus();
   await page.keyboard.press('ArrowRight');
-  const out = await page.locator('.dim-value').first().textContent();
+  const out = await page.locator('[data-dim-value]').first().textContent();
   if (out.trim() === '—') throw new Error('slider value did not update');
   ok('melt slider responds to keyboard');
 } catch (e) { fail('melt slider', e); }
@@ -189,8 +189,8 @@ try {
 /* 4. calendar → day → add another */
 try {
   await fresh('/calendar');
-  await page.locator('.hm-cell.has-entries').first().click();
-  await page.waitForSelector('.day-entry-row');
+  await page.locator('[data-hm-cell-filled]').first().click();
+  await page.waitForSelector('[data-day-entry-row]');
   await page.locator('[data-add]').click();
   await page.waitForSelector('#ed-note');
   ok('calendar → day detail → add another');
@@ -199,25 +199,25 @@ try {
 /* 4b. day detail keeps entries separate and shows no day average */
 try {
   await fresh('/entry/new/today');
-  await page.locator('.mood-picker .mood-btn[data-mood="2"]').click();
+  await page.locator('[data-mood="2"]').click();
   await page.locator('#ed-note').fill('Day detail proof A');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('.entry-card .entry-note');
+  await page.waitForSelector('[data-entry-note]');
 
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
-  await page.locator('.mood-picker .mood-btn[data-mood="5"]').click();
+  await page.locator('[data-mood="5"]').click();
   await page.locator('#ed-note').fill('Day detail proof B');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('.entry-card .entry-note');
+  await page.waitForSelector('[data-entry-note]');
 
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
-  const notes = await page.locator('.day-entry-row .entry-note').allTextContents();
+  const notes = await page.locator('[data-day-entry-row] [data-entry-note]').allTextContents();
   if (!notes.includes('Day detail proof A') || !notes.includes('Day detail proof B')) {
     throw new Error('day detail did not keep separate entries');
   }
-  if (await page.locator('.day-avg').count()) {
+  if (await page.locator('[data-day-average]').count()) {
     throw new Error('day detail still shows a day-average block');
   }
   ok('day detail keeps separate entries and no average summary');
@@ -227,12 +227,12 @@ try {
 try {
   await fresh('/search');
   await page.locator('#q').fill('coffee');
-  await page.waitForSelector('.entry-card');
+  await page.waitForSelector('[data-entry-card]');
   /* A word that is only ever a built-in tag's label, never note text.
      Built-in tags are stored as keys now, so search has to match against
      the resolved wording or this finds nothing. */
   await page.locator('#q').fill('hopeful');
-  await page.waitForSelector('.entry-card');
+  await page.waitForSelector('[data-entry-card]');
   ok('search matches note text and built-in tag labels');
 } catch (e) { fail('search', e); }
 
@@ -241,26 +241,26 @@ try {
   const NOTE_HIGH = 'ticket06-high-marker';
 
   await fresh('/entry/new/today');
-  await page.locator('.mood-picker .mood-btn[data-mood="5"]').click();
+  await page.locator('[data-mood="5"]').click();
   await page.locator('#ed-note').fill(NOTE_HIGH);
   await page.locator('[data-save]').click();
-  await page.waitForSelector('.entry-card');
+  await page.waitForSelector('[data-entry-card]');
 
   await fresh('/search');
   await page.locator('[data-filter-toggle]').click();
   await page.locator('[data-filter-has-note]').click();
   await page.waitForSelector('[data-active-filter-chip]');
-  await page.waitForSelector('.entry-card');
+  await page.waitForSelector('[data-entry-card]');
 
   await page.locator('#q').fill('ticket06');
-  await page.waitForSelector('.entry-card');
+  await page.waitForSelector('[data-entry-card]');
   await page.locator('[data-filter-mood="1"]').click();
   await page.waitForTimeout(200);
-  if ((await page.locator('.entry-card').count()) !== 0) throw new Error('mood mismatch still showed results');
+  if ((await page.locator('[data-entry-card]').count()) !== 0) throw new Error('mood mismatch still showed results');
   await page.locator('[data-filter-mood="1"]').click();
   await page.locator('[data-filter-mood="5"]').click();
-  await page.waitForSelector('.entry-card');
-  const pageText = (await page.locator('.screen').innerText()).toLowerCase();
+  await page.waitForSelector('[data-entry-card]');
+  const pageText = (await page.locator('[data-screen]').innerText()).toLowerCase();
   if (!pageText.includes('ticket06-high-marker')) throw new Error('mood match did not restore the expected result');
 
   const chipCount = await page.locator('[data-active-filter-chip]').count();
@@ -269,7 +269,7 @@ try {
   await page.locator('[data-filter-clear]').click();
   await page.locator('#q').fill('');
   if (await page.locator('[data-active-filter-chip]').count()) throw new Error('clear-all did not clear chips');
-  const hint = await page.locator('.screen').innerText();
+  const hint = await page.locator('[data-screen]').innerText();
   if (!hint?.toLowerCase().includes('try') && !hint?.toLowerCase().includes('spróbuj')) {
     throw new Error('empty-criteria hint did not return after clear-all');
   }
@@ -281,13 +281,13 @@ try {
 try {
   await fresh('/stats');
   await page.locator('[data-range="90"]').click();
-  const title = await page.locator('.screen-title').textContent();
+  const title = await page.locator('[data-screen-title]').textContent();
   if (!title.includes('90')) throw new Error('title: ' + title);
-  await page.locator('.chart-card').first().click();
-  await page.waitForSelector('.value-row');
+  await page.locator('[data-chart-card]').first().click();
+  await page.waitForSelector('[data-value-row]');
   /* Tag insights name a built-in tag, so a blank title means the key never
      got resolved. */
-  const insight = await page.locator('.list-group .row-title').first().textContent();
+  const insight = await page.locator('[data-row-title]').first().textContent();
   if (!insight?.trim()) throw new Error('tag insight has no label');
   ok('stats range, value list and named tag insights');
 } catch (e) { fail('stats', e); }
@@ -297,7 +297,7 @@ try {
    step-able, and the on-demand recap sequence with its Rive fallback. */
 try {
   await fresh('/timeline');
-  const milestoneNames = await page.locator('.tl-item:not(.tl-today) .tl-name').allTextContents();
+  const milestoneNames = await page.locator('[data-tl-name]').allTextContents();
   const expectedMilestones = [
     'Coming out to my parents',
     'HRT start',
@@ -308,35 +308,35 @@ try {
   if (JSON.stringify(milestoneNames) !== JSON.stringify(expectedMilestones)) {
     throw new Error('milestones out of order: ' + JSON.stringify(milestoneNames));
   }
-  if (!(await page.locator('.tl-gap').count())) throw new Error('the long milestone gap was not compressed');
+  if (!(await page.locator('[data-tl-gap]').count())) throw new Error('the long milestone gap was not compressed');
 
   await fresh('/settings/photos');
-  await page.waitForSelector('.photo-cell img');
-  const thumbnailSrc = await page.locator('.photo-cell img').first().getAttribute('src');
+  await page.waitForSelector('[data-photo-cell] img');
+  const thumbnailSrc = await page.locator('[data-photo-cell] img').first().getAttribute('src');
   if (!thumbnailSrc?.startsWith('blob:')) throw new Error('the photo grid did not load stored thumbnails');
-  const photoCells = page.locator('.photo-cell');
+  const photoCells = page.locator('[data-photo-cell]');
   if ((await photoCells.count()) < 4) throw new Error('not enough photos to exercise both compare controls');
   await photoCells.nth(0).click();
   await photoCells.nth(2).click();
   await page.locator('[data-compare]').click();
-  const sides = page.locator('.compare-side');
-  const gap = await page.locator('.compare-gap').textContent();
+  const sides = page.locator('[data-compare-side]');
+  const gap = await page.locator('[data-compare-gap]').textContent();
   if ((await sides.count()) !== 2 || !gap?.includes('apart')) throw new Error('compare dates or gap missing');
-  const leftDate = sides.nth(0).locator('.compare-nav .small');
-  const rightDate = sides.nth(1).locator('.compare-nav .small');
+  const leftDate = page.locator('[data-compare-side="left"] [data-compare-date]');
+  const rightDate = page.locator('[data-compare-side="right"] [data-compare-date]');
   const leftBefore = await leftDate.textContent();
-  await sides.nth(0).getByRole('button', { name: 'Later photo' }).click();
+  await page.locator('[data-compare-side="left"]').getByRole('button', { name: 'Later photo' }).click();
   if ((await leftDate.textContent()) === leftBefore) throw new Error('the left photo did not move through time');
   const rightBefore = await rightDate.textContent();
-  await sides.nth(1).getByRole('button', { name: 'Later photo' }).click();
+  await page.locator('[data-compare-side="right"]').getByRole('button', { name: 'Later photo' }).click();
   if ((await rightDate.textContent()) === rightBefore) throw new Error('the right photo did not move through time');
 
   await fresh('/recap');
   for (let i = 0; i < 7; i++) await page.locator('[data-next]').click();
-  await page.waitForSelector('.rive-stage .confetti');
+  await page.waitForSelector('[data-confetti]');
   if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('recap is not view-only');
   await fresh('/recap?period=year');
-  const yearTitle = await page.locator('.recap-title').textContent();
+  const yearTitle = await page.locator('[data-recap-title]').textContent();
   const previousYear = await page.evaluate(() => new Date().getFullYear() - 1);
   if (yearTitle?.trim() !== `Your ${previousYear}`) throw new Error('year recap title: ' + yearTitle);
   ok('timeline, progress-photo compare and on-demand recap');
@@ -345,7 +345,7 @@ try {
 /* 6c. lab result CRUD and per-analyte chart */
 try {
   await fresh('/settings/labs');
-  if (!(await page.locator('.line-chart').count())) throw new Error('the selected analyte has no trend chart');
+  if (!(await page.locator('[data-line-chart]').count())) throw new Error('the selected analyte has no trend chart');
 
   await page.locator('[data-add]').click();
   await page.locator('#lab-analyte').selectOption('custom');
@@ -354,20 +354,20 @@ try {
   await page.locator('#lab-unit').fill('nmol/L');
   await page.locator('#lab-note').fill('first result');
   await page.locator('[data-save-lab]').click();
-  await page.waitForSelector('.segment:has-text("SHBG")');
-  await page.locator('.segment:has-text("SHBG")').click();
-  await page.waitForSelector('[data-lab-result]:has-text("61")');
+  await page.waitForSelector('[data-segment="SHBG"]');
+  await page.locator('[data-segment="SHBG"]').click();
+  await page.waitForSelector('[data-lab-result]:has-text("61")'); // text-under-test: the saved value itself
 
   await page.locator('[data-lab-result]').first().click();
   await page.locator('#lab-value').fill('62');
   await page.locator('#lab-note').fill('corrected');
   await page.locator('[data-save-lab]').click();
-  await page.waitForSelector('[data-lab-result]:has-text("62")');
+  await page.waitForSelector('[data-lab-result]:has-text("62")'); // text-under-test: the corrected value itself
 
   await page.locator('[data-lab-result]').first().click();
   await page.locator('[data-delete-lab]').click();
   await page.locator('[data-confirm-delete-lab]').click();
-  await page.waitForSelector('.segment:has-text("SHBG")', { state: 'detached' });
+  await page.waitForSelector('[data-segment="SHBG"]', { state: 'detached' });
   ok('lab result custom create, edit, delete and per-analyte chart');
 } catch (e) { fail('lab results', e); }
 
@@ -388,15 +388,15 @@ try {
 
   /* Named rather than "the newest toast": boot's persistent-storage notice is
      still on screen at this point. */
-  await page.waitForSelector('.toast:has-text("own trend")');
-  const notice = await page.locator('.toast', { hasText: 'own trend' }).textContent();
+  await page.waitForSelector('[data-toast-kind="lab-new-unit"]');
+  const notice = await page.locator('[data-toast-kind="lab-new-unit"]').textContent();
   if (/error|invalid|wrong|cannot/i.test(notice)) throw new Error('the notice reads as an error: ' + notice);
 
-  const units = await page.locator('[data-lab-series] .series-unit').allTextContents();
+  const units = await page.locator('[data-series-unit]').allTextContents();
   if (JSON.stringify(units) !== JSON.stringify(['pg/mL', 'pmol/L'])) throw new Error('series units: ' + JSON.stringify(units));
   /* One line, not two: the pmol/L series has a single result so far, and the
      pg/mL line still runs over its own five. */
-  if ((await page.locator('.line-chart').count()) !== 1) throw new Error('the new unit was drawn into an existing line');
+  if ((await page.locator('[data-line-chart]').count()) !== 1) throw new Error('the new unit was drawn into an existing line');
   if ((await page.locator('[data-lab-result]').count()) !== resultsBefore + 1) throw new Error('the list dropped a result');
 
   await page.locator('[data-lab-result]').first().click();
@@ -434,8 +434,8 @@ try {
 /* 8. language swap EN→PL (paraglide reload) */
 try {
   await fresh('/settings');
-  await page.locator('.segment:has-text("Polski")').click();
-  await page.waitForFunction(() => document.querySelector('.nav-item .nav-label')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.locator('[data-segment="pl"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
 
@@ -474,7 +474,7 @@ try {
 try {
   await fresh('/settings/dimension');
   await page.locator('#cd-name').fill('Voice comfort');
-  await page.waitForFunction(() => document.querySelector('.dim-name')?.textContent === 'Voice comfort');
+  await page.waitForFunction(() => document.querySelector('[data-dim-name]')?.textContent === 'Voice comfort');
   ok('custom dimension live preview');
 } catch (e) { fail('custom dimension', e); }
 
@@ -485,12 +485,12 @@ try {
    day - the mix the demo store shipped, which would have read as decades. */
 try {
   await fresh('/');
-  const notice = page.locator('.notice-warn');
+  const notice = page.locator('[data-backup-notice]');
   await notice.waitFor();
   const said = await notice.textContent();
   if (!said.includes('34')) throw new Error(`the notice says: ${said.replace(/\s+/g, ' ').trim()}`);
 
-  await notice.locator('.icon-btn').click();
+  await notice.getByRole('button').click();
   await notice.waitFor({ state: 'detached' });
   ok('the stale-backup notice reads 34 days and dismisses');
 } catch (e) { fail('backup notice', e); }
@@ -512,10 +512,10 @@ try {
   await page.waitForFunction(() => document.querySelector('#picked-file')?.textContent.includes('not-a-backup'));
   await page.locator('#imp-pass').fill('wrongpass');
   await page.locator('[data-import]').click();
-  /* The sentence, not just the alert: the screen words this from the error's
+  /* The kind, not just the alert: the screen words this from the error's
      `kind` now (ticket 23), so an alert alone would still pass if the wrong
      branch fired or the key went missing. */
-  await page.waitForSelector('[role="alert"]:has-text("isn’t a Gender Diary backup file")');
+  await page.waitForSelector('[data-import-error="not-an-archive"]');
   ok('a file that is not a backup is refused, in the words the catalogue gives');
 } catch (e) { fail('export/import', e); }
 
@@ -530,8 +530,8 @@ try {
   const homeCards = async () => {
     await page.goto(BASE + '/', { waitUntil: 'networkidle' });
     await booted();
-    await page.waitForSelector('.entry-card');
-    return page.locator('.entry-card').count();
+    await page.waitForSelector('[data-entry-card]');
+    return page.locator('[data-entry-card]').count();
   };
 
   await fresh('/');
@@ -554,7 +554,7 @@ try {
   await page.locator('#imp-pass').fill('walkthrough');
   await page.locator('[data-import]').click();
   await page.waitForFunction(
-    () => [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('Merged')),
+    () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Merged')),
     null,
     { timeout: 120000 }
   );
@@ -575,10 +575,10 @@ try {
   await fresh('/entry/new/today');
   // Mood is required to save (ticket 04): the fixture picks one before the
   // note, same as any real entry would need to.
-  await page.locator('.mood-picker:not(.is-compact) .mood-btn[data-mood="3"]').click();
+  await page.locator('[data-mood="3"]').click();
   await page.locator('#ed-note').fill(NOTE);
   await page.locator('[data-save]').click();
-  await page.waitForSelector('.entry-card');
+  await page.waitForSelector('[data-entry-card]');
 
   await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
   await booted();
@@ -589,7 +589,7 @@ try {
      has to produce nothing. */
   await page.locator('[data-plain="csv"]').focus();
   await page.keyboard.press('Enter');
-  await page.waitForSelector('.sheet .notice-danger');
+  await page.waitForSelector('[role="dialog"]');
   if (await page.evaluate(() => document.activeElement?.hasAttribute('data-confirm-plain'))) {
     throw new Error('the sheet opened with the confirm button under the cursor');
   }
@@ -598,11 +598,11 @@ try {
     throw new Error('a second Enter wrote the file without the confirm');
   }
   await page.keyboard.press('Escape');
-  await page.waitForSelector('.sheet', { state: 'detached' });
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
 
   await page.locator('[data-plain="csv"]').focus();
   await page.keyboard.press('Enter');
-  await page.waitForSelector('.sheet .notice-danger');
+  await page.waitForSelector('[role="dialog"]');
   await page.keyboard.press('Tab');
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
@@ -658,7 +658,7 @@ try {
 try {
   await fresh('/settings');
   await page.locator('a[href="/settings/security"]').click();
-  await page.waitForSelector('.list-group');
+  await page.waitForSelector('[data-security-list]');
 
   /* Biometrics is Android-only (ticket 18) - a desktop browser has no
      platform prompt behind it, so the toggle must not exist here at all
@@ -671,20 +671,20 @@ try {
   }
 
   await page.getByRole('switch', { name: 'App lock' }).click();
-  await page.waitForSelector('.pin-pad');
+  await page.waitForSelector('[data-pin-pad]');
 
   // Second thoughts on a chromeless screen: there has to be a way back.
   await page.locator('[data-cancel-setup]').click();
-  await page.waitForSelector('.list-group');
+  await page.waitForSelector('[data-security-list]');
   if ((await page.getByRole('switch', { name: 'App lock' }).getAttribute('aria-checked')) === 'true') {
     throw new Error('app lock switched itself on without a PIN');
   }
 
   await page.getByRole('switch', { name: 'App lock' }).click();
-  await page.waitForSelector('.pin-pad');
+  await page.waitForSelector('[data-pin-pad]');
   await typePin('1234');
   await typePin('1234');
-  await page.waitForSelector('.list-group');
+  await page.waitForSelector('[data-security-list]');
 
   /* With app lock ON, the localStorage mirror must not hold the hash: a
      4-digit hash in plaintext beside the encrypted journal would be an
@@ -697,18 +697,18 @@ try {
      passphrase itself, so the PIN gate is the first thing asked for. */
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
-  if (!(await page.locator('.applock').count())) throw new Error('no gate after a reload');
-  if (await page.locator('.home-hello').count()) throw new Error('Home rendered behind the gate');
+  if (!(await page.locator('[data-applock]').count())) throw new Error('no gate after a reload');
+  if (await page.locator('[data-home-hello]').count()) throw new Error('Home rendered behind the gate');
 
   await typePin('9999');
-  await page.waitForSelector('[data-pin-status]:has-text("not right")');
+  await page.waitForSelector('[data-pin-status="wrong"]');
   await typePin('9999');
-  await page.waitForSelector('[data-pin-status]:has-text("Try again in")');
-  if (await page.locator('.pin-key[data-key="1"]:not([disabled])').count()) {
+  await page.waitForSelector('[data-pin-status="throttled"]');
+  if (await page.locator('[data-key="1"]:not([disabled])').count()) {
     throw new Error('pad still accepting attempts during the wait');
   }
 
-  await page.waitForSelector('.pin-key[data-key="1"]:not([disabled])', { timeout: 8000 });
+  await page.waitForSelector('[data-key="1"]:not([disabled])', { timeout: 8000 });
 
   /* A reload is the cheapest thing a guesser can do, so the count has to
      outlive one. Forged rather than earned: waiting out a real doubling
@@ -724,17 +724,17 @@ try {
   );
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('[data-pin-status]:has-text("Try again in")');
+  await page.waitForSelector('[data-pin-status="throttled"]');
 
   await page.evaluate(() => localStorage.removeItem('gender-diary-pin-attempts'));
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
   await typePin('1234');
-  await page.waitForSelector('.home-hello');
+  await page.waitForSelector('[data-home-hello]');
 
   /* Off again, or every flow after this one meets the gate. In-app, not
      page.goto: a fresh load is a cold start, and a cold start locks. */
-  await page.locator('.nav-item[href="/settings"]').click();
+  await page.locator('[data-nav-item="settings"]').click();
   await page.locator('a[href="/settings/security"]').click();
   await page.getByRole('switch', { name: 'App lock' }).click();
   /* The switch reads back off, and the hash may never appear in the
@@ -761,7 +761,7 @@ try {
   await page.locator('[data-next]').click();
 
   const presetButtons = page.locator('[data-preset]');
-  const presetNames = await presetButtons.locator('.row-title').allTextContents();
+  const presetNames = await presetButtons.locator('[data-row-title]').allTextContents();
   const expectedPresetNames = [
     'Femininity',
     'Masculinity',
@@ -776,7 +776,7 @@ try {
     throw new Error('onboarding preset names: ' + JSON.stringify(presetNames));
   }
   if ((await presetButtons.count()) !== 8) throw new Error('onboarding preset count was not 8');
-  await expectNoHorizontalOverflow('.app-viewport');
+  await expectNoHorizontalOverflow('[data-app-viewport]');
 
   await page.locator('[data-preset="p-nb"]').click();
   await page.locator('[data-next]').click();
@@ -784,10 +784,10 @@ try {
   await page.locator('[data-next]').click();
   await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
-  await page.waitForSelector('.home-hello');
-  const greet = await page.locator('.home-hello').textContent();
+  await page.waitForSelector('[data-home-hello]');
+  const greet = await page.locator('[data-home-hello]').textContent();
   if (!greet.includes('Ola')) throw new Error('greeting: ' + greet);
-  if ((await page.locator('.milestone-card').count()) < 1) throw new Error('no milestone on Home');
+  if ((await page.locator('[data-milestone-card]').count()) < 1) throw new Error('no milestone on Home');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
 
@@ -798,7 +798,7 @@ try {
   await page.getByRole('button', { name: /Gender preset/i }).click();
 
   const picks = page.locator('[data-pick-preset]');
-  const names = await picks.locator('.row-title').allTextContents();
+  const names = await picks.locator('[data-row-title]').allTextContents();
   const expected = [
     ['p-btw', 'Femininity'],
     ['p-masc', 'Masculinity'],
@@ -813,7 +813,7 @@ try {
     throw new Error('settings preset names: ' + JSON.stringify(names));
   }
   if ((await picks.count()) !== expected.length) throw new Error('settings preset count was not 8');
-  await expectNoHorizontalOverflow('.app-viewport');
+  await expectNoHorizontalOverflow('[data-app-viewport]');
 
   for (const [key, label] of expected) {
     await page.locator(`[data-pick-preset="${key}"]`).click();
@@ -828,8 +828,8 @@ try {
 try {
   await page.setViewportSize({ width: 1400, height: 980 });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  const railVisible = await page.locator('.rail-item').first().isVisible();
-  const navVisible = await page.locator('.app-nav').isVisible();
+  const railVisible = await page.locator('[data-rail-item]').first().isVisible();
+  const navVisible = await page.locator('[data-app-nav]').isVisible();
   if (!railVisible || navVisible) throw new Error(`rail:${railVisible} nav:${navVisible}`);
   ok('desktop rail via container query');
 } catch (e) { fail('desktop', e); }
@@ -837,7 +837,7 @@ try {
 /* 15. reminders web note at desktop */
 try {
   await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
-  const text = await page.textContent('.screen');
+  const text = await page.textContent('[data-screen]');
   if (!text.includes('Android app')) throw new Error('web note missing');
   ok('web reminders note');
 } catch (e) { fail('reminders web', e); }
@@ -847,7 +847,7 @@ try {
   await page.setViewportSize({ width: 440, height: 940 });
   await fresh('/settings');
   await page.locator('[data-palette-pick="lesbian"]').click();
-  await page.locator('.segment:has-text("Dark")').click();
+  await page.locator('[data-segment="dark"]').click();
   /* Disguise rides along, because it is the one of these where arriving late
      is a safety failure rather than a flicker: a tab that shows the flag for
      the length of a boot has told the room already (F24). */
@@ -927,17 +927,17 @@ try {
 /* 17. built-in vocabulary is localized by key, not stored in English (ticket 05) */
 try {
   await fresh('/entry/new/today');
-  await page.waitForSelector('.tag-chip:has-text("social euphoria")');
+  await page.waitForSelector('[data-tag="g-soc-eu"]:has-text("social euphoria")'); // text-under-test: the English label
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await page.locator('.segment:has-text("Polski")').click();
-  await page.waitForFunction(() => document.querySelector('.nav-item .nav-label')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.locator('[data-segment="pl"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
 
   /* Same seeded tag, same row, different language - which only works if
      what was stored was the key and not the word. */
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
-  await page.waitForSelector('.tag-chip:has-text("euforia społeczna")', { timeout: 8000 });
-  if (await page.locator('.tag-chip:has-text("social euphoria")').count()) {
+  await page.waitForSelector('[data-tag="g-soc-eu"]:has-text("euforia społeczna")', { timeout: 8000 }); // text-under-test: the Polish translation
+  if (await page.locator('[data-tag="g-soc-eu"]', { hasText: 'social euphoria' }).count()) { // text-under-test: the stale English label
     throw new Error('English label survived the language switch');
   }
   ok('built-in tags follow the language, so they were seeded as keys');
@@ -950,7 +950,7 @@ try {
   await fresh('/settings/lock?setup=1');
   await typePin('1234');
   await typePin('1234');
-  await page.waitForSelector('.list-group');
+  await page.waitForSelector('[data-settings-list]');
   await page.getByRole('button', { name: /Disguise/i }).click();
 
   /* Disguise owns the whole tab, icon included: the title alone still leaves
@@ -975,9 +975,9 @@ try {
      second window to hand focus to, and what is under test is that the
      event the listener waits for locks the app. */
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
-  await page.waitForSelector('.applock');
+  await page.waitForSelector('[data-applock]');
   await typePin('1234');
-  await page.waitForSelector('.list-group');
+  await page.waitForSelector('[data-settings-list]');
 
   /* Two fingers, dispatched rather than driven: page.touchscreen only has
      one. What is under test is the gesture the listeners are looking for,
@@ -992,13 +992,13 @@ try {
   if (!/favicon-notes\.svg$/.test(await favicon())) throw new Error('tab icon after quick exit: ' + (await favicon()));
 
   await page.locator('[data-blank]').click();
-  await page.waitForSelector('.applock');
+  await page.waitForSelector('[data-applock]');
 
   /* Disguised, the same gesture shows the decoy notes screen instead of the
      blank (ticket 30), and the tab title matches what the page claims to be.
      Left on afterwards: the reset below wipes preferences, disguise included. */
   await typePin('1234');
-  await page.waitForSelector('.list-group');
+  await page.waitForSelector('[data-settings-list]');
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
@@ -1018,23 +1018,23 @@ try {
     throw new Error('the decoy screen leaks the journal: ' + decoyText);
   }
   await page.locator('[data-decoy]').click();
-  await page.waitForSelector('.applock');
+  await page.waitForSelector('[data-applock]');
 
   await page.locator('[data-forgot]').click();
   await page.locator('[data-confirm-reset]').click();
   /* The reset ends in a page load, and this page is already `ready` - so
      wait for the lock screen to go away with it, not for a boot state that
      is true before the wipe has even started. */
-  await page.waitForSelector('.applock', { state: 'detached', timeout: 60000 });
+  await page.waitForSelector('[data-applock]', { state: 'detached', timeout: 60000 });
   await booted();
-  if (await page.locator('.applock').count()) throw new Error('still locked after the reset');
+  if (await page.locator('[data-applock]').count()) throw new Error('still locked after the reset');
   const mirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
   if (mirror.pinHash) throw new Error('the PIN survived the reset');
   /* Home rather than onboarding, because this is the demo build: an empty
      preference table is what makes it seed the persona, and the wipe left
      one. In a production build the first-run gate (flow 13) is what a
      wiped device meets instead. */
-  await page.waitForSelector('.home-hello');
+  await page.waitForSelector('[data-home-hello]');
   ok('lock on leave, quick exit blanks and locks, disguised quick exit shows the decoy, forgotten-PIN reset clears the lock');
 } catch (e) { fail('lock on leave, quick exit and reset', e); }
 
@@ -1066,58 +1066,60 @@ try {
    itself worth asserting first, since it is the floor doing its job. */
 try {
   await fresh('/wrapped/year');
-  if (!(await page.locator('.wrapped-thin').count())) {
+  if (!(await page.locator('[data-wrapped-thin]').count())) {
     throw new Error('a year the persona never logged should be below the entry floor');
   }
-  if (await page.locator('.wrapped-cover').count()) throw new Error('a suppressed year still drew its cover');
+  if (await page.locator('[data-wrapped-cover]').count()) throw new Error('a suppressed year still drew its cover');
 
   const lastJune = await page.evaluate(() => Math.floor(Date.UTC(new Date().getFullYear() - 1, 5, 10) / 86400000));
   for (let offset = 0; offset < 5; offset++) {
     await fresh(`/entry/new/${lastJune + offset}`);
-    await page.locator(`.mood-picker .mood-btn[data-mood="${2 + (offset % 3)}"]`).click();
+    await page.locator(`[data-mood="${2 + (offset % 3)}"]`).click();
     await page.locator('#ed-note').fill(`Last June, day ${offset + 1}`);
     await page.locator('[data-save]').click();
     // The editor lands on Home on every successful save.
-    await page.waitForSelector('.home-hello', { timeout: 10000 });
+    await page.waitForSelector('[data-home-hello]', { timeout: 10000 });
   }
 
   /* The yearly presentation: a cover, the year read month by month, and the
      figures as one run rather than the compact template's separate cards. */
   await fresh('/wrapped/year');
-  await page.waitForSelector('.wrapped-cover-year');
-  const coverYear = (await page.locator('.wrapped-cover-year').textContent())?.trim();
+  await page.waitForSelector('[data-wrapped-cover-year]');
+  const coverYear = (await page.locator('[data-wrapped-cover-year]').textContent())?.trim();
   const previousYear = await page.evaluate(() => String(new Date().getFullYear() - 1));
   if (coverYear !== previousYear) throw new Error('yearly wrapped cover shows ' + coverYear);
-  if ((await page.locator('.wrapped-month').count()) !== 12) {
+  if ((await page.locator('[data-wrapped-month]').count()) !== 12) {
     throw new Error('the year should read as twelve months, silent ones included');
   }
-  const juneValue = (await page.locator('.wrapped-month').nth(5).locator('.wrapped-month-value').textContent())?.trim();
+  const juneValue = (
+    await page.locator('[data-wrapped-month]').nth(5).locator('[data-wrapped-month-value]').textContent()
+  )?.trim();
   if (!juneValue) throw new Error('the month the entries went into has no average');
-  if (!(await page.locator('.wrapped-figures .wrapped-figure').count())) throw new Error('the year has no figures');
+  if (!(await page.locator('[data-wrapped-figure]').count())) throw new Error('the year has no figures');
   /* Structurally distinct, not the compact template scaled up: the stat
      tiles and per-question cards belong to the other presentation. */
-  if (await page.locator('.wrapped-stat').count()) throw new Error('yearly wrapped reused the compact stat tiles');
+  if (await page.locator('[data-wrapped-stat]').count()) throw new Error('yearly wrapped reused the compact stat tiles');
 
   /* The monthly presentation, on the same data seam and deliberately
      unalike: stat tiles and a card per question, no cover. */
   await fresh('/wrapped/month');
-  await page.waitForSelector('.wrapped-stats');
-  if ((await page.locator('.wrapped-stat').count()) < 2) throw new Error('the compact template has no stat tiles');
-  if (await page.locator('.wrapped-cover').count()) throw new Error('monthly wrapped reused the yearly cover');
+  await page.waitForSelector('[data-wrapped-stats]');
+  if ((await page.locator('[data-wrapped-stat]').count()) < 2) throw new Error('the compact template has no stat tiles');
+  if (await page.locator('[data-wrapped-cover]').count()) throw new Error('monthly wrapped reused the yearly cover');
   if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('wrapped is not view-only');
 
   /* All three cadences reachable without typing a URL: Home offers one, and
      the switcher is what makes the other two anything but orphans (SH-001). */
-  const tabs = page.locator('.wrapped-cadences .segment');
+  const tabs = page.locator('[data-wrapped-cadences] a');
   if ((await tabs.count()) !== 3) throw new Error('the cadence switcher offers ' + (await tabs.count()));
   await tabs.nth(2).click();
-  await page.waitForSelector('.wrapped-cover-year', { timeout: 15000 });
-  const activeTab = await page.locator('.wrapped-cadences .segment.is-active').getAttribute('href');
+  await page.waitForSelector('[data-wrapped-cover-year]', { timeout: 15000 });
+  const activeTab = await page.locator('[data-wrapped-cadences] [aria-current="page"]').getAttribute('href');
   if (activeTab !== '/wrapped/year') throw new Error('the switcher marks ' + activeTab + ' as current');
 
   await fresh('/wrapped/nonsense');
-  if (!(await page.locator('.notice').count())) throw new Error('an unknown cadence should say so');
-  if (await page.locator('.wrapped-cadences').count()) throw new Error('an unknown cadence still drew a switcher');
+  if (!(await page.locator('[data-notice-title]').count())) throw new Error('an unknown cadence should say so');
+  if (await page.locator('[data-wrapped-cadences]').count()) throw new Error('an unknown cadence still drew a switcher');
 
   /* Home offers exactly one card, for whichever cadence is freshest today,
      and it links to that cadence's screen. */
@@ -1127,7 +1129,7 @@ try {
   const href = await card.getAttribute('href');
   if (!/^\/wrapped\/(week|month|year)$/.test(href ?? '')) throw new Error('the card links to ' + href);
   await card.click();
-  await page.waitForSelector('.wrapped-title, .wrapped-cover-year');
+  await page.waitForSelector('[data-wrapped-title], [data-wrapped-cover-year]');
 
   /* The toggle turns the feature off rather than hiding the card: Home stops
      offering it, and the screen itself says so instead of rendering a
@@ -1137,10 +1139,10 @@ try {
   await fresh('/');
   if (await page.locator('[data-wrapped-card]').count()) throw new Error('the card survived the toggle');
   await fresh('/wrapped/week');
-  if (await page.locator('.wrapped-stats, .wrapped-cover').count()) {
+  if (await page.locator('[data-wrapped-stats], [data-wrapped-cover]').count()) {
     throw new Error('a wrapped still rendered with the feature turned off');
   }
-  if (!(await page.locator('.notice-title').count())) throw new Error('the off state explains nothing');
+  if (!(await page.locator('[data-notice-title]').count())) throw new Error('the off state explains nothing');
 
   await fresh('/settings');
   await page.locator('[data-wrapped-toggle]').getByRole('switch').click();
@@ -1163,49 +1165,47 @@ try {
    .svelte-kit/output/client/service-worker.js. */
 try {
   await fresh('/entry/new/today');
-  const dysphoriaGroup = page.locator('.tag-group', {
-    has: page.locator('.tag-group-name', { hasText: 'Dysphoria type' })
-  });
+  const dysphoriaGroup = page.locator('[data-tag-group="dysphoria_type"]');
   await dysphoriaGroup.waitFor();
-  const labels = (await dysphoriaGroup.locator('.tag-chip').allTextContents()).map((t) => t.trim());
+  const labels = (await dysphoriaGroup.locator('[data-tag]').allTextContents()).map((t) => t.trim());
   const expected = ['physical', 'biochemical', 'social', 'societal', 'sexual', 'presentational', 'existential'];
   if (JSON.stringify(labels) !== JSON.stringify(expected)) {
     throw new Error('dysphoria type chips read: ' + JSON.stringify(labels));
   }
 
-  await page.getByRole('button', { name: 'About societal', exact: true }).click();
-  await page.waitForSelector('.sheet');
-  const societalBody = (await page.locator('.sheet p').textContent())?.trim() ?? '';
+  await page.locator('[data-tag-info="dt-societal"]').click();
+  await page.waitForSelector('[role="dialog"]');
+  const societalBody = (await page.locator('[role="dialog"] p').textContent())?.trim() ?? '';
   if (!/society/i.test(societalBody)) throw new Error('societal description read: ' + societalBody);
   await page.keyboard.press('Escape');
-  await page.waitForSelector('.sheet', { state: 'detached' });
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
 
-  await page.getByRole('button', { name: 'About social', exact: true }).click();
-  await page.waitForSelector('.sheet');
-  const socialBody = (await page.locator('.sheet p').textContent())?.trim() ?? '';
+  await page.locator('[data-tag-info="dt-social"]').click();
+  await page.waitForSelector('[role="dialog"]');
+  const socialBody = (await page.locator('[role="dialog"] p').textContent())?.trim() ?? '';
   if (socialBody === societalBody) throw new Error('social and societal show the same description');
   await page.keyboard.press('Escape');
-  await page.waitForSelector('.sheet', { state: 'detached' });
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
 
   /* Picking a dysphoria type and the euphoria tag leaves both selected -
      the euphoria capture is not tied to, or cleared by, picking a type
      (ticket scope: "usable independently of any dysphoria type tag, on the
      same entry or a different one"). */
-  await page.getByRole('button', { name: 'physical', exact: true }).click();
-  await page.getByRole('button', { name: 'euphoria', exact: true }).click();
-  if ((await page.getByRole('button', { name: 'physical', exact: true }).getAttribute('aria-pressed')) !== 'true') {
+  await page.locator('[data-tag="dt-physical"]').click();
+  await page.locator('[data-tag="g-euphoria"]').click();
+  if ((await page.locator('[data-tag="dt-physical"]').getAttribute('aria-pressed')) !== 'true') {
     throw new Error('physical dysphoria type was deselected by picking euphoria');
   }
-  if ((await page.getByRole('button', { name: 'euphoria', exact: true }).getAttribute('aria-pressed')) !== 'true') {
+  if ((await page.locator('[data-tag="g-euphoria"]').getAttribute('aria-pressed')) !== 'true') {
     throw new Error('euphoria did not select');
   }
-  await page.locator('.mood-picker .mood-btn[data-mood="3"]').click();
+  await page.locator('[data-mood="3"]').click();
   await page.locator('#ed-note').fill('Playwright: physical and euphoria together.');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('.entry-card .entry-note');
+  await page.waitForSelector('[data-entry-note]');
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Hide existential', exact: true }).click();
+  await page.locator('[data-tag-hide="dt-existential"]').click();
 
   const tomorrow = await page.evaluate(() => {
     const d = new Date();
@@ -1213,12 +1213,12 @@ try {
   });
   await page.goto(BASE + `/entry/new/${tomorrow}`, { waitUntil: 'networkidle' });
   await booted();
-  const afterHide = (await dysphoriaGroup.locator('.tag-chip').allTextContents()).map((t) => t.trim());
+  const afterHide = (await dysphoriaGroup.locator('[data-tag]').allTextContents()).map((t) => t.trim());
   if (afterHide.includes('existential')) throw new Error('hidden dysphoria type still offered');
   if (afterHide.length !== 6) throw new Error('hiding one type should leave six, found ' + afterHide.length);
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Show existential', exact: true }).click();
+  await page.locator('[data-tag-hide="dt-existential"]').click();
 
   ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
 } catch (e) { fail('typed dysphoria and euphoria logging', e); }
@@ -1235,7 +1235,7 @@ try {
    02's flow above: append here, run `npx svelte-kit sync` first. */
 try {
   await fresh('/on-this-day');
-  if (!(await page.locator('.screen-title', { hasText: 'On this day' }).count())) {
+  if (!(await page.locator('[data-screen-title="on-this-day"]').count())) {
     throw new Error('the route did not render');
   }
 
@@ -1255,25 +1255,25 @@ try {
   // A low mood with no euphoria capture: below the good-day bar, so this
   // day must not surface, not even as its own section.
   await fresh(`/entry/new/${sixMonthsAgo}`);
-  await page.locator('.mood-picker .mood-btn[data-mood="1"]').click();
+  await page.locator('[data-mood="1"]').click();
   await page.locator('[data-save]').click();
-  await page.waitForSelector('.home-hello', { timeout: 10000 });
+  await page.waitForSelector('[data-home-hello]', { timeout: 10000 });
 
   await fresh('/on-this-day');
-  if (await page.locator('.wrapped-title', { hasText: 'Six months ago' }).count()) {
+  if (await page.locator('[data-wrapped-title]', { hasText: 'Six months ago' }).count()) { // text-under-test: the distance label
     throw new Error('a day below the good-day bar surfaced anyway');
   }
 
   // The euphoria capture on a second entry the same day is enough on its
   // own, regardless of the day's mood average.
   await fresh(`/entry/new/${sixMonthsAgo}`);
-  await page.locator('.mood-picker .mood-btn[data-mood="1"]').click();
-  await page.getByRole('button', { name: 'euphoria', exact: true }).click();
+  await page.locator('[data-mood="1"]').click();
+  await page.locator('[data-tag="g-euphoria"]').click();
   await page.locator('[data-save]').click();
-  await page.waitForSelector('.home-hello', { timeout: 10000 });
+  await page.waitForSelector('[data-home-hello]', { timeout: 10000 });
 
   await fresh('/on-this-day');
-  const sixMonthSection = page.locator('.wrapped-title', { hasText: 'Six months ago' });
+  const sixMonthSection = page.locator('[data-wrapped-title]', { hasText: 'Six months ago' }); // text-under-test: the distance label
   if (!(await sixMonthSection.count())) throw new Error('a euphoria capture should have qualified this day');
 
   await fresh('/');
@@ -1281,7 +1281,7 @@ try {
   const card = page.locator('[data-on-this-day-card]');
   if ((await card.count()) !== 1) throw new Error('Home should offer the on-this-day card now, found ' + (await card.count()));
   await card.click();
-  await page.waitForSelector('.wrapped-title');
+  await page.waitForSelector('[data-wrapped-title]');
 
   /* The toggle turns the feature off entirely, and leaves wrapped's own
      toggle and card untouched (CONTEXT/ticket scope: independent toggles). */
@@ -1293,10 +1293,10 @@ try {
     throw new Error("turning on-this-day off changed wrapped's own card");
   }
   await fresh('/on-this-day');
-  if (await page.locator('.wrapped-stats, .wrapped-title').count()) {
+  if (await page.locator('[data-wrapped-stats], [data-wrapped-title]').count()) {
     throw new Error('on-this-day still rendered a day with the feature turned off');
   }
-  if (!(await page.locator('.notice-title').count())) throw new Error('the off state explains nothing');
+  if (!(await page.locator('[data-notice-title]').count())) throw new Error('the off state explains nothing');
 
   await fresh('/settings');
   await page.locator('[data-on-this-day-toggle]').getByRole('switch').click();
@@ -1314,7 +1314,7 @@ try {
    gets to proving it. */
 try {
   await fresh('/entry/new/today');
-  await page.locator('.mood-picker .mood-btn[data-mood="4"]').click();
+  await page.locator('[data-mood="4"]').click();
   await page.locator('#ed-note').fill('Killed mid-edit by Playwright.');
   await page.waitForFunction(() => {
     const raw = localStorage.getItem('gender-diary-entry-draft');
@@ -1330,11 +1330,11 @@ try {
   if (restoredNote !== 'Killed mid-edit by Playwright.') {
     throw new Error(`note lost across reload: "${restoredNote}"`);
   }
-  await page.waitForSelector('.mood-picker .mood-btn[data-mood="4"].is-selected');
+  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
 
   await page.locator('[data-save]').click();
-  await page.waitForSelector('.entry-card .entry-note');
-  const saved = await page.locator('.entry-card .entry-note').first().textContent();
+  await page.waitForSelector('[data-entry-note]');
+  const saved = await page.locator('[data-entry-note]').first().textContent();
   if (!saved.includes('Killed mid-edit')) throw new Error('the resumed draft did not save');
 
   /* Saving unmounts the editor, which clears the mirror (onDestroy), so a
@@ -1354,7 +1354,7 @@ try {
    early. */
 try {
   await fresh('/entry/new/today');
-  await page.locator('.mood-picker .mood-btn[data-mood="3"]').click();
+  await page.locator('[data-mood="3"]').click();
   await page.locator('#ed-note').fill('Backgrounded but never killed.');
 
   await page.evaluate(() => {
@@ -1370,7 +1370,7 @@ try {
 
   const note = await page.locator('#ed-note').inputValue();
   if (note !== 'Backgrounded but never killed.') throw new Error(`note changed across backgrounding: "${note}"`);
-  await page.waitForSelector('.mood-picker .mood-btn[data-mood="3"].is-selected');
+  await page.waitForSelector('[data-mood="3"][aria-checked="true"]');
   ok('backgrounding and returning in the same process leaves an unsaved edit untouched');
 } catch (e) { fail('same-process background/resume', e); }
 
@@ -1382,7 +1382,7 @@ try {
    filling them in writes onto the entry the quick log already saved. */
 try {
   await fresh('/');
-  await page.locator('.quicklog .mood-btn[data-mood="4"]').click();
+  await page.locator('[data-mood="4"]').click();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-quick-log-dims]');
@@ -1397,9 +1397,9 @@ try {
   await page.locator('[data-qld-add]').click();
   await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
 
-  await page.locator('.entry-card').first().click();
-  await page.waitForSelector('.dim-value');
-  const values = await page.locator('.dim-value').allTextContents();
+  await page.locator('[data-entry-card]').first().click();
+  await page.waitForSelector('[data-dim-value]');
+  const values = await page.locator('[data-dim-value]').allTextContents();
   if (values.some((v) => v.trim() === '—')) throw new Error('a scale value from the prompt did not save');
   ok('quick log dims prompt saves typed scale values onto the just-saved entry');
 } catch (e) { fail('quick log dims prompt (save)', e); }
@@ -1409,16 +1409,16 @@ try {
    it leaves that entry exactly as it was. */
 try {
   await fresh('/');
-  await page.locator('.quicklog .mood-btn[data-mood="3"]').click();
+  await page.locator('[data-mood="3"]').click();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-quick-log-dims]');
   await page.locator('[data-qld-skip]').click();
   await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
 
-  await page.locator('.entry-card').first().click();
-  await page.waitForSelector('.dim-value');
-  const values = await page.locator('.dim-value').allTextContents();
+  await page.locator('[data-entry-card]').first().click();
+  await page.waitForSelector('[data-dim-value]');
+  const values = await page.locator('[data-dim-value]').allTextContents();
   if (!values.every((v) => v.trim() === '—')) throw new Error('declining the prompt still wrote a scale value');
   ok('declining the quick log dims prompt leaves the saved entry untouched');
 } catch (e) { fail('quick log dims prompt (decline)', e); }
@@ -1445,14 +1445,14 @@ try {
   await page.locator('#compare-b-end').fill(bEnd);
 
   await page.waitForSelector('[data-compare-table]');
-  const entriesRow = page.locator('.compare-metrics-row', { hasText: 'Entries logged' });
+  const entriesRow = page.locator('[data-compare-metric="entries"]');
   const entriesValues = await entriesRow.locator('span').allTextContents();
   if (entriesValues.length !== 3) throw new Error('entries row: ' + JSON.stringify(entriesValues));
   if (entriesValues[1] === '0' || entriesValues[2] === '0') {
     throw new Error('one of the two periods had no entries: ' + JSON.stringify(entriesValues));
   }
 
-  const headerValues = await page.locator('.compare-metrics-header .compare-period-label').allTextContents();
+  const headerValues = await page.locator('[data-compare-period-label]').allTextContents();
   if (headerValues[0] === headerValues[1]) throw new Error('the two period labels read the same: ' + JSON.stringify(headerValues));
 
   if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('compare is not view-only');
@@ -1470,19 +1470,19 @@ try {
   await fresh('/settings/roadmap');
   await page.waitForSelector('[role="checkbox"]');
 
-  const tracks = (await page.locator('.section-title').allTextContents()).map((t) => t.trim());
+  const tracks = (await page.locator('[data-section-title]').allTextContents()).map((t) => t.trim());
   for (const track of ['Social', 'Legal', 'Presentation', 'Medical']) {
     if (!tracks.includes(track)) throw new Error('missing track ' + track + ': ' + JSON.stringify(tracks));
   }
 
-  if (!(await page.getByText(/III CZP 20\/26/).count())) throw new Error('the unsettled-law caveat is not shown');
-  if (!(await page.getByText(/checked against its sources/i).count())) throw new Error('the review date is not shown');
+  if (!(await page.getByText(/III CZP 20\/26/).count())) throw new Error('the unsettled-law caveat is not shown'); // text-under-test: the caveat itself
+  if (!(await page.getByText(/checked against its sources/i).count())) throw new Error('the review date is not shown'); // text-under-test: the review note itself
 
   const boxes = page.locator('[role="checkbox"]');
   const before = await boxes.count();
   if (before < 30) throw new Error('the Polish pack rendered only ' + before + ' goals');
 
-  await page.locator('[role="checkbox"]', { hasText: 'Seven days to ask for the reasons' }).first().click();
+  await page.locator('[data-goal="pl-legal-written-reasons"]').click();
   await page.waitForFunction(() => document.querySelectorAll('[role="checkbox"][aria-checked="true"]').length === 1);
 
   await page.reload({ waitUntil: 'networkidle' });

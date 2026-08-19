@@ -8,12 +8,15 @@
   <div
     class="toast is-open"
     role="status"
+    data-toast
+    data-toast-kind={t.kind}
     transition:fly={{ y: motionDistance('--motion-distance-sm', 10), duration: motionDuration('--dur-med', 240) }}
   >
     <span>{t.message}</span>
     {#if t.actionLabel}
       <button
         class="toast-action"
+        data-toast-action
         onclick={() => {
           dismissToast(t.id);
           t.onAction?.();

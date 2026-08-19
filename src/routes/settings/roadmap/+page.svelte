@@ -66,6 +66,7 @@
             class="list-row"
             role="checkbox"
             aria-checked={isChecked}
+            data-goal={goal.key}
             onclick={() => toggle(goal.key)}
           >
             <span class="row-icon" class:roadmap-ticked={isChecked}>

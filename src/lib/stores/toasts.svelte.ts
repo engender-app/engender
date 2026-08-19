@@ -5,13 +5,21 @@ export interface ToastItem {
   message: string;
   actionLabel?: string;
   onAction?: () => void;
+  /* Walkthrough handle for the few toasts the suite has to pick out of a
+     group (ADR: the walkthrough grips handles, never wording) - most
+     toast() callers never pass this, since most toasts are only ever
+     asserted on by their role. */
+  kind?: string;
 }
 
 let seq = 1;
 export const toasts = $state<ToastItem[]>([]);
 
-export function toast(message: string, opts: { actionLabel?: string; onAction?: () => void; duration?: number } = {}) {
-  const item: ToastItem = { id: seq++, message, actionLabel: opts.actionLabel, onAction: opts.onAction };
+export function toast(
+  message: string,
+  opts: { actionLabel?: string; onAction?: () => void; duration?: number; kind?: string } = {}
+) {
+  const item: ToastItem = { id: seq++, message, actionLabel: opts.actionLabel, onAction: opts.onAction, kind: opts.kind };
   toasts.push(item);
   setTimeout(() => {
     const i = toasts.findIndex((t) => t.id === item.id);

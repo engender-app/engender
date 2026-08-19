@@ -18,7 +18,7 @@
   let badge = $derived(s.type === 'today' ? m.ms_status_today() : s.isAnnivToday ? m.ms_status_anniversary() : null);
 </script>
 
-<a class="milestone-card" {href}>
+<a class="milestone-card" data-milestone-card {href}>
   {#if milestone.photo}
     <PhotoThumb photo={milestone.photo} size={44} />
   {:else}

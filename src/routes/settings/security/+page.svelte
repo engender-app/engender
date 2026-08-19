@@ -33,7 +33,7 @@
     <p class="ob-text">{m.security_intro()}</p>
   </div>
 
-  <div class="list-group">
+  <div class="list-group" data-security-list>
     <a class="list-row" href="/settings/passphrase">
       <span class="row-icon"><Icon name="shield" size={22} /></span>
       <span class="row-text">
