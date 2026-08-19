@@ -2026,5 +2026,18 @@
   "surgery_checklist_delete_sheet": "Delete item",
   "surgery_checklist_delete_q": "Delete this item?",
   "clinician_summary_procedures_empty": "No procedures recorded.",
-  "surgery_add": "Add a procedure"
+  "surgery_add": "Add a procedure",
+  "journaling_pause_title": "Journaling pause",
+  "journaling_pause_row_sub": "A declared break - check-in and the streak go quiet while it runs",
+  "journaling_pause_intro": "Pausing tells the app you stepped away on purpose. Check-in and the streak line go quiet while it runs, and coming back never reads as a broken streak.",
+  "journaling_pause_running_since": "Paused since {day}",
+  "journaling_pause_running_hint": "Check-in and the streak line stay quiet until you end the pause.",
+  "journaling_pause_resume": "Resume journaling",
+  "journaling_pause_start_label": "From",
+  "journaling_pause_end_label": "To",
+  "journaling_pause_end_hint": "Leave empty if the pause is still going.",
+  "journaling_pause_start": "Start a pause",
+  "journaling_pause_history_title": "Past pauses",
+  "journaling_pause_ongoing": "still going",
+  "journaling_pause_delete_aria": "Delete the pause starting {from}"
 }

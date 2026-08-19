@@ -59,6 +59,9 @@ export type TableName =
   | 'personalEffect'
   /* Cycle events (phase 5 ticket 03). */
   | 'cycleEvent'
+  /* The journaling pause (phase 5 ticket 21) - Streak's own reads key on
+     this too, since a pause changes what Streak answers. */
+  | 'journalingPause'
   /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
      nothing reads one without the other, the same reasoning 'dose' gives -
      the screen shows both against the same anchor. */
@@ -125,6 +128,7 @@ export const TABLE_NAMES: TableName[] = [
   'sideEffect',
   'personalEffect',
   'cycleEvent',
+  'journalingPause',
   'hairProgress',
   'hairRemoval',
   'procedure',
@@ -251,6 +255,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   cycleEvents: {
     writes: { upsertCycleEvent: ['cycleEvent'], deleteCycleEvent: ['cycleEvent'] },
     reads: ['getCycleEvents', 'getCycleEventsInRange']
+  },
+  journalingPauses: {
+    writes: { upsertPause: ['journalingPause'], deletePause: ['journalingPause'] },
+    reads: ['getPauses']
   },
   wearSessions: {
     writes: {

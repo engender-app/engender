@@ -190,8 +190,12 @@ export async function runJournalContract(
     r.equal('foldText strips Polish letterforms', foldText('Zażółć Gęślą Jaźń ŁÓŻKO'), 'zazolc gesla jazn lozko');
   });
 
-  /* ADR-0012's streak is the codebase's only window function. A build
-     compiled with SQLITE_OMIT_WINDOWFUNC fails here and nowhere else. */
+  /* ADR-0012's bestStreakIn (behind bestStreakEver/recap) is the codebase's
+     only window function now that Streak's own computation moved off one
+     for the journaling pause (phase 5 ticket 21, stats.ts's streak() header
+     comment) - it still runs a plain JS walk over two small reads instead.
+     A build compiled with SQLITE_OMIT_WINDOWFUNC fails here and nowhere
+     else. */
   await r.section('window functions', async () => {
     for (const day of [1000, 1001, 1002, 1004]) {
       await journal.entries.upsertEntry({ epochDay: day, mood: 3, note: `day ${day}` });
@@ -199,6 +203,7 @@ export async function runJournalContract(
     r.equal('the streak counts the run ending today', await journal.stats.streak(1002), 3);
     r.equal('a run that ended before yesterday is not a streak', await journal.stats.streak(1010), 0);
     r.equal('a single day after a gap counts as one', await journal.stats.streak(1004), 1);
+    r.equal('bestStreakEver finds the longest run via the window function', await journal.stats.bestStreakEver(1004), 3);
   });
 
   await r.section('entries round-trip', async () => {

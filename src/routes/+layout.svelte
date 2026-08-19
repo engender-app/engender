@@ -266,7 +266,12 @@
       isReady: () => isReadyState(bootState),
       todayEpochDay,
       prefs: { checkInEnabled, checkInTime, checkInAffirmationsEnabled, hideNotificationTitles, disguise, quickExit },
-      journal: { reminders: journal.reminders, entries: journal.entries, stock: journal.stock },
+      journal: {
+        reminders: journal.reminders,
+        entries: journal.entries,
+        stock: journal.stock,
+        journalingPauses: journal.journalingPauses
+      },
       onTablesWritten,
       androidReminders,
       androidDisguise,

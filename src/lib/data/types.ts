@@ -402,6 +402,18 @@ export interface DosePause {
   reason: PauseReason;
 }
 
+/** A dated break from journaling (phase 5 ticket 21, CONTEXT: "Streak" -
+    amended). No episode reference: unlike DosePause above, this has nothing
+    to do with a regimen. Null end day means the pause is still running, the
+    same reasoning DosePause.endEpochDay gives. `Streak`'s own computation
+    treats a day inside a pause range as neither a gap nor a logged day; see
+    `journalingPause.ts`'s `pauseCoversDay`. */
+export interface JournalingPause {
+  id: string;
+  startEpochDay: number;
+  endEpochDay: number | null;
+}
+
 /* No episode reference (CONTEXT: "Side effect"): this record stands alone
    and has to work before a regimen episode exists. */
 export interface SideEffect {
