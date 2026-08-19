@@ -124,6 +124,9 @@ export const vocabulary = {
   get milestones(): Milestone[] {
     return reference.milestones;
   },
+  get journeyAnchor(): Milestone | null {
+    return reference.journeyAnchor;
+  },
   /** Every affirmation line, hidden built-ins included, in the wording the
       current language gives a built-in - what the settings screen manages. */
   get affirmations(): Affirmation[] {

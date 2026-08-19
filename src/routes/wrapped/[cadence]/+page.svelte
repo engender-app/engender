@@ -17,10 +17,11 @@
      seam, not a replacement for it. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, fmtMonthName } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { fmtDay, fmtDuration, fmtMonthName } from '$lib/data/dates';
+  import { calendarDuration, todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { smartBack } from '$lib/navigation/smart-back';
   import { recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
   import {
@@ -101,6 +102,15 @@
      wording from the catalogue at display time (ticket 05). */
   let dimChange = $derived(recap ? recapDimChange(recap) : null);
   let topTags = $derived(recap ? recapTopTags(recap) : []);
+
+  /* The journey anchor (phase 5 ticket 25, ADR-0010): independent of the
+     period a wrapped screen happens to be showing, so it reads the same
+     whichever cadence tab is open - recomputed from the anchor's own date
+     rather than anything the recap query returns. */
+  let anchor = $derived(vocabulary.journeyAnchor);
+  let anchorDuration = $derived(
+    anchor ? { name: anchor.name, duration: fmtDuration(calendarDuration(anchor.epochDay, today)) } : null
+  );
 </script>
 
 <div class="screen">
@@ -168,8 +178,9 @@
       {moodTrend}
       {dimChange}
       {topTags}
+      {anchorDuration}
     />
   {:else}
-    <WrappedCompact {title} {subtitle} {recap} {moodTrend} {dimChange} {topTags} />
+    <WrappedCompact {title} {subtitle} {recap} {moodTrend} {dimChange} {topTags} {anchorDuration} />
   {/if}
 </div>

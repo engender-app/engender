@@ -26,7 +26,8 @@
     recap,
     moodTrend,
     dimChange,
-    topTags
+    topTags,
+    anchorDuration = null
   }: {
     title: string;
     subtitle: string;
@@ -36,6 +37,11 @@
         say "scale" for it (CONTEXT: Gender dimension). */
     dimChange: { name: string; from: number; to: number } | null;
     topTags: { label: string; count: number }[];
+    /** The journey anchor's duration (phase 5 ticket 25), already named and
+        formatted. Optional and null by default so on-this-day, which reuses
+        this template without an anchor concept of its own, does not have to
+        pass one. */
+    anchorDuration?: { name: string; duration: string } | null;
   } = $props();
 </script>
 
@@ -57,6 +63,12 @@
     <div class="wrapped-stat" data-wrapped-stat>
       <strong>{recap.averageMood.toFixed(1)}</strong>
       <span>{m.wrapped_stat_mood()}</span>
+    </div>
+  {/if}
+  {#if anchorDuration}
+    <div class="wrapped-stat" data-wrapped-stat>
+      <strong>{anchorDuration.duration}</strong>
+      <span>{m.journey_anchor_since({ name: anchorDuration.name })}</span>
     </div>
   {/if}
 </div>
