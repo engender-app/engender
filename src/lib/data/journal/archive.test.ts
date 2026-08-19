@@ -33,6 +33,8 @@ async function populated() {
   const photo = await journal.photos.attach({ entryId: entry }, { full: bytes('full-photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a recording')] });
   const recording = (await journal.entries.getEntry(entry))!.recordings[0].id;
+  await journal.entries.upsertEntry({ id: entry, attachVideos: [bytes('a video note')] });
+  const videoNote = (await journal.entries.getEntry(entry))!.videos[0].id;
   const second = await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
 
   const milestone = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 19000, templateKey: 'hrt_start' });
@@ -143,6 +145,7 @@ async function populated() {
     second,
     photo,
     recording,
+    videoNote,
     milestone,
     milestonePhoto,
     lab,
@@ -167,8 +170,8 @@ async function populated() {
   };
 }
 
-test('entries travel by uuid, with their dimension values, tags, photos and recordings', async () => {
-  const { db, journal, voice, tag, entry, photo, recording } = await populated();
+test('entries travel by uuid, with their dimension values, tags, photos, recordings and video notes', async () => {
+  const { db, journal, voice, tag, entry, photo, recording, videoNote } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -187,6 +190,7 @@ test('entries travel by uuid, with their dimension values, tags, photos and reco
     tags: ['e-happy', tag.id],
     photos: [{ id: photo, fileName: `${photo}.jpg`, starred: false }],
     recordings: [{ id: recording, fileName: `${recording}.webm` }],
+    videos: [{ id: videoNote, fileName: `${videoNote}.webm` }],
     bodyRegions: { chest: 40 },
     starred: false
   });
@@ -461,8 +465,8 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
   ]);
 });
 
-test('the manifest names every photo file and its thumbnail, plus every recording file, with their lengths', async () => {
-  const { journal, photo, milestonePhoto, recording } = await populated();
+test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {
+  const { journal, photo, milestonePhoto, recording, videoNote } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -471,14 +475,16 @@ test('the manifest names every photo file and its thumbnail, plus every recordin
     { name: thumbFileName(`${photo}.jpg`), length: 5 },
     { name: `${milestonePhoto}.jpg`, length: 1 },
     { name: thumbFileName(`${milestonePhoto}.jpg`), length: 2 },
-    { name: `${recording}.webm`, length: bytes('a recording').length }
+    { name: `${recording}.webm`, length: bytes('a recording').length },
+    { name: `${videoNote}.webm`, length: bytes('a video note').length }
   ]);
   assert.deepEqual(await snapshot.readFile(`${photo}.jpg`), bytes('full-photo'));
   assert.deepEqual(await snapshot.readFile(`${recording}.webm`), bytes('a recording'));
+  assert.deepEqual(await snapshot.readFile(`${videoNote}.webm`), bytes('a video note'));
 });
 
-test('a trashed entry, and its photo and recording files, are excluded from the snapshot entirely (phase 5 ticket 19)', async () => {
-  const { journal, db, entry, photo, recording, milestonePhoto } = await populated();
+test('a trashed entry, and its photo, recording and video-note files, are excluded from the snapshot entirely (phase 5 ticket 19)', async () => {
+  const { journal, db, entry, photo, recording, videoNote, milestonePhoto } = await populated();
   const uuid = (await db.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [entry]))[0].uuid;
 
   await journal.entries.deleteEntry(entry);
@@ -488,6 +494,7 @@ test('a trashed entry, and its photo and recording files, are excluded from the 
   assert.ok(!snapshot.journal.entries.some((e) => e.uuid === uuid));
   assert.ok(!snapshot.files.some((f) => f.name === `${photo}.jpg`));
   assert.ok(!snapshot.files.some((f) => f.name === `${recording}.webm`));
+  assert.ok(!snapshot.files.some((f) => f.name === `${videoNote}.webm`));
   // Nothing else the entry did not own is affected.
   assert.ok(snapshot.files.some((f) => f.name === `${milestonePhoto}.jpg`));
 });
@@ -611,6 +618,7 @@ const CARRIED: Record<string, string[]> = {
   // episode_id does (ADR-0002).
   tryout_felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
+  video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],
   checklist: ['uuid', 'owner_kind', 'owner_uuid'],
   // checklist_id travels as the checklist's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).

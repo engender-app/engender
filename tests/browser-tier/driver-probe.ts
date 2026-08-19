@@ -10,6 +10,7 @@
    the app no longer opens its journal with. */
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
+import { LATEST_SCHEMA_VERSION } from '../../src/lib/data/sqlite/migrations.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 
 async function run() {
@@ -68,6 +69,7 @@ async function run() {
 
   (window as unknown as { __driverProbeResult: unknown }).__driverProbeResult = {
     userVersion,
+    latestSchemaVersion: LATEST_SCHEMA_VERSION,
     persistDenied: result.persistDenied,
     markerExisted,
     windowFunctionRun: windowed,

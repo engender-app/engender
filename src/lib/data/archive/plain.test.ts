@@ -36,6 +36,7 @@ function entry(fields: Partial<ArchiveEntry>): ArchiveEntry {
     tags: [],
     photos: [],
     recordings: [],
+    videos: [],
     bodyRegions: {},
     starred: false,
     ...fields
