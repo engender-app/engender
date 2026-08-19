@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay.ts';
-import { earliestEpisodeStartEpochDay, episodeEndEpochDay, resolveEpisodeAt } from './regimenEpisode.ts';
+import {
+  earliestEpisode,
+  earliestEpisodeStartEpochDay,
+  episodeEndEpochDay,
+  resolveEpisodeAt
+} from './regimenEpisode.ts';
 import type { RegimenEpisode } from './types.ts';
 
 const episode = (id: string, startEpochDay: number): RegimenEpisode => ({
@@ -70,4 +75,10 @@ test('a retroactive correction that starts earlier than the first episode moves 
 
   const corrected = [episode('z', 50), episode('a', 100), episode('b', 200)];
   assert.equal(earliestEpisodeStartEpochDay(corrected), 50);
+});
+
+test('earliestEpisode is the same anchor, carrying the drug the effects timeline reads', () => {
+  const episodes = [episode('a', 100), episode('b', 200)];
+  assert.equal(earliestEpisode(episodes)?.id, 'a');
+  assert.equal(earliestEpisode([]), null);
 });

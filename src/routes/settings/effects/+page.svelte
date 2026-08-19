@@ -1,8 +1,13 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { earliestEpisodeStartEpochDay } from '$lib/data/regimenEpisode';
-  import { literatureWindow, literatureWindowDays, PERSONAL_EFFECT_TYPES } from '$lib/data/personalEffectWindow';
+  import { earliestEpisode } from '$lib/data/regimenEpisode';
+  import {
+    literatureCovers,
+    literatureWindow,
+    literatureWindowDays,
+    PERSONAL_EFFECT_TYPES
+  } from '$lib/data/personalEffectWindow';
   import { personalEffectName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -17,8 +22,11 @@
   let episodes = $derived(episodesQuery.value ?? []);
   /* The anchor is HRT's own start, not whichever episode is active right
      now (ticket 07) - resolveEpisodeAt is the wrong function here, this is
-     the one place earliestEpisodeStartEpochDay is called from. */
-  let anchorEpochDay = $derived(earliestEpisodeStartEpochDay(episodes));
+     the one place earliestEpisode is called from. Its drug decides which
+     bands may be drawn at all (ticket 27), so the whole episode is held
+     rather than only its start day. */
+  let anchor = $derived(earliestEpisode(episodes));
+  let anchorEpochDay = $derived(anchor?.startEpochDay ?? null);
 
   let markersQuery = liveQuery(['personalEffect'], (j) => j.personalEffects.getMarkers());
   let markers = $derived(markersQuery.value ?? []);
@@ -26,22 +34,35 @@
 
   const today = todayEpochDay();
 
+  /* Every effect gets a row whether or not its literature applies: the row
+     is where a change is marked, and someone on testosterone who notices
+     their skin softening has as much right to record the day as anyone.
+     What the drug gates is the band, not the row. */
   let timelineRows = $derived(
-    anchorEpochDay == null
+    anchor == null
       ? []
-      : PERSONAL_EFFECT_TYPES.map((effect) => ({
-          key: effect,
-          label: personalEffectName(effect),
-          ...literatureWindowDays(effect, anchorEpochDay),
-          markerDay: markerFor(effect)?.firstNoticedEpochDay ?? null
-        }))
+      : PERSONAL_EFFECT_TYPES.map((effect) => {
+          const days = literatureWindowDays(effect, anchor);
+          return {
+            key: effect,
+            label: personalEffectName(effect),
+            onset: days?.onset ?? null,
+            completion: days?.completion ?? null,
+            markerDay: markerFor(effect)?.firstNoticedEpochDay ?? null
+          };
+        })
   );
 
   /* One whole-sentence message per window shape (no completion window,
      open-ended, or bounded) rather than concatenating parts - each is a
      full sentence in its own right, so nothing here has to guess how any
-     other language would order the pieces. */
-  function windowCaption(effect: PersonalEffectType): string {
+     other language would order the pieces.
+
+     Null where the band is withheld, and nothing is said in its place: the
+     sentence would be a timing claim about a hormone this person is not on
+     (ticket 27). */
+  function windowCaption(effect: PersonalEffectType): string | null {
+    if (anchor == null || !literatureCovers(effect, anchor.drug)) return null;
     const window = literatureWindow(effect);
     const onsetMin = String(window.onsetMonths.min);
     const onsetMax = String(window.onsetMonths.max);
@@ -118,7 +139,10 @@
   <Sheet open={editor !== null} title={editor ? personalEffectName(editor.effect) : ''} onClose={() => (editor = null)}>
     {#if editor}
       <h3>{personalEffectName(editor.effect)}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-3)">{windowCaption(editor.effect)}</p>
+      {@const caption = windowCaption(editor.effect)}
+      {#if caption}
+        <p class="muted small" style="margin-bottom:var(--space-3)">{caption}</p>
+      {/if}
       <div class="field">
         <label class="field-label" for="effect-date">{m.effect_first_noticed_label()}</label>
         <input class="input" type="date" id="effect-date" name="effect-date" bind:value={editor.date} />
