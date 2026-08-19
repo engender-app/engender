@@ -132,6 +132,18 @@ A named set of gender dimensions.
 The preset whose dimensions the entry editor offers by default. It governs what is
 offered, never what an entry already holds.
 
+**Lean**:
+One of three tags - femme, masc, neutral - a **roadmap goal**, **milestone
+template**, or **regimen template** carries, read only to order a picker so
+whichever matches the **active preset** sorts first and everything else follows
+unchanged and still reachable. Never used to hide, filter, or gate anything.
+Authored explicitly per item, since a goal or template carries no dimensions of
+its own to derive one from. A preset's own lean is never stored: it follows from
+whether it includes the `femininity` or `masculinity` dimension and not the
+other - a preset with both, with neither, or with any other combination has no
+lean, and every lean-tagged list renders unranked for it.
+_Avoid_: Direction, persona, preset lean, leaning (as a noun)
+
 ### Dysphoria and euphoria
 
 **Dysphoria type**:
@@ -178,6 +190,18 @@ Timestamp only orders same-day entries and never decides which day an entry
 belongs to; a dose event's says when the dose was actually taken, because
 hours-since-last-dose is derived from it and sublingual estradiol peaks in one
 to two hours.
+
+**Regimen template**:
+A built-in suggestion for a **regimen episode** - drug, ester and route only -
+offered by key at creation time, the same shape a **milestone template**
+already has for a milestone. Carries no dose and no interval on purpose: those
+are where a suggestion starts reading as a recommendation, which nothing else
+in this app's HRT tracking does either (this **Regimen episode**'s **Dose
+slot** and **Hormone curve** are both explicitly descriptive, never a target).
+What the user creates from one is an ordinary regimen episode, editable and
+completable like any other.
+_Avoid_: Regimen (ambiguous - see Regimen episode), suggested dose, preset
+regimen
 
 **Dose schedule**:
 How often one regimen episode expects a dose: every so many days, so many doses
