@@ -14,6 +14,7 @@ import { MOOD_RANGE, type MetricRange } from '../metricRange';
 import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
+import { presetLean, rankByLean } from '../lean';
 import { entryPromptRows, entryTemplateRows, milestoneTemplateRows, regimenTemplateRows } from './builtins';
 import type {
   Affirmation,
@@ -136,6 +137,14 @@ export const vocabulary = {
   get activePreset(): GenderPreset {
     return localizePreset(reference.activePreset);
   },
+  /** The active preset's own lean (phase 5 ticket 43, ADR-0030) - `null`
+      when it has both `femininity` and `masculinity`, or neither, and every
+      lean-tagged picker should render unranked. Shared by every picker that
+      ranks by lean, so the derivation is computed once rather than at each
+      call site. */
+  get activeLean(): 'femme' | 'masc' | null {
+    return presetLean(this.activePreset.dims);
+  },
   get tagGroups(): TagGroup[] {
     return reference.tagGroups.map(localizeGroup);
   },
@@ -187,9 +196,12 @@ export const vocabulary = {
   },
   /** The built-in regimen episode suggestions (phase 5 ticket 42, CONTEXT:
       "Regimen template"), in the wording the current language gives them -
-      what the regimen editor's "add new" picker offers above manual entry. */
+      what the regimen editor's "add new" picker offers above manual entry.
+      Ranked by the active preset's lean (phase 5 ticket 43, ADR-0030):
+      matching templates first, the rest after in their existing order -
+      every template still shown, just reordered. */
   get regimenTemplates(): RegimenTemplate[] {
-    return regimenTemplates.map(localizeRegimenTemplate);
+    return rankByLean(regimenTemplates.map(localizeRegimenTemplate), this.activeLean);
   },
   /** Every body region, hidden built-ins and custom ones included, in the
       wording the user sees (ticket 09, reference-data area since ticket
@@ -245,14 +257,17 @@ export const vocabulary = {
     return dims.map((k) => byKey.get(k) ?? k).join(', ');
   },
   /** A few templates to offer, picked at random so the suggestions differ
-      between visits and the shuffle button has something to do (PRD F6). */
+      between visits and the shuffle button has something to do (PRD F6).
+      Which `n` get picked stays random - lean only orders the ones that
+      land in the draw (phase 5 ticket 43, ADR-0030), matching the active
+      preset first. */
   randomTemplates(n = 3): MilestoneTemplate[] {
     const pool = [...milestoneTemplates];
     const picked: MilestoneTemplate[] = [];
     while (picked.length < n && pool.length) {
       picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
     }
-    return picked.map(localizeTemplate);
+    return rankByLean(picked.map(localizeTemplate), this.activeLean);
   },
   /** The built-in templates the entry-creation flow can offer (phase 4
       features ticket 17), in the wording the current language gives them. */

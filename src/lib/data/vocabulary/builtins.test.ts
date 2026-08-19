@@ -12,9 +12,12 @@ import {
   ENTRY_PROMPT_KEYS,
   ENTRY_TEMPLATES,
   MILESTONE_TEMPLATE_KEYS,
+  MILESTONE_TEMPLATE_LEAN,
   REGIMEN_TEMPLATE_KEYS,
+  REGIMEN_TEMPLATE_LEAN,
   entryPromptRows,
   entryTemplateRows,
+  milestoneTemplateRows,
   regimenTemplateRows,
   withBuiltInDimensions,
   withBuiltInTagGroups
@@ -172,6 +175,32 @@ test('regimen templates seed with no display text, because wording is resolved b
 
   expect(rows).toHaveLength(REGIMEN_TEMPLATE_KEYS.length);
   expect(rows.every((t) => t.name === '' && t.drug === '' && t.ester === null && t.route === '')).toBe(true);
+});
+
+/* Acceptance box 2 (phase 5 ticket 43): every milestone and regimen
+   template carries a hand-authored lean, and it survives into the row a
+   picker actually renders. */
+test('every milestone template carries a lean of femme, masc, or neutral', () => {
+  const rows = milestoneTemplateRows();
+  MILESTONE_TEMPLATE_KEYS.forEach((key, i) => {
+    expect(['femme', 'masc', 'neutral']).toContain(MILESTONE_TEMPLATE_LEAN[key]);
+    expect(rows[i].lean).toBe(MILESTONE_TEMPLATE_LEAN[key]);
+  });
+});
+
+test('every regimen template carries a lean matching the hormone it starts', () => {
+  expect(REGIMEN_TEMPLATE_LEAN).toEqual({
+    estradiol_valerate_im: 'femme',
+    estradiol_oral: 'femme',
+    estradiol_gel: 'femme',
+    testosterone_cypionate_im: 'masc',
+    testosterone_gel: 'masc'
+  });
+
+  const rows = regimenTemplateRows();
+  REGIMEN_TEMPLATE_KEYS.forEach((key, i) => {
+    expect(rows[i].lean).toBe(REGIMEN_TEMPLATE_LEAN[key]);
+  });
 });
 
 test('entry template keys are unique', () => {

@@ -4,6 +4,8 @@
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
   import { POLISH_PACK, ROADMAP_TRACKS, goalsInTrack, type RoadmapTrack } from '$lib/data/roadmap';
+  import { rankByLean } from '$lib/data/lean';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { RoadmapGoalStatus } from '$lib/data/types';
   import {
     roadmapGoalNote,
@@ -30,6 +32,11 @@
 
   let customQuery = liveQuery(['roadmapGoal'], (j) => j.roadmap.getCustomGoals());
   let customGoals = $derived(customQuery.value ?? []);
+
+  /* CONTEXT: "Lean" (phase 5 ticket 43, ADR-0030) - the active preset
+     reorders each track's built-in goals, matching ones first. Custom
+     goals carry no lean and are unaffected. */
+  let lean = $derived(vocabulary.activeLean);
 
   /* Split by hand rather than run through epochDayFromDateInputValue: the
      review date is a bundled constant that roadmap.test.ts already asserts
@@ -91,7 +98,7 @@
     {#each ROADMAP_TRACKS as track (track)}
       <SectionTitle text={roadmapTrackName(track)} />
       <div class="list-group">
-        {#each goalsInTrack(pack, track) as goal (goal.key)}
+        {#each rankByLean(goalsInTrack(pack, track), lean) as goal (goal.key)}
           {@const status = statuses[goal.key] ?? 'unchecked'}
           <button
             class="list-row"
