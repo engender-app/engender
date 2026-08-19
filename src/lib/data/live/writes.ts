@@ -67,6 +67,12 @@ export type TableName =
      ticket 08): nothing reads one without the other, the same reasoning
      'hairProgress' gives. */
   | 'hairRemoval'
+  /* One name for a procedure, its consult dates and its recovery photos
+     (phase 5 ticket 07): nothing reads one without the others, the same
+     reasoning 'hairProgress' gives. A procedure's recovery checklist is not
+     in here - that is an ordinary 'checklist' row, and a write to it has to
+     invalidate the appointment prep list's reads too. */
+  | 'procedure'
   /* One name for doubt entries and counterevidence snapshots alike (phase
      4 ticket 11): both belong to the same doubt-journal screen, the same
      reasoning 'hairProgress' gives. */
@@ -114,6 +120,7 @@ export const TABLE_NAMES: TableName[] = [
   'cycleEvent',
   'hairProgress',
   'hairRemoval',
+  'procedure',
   'doubtJournal',
   'tryout',
   'letter',
@@ -252,6 +259,22 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     },
     reads: ['getSessions', 'getPhotos']
   },
+  /* deleteProcedure and addChecklistItem write 'checklist' as well as
+     'procedure': the recovery checklist is an ordinary checklist row, so a
+     screen watching checklists has to hear about it. */
+  procedures: {
+    writes: {
+      upsertProcedure: ['procedure'],
+      deleteProcedure: ['procedure', 'checklist'],
+      setNotes: ['procedure'],
+      addConsult: ['procedure'],
+      deleteConsult: ['procedure'],
+      addPhoto: ['procedure'],
+      deletePhoto: ['procedure'],
+      addChecklistItem: ['procedure', 'checklist']
+    },
+    reads: ['getProcedures', 'getPhotos', 'getChecklist']
+  },
   reminders: {
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },
     reads: ['getReminders']
@@ -288,6 +311,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       deleteChecklist: ['checklist'],
       addItem: ['checklist'],
       addToStandaloneChecklist: ['checklist'],
+      addToOwnedChecklist: ['checklist'],
       editItem: ['checklist'],
       setItemChecked: ['checklist'],
       setItemCarriedForward: ['checklist'],

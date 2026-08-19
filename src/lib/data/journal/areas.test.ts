@@ -961,3 +961,149 @@ test('reminders update by id, toggle enabled, throw on unknown ids and delete id
   await journal.reminders.deleteReminder(id); // idempotent
   assert.deepEqual(await journal.reminders.getReminders(), []);
 });
+
+/* procedures (phase 5 ticket 07) */
+
+test('a procedure round-trips with a free-text name and an optional surgery date, ordered by that date', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20100, notes: '' });
+  const unscheduled = await journal.procedures.upsertProcedure({ name: 'facial feminization surgery' });
+  const earlier = await journal.procedures.upsertProcedure({ name: 'orchiectomy', surgeryEpochDay: 20000 });
+
+  const procedures = await journal.procedures.getProcedures();
+  assert.deepEqual(
+    procedures.map((p) => p.name),
+    ['orchiectomy', 'top surgery', 'facial feminization surgery'],
+    'dated ones first, oldest first; an undated one has nowhere to sort to but the end'
+  );
+  assert.deepEqual(procedures[0], {
+    id: earlier,
+    name: 'orchiectomy',
+    surgeryEpochDay: 20000,
+    notes: '',
+    consults: []
+  });
+  assert.equal(procedures[2].surgeryEpochDay, null);
+  assert.equal(procedures[2].id, unscheduled);
+  assert.match(earlier, UUID_PATTERN);
+});
+
+test('several procedures coexist, each with its own dates, notes and checklist', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const top = await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20000 });
+  const ffs = await journal.procedures.upsertProcedure({ name: 'FFS', surgeryEpochDay: 20200 });
+
+  await journal.procedures.addConsult(top, 19900);
+  await journal.procedures.addConsult(ffs, 20100);
+  await journal.procedures.setNotes(top, 'drains out on day 5');
+  await journal.procedures.addChecklistItem(top, 'buy gauze');
+
+  const procedures = await journal.procedures.getProcedures();
+  const [first, second] = procedures;
+  assert.deepEqual(first.consults.map((c) => c.epochDay), [19900]);
+  assert.equal(first.notes, 'drains out on day 5');
+  assert.deepEqual(second.consults.map((c) => c.epochDay), [20100]);
+  assert.equal(second.notes, '');
+
+  assert.deepEqual((await journal.procedures.getChecklist(top))?.items.map((i) => i.content), ['buy gauze']);
+  assert.equal(await journal.procedures.getChecklist(ffs), undefined, 'a procedure with no items has no checklist yet');
+});
+
+test('consult dates are a list, oldest first, and each one can be dropped on its own', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.procedures.upsertProcedure({ name: 'top surgery' });
+
+  const second = await journal.procedures.addConsult(id, 19950);
+  await journal.procedures.addConsult(id, 19900);
+
+  const days = async () => (await journal.procedures.getProcedures())[0].consults.map((c) => c.epochDay);
+  assert.deepEqual(await days(), [19900, 19950]);
+
+  await journal.procedures.deleteConsult(second);
+  assert.deepEqual(await days(), [19900]);
+  await journal.procedures.deleteConsult(second); // idempotent
+});
+
+test('a procedure updates by id, throws on unknown ids and deletes idempotently', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20000 });
+
+  await journal.procedures.upsertProcedure({ id, name: 'top surgery (double incision)', surgeryEpochDay: 20001 });
+  const [procedure] = await journal.procedures.getProcedures();
+  assert.equal(procedure.name, 'top surgery (double incision)');
+  assert.equal(procedure.surgeryEpochDay, 20001);
+
+  await assert.rejects(journal.procedures.upsertProcedure({ id: 'nope', name: 'x' }), /unknown procedure/);
+  await assert.rejects(journal.procedures.setNotes('nope', 'x'), /unknown procedure/);
+  await assert.rejects(journal.procedures.addConsult('nope', 1), /unknown procedure/);
+
+  await journal.procedures.deleteProcedure(id);
+  await journal.procedures.deleteProcedure(id); // idempotent
+  assert.deepEqual(await journal.procedures.getProcedures(), []);
+});
+
+test('a surgery date can be cleared back to none once set', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20000 });
+
+  await journal.procedures.upsertProcedure({ id, name: 'top surgery', surgeryEpochDay: null });
+
+  assert.equal((await journal.procedures.getProcedures())[0].surgeryEpochDay, null);
+});
+
+test('a recovery photo is dated, belongs to one procedure, and its files go when it does', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  const id = await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20000 });
+
+  const later = await journal.procedures.addPhoto(id, 20010, { full: new Uint8Array([7]), thumb: new Uint8Array([3]) });
+  await journal.procedures.addPhoto(id, 20002, { full: new Uint8Array([7]), thumb: new Uint8Array([2]) });
+
+  const photos = await journal.procedures.getPhotos(id);
+  assert.deepEqual(photos.map((p) => p.epochDay), [20002, 20010], 'oldest first');
+  assert.deepEqual(photos.map((p) => p.procedureId), [id, id]);
+  assert.equal(files.names().length, 4, 'two photos, each a full and a thumbnail');
+
+  await journal.procedures.deletePhoto(later);
+  assert.deepEqual((await journal.procedures.getPhotos(id)).map((p) => p.epochDay), [20002]);
+  assert.equal(files.names().length, 2);
+  await journal.procedures.deletePhoto(later); // idempotent
+
+  await assert.rejects(journal.procedures.addPhoto('nope', 20000, { full: new Uint8Array([1]), thumb: new Uint8Array([1]) }), /unknown procedure/);
+});
+
+test('deleting a procedure takes its consults, photos, photo files and checklist with it', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  const id = await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20000 });
+  await journal.procedures.addConsult(id, 19900);
+  await journal.procedures.addPhoto(id, 20002, { full: new Uint8Array([7]), thumb: new Uint8Array([2]) });
+  await journal.procedures.addChecklistItem(id, 'buy gauze');
+
+  await journal.procedures.deleteProcedure(id);
+
+  assert.deepEqual(await journal.procedures.getProcedures(), []);
+  assert.deepEqual(await journal.procedures.getPhotos(id), []);
+  assert.deepEqual(files.names(), [], 'a recovery photo is not left behind as an orphan');
+  assert.equal(await journal.procedures.getChecklist(id), undefined);
+  assert.deepEqual(await journal.checklists.getStandaloneChecklist(), undefined, 'and the appointment prep list is untouched');
+});
+
+test("a procedure's checklist is an ordinary owned checklist, created on the first item", async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.procedures.upsertProcedure({ name: 'top surgery' });
+
+  const item = await journal.procedures.addChecklistItem(id, 'buy gauze');
+  await journal.checklists.setItemChecked(item.id, true);
+
+  const checklist = await journal.procedures.getChecklist(id);
+  assert.deepEqual(checklist?.owner, { kind: 'procedure', id });
+  assert.deepEqual(checklist?.items, [{ id: item.id, content: 'buy gauze', checked: true, carriedForward: false }]);
+
+  await journal.procedures.addChecklistItem(id, 'ask about scar cream');
+  assert.equal((await journal.procedures.getChecklist(id))?.items.length, 2, 'the second item joins the same checklist');
+
+  await assert.rejects(journal.procedures.addChecklistItem('nope', 'x'), /unknown procedure/);
+});

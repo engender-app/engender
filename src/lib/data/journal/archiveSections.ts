@@ -92,6 +92,11 @@ const SECTIONS = [
     read: read.readHairRemovalSessions,
     apply: apply.applyHairRemovalSessions
   }),
+  // Inserts its own consult and photo children, the same reasoning
+  // `hairRemovalSessions` above gives. Its recovery checklist travels in
+  // `checklists` and is matched there by owner uuid, so the two sections
+  // need no order between them.
+  section({ name: 'procedures', read: read.readProcedures, apply: apply.applyProcedures }),
   section({ name: 'reminders', read: read.readReminders, apply: apply.applyReminders }),
   section({ name: 'tallyEvents', read: read.readTallyEvents, apply: apply.applyTallyEvents }),
   section({ name: 'doubtEntries', read: read.readDoubtEntries, apply: apply.applyDoubtEntries }),

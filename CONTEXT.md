@@ -589,6 +589,37 @@ should do about their own situation.
 _Avoid_: Milestone (a milestone is a dated thing that happened; a goal is a step
 that may never be taken), task, to-do
 
+### Surgery
+
+**Procedure**:
+One operation someone is going through, with the consults leading up to it, a
+surgery date once there is one, and a recovery log. Free text: the app ships no
+list of procedures and never matches two spellings of one. Several coexist -
+top surgery and facial feminization surgery are tracked independently - so
+nothing about it is a singleton, and a person can have none. Screens say
+**surgery journey** for the area and name the record after whatever the person
+typed; everything the project says to itself says procedure, the same split
+**Gender dimension** keeps with scale.
+_Avoid_: Surgery as the name of the record (the operation is one day of a
+procedure), case, patient
+
+**Recovery log**:
+What a **Procedure** accumulates after its surgery date: a day counter, dated
+photos, free text, and a **Checklist** scoped to that procedure. Every part of
+it is either the person's own writing or a date they entered. The app supplies
+no aftercare instruction, no recovery target and no reading of the counter as
+ahead of or behind anything, the same restraint the **Comparability flag** and
+hair-removal recency already keep - it says how far along, and stops.
+_Avoid_: Aftercare, recovery plan, post-op protocol
+
+**Day since surgery**:
+Days between a **Procedure**'s surgery date and today, counting the surgery day
+as zero. Derived on read and never stored (ADR-0010), and signed both ways: a
+date still ahead reads as a countdown, because a surgery date is usually set at
+the consult, months out.
+_Avoid_: Post-op day (that names a clinical convention this does not follow),
+recovery day number
+
 ### Checklists
 
 **Checklist**:
@@ -604,7 +635,7 @@ _Avoid_: To-do list, task list
 **Checklist item**:
 One line of a checklist: free-text content, checked or not, and whether it is
 still open past whatever event closed its checklist's usual window - a visit,
-a procedure's recovery close-out. Always **Custom** - no checklist item ships
+a **Procedure**'s recovery close-out. Always **Custom** - no checklist item ships
 built in.
 
 ### Privacy and access

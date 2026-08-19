@@ -790,6 +790,73 @@ ALTER TABLE entry ADD COLUMN trashed_at INTEGER;
 CREATE INDEX idx_entry_trashed_at ON entry(trashed_at);
 `;
 
+/* v25: the surgery journey module (phase 5 ticket 07, CONTEXT: "Procedure").
+   One row per procedure someone is going through - top surgery, facial
+   feminization surgery, orchiectomy - and nothing about the module assumes
+   exactly one is active: two can run concurrently or in sequence, so this is
+   a plain table rather than a single-row settings blob.
+
+   `name` is free text with no list behind it, the same treatment
+   `lab_result.provider` (v9) and `hair_removal_session.provider` (v23) get,
+   and for the stronger reason here: the set of procedures a trans person may
+   have is not something this app gets to enumerate.
+
+   `surgery_epoch_day` is nullable because a procedure record usually starts
+   life at the consult, with a date not yet set - and the day counter over it
+   is derived, never stored (recoveryDay.ts, ADR-0010), so there is no
+   companion column for how far along recovery is. `notes` is the recovery
+   log's own free text, one field rather than a dated series: the ticket dates
+   the photo log and nothing else.
+
+   Consult dates are their own table rather than a repeated column because
+   the ticket says dates, plural, and a person may have several before a date
+   is set. `procedure_photo` is its own table rather than a third owner arm on
+   `photo` (SCHEMA_V1, ADR-0008) for the reason v13 and v23 give: `photo`'s
+   exactly-one-owner CHECK cannot be widened in place. It carries both a
+   `procedure_id` foreign key and an `epoch_day`, unlike either existing
+   photo table - a recovery photo belongs to one procedure the way a session
+   photo belongs to one session (v23), and is dated the way a hair photo is
+   (v13), because when in recovery it was taken is the whole point of it. The
+   shared pipeline is untouched: normalizePhoto and photos.ts's stagePhoto
+   write the same normalized, metadata-stripped bytes through the same
+   file-before-row order, removeFilesOf reclaims them the same way on delete
+   (journal/procedures.ts), and the boot orphan sweep (sweepOrphanPhotos,
+   photos.ts) reads this table too.
+
+   A procedure's recovery checklist is not here: it is an ordinary
+   `checklist` (v20) owned by the (kind, uuid) pair v20 was given for exactly
+   this, which is why no checklist column appears below. */
+const SCHEMA_V25 = `
+CREATE TABLE procedure (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid              TEXT NOT NULL UNIQUE,
+  name              TEXT NOT NULL,
+  surgery_epoch_day INTEGER,
+  notes             TEXT NOT NULL,
+  updated_at        INTEGER NOT NULL
+);
+CREATE INDEX idx_procedure_surgery_epoch_day ON procedure(surgery_epoch_day);
+
+CREATE TABLE procedure_consult (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid         TEXT NOT NULL UNIQUE,
+  procedure_id INTEGER NOT NULL REFERENCES procedure(id) ON DELETE CASCADE,
+  epoch_day    INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL
+);
+CREATE INDEX idx_procedure_consult_procedure ON procedure_consult(procedure_id);
+
+CREATE TABLE procedure_photo (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid         TEXT NOT NULL UNIQUE,
+  procedure_id INTEGER NOT NULL REFERENCES procedure(id) ON DELETE CASCADE,
+  epoch_day    INTEGER NOT NULL,
+  file_path    TEXT NOT NULL,
+  updated_at   INTEGER NOT NULL
+);
+CREATE INDEX idx_procedure_photo_procedure ON procedure_photo(procedure_id, epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -814,7 +881,8 @@ export const migrations: Migration[] = [
   { version: 21, sql: SCHEMA_V21 },
   { version: 22, sql: SCHEMA_V22 },
   { version: 23, sql: SCHEMA_V23 },
-  { version: 24, sql: SCHEMA_V24 }
+  { version: 24, sql: SCHEMA_V24 },
+  { version: 25, sql: SCHEMA_V25 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database
