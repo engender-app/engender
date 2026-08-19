@@ -63,6 +63,11 @@ const SEARCH_PAGE = 30;
     of them. */
 const INSIGHT_DIMENSION = 'femininity';
 
+/** A built-in body region, standing in for the query shape every other
+    region shares (bodyRegionTrend's `region` is a plain WHERE parameter,
+    not a branch). Any of the fixture's five would do. */
+const BENCHMARK_REGION = 'chest';
+
 /** The password an export is packed under here. Real Argon2id parameters
     ride with it (pack.ts's default), because the KDF is part of what an
     export costs and a cheap one would flatter the number. */
@@ -322,14 +327,13 @@ export async function measureLongJournal(
   // region at all. 365 days is body-map's widest range, and one region
   // ('chest') stands in for the query shape every other region shares.
   await measure('body-region-trend', 'body map, 365 days of one region, both axes', async () => {
-    const region = 'chest';
     const [dysphoria, euphoria] = await Promise.all([
-      journal.stats.bodyRegionTrend(region, 'dysphoria', yearStart, today),
-      journal.stats.bodyRegionTrend(region, 'euphoria', yearStart, today)
+      journal.stats.bodyRegionTrend(BENCHMARK_REGION, 'dysphoria', yearStart, today),
+      journal.stats.bodyRegionTrend(BENCHMARK_REGION, 'euphoria', yearStart, today)
     ]);
     return {
       result: [dysphoria, euphoria],
-      detail: `${dysphoria.length} dysphoria + ${euphoria.length} euphoria points on ${region}`
+      detail: `${dysphoria.length} dysphoria + ${euphoria.length} euphoria points on ${BENCHMARK_REGION}`
     };
   });
 

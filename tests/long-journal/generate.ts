@@ -378,7 +378,7 @@ export async function generateLongJournal(
     // One photo every fourth staging - about every 800 days, a photo shoot
     // being rarer than a self-staging.
     if (i % 4 === 0) {
-      await journal.hairProgress.addPhoto(day, await makePhoto(1_000_000 + hairPhotoIndex));
+      await journal.hairProgress.addPhoto(day, await makePhoto(hairPhotoIndex));
       hairPhotoIndex++;
     }
   }
