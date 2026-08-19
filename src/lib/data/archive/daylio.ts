@@ -254,6 +254,7 @@ export async function daylioPreview(
       tags: [],
       photos: [],
       recordings: [],
+    videos: [],
       bodyRegions: {},
       starred: false
     };
@@ -267,6 +268,7 @@ export async function daylioPreview(
         tagCount: activities.length,
         photoCount: 0,
         recordingCount: 0,
+    videoCount: 0,
         bodyRegionCount: 0
       })
     ) {

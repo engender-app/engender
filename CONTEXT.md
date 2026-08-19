@@ -51,6 +51,17 @@ app-private storage a Photo is and covered by the same per-file encryption
 without leaving the app, and played back directly from the entry view with
 no separate screen.
 
+**Video note**:
+A short in-app video recording belonging to exactly one entry, in the same
+app-private storage and per-file encryption a Photo and a Voice recording use
+(ADR-0020). Entry-only, like a Voice recording: no milestone owner. Recorded
+without leaving the app and played back directly from the entry view, with no
+separate screen. Capped at 30 seconds and 1080p with no setting to change
+either, and re-encoded smaller if the captured file still exceeds the size
+ceiling - ADR-0008's reasoning about archive size, where a video costs an
+order of magnitude more per item than a photo.
+_Avoid_: video, clip, recording (a Voice recording is the audio one)
+
 **Epoch day**:
 Days since 1970-01-01 in the device's **local** timezone. The day an entry is
 *for*, and the unit of calendar cells, milestones, lab results, and stats ranges.

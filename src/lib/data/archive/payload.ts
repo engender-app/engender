@@ -61,6 +61,17 @@ export interface ArchiveVoiceRecording {
   fileName: string;
 }
 
+/** One video note (phase 5 ticket 22, CONTEXT: "Video note"). Its own
+    interface rather than reused ArchiveVoiceRecording, for the reason this
+    file's header gives: a rename on one must not silently change what the
+    other travels as. Structurally the same shape today, and for the same
+    reasons - no thumbnail pair to carry and no owner but an entry. */
+export interface ArchiveVideoNote {
+  id: string;
+  /** The opaque `<uuid>.webm` of videoNotes/names.ts. Never a path. */
+  fileName: string;
+}
+
 export interface ArchiveEntry {
   uuid: string;
   epochDay: number;
@@ -73,6 +84,7 @@ export interface ArchiveEntry {
   tags: string[];
   photos: ArchivePhoto[];
   recordings: ArchiveVoiceRecording[];
+  videos: ArchiveVideoNote[];
   /** By body-region key (bodyMap.ts). Free-standing TEXT, not a row to
       resolve against a built-in table, so restore.ts writes it back
       unvalidated - the same forward-compatible treatment lab_result.analyte

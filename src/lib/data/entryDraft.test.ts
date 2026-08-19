@@ -21,6 +21,7 @@ const existingEntry = (): Entry => ({
   tags: ['e-happy'],
   photos: [{ id: 'p1', fileName: 'p1.jpg', starred: false }],
   recordings: [{ id: 'r1', fileName: 'r1.webm' }],
+  videos: [{ id: 'n1', fileName: 'n1.webm' }],
   bodyRegions: { chest: 60 },
   starred: false
 });
@@ -172,16 +173,20 @@ test('toUpsert() produces the exact upsertEntry payload for a new entry', () => 
     attachPhotos: [photo(9)],
     removePhotoIds: [],
     attachRecordings: [],
-    removeRecordingIds: []
+    removeRecordingIds: [],
+    attachVideos: [],
+    removeVideoIds: []
   });
 });
 
-test('toUpsert() for an existing entry carries its id, drops a falsy timestamp and lists both photo and recording changes', () => {
+test('toUpsert() for an existing entry carries its id, drops a falsy timestamp and lists photo, recording and video changes', () => {
   const draft = createEntryDraft(1, existingEntry());
   draft.addPhoto(photo(2));
   draft.removePhoto(0); // the one stored photo from existingEntry()
   draft.addRecording(new Uint8Array([9]));
   draft.removeRecording(0); // the one stored recording from existingEntry()
+  draft.addVideo(new Uint8Array([8]));
+  draft.removeVideo(0); // the one stored video note from existingEntry()
 
   assert.deepEqual(draft.toUpsert(), {
     id: 7,
@@ -195,7 +200,9 @@ test('toUpsert() for an existing entry carries its id, drops a falsy timestamp a
     attachPhotos: [photo(2)],
     removePhotoIds: ['p1'],
     attachRecordings: [new Uint8Array([9])],
-    removeRecordingIds: ['r1']
+    removeRecordingIds: ['r1'],
+    attachVideos: [new Uint8Array([8])],
+    removeVideoIds: ['n1']
   });
 });
 

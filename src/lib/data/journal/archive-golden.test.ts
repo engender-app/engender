@@ -120,6 +120,7 @@ async function everySection(): Promise<Journal> {
   });
   await journal.photos.attach({ entryId: entry }, { full: bytes('full photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });
+  await journal.entries.upsertEntry({ id: entry, attachVideos: [bytes('a video note')] });
 
   const milestone = await journal.milestones.upsertMilestone({
     name: 'HRT start',
