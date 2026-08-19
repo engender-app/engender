@@ -1,9 +1,33 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { epochDayFromLocalDate } from './epochDay.ts';
-import { literatureWindow, literatureWindowDays, PERSONAL_EFFECT_TYPES } from './personalEffectWindow.ts';
+import type { PersonalEffectType, RegimenEpisode } from './types.ts';
+import {
+  literatureCovers,
+  literatureWindow,
+  literatureWindowDays,
+  PERSONAL_EFFECT_TYPES
+} from './personalEffectWindow.ts';
 
 const ANCHOR = epochDayFromLocalDate(new Date(2024, 0, 1)); // 2024-01-01
+
+/* An anchoring episode is the whole thing a band is read off now: its start
+   day says where the bands are counted from and its drug says whether they
+   exist at all. These two stand in for the two journals the gating is about
+   - one whose only regimen episode is estradiol, one whose only episode is
+   testosterone. */
+type Anchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay'>;
+const ON_E: Anchor = { drug: 'estradiol valerate', startEpochDay: ANCHOR };
+const ON_T: Anchor = { drug: 'testosterone enanthate', startEpochDay: ANCHOR };
+
+/** The band a covered effect definitely has, so an arithmetic test can go
+    straight at the numbers without repeating the null check the gating
+    tests below make on purpose. */
+function bandOf(effect: PersonalEffectType, anchor: Anchor) {
+  const days = literatureWindowDays(effect, anchor);
+  assert.ok(days !== null, `expected ${effect} to have a band against ${anchor.drug}`);
+  return days;
+}
 
 test('every one of the eight fixed effects has a literature window', () => {
   assert.deepEqual(PERSONAL_EFFECT_TYPES, [
@@ -20,7 +44,7 @@ test('every one of the eight fixed effects has a literature window', () => {
 });
 
 test('onset and completion are counted forward from the anchor in calendar months', () => {
-  const days = literatureWindowDays('breast_development', ANCHOR);
+  const days = bandOf('breast_development', ON_E);
   assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
   assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
@@ -28,19 +52,19 @@ test('onset and completion are counted forward from the anchor in calendar month
 });
 
 test('skin softening has no defined completion window at all', () => {
-  const days = literatureWindowDays('skin_softening', ANCHOR);
+  const days = bandOf('skin_softening', ON_E);
   assert.ok(days.onset);
   assert.equal(days.completion, null);
 });
 
 test('hair changes has an open-ended completion window - a start with no end', () => {
-  const days = literatureWindowDays('hair_changes', ANCHOR);
+  const days = bandOf('hair_changes', ON_E);
   assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2027, 0, 1))); // +36 months
   assert.equal(days.completion?.end, null);
 });
 
 test('masculinizing fat redistribution onset and completion count forward from the anchor', () => {
-  const days = literatureWindowDays('masculinizing_fat_redistribution', ANCHOR);
+  const days = bandOf('masculinizing_fat_redistribution', ON_T);
   assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
   assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
@@ -48,13 +72,13 @@ test('masculinizing fat redistribution onset and completion count forward from t
 });
 
 test('voice drop and facial/body hair windows match the masculinizing time-course table', () => {
-  const voice = literatureWindowDays('voice_drop', ANCHOR);
+  const voice = bandOf('voice_drop', ON_T);
   assert.equal(voice.onset.start, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(voice.onset.end, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
   assert.equal(voice.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
   assert.equal(voice.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
 
-  const hair = literatureWindowDays('facial_body_hair', ANCHOR);
+  const hair = bandOf('facial_body_hair', ON_T);
   assert.equal(hair.onset.start, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(hair.onset.end, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
   assert.equal(hair.completion?.start, epochDayFromLocalDate(new Date(2028, 0, 1))); // +48 months
@@ -62,8 +86,61 @@ test('voice drop and facial/body hair windows match the masculinizing time-cours
 });
 
 test('cycle cessation has no defined completion ceiling, like skin softening', () => {
-  const days = literatureWindowDays('cycle_cessation', ANCHOR);
+  const days = bandOf('cycle_cessation', ON_T);
   assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
   assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(days.completion, null);
+});
+
+/* Phase 5 ticket 27: the drug gate. */
+
+const FEMINIZING = ['breast_development', 'fat_redistribution', 'skin_softening', 'hair_changes'] as const;
+const MASCULINIZING = ['voice_drop', 'facial_body_hair', 'masculinizing_fat_redistribution', 'cycle_cessation'] as const;
+
+test('every effect belongs to exactly one of the two literature tables', () => {
+  assert.deepEqual([...FEMINIZING, ...MASCULINIZING].sort(), [...PERSONAL_EFFECT_TYPES].sort());
+  for (const effect of FEMINIZING) assert.equal(literatureWindow(effect).direction, 'feminizing');
+  for (const effect of MASCULINIZING) assert.equal(literatureWindow(effect).direction, 'masculinizing');
+});
+
+test('a journal whose only regimen episode is testosterone gets no feminizing band', () => {
+  assert.equal(literatureWindowDays('breast_development', ON_T), null);
+  for (const effect of FEMINIZING) {
+    assert.equal(literatureCovers(effect, ON_T.drug), false);
+    assert.equal(literatureWindowDays(effect, ON_T), null);
+  }
+});
+
+test('a journal whose only regimen episode is estradiol gets no masculinizing band', () => {
+  assert.equal(literatureWindowDays('cycle_cessation', ON_E), null);
+  for (const effect of MASCULINIZING) {
+    assert.equal(literatureCovers(effect, ON_E.drug), false);
+    assert.equal(literatureWindowDays(effect, ON_E), null);
+  }
+});
+
+test('a drug the app cannot classify gets no band at all, rather than a hedged one', () => {
+  // Fail closed: an antiandrogen, progesterone alone, a brand name this app
+  // has no list for, and an empty field are all "not one of the two
+  // hormones the tables describe", which is not the same as "probably the
+  // one the other fields hint at".
+  for (const drug of ['spironolactone', 'cyproterone acetate', 'progesterone', 'blokery', 'Androcur', '']) {
+    for (const effect of PERSONAL_EFFECT_TYPES) {
+      assert.equal(literatureCovers(effect, drug), false, `${drug} should not cover ${effect}`);
+      assert.equal(literatureWindowDays(effect, { drug, startEpochDay: ANCHOR }), null);
+    }
+  }
+});
+
+test('the gate reads the same drug names the hormone curve does, in both catalogues', () => {
+  // Not a second matching scheme: these are hormoneDrug.ts's lists, which is
+  // why the Polish spellings and the abbreviations work here for free.
+  for (const drug of ['estradiol', 'E2 valerate', 'walerianian estradiolu']) {
+    assert.equal(literatureCovers('breast_development', drug), true);
+    assert.equal(literatureCovers('voice_drop', drug), false);
+  }
+  for (const drug of ['testosterone', 'testosteron enantan', 'T cypionate']) {
+    assert.equal(literatureCovers('voice_drop', drug), true);
+    assert.equal(literatureCovers('breast_development', drug), false);
+  }
 });

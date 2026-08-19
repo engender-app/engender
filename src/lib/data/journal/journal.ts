@@ -167,7 +167,7 @@ export interface Journal {
   clinicianSummary: ClinicianSummaryArea;
   /** The four fixed "first noticed" markers (phase 4 ticket 07), read
       against the earliest regimen episode's start day above this seam
-      (regimenEpisode.ts's earliestEpisodeStartEpochDay). No episode
+      (regimenEpisode.ts's earliestEpisode). No episode
       reference of its own, the same reason sideEffects has none. */
   personalEffects: PersonalEffectsArea;
   /** Norwood-Hamilton self-staging and scheduled fixed-position photos
