@@ -170,10 +170,9 @@ export interface Journal {
       (regimenEpisode.ts's earliestEpisodeStartEpochDay). No episode
       reference of its own, the same reason sideEffects has none. */
   personalEffects: PersonalEffectsArea;
-  /** Norwood-Hamilton self-staging and scheduled fixed-position photos
-      (phase 4 ticket 09), read against the earliest
-      finasteride/dutasteride/minoxidil dose above this seam
-      (hairTreatmentAnchor.ts's earliestHairTreatmentDoseEpochDay). Distinct
+  /** Self-staging against a published scale, and scheduled fixed-position
+      photos (phase 4 ticket 09), read against a day resolved above this
+      seam (hairAnchor.ts's hairAnchorEpochDay). Distinct
       from personalEffects' single "hair changes" marker - the two are not
       merged. */
   hairProgress: HairProgressArea;

@@ -2,7 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { earliestHairTreatmentDoseEpochDay } from '$lib/data/hairTreatmentAnchor';
+  import { hairAnchorEpochDay } from '$lib/data/hairAnchor';
   import { isHairPhotoDue } from '$lib/data/hairPhotoSchedule';
   import { hairStageName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
@@ -24,23 +24,18 @@
 
   const today = todayEpochDay();
 
-  let episodesQuery = liveQuery(['regimen'], (j) => j.regimen.getEpisodes());
-  let episodes = $derived(episodesQuery.value ?? []);
-
   /* Bounded from epoch day 0 rather than from the anchor itself: getDoses
-     needs a range (doses.ts has no unbounded read), and chaining the range
-     off `episodes` here would race this liveQuery against episodesQuery on
-     a single regimen write, each async and neither guaranteed to see the
-     other's latest value first. No dose can predate 1970-01-01, so this is
-     unbounded in practice without the chain. */
+     needs a range (doses.ts has no unbounded read). No dose can predate
+     1970-01-01, so this is unbounded in practice. */
   let dosesQuery = liveQuery(['dose'], (j) => j.doses.getDoses(0, today));
   let doses = $derived(dosesQuery.value ?? []);
 
-  /* Ticket 09's own anchor: the first dose actually logged against
-     finasteride, dutasteride or minoxidil - distinct from ticket 07's
-     earliest-regimen-episode-overall anchor, and never guessed at when
-     null (hairTreatmentAnchor.ts). */
-  let anchorEpochDay = $derived(earliestHairTreatmentDoseEpochDay(doses, episodes));
+  /* The day this screen counts weeks from: whatever the person set, else
+     their earliest logged dose of anything, else nothing (hairAnchor.ts,
+     ticket 33). No drug is named - ticket 09's finasteride/dutasteride/
+     minoxidil list is gone. */
+  let anchorEpochDay = $derived(hairAnchorEpochDay(prefs.hairAnchorEpochDay, doses));
+  let anchorIsUserSet = $derived(prefs.hairAnchorEpochDay !== null);
 
   let stagesQuery = liveQuery(['hairProgress'], (j) => j.hairProgress.getStages());
   let stages = $derived(stagesQuery.value ?? []);
@@ -68,6 +63,26 @@
   function stageSubtitle(epochDay: number): string {
     const since = sinceStart(epochDay);
     return since ? `${dayLabel(epochDay)} · ${since}` : dayLabel(epochDay);
+  }
+
+  let anchorEditor = $state<string | null>(null);
+
+  function openAnchorEditor() {
+    anchorEditor = dateInputValueFromEpochDay(prefs.hairAnchorEpochDay ?? anchorEpochDay ?? today);
+  }
+
+  function saveAnchor() {
+    if (anchorEditor === null) return;
+    // A date input the person cleared reads as null, which is this
+    // preference's own "not set" - so an empty field saves as unset rather
+    // than silently keeping the old day.
+    prefs.hairAnchorEpochDay = epochDayFromDateInputValue(anchorEditor);
+    anchorEditor = null;
+  }
+
+  function clearAnchor() {
+    prefs.hairAnchorEpochDay = null;
+    anchorEditor = null;
   }
 
   let stageEditor = $state<{ id?: string; date: string; stage: NorwoodHamiltonStage } | null>(null);
@@ -142,12 +157,23 @@
 
   <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_intro()}</p>
 
-  {#if episodesQuery.loading || dosesQuery.loading}
+  {#if dosesQuery.loading}
     <Skeleton variant="block" count={1} />
   {:else}
-    {#if anchorEpochDay == null}
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_unanchored_note()}</p>
-    {/if}
+    <div class="card" data-anchor style="margin-bottom:var(--space-4)">
+      <p class="muted small">
+        {#if anchorEpochDay == null}
+          {m.hair_unanchored_note()}
+        {:else if anchorIsUserSet}
+          {m.hair_anchor_from_set({ date: dayLabel(anchorEpochDay) })}
+        {:else}
+          {m.hair_anchor_from_dose({ date: dayLabel(anchorEpochDay) })}
+        {/if}
+      </p>
+      <button class="btn btn-soft" data-set-hair-anchor onclick={openAnchorEditor}>
+        <span>{anchorIsUserSet ? m.hair_anchor_change_action() : m.hair_anchor_set_action()}</span>
+      </button>
+    </div>
 
     <SectionTitle text={m.hair_stage_section_title()}>
       {#snippet aside()}
@@ -236,6 +262,23 @@
       <EmptyState title={m.hair_photo_empty_title()} text={m.hair_photo_empty_body()} />
     {/if}
   {/if}
+
+  <Sheet open={anchorEditor !== null} title={m.hair_anchor_sheet()} onClose={() => (anchorEditor = null)}>
+    {#if anchorEditor !== null}
+      <h3>{m.hair_anchor_sheet()}</h3>
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_anchor_sheet_hint()}</p>
+      <div class="field">
+        <label class="field-label" for="hair-anchor-date">{m.hair_anchor_date_label()}</label>
+        <input class="input" type="date" id="hair-anchor-date" name="hair-anchor-date" bind:value={anchorEditor} />
+      </div>
+      <div class="stack-3">
+        <button class="btn btn-primary" data-save-hair-anchor onclick={saveAnchor}><span>{m.hair_anchor_save()}</span></button>
+        {#if anchorIsUserSet}
+          <button class="btn btn-ghost" data-clear-hair-anchor onclick={clearAnchor}><span>{m.hair_anchor_clear()}</span></button>
+        {/if}
+      </div>
+    {/if}
+  </Sheet>
 
   <Sheet
     open={stageEditor !== null}

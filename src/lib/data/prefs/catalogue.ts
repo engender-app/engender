@@ -135,6 +135,14 @@ export interface PreferenceValues {
       is opt-in, never required to take a photo, so this only ever hides a
       card - it blocks nothing. */
   hairPhotoProtocolDismissed: boolean;
+  /** The day the hair-progress timeline counts from, as an epoch day, or
+      null when the person has not set one (phase 5 ticket 33). Null is a
+      resting state, not unfinished setup: with no date set the screen falls
+      back to the earliest dose logged, and with neither it simply shows no
+      week counts (hairAnchor.ts). Portable rather than device-local - it
+      says something about the journal's own timeline, the same way
+      `journeyAnchorMilestoneId` does. */
+  hairAnchorEpochDay: number | null;
   /** Whether the hormone curve is fitted to the user's own lab results
       (phase 4 ticket 10). Off by default: the published band is what the
       literature says, and moving it onto someone's own points is a thing
@@ -207,6 +215,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   preferredLabUnits: {},
   measurementProtocolDismissed: {},
   hairPhotoProtocolDismissed: false,
+  hairAnchorEpochDay: null,
   hormoneCurveFitToOwnLabs: false,
   streakGoalHabit: null,
   streakGoalTargetDays: null,
@@ -234,7 +243,8 @@ export const PORTABLE_KEYS = [
   'preferredLabUnits',
   'streakGoalHabit',
   'streakGoalTargetDays',
-  'journeyAnchorMilestoneId'
+  'journeyAnchorMilestoneId',
+  'hairAnchorEpochDay'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */

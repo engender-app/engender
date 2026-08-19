@@ -607,9 +607,8 @@ export type NorwoodHamiltonStage = '1' | '2' | '2a' | '3' | '3v' | '3a' | '4' | 
 /* A dated series like Measurement (ticket 08), not a single replaced value
    like PersonalEffect: a person re-stages over time to track progression,
    never answering "what is it now" in place of what it was before. No
-   episode or anchor reference: what this is read against - the earliest
-   finasteride/dutasteride/minoxidil dose - is resolved above this seam
-   (hairTreatmentAnchor.ts), the same reason Measurement and PersonalEffect
+   episode or anchor reference: what this is read against is resolved above
+   this seam (hairAnchor.ts), the same reason Measurement and PersonalEffect
    carry none either. */
 export interface HairStage {
   id: string;

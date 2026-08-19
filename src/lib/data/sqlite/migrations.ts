@@ -374,8 +374,7 @@ CREATE TABLE personal_effect (
    are reclaimed exactly like any other's.
 
    Neither table carries an anchor or an episode reference: what these are
-   read against - the earliest finasteride/dutasteride/minoxidil dose - is
-   resolved above this seam (hairTreatmentAnchor.ts), the same reason
+   read against is resolved above this seam (hairAnchor.ts), the same reason
    `personal_effect` carries none either. */
 const SCHEMA_V13 = `
 CREATE TABLE hair_stage (
