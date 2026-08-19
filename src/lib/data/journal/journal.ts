@@ -22,6 +22,7 @@ import { makeCycleEventsArea, type CycleEventsArea } from './cycleEvents';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDoubtJournalArea, type DoubtJournalArea } from './doubtJournal';
 import { makeDosesArea, type DosesArea } from './doses';
+import { makeEffectCategoriesArea, type EffectCategoriesArea } from './effectCategories';
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
@@ -174,11 +175,19 @@ export interface Journal {
       supplies rather than a fixed section list. Never a restore format: the
       archive stays the only one. */
   journalBook: JournalBookArea;
-  /** The four fixed "first noticed" markers (phase 4 ticket 07), read
-      against the earliest regimen episode's start day above this seam
-      (regimenEpisode.ts's earliestEpisode). No episode
-      reference of its own, the same reason sideEffects has none. */
+  /** "First noticed" markers against an open effect catalogue (phase 4
+      ticket 07, widened well past its original four/eight by phase 5
+      ticket 41), read against the earliest regimen episode's start day
+      above this seam (regimenEpisode.ts's earliestEpisode). No episode
+      reference of its own, the same reason sideEffects has none. Bundles
+      the effect vocabulary itself too - getEffectTypes/
+      addCustomEffectType/setEffectTypeHidden - the same shape
+      measurements.ts bundles measurement_type in. */
   personalEffects: PersonalEffectsArea;
+  /** The toggleable groups the effect catalogue above is organised under
+      (phase 5 ticket 41, CONTEXT: "Effect category") - tag_group's own
+      semantics, reused. */
+  effectCategories: EffectCategoriesArea;
   /** Self-staging against a published scale, and scheduled fixed-position
       photos (phase 4 ticket 09), read against a day resolved above this
       seam (hairAnchor.ts's hairAnchorEpochDay). Distinct
@@ -304,6 +313,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
     journalBook: makeJournalBookArea({ entries, milestones, doubtJournal, sideEffects, stats, tags }),
     personalEffects: makePersonalEffectsArea(driver),
+    effectCategories: makeEffectCategoriesArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
     hairRemoval: makeHairRemovalArea(driver, files),
     procedures,

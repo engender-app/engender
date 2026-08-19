@@ -133,7 +133,16 @@ export type TableName =
      `type` names, built-in and custom alike. Its own name rather than
      folded into 'measurement': a screen adding or hiding a type has not
      touched a single logged reading, and the reverse. */
-  | 'measurementType';
+  | 'measurementType'
+  /* The effect catalogue's toggleable categories (phase 5 ticket 41,
+     CONTEXT: "Effect category") - tag_group's own semantics, over the
+     effect vocabulary rather than tags. */
+  | 'effectCategory'
+  /* The effect vocabulary itself (phase 5 ticket 41): the open catalogue
+     'personalEffect' markers name, built-in and custom alike. Its own
+     name for the same reason 'measurementType' has one - hiding or adding
+     an effect type has not touched a single marker, and the reverse. */
+  | 'personalEffectType';
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per. */
@@ -171,7 +180,9 @@ export const TABLE_NAMES: TableName[] = [
   'wearSession',
   'affirmation',
   'bodyRegion',
-  'measurementType'
+  'measurementType',
+  'effectCategory',
+  'personalEffectType'
 ];
 
 /** Every operation each area offers, split by whether it changes anything.
@@ -303,8 +314,17 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     reads: ['getSideEffects', 'getSideEffectsInRange']
   },
   personalEffects: {
-    writes: { upsertMarker: ['personalEffect'], clearMarker: ['personalEffect'] },
-    reads: ['getMarkers']
+    writes: {
+      upsertMarker: ['personalEffect'],
+      clearMarker: ['personalEffect'],
+      addCustomEffectType: ['personalEffectType'],
+      setEffectTypeHidden: ['personalEffectType']
+    },
+    reads: ['getMarkers', 'getEffectTypes']
+  },
+  effectCategories: {
+    writes: { setCategoryEnabled: ['effectCategory'] },
+    reads: ['getEffectCategories']
   },
   cycleEvents: {
     writes: { upsertCycleEvent: ['cycleEvent'], deleteCycleEvent: ['cycleEvent'] },
