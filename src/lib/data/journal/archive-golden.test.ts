@@ -138,6 +138,7 @@ async function everySection(): Promise<Journal> {
     templateKey: 'hrt_start'
   });
   await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
+  await journal.feltSense.add({ milestoneId: milestone }, { epochDay: 19365, mood: 5, note: 'a year on' });
 
   await journal.labs.upsertResult({
     epochDay: 20004,
@@ -209,7 +210,7 @@ async function everySection(): Promise<Journal> {
     startEpochDay: 19900,
     endEpochDay: null
   });
-  await journal.tryouts.addFeltSenseEntry({ tryoutId: tryout, epochDay: 19910, mood: 4, note: 'felt right' });
+  await journal.feltSense.add({ tryoutId: tryout }, { epochDay: 19910, mood: 4, note: 'felt right' });
   await journal.tryouts.addPhoto(tryout, 19905, { full: bytes('presenting'), thumb: bytes('pt') });
 
   /* A real procedure now owns this checklist (phase 5 ticket 07); it was a

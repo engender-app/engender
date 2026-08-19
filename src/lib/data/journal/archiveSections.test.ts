@@ -87,13 +87,14 @@ test('the tryouts constraint is what keeps felt-sense rows from being dropped', 
     tryouts: [
       { id: 't-1', kind: 'name', label: 'Alex', description: null, startEpochDay: 19900, endEpochDay: null, photos: [] }
     ],
-    feltSenseEntries: [{ id: 'f-1', tryoutId: 't-1', epochDay: 19910, mood: 4, note: null }]
+    feltSenseEntries: [{ id: 'f-1', tryoutId: 't-1', milestoneId: null, epochDay: 19910, mood: 4, note: null }]
   };
   const tryouts = ARCHIVE_SECTIONS.find((s) => s.name === 'tryouts')!;
+  const milestones = ARCHIVE_SECTIONS.find((s) => s.name === 'milestones')!;
   const feltSense = ARCHIVE_SECTIONS.find((s) => s.name === 'feltSenseEntries')!;
 
-  const survives = await applied([feltSense, tryouts], journal);
-  const lost = await applied([{ ...feltSense, after: [] }, tryouts], journal);
+  const survives = await applied([feltSense, tryouts, milestones], journal);
+  const lost = await applied([{ ...feltSense, after: [] }, tryouts, milestones], journal);
 
   assert.equal(survives, 1, 'the declared constraint moved the felt-sense rows after their tryouts');
   assert.equal(lost, 0, 'without it they are applied first and dropped for want of a tryout');
@@ -103,7 +104,7 @@ test('the tryouts constraint is what keeps felt-sense rows from being dropped', 
 async function applied(sections: readonly ArchiveSection[], journal: ArchiveJournal): Promise<number> {
   const driver = await migratedDb();
   await driver.transaction(() => applyArchiveJournal({ driver, mode: 'replace', journal, ts: 1 }, sections));
-  const rows = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM tryout_felt_sense');
+  const rows = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM felt_sense');
   return rows[0].n;
 }
 
