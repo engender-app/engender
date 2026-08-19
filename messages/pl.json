@@ -1931,6 +1931,7 @@
   "roadmap_note_pl_legal_court_fee": "Wnosi się ją przed złożeniem wniosku, a potwierdzenie przelewu dołącza do pisma. Kwota wynika z analogii do przepisów o aktach stanu cywilnego, więc pojedyncze sądy mogą naliczyć inaczej.",
   "roadmap_goal_pl_legal_application": "Wniosek o zmianę oznaczenia płci w akcie urodzenia",
   "roadmap_note_pl_legal_application": "Od uchwały Sądu Najwyższego III CZP 6/24 z 4 marca 2025 to wniosek w postępowaniu nieprocesowym, a nie pozew. Nie pozywa się już rodziców ani dzieci, a uczestnikiem może być tylko małżonek.",
+  "roadmap_note_pl_legal_application_marker": "Zmienia to oznaczenie między dwiema wartościami wskazanymi wyżej. Nie tworzy trzeciej.",
   "roadmap_goal_pl_legal_file_it": "Wniosek w biurze podawczym albo listem poleconym",
   "roadmap_note_pl_legal_file_it": "Potwierdzenie nadania zostaje u ciebie jako dowód terminu.",
   "roadmap_goal_pl_legal_formal_defects": "7 dni na uzupełnienie braków formalnych",
