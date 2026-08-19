@@ -949,6 +949,62 @@ export async function applyPersonalEffects({ driver, journal, ts }: Restoring): 
   );
 }
 
+/** Flat, like applyBodyRegions: no children, built-in only (no custom
+    categories), matched on key alone. */
+export async function applyEffectCategories({ driver, mode, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT key AS id FROM effect_category');
+
+  for (const category of journal.effectCategories) {
+    if (present.has(category.key)) {
+      if (mode === 'merge') continue;
+      await driver.run('UPDATE effect_category SET name = ?, enabled = ?, updated_at = ? WHERE key = ?', [
+        category.name,
+        flag(category.enabled),
+        ts,
+        category.key
+      ]);
+      continue;
+    }
+    await driver.run('INSERT INTO effect_category (key, name, enabled, updated_at) VALUES (?, ?, ?, ?)', [
+      category.key,
+      category.name,
+      flag(category.enabled),
+      ts
+    ]);
+  }
+}
+
+/** The effect vocabulary itself, the same flat shape applyMeasurementTypes
+    uses: a custom's key is its own minted uuid (personalEffects.ts), the
+    column NOT NULL for the built-ins' sake. */
+export async function applyPersonalEffectTypes({ driver, mode, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT key AS id FROM personal_effect_type');
+
+  for (const type of journal.personalEffectTypes) {
+    if (present.has(type.key)) {
+      if (mode === 'merge') continue;
+      await driver.run(
+        'UPDATE personal_effect_type SET name = ?, category_key = ?, direction = ?, hidden = ?, updated_at = ? WHERE key = ?',
+        [type.name, type.categoryKey, type.direction, flag(type.hidden), ts, type.key]
+      );
+      continue;
+    }
+    await driver.run(
+      'INSERT INTO personal_effect_type (uuid, key, name, is_built_in, category_key, direction, hidden, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        type.builtIn ? null : type.key,
+        type.key,
+        type.name,
+        flag(type.builtIn),
+        type.categoryKey,
+        type.direction,
+        flag(type.hidden),
+        ts
+      ]
+    );
+  }
+}
+
 /* Matched by uuid, like applyMeasurements: a staging is a dated series
    entry, not a single replaced value like personal_effect.
 

@@ -24,6 +24,7 @@ import type {
   ArchiveDosePause,
   ArchiveDoseSchedule,
   ArchiveDoubtEntry,
+  ArchiveEffectCategory,
   ArchiveEntry,
   ArchiveFeltSenseEntry,
   ArchiveHairPhoto,
@@ -38,6 +39,7 @@ import type {
   ArchiveMedicationStock,
   ArchiveMilestone,
   ArchivePersonalEffect,
+  ArchivePersonalEffectType,
   ArchiveProcedure,
   ArchiveProcedureConsult,
   ArchiveProcedurePhoto,
@@ -565,6 +567,32 @@ export async function readPersonalEffects({ driver }: SectionRead): Promise<Arch
     'SELECT uuid, effect, first_noticed_epoch_day FROM personal_effect ORDER BY effect'
   );
   return rows.map((r) => ({ id: r.uuid, effect: r.effect, firstNoticedEpochDay: r.first_noticed_epoch_day }));
+}
+
+export async function readEffectCategories({ driver }: SectionRead): Promise<ArchiveEffectCategory[]> {
+  const rows = await driver.query<{ key: string; name: string; enabled: number }>(
+    'SELECT key, name, enabled FROM effect_category ORDER BY id'
+  );
+  return rows.map((r) => ({ key: r.key, name: r.name, enabled: bool(r.enabled) }));
+}
+
+export async function readPersonalEffectTypes({ driver }: SectionRead): Promise<ArchivePersonalEffectType[]> {
+  const rows = await driver.query<{
+    key: string;
+    name: string;
+    is_built_in: number;
+    category_key: string | null;
+    direction: 'feminizing' | 'masculinizing' | null;
+    hidden: number;
+  }>('SELECT key, name, is_built_in, category_key, direction, hidden FROM personal_effect_type ORDER BY id');
+  return rows.map((r) => ({
+    key: r.key,
+    name: r.name,
+    builtIn: bool(r.is_built_in),
+    hidden: bool(r.hidden),
+    categoryKey: r.category_key,
+    direction: r.direction
+  }));
 }
 
 export async function readHairStages({ driver }: SectionRead): Promise<ArchiveHairStage[]> {
