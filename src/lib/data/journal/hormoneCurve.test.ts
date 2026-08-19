@@ -21,6 +21,7 @@ async function episode(journal: Journal, startEpochDay: number, overrides: Parti
     route: 'im',
     interval: 'every 7 days',
     startEpochDay,
+    endEpochDay: null,
     ...overrides
   });
 }
@@ -206,7 +207,7 @@ test('nothing injected at all is an empty view rather than a flat line at zero',
 
 test('a result is attributed to the ester that was in effect when it was drawn', async () => {
   const { journal } = await journalWithBuiltIns();
-  await episode(journal, FROM - 30);
+  await episode(journal, FROM - 30, { endEpochDay: FROM + 39 });
   await episode(journal, FROM + 40, {
     drug: 'estradiol enanthate',
     ester: 'enanthate',

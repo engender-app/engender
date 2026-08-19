@@ -18,7 +18,8 @@ async function episode(journal: Journal, startEpochDay: number, drug: string) {
     doseUnit: 'mg',
     route: 'oral',
     interval: 'daily',
-    startEpochDay
+    startEpochDay,
+    endEpochDay: null
   });
 }
 

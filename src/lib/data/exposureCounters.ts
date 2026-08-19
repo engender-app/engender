@@ -9,11 +9,15 @@
    comparison to a "typical" value - the caller decides how to show a
    number, this module only ever produces one.
 
-   A dose's own drug is not stored on it (CONTEXT: "Dose event"); it is
-   resolved from its timestamp against the episode history the same way
-   stockProjection.ts's consumesStock does. A dose with no episode to
-   resolve against - logged before any episode existed - has no drug to
-   report a total against, so it is left out rather than guessed at.
+   A dose usually names no drug of its own (CONTEXT: "Dose event"); its
+   drug is resolved against the episode history the same way
+   stockProjection.ts's consumesStock does (regimenEpisode.ts's
+   attributedDrug). A dose with no episode to resolve against - logged
+   before any episode existed - has no drug to report a total against, so
+   it is left out rather than guessed at, silently as it always was. A
+   dose left ambiguous by two concurrent episodes for different drugs
+   (phase 5 ticket 38) is also left out, but counted (DoseTotals'
+   excludedDoses), so a total is never silently short.
 
    Grouped by drug and route together, never combined across a route
    boundary: a route-conversion table to compare across routes was cut at
@@ -29,7 +33,7 @@
    running rather than as having ended the regimen. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { episodeEndEpochDay, resolveEpisodeAt } from './regimenEpisode';
+import { attributedDrug, isAmbiguousDrug } from './regimenEpisode';
 import type { DoseEvent, DoseRoute, RegimenEpisode } from './types';
 
 export interface DoseTotal {
@@ -39,6 +43,17 @@ export interface DoseTotal {
   /** Every non-skipped dose's amount, summed in its own native unit
       (ADR-0012) - a skipped dose used nothing, so it contributes nothing. */
   total: number;
+}
+
+export interface DoseTotals {
+  totals: DoseTotal[];
+  /** Doses left out because more than one concurrent regimen episode was
+      active and the dose named no drug of its own to break the tie (phase
+      5 ticket 38), or named one matching no active episode - counted so a
+      total is never silently short. A dose with nothing to resolve against
+      at all (no episode ever covers it) is not counted here: that is the
+      pre-existing, unambiguous "nothing to attribute" case. */
+  excludedDoses: number;
 }
 
 export interface RouteDays {
@@ -69,36 +84,41 @@ export function cumulativeDoseTotals(
   episodes: readonly RegimenEpisode[],
   fromEpochDay: number,
   toEpochDay: number
-): DoseTotal[] {
+): DoseTotals {
   const totals = new Map<string, DoseTotal>();
+  let excludedDoses = 0;
 
   for (const dose of doses) {
     if (dose.status === 'skipped') continue;
     const day = epochDayFromTimestamp(dose.timestamp);
     if (day < fromEpochDay || day > toEpochDay) continue;
-    const episode = resolveEpisodeAt(episodes, dose.timestamp);
-    if (!episode) continue;
 
-    const drug = episode.drug.trim();
-    const key = groupKey(drug, dose.route, dose.doseUnit);
+    const drug = attributedDrug(episodes, dose);
+    if (drug === null) {
+      if (isAmbiguousDrug(episodes, dose)) excludedDoses += 1;
+      continue;
+    }
+
+    const trimmedDrug = drug.trim();
+    const key = groupKey(trimmedDrug, dose.route, dose.doseUnit);
     const existing = totals.get(key);
     if (existing) existing.total += dose.dose;
-    else totals.set(key, { drug, route: dose.route, doseUnit: dose.doseUnit, total: dose.dose });
+    else totals.set(key, { drug: trimmedDrug, route: dose.route, doseUnit: dose.doseUnit, total: dose.dose });
   }
 
-  return [...totals.values()].sort(
+  const sorted = [...totals.values()].sort(
     (a, b) => a.drug.localeCompare(b.drug) || a.route.localeCompare(b.route) || a.doseUnit.localeCompare(b.doseUnit)
   );
+  return { totals: sorted, excludedDoses };
 }
 
 /** How many days of `[fromEpochDay, toEpochDay]` one episode overlaps,
-    given its derived end day (regimenEpisode.ts's episodeEndEpochDay, or
-    null while it is still ongoing - in which case it runs through
-    `toEpochDay`). Zero when the episode starts after the range ends or
-    ended before the range starts. */
-function overlapDays(episode: RegimenEpisode, endEpochDay: number | null, fromEpochDay: number, toEpochDay: number): number {
+    given its own stored end day, or null while it is still ongoing - in
+    which case it runs through `toEpochDay`. Zero when the episode starts
+    after the range ends or ended before the range starts. */
+function overlapDays(episode: RegimenEpisode, fromEpochDay: number, toEpochDay: number): number {
   const start = Math.max(episode.startEpochDay, fromEpochDay);
-  const end = Math.min(endEpochDay ?? toEpochDay, toEpochDay);
+  const end = Math.min(episode.endEpochDay ?? toEpochDay, toEpochDay);
   return Math.max(0, end - start + 1);
 }
 
@@ -106,23 +126,21 @@ function overlapDays(episode: RegimenEpisode, endEpochDay: number | null, fromEp
     "regimen" always means one specific dated episode (CONTEXT: "Regimen
     episode"), never a recurring plan, so this is per episode and not
     grouped by drug or dose. Hidden episodes still count: hiding takes an
-    episode out of a picker, not out of history (CONTEXT: "Hidden").
-    `episodes` must be sorted ascending by startEpochDay, the same order
-    resolveEpisodeAt and episodeEndEpochDay require. */
+    episode out of a picker, not out of history (CONTEXT: "Hidden"). */
 export function timeOnEachRegimen(
   episodes: readonly RegimenEpisode[],
   fromEpochDay: number,
   toEpochDay: number
 ): RegimenDays[] {
   return episodes
-    .map((episode, index) => ({
+    .map((episode) => ({
       episodeId: episode.id,
       drug: episode.drug,
       ester: episode.ester,
       dose: episode.dose,
       doseUnit: episode.doseUnit,
       route: episode.route,
-      days: overlapDays(episode, episodeEndEpochDay(episodes, index), fromEpochDay, toEpochDay)
+      days: overlapDays(episode, fromEpochDay, toEpochDay)
     }))
     .filter((row) => row.days > 0);
 }
@@ -130,13 +148,12 @@ export function timeOnEachRegimen(
 /** Days on each route within `[fromEpochDay, toEpochDay]`, summed across
     every episode that used it - a dose change that keeps the same route
     (e.g. a dose increase, still oral) adds to the same total rather than
-    starting a new one. Same sorted-episodes precondition as
-    timeOnEachRegimen. */
+    starting a new one. */
 export function daysOnEachRoute(episodes: readonly RegimenEpisode[], fromEpochDay: number, toEpochDay: number): RouteDays[] {
   const totals = new Map<string, number>();
 
-  episodes.forEach((episode, index) => {
-    const days = overlapDays(episode, episodeEndEpochDay(episodes, index), fromEpochDay, toEpochDay);
+  episodes.forEach((episode) => {
+    const days = overlapDays(episode, fromEpochDay, toEpochDay);
     if (days <= 0) return;
     totals.set(episode.route, (totals.get(episode.route) ?? 0) + days);
   });

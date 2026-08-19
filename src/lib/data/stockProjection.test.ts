@@ -16,6 +16,7 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay: DAY_0,
+    endEpochDay: null,
     hidden: false,
     ...overrides
   };

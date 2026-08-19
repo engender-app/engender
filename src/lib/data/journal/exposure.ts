@@ -17,6 +17,9 @@ export interface ExposureCounters {
   doseTotals: DoseTotal[];
   routeDays: RouteDays[];
   regimenDays: RegimenDays[];
+  /** Doses left out of doseTotals because concurrent regimen episodes for
+      different drugs made attribution ambiguous (phase 5 ticket 38). */
+  excludedDoses: number;
 }
 
 export interface ExposureArea {
@@ -31,10 +34,12 @@ export function makeExposureArea(doses: DosesArea, regimen: RegimenArea): Exposu
     async getCounters(fromEpochDay, toEpochDay) {
       const [doseEvents, episodes] = await Promise.all([doses.getDoses(fromEpochDay, toEpochDay), regimen.getEpisodes()]);
 
+      const { totals, excludedDoses } = cumulativeDoseTotals(doseEvents, episodes, fromEpochDay, toEpochDay);
       return {
-        doseTotals: cumulativeDoseTotals(doseEvents, episodes, fromEpochDay, toEpochDay),
+        doseTotals: totals,
         routeDays: daysOnEachRoute(episodes, fromEpochDay, toEpochDay),
-        regimenDays: timeOnEachRegimen(episodes, fromEpochDay, toEpochDay)
+        regimenDays: timeOnEachRegimen(episodes, fromEpochDay, toEpochDay),
+        excludedDoses
       };
     }
   };

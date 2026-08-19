@@ -12,7 +12,7 @@ import { thumbFileName } from '../photos/names.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
-import { resolveEpisodeAt } from '../regimenEpisode.ts';
+import { attributeDose } from '../regimenEpisode.ts';
 import { epochDayFromTimestamp } from '../epochDay.ts';
 import { emptyArchiveJournal } from './archiveSections.ts';
 import { openJournal, type Journal } from './journal.ts';
@@ -100,7 +100,8 @@ async function populated() {
     doseUnit: 'mg',
     route: 'im',
     interval: 'every 2 weeks',
-    startEpochDay: 19000
+    startEpochDay: 19000,
+    endEpochDay: null
   });
 
   const dose = await journal.doses.upsertDose({
@@ -355,7 +356,8 @@ test('a weekday schedule and its dose amounts survive an export/import round tri
     doseUnit: 'mg',
     route: 'im',
     interval: 'twice weekly',
-    startEpochDay: 19000
+    startEpochDay: 19000,
+    endEpochDay: null
   });
   await source.journal.doses.upsertSchedule({
     episodeId: episode,
@@ -398,10 +400,24 @@ test('a restored dose resolves its episode from its own timestamp, having carrie
 
   const [dose] = await target.journal.doses.getDoses(19000, 20500);
   const episodes = await target.journal.regimen.getEpisodes();
-  assert.equal(resolveEpisodeAt(episodes, dose.timestamp)?.id, source.episode);
+  assert.equal(attributeDose(episodes, dose).episode?.id, source.episode);
 
   // A corrective episode added on the importing device moves the attribution
-  // with no stored link to have got stale in transit.
+  // with no stored link to have got stale in transit. Its own end (day
+  // before 19500, matching what the original single-episode timeline
+  // implied) is set explicitly, since ticket 38 no longer derives one.
+  const originalEpisode = episodes.find((e) => e.id === source.episode)!;
+  await target.journal.regimen.upsertEpisode({
+    id: originalEpisode.id,
+    drug: originalEpisode.drug,
+    ester: originalEpisode.ester,
+    dose: originalEpisode.dose,
+    doseUnit: originalEpisode.doseUnit,
+    route: originalEpisode.route,
+    interval: originalEpisode.interval,
+    startEpochDay: originalEpisode.startEpochDay,
+    endEpochDay: 19499
+  });
   await target.journal.regimen.upsertEpisode({
     drug: 'estradiol enanthate',
     ester: 'enanthate',
@@ -409,9 +425,10 @@ test('a restored dose resolves its episode from its own timestamp, having carrie
     doseUnit: 'mg',
     route: 'im',
     interval: 'every 10 days',
-    startEpochDay: 19500
+    startEpochDay: 19500,
+    endEpochDay: null
   });
-  assert.equal(resolveEpisodeAt(await target.journal.regimen.getEpisodes(), dose.timestamp)?.drug, 'estradiol enanthate');
+  assert.equal(attributeDose(await target.journal.regimen.getEpisodes(), dose).episode?.drug, 'estradiol enanthate');
 });
 
 test('merging the same archive twice does not duplicate a regimen episode', async () => {

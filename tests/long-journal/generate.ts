@@ -395,7 +395,8 @@ export async function generateLongJournal(
     doseUnit: REGIMEN_DOSE_AMOUNTS[0].doseUnit,
     route: 'oral',
     interval: 'Monday, Wednesday, Friday',
-    startEpochDay: regimenStartEpochDay
+    startEpochDay: regimenStartEpochDay,
+    endEpochDay: null
   });
   await journal.doses.upsertSchedule({
     episodeId,

@@ -23,7 +23,6 @@
     ongoingWindowRange,
     customInclusiveRange
   } from '$lib/data/epochDay';
-  import { episodeEndEpochDay } from '$lib/data/regimenEpisode';
   import type { CycleEvent, CycleEventKind } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -55,10 +54,7 @@
   let bands = $derived(
     range
       ? episodes
-          .map((episode, index) => ({
-            startEpochDay: episode.startEpochDay,
-            endEpochDay: episodeEndEpochDay(episodes, index) ?? today
-          }))
+          .map((episode) => ({ startEpochDay: episode.startEpochDay, endEpochDay: episode.endEpochDay ?? today }))
           .filter((band) => band.startEpochDay <= range!.end && band.endEpochDay >= range!.start)
       : []
   );
