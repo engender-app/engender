@@ -4,7 +4,6 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { BODY_REGION_INTENSITY_DEFAULT } from './bodyMap.ts';
 import { createEntryDraft } from './entryDraft.ts';
 import type { Entry } from './types.ts';
 import type { NormalizedPhoto } from './journal/photos.ts';
@@ -22,7 +21,7 @@ const existingEntry = (): Entry => ({
   photos: [{ id: 'p1', fileName: 'p1.jpg', starred: false }],
   recordings: [{ id: 'r1', fileName: 'r1.webm' }],
   videos: [{ id: 'n1', fileName: 'n1.webm' }],
-  bodyRegions: { chest: 60 },
+  bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
   starred: false
 });
 
@@ -50,7 +49,7 @@ test('a draft hydrated from an existing entry copies its fields and stored photo
   assert.deepEqual(draft.tags, ['e-happy']);
   assert.deepEqual(draft.photos, [{ kind: 'stored', photo: { id: 'p1', fileName: 'p1.jpg', starred: false } }]);
   assert.deepEqual(draft.recordings, [{ kind: 'stored', recording: { id: 'r1', fileName: 'r1.webm' } }]);
-  assert.deepEqual(draft.bodyRegions, { chest: 60 });
+  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 60, euphoria: null } });
 });
 
 test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty', () => {
@@ -80,11 +79,15 @@ test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty'
   assert.equal(byTag.hasMoodOnlyContent, false);
   assert.deepEqual(byTag.tags, ['e-happy']);
 
+  // Picking a region only puts its sliders on screen (ticket 31). Content
+  // arrives when an axis does, so the draft is still empty until then.
   const byBodyRegion = createEntryDraft(1);
   byBodyRegion.toggleBodyRegion('chest');
+  assert.equal(byBodyRegion.isEmpty, true);
+  byBodyRegion.setBodyRegionAxis('chest', 'euphoria', 70);
   assert.equal(byBodyRegion.isEmpty, false);
   assert.equal(byBodyRegion.hasMoodOnlyContent, false);
-  assert.deepEqual(byBodyRegion.bodyRegions, { chest: BODY_REGION_INTENSITY_DEFAULT });
+  assert.deepEqual(byBodyRegion.bodyRegions, { chest: { dysphoria: null, euphoria: 70 } });
 });
 
 test('setDim merges into the existing dims without clobbering the others', () => {
@@ -103,16 +106,28 @@ test('toggleTag adds an absent tag and removes a present one', () => {
   assert.deepEqual(draft.tags, ['e-sad']);
 });
 
-test('toggleBodyRegion adds a region at the default intensity and removes it again', () => {
+test('toggleBodyRegion adds a region with neither axis set and removes it again', () => {
   const draft = createEntryDraft(1);
   draft.toggleBodyRegion('chest');
-  assert.deepEqual(draft.bodyRegions, { chest: BODY_REGION_INTENSITY_DEFAULT });
+  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: null, euphoria: null } });
 
-  draft.setBodyRegionIntensity('chest', 80);
-  assert.deepEqual(draft.bodyRegions, { chest: 80 });
+  draft.setBodyRegionAxis('chest', 'dysphoria', 80);
+  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 80, euphoria: null } });
 
   draft.toggleBodyRegion('chest');
   assert.deepEqual(draft.bodyRegions, {});
+});
+
+test('the two axes of a region are set independently of each other', () => {
+  const draft = createEntryDraft(1);
+  draft.toggleBodyRegion('chest');
+
+  draft.setBodyRegionAxis('chest', 'euphoria', 70);
+  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: null, euphoria: 70 } });
+
+  // Both at once is sayable: setting one never clears the other.
+  draft.setBodyRegionAxis('chest', 'dysphoria', 30);
+  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 30, euphoria: 70 } });
 });
 
 test('addPhoto stages a picked photo; removing it drops it without marking it removed', () => {
@@ -196,7 +211,7 @@ test('toUpsert() for an existing entry carries its id, drops a falsy timestamp a
     note: 'ok day',
     dims: { masculinity: 40 },
     tags: ['e-happy'],
-    bodyRegions: { chest: 60 },
+    bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
     attachPhotos: [photo(2)],
     removePhotoIds: ['p1'],
     attachRecordings: [new Uint8Array([9])],
@@ -228,14 +243,14 @@ test('hydrating copies the existing entry, so a later mutation of it cannot disc
   original.tags.push('should-not-appear');
   original.photos.push({ id: 'p2', fileName: 'p2.jpg', starred: false });
   original.recordings.push({ id: 'r2', fileName: 'r2.webm' });
-  original.bodyRegions.chest = 999;
+  original.bodyRegions.chest.dysphoria = 999;
 
   assert.equal(draft.note, 'typed after load');
   assert.deepEqual(draft.dims, { masculinity: 40 });
   assert.deepEqual(draft.tags, ['e-happy', 'e-sad']);
   assert.equal(draft.photos.length, 1);
   assert.equal(draft.recordings.length, 1);
-  assert.deepEqual(draft.bodyRegions, { chest: 60 });
+  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 60, euphoria: null } });
 });
 
 test('a fresh draft can be seeded with a mood and the seed survives hydration', () => {

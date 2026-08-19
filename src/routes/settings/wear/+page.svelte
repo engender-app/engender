@@ -234,7 +234,12 @@
   let trendFrom = $derived(today - range + 1);
 
   let wearTrendQuery = liveQuery(['wearSession'], (j) => j.stats.wearTimeTrend(trendFrom, today));
-  let regionTrendQuery = liveQuery(['entry'], (j) => j.stats.bodyRegionTrend(trendRegion, trendFrom, today));
+  /* Dysphoria specifically, which is the axis this chart has always drawn -
+     ticket 31 gave a region a second one but did not widen what wear time is
+     compared against. */
+  let regionTrendQuery = liveQuery(['entry'], (j) =>
+    j.stats.bodyRegionTrend(trendRegion, 'dysphoria', trendFrom, today)
+  );
   let wearTrend = $derived(wearTrendQuery.value ?? []);
   let regionTrend = $derived(regionTrendQuery.value ?? []);
   let wearMax = $derived(Math.max(4, 1, ...wearTrend.map((p) => Math.ceil(p.value))));

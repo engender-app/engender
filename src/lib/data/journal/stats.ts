@@ -21,7 +21,7 @@ import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { isPausedOn } from '../journalingPause';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Photo, TallyKind } from '../types';
+import type { BodyRegionAxis, Photo, TallyKind } from '../types';
 import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins';
 import { bool } from './support';
 
@@ -122,13 +122,26 @@ export interface StatsArea {
       future are excluded, the same rule `streak()` applies. */
   bestStreakEver(todayEpochDay: number): Promise<number>;
   recap(fromEpochDay: number, toEpochDay: number): Promise<Recap>;
-  /** One point per day a body region (bodyMap.ts) carried an intensity in
-      the range, oldest first, both ends inclusive - the same shape as
-      `dayAverages`, so a body-map trend reuses the same chart (ticket 09).
-      Not folded into `dayAverages` itself: a region key and a dimension
-      key share no namespace, and a garbage region should read as "nothing
-      logged" rather than risk colliding with a real dimension's key. */
-  bodyRegionTrend(region: string, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
+  /** One point per day a body region (bodyMap.ts) carried an intensity on
+      the named axis in the range, oldest first, both ends inclusive - the
+      same shape as `dayAverages`, so a body-map trend reuses the same chart
+      (ticket 09). Not folded into `dayAverages` itself: a region key and a
+      dimension key share no namespace, and a garbage region should read as
+      "nothing logged" rather than risk colliding with a real dimension's
+      key.
+
+      One axis per call rather than both at once (ticket 31), because the
+      two are independent: a day can carry a euphoria and no dysphoria, so
+      the two series have their own days and their own counts and nothing
+      here pairs them up. A caller drawing both asks twice and the chart
+      overlays the results. Days where the axis is null are absent, not
+      zero - "said nothing" is not "said none". */
+  bodyRegionTrend(
+    region: string,
+    axis: BodyRegionAxis,
+    fromEpochDay: number,
+    toEpochDay: number
+  ): Promise<DayAverage[]>;
   /** One point per day at least one completed wear session started in the
       range, oldest first, both ends inclusive - the same DayAverage shape
       as bodyRegionTrend, so a wear-time trend overlays the same chart
@@ -190,13 +203,21 @@ function metricValues(metric: string): { sql: string; params: (string | number)[
 
 /* A body region is a plain TEXT column, not a row to join against
    (bodyMap.ts), so this needs no dimension-style key resolution - just the
-   entry_body_region rows for one region key. */
-function bodyRegionValues(region: string): { sql: string; params: (string | number)[] } {
+   entry_body_region rows for one region key.
+
+   The axis names a column rather than binding a parameter, so it is a
+   closed union and not a caller's string: nothing user-supplied reaches
+   the SQL. `IS NOT NULL` is what keeps an unlogged axis out of the average
+   entirely instead of dragging it towards zero. */
+function bodyRegionValues(
+  region: string,
+  axis: BodyRegionAxis
+): { sql: string; params: (string | number)[] } {
   return {
-    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.intensity AS value
+    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.${axis} AS value
           FROM entry e
           JOIN entry_body_region ebr ON ebr.entry_id = e.id
-          WHERE ebr.region = ? AND e.trashed_at IS NULL`,
+          WHERE ebr.region = ? AND ebr.${axis} IS NOT NULL AND e.trashed_at IS NULL`,
     params: [region]
   };
 }
@@ -240,8 +261,8 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       return averageByDay(metricValues(metric), fromEpochDay, toEpochDay);
     },
 
-    async bodyRegionTrend(region, fromEpochDay, toEpochDay) {
-      return averageByDay(bodyRegionValues(region), fromEpochDay, toEpochDay);
+    async bodyRegionTrend(region, axis, fromEpochDay, toEpochDay) {
+      return averageByDay(bodyRegionValues(region, axis), fromEpochDay, toEpochDay);
     },
 
     async wearTimeTrend(fromEpochDay, toEpochDay) {

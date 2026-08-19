@@ -30,10 +30,21 @@ _Avoid_: Metadata, lookup data, config
 
 **Entry**:
 One logged moment, carrying a mood, gender dimension values, tags, a note,
-photos, voice recordings, and body-region intensities. A day can hold
+photos, voice recordings, and body-region feelings. A day can hold
 several. Always holds at least one of those seven; an entry with none of
 them does not exist.
 _Avoid_: Log, record, check-in (a check-in is a daily prompt, not an entry)
+
+**Body-region feeling**:
+What one entry says about one body region: a dysphoria intensity, a euphoria
+intensity, or both, each 0-100 and each optional. The two are independent
+readings of the same part, not two ends of one scale, because both can be
+true of it on the same day. Saying nothing on an axis is not scoring it 0,
+which is what lets someone record that a region felt good rather than only
+that it did not hurt. Never combined: the app derives no net, balance or
+score across the two, and neither axis is the better one to have.
+_Avoid_: Intensity on its own (it no longer says which of the two), pain
+score, body dysphoria rating
 
 **Photo**:
 An image belonging to exactly one entry or exactly one milestone, held in
@@ -414,7 +425,7 @@ A tracked stretch of binder or tucking wear time, logged either as a live
 start/stop timer or as a backfilled start day plus duration, with an optional
 comfort/pain note. Its own record type, not an Entry: no mood, dimension
 values, tags or note beyond that one free-text field. Charted against the
-existing built-in `chest` and `genitals` body regions' intensity trend rather
+existing built-in `chest` and `genitals` body regions' dysphoria trend rather
 than against a region key of its own. Its optional Reminder is
 an ordinary one, on a wear-specific marker, for whatever hour count the
 person sets - the app states no safe maximum and gives no advice.

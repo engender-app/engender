@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 35);
+  assert.equal(db.getUserVersion(), 36);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -298,6 +298,40 @@ test('v11 side_effect carries no episode reference and rejects severity outside 
   );
 });
 
+test('v36 splits a body region into two axes, leaving every stored intensity as the dysphoria it was', async () => {
+  const preV36 = migrations.filter((m) => m.version <= 35);
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), preV36);
+  db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e1', 100, 1000, 1000)");
+  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, intensity) VALUES (1, 'chest', 70)");
+  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, intensity) VALUES (1, 'hairline', 0)");
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  // What a person logged as distress is still distress, at the same number.
+  // Nothing is reinterpreted, nothing is signed, and the new axis starts
+  // empty rather than at zero - a 0 here would claim they said something.
+  const rows = db.raw
+    .prepare('SELECT region, dysphoria, euphoria FROM entry_body_region ORDER BY region')
+    .all()
+    // Rebuilt: node:sqlite hands back null-prototype rows, which deepEqual
+    // will not match against a plain object literal.
+    .map((r) => ({ ...(r as { region: string; dysphoria: number | null; euphoria: number | null }) }));
+  assert.deepEqual(rows, [
+    { region: 'chest', dysphoria: 70, euphoria: null },
+    { region: 'hairline', dysphoria: 0, euphoria: null }
+  ]);
+});
+
+test('v36 refuses a body region that says nothing on either axis', async () => {
+  const db = await migratedDb();
+  db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e1', 100, 1000, 1000)");
+
+  assert.throws(() =>
+    db.raw.exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'chest', NULL, NULL)")
+  );
+});
+
 test('v19 widens personal_effect to eight markers, preserving rows the v12 table already held', async () => {
   const preV19 = migrations.filter((m) => m.version <= 12);
   const db = makeNodeSqliteDb();
@@ -307,7 +341,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 35);
+  assert.equal(db.getUserVersion(), 36);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -341,7 +375,7 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 35);
+  assert.equal(db.getUserVersion(), 36);
 
   const row = db.raw.prepare('SELECT * FROM measurement WHERE uuid = ?').get('m1') as {
     type: string;
@@ -397,7 +431,7 @@ test('deleting an entry cascades to its photos, dimension values, tag links and 
   exec("INSERT INTO tag (group_id, label, updated_at) VALUES (1, 'joy', 1000)");
   exec('INSERT INTO entry_tag (entry_id, tag_id) VALUES (1, 1)');
   exec("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', 1, 'a.jpg', 1000)");
-  exec("INSERT INTO entry_body_region (entry_id, region, intensity) VALUES (1, 'chest', 40)");
+  exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'chest', 40, 65)");
   exec("INSERT INTO voice_recording (uuid, entry_id, file_path, updated_at) VALUES ('v1', 1, 'v1.webm', 1000)");
   exec("INSERT INTO video_note (uuid, entry_id, file_path, updated_at) VALUES ('n1', 1, 'n1.webm', 1000)");
 

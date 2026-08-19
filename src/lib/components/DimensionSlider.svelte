@@ -30,12 +30,20 @@
   });
 </script>
 
-<div class="dim-slider">
+<div class="dim-slider" class:is-unset={value == null}>
   <div class="dim-head">
     <span class="dim-name" data-dim-name>{dim.name}</span>
-    <output class="dim-value" data-dim-value>{value ?? '—'}</output>
+    <output class="dim-value" data-dim-value>{value ?? m.slider_unset()}</output>
   </div>
-  <div {...slider.root} class="melt-slider" data-melt-slider aria-label={m.slider_aria({ name: dim.name, low: dim.low, high: dim.high })}>
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div
+    {...slider.root}
+    class="melt-slider"
+    data-melt-slider
+    onpointerup={() => { if (value == null) onInput(slider.value); }}
+    onkeyup={() => { if (value == null) onInput(slider.value); }}
+    aria-label={m.slider_aria({ name: dim.name, low: dim.low, high: dim.high })}
+  >
     <div class="melt-track"><div class="melt-range"></div></div>
     <div {...slider.thumb} class="melt-thumb"></div>
   </div>
