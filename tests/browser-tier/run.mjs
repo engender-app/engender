@@ -19,7 +19,19 @@ const server = await createServer({ configFile: `${here}/browser-tier.vite.confi
 await server.listen();
 const port = server.config.server.port;
 
-const browser = await launchChromium();
+/* Fake camera and microphone, for phase 5 ticket 22's probe: video notes
+   record through getUserMedia, and the only way to exercise the real capture
+   path headlessly is to give Chromium a synthetic device and pre-grant the
+   permission. Inert for every other probe here - none of them ask for a
+   media device. The fake camera produces a moving pattern with a tone on the
+   audio track, which is exactly what a re-encode has to carry over. */
+const browser = await launchChromium({
+  args: [
+    '--use-fake-device-for-media-stream',
+    '--use-fake-ui-for-media-stream',
+    '--autoplay-policy=no-user-gesture-required'
+  ]
+});
 const page = await (await browser.newContext()).newPage();
 
 /** Loads `path`, waits for `[data-...-ready]` to appear, and reads `resultGlobal`
@@ -63,8 +75,18 @@ try {
   const first = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
   if (first.error) throw new Error(first.error);
 
-  if (first.userVersion === 6) ok('boot() opens the database and migrates it to the current schema');
-  else fail('boot() opens the database and migrates it to the current schema', `user_version is ${first.userVersion}`);
+  /* Compared against the migration list rather than a literal. This read
+     `=== 6` from ticket 04 until phase 5 ticket 22, so it had been failing
+     since v7 and saying nothing useful while it did - a hardcoded schema
+     version is exactly what goes stale first, and it collides between
+     branches besides. */
+  if (first.userVersion === first.latestSchemaVersion)
+    ok(`boot() opens the database and migrates it to the current schema (v${first.userVersion})`);
+  else
+    fail(
+      'boot() opens the database and migrates it to the current schema',
+      `user_version is ${first.userVersion}, migrations.ts says ${first.latestSchemaVersion}`
+    );
 
   if (first.markerExisted === false) ok('boot() runs against a fresh database on first load');
   else fail('boot() runs against a fresh database on first load', 'marker entry already existed');
@@ -783,6 +805,72 @@ try {
   else fail('the share sheet receives the generated collage', JSON.stringify(shared.sharedFile));
 } catch (e) {
   fail('ticket 27 photo journey export', e.message ?? String(e));
+}
+
+// --- Phase 5 ticket 22: the video note re-encode ---------------------------
+try {
+  const r = await load('/video-notes.html', 'data-video-note-probe-ready', '__videoNoteProbeResult');
+  if (r.error) throw new Error(r.error);
+
+  if (r.fileName === '11111111-2222-3333-4444-555555555555.webm')
+    ok('a video note is stored under an opaque <uuid>.webm, resolvable on either platform');
+  else fail('a video note is stored under an opaque <uuid>.webm', r.fileName);
+
+  if (r.captured && r.sourceSize > 0)
+    ok(`startVideoRecording() produces a real capture off the fake camera (${(r.sourceSize / 1024) | 0}KB)`);
+  else fail('startVideoRecording() produces a real capture', `captured: ${r.captured}, ${r.sourceSize} bytes`);
+
+  /* The claim ticket 22 actually makes: a file over the ceiling is
+     compressed further rather than accepted as-is. Size is the whole point,
+     so this is the assertion that matters. */
+  if (r.reencodedSize !== null && r.reencodedSize < r.sourceSize)
+    ok(
+      `re-encoding compresses an oversized capture rather than accepting it (${(r.sourceSize / 1024) | 0}KB to ${(r.reencodedSize / 1024) | 0}KB)`
+    );
+  else fail('re-encoding compresses an oversized capture', `${r.sourceSize} to ${r.reencodedSize}`);
+
+  if (r.reencodedType === 'video/webm')
+    ok('and it lands in the same container, so the stored .webm means what its name says');
+  else fail('the re-encode lands in the same container', String(r.reencodedType));
+
+  /* Smaller alone would also describe a black file, so the marker quadrant
+     has to survive: this proves the re-encode carried the picture over. */
+  const green = ([, g]) => g > 120;
+  if (r.reencodedFrame && green(r.reencodedFrame.marker))
+    ok('the re-encoded file is still the same video, not an empty one of the right length');
+  else fail('the re-encoded file is still the same video', JSON.stringify(r.reencodedFrame));
+
+  // 480p in, 480p out. Ticket 22's 1080p is a cap, and upscaling would only
+  // spend bits on detail that is not there (ADR-0008's rule for photos).
+  if (r.reencodedFrame?.height === r.sourceFrame.height && r.reencodedFrame.height < r.maxShortEdge)
+    ok(`a capture below the ${r.maxShortEdge}p cap keeps its own size rather than being upscaled to it`);
+  else
+    fail(
+      'a capture below the cap keeps its own size',
+      `${JSON.stringify(r.sourceFrame)} to ${JSON.stringify(r.reencodedFrame)}`
+    );
+
+  if (r.targetForOversized && r.targetForOversized.audioBitsPerSecond > 0)
+    ok('the target comes from limits.ts, so the probe exercises the real decision');
+  else fail('the target comes from limits.ts', JSON.stringify(r.targetForOversized));
+
+  /* A video note is video AND audio (ticket 22's scope line). reencode.ts has
+     to mute the <video> it plays to satisfy the autoplay policy, so this is
+     the check that the mute does not also silence the track it carries over -
+     the failure it guards against would store every note without its sound. */
+  if (r.sourceHasAudio && r.reencodedHasAudio)
+    ok('the re-encode carries the audio over, so speech survives what the picture gives up');
+  else
+    fail(
+      'the re-encode carries the audio over',
+      `source had audio: ${r.sourceHasAudio}, re-encode had audio: ${r.reencodedHasAudio}`
+    );
+
+  if (r.undecodableGivesNull)
+    ok('and a file the browser cannot decode yields null, so an oversized capture is kept rather than lost');
+  else fail('a file the browser cannot decode yields null', `got ${r.undecodableGivesNull}`);
+} catch (e) {
+  fail('phase 5 ticket 22 video note re-encode', e.message ?? String(e));
 }
 
 await browser.close();

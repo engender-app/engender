@@ -22,7 +22,7 @@ import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryCont
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Entry, Photo, VoiceRecording } from '../types';
+import type { Entry, Photo, VideoNote, VoiceRecording } from '../types';
 import type { PhotoFileStore } from './journal';
 import {
   insertStagedPhoto,
@@ -41,6 +41,14 @@ import {
   stageRecording,
   type StagedRecording
 } from './voiceRecordings';
+import {
+  insertStagedVideo,
+  removeVideoFilesAfterCommit,
+  removeVideoFilesOf,
+  stageVideo,
+  videosByEntry,
+  type StagedVideo
+} from './videoNotes';
 import { assertChanged, bool, domainIdOf, mintUuid, now, rowidByUuid } from './support';
 
 /** How long a trashed entry survives before purgeExpiredTrash reclaims it
@@ -80,6 +88,14 @@ export interface EntryInput {
   /** Stored recordings removed in this edit, committed with the rest of the
       entry save the same way removePhotoIds is. */
   removeRecordingIds?: string[];
+  /** Video notes made in this edit, already capped and re-encoded by the
+      editor (videoNotes/limits.ts) - the journal stores what it is handed,
+      the same contract NormalizedPhoto states. Absent leaves the entry's
+      existing video rows alone; the bytes are never re-read from them. */
+  attachVideos?: Uint8Array[];
+  /** Stored video notes removed in this edit, committed with the rest of the
+      save. */
+  removeVideoIds?: string[];
 }
 
 export interface EntrySearchFilters {
@@ -172,6 +188,7 @@ type EntryRow = {
 
 type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: string };
 type RemovedRecordingRow = { uuid: string; entry_id: number; file_path: string };
+type RemovedVideoRow = { uuid: string; entry_id: number; file_path: string };
 
 export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): EntriesArea {
   const resolveDimensionIds = async (dims: Record<string, number>): Promise<readonly (readonly [number, number])[]> => {
@@ -304,6 +321,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       })
     );
 
+  const videoCountOf = async (entryId: number): Promise<number> => {
+    const rows = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM video_note WHERE entry_id = ?', [
+      entryId
+    ]);
+    return rows[0].n;
+  };
+
   const recordingsToRemove = async (entryId: number | null, ids: string[]): Promise<RemovedRecordingRow[]> =>
     Promise.all(
       [...new Set(ids)].map(async (id) => {
@@ -314,6 +338,20 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         if (!rows[0]) throw new Error(`unknown recording: ${id}`);
         if (entryId == null) throw new Error(`recording ${id} does not belong to a new entry`);
         if (rows[0].entry_id !== entryId) throw new Error(`recording ${id} does not belong to entry: ${entryId}`);
+        return rows[0];
+      })
+    );
+
+  const videosToRemove = async (entryId: number | null, ids: string[]): Promise<RemovedVideoRow[]> =>
+    Promise.all(
+      [...new Set(ids)].map(async (id) => {
+        const rows = await driver.query<RemovedVideoRow>(
+          'SELECT uuid, entry_id, file_path FROM video_note WHERE uuid = ?',
+          [id]
+        );
+        if (!rows[0]) throw new Error(`unknown video note: ${id}`);
+        if (entryId == null) throw new Error(`video note ${id} does not belong to a new entry`);
+        if (rows[0].entry_id !== entryId) throw new Error(`video note ${id} does not belong to entry: ${entryId}`);
         return rows[0];
       })
     );
@@ -338,6 +376,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     const tags = new Map<number, string[]>();
     const photos = new Map<number, Photo[]>();
     const recordings = new Map<number, VoiceRecording[]>();
+    const videos = new Map<number, VideoNote[]>();
     const bodyRegions = new Map<number, Record<string, number>>();
 
     for (let from = 0; from < rows.length; from += ID_CHUNK) {
@@ -371,6 +410,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
 
       for (const [entryId, forEntry] of await photosByEntry(driver, ids)) photos.set(entryId, forEntry);
       for (const [entryId, forEntry] of await recordingsByEntry(driver, ids)) recordings.set(entryId, forEntry);
+      for (const [entryId, forEntry] of await videosByEntry(driver, ids)) videos.set(entryId, forEntry);
 
       const bodyRegionRows = await driver.query<{ entry_id: number; region: string; intensity: number }>(
         `SELECT entry_id, region, intensity FROM entry_body_region WHERE entry_id IN (${placeholders})`,
@@ -393,6 +433,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       tags: tags.get(row.id) ?? [],
       photos: photos.get(row.id) ?? [],
       recordings: recordings.get(row.id) ?? [],
+      videos: videos.get(row.id) ?? [],
       bodyRegions: bodyRegions.get(row.id) ?? {},
       starred: bool(row.starred)
     }));
@@ -644,6 +685,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const removedPhotos = await photosToRemove(current.id, input.removePhotoIds ?? []);
         const attachingRecordings = input.attachRecordings ?? [];
         const removedRecordings = await recordingsToRemove(current.id, input.removeRecordingIds ?? []);
+        const attachingVideos = input.attachVideos ?? [];
+        const removedVideos = await videosToRemove(current.id, input.removeVideoIds ?? []);
         assertHasContent({
           mood,
           note: input.note ?? current.note ?? '',
@@ -652,6 +695,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           photoCount: (await photoCountOf(current.id)) - removedPhotos.length + attaching.length,
           recordingCount:
             (await recordingCountOf(current.id)) - removedRecordings.length + attachingRecordings.length,
+          videoCount: (await videoCountOf(current.id)) - removedVideos.length + attachingVideos.length,
           bodyRegionCount: Object.keys(bodyRegions).length
         });
 
@@ -667,6 +711,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         for (const photo of attaching) stagedPhotos.push(await stagePhoto(files, photo));
         const stagedRecordings: StagedRecording[] = [];
         for (const bytes of attachingRecordings) stagedRecordings.push(await stageRecording(files, bytes));
+        const stagedVideos: StagedVideo[] = [];
+        for (const bytes of attachingVideos) stagedVideos.push(await stageVideo(files, bytes));
 
         await driver.transaction(async () => {
           await driver.run(
@@ -705,9 +751,16 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           for (const recording of stagedRecordings) {
             await insertStagedRecording(driver, current.id, recording);
           }
+          for (const video of removedVideos) {
+            await driver.run('DELETE FROM video_note WHERE uuid = ? AND entry_id = ?', [video.uuid, current.id]);
+          }
+          for (const video of stagedVideos) {
+            await insertStagedVideo(driver, current.id, video);
+          }
         });
         await removeFilesAfterCommit(files, removedPhotos);
         await removeRecordingFilesAfterCommit(files, removedRecordings);
+        await removeVideoFilesAfterCommit(files, removedVideos);
         return current.id;
       }
 
@@ -717,10 +770,12 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const bodyRegions = input.bodyRegions ?? {};
       const attachingNew = input.attachPhotos ?? [];
       const attachingRecordingsNew = input.attachRecordings ?? [];
+      const attachingVideosNew = input.attachVideos ?? [];
       const mood = input.mood;
       if (mood == null) throw new Error('an entry needs a mood');
       await photosToRemove(null, input.removePhotoIds ?? []);
       await recordingsToRemove(null, input.removeRecordingIds ?? []);
+      await videosToRemove(null, input.removeVideoIds ?? []);
       assertHasContent({
         mood,
         note: input.note ?? '',
@@ -728,6 +783,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         tagCount: tags.length,
         photoCount: attachingNew.length,
         recordingCount: attachingRecordingsNew.length,
+        videoCount: attachingVideosNew.length,
         bodyRegionCount: Object.keys(bodyRegions).length
       });
       const dimIds = await resolveDimensionIds(dims);
@@ -737,6 +793,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       for (const photo of attachingNew) stagedPhotos.push(await stagePhoto(files, photo));
       const stagedRecordings: StagedRecording[] = [];
       for (const bytes of attachingRecordingsNew) stagedRecordings.push(await stageRecording(files, bytes));
+      const stagedVideos: StagedVideo[] = [];
+      for (const bytes of attachingVideosNew) stagedVideos.push(await stageVideo(files, bytes));
 
       const uuid = mintUuid();
       return driver.transaction(async () => {
@@ -754,6 +812,9 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         }
         for (const recording of stagedRecordings) {
           await insertStagedRecording(driver, entryId, recording);
+        }
+        for (const video of stagedVideos) {
+          await insertStagedVideo(driver, entryId, video);
         }
         return entryId;
       });
@@ -812,10 +873,15 @@ export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileSt
     `SELECT file_path FROM voice_recording WHERE entry_id IN (${placeholders})`,
     ids
   );
+  const videos = await driver.query<{ file_path: string }>(
+    `SELECT file_path FROM video_note WHERE entry_id IN (${placeholders})`,
+    ids
+  );
 
   await driver.transaction(async () => {
     await driver.run(`DELETE FROM photo WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM voice_recording WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM video_note WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM entry_dimension_value WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM entry_tag WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM entry_body_region WHERE entry_id IN (${placeholders})`, ids);
@@ -826,4 +892,5 @@ export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileSt
   // what the boot orphan sweep (sweepOrphanPhotos) reclaims next.
   await removeFilesOf(files, photos);
   await removeRecordingFilesOf(files, recordings);
+  await removeVideoFilesOf(files, videos);
 }

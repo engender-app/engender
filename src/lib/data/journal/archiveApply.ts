@@ -320,6 +320,7 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
   const tagRows: unknown[][] = [];
   const photoRows: unknown[][] = [];
   const recordingRows: unknown[][] = [];
+  const videoRows: unknown[][] = [];
   const bodyRegionRows: unknown[][] = [];
 
   for (const entry of inserting) {
@@ -354,6 +355,10 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
       recordingRows.push([recording.id, entryId, recording.fileName, orderIndex, ts]);
     }
 
+    for (const [orderIndex, video] of (entry.videos ?? []).entries()) {
+      videoRows.push([video.id, entryId, video.fileName, orderIndex, ts]);
+    }
+
     // Unlike dims and tags, a region key is not resolved against a stored
     // row - there is none (bodyMap.ts) - so it travels straight through,
     // the same forward-compatible treatment lab_result.analyte gets: an
@@ -378,6 +383,7 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
     'INSERT INTO voice_recording (uuid, entry_id, file_path, order_index, updated_at)',
     recordingRows
   );
+  await insertRows(driver, 'INSERT INTO video_note (uuid, entry_id, file_path, order_index, updated_at)', videoRows);
 }
 
 export async function applyMilestones({ driver, journal, ts }: Restoring): Promise<void> {
