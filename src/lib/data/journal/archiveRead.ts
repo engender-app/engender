@@ -48,6 +48,7 @@ import type {
   ArchiveRoadmapCheck,
   ArchiveRoadmapGoal,
   ArchiveSideEffect,
+  ArchiveSizeRecord,
   ArchiveTag,
   ArchiveTagGroup,
   ArchiveTallyEvent,
@@ -376,6 +377,25 @@ export async function readMeasurements({ driver }: SectionRead): Promise<Archive
     epochDay: r.epoch_day,
     value: r.value,
     unit: r.unit
+  }));
+}
+
+export async function readSizeRecords({ driver }: SectionRead): Promise<ArchiveSizeRecord[]> {
+  const rows = await driver.query<{
+    uuid: string;
+    epoch_day: number;
+    category: string;
+    size: string;
+    brand: string;
+    fit_note: string;
+  }>('SELECT uuid, epoch_day, category, size, brand, fit_note FROM size_record ORDER BY epoch_day, id');
+  return rows.map((r) => ({
+    id: r.uuid,
+    epochDay: r.epoch_day,
+    category: r.category,
+    size: r.size,
+    brand: r.brand,
+    fitNote: r.fit_note
   }));
 }
 

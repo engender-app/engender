@@ -222,6 +222,20 @@ export interface MeasurementType {
   hidden: boolean;
 }
 
+/* No episode reference either, the same reason Measurement has none: what
+   was bought and how it fit stands alone (phase 5 ticket 23). `category` is
+   loosened to string here the way HairRemovalSession['area'] is - the
+   closed vocabulary lives in garmentCategories.ts and its CHECK, not in
+   this type. */
+export interface SizeRecord {
+  id: string;
+  epochDay: number;
+  category: string;
+  size: string;
+  brand: string;
+  fitNote: string;
+}
+
 /** The two counters ticket 10 tracks. Fixed rather than user-defined, so it
     is a plain union rather than a keyed reference-data row. */
 export type TallyKind = 'misgendered' | 'correctly_gendered';
