@@ -176,6 +176,9 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM entry_tag',
     'DELETE FROM entry_body_region',
     'DELETE FROM entry',
+    // Before milestone: a felt-sense row can hang off either a tryout or a
+    // milestone rowid (phase 5 ticket 24), so it has to clear before both.
+    'DELETE FROM felt_sense',
     'DELETE FROM milestone',
     'DELETE FROM lab_result',
     'DELETE FROM measurement',
@@ -201,7 +204,6 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM roadmap_goal',
     'DELETE FROM checklist_item',
     'DELETE FROM checklist',
-    'DELETE FROM tryout_felt_sense',
     'DELETE FROM tryout_photo',
     'DELETE FROM tryout',
     'DELETE FROM dose_event',
