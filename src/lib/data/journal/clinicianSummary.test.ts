@@ -6,14 +6,12 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
-import { assembleClinicianSummary, CLINICIAN_SUMMARY_SECTIONS, type ClinicianSummarySection } from './clinicianSummary.ts';
+import { CLINICIAN_SUMMARY_SECTIONS, makeClinicianSummaryArea, type ClinicianSummarySection } from './clinicianSummary.ts';
 import type { Journal } from './journal.ts';
 
-/* The areas a section reads through, bound to a range - what openJournal
-   hands the area, assembled here so a test can add a section of its own. */
-const readingFor = (journal: Journal, fromEpochDay: number, toEpochDay: number) => ({
-  fromEpochDay,
-  toEpochDay,
+/* The five areas openJournal hands the summary, taken off an open journal so
+   a test can build the same area with a section of its own registered. */
+const areasOf = (journal: Journal) => ({
   regimen: journal.regimen,
   doses: journal.doses,
   labs: journal.labs,
@@ -124,7 +122,8 @@ test('registering a section is enough for it to reach a generated summary, with 
     key: 'throwaway',
     read: async ({ fromEpochDay, toEpochDay }) => [fromEpochDay, toEpochDay]
   };
-  const summary = await assembleClinicianSummary(readingFor(journal, 19000, 19020), [...CLINICIAN_SUMMARY_SECTIONS, throwaway]);
+  const withThrowaway = makeClinicianSummaryArea(areasOf(journal), [...CLINICIAN_SUMMARY_SECTIONS, throwaway]);
+  const summary = await withThrowaway.getSummary(19000, 19020);
 
   assert.deepEqual((summary as unknown as Record<string, unknown>).throwaway, [19000, 19020]);
   // The five that were hand-assembled before still come back alongside it.

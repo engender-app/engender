@@ -51,17 +51,23 @@ export interface ClinicianSummary {
 
 export type ClinicianSummarySectionKey = keyof ClinicianSummary;
 
-/** What every section's read is given: the areas it may read through, and
-    the range to read for. The areas are the ones `openJournal` already
-    built, so a section reads exactly what its own screen does. */
-export interface ClinicianSummaryReading {
-  fromEpochDay: number;
-  toEpochDay: number;
+/** The areas a section may read through: the ones `openJournal` already
+    built, so a section reads exactly what its own screen does. One type
+    rather than five parameters, because every section is handed all of them
+    and the section that registers next will want a sixth. */
+export interface ClinicianSummaryAreas {
   regimen: RegimenArea;
   doses: DosesArea;
   labs: LabsArea;
   exposure: ExposureArea;
   sideEffects: SideEffectsArea;
+}
+
+/** What every section's read is given: the areas, and the range to read
+    for. */
+export interface ClinicianSummaryReading extends ClinicianSummaryAreas {
+  fromEpochDay: number;
+  toEpochDay: number;
 }
 
 /** One part of the summary's declaration that it prints. Erased over what
@@ -135,7 +141,7 @@ export const CLINICIAN_SUMMARY_SECTION_KEYS: readonly ClinicianSummarySectionKey
 /** Every section read for one range, in the order they print. Concurrent
     because the sections are independent - none of them reads what another
     produced. */
-export async function assembleClinicianSummary(
+async function assembleClinicianSummary(
   reading: ClinicianSummaryReading,
   sections: readonly ClinicianSummarySection[] = CLINICIAN_SUMMARY_SECTIONS
 ): Promise<ClinicianSummary> {
@@ -153,15 +159,14 @@ export interface ClinicianSummaryArea {
   getSummary(fromEpochDay: number, toEpochDay: number): Promise<ClinicianSummary>;
 }
 
+/** The section list is a parameter, defaulting to the registry, so a test
+    can register a section of its own and read a summary back through the
+    same path the screen reads it through. */
 export function makeClinicianSummaryArea(
-  regimen: RegimenArea,
-  doses: DosesArea,
-  labs: LabsArea,
-  exposure: ExposureArea,
-  sideEffects: SideEffectsArea
+  areas: ClinicianSummaryAreas,
+  sections: readonly ClinicianSummarySection[] = CLINICIAN_SUMMARY_SECTIONS
 ): ClinicianSummaryArea {
   return {
-    getSummary: (fromEpochDay, toEpochDay) =>
-      assembleClinicianSummary({ fromEpochDay, toEpochDay, regimen, doses, labs, exposure, sideEffects })
+    getSummary: (fromEpochDay, toEpochDay) => assembleClinicianSummary({ ...areas, fromEpochDay, toEpochDay }, sections)
   };
 }
