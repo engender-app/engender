@@ -346,6 +346,38 @@ test('a dose log travels with its schedule and pauses, still hung off the right 
   ]);
 });
 
+test('a weekday schedule and its dose amounts survive an export/import round trip', async () => {
+  const source = await device();
+  const episode = await source.journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'twice weekly',
+    startEpochDay: 19000
+  });
+  await source.journal.doses.upsertSchedule({
+    episodeId: episode,
+    recurrence: { kind: 'weekdays', weekdays: [0, 3] },
+    dosesPerDay: 1,
+    doseAmounts: [
+      { dose: 2, doseUnit: 'mg' },
+      { dose: 1, doseUnit: 'mg' }
+    ]
+  });
+
+  const target = await device();
+  await target.journal.archive.merge(await exported(source.journal));
+
+  const [schedule] = await target.journal.doses.getSchedules();
+  assert.deepEqual(schedule.recurrence, { kind: 'weekdays', weekdays: [0, 3] });
+  assert.deepEqual(schedule.doseAmounts, [
+    { dose: 2, doseUnit: 'mg' },
+    { dose: 1, doseUnit: 'mg' }
+  ]);
+});
+
 test('merging the same archive twice duplicates neither a dose, a schedule nor a pause', async () => {
   const source = await populated();
   const target = await device();
