@@ -219,6 +219,16 @@
   margin-bottom: var(--space-4);
   background: linear-gradient(105deg, var(--motif-stripes));
 }
+/* The art is the card's content, not decoration behind it, so it prints
+   even though a printer drops background colours by default (phase 5
+   ticket 17: a journal book's opening page is a palette and three numbers,
+   and without the palette it is three numbers). */
+@media print {
+  .wrapped-card-art {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
 
 /* Yearly. */
 .wrapped-cover { position: relative; z-index: 1; text-align: center; padding: var(--space-4) 0 var(--space-7); }

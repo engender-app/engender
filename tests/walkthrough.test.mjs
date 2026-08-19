@@ -1617,6 +1617,37 @@ try {
   ok('the streak line quiets while a journaling pause covers today, and resuming brings it back the same day');
 } catch (e) { fail('journaling pause', e); }
 
+/* 27. the journal book (phase 5 ticket 17): what the inclusion picker says
+   is what the pages hold, and the print layout is many sheets rather than
+   one. The second half is the part no unit test can reach - the app shell
+   is a fixed-height frame with one scrolling region, so before the print
+   rules in app.css the document laid out to exactly one viewport and every
+   page after the first was silently dropped. */
+try {
+  await fresh('/settings/journal-book');
+  await page.waitForSelector('[data-book-entry]');
+  const switches = page.locator('[data-book-inclusion] [role="switch"]');
+
+  if (await page.locator('[data-book-opening]').count()) throw new Error('the opening page is on before anyone asks for it');
+  await switches.nth(3).click();
+  await page.waitForSelector('[data-book-opening] [data-wrapped-card-art]');
+
+  await switches.nth(0).click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-book-entry]').length === 0);
+
+  await switches.nth(0).click();
+  await page.waitForSelector('[data-book-entry]');
+
+  await page.emulateMedia({ media: 'print' });
+  if (await page.locator('[data-book-inclusion]').isVisible()) throw new Error('the inclusion picker prints');
+  if (await page.locator('[data-app-nav]').isVisible()) throw new Error('the navigation bar prints');
+  const sheets = await page.evaluate(() => document.documentElement.scrollHeight / window.innerHeight);
+  if (sheets < 2) throw new Error(`the printed document is ${sheets.toFixed(1)} viewports tall, so it fits on one page`);
+  await page.emulateMedia({ media: 'screen' });
+
+  ok('a journal book carries what the picker was told to carry, and prints as more than one page');
+} catch (e) { await page.emulateMedia({ media: 'screen' }); fail('journal book', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');
