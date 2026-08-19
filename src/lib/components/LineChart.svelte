@@ -15,6 +15,7 @@
      is what keeps the wording (and paraglide) out of an SVG. */
   let {
     points,
+    overlay = [],
     min = 0,
     max = 100,
     height = 120,
@@ -26,6 +27,14 @@
     ariaLabel,
   }: {
     points: Point[];
+    /** A second series on the same y scale, drawn as a line over the first
+        (phase 5 ticket 31). Same scale because the two callers that use it
+        - a body region's dysphoria and its euphoria - are both 0-100; a
+        series in other units belongs on WearTrendChart's twin axes instead.
+        No area fill for this one: two translucent fills over each other
+        read as a third value that nobody logged. The two series keep their
+        own days, so one can have points where the other has none. */
+    overlay?: Point[];
     min?: number;
     max?: number;
     height?: number;
@@ -51,17 +60,23 @@
 
   const P = 8;
 
+  // Drawn from whichever series have two points, not just the first: a
+  // region logged only as euphoria still has a chart to show.
+  let drawable = $derived([points, overlay].filter((s) => s.length >= 2));
+
   let chart = $derived.by(() => {
-    if (points.length < 2) return null;
-    const x0 = points[0].day;
-    const x1 = points[points.length - 1].day;
+    if (drawable.length === 0) return null;
+    const days = drawable.flatMap((s) => s.map((p) => p.day));
+    const x0 = Math.min(...days);
+    const x1 = Math.max(...days);
     const x = scaleLinear().domain([x0, Math.max(x0 + 1, x1)]).range([P, width - P]);
     const y = scaleLinear().domain([min, max]).range([height - P, P]);
     const lineGen = d3line<Point>().x((p) => x(p.day)).y((p) => y(p.value));
     const areaGen = d3area<Point>().x((p) => x(p.day)).y0(height - P).y1((p) => y(p.value));
     return {
-      line: lineGen(points) ?? '',
-      area: areaGen(points) ?? '',
+      line: points.length >= 2 ? lineGen(points) ?? '' : '',
+      area: points.length >= 2 ? areaGen(points) ?? '' : '',
+      overlay: overlay.length >= 2 ? lineGen(overlay) ?? '' : '',
       dots: points.map((p) => ({ cx: x(p.day), cy: y(p.value) })),
       // Skipped once ariaLabel overrides it: fmtDay would format a bucketed
       // position (a day of interval, say) as though it were an epoch day,
@@ -69,7 +84,7 @@
       label: ariaLabel
         ? ''
         : m.chart_aria({
-            count: String(points.length),
+            count: String(new Set(days).size),
             from: fmtDay(x0, { day: 'numeric', month: 'short' }),
             to: fmtDay(x1, { day: 'numeric', month: 'short' })
           }),
@@ -84,8 +99,9 @@
     {#each gridYs as f (f)}
       <line x1={P} x2={width - P} y1={P + f * (height - 2 * P)} y2={P + f * (height - 2 * P)} class="chart-gridline" />
     {/each}
-    <path d={chart.area} class="chart-area" />
-    <path d={chart.line} class="chart-line" />
+    {#if chart.area}<path d={chart.area} class="chart-area" />{/if}
+    {#if chart.line}<path d={chart.line} class="chart-line" />{/if}
+    {#if chart.overlay}<path d={chart.overlay} class="chart-line-overlay" />{/if}
     {#if showDots}
       {#each chart.dots as d, i (i)}<circle
           cx={d.cx}
