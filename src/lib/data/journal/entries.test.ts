@@ -49,7 +49,8 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
       tags: ['e-happy', 'g-soc-eu'],
       photos: [],
       recordings: [],
-      bodyRegions: { chest: 60, voice_throat: 30 }
+      bodyRegions: { chest: 60, voice_throat: 30 },
+      starred: false
     }
   );
 
@@ -516,4 +517,62 @@ test('a query with nothing searchable in it counts zero rather than everything',
   await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'coffee' });
 
   assert.equal(await journal.entries.countSearchMatches('...', []), 0);
+});
+
+test('setEntryStarred toggles the flag and throws on an unknown id', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4 });
+
+  assert.equal((await journal.entries.getEntry(id))?.starred, false);
+
+  await journal.entries.setEntryStarred(id, true);
+  assert.equal((await journal.entries.getEntry(id))?.starred, true);
+
+  await journal.entries.setEntryStarred(id, false);
+  assert.equal((await journal.entries.getEntry(id))?.starred, false);
+
+  await assert.rejects(journal.entries.setEntryStarred(999, true), /unknown entry/);
+});
+
+test('starring alone cannot rescue an otherwise-empty entry (CONTEXT: "Entry")', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'leaving' });
+  await journal.entries.setEntryStarred(id, true);
+
+  await assert.rejects(journal.entries.upsertEntry({ id, mood: null, note: '' }), /an entry needs a mood/);
+});
+
+test('searchEntries filters to starred entries only when asked', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const starred = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'keep this' });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: 'not this' });
+  await journal.entries.setEntryStarred(starred, true);
+
+  const hits = await journal.entries.searchEntries('', [], { starred: true });
+  assert.deepEqual(hits.map((e) => e.id), [starred]);
+});
+
+test('counterevidencePool unions the tag and starred entries, newest first, with no duplicates', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const tagOnly = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['e-happy'] });
+  const starredOnly = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: 'proof' });
+  const both = await journal.entries.upsertEntry({ epochDay: 102, mood: 5, tags: ['e-happy', 'e-sad'] });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 2, tags: ['e-sad'] }); // neither - excluded
+
+  await journal.entries.setEntryStarred(starredOnly, true);
+  await journal.entries.setEntryStarred(both, true);
+
+  const pool = await journal.entries.counterevidencePool('e-happy', 10);
+  // `both` carries two tags, so a naive join would return it twice.
+  assert.deepEqual(pool.map((e) => e.id), [both, starredOnly, tagOnly]);
+});
+
+test('counterevidencePool stops at the limit it is given, keeping the newest', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const day of [100, 101, 102]) {
+    const id = await journal.entries.upsertEntry({ epochDay: day, mood: 4 });
+    await journal.entries.setEntryStarred(id, true);
+  }
+
+  assert.equal((await journal.entries.counterevidencePool('e-happy', 2)).length, 2);
 });

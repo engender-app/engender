@@ -14,6 +14,10 @@ export interface Photo {
       demo persona's placeholders, which render as the gradient PhotoThumb
       otherwise uses while loading. A photo row always has one. */
   fileName: string | null;
+  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred").
+      Curation metadata, not content - a photo's owner never changes
+      because of it. */
+  starred: boolean;
 }
 
 /** A photo the editor drafted but nothing has saved yet: identity is
@@ -44,6 +48,14 @@ export interface Entry {
       ticket 09 does not require ticket 02's "physical" dysphoria tag to be
       present to log a region. */
   bodyRegions: Record<string, number>;
+  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Sits
+      outside the seven-field content closure above - the same category
+      the uuid/day/timestamp identity fields already are - so it never
+      enters entryIsEmpty()'s count and starring an entry can never be
+      what keeps it from being empty. Joins 'g-euphoria'-tagged entries in
+      the doubt journal's counterevidence pool (entries.ts,
+      counterevidencePool). */
+  starred: boolean;
 }
 
 export interface GenderDimension {

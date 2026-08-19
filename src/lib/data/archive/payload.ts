@@ -42,6 +42,11 @@ export interface ArchivePhoto {
   /** The opaque `<uuid>.jpg` of ticket 11, resolved against whatever root
       the importing platform uses. Never a path. */
   fileName: string;
+  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). No
+      format version step for the addition, the same reasoning
+      ArchiveLabResult's header gives: no release has shipped, so no
+      archive in existence predates it. */
+  starred: boolean;
 }
 
 /** One voice recording (phase 4 ticket 24, CONTEXT: "Voice recording"). Its
@@ -73,6 +78,9 @@ export interface ArchiveEntry {
       unvalidated - the same forward-compatible treatment lab_result.analyte
       already gets. */
   bodyRegions: Record<string, number>;
+  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Same
+      no-format-version-step reasoning as ArchivePhoto.starred. */
+  starred: boolean;
 }
 
 export interface ArchiveDimension {

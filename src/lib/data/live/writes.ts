@@ -148,13 +148,15 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       // still takes it out of every other read here, the same as before.
       deleteEntry: ['entry', 'photo', 'voiceRecording'],
       // Brings a trashed entry, its photos and its recordings back.
-      restoreEntry: ['entry', 'photo', 'voiceRecording']
+      restoreEntry: ['entry', 'photo', 'voiceRecording'],
+      setEntryStarred: ['entry']
     },
     reads: [
       'getEntry',
       'entriesForDay',
       'recentDays',
       'entriesWithTag',
+      'counterevidencePool',
       'searchEntries',
       'countSearchMatches',
       'trashedEntries'
@@ -199,9 +201,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
        that had been deleted. */
     writes: {
       attach: ['photo', 'entry', 'milestone'],
-      remove: ['photo', 'entry', 'milestone']
+      remove: ['photo', 'entry', 'milestone'],
+      setStarred: ['photo', 'entry', 'milestone']
     },
-    reads: ['inJournal']
+    reads: ['inJournal', 'starredPhotos']
   },
   // Read-only, the same reason exposure and stats are: a recording's row is
   // owned by upsertEntry/deleteEntry (voiceRecording is already announced
