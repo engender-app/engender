@@ -230,6 +230,41 @@ export interface ArchiveChecklist {
   items: ArchiveChecklistItem[];
 }
 
+/** One dated recovery photo (phase 5 ticket 07). Nested under its procedure
+    rather than a top-level section, the way ArchiveHairRemovalPhoto is
+    nested under its session: a recovery photo belongs to exactly one
+    procedure, so it travels with the procedure that owns it. Unlike that
+    one it keeps its own `epochDay` - the procedure's surgery date says when
+    the operation was, not when the picture was taken. */
+export interface ArchiveProcedurePhoto {
+  id: string;
+  epochDay: number;
+  fileName: string;
+}
+
+/** One consult date (phase 5 ticket 07), nested under its procedure and
+    carrying its own uuid - which is what lets Merge tell a consult this
+    device already has from one only the archive holds. */
+export interface ArchiveProcedureConsult {
+  id: string;
+  epochDay: number;
+}
+
+/** One procedure and its recovery log (phase 5 ticket 07).
+    `surgeryEpochDay` is null for a procedure with no date set yet. The
+    recovery checklist is not here: it is an ordinary `checklist` row
+    carrying this procedure's id as its owner, so it travels in the
+    `checklists` section. Neither section has to apply before the other -
+    an owner pair is matched by uuid, not resolved to a rowid. */
+export interface ArchiveProcedure {
+  id: string;
+  name: string;
+  surgeryEpochDay: number | null;
+  consults: ArchiveProcedureConsult[];
+  notes: string;
+  photos: ArchiveProcedurePhoto[];
+}
+
 /** One counterevidence entry as it read at the moment its snapshot was
     saved (phase 4 ticket 11) - copied fields, not a reference to the
     source entry's id, the same reasoning the snapshot table itself argues
@@ -437,6 +472,7 @@ export interface ArchiveJournal {
   hairStages: ArchiveHairStage[];
   hairPhotos: ArchiveHairPhoto[];
   hairRemovalSessions: ArchiveHairRemovalSession[];
+  procedures: ArchiveProcedure[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
   doubtEntries: ArchiveDoubtEntry[];

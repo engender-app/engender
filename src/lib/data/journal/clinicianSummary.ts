@@ -25,11 +25,12 @@
    never what any one of them means. */
 
 import { episodeEndEpochDay } from '../regimenEpisode';
-import type { ChecklistItem, DoseEvent, LabResult, RegimenEpisode, SideEffect } from '../types';
+import type { ChecklistItem, DoseEvent, LabResult, Procedure, RegimenEpisode, SideEffect } from '../types';
 import type { ChecklistsArea } from './checklists';
 import type { DosesArea } from './doses';
 import type { ExposureArea, ExposureCounters } from './exposure';
 import type { LabsArea } from './labs';
+import type { ProceduresArea } from './procedures';
 import type { RegimenArea } from './regimen';
 import type { SideEffectsArea } from './sideEffects';
 
@@ -42,12 +43,26 @@ export interface ClinicianSummaryEpisode extends RegimenEpisode {
   endEpochDay: number | null;
 }
 
+/** A procedure as the summary prints it (phase 5 ticket 07): the record
+    itself, plus the two things it owns elsewhere - its recovery checklist's
+    items (an ordinary owned Checklist) and the days its recovery photos were
+    taken. Both are read through their own areas' paths; the photo days are
+    the rows' own dates rather than a count or a span, and the printed page
+    carries no image, only when one exists. */
+export interface ClinicianSummaryProcedure extends Procedure {
+  checklistItems: ChecklistItem[];
+  photoEpochDays: number[];
+}
+
 export interface ClinicianSummary {
   regimenEpisodes: ClinicianSummaryEpisode[];
   doses: DoseEvent[];
   labResults: LabResult[];
   exposure: ExposureCounters;
   sideEffects: SideEffect[];
+  /** Every procedure and its recovery log (phase 5 ticket 07), not
+      range-filtered - see readProcedures below. */
+  procedures: ClinicianSummaryProcedure[];
   /** The appointment prep list's items (phase 5 ticket 11), as they stand
       right now - not range-filtered like the sections above it, since the
       list has no date of its own to filter by. */
@@ -67,6 +82,7 @@ export interface ClinicianSummaryAreas {
   exposure: ExposureArea;
   sideEffects: SideEffectsArea;
   checklists: ChecklistsArea;
+  procedures: ProceduresArea;
 }
 
 /** What every section's read is given: the areas, and the range to read
@@ -120,6 +136,31 @@ async function readLabResults({ labs, fromEpochDay, toEpochDay }: ClinicianSumma
     .sort((a, b) => a.epochDay - b.epochDay);
 }
 
+/* Every procedure, unfiltered. A dose or a lab result is an event on a day,
+   so a range picks which ones to print; a procedure is an ongoing journey
+   whose recovery log keeps running, and filtering it out because the
+   operation fell before the window would hide the very thing a post-op
+   follow-up is about. So this selects nothing, the same way the appointment
+   prep list below prints whatever it currently holds.
+
+   Each part still comes from the area that owns it, through that area's own
+   read path: the record from procedures.getProcedures(), the checklist from
+   procedures.getChecklist() (which is checklists.getChecklistByOwner()), and
+   the photo days from procedures.getPhotos(). Nothing here computes a figure
+   one of them does not already produce - the day counter a screen shows is
+   derived at the point of display (recoveryDay.ts), off the surgery date
+   printed here. */
+async function readProcedures({ procedures }: ClinicianSummaryReading): Promise<ClinicianSummaryProcedure[]> {
+  const records = await procedures.getProcedures();
+  return Promise.all(
+    records.map(async (procedure) => ({
+      ...procedure,
+      checklistItems: (await procedures.getChecklist(procedure.id))?.items ?? [],
+      photoEpochDays: (await procedures.getPhotos(procedure.id)).map((photo) => photo.epochDay)
+    }))
+  );
+}
+
 /* The appointment prep list has no date to filter by - it prints whatever it
    currently holds, the same way its own screen shows it, rather than a slice
    of some range (ticket 11). Declared last so it prints as the summary's
@@ -138,6 +179,7 @@ const SECTIONS = [
     key: 'sideEffects',
     read: ({ sideEffects, fromEpochDay, toEpochDay }) => sideEffects.getSideEffectsInRange(fromEpochDay, toEpochDay)
   }),
+  section({ key: 'procedures', read: readProcedures }),
   section({ key: 'appointmentPrepItems', read: readAppointmentPrepItems })
 ] as const;
 

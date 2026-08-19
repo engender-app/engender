@@ -5,11 +5,11 @@
    for the two reasons archive.ts's header gives - travelling identity, and
    one query per table for the whole journal instead of one per row.
 
-   Four tables are read once and handed to every section that needs them,
-   rather than queried per section: photo, voice_recording, hair_photo and
-   hair_removal_photo. The file manifest is built from the same rows
-   (archive.ts), so a second read would be a second answer to the same
-   question. */
+   Five tables are read once and handed to every section that needs them,
+   rather than queried per section: photo, voice_recording, hair_photo,
+   hair_removal_photo and procedure_photo. The file manifest is built from
+   the same rows (archive.ts), so a second read would be a second answer to
+   the same question. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
@@ -34,6 +34,9 @@ import type {
   ArchiveMedicationStock,
   ArchiveMilestone,
   ArchivePersonalEffect,
+  ArchiveProcedure,
+  ArchiveProcedureConsult,
+  ArchiveProcedurePhoto,
   ArchivePhoto,
   ArchivePreset,
   ArchiveRegimenEpisode,
@@ -53,8 +56,9 @@ export type PhotoRow = { uuid: string; file_path: string; entry_id: number | nul
 export type RecordingRow = { uuid: string; file_path: string; entry_id: number };
 export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
 export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
+export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string };
 
-/** What every section reader is given: the connection, and the four
+/** What every section reader is given: the connection, and the five
     file-owning tables read once up front. */
 export interface SectionRead {
   driver: SqliteDriver;
@@ -62,6 +66,7 @@ export interface SectionRead {
   recordings: RecordingRow[];
   hairPhotos: HairPhotoRow[];
   hairRemovalPhotos: HairRemovalPhotoRow[];
+  procedurePhotos: ProcedurePhotoRow[];
 }
 
 /** The shared reads, in one place so the manifest and the sections that name
@@ -84,6 +89,9 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
     ),
     hairRemovalPhotos: await driver.query<HairRemovalPhotoRow>(
       'SELECT uuid, session_id, file_path FROM hair_removal_photo ORDER BY session_id, id'
+    ),
+    procedurePhotos: await driver.query<ProcedurePhotoRow>(
+      'SELECT uuid, procedure_id, epoch_day, file_path FROM procedure_photo ORDER BY procedure_id, epoch_day, id'
     ),
     recordings: await driver.query<RecordingRow>(
       `SELECT v.uuid, v.file_path, v.entry_id FROM voice_recording v
@@ -471,6 +479,41 @@ export async function readHairRemovalSessions({
     cost: session.cost,
     provider: session.provider,
     photos: byId.get(session.id) ?? []
+  }));
+}
+
+export async function readProcedures({ driver, procedurePhotos }: SectionRead): Promise<ArchiveProcedure[]> {
+  const procedures = await driver.query<{
+    id: number;
+    uuid: string;
+    name: string;
+    surgery_epoch_day: number | null;
+    notes: string;
+  }>(
+    'SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
+  );
+  const consults = await driver.query<{ uuid: string; procedure_id: number; epoch_day: number }>(
+    'SELECT uuid, procedure_id, epoch_day FROM procedure_consult ORDER BY epoch_day, id'
+  );
+
+  const consultsById = groupBy(
+    consults,
+    (consult) => consult.procedure_id,
+    (consult): ArchiveProcedureConsult => ({ id: consult.uuid, epochDay: consult.epoch_day })
+  );
+  const photosById = groupBy(
+    procedurePhotos,
+    (photo) => photo.procedure_id,
+    (photo): ArchiveProcedurePhoto => ({ id: photo.uuid, epochDay: photo.epoch_day, fileName: photo.file_path })
+  );
+
+  return procedures.map((procedure) => ({
+    id: procedure.uuid,
+    name: procedure.name,
+    surgeryEpochDay: procedure.surgery_epoch_day,
+    consults: consultsById.get(procedure.id) ?? [],
+    notes: procedure.notes,
+    photos: photosById.get(procedure.id) ?? []
   }));
 }
 

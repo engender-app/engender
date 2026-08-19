@@ -568,6 +568,11 @@ const CARRIED: Record<string, string[]> = {
   // session_id travels as the session's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
   hair_removal_photo: ['uuid', 'session_id', 'file_path'],
+  procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes'],
+  // procedure_id travels as the procedure's own uuid on both children, the
+  // way dose_pause's episode_id does (ADR-0002).
+  procedure_consult: ['uuid', 'procedure_id', 'epoch_day'],
+  procedure_photo: ['uuid', 'procedure_id', 'epoch_day', 'file_path'],
   doubt_entry: ['uuid', 'epoch_day', 'timestamp', 'text'],
   doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
   doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
