@@ -140,11 +140,15 @@ const GOAL_NOTE: Partial<Record<RoadmapGoalKey, Message>> = {
 };
 
 /* A second, independent note for a goal whose first note is already at the
-   two-sentence cap. Partial and keyed the same way GOAL_NOTE is: today only
-   pl-medical-diagnosis-code needs one, to say what F64.0's own criteria
-   describe without folding a third sentence into the existing note. */
+   two-sentence cap. Partial and keyed the same way GOAL_NOTE is.
+   pl-medical-diagnosis-code's says what F64.0's own criteria describe.
+   pl-legal-application's points at roadmap_marker_note_pl rather than
+   repeating it, since its title ("the application to change the sex
+   marker") is the one legal-track sentence the ticket found reading as a
+   route open to every reader now that the caveat says otherwise. */
 const GOAL_NOTE_SECONDARY: Partial<Record<RoadmapGoalKey, Message>> = {
-  'pl-medical-diagnosis-code': m.roadmap_note_pl_medical_diagnosis_code_criteria
+  'pl-medical-diagnosis-code': m.roadmap_note_pl_medical_diagnosis_code_criteria,
+  'pl-legal-application': m.roadmap_note_pl_legal_application_marker
 };
 
 /** The name of a track: social, legal, presentational or medical. */

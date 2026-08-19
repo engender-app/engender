@@ -1903,6 +1903,7 @@
   "roadmap_note_pl_legal_court_fee": "Paid before the application goes in, with the transfer confirmation attached to it. The amount follows from an analogy to the civil-records rules, so an individual court may assess it differently.",
   "roadmap_goal_pl_legal_application": "The application to change the sex marker on your birth certificate",
   "roadmap_note_pl_legal_application": "Since the Supreme Court resolution III CZP 6/24 of 4 March 2025 this is an application in non-contentious proceedings, not a lawsuit. Parents and children are no longer sued, and only a spouse can join as a participant.",
+  "roadmap_note_pl_legal_application_marker": "It moves the marker between the two values named above. It does not create a third.",
   "roadmap_goal_pl_legal_file_it": "Filing it at the court desk, or by registered post",
   "roadmap_note_pl_legal_file_it": "The posting receipt stays with you as proof of the date.",
   "roadmap_goal_pl_legal_formal_defects": "Seven days to fix formal defects",
