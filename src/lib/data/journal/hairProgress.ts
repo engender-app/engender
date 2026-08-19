@@ -35,7 +35,7 @@ export interface HairStageInput {
   scale: string;
   stage: string;
   /** Free text, and only ever under 'other' - the schema refuses it on a
-      graded staging (migrations.ts v36). Defaults to empty. */
+      graded staging (migrations.ts v37). Defaults to empty. */
   description?: string;
 }
 
