@@ -420,8 +420,7 @@ else. The screen records what someone says they see and never says what it
 means or what follows from it.
 _Avoid_: Norwood staging (there are two scales, and naming one as the
 default is the assumption this area exists without), hair loss (the screen
-makes no claim about which direction anyone is going), severity,
-progression
+makes no claim about which direction anyone is going), severity
 
 **Wear session**:
 A tracked stretch of binder or tucking wear time, logged either as a live

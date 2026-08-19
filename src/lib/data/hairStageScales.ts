@@ -24,20 +24,31 @@
    3, 4 or 5.
 
    Cross-checked, as ticket 07 and ticket 02's effect windows were, against
-   independent reproductions rather than one page: Sinclair R, Torkamani N,
-   Jones L, F1000Res. 2015;4:585 (PMID 26339482) reproduces all five grades
-   verbatim, and Vujovic A, Del Marmol V, Biomed Res Int. 2014;2014:767628
-   (PMID 24812631) names it "the 5-point Sinclair scale" against Ludwig's
-   three. Two discrepancies the cross-check turned up, recorded rather than
-   smoothed over:
+   reproductions that do not share an author with the original - the
+   distinction matters here, because Sinclair has restated his own scale in
+   several later papers and those corroborate nothing:
+
+   - Vujovic A, Del Marmol V, Biomed Res Int. 2014;2014:767628 (PMID
+     24812631) names "the 5-point Sinclair scale" against Ludwig's three and
+     cites the 2004 paper as its origin, which is the grade count and the
+     provenance confirmed by a group with no stake in either.
+   - Abusailik MA, Muhanna AM, Almuhisen AA et al., Dermatol Reports.
+     2021;13(2) (PMID 34659671) summarises all five grades, including grade
+     4 as "the development of a bald spot anteriorly".
+
+   Sinclair R, Torkamani N, Jones L, F1000Res. 2015;4:585 (PMID 26339482) is
+   also cited below for its grade wording, but it is the scale's own first
+   author and is not part of the cross-check.
+
+   Two discrepancies it turned up, recorded rather than smoothed over:
 
    - Grade 4 has two circulating wordings, both Sinclair's own. The 2015
      review says "development of a bald spot anteriorly"; Dinh QQ, Sinclair
      R, Clin Interv Aging. 2007;2(2):189-199 says "diffuse hair loss over
      the top of the scalp". Those are different observations, not a
      paraphrase. Nothing in this file depends on which is right - only the
-     grade codes are stored - but the on-screen wording follows the 2015
-     review, which is what independent groups reproduce word for word.
+     grade codes are stored, and no wording of either is shown on screen -
+     but the first is the one the independent reproduction above carries.
    - The scale's origin is commonly cited as Sinclair R, Wewerinke M, Jolley
      D, Br J Dermatol. 2005;152(3):466-473. That paper applies a mid-scalp
      grade but does not originate the five-point scale, so the 2004 paper is
@@ -51,7 +62,9 @@
    gendered language at all, and Kerkemeyer KL et al., J Am Acad Dermatol.
    2022;86(6):1406-1408 (PMID 34111498) published a modified Sinclair scale
    validated on men, so the literature itself already applies these grades
-   off a female body. Not the Sinclair *shedding* scale, which is a
+   off a female body - a Sinclair paper again, which is fine for that point:
+   it is evidence about what the literature does, not a second reading of
+   the grade list. Not the Sinclair *shedding* scale, which is a
    different six-grade scale about how much hair comes out in a day.
 
    OTHER is the third option, and it is not a scale. Ticket 33 requires a
@@ -90,12 +103,18 @@ export const isHairScale = (value: string): value is HairScale =>
     which publishes none, and for anything that is not a scale. */
 export const gradesOfScale = (scale: string): readonly string[] => (isHairScale(scale) ? GRADES[scale] : []);
 
-/** Whether `stage` is a grade `scale` actually publishes. 'other' takes the
-    empty grade and only that: what a person recorded under it is free text,
-    not a point on anything. */
+/** Whether `scale` publishes grades at all. False for 'other', whose
+    records are free text rather than a point on anything, and false for
+    anything that is not a scale. Screens branch on this rather than on
+    `scale !== 'other'`, so a third published scale would not need every one
+    of them found again. */
+export const isGradedScale = (scale: string): boolean => gradesOfScale(scale).length > 0;
+
+/** Whether `stage` is a grade `scale` actually publishes. A scale with no
+    grades takes the empty one and only that. */
 export function isHairStaging(scale: string, stage: string): boolean {
   if (!isHairScale(scale)) return false;
-  if (scale === 'other') return stage === '';
+  if (!isGradedScale(scale)) return stage === '';
   return gradesOfScale(scale).includes(stage);
 }
 

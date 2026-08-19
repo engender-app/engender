@@ -1314,7 +1314,7 @@
   "hair_scale_other": "Neither of these",
   "hair_scale_other_sub": "diffuse thinning, or a pattern neither scale describes",
   "hair_scale_label": "Scale",
-  "hair_scale_source": "The scales are published classifications: Norwood-Hamilton, and Sinclair (Sinclair et al., 2004). Neither is read against the other.",
+  "hair_scale_source": "Source: two published classifications, Norwood-Hamilton and Sinclair (Sinclair et al., 2004). Neither is read against the other.",
   "hair_other_label": "What you see",
   "hair_other_placeholder": "e.g. thinner all over the top",
   "hair_other_unwritten": "Neither scale",

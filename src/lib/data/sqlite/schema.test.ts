@@ -361,12 +361,18 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 });
 
-test('v36 hair_stage rejects a grade the named scale does not publish', async () => {
-  const db = await migratedDb();
-  const insert = (uuid: string, scale: string, stage: string, description = '') =>
+type HairStageDb = Awaited<ReturnType<typeof migratedDb>>;
+
+const insertHairStage =
+  (db: HairStageDb) =>
+  (uuid: string, scale: string, stage: string, description = '') =>
     db.raw.exec(
       `INSERT INTO hair_stage (uuid, epoch_day, scale, stage, description, updated_at) VALUES ('${uuid}', 100, '${scale}', '${stage}', '${description}', 1000)`
     );
+
+test('v36 hair_stage rejects a grade the named scale does not publish', async () => {
+  const db = await migratedDb();
+  const insert = insertHairStage(db);
 
   assert.doesNotThrow(() => insert('h1', 'norwood_hamilton', '3v'));
   assert.doesNotThrow(() => insert('h2', 'sinclair', '5'));
@@ -381,10 +387,7 @@ test('v36 hair_stage rejects a grade the named scale does not publish', async ()
 
 test('v36 hair_stage keeps a free-text description to the scale that has no grades', async () => {
   const db = await migratedDb();
-  const insert = (uuid: string, scale: string, stage: string, description = '') =>
-    db.raw.exec(
-      `INSERT INTO hair_stage (uuid, epoch_day, scale, stage, description, updated_at) VALUES ('${uuid}', 100, '${scale}', '${stage}', '${description}', 1000)`
-    );
+  const insert = insertHairStage(db);
 
   assert.doesNotThrow(() => insert('h1', 'other', '', 'diffuse thinning all over the top'));
   // Neither of these, and nothing written down, is a record too.

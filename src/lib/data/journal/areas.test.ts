@@ -808,14 +808,14 @@ test('a staging keeps the scale it was recorded against', async () => {
   );
 });
 
-test("a grade from the wrong scale is refused, though it is a grade somewhere", async () => {
+test('a grade from the wrong scale is refused, though it is a grade somewhere', async () => {
   const { journal } = await journalWithBuiltIns();
 
   await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, scale: 'sinclair', stage: '3v' }), /sinclair/);
   await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, scale: 'ludwig', stage: 'ii' }), /ludwig/);
 });
 
-test('a pattern neither scale describes is recorded in the person own words', async () => {
+test("a pattern neither scale describes is recorded in the person's own words", async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.hairProgress.upsertStage({
     epochDay: 100,
@@ -840,7 +840,7 @@ test('neither of these, with nothing written down, is still a record', async () 
   assert.equal((await journal.hairProgress.getStages())[0].description, '');
 });
 
-test('changing a staging scale keeps the stagings recorded under the other one', async () => {
+test("changing a staging's scale keeps the stagings recorded under the other one", async () => {
   const { journal } = await journalWithBuiltIns();
   const kept = await journal.hairProgress.upsertStage(nh(100, '3'));
   const moving = await journal.hairProgress.upsertStage(nh(200, '4'));

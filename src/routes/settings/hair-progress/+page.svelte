@@ -5,7 +5,7 @@
   import { hairAnchorEpochDay } from '$lib/data/hairAnchor';
   import { isHairPhotoDue } from '$lib/data/hairPhotoSchedule';
   import { hairScaleName, hairScaleSub, hairStageName } from '$lib/data/vocabulary/labels';
-  import { HAIR_SCALES, gradesOfScale, stagesByScale } from '$lib/data/hairStageScales';
+  import { HAIR_SCALES, gradesOfScale, isGradedScale, stagesByScale } from '$lib/data/hairStageScales';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { HairStage } from '$lib/data/types';
@@ -110,13 +110,18 @@
       : { date: dateInputValueFromEpochDay(today), scale: null, stage: '', description: '' };
   }
 
-  /** Picking a scale clears the grade rather than carrying it over: the two
-      scales share codes and mean different things by them, so a kept '3'
-      would silently become a different claim (hairStageScales.ts). */
+  /** Picking a scale clears both the grade and the prose rather than
+      carrying either over. The two scales share codes and mean different
+      things by them, so a kept '3' would silently become a different claim
+      (hairStageScales.ts) - and prose has nowhere to live on a graded scale,
+      so clearing it here is what stops a person's own words disappearing
+      between the sheet and the save (hairProgress.ts's checkedStaging drops
+      it either way). */
   function pickScale(scale: string) {
     if (!stageEditor || stageEditor.scale === scale) return;
     stageEditor.scale = scale;
     stageEditor.stage = gradesOfScale(scale)[0] ?? '';
+    stageEditor.description = '';
   }
 
   async function saveStage() {
@@ -217,7 +222,7 @@
         <SectionTitle text={hairScaleName(group.scale)} />
         <div class="list-group" data-scale-group={group.scale}>
           {#each group.stages as s (s.id)}
-            {@const graded = s.scale !== 'other'}
+            {@const graded = isGradedScale(s.scale)}
             <button
               class="list-row"
               data-hair-stage={s.id}
@@ -352,26 +357,29 @@
           {/each}
         </div>
       </div>
-      {#if stageEditor.scale && stageEditor.scale !== 'other'}
-        <div class="field">
-          <label class="field-label" for="hair-stage-value">{m.hair_stage_label()}</label>
-          <select class="input" id="hair-stage-value" bind:value={stageEditor.stage}>
-            {#each gradesOfScale(stageEditor.scale) as grade (grade)}
-              <option value={grade}>{hairStageName(stageEditor.scale, grade)}</option>
-            {/each}
-          </select>
-        </div>
-      {:else if stageEditor.scale === 'other'}
-        <div class="field">
-          <label class="field-label" for="hair-other-value">{m.hair_other_label()}</label>
-          <input
-            class="input"
-            id="hair-other-value"
-            name="hair-other-value"
-            placeholder={m.hair_other_placeholder()}
-            bind:value={stageEditor.description}
-          />
-        </div>
+      {#if stageEditor.scale}
+        {@const scale = stageEditor.scale}
+        {#if isGradedScale(scale)}
+          <div class="field">
+            <label class="field-label" for="hair-stage-value">{m.hair_stage_label()}</label>
+            <select class="input" id="hair-stage-value" bind:value={stageEditor.stage}>
+              {#each gradesOfScale(scale) as grade (grade)}
+                <option value={grade}>{hairStageName(scale, grade)}</option>
+              {/each}
+            </select>
+          </div>
+        {:else}
+          <div class="field">
+            <label class="field-label" for="hair-other-value">{m.hair_other_label()}</label>
+            <input
+              class="input"
+              id="hair-other-value"
+              name="hair-other-value"
+              placeholder={m.hair_other_placeholder()}
+              bind:value={stageEditor.description}
+            />
+          </div>
+        {/if}
       {/if}
       <div class="stack-3">
         <button class="btn btn-primary" data-save-hair-stage disabled={!stageEditor.scale} onclick={saveStage}>
