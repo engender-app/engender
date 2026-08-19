@@ -18,6 +18,7 @@ const PART_NAME: Record<JournalBookInclusionKey, () => string> = {
   entries: m.journal_book_part_entries,
   photos: m.photos_label,
   tags: m.tags_label,
+  dysphoriaEuphoriaTags: m.journal_book_part_dysphoria_euphoria_tags,
   milestones: m.milestones,
   doubtEntries: m.doubt_title,
   sideEffects: m.side_effects,

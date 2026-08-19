@@ -26,6 +26,7 @@ const everything: JournalBookInclusion = {
   entries: true,
   photos: true,
   tags: true,
+  dysphoriaEuphoriaTags: true,
   milestones: true,
   doubtEntries: true,
   sideEffects: true,
@@ -133,6 +134,28 @@ test('entries read oldest first, the order a book is bound in', async () => {
     book.entries.map((entry) => entry.note),
     ['earlier', 'later']
   );
+});
+
+test('an ordinary tag and a dysphoria/euphoria tag are two separate switches', async () => {
+  const journal = await journalWithFiles();
+  await journal.entries.upsertEntry({
+    epochDay: 20_001,
+    mood: 3,
+    note: 'mixed day',
+    tags: ['e-happy', 'g-euphoria']
+  });
+
+  const onlyOrdinary = await journal.journalBook.getBook(20_000, 20_010, {
+    ...JOURNAL_BOOK_DEFAULT_INCLUSION,
+    tags: true
+  });
+  assert.deepEqual(onlyOrdinary.entries[0].tags, ['e-happy']);
+
+  const onlySensitive = await journal.journalBook.getBook(20_000, 20_010, {
+    ...JOURNAL_BOOK_DEFAULT_INCLUSION,
+    dysphoriaEuphoriaTags: true
+  });
+  assert.deepEqual(onlySensitive.entries[0].tags, ['g-euphoria']);
 });
 
 test('a trashed entry stays out of the book', async () => {

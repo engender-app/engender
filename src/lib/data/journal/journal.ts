@@ -275,10 +275,11 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const entries = makeEntriesArea(driver, files);
   const milestones = makeMilestonesArea(driver, files);
   const doubtJournal = makeDoubtJournalArea(driver);
+  const tags = makeTagsArea(driver);
 
   return {
     entries,
-    tags: makeTagsArea(driver),
+    tags,
     affirmations: makeAffirmationsArea(driver),
     bodyRegions: makeBodyRegionsArea(driver),
     dimensions,
@@ -302,7 +303,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     journalingPauses: makeJournalingPausesArea(driver),
     wearSessions: makeWearSessionsArea(driver, reminders),
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
-    journalBook: makeJournalBookArea({ entries, milestones, doubtJournal, sideEffects, stats }),
+    journalBook: makeJournalBookArea({ entries, milestones, doubtJournal, sideEffects, stats, tags }),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
     hairRemoval: makeHairRemovalArea(driver, files),
