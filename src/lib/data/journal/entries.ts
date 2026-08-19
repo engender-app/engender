@@ -157,6 +157,7 @@ export interface EntriesArea {
 
 export interface TrashedEntry extends Entry {
   trashedAt: number;
+}
 
 /* A type alias, not an interface: the driver's row generic is constrained
    to Record<string, unknown>, which interfaces do not structurally satisfy. */
