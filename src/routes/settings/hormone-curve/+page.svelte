@@ -244,6 +244,7 @@
     {#if qualDosesWithoutMilligrams > 0}
       <p class="muted small curve-note">{m.curve_qual_volume_note({ count: String(qualDosesWithoutMilligrams) })}</p>
     {/if}
+    <p class="muted small curve-note" data-evidence-note>{m.curve_evidence_note()}</p>
   {:else}
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.curve_intro()}</p>
 
@@ -434,6 +435,7 @@
       <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(qualLabPointsOffAxis) })}</p>
     {/if}
 
+    <p class="muted small curve-note" data-evidence-note>{m.curve_evidence_note()}</p>
     {#if injectableView.curves.length > 0}
       <p class="muted small curve-note">{m.curve_source()}</p>
     {/if}
