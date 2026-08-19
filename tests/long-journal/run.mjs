@@ -61,7 +61,9 @@ const { summary, measurements, generatedInMs, photoBytes } = result;
 console.log(
   `Fixture: ${summary.entries} entries over ${summary.lastEpochDay - summary.firstEpochDay + 1} days ` +
     `(${summary.daysWithEntries} with entries), ${summary.photos} photos (${mb(photoBytes)}), ` +
-    `${summary.labResults} lab results, ${summary.milestones} milestones. ` +
+    `${summary.labResults} lab results, ${summary.milestones} milestones, ` +
+    `${summary.regionEuphoriaEntries} region-euphoria entries, ${summary.hairStagings} hair stagings, ` +
+    `${summary.doseEvents} dose events. ` +
     `Written in ${(generatedInMs / 1000).toFixed(0)}s.`
 );
 console.log('');

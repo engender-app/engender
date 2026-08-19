@@ -1,22 +1,22 @@
 {
   "measuredOn": "AMD Ryzen 7 9800X3D, 16 threads, Fedora 44, headless Chrome for Testing 151.0.7922.34. One run on a quiet desktop, and a fast one. The archive-restore family is from a second run, on the same machine, when ticket 17 added the three phase measurements: the parent was re-recorded with them rather than left behind, because archive-restore-db is derived as the parent minus the streaming window and phases from one run under a total from another would not add up. Small measurements wobble by tens of percent between runs, which is what the five-times budget in budgets.mjs absorbs. Re-record on the hardware a release is judged against before treating these as the last word: `npm run benchmark:long-journal -- --record` prints this block.",
-  "fixture": "seed 1, 3653 days ending epoch day 20676: 3231 entries over 2589 days with entries, 375 photos (339MB on disk), 122 lab results, 12 milestones, 24 tags. Encryption on: SQLite3MultipleCiphers under a data key, photos through the encrypting file store.",
+  "fixture": "seed 1, 3653 days ending epoch day 20676: 3244 entries over 2632 days with entries, 396 photos (362.8MB on disk), 129 lab results, 12 milestones, 24 tags. 249 entries carry a body-region euphoria or dysphoria value (phase 5 ticket 01: entries and counts shifted from the pre-ticket-01 fixture because the new seeding draws from the same random stream). One regimen episode with a Monday/Wednesday/Friday, two-amount dose schedule (schema v38): 1473 dose events, 95% of its expected slots. 19 hair-progress stagings and 5 dated photos. Encryption on: SQLite3MultipleCiphers under a data key, photos through the encrypting file store.",
   "measurements": {
     "calendar-month": {
       "what": "calendar, one month of heat map",
-      "baselineMs": 7,
+      "baselineMs": 2,
       "budgetMs": 200,
       "targetMs": 100
     },
     "stats-year-streak": {
       "what": "stats screen, the streak",
-      "baselineMs": 3,
+      "baselineMs": 4,
       "budgetMs": 200,
       "targetMs": 100
     },
     "stats-year-series": {
       "what": "stats screen, 365 days of every chart",
-      "baselineMs": 7,
+      "baselineMs": 6,
       "budgetMs": 200,
       "targetMs": 250
     },
@@ -40,7 +40,7 @@
     },
     "stats-recap-year": {
       "what": "recap, one year",
-      "baselineMs": 6,
+      "baselineMs": 7,
       "budgetMs": 200,
       "targetMs": 400
     },
@@ -52,33 +52,63 @@
     },
     "search-common": {
       "what": "search \"lustro\", one page and the total",
-      "baselineMs": 22,
+      "baselineMs": 6,
       "budgetMs": 200,
       "targetMs": 150
     },
     "search-rare": {
       "what": "search \"endokrynolog\", one page and the total",
-      "baselineMs": 19,
+      "baselineMs": 3,
       "budgetMs": 200,
       "targetMs": 150
     },
     "search-tag-word": {
       "what": "search \"basen\", one page and the total",
-      "baselineMs": 23,
+      "baselineMs": 4,
       "budgetMs": 200,
       "targetMs": 150
     },
     "archive-snapshot": {
       "what": "Archive export, reading the journal out",
-      "baselineMs": 220,
-      "budgetMs": 1100,
+      "baselineMs": 124,
+      "budgetMs": 620,
       "targetMs": 5000
     },
     "archive-pack": {
       "what": "Archive export, encrypting the container",
-      "baselineMs": 1100,
-      "budgetMs": 5500,
+      "baselineMs": 792,
+      "budgetMs": 3960,
       "targetMs": 20000
+    },
+    "on-this-day-good-day": {
+      "what": "on-this-day, whether each lookback day clears the bar",
+      "baselineMs": 1,
+      "budgetMs": 200,
+      "targetMs": 200
+    },
+    "doubt-counterevidence": {
+      "what": "doubt journal, the counterevidence pool",
+      "baselineMs": 5,
+      "budgetMs": 200,
+      "targetMs": 250
+    },
+    "body-region-trend": {
+      "what": "body map, 365 days of one region, both axes",
+      "baselineMs": 1,
+      "budgetMs": 200,
+      "targetMs": 250
+    },
+    "hair-progress-anchor": {
+      "what": "hair progress, every dose since day zero plus every staging and photo",
+      "baselineMs": 9,
+      "budgetMs": 200,
+      "targetMs": 300
+    },
+    "dose-schedule-adherence": {
+      "what": "dose log, 90 days of the log against its schedule",
+      "baselineMs": 2,
+      "budgetMs": 200,
+      "targetMs": 300
     },
     "photo-grid-list": {
       "what": "photo grid, listing every photo",
@@ -88,8 +118,8 @@
     },
     "photo-grid-thumbs": {
       "what": "photo grid, reading every thumbnail",
-      "baselineMs": 136,
-      "budgetMs": 680,
+      "baselineMs": 61,
+      "budgetMs": 305,
       "targetMs": 3000
     },
     "entry-save": {
@@ -100,38 +130,38 @@
     },
     "photo-add": {
       "what": "save button, normalize and attach one realistic photo",
-      "baselineMs": 47,
-      "budgetMs": 235,
+      "baselineMs": 44,
+      "budgetMs": 220,
       "targetMs": 1500
     },
     "archive-restore": {
       "what": "Archive import, replacing the decade fixture",
-      "baselineMs": 1046,
-      "budgetMs": 5230,
+      "baselineMs": 1159,
+      "budgetMs": 5795,
       "targetMs": 30000
     },
     "archive-restore-read": {
       "what": "Archive import, reading the archive photo bytes back out",
-      "baselineMs": 366,
-      "budgetMs": 1830,
+      "baselineMs": 378,
+      "budgetMs": 1890,
       "targetMs": 12000
     },
     "archive-restore-files": {
       "what": "Archive import, streaming every photo file in",
-      "baselineMs": 837,
-      "budgetMs": 4185,
+      "baselineMs": 875,
+      "budgetMs": 4375,
       "targetMs": 24000
     },
     "archive-restore-db": {
       "what": "Archive import, installing every row in one transaction",
-      "baselineMs": 208,
-      "budgetMs": 1040,
+      "baselineMs": 284,
+      "budgetMs": 1420,
       "targetMs": 6000
     },
     "daylio-import": {
       "what": "Daylio import, commit preview through merge restore",
-      "baselineMs": 347,
-      "budgetMs": 1735,
+      "baselineMs": 341,
+      "budgetMs": 1705,
       "targetMs": 10000
     }
   }

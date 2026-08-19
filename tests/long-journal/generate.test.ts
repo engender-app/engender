@@ -139,6 +139,29 @@ test('every dimension the stats screen charts carries values', async () => {
   }
 });
 
+test('it writes the phase 5 content the new measurements read (ticket 01)', async () => {
+  const { journal, summary } = await generate({ seed: 8, days: 400 });
+
+  expect(summary.regionEuphoriaEntries).toBeGreaterThan(0);
+  const entries = await journal.entries.recentDays(400);
+  const withRegions = entries.filter((e) => Object.keys(e.bodyRegions).length > 0);
+  expect(withRegions.length).toBeGreaterThan(0);
+  expect(withRegions.some((e) => Object.values(e.bodyRegions).some((f) => (f.euphoria ?? 0) >= 50))).toBe(true);
+
+  expect(summary.hairStagings).toBeGreaterThan(0);
+  expect(await journal.hairProgress.getStages()).toHaveLength(summary.hairStagings);
+  expect((await journal.hairProgress.getPhotos()).length).toBeGreaterThan(0);
+
+  const episodes = await journal.regimen.getEpisodes();
+  expect(episodes).toHaveLength(1);
+  const schedules = await journal.doses.getSchedules();
+  expect(schedules).toHaveLength(1);
+  expect(schedules[0].episodeId).toBe(episodes[0].id);
+
+  expect(summary.doseEvents).toBeGreaterThan(0);
+  expect(await journal.doses.getDoses(0, summary.lastEpochDay)).toHaveLength(summary.doseEvents);
+});
+
 test('the summary reports the counts a benchmark run prints', async () => {
   const { summary } = await generate({ seed: 7, days: 200 });
   const shape: Record<keyof LongJournalSummary, unknown> = summary;
@@ -147,14 +170,17 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'commonWord',
       'commonWordEntries',
       'daysWithEntries',
+      'doseEvents',
       'entries',
       'firstEpochDay',
+      'hairStagings',
       'labResults',
       'lastEpochDay',
       'milestones',
       'photos',
       'rareWord',
       'rareWordEntries',
+      'regionEuphoriaEntries',
       'tagWord',
       'tagWordEntries'
     ].sort()
