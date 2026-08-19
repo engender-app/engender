@@ -632,7 +632,7 @@ export interface PersonalEffect {
    the same treatment HairRemovalSession.area gets: the pair is validated
    against hairStageScales.ts's closed vocabularies above the schema seam
    (journal/hairProgress.ts), and the schema's own CHECK refuses a
-   mismatched pair on a write or a restore alike (migrations.ts v36). The
+   mismatched pair on a write or a restore alike (migrations.ts v37). The
    two are never separated - '1' through '5' are grade codes on both
    published scales and mean different things on each, so a stage without
    its scale says nothing (phase 5 ticket 33). */
