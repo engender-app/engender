@@ -385,6 +385,10 @@ try {
 try {
   await fresh('/settings/labs');
   await page.locator('[data-segment="estradiol"]').click();
+  /* The "+" sheet now prefills from whichever analyte is on screen (ticket
+     37), so the add below has to happen after the switch has actually
+     reached that state, not just after the click event fired. */
+  await page.waitForSelector('[data-segment="estradiol"].is-active');
   await page.waitForSelector('[data-lab-series]');
   if ((await page.locator('[data-lab-series]').count()) !== 1) throw new Error('estradiol did not start as one series');
   const resultsBefore = await page.locator('[data-lab-result]').count();
