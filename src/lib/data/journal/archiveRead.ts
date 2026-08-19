@@ -5,11 +5,11 @@
    for the two reasons archive.ts's header gives - travelling identity, and
    one query per table for the whole journal instead of one per row.
 
-   Five tables are read once and handed to every section that needs them,
-   rather than queried per section: photo, voice_recording, hair_photo,
-   hair_removal_photo and procedure_photo. The file manifest is built from
-   the same rows (archive.ts), so a second read would be a second answer to
-   the same question. */
+   Seven tables are read once and handed to every section that needs them,
+   rather than queried per section: photo, voice_recording, video_note,
+   hair_photo, hair_removal_photo, procedure_photo and tryout_photo. The
+   file manifest is built from the same rows (archive.ts), so a second
+   read would be a second answer to the same question. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
@@ -50,6 +50,7 @@ import type {
   ArchiveTagGroup,
   ArchiveTallyEvent,
   ArchiveTryout,
+  ArchiveTryoutPhoto,
   ArchiveVideoNote,
   ArchiveVoiceRecording,
   ArchiveWearSession
@@ -68,8 +69,9 @@ export type VideoRow = { uuid: string; file_path: string; entry_id: number };
 export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
 export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
 export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string };
+export type TryoutPhotoRow = { uuid: string; tryout_id: number; epoch_day: number; file_path: string };
 
-/** What every section reader is given: the connection, and the six
+/** What every section reader is given: the connection, and the seven
     file-owning tables read once up front. */
 export interface SectionRead {
   driver: SqliteDriver;
@@ -79,6 +81,7 @@ export interface SectionRead {
   hairPhotos: HairPhotoRow[];
   hairRemovalPhotos: HairRemovalPhotoRow[];
   procedurePhotos: ProcedurePhotoRow[];
+  tryoutPhotos: TryoutPhotoRow[];
 }
 
 /** The shared reads, in one place so the manifest and the sections that name
@@ -104,6 +107,9 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
     ),
     procedurePhotos: await driver.query<ProcedurePhotoRow>(
       'SELECT uuid, procedure_id, epoch_day, file_path FROM procedure_photo ORDER BY procedure_id, epoch_day, id'
+    ),
+    tryoutPhotos: await driver.query<TryoutPhotoRow>(
+      'SELECT uuid, tryout_id, epoch_day, file_path FROM tryout_photo ORDER BY tryout_id, epoch_day, id'
     ),
     recordings: await driver.query<RecordingRow>(
       `SELECT v.uuid, v.file_path, v.entry_id FROM voice_recording v
@@ -453,20 +459,31 @@ export async function readChecklists({ driver }: SectionRead): Promise<ArchiveCh
   }));
 }
 
-export async function readTryouts({ driver }: SectionRead): Promise<ArchiveTryout[]> {
+export async function readTryouts({ driver, tryoutPhotos }: SectionRead): Promise<ArchiveTryout[]> {
   const rows = await driver.query<{
+    id: number;
     uuid: string;
     kind: string;
     label: string;
+    description: string | null;
     start_epoch_day: number;
     end_epoch_day: number | null;
-  }>('SELECT uuid, kind, label, start_epoch_day, end_epoch_day FROM tryout ORDER BY start_epoch_day, id');
+  }>('SELECT id, uuid, kind, label, description, start_epoch_day, end_epoch_day FROM tryout ORDER BY start_epoch_day, id');
+
+  const photosById = groupBy(
+    tryoutPhotos,
+    (photo) => photo.tryout_id,
+    (photo): ArchiveTryoutPhoto => ({ id: photo.uuid, epochDay: photo.epoch_day, fileName: photo.file_path })
+  );
+
   return rows.map((r) => ({
     id: r.uuid,
     kind: r.kind,
     label: r.label,
+    description: r.description,
     startEpochDay: r.start_epoch_day,
-    endEpochDay: r.end_epoch_day
+    endEpochDay: r.end_epoch_day,
+    photos: photosById.get(r.id) ?? []
   }));
 }
 

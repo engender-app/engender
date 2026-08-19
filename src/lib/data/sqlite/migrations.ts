@@ -986,6 +986,63 @@ CREATE TABLE video_note (
 CREATE INDEX idx_video_note_entry ON video_note(entry_id);
 `;
 
+/* v31: a tryout's `kind` widens past name/pronoun to style, garment, makeup
+   and presentation step (phase 5 ticket 13, CONTEXT: "Tryout"), and a
+   tryout can carry photos of its own. The same reasoning ticket 16's own
+   scope draws: a tryout is one record type covering whatever someone is
+   trying, not a name/pronoun-specific one with a second type forked
+   alongside it for everything else.
+
+   SQLite cannot ALTER a column CHECK in place, the same limitation v19's
+   comment describes for `personal_effect` - so `kind`'s rebuild follows
+   that same shape: copy the table under the widened constraint, drop the
+   old one, rename. Every existing row's `id` travels unchanged, which is
+   what lets `tryout_felt_sense.tryout_id` - already pointing at those rows
+   - resolve exactly as it did before the rebuild.
+
+   `description` is a free-text field alongside `label`, for a kind
+   label's own placeholder does not fit - a style or garment tryout needs
+   more than the short field a name or pronoun set already gets. Nullable,
+   since a name/pronoun tryout has no use for it.
+
+   `tryout_photo` is its own table rather than a third owner arm on `photo`
+   (the reason v13, v19's neighbours and v25 all give: that CHECK cannot
+   be widened in place either). It carries both a `tryout_id` foreign key
+   and its own `epoch_day`, the same shape `procedure_photo` (v25) takes
+   for the same reason: a tryout photo belongs to one tryout and is dated
+   in its own right, because when during the tryout it was taken is the
+   whole point of it. The shared pipeline is untouched: stagePhoto and
+   removeFilesOf (photos.ts) write and reclaim these files exactly as they
+   do procedure_photo's. */
+const SCHEMA_V31 = `
+CREATE TABLE tryout_v31 (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  kind            TEXT NOT NULL
+                  CHECK (kind IN ('name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step')),
+  label           TEXT NOT NULL,
+  description     TEXT,
+  start_epoch_day INTEGER NOT NULL,
+  end_epoch_day   INTEGER,
+  updated_at      INTEGER NOT NULL
+);
+INSERT INTO tryout_v31 (id, uuid, kind, label, description, start_epoch_day, end_epoch_day, updated_at)
+  SELECT id, uuid, kind, label, NULL, start_epoch_day, end_epoch_day, updated_at FROM tryout;
+DROP TABLE tryout;
+ALTER TABLE tryout_v31 RENAME TO tryout;
+CREATE INDEX idx_tryout_start ON tryout(start_epoch_day);
+
+CREATE TABLE tryout_photo (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  tryout_id  INTEGER NOT NULL REFERENCES tryout(id) ON DELETE CASCADE,
+  epoch_day  INTEGER NOT NULL,
+  file_path  TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_tryout_photo_tryout ON tryout_photo(tryout_id, epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1016,7 +1073,8 @@ export const migrations: Migration[] = [
   { version: 27, sql: SCHEMA_V27 },
   { version: 28, sql: SCHEMA_V28 },
   { version: 29, sql: SCHEMA_V29 },
-  { version: 30, sql: SCHEMA_V30 }
+  { version: 30, sql: SCHEMA_V30 },
+  { version: 31, sql: SCHEMA_V31 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

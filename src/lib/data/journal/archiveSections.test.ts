@@ -84,7 +84,9 @@ test('every section the wire type declares is registered, once', () => {
 test('the tryouts constraint is what keeps felt-sense rows from being dropped', async () => {
   const journal: ArchiveJournal = {
     ...emptyArchiveJournal(),
-    tryouts: [{ id: 't-1', kind: 'name', label: 'Alex', startEpochDay: 19900, endEpochDay: null }],
+    tryouts: [
+      { id: 't-1', kind: 'name', label: 'Alex', description: null, startEpochDay: 19900, endEpochDay: null, photos: [] }
+    ],
     feltSenseEntries: [{ id: 'f-1', tryoutId: 't-1', epochDay: 19910, mood: 4, note: null }]
   };
   const tryouts = ARCHIVE_SECTIONS.find((s) => s.name === 'tryouts')!;

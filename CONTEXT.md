@@ -445,11 +445,13 @@ re-derived on read - a euphoria-tagged entry edited, untagged or deleted
 afterwards must not change what a past snapshot showed.
 
 **Tryout**:
-A name or pronoun set someone is trying, with a start date and an optional
-end date once it is closed out. Several can exist at once, overlapping or
-entirely in the past - nothing treats exactly one as "the current one".
-Which entries fall inside a tryout's dates is read by date overlap alone,
-never a stored link.
+Something someone is trying - a name or pronoun set, a style, a garment,
+makeup, or a presentation step - with a start date and an optional end date
+once it is closed out. Several can exist at once, overlapping or entirely in
+the past - nothing treats exactly one as "the current one". A non-name/pronoun
+tryout carries a free-text description alongside its label, and any kind can
+carry photos of its own. Which entries fall inside a tryout's dates is read
+by date overlap alone, never a stored link.
 
 **Felt-sense entry**:
 One point in a tryout's running record of how it has felt, on the app's

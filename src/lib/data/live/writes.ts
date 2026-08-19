@@ -335,9 +335,11 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       upsertTryout: ['tryout'],
       deleteTryout: ['tryout'],
       addFeltSenseEntry: ['tryout'],
-      deleteFeltSenseEntry: ['tryout']
+      deleteFeltSenseEntry: ['tryout'],
+      addPhoto: ['tryout'],
+      deletePhoto: ['tryout']
     },
-    reads: ['getTryouts', 'getFeltSenseEntries']
+    reads: ['getTryouts', 'getFeltSenseEntries', 'getPhotos']
   },
   letters: {
     writes: { addLetter: ['letter'], deleteLetter: ['letter'] },

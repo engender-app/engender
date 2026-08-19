@@ -270,7 +270,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     hairRemoval: makeHairRemovalArea(driver, files),
     procedures,
     doubtJournal: makeDoubtJournalArea(driver),
-    tryouts: makeTryoutsArea(driver),
+    tryouts: makeTryoutsArea(driver, files),
     letters: makeLettersArea(driver),
     roadmap: makeRoadmapArea(driver),
     checklists,

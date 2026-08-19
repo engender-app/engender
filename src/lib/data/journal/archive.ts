@@ -127,13 +127,19 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async snapshot() {
       // One read of the photo, hair photo, hair-removal photo, recovery
-      // photo, recording and video-note tables for the rows, their owners
-      // and the manifest: several passes over the same lists, never several queries
-      // (archiveRead.ts).
+      // photo, tryout photo, recording and video-note tables for the rows,
+      // their owners and the manifest: several passes over the same
+      // lists, never several queries (archiveRead.ts).
       const reading = await readRowContext(driver);
 
       const archivedFiles = [
-        ...(await manifest([...reading.photos, ...reading.hairPhotos, ...reading.hairRemovalPhotos, ...reading.procedurePhotos])),
+        ...(await manifest([
+          ...reading.photos,
+          ...reading.hairPhotos,
+          ...reading.hairRemovalPhotos,
+          ...reading.procedurePhotos,
+          ...reading.tryoutPhotos
+        ])),
         ...(await manifestNames(reading.recordings.map((r) => r.file_path))),
         ...(await manifestNames(reading.videos.map((v) => v.file_path)))
       ];

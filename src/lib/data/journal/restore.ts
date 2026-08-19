@@ -202,6 +202,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM checklist_item',
     'DELETE FROM checklist',
     'DELETE FROM tryout_felt_sense',
+    'DELETE FROM tryout_photo',
     'DELETE FROM tryout',
     'DELETE FROM dose_event',
     /* Before the episodes they hang off. The foreign keys cascade, but only

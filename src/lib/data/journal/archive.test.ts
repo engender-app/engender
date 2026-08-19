@@ -132,6 +132,7 @@ async function populated() {
     mood: 4,
     note: 'felt right at the pharmacy'
   });
+  const tryoutPhoto = await journal.tryouts.addPhoto(tryout, 19905, { full: bytes('presenting'), thumb: bytes('pt') });
 
   return {
     db,
@@ -166,7 +167,8 @@ async function populated() {
     doubtEntry,
     counterevidenceSnapshot,
     tryout,
-    feltSense
+    feltSense,
+    tryoutPhoto
   };
 }
 
@@ -371,13 +373,21 @@ test('a doubt entry travels whole, and a counterevidence snapshot travels with i
   ]);
 });
 
-test('a tryout travels whole, and its felt-sense entry travels by the tryout\'s own uuid', async () => {
-  const { journal, tryout, feltSense } = await populated();
+test('a tryout travels whole with its photos, and its felt-sense entry travels by the tryout\'s own uuid', async () => {
+  const { journal, tryout, feltSense, tryoutPhoto } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
   assert.deepEqual(snapshot.journal.tryouts, [
-    { id: tryout, kind: 'name', label: 'Alex', startEpochDay: 19900, endEpochDay: null }
+    {
+      id: tryout,
+      kind: 'name',
+      label: 'Alex',
+      description: null,
+      startEpochDay: 19900,
+      endEpochDay: null,
+      photos: [{ id: tryoutPhoto, epochDay: 19905, fileName: `${tryoutPhoto}.jpg` }]
+    }
   ]);
   assert.deepEqual(snapshot.journal.feltSenseEntries, [
     { id: feltSense, tryoutId: tryout, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
@@ -466,7 +476,7 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
 });
 
 test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {
-  const { journal, photo, milestonePhoto, recording, videoNote } = await populated();
+  const { journal, photo, milestonePhoto, tryoutPhoto, recording, videoNote } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -475,6 +485,8 @@ test('the manifest names every photo file and its thumbnail, plus every recordin
     { name: thumbFileName(`${photo}.jpg`), length: 5 },
     { name: `${milestonePhoto}.jpg`, length: 1 },
     { name: thumbFileName(`${milestonePhoto}.jpg`), length: 2 },
+    { name: `${tryoutPhoto}.jpg`, length: 10 },
+    { name: thumbFileName(`${tryoutPhoto}.jpg`), length: 2 },
     { name: `${recording}.webm`, length: bytes('a recording').length },
     { name: `${videoNote}.webm`, length: bytes('a video note').length }
   ]);
@@ -613,10 +625,11 @@ const CARRIED: Record<string, string[]> = {
   // carries data of its own (a track and its text) rather than naming
   // bundled content (ADR-0002).
   roadmap_goal: ['uuid', 'track', 'text', 'status'],
-  tryout: ['uuid', 'kind', 'label', 'start_epoch_day', 'end_epoch_day'],
+  tryout: ['uuid', 'kind', 'label', 'description', 'start_epoch_day', 'end_epoch_day'],
   // tryout_id travels as the tryout's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
   tryout_felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
+  tryout_photo: ['uuid', 'tryout_id', 'epoch_day', 'file_path'],
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
   video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],
   checklist: ['uuid', 'owner_kind', 'owner_uuid'],
