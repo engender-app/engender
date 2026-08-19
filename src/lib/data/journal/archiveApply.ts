@@ -670,16 +670,32 @@ export async function applyChecklists({ driver, mode, journal, ts }: Restoring):
 
 /* Matched by uuid, like applyDoubtEntries: a tryout is not a single value
    ticket 14's Replace can safely retire, it is a dated record someone
-   might still be adding felt-sense entries against. */
+   might still be adding felt-sense entries against. Its photos are walked
+   the same way applyProcedures walks a procedure's: each is its own row
+   with its own identity, and one the archive carries that this device
+   does not is exactly what Merge is for. */
 export async function applyTryouts({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM tryout');
+  const tryouts = await presentIds(driver, 'SELECT uuid AS id FROM tryout');
+  const photos = await presentIds(driver, 'SELECT uuid AS id FROM tryout_photo');
 
-  const inserting = journal.tryouts.filter((tryout) => !present.has(tryout.id));
-  await insertRows(
-    driver,
-    'INSERT INTO tryout (uuid, kind, label, start_epoch_day, end_epoch_day, updated_at)',
-    inserting.map((tryout) => [tryout.id, tryout.kind, tryout.label, tryout.startEpochDay, tryout.endEpochDay, ts])
-  );
+  for (const tryout of journal.tryouts) {
+    if (!tryouts.has(tryout.id)) {
+      await driver.run(
+        'INSERT INTO tryout (uuid, kind, label, description, start_epoch_day, end_epoch_day, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [tryout.id, tryout.kind, tryout.label, tryout.description, tryout.startEpochDay, tryout.endEpochDay, ts]
+      );
+    }
+
+    const tryoutRowId = await rowidWhere(driver, 'tryout', 'uuid = ?', [tryout.id], 'tryout uuid');
+
+    for (const photo of tryout.photos) {
+      if (photos.has(photo.id)) continue;
+      await driver.run(
+        'INSERT INTO tryout_photo (uuid, tryout_id, epoch_day, file_path, updated_at) VALUES (?, ?, ?, ?, ?)',
+        [photo.id, tryoutRowId, photo.epochDay, photo.fileName, ts]
+      );
+    }
+  }
 }
 
 /* Resolves its tryout by uuid against what applyTryouts just inserted, the

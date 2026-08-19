@@ -198,12 +198,14 @@ async function everySection(): Promise<Journal> {
   await journal.stock.upsertEntry({ drug: 'estradiol valerate', quantity: 5, unit: 'ampoules', recordedEpochDay: 20000 });
 
   const tryout = await journal.tryouts.upsertTryout({
-    kind: 'name',
-    label: 'Alex',
+    kind: 'style',
+    label: 'layered look',
+    description: 'cardigan over a fitted top',
     startEpochDay: 19900,
     endEpochDay: null
   });
   await journal.tryouts.addFeltSenseEntry({ tryoutId: tryout, epochDay: 19910, mood: 4, note: 'felt right' });
+  await journal.tryouts.addPhoto(tryout, 19905, { full: bytes('presenting'), thumb: bytes('pt') });
 
   /* A real procedure now owns this checklist (phase 5 ticket 07); it was a
      placeholder owner pair until ticket 07 shipped the first owner. */
