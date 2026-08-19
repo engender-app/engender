@@ -790,7 +790,6 @@ ALTER TABLE entry ADD COLUMN trashed_at INTEGER;
 CREATE INDEX idx_entry_trashed_at ON entry(trashed_at);
 `;
 
-<<<<<<< HEAD
 /* v25: the surgery journey module (phase 5 ticket 07, CONTEXT: "Procedure").
    One row per procedure someone is going through - top surgery, facial
    feminization surgery, orchiectomy - and nothing about the module assumes
