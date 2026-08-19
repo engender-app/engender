@@ -20,12 +20,11 @@
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
   import { App as AndroidAppPlugin } from '@capacitor/app';
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
-  import { resolveAndroidBackAction } from '$lib/android/back-navigation';
+  import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import { androidReminders } from '$lib/reminders/android-bridge';
-  import { buildAndroidReminderPayload } from '$lib/reminders/payload';
   import { affirmationLines } from '$lib/reminders/affirmations';
   import { androidDisguise } from '$lib/disguise/android-bridge';
   import { androidQuickExit } from '$lib/lock/quick-exit-bridge';
@@ -224,93 +223,6 @@
 
   /* New-entry chooser (F1). */
   let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
-  let remindersListenerAttached = false;
-  let stockReminderListenerAttached = false;
-
-  /** Wraps `run` so a call while one is already in flight is queued rather
-      than overlapped or dropped: a write landing mid-sync still gets a
-      fresh sync once the current one finishes, but two never run at once.
-      Shared by the Android reminder sync below and box 4's stock run-out
-      reconciliation (phase 4 ticket 04) - both need exactly this shape,
-      and a second copy of the flag/queue dance had already crept in once. */
-  function coalescing(run: () => Promise<void>, onError: (error: unknown) => void): () => void {
-    let running = false;
-    let queued = false;
-    const start = (): void => {
-      if (running) {
-        queued = true;
-        return;
-      }
-      running = true;
-      run()
-        .catch(onError)
-        .finally(() => {
-          running = false;
-          if (queued) {
-            queued = false;
-            start();
-          }
-        });
-    };
-    return start;
-  }
-
-  /* Box 4's run-out reminder (phase 4 ticket 04, journal.stock). Android
-     only: Reminder never fires on web (CONTEXT: "Reminder"), so there is
-     nothing for stock.ts's reconciliation to schedule there - the stock
-     screen surfaces the same projection directly instead (box 5). Reacts
-     to 'dose' and 'stock' writes, the two that can move a projection;
-     reconcileRunOutReminders' own write to 'reminder' is what feeds
-     syncAndroidReminderSchedules above, the same way any other reminder
-     edit does. */
-  const reconcileStockRunOutReminders = coalescing(
-    async () => {
-      if (!isAndroid() || !isReadyState(bootState)) return;
-      await journal.stock.reconcileRunOutReminders(todayEpochDay());
-    },
-    (error) => console.error('Could not reconcile the medication stock run-out reminder', error)
-  );
-
-  const syncAndroidReminderSchedules = coalescing(
-    async () => {
-      if (!isAndroid() || !isReadyState(bootState)) return;
-      const [reminders, recent] = await Promise.all([
-        journal.reminders.getReminders(),
-        journal.entries.recentDays(1)
-      ]);
-      await androidReminders.sync(
-        buildAndroidReminderPayload({
-          reminders,
-          checkInEnabled: prefs.checkInEnabled,
-          checkInTime: prefs.checkInTime,
-          checkInAffirmations: prefs.checkInAffirmationsEnabled ? affirmationLines() : [],
-          latestEntryEpochDay: recent[0]?.epochDay ?? null,
-          hideNotificationTitles: prefs.hideNotificationTitles,
-          texts: {
-            channelReminders: m.reminders(),
-            channelCheckIn: m.checkin_title(),
-            checkInTitle: m.checkin_title(),
-            checkInBody: m.checkin_sub()
-          }
-        })
-      );
-    },
-    (error) => console.error('Could not sync Android reminder schedules', error)
-  );
-
-  /* androidReminders.consumeLaunchRoute is shared by reminders, check-in,
-     and - as of phase 4 features ticket 04 - wrapped and on-this-day
-     notifications, not just reminders despite the name. */
-  async function consumeReminderLaunchRoute() {
-    if (!isAndroid() || !isReadyState(bootState)) return;
-    try {
-      const { route } = await androidReminders.consumeLaunchRoute();
-      if (!route || !isValidAndroidLaunchRoute(route) || route === page.url.pathname) return;
-      await goto(route);
-    } catch (error) {
-      console.error('Could not consume reminder launch route', error);
-    }
-  }
 
   function chooseToday() {
     ui.chooserOpen = false;
@@ -323,110 +235,52 @@
     goto(`/entry/new/${day}`);
   }
 
-  $effect(() => {
-    if (!isAndroid() || !isReadyState(bootState) || remindersListenerAttached) return;
-    remindersListenerAttached = true;
-    onTablesWritten((tables) => {
-      if (tables.includes('reminder') || tables.includes('entry')) void syncAndroidReminderSchedules();
-    });
-    void syncAndroidReminderSchedules();
-    void consumeReminderLaunchRoute();
-  });
-
-  $effect(() => {
-    if (!isAndroid() || !isReadyState(bootState) || stockReminderListenerAttached) return;
-    stockReminderListenerAttached = true;
-    onTablesWritten((tables) => {
-      if (tables.includes('dose') || tables.includes('stock')) void reconcileStockRunOutReminders();
-    });
-    void reconcileStockRunOutReminders();
-  });
-
-  $effect(() => {
-    if (!isAndroid() || !isReadyState(bootState)) return;
-    void prefs.checkInEnabled;
-    void prefs.checkInTime;
-    void prefs.checkInAffirmationsEnabled;
-    void prefs.hideNotificationTitles;
-    void syncAndroidReminderSchedules();
-  });
-
-  $effect(() => {
-    if (!isAndroid() || !isReadyState(bootState)) return;
-    const onVisible = () => {
-      if (document.visibilityState !== 'visible') return;
-      void syncAndroidReminderSchedules();
-      void consumeReminderLaunchRoute();
-    };
-    window.addEventListener('focus', onVisible);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      window.removeEventListener('focus', onVisible);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  });
-
-  /* Android's back gesture should walk in-app screens before leaving to the
-     launcher. Capacitor's default native back stack does not track SvelteKit
-     client routing, so this listener maps the gesture onto browser history
-     (NAV-001/NAV-002): $lib/android/back-navigation holds the routing
-     decision as a pure, unit-tested function; @capacitor/app is now a real
-     dependency, registered in AndroidPluginRegistry.java, so the plugin this
-     listener attaches to actually exists at runtime. */
+  /* Every Android-only effect that used to live here one at a time -
+     reminder schedule sync, stock run-out reconciliation, launch-route
+     consumption, visibility/focus resync, the back button, the disguise
+     alias and the quick-exit mirror - now lives behind platform-sync.ts
+     (phase 5 deepening ticket 04). This effect is what makes it reactive:
+     the module itself takes no runes (ADR-0017, so it can run in the Node
+     tier), so watching a preference like `disguise` for a change has to
+     happen here and be handed to the module as a fresh start. Restarting
+     on a preference change also re-runs the reminder resync and re-attaches
+     the visibility and back-button listeners, not only the one preference
+     that changed; see platform-sync.ts's own comment for why that is safe,
+     and for why its two table-write subscriptions are the one thing this
+     does not restart. */
   $effect(() => {
     if (!isAndroid()) return;
+    const ready = isReadyState(bootState);
+    const checkInEnabled = prefs.checkInEnabled;
+    const checkInTime = prefs.checkInTime;
+    const checkInAffirmationsEnabled = prefs.checkInAffirmationsEnabled;
+    const hideNotificationTitles = prefs.hideNotificationTitles;
+    const disguise = prefs.disguise;
+    const quickExit = prefs.quickExit;
+    if (!ready) return;
 
-    let tornDown = false;
-    let removeListener: (() => void) | null = null;
-
-    void AndroidAppPlugin.addListener('backButton', () => {
-      switch (resolveAndroidBackAction(window.location.pathname, window.history.length)) {
-        case 'minimize':
-          void AndroidAppPlugin.minimizeApp();
-          return;
-        case 'history-back':
-          window.history.back();
-          return;
-        case 'go-home':
-          void goto('/', { replaceState: true });
-      }
-    })
-      .then((handle) => {
-        if (tornDown) {
-          void handle.remove();
-          return;
-        }
-        removeListener = () => {
-          void handle.remove();
-        };
-      })
-      .catch((error) => {
-        console.error('Could not attach Android back-button handler', error);
-      });
-
-    return () => {
-      tornDown = true;
-      removeListener?.();
-    };
-  });
-
-  /* The launcher alias (ticket 15) follows prefs.disguise on every change,
-     not only the Settings toggle: an Archive restore (restore.ts) can set
-     it too, and the launcher has to match what got restored. The plugin
-     is the one that decides whether anything actually changes - a
-     boot-time run that finds the alias already correct is a no-op, not a
-     restart nobody asked for. */
-  $effect(() => {
-    if (!isAndroid() || !isReadyState(bootState)) return;
-    void androidDisguise.setDisguised({ disguised: prefs.disguise });
-  });
-
-  /* Quick exit's Android leave-hint (MainActivity.onUserLeaveHint) reads a
-     SharedPreferences mirror rather than asking the WebView, so this keeps
-     it in step with the real preference. */
-  $effect(() => {
-    if (!isAndroid() || !isReadyState(bootState)) return;
-    void androidQuickExit.setEnabled({ enabled: prefs.quickExit });
+    return startAndroidPlatformSync({
+      isAndroid,
+      isReady: () => isReadyState(bootState),
+      todayEpochDay,
+      prefs: { checkInEnabled, checkInTime, checkInAffirmationsEnabled, hideNotificationTitles, disguise, quickExit },
+      journal: { reminders: journal.reminders, entries: journal.entries, stock: journal.stock },
+      onTablesWritten,
+      androidReminders,
+      androidDisguise,
+      androidQuickExit,
+      androidBackButton: AndroidAppPlugin,
+      affirmationLines,
+      reminderTexts: () => ({
+        channelReminders: m.reminders(),
+        channelCheckIn: m.checkin_title(),
+        checkInTitle: m.checkin_title(),
+        checkInBody: m.checkin_sub()
+      }),
+      isValidLaunchRoute: isValidAndroidLaunchRoute,
+      currentPathname: () => page.url.pathname,
+      goto
+    });
   });
 </script>
 
