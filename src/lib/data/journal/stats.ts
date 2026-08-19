@@ -22,6 +22,7 @@ import { isPausedOn } from '../journalingPause';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Photo, TallyKind } from '../types';
+import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins';
 import { bool } from './support';
 
 export interface DayAverage {
@@ -533,11 +534,14 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
     async isGoodDay(epochDay) {
       // Two independent EXISTS checks, OR'd rather than read back as two
-      // round trips: a day either clears the mood average or carries the
-      // euphoria tag, and the rule only needs to know that one of them did.
-      // COALESCE(key, uuid) is a tag's domain id (ADR-0002); 'g-euphoria' is
-      // the built-in euphoria capture tag (ticket 02, CONTEXT: Euphoria
-      // capture).
+      // round trips: a day either clears the mood average or carries a
+      // euphoria capture, and the rule only needs to know that one of them
+      // did. COALESCE(key, uuid) is a tag's domain id (ADR-0002);
+      // EUPHORIA_TAG_KEYS is all three built-in euphoria capture tags
+      // (ticket 02/09, phase 5 ticket 32, CONTEXT: Euphoria capture) - a
+      // day carrying any one of them clears this half of the bar, not only
+      // the general tag.
+      const placeholders = EUPHORIA_TAG_KEYS.map(() => '?').join(', ');
       const rows = await driver.query<{ good: number }>(
         `SELECT
            EXISTS (
@@ -548,9 +552,9 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
              SELECT 1 FROM entry e
              JOIN entry_tag et ON et.entry_id = e.id
              JOIN tag t ON t.id = et.tag_id
-             WHERE e.epoch_day = ? AND COALESCE(t.key, t.uuid) = ? AND e.trashed_at IS NULL
+             WHERE e.epoch_day = ? AND COALESCE(t.key, t.uuid) IN (${placeholders}) AND e.trashed_at IS NULL
            ) AS good`,
-        [epochDay, GOOD_DAY_MOOD_FLOOR, epochDay, 'g-euphoria']
+        [epochDay, GOOD_DAY_MOOD_FLOOR, epochDay, ...EUPHORIA_TAG_KEYS]
       );
       return Boolean(rows[0]?.good);
     }

@@ -3,6 +3,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
   import type { CounterevidenceEntry, CounterevidenceSnapshot, DoubtEntry } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import Icon from '$lib/components/Icon.svelte';
@@ -22,7 +23,9 @@
   let today = $derived(todayEpochDay());
   let text = $state('');
 
-  let counterevidenceQuery = liveQuery(['entry', 'tag'], (j) => j.entries.counterevidencePool('g-euphoria', COUNTEREVIDENCE_LIMIT));
+  let counterevidenceQuery = liveQuery(['entry', 'tag'], (j) =>
+    j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT)
+  );
   let counterevidence = $derived(counterevidenceQuery.value ?? []);
 
   let entriesQuery = liveQuery(['doubtJournal'], (j) => j.doubtJournal.getEntries(HISTORY_LIMIT));

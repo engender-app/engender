@@ -170,9 +170,10 @@ export interface Journal {
   hairRemoval: HairRemovalArea;
   /** Free-write doubt entries and their saved counterevidence snapshots
       (phase 4 ticket 11). Reads the counterevidence itself through
-      entries.counterevidencePool('g-euphoria', …) (phase 5 ticket 14: a
-      union of that tag and starred entries) - this area owns only what
-      it alone writes. */
+      entries.counterevidencePool(EUPHORIA_TAG_KEYS, …) (phase 5 ticket 14: a
+      union of those tags and starred entries; ticket 32 widened the tag
+      list itself from 'g-euphoria' alone to all three euphoria tags) -
+      this area owns only what it alone writes. */
   doubtJournal: DoubtJournalArea;
   /** Name and pronoun tryouts and their felt-sense history (phase 4 ticket
       16). Reads the entries in a tryout's date range through
