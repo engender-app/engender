@@ -77,6 +77,7 @@
     { key: 'streak-goal', icon: 'sparkle', title: () => m.streak_goal_title(), subtitle: () => m.streak_goal_row_sub(), href: '/settings/streak-goal' },
     { key: 'hormone-curve', icon: 'curve', title: () => m.curve_title(), subtitle: () => m.curve_sub(), href: '/settings/hormone-curve' },
     { key: 'hair-progress', icon: 'comb', title: () => m.hair_progress(), subtitle: () => m.hair_progress_sub(), href: '/settings/hair-progress' },
+    { key: 'surgery', icon: 'flag', title: () => m.surgery_journey_title(), subtitle: () => m.surgery_journey_sub(), href: '/settings/surgery' },
     { key: 'appointment-prep', icon: 'check', title: () => m.appointment_prep_title(), subtitle: () => m.appointment_prep_row_sub(), href: '/settings/appointment-prep' },
     { key: 'clinician-summary', icon: 'share', title: () => m.clinician_summary_row(), subtitle: () => m.clinician_summary_row_sub(), href: '/settings/clinician-summary' },
     { key: 'resources', icon: 'globe', title: () => m.resources_title(), subtitle: () => m.resources_row_sub(), href: '/settings/resources' }

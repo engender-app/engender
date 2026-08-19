@@ -28,6 +28,7 @@
   import { severityName } from '$lib/data/vocabulary/labels';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { clinicianSummarySectionTitle } from '$lib/data/vocabulary/clinicianSummaryLabels';
+  import { recoveryDay } from '$lib/data/recoveryDay';
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
   import { CLINICIAN_SUMMARY_SECTION_KEYS, type ClinicianSummary, type ClinicianSummarySectionKey } from '$lib/data/journal/clinicianSummary';
   import type { DoseEvent, LabResult } from '$lib/data/types';
@@ -45,7 +46,7 @@
 
   let range = $derived(customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput)));
 
-  let summaryQuery = liveQuery(['regimen', 'dose', 'lab', 'sideEffect', 'checklist'], (j) =>
+  let summaryQuery = liveQuery(['regimen', 'dose', 'lab', 'sideEffect', 'checklist', 'procedure'], (j) =>
     range ? j.clinicianSummary.getSummary(range.start, range.end) : Promise.resolve(null)
   );
   let summary = $derived(summaryQuery.value);
@@ -77,6 +78,7 @@
     labResults: labResultRows,
     exposure: exposureRows,
     sideEffects: sideEffectRows,
+    procedures: procedureRows,
     appointmentPrepItems: appointmentPrepRows
   };
 
@@ -217,6 +219,51 @@
     </div>
   {:else}
     <p class="muted small section-block">{m.clinician_summary_side_effects_empty()}</p>
+  {/if}
+{/snippet}
+
+<!-- Every procedure, not filtered to the chosen range: a procedure is an
+     ongoing journey rather than an event on a day, and one whose operation
+     fell before the window is exactly what a post-op follow-up is about
+     (ticket 07). The day counter is derived here, at the point of display,
+     off the surgery date the section already carries - the summary itself
+     computes nothing (ADR-0031). -->
+{#snippet procedureRows(s: ClinicianSummary)}
+  {#if s.procedures.length}
+    <div class="list-group section-block">
+      {#each s.procedures as procedure (procedure.id)}
+        {@const day = recoveryDay(procedure.surgeryEpochDay, today)}
+        <div class="list-row">
+          <span class="row-text">
+            <span class="row-title">{procedure.name}</span>
+            <span class="row-subtitle">
+              {procedure.surgeryEpochDay === null ? m.surgery_date_none() : dayLong(procedure.surgeryEpochDay)}
+              {#if day.type === 'since'}· {m.surgery_day_since({ days: m.n_days({ n: day.days }) })}{/if}
+              {#if day.type === 'upcoming'}· {m.surgery_day_upcoming({ days: m.n_days({ n: day.days }) })}{/if}
+              {#if day.type === 'surgeryDay'}· {m.surgery_day_of()}{/if}
+            </span>
+            {#if procedure.consults.length}
+              <span class="row-subtitle">
+                {m.surgery_consults_title()}: {procedure.consults.map((c) => dayShort(c.epochDay)).join(', ')}
+              </span>
+            {/if}
+            {#if procedure.photoEpochDays.length}
+              <span class="row-subtitle">
+                {m.surgery_photos_title()}: {procedure.photoEpochDays.map((epochDay) => dayShort(epochDay)).join(', ')}
+              </span>
+            {/if}
+            {#if procedure.notes.trim()}<span class="row-subtitle">{procedure.notes}</span>{/if}
+            {#each procedure.checklistItems as item (item.id)}
+              <span class="row-subtitle" style={item.checked ? 'text-decoration:line-through' : ''}>
+                {item.content}{item.carriedForward ? ' · ' + m.surgery_checklist_carried_badge() : ''}
+              </span>
+            {/each}
+          </span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted small section-block">{m.clinician_summary_procedures_empty()}</p>
   {/if}
 {/snippet}
 
