@@ -349,6 +349,17 @@ _Avoid_: Symptom, milestone (a personal effect is a body change the
 literature has a published timeline for, not a life-event marker), effect
 alone (ambiguous with side effect)
 
+**Wear session**:
+A tracked stretch of binder or tucking wear time, logged either as a live
+start/stop timer or as a backfilled start day plus duration, with an optional
+comfort/pain note. Its own record type, not an Entry: no mood, dimension
+values, tags or note beyond that one free-text field. Charted against the
+existing `chest` and `genitals` `BODY_REGION_KEYS` (bodyMap.ts) intensity
+trend rather than against a region key of its own. Its optional Reminder is
+an ordinary one, on a wear-specific marker, for whatever hour count the
+person sets - the app states no safe maximum and gives no advice.
+_Avoid_: Wear time (that is the duration on a session, not the record itself)
+
 ### Reflection and retrospection
 
 **Wrapped**:
@@ -475,9 +486,11 @@ How a milestone dated in the past presents, recurring yearly.
 ### Care and reminders
 
 **Reminder**:
-A recurring or one-off prompt for a medication, injection or appointment, stored as
-a rule (wall-clock time plus recurrence) rather than as a next-fire instant.
-Android only, though it travels in an archive.
+A recurring or one-off prompt to do something, stored as a rule (wall-clock time
+plus recurrence) rather than as a next-fire instant. Subject-agnostic: a
+medication, injection or appointment prompt and a **wear session**'s own
+"remind me after N hours" hook are the same row shape, with nothing about
+either stored on it. Android only, though it travels in an archive.
 
 **Launch route**:
 The in-app path a tapped notification or widget deep-links to, sanitized
