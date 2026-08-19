@@ -596,29 +596,39 @@ export interface PersonalEffect {
   firstNoticedEpochDay: number;
 }
 
-/** The published Norwood-Hamilton scale (phase 4 ticket 09), as the twelve
-    stage labels the classification uses - including the "vertex" and "a"
-    (anterior) variants at stages 3 and beyond. Closed: there is no sixth
-    or "in-between" stage to add, the scale itself is the fixed
-    vocabulary - unlike a measurement type, which opens to a custom one
-    (phase 5 ticket 29). */
-export type NorwoodHamiltonStage = '1' | '2' | '2a' | '3' | '3v' | '3a' | '4' | '4a' | '5' | '5a' | '6' | '7';
-
 /* A dated series like Measurement (ticket 08), not a single replaced value
    like PersonalEffect: a person re-stages over time to track progression,
    never answering "what is it now" in place of what it was before. No
    episode or anchor reference: what this is read against is resolved above
    this seam (hairAnchor.ts), the same reason Measurement and PersonalEffect
-   carry none either. */
+   carry none either.
+
+   `scale` and `stage` are plain strings rather than literal unions here,
+   the same treatment HairRemovalSession.area gets: the pair is validated
+   against hairStageScales.ts's closed vocabularies above the schema seam
+   (journal/hairProgress.ts), and the schema's own CHECK refuses a
+   mismatched pair on a write or a restore alike (migrations.ts v36). The
+   two are never separated - '1' through '5' are grade codes on both
+   published scales and mean different things on each, so a stage without
+   its scale says nothing (phase 5 ticket 33). */
 export interface HairStage {
   id: string;
   epochDay: number;
-  stage: NorwoodHamiltonStage;
+  /** Which published scale `stage` is a grade of, or 'other' for a pattern
+      neither describes. */
+  scale: string;
+  /** The grade, empty exactly when `scale` is 'other' - that one publishes
+      no grades. */
+  stage: string;
+  /** What the person wrote about a pattern neither scale describes. Empty
+      unless `scale` is 'other', and it may be empty then too: "neither of
+      these", with nothing more said, is a record. */
+  description: string;
 }
 
 /** A hair-removal session's method (phase 5 ticket 08): a small closed set
     rather than free text, so `hairRemovalMethodName` can give it a
-    translated label the way `NorwoodHamiltonStage` does - 'other' is the
+    translated label the way a hair-staging grade does - 'other' is the
     escape hatch for anything the two named methods do not cover. */
 export const HAIR_REMOVAL_METHODS = ['laser', 'electrolysis', 'other'] as const;
 export type HairRemovalMethod = (typeof HAIR_REMOVAL_METHODS)[number];

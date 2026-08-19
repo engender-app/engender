@@ -4,10 +4,11 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { hairAnchorEpochDay } from '$lib/data/hairAnchor';
   import { isHairPhotoDue } from '$lib/data/hairPhotoSchedule';
-  import { hairStageName } from '$lib/data/vocabulary/labels';
+  import { hairScaleName, hairScaleSub, hairStageName } from '$lib/data/vocabulary/labels';
+  import { HAIR_SCALES, gradesOfScale, stagesByScale } from '$lib/data/hairStageScales';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import type { HairStage, NorwoodHamiltonStage } from '$lib/data/types';
+  import type { HairStage } from '$lib/data/types';
   import type { HairPhoto } from '$lib/data/journal/hairProgress';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { pickPhotos } from '$lib/stores/photoPicking';
@@ -19,8 +20,6 @@
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
-
-  const NORWOOD_HAMILTON_STAGES: NorwoodHamiltonStage[] = ['1', '2', '2a', '3', '3v', '3a', '4', '4a', '5', '5a', '6', '7'];
 
   const today = todayEpochDay();
 
@@ -39,6 +38,11 @@
 
   let stagesQuery = liveQuery(['hairProgress'], (j) => j.hairProgress.getStages());
   let stages = $derived(stagesQuery.value ?? []);
+
+  /* Grouped so that no list, and no run of subtitles, ever reads as one
+     series across two scales (ticket 33, hairStageScales.ts). Newest first
+     within each scale, which is the order the single list used to be in. */
+  let stageGroups = $derived(stagesByScale([...stages].reverse()));
 
   let photosQuery = liveQuery(['hairProgress'], (j) => j.hairProgress.getPhotos());
   let photos = $derived(photosQuery.value ?? []);
@@ -85,21 +89,44 @@
     anchorEditor = null;
   }
 
-  let stageEditor = $state<{ id?: string; date: string; stage: NorwoodHamiltonStage } | null>(null);
+  /* `scale` starts null on a new staging and the save button stays disabled
+     until it is picked. No scale is preselected on purpose: defaulting to
+     either one would be the app guessing which pattern the person has, which
+     is the assumption ticket 33 exists to remove. */
+  let stageEditor = $state<{ id?: string; date: string; scale: string | null; stage: string; description: string } | null>(
+    null
+  );
   let stageDeleteTarget = $state<HairStage | null>(null);
 
   function openStageEditor(existing: HairStage | null) {
     stageEditor = existing
-      ? { id: existing.id, date: dateInputValueFromEpochDay(existing.epochDay), stage: existing.stage }
-      : { date: dateInputValueFromEpochDay(today), stage: '1' };
+      ? {
+          id: existing.id,
+          date: dateInputValueFromEpochDay(existing.epochDay),
+          scale: existing.scale,
+          stage: existing.stage,
+          description: existing.description
+        }
+      : { date: dateInputValueFromEpochDay(today), scale: null, stage: '', description: '' };
+  }
+
+  /** Picking a scale clears the grade rather than carrying it over: the two
+      scales share codes and mean different things by them, so a kept '3'
+      would silently become a different claim (hairStageScales.ts). */
+  function pickScale(scale: string) {
+    if (!stageEditor || stageEditor.scale === scale) return;
+    stageEditor.scale = scale;
+    stageEditor.stage = gradesOfScale(scale)[0] ?? '';
   }
 
   async function saveStage() {
-    if (!stageEditor) return;
+    if (!stageEditor?.scale) return;
     await journal.hairProgress.upsertStage({
       id: stageEditor.id,
       epochDay: epochDayFromDateInputValue(stageEditor.date) ?? today,
-      stage: stageEditor.stage
+      scale: stageEditor.scale,
+      stage: stageEditor.stage,
+      description: stageEditor.description
     });
     stageEditor = null;
   }
@@ -186,22 +213,34 @@
     {#if stagesQuery.loading}
       <Skeleton variant="line" count={2} />
     {:else if stages.length}
-      <div class="list-group">
-        {#each [...stages].reverse() as s (s.id)}
-          <button
-            class="list-row"
-            data-hair-stage={s.id}
-            aria-label={m.hair_stage_row_aria({ stage: hairStageName(s.stage), date: dayLabel(s.epochDay) })}
-            onclick={() => openStageEditor(s)}
-          >
-            <span class="row-text">
-              <span class="row-title">{hairStageName(s.stage)}</span>
-              <span class="row-subtitle">{stageSubtitle(s.epochDay)}</span>
-            </span>
-            <Icon name="pencil" size={18} />
-          </button>
-        {/each}
-      </div>
+      {#each stageGroups as group (group.scale)}
+        <SectionTitle text={hairScaleName(group.scale)} />
+        <div class="list-group" data-scale-group={group.scale}>
+          {#each group.stages as s (s.id)}
+            {@const graded = s.scale !== 'other'}
+            <button
+              class="list-row"
+              data-hair-stage={s.id}
+              aria-label={graded
+                ? m.hair_stage_row_aria({
+                    stage: hairStageName(s.scale, s.stage),
+                    scale: hairScaleName(s.scale),
+                    date: dayLabel(s.epochDay)
+                  })
+                : m.hair_other_row_aria({ date: dayLabel(s.epochDay) })}
+              onclick={() => openStageEditor(s)}
+            >
+              <span class="row-text">
+                <span class="row-title"
+                  >{graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}</span
+                >
+                <span class="row-subtitle">{stageSubtitle(s.epochDay)}</span>
+              </span>
+              <Icon name="pencil" size={18} />
+            </button>
+          {/each}
+        </div>
+      {/each}
     {:else}
       <EmptyState title={m.hair_stage_empty_title()} text={m.hair_stage_empty_body()}>
         {#snippet action()}
@@ -209,6 +248,8 @@
         {/snippet}
       </EmptyState>
     {/if}
+
+    <p class="muted small" style="margin-top:var(--space-2)">{m.hair_scale_source()}</p>
 
     <SectionTitle text={m.hair_photo_section_title()} />
 
@@ -292,15 +333,50 @@
         <input class="input" type="date" id="hair-stage-date" name="hair-stage-date" bind:value={stageEditor.date} />
       </div>
       <div class="field">
-        <label class="field-label" for="hair-stage-value">{m.hair_stage_label()}</label>
-        <select class="input" id="hair-stage-value" bind:value={stageEditor.stage}>
-          {#each NORWOOD_HAMILTON_STAGES as st (st)}
-            <option value={st}>{hairStageName(st)}</option>
+        <span class="field-label" id="hair-scale-label">{m.hair_scale_label()}</span>
+        <div class="list-group" role="radiogroup" aria-labelledby="hair-scale-label">
+          {#each HAIR_SCALES as scale (scale)}
+            <button
+              class="list-row"
+              role="radio"
+              aria-checked={stageEditor.scale === scale}
+              data-pick-scale={scale}
+              onclick={() => pickScale(scale)}
+            >
+              <span class="row-text">
+                <span class="row-title">{hairScaleName(scale)}</span>
+                <span class="row-subtitle">{hairScaleSub(scale)}</span>
+              </span>
+              {#if stageEditor.scale === scale}<Icon name="check" size={20} />{/if}
+            </button>
           {/each}
-        </select>
+        </div>
       </div>
+      {#if stageEditor.scale && stageEditor.scale !== 'other'}
+        <div class="field">
+          <label class="field-label" for="hair-stage-value">{m.hair_stage_label()}</label>
+          <select class="input" id="hair-stage-value" bind:value={stageEditor.stage}>
+            {#each gradesOfScale(stageEditor.scale) as grade (grade)}
+              <option value={grade}>{hairStageName(stageEditor.scale, grade)}</option>
+            {/each}
+          </select>
+        </div>
+      {:else if stageEditor.scale === 'other'}
+        <div class="field">
+          <label class="field-label" for="hair-other-value">{m.hair_other_label()}</label>
+          <input
+            class="input"
+            id="hair-other-value"
+            name="hair-other-value"
+            placeholder={m.hair_other_placeholder()}
+            bind:value={stageEditor.description}
+          />
+        </div>
+      {/if}
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-hair-stage onclick={saveStage}><span>{m.hair_stage_save()}</span></button>
+        <button class="btn btn-primary" data-save-hair-stage disabled={!stageEditor.scale} onclick={saveStage}>
+          <span>{m.hair_stage_save()}</span>
+        </button>
         {#if stageEditor.id}
           <button class="btn btn-ghost" data-delete-hair-stage onclick={askToDeleteStage}><span>{m.hair_stage_delete()}</span></button>
         {/if}
