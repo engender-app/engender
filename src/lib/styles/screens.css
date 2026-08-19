@@ -163,6 +163,18 @@
 .wrapped-thin { text-align: center; padding: var(--space-8) var(--space-4); position: relative; z-index: 1; }
 .wrapped-thin .muted { margin-top: var(--space-2); }
 
+/* The wrapped card (ticket 16): a self-contained frame, unlike the wrapped
+   screens above which lay their stats directly on the page. It reuses
+   .wrapped-stats/.wrapped-stat rather than duplicating that tile styling. */
+.wrapped-card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: var(--space-5); }
+.wrapped-card .wrapped-stats { margin-bottom: 0; }
+.wrapped-card-art {
+  height: 96px;
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+  background: linear-gradient(105deg, var(--motif-stripes));
+}
+
 /* Yearly. */
 .wrapped-cover { position: relative; z-index: 1; text-align: center; padding: var(--space-4) 0 var(--space-7); }
 .wrapped-cover-label {
