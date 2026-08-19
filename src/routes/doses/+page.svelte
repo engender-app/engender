@@ -10,7 +10,14 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { resolveEpisodeAt } from '$lib/data/regimenEpisode';
-  import { adherence, expectedSlots, isInjectionDose, isTopicalDose, APPLICATION_SITES } from '$lib/data/doseSchedule';
+  import {
+    adherence,
+    expectedSlots,
+    isInjectionDose,
+    isTopicalDose,
+    siteRecency,
+    APPLICATION_SITES
+  } from '$lib/data/doseSchedule';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import {
     dateInputValueFromEpochDay,
@@ -49,11 +56,16 @@
   let dosesQuery = liveQuery(['dose'], (j) => j.doses.getDoses(from, today));
   let schedulesQuery = liveQuery(['dose'], (j) => j.doses.getSchedules());
   let pausesQuery = liveQuery(['dose'], (j) => j.doses.getPauses());
+  /** Read separately from the windowed `dosesQuery` above (ticket 10): a
+      rotation site's last use routinely predates the log's 90-day window,
+      and "never used" has to mean never, not merely not in that window. */
+  let allInjectionDosesQuery = liveQuery(['dose'], (j) => j.doses.getDoses(0, today));
 
   let episodes = $derived(episodesQuery.value ?? []);
   let doses = $derived(dosesQuery.value ?? []);
   let schedules = $derived(schedulesQuery.value ?? []);
   let pauses = $derived(pausesQuery.value ?? []);
+  let siteRecencyByKey = $derived(siteRecency(allInjectionDosesQuery.value ?? [], today));
   let loading = $derived(episodesQuery.loading || dosesQuery.loading);
 
   let view = $state<'log' | 'schedule'>('log');
@@ -466,6 +478,7 @@
           <InjectionSiteMap
             value={editor.injectionSite}
             lastUsed={lastInjectionSite(timestampOf(editor.day, editor.time), editor.id)}
+            recency={siteRecencyByKey}
             onChange={(site) => editor && (editor.injectionSite = site)}
           />
         </div>
