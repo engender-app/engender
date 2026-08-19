@@ -178,3 +178,82 @@ body {
     transition-duration: 1ms !important;
   }
 }
+
+/* ============================================================
+   Paper (phase 5 ticket 17).
+
+   The shell is a fixed-height frame with one scrolling region inside it,
+   which is right on a phone and wrong on paper: a printer lays out what
+   fits in the frame and never sees the rest of the document. The clinician
+   visit summary has printed one truncated page since it was built for this
+   reason. Releasing the height and both overflows is what turns that into
+   as many sheets as the content needs, which the journal book depends on
+   completely - a book is many pages by definition.
+
+   The palette is overridden rather than left to the theme. Print drops
+   background colours by default, so a dark theme would otherwise reach the
+   page as pale grey text on white paper. Paper is white and ink is dark,
+   whatever the app is wearing on screen.
+
+   Navigation is not part of a document, so the rail, the bottom bar and the
+   skip link do not print. `.no-print` and `.print-heading` live here beside
+   them rather than in each printing screen's own scoped block: both screens
+   had written the same two rules, and a third would have written them again.
+   What each screen still decides for itself is which of its elements carry
+   those classes, and how its own content breaks across sheets.
+   ============================================================ */
+
+/* Paper-only, so it is hidden until the print block below turns it on. */
+.print-heading {
+  display: none;
+}
+
+@media print {
+  /* The screen's own horizontal padding goes below, so the margin of a
+     printed page is the page's, not a phone layout's. Stated rather than
+     left to the browser: a print-to-PDF call makes no margin at all
+     unless something asks for one. */
+  @page {
+    margin: 15mm;
+  }
+
+  /* Outweighs [data-palette][data-theme] in palettes.css, which is where
+     these tokens come from on screen. */
+  html[data-palette][data-theme] {
+    --bg: #FFFFFF;
+    --surface: #FFFFFF;
+    --surface-2: #FFFFFF;
+    --text: #000000;
+    --text-2: #444444;
+    --border: #CCCCCC;
+    --shadow-1: none;
+    --shadow-2: none;
+  }
+
+  .app-viewport,
+  .app,
+  .app-main {
+    height: auto;
+    overflow: visible;
+  }
+
+  .app-rail,
+  .app-nav,
+  .skip-link,
+  .no-print {
+    display: none !important;
+  }
+
+  /* A heading a screen shows only on paper: the title and range a reader
+     needs on a printed page and already has in the header on screen. */
+  .print-heading {
+    display: block;
+    margin-bottom: var(--space-4);
+  }
+
+  .screen {
+    padding: 0;
+    min-height: 0;
+    animation: none;
+  }
+}

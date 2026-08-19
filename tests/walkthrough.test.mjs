@@ -1617,6 +1617,43 @@ try {
   ok('the streak line quiets while a journaling pause covers today, and resuming brings it back the same day');
 } catch (e) { fail('journaling pause', e); }
 
+/* 27. the journal book (phase 5 ticket 17): what the inclusion picker says
+   is what the pages hold, and the print layout is many sheets rather than
+   one. The second half is the part no unit test can reach - the app shell
+   is a fixed-height frame with one scrolling region, so before the print
+   rules in app.css the document laid out to exactly one viewport and every
+   page after the first was silently dropped. */
+try {
+  await fresh('/settings/journal-book');
+  await page.waitForSelector('[data-book-entry]');
+  /* By part, not by position: the picker's order is a list in journalBook.ts
+     and gripping nth() would silently assert the wrong switch the day that
+     list is reordered (ADR-0029). */
+  const part = (key) => page.locator(`[data-inclusion="${key}"] [role="switch"]`);
+
+  if (await page.locator('[data-book-opening]').count()) throw new Error('the opening page is on before anyone asks for it');
+  await part('openingPage').click();
+  await page.waitForSelector('[data-book-opening] [data-wrapped-card-art]');
+
+  await part('entries').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-book-entry]').length === 0);
+  if ((await part('photos').getAttribute('aria-checked')) !== 'false') {
+    throw new Error('photos stayed ticked with no entries to sit under');
+  }
+
+  await part('entries').click();
+  await page.waitForSelector('[data-book-entry]');
+
+  await page.emulateMedia({ media: 'print' });
+  if (await page.locator('[data-book-inclusion]').isVisible()) throw new Error('the inclusion picker prints');
+  if (await page.locator('[data-app-nav]').isVisible()) throw new Error('the navigation bar prints');
+  const sheets = await page.evaluate(() => document.documentElement.scrollHeight / window.innerHeight);
+  if (sheets < 2) throw new Error(`the printed document is ${sheets.toFixed(1)} viewports tall, so it fits on one page`);
+  await page.emulateMedia({ media: 'screen' });
+
+  ok('a journal book carries what the picker was told to carry, and prints as more than one page');
+} catch (e) { await page.emulateMedia({ media: 'screen' }); fail('journal book', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');

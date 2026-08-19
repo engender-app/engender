@@ -450,6 +450,23 @@ twice under two names. Composed from a user-chosen `WrappedCardContent`
 nothing else - no journal text or photo, ever, because the type it's built
 from has no field for either.
 
+**Journal book**:
+A print of a chosen range, made of the record types the person ticked before
+generating it and no others. A keepsake rather than a copy: it leaves the
+device in a form anyone can read, and nothing reads it back, so an **archive**
+stays the only way to restore a journal. Not a second **clinician summary** -
+different audience, different parts, and a book carries what was chosen rather
+than what the range holds.
+_Avoid_: Export (the archive owns that word), report, backup
+
+**Book part**:
+One kind of record a journal book may carry - entries, their photos, tags,
+milestones, doubt entries, side effects, or the opening page. Every part is
+answered before the book is assembled, and an unchosen part is never read, so
+it cannot reach the page by way of something drawing it anyway.
+_Avoid_: Section (a clinician summary section prints because it registers; a
+book part prints because it was picked)
+
 **Palette art**:
 A wrapped card's optional decorative element: a gradient over the active
 colour palette's flag stripes (`--motif-stripes`, `palettes.css`), the same

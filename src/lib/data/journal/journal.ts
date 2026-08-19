@@ -16,6 +16,7 @@ import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';
 import { makeChecklistsArea, type ChecklistsArea } from './checklists';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
+import { makeJournalBookArea, type JournalBookArea } from './journalBook';
 import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
 import { makeCycleEventsArea, type CycleEventsArea } from './cycleEvents';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
@@ -165,6 +166,14 @@ export interface Journal {
       not a sixth owner for any of them - every figure on it already comes
       from one of those areas' own read paths. */
   clinicianSummary: ClinicianSummaryArea;
+  /** A keepsake print of a chosen range, carrying only the record types the
+      person picked (phase 5 ticket 17). A view over rows entries,
+      milestones, the doubt journal and side effects own, like
+      clinicianSummary above and for the same reason - but a different
+      audience, a different set of parts, and an inclusion the caller
+      supplies rather than a fixed section list. Never a restore format: the
+      archive stays the only one. */
+  journalBook: JournalBookArea;
   /** The four fixed "first noticed" markers (phase 4 ticket 07), read
       against the earliest regimen episode's start day above this seam
       (regimenEpisode.ts's earliestEpisode). No episode
@@ -263,14 +272,18 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const stats = makeStatsArea(driver);
   const checklists = makeChecklistsArea(driver);
   const procedures = makeProceduresArea(driver, files, checklists);
+  const entries = makeEntriesArea(driver, files);
+  const milestones = makeMilestonesArea(driver, files);
+  const doubtJournal = makeDoubtJournalArea(driver);
+  const tags = makeTagsArea(driver);
 
   return {
-    entries: makeEntriesArea(driver, files),
-    tags: makeTagsArea(driver),
+    entries,
+    tags,
     affirmations: makeAffirmationsArea(driver),
     bodyRegions: makeBodyRegionsArea(driver),
     dimensions,
-    milestones: makeMilestonesArea(driver, files),
+    milestones,
     photos: makePhotosArea(driver, files),
     voice: makeVoiceArea(driver),
     videos: makeVideoArea(driver),
@@ -290,11 +303,12 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     journalingPauses: makeJournalingPausesArea(driver),
     wearSessions: makeWearSessionsArea(driver, reminders),
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
+    journalBook: makeJournalBookArea({ entries, milestones, doubtJournal, sideEffects, stats, tags }),
     personalEffects: makePersonalEffectsArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
     hairRemoval: makeHairRemovalArea(driver, files),
     procedures,
-    doubtJournal: makeDoubtJournalArea(driver),
+    doubtJournal,
     tryouts: makeTryoutsArea(driver, files),
     feltSense: makeFeltSenseArea(driver),
     letters: makeLettersArea(driver),
