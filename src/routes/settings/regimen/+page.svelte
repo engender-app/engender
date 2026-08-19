@@ -5,7 +5,8 @@
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { pauseReasonLabel } from '$lib/data/vocabulary/doseLabels';
-  import type { PauseReason, RegimenEpisode } from '$lib/data/types';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import type { PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -43,8 +44,14 @@
     startDate: string;
     hidden: boolean;
   } | null>(null);
+  /* Offered above manual entry when adding a new episode (CONTEXT: "Regimen
+     template") - picking one only pre-fills drug/ester/route in the editor
+     below, never dose or interval. Editing an existing episode skips this
+     and opens the editor directly. */
+  let templatePicker = $state(false);
 
-  function openEditor(episode: RegimenEpisode | null) {
+  function openEditor(episode: RegimenEpisode | null, template: RegimenTemplate | null = null) {
+    templatePicker = false;
     editor = episode
       ? {
           id: episode.id,
@@ -58,11 +65,11 @@
           hidden: episode.hidden
         }
       : {
-          drug: '',
-          ester: '',
+          drug: template?.drug ?? '',
+          ester: template?.ester ?? '',
           dose: '',
           doseUnit: '',
-          route: '',
+          route: template?.route ?? '',
           interval: '',
           startDate: dateInputValueFromEpochDay(todayEpochDay()),
           hidden: false
@@ -155,7 +162,7 @@
     <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.regimen()}</h1>
     <div class="header-action">
-      <button class="icon-btn" data-add aria-label={m.regimen_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn" data-add aria-label={m.regimen_add_aria()} onclick={() => (templatePicker = true)}>
         <Icon name="plus" size={22} />
       </button>
     </div>
@@ -218,10 +225,43 @@
   {:else}
     <EmptyState title={m.regimen_empty_title()} text={m.regimen_empty_body()}>
       {#snippet action()}
-        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.regimen_empty_action()}</span></button>
+        <button class="btn btn-soft" onclick={() => (templatePicker = true)}><span>{m.regimen_empty_action()}</span></button>
       {/snippet}
     </EmptyState>
   {/if}
+
+  <Sheet
+    open={templatePicker}
+    title={m.regimen_template_sheet_title()}
+    onClose={() => (templatePicker = false)}
+  >
+    <div class="stack-3">
+      <button
+        class="list-row template-row"
+        data-own
+        style="border:1.5px dashed var(--accent-border);border-radius:var(--radius-md)"
+        onclick={() => openEditor(null, null)}
+      >
+        <span class="row-icon"><Icon name="pencil" size={20} /></span>
+        <span class="row-text">
+          <span class="row-title">{m.regimen_own_title()}</span>
+          <span class="row-subtitle">{m.regimen_own_sub()}</span>
+        </span>
+      </button>
+      {#each vocabulary.regimenTemplates as tp (tp.key)}
+        <button
+          class="list-row template-row"
+          data-template={tp.key}
+          style="background:var(--surface-2);border-radius:var(--radius-md)"
+          onclick={() => openEditor(null, tp)}
+        >
+          <span class="row-icon"><Icon name="flask" size={20} /></span>
+          <span class="row-text"><span class="row-title">{tp.name}</span></span>
+          <Icon name="chevronRight" size={18} />
+        </button>
+      {/each}
+    </div>
+  </Sheet>
 
   <Sheet open={editor !== null} title={editor?.id ? m.regimen_edit_sheet() : m.regimen_new_sheet()} onClose={() => (editor = null)}>
     {#if editor}

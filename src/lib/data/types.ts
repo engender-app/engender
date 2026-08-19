@@ -583,6 +583,22 @@ export interface EntryPrompt {
   text: string;
 }
 
+/** A built-in suggestion for a `RegimenEpisode` (phase 5 ticket 42, CONTEXT:
+    "Regimen template"): picking one pre-fills `drug`, `ester` and `route`
+    only, the same shape `MilestoneTemplate` gives a milestone's name. `name`
+    labels the picker row and is never itself written into the episode.
+    Carries no dose or interval on purpose - those are where a suggestion
+    starts reading as a recommendation, which this app's HRT tracking
+    otherwise never does. What the user saves from one is an ordinary
+    RegimenEpisode, with no stored link back to the template it came from. */
+export interface RegimenTemplate {
+  key: string;
+  name: string;
+  drug: string;
+  ester: string | null;
+  route: string;
+}
+
 /** The eight fixed markers a personal effects timeline tracks: four
     feminizing (phase 4 ticket 07) and four masculinizing (phase 5 ticket
     02), sharing one closed table rather than two parallel ones - one
