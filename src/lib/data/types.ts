@@ -624,3 +624,23 @@ export interface Checklist {
   owner: ChecklistOwner | null;
   items: ChecklistItem[];
 }
+
+/** One procedure someone is going through (phase 5 ticket 07, CONTEXT:
+    "Procedure"): a free-text name, the consults leading up to it, a surgery
+    date once there is one, and the recovery log's own notes. Several can
+    coexist - top surgery and facial feminization surgery tracked
+    independently - so nothing about this shape is a singleton.
+
+    Holds nothing derived: how far along recovery is comes from the surgery
+    date and today (recoveryDay.ts, ADR-0010), and the recovery checklist is
+    an ordinary **Checklist** owned by this procedure rather than a field
+    here. */
+export interface Procedure {
+  id: string;
+  name: string;
+  /** Null until a date is set, which is usually well after the record
+      exists. */
+  surgeryEpochDay: number | null;
+  consultEpochDays: number[];
+  notes: string;
+}
