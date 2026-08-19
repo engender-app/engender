@@ -45,3 +45,54 @@ describe('the walkthrough grips handles, never structure or wording', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+const accessibilityAuditPath = fileURLToPath(new URL('./accessibility-audit.test.ts', import.meta.url));
+const auditSource = readFileSync(accessibilityAuditPath, 'utf8');
+const auditLines = auditSource.split('\n');
+
+// Matches the first quoted-string argument of the assertions the
+// accessibility audit uses to check a file's content - toContain/toMatch.
+// That argument is what the audit actually locates the property by.
+const CONTENT_CALL = /(?:\.toContain|\.toMatch)\(\s*(['"`])((?:(?!\1).)*)\1/g;
+
+// A literal HTML class attribute - the shape the two former offenders used
+// (`class="card chart-card"`, `class="value-row"`), restyle-fragile in
+// exactly the way a `data-*` handle is not.
+const CLASS_ATTR = /class=["'][^"']*["']/;
+
+// A quoted argument that reads as rendered copy rather than a handle: no
+// message-key call, no markup or CSS punctuation, but prose words with a
+// space in between.
+function looksLikeCopy(value: string): boolean {
+  if (value.startsWith('m.')) return false;
+  if (/[=<>{}[\]()@:;]/.test(value)) return false;
+  return / /.test(value) && /[a-zA-Z]{2,}/.test(value);
+}
+
+describe('the accessibility audit grips handles, not markup', () => {
+  it('checks properties by a data-* handle, an id, or an ARIA role, never a CSS class', () => {
+    const offenders: string[] = [];
+    for (const [i, line] of auditLines.entries()) {
+      for (const match of line.matchAll(CONTENT_CALL)) {
+        const value = match[2];
+        if (CLASS_ATTR.test(value)) {
+          offenders.push(`line ${i + 1}: ${value}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('marks every copy-based content match as a deliberate text-under-test exception', () => {
+    const offenders: string[] = [];
+    for (const [i, line] of auditLines.entries()) {
+      for (const match of line.matchAll(CONTENT_CALL)) {
+        const value = match[2];
+        if (looksLikeCopy(value) && !line.includes(TEXT_UNDER_TEST_MARKER)) {
+          offenders.push(`line ${i + 1}: ${value}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
