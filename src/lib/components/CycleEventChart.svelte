@@ -18,7 +18,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { scaleLinear } from 'd3-scale';
-  import { fmtDay } from '$lib/data/dates';
   import { cycleEventKindName } from '$lib/data/vocabulary/labels';
   import type { CycleEventKind } from '$lib/data/types';
 
@@ -63,18 +62,10 @@
     spotting: 'marker-spotting',
     nothing_this_month: 'marker-nothing'
   };
-
-  let ariaLabel = $derived(
-    m.chart_aria({
-      count: String(events.length),
-      from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
-      to: fmtDay(toEpochDay, { day: 'numeric', month: 'short' })
-    })
-  );
 </script>
 
 <div class="cycle-event-chart">
-  <svg class="chart-track" viewBox="0 0 {WIDTH} {HEIGHT}" preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
+  <svg class="chart-track" viewBox="0 0 {WIDTH} {HEIGHT}" preserveAspectRatio="none" aria-hidden="true">
     <line class="track-baseline" x1={P} x2={WIDTH - P} y1={HEIGHT / 2} y2={HEIGHT / 2} />
     {#each bands as band, i (i)}
       <rect
