@@ -6,6 +6,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
 
 /* Photo bytes only have to be distinguishable here - normalize() is the
@@ -98,6 +99,34 @@ test('a region nothing was ever logged against comes back empty rather than thro
   await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: 50 } });
 
   assert.deepEqual(await journal.stats.bodyRegionTrend('genitals', 100, 100), []);
+});
+
+/* wear-time trend (phase 5 ticket 04) */
+
+test('a wear-time trend averages completed sessions per day, in hours', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.wearSessions.upsertSession({ startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: 4 * 3600000 });
+  await journal.wearSessions.upsertSession({ startTimestamp: startOfDayTimestamp(100) + 15 * 3600000, durationMs: 2 * 3600000 });
+  await journal.wearSessions.upsertSession({ startTimestamp: startOfDayTimestamp(101) + 9 * 3600000, durationMs: 6 * 3600000 });
+
+  assert.deepEqual(await journal.stats.wearTimeTrend(100, 101), [
+    { day: 100, value: 3, count: 2 },
+    { day: 101, value: 6, count: 1 }
+  ]);
+});
+
+test('a still-running session has no duration to average and is left out of the trend', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.wearSessions.upsertSession({ startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: null });
+
+  assert.deepEqual(await journal.stats.wearTimeTrend(100, 100), []);
+});
+
+test('a range with no completed session comes back empty rather than throwing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.deepEqual(await journal.stats.wearTimeTrend(100, 100), []);
 });
 
 /* tally trend (ticket 10) */

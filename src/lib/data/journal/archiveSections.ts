@@ -116,7 +116,11 @@ const SECTIONS = [
     read: read.readFeltSenseEntries,
     apply: apply.applyFeltSenseEntries
   }),
-  section({ name: 'checklists', read: read.readChecklists, apply: apply.applyChecklists })
+  section({ name: 'checklists', read: read.readChecklists, apply: apply.applyChecklists }),
+  // No `after`: its optional reminder travels as an ordinary reminder row,
+  // matched back up by an auto_source marker rather than a rowid this
+  // section would have to resolve.
+  section({ name: 'wearSessions', read: read.readWearSessions, apply: apply.applyWearSessions })
 ] as const;
 
 /* A section on the wire type with no entry above would be written into every

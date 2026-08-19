@@ -566,6 +566,7 @@ const CARRIED: Record<string, string[]> = {
   // checklist_id travels as the checklist's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
+  wear_session: ['uuid', 'start_timestamp', 'duration_ms', 'note'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

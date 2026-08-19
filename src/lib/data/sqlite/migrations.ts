@@ -689,6 +689,34 @@ CREATE TABLE cycle_event (
 CREATE INDEX idx_cycle_event_epoch_day ON cycle_event(epoch_day);
 `;
 
+/* v22: the binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear
+   session"). Its own record type, not an Entry: no mood, dimension values,
+   tags or note beyond the one free-text comfort/pain field it carries.
+
+   duration_ms is nullable to hold a live session's running state - a start
+   timestamp set and no stop tapped yet - the same way dose_pause's
+   end_epoch_day is null for a pause still running. A backfilled session
+   never has a null duration: its day and duration are both known at save
+   time, so there is nothing left running to represent.
+
+   No episode reference, the same reason side_effect and personal_effect
+   have none: a wear session has to work whether or not a regimen episode
+   exists. Its optional Reminder is not a column here either - it is an
+   ordinary reminder row, matched back to its session by an auto_source
+   marker (wearSessions.ts), the same handoff medication_stock's run-out
+   prompt uses. */
+const SCHEMA_V22 = `
+CREATE TABLE wear_session (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  start_timestamp INTEGER NOT NULL,
+  duration_ms     INTEGER,
+  note            TEXT,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX idx_wear_session_start ON wear_session(start_timestamp);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -710,7 +738,8 @@ export const migrations: Migration[] = [
   { version: 18, sql: SCHEMA_V18 },
   { version: 19, sql: SCHEMA_V19 },
   { version: 20, sql: SCHEMA_V20 },
-  { version: 21, sql: SCHEMA_V21 }
+  { version: 21, sql: SCHEMA_V21 },
+  { version: 22, sql: SCHEMA_V22 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

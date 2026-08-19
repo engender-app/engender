@@ -68,7 +68,8 @@ const SECTIONS = [
   'medicationStock',
   'tryouts',
   'feltSenseEntries',
-  'checklists'
+  'checklists',
+  'wearSessions'
 ] as const satisfies readonly (keyof ArchiveJournal)[];
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
@@ -83,7 +84,7 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 26 sections, and the customizations that
+/** A journal with something in all 27 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, and a renamed, a hidden and a switched-off built-in. */
@@ -187,6 +188,14 @@ async function everySection(): Promise<Journal> {
   const checklist = await journal.checklists.createChecklist({ kind: 'procedure', id: 'proc-1' });
   const checklistItem = await journal.checklists.addItem(checklist.id, 'buy gauze');
   await journal.checklists.setItemChecked(checklistItem.id, true);
+
+  await journal.wearSessions.upsertSession({
+    startTimestamp: 1_700_000_000_000,
+    durationMs: 6 * 3600000,
+    note: 'a bit tight by the end',
+    reminderHoursAfterStart: 8,
+    reminderTitle: 'binder check-in'
+  });
 
   return journal;
 }

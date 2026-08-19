@@ -41,7 +41,8 @@ import type {
   ArchiveTagGroup,
   ArchiveTallyEvent,
   ArchiveTryout,
-  ArchiveVoiceRecording
+  ArchiveVoiceRecording,
+  ArchiveWearSession
 } from '../archive/payload';
 import { bool, domainIdOf } from './support';
 
@@ -574,5 +575,20 @@ export async function readDosePauses({ driver }: SectionRead): Promise<ArchiveDo
     startEpochDay: r.start_epoch_day,
     endEpochDay: r.end_epoch_day,
     reason: r.reason
+  }));
+}
+
+export async function readWearSessions({ driver }: SectionRead): Promise<ArchiveWearSession[]> {
+  const rows = await driver.query<{
+    uuid: string;
+    start_timestamp: number;
+    duration_ms: number | null;
+    note: string | null;
+  }>('SELECT uuid, start_timestamp, duration_ms, note FROM wear_session ORDER BY start_timestamp, id');
+  return rows.map((r) => ({
+    id: r.uuid,
+    startTimestamp: r.start_timestamp,
+    durationMs: r.duration_ms,
+    note: r.note
   }));
 }
