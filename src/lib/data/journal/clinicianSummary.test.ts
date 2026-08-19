@@ -32,6 +32,7 @@ async function episode(journal: Journal, startEpochDay: number, overrides: Parti
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay,
+    endEpochDay: null,
     ...overrides
   });
 }
@@ -72,7 +73,7 @@ test('the appointment prep list prints its full current content regardless of th
 
 test('an episode superseded before the range starts is left out; the one still ongoing is included with no end day', async () => {
   const { journal } = await journalWithBuiltIns();
-  await episode(journal, 18900, { dose: 2 });
+  await episode(journal, 18900, { dose: 2, endEpochDay: 18999 });
   await episode(journal, 19000, { dose: 4 });
 
   const summary = await journal.clinicianSummary.getSummary(19010, 19020);
@@ -82,9 +83,9 @@ test('an episode superseded before the range starts is left out; the one still o
   assert.equal(summary.regimenEpisodes[0].endEpochDay, null);
 });
 
-test('an episode superseded inside the range reports the day it ended, even though its successor started outside the range', async () => {
+test('an ended episode inside the range reports its own stored end day, whatever else starts outside the range (phase 5 ticket 38)', async () => {
   const { journal } = await journalWithBuiltIns();
-  await episode(journal, 19000, { dose: 2 });
+  await episode(journal, 19000, { dose: 2, endEpochDay: 19029 });
   await episode(journal, 19030, { dose: 4 });
 
   const summary = await journal.clinicianSummary.getSummary(19000, 19020);
@@ -117,7 +118,7 @@ test('with nothing logged at all, every field comes back empty rather than throw
     regimenEpisodes: [],
     doses: [],
     labResults: [],
-    exposure: { doseTotals: [], routeDays: [], regimenDays: [] },
+    exposure: { doseTotals: [], routeDays: [], regimenDays: [], excludedDoses: 0 },
     sideEffects: [],
     procedures: [],
     appointmentPrepItems: []

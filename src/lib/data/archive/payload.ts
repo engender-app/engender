@@ -488,6 +488,10 @@ export interface ArchiveRegimenEpisode {
   route: string;
   interval: string;
   startEpochDay: number;
+  /** Nullable: still ongoing (phase 5 ticket 38). Absent on an archive from
+      before this field existed, which restore.ts reads as null the same
+      way it already reads any other field a pre-ticket build never wrote. */
+  endEpochDay: number | null;
   hidden: boolean;
 }
 
@@ -511,6 +515,11 @@ export interface ArchiveDoseEvent {
   scheduledDose: number | null;
   scheduledRoute: string | null;
   scheduledTimestamp: number | null;
+  /** Which drug this dose was, in its own words - optional and usually
+      null (phase 5 ticket 38). Absent on an archive from before this field
+      existed, read as null the same way any other field a pre-ticket
+      build never wrote is. */
+  drug: string | null;
 }
 
 /** Named by the episode's travelling uuid, not its rowid: the rowid means

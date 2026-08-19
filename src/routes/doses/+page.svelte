@@ -1,15 +1,18 @@
 <script lang="ts">
-  /* The dose log (phase 4 ticket 02). Two views over the same three reads:
-     what was logged, and how it sits against what the active episode's
-     schedule expected.
+  /* The dose log (phase 4 ticket 02, widened to concurrent episodes by
+     phase 5 ticket 38). Two views over the same three reads: what was
+     logged, and how it sits against what the active episode's schedule
+     expected.
 
-     Which regimen episode a dose belongs to is never read from the dose -
-     nothing stores it. Every row asks resolveEpisodeAt with the dose's own
-     timestamp, which is why correcting a date in the editor below moves the
-     dose to a different episode with nothing else to update. */
+     A dose usually stores no drug or regimen episode of its own - every
+     row asks attributeDose with the dose's own timestamp, which is why
+     correcting a date in the editor below moves the dose to a different
+     episode with nothing else to update. `drug` only exists to break a
+     tie when more than one episode is active at once for different drugs
+     (regimenEpisode.ts). */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { resolveEpisodeAt } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, attributeDose } from '$lib/data/regimenEpisode';
   import {
     adherence,
     expectedSlots,
@@ -70,7 +73,18 @@
 
   let view = $state<'log' | 'schedule'>('log');
 
-  let activeEpisode = $derived(resolveEpisodeAt(episodes, Date.now()));
+  /* Every episode active right now (phase 5 ticket 38): usually one, but a
+     concurrent second drug's episode makes it two. `activeEpisode` stays
+     the single-episode question the schedule tab and the new-dose prefill
+     both ask - null covers "none" and "more than one" alike, the same
+     `m.adherence_no_episode()` fallback either way, so a single active
+     episode still behaves exactly as before with no added friction. */
+  let activeEpisodes = $derived(activeEpisodesAt(episodes, Date.now()));
+  let activeEpisode = $derived(activeEpisodes.length === 1 ? activeEpisodes[0] : null);
+  /** The drugs to choose between when logging a new dose while more than
+      one episode is active - empty whenever activeEpisode already answers
+      the question on its own. */
+  let activeDrugChoices = $derived([...new Set(activeEpisodes.map((e) => e.drug))]);
   let activeSchedule = $derived(schedules.find((s) => s.episodeId === activeEpisode?.id) ?? null);
   let activePauses = $derived(pauses.filter((p) => p.episodeId === activeEpisode?.id));
 
@@ -80,7 +94,7 @@
      a pause - neither of which was true. Resolved rather than filtered by
      date so the split is the same one every other screen makes. */
   let episodeDoses = $derived(
-    activeEpisode ? doses.filter((dose) => resolveEpisodeAt(episodes, dose.timestamp)?.id === activeEpisode.id) : []
+    activeEpisode ? doses.filter((dose) => attributeDose(episodes, dose).episode?.id === activeEpisode.id) : []
   );
 
   /* The comparison runs from the episode's own start day, so a schedule's
@@ -144,16 +158,27 @@
     scheduledDose: string;
     scheduledRoute: DoseRoute;
     scheduledTime: string;
+    /** Which drug this is, when it needs saying (phase 5 ticket 38). `''`
+        on every dose logged while at most one episode was active - the
+        common case, and the one this field must not add friction to. */
+    drug: string;
   };
 
   let editor = $state<Editor | null>(null);
+  /** True only for a *new* dose, while it is genuinely ambiguous which of
+      several active episodes it is for - not for editing an old dose,
+      whose own drug (if any) is shown but never forced. */
+  let editorNeedsDrugPick = $derived(editor !== null && !editor.id && activeDrugChoices.length > 1);
 
   function openEditor(dose: DoseEvent | null) {
     const now = Date.now();
     if (!dose) {
       /* Seeded from the active episode: someone logging today's dose is
          almost always logging the regimen they are on, and retyping the
-         amount and unit every time is the tax that stops people logging. */
+         amount and unit every time is the tax that stops people logging.
+         With more than one episode active, there is no single "the
+         active episode" to seed from - the drug picker below fills the
+         amount and unit in once a drug is chosen. */
       editor = {
         day: dateInputValueFromEpochDay(today),
         time: timeInputValue(now),
@@ -166,7 +191,8 @@
         status: 'taken',
         scheduledDose: '',
         scheduledRoute: 'oral',
-        scheduledTime: timeInputValue(now)
+        scheduledTime: timeInputValue(now),
+        drug: activeEpisode?.drug ?? ''
       };
       return;
     }
@@ -184,20 +210,33 @@
       status: dose.status,
       scheduledDose: dose.scheduled ? String(dose.scheduled.dose) : String(dose.dose),
       scheduledRoute: dose.scheduled?.route ?? dose.route,
-      scheduledTime: timeInputValue(dose.scheduled?.timestamp ?? dose.timestamp)
+      scheduledTime: timeInputValue(dose.scheduled?.timestamp ?? dose.timestamp),
+      drug: dose.drug ?? ''
     };
+  }
+
+  /** Picking a drug in the disambiguation prompt also seeds the amount and
+      unit from that episode, the same convenience a single active episode
+      already gets for free. */
+  function pickDrug(drug: string) {
+    if (!editor) return;
+    const match = activeEpisodes.find((e) => e.drug === drug);
+    editor = { ...editor, drug, dose: match ? String(match.dose) : editor.dose, doseUnit: match ? match.doseUnit : editor.doseUnit };
   }
 
   let editorIsInjection = $derived(editor !== null && isInjectionDose(editor));
   let editorIsTopical = $derived(editor !== null && isTopicalDose(editor));
   /* An injection with no site picked yet cannot be saved: a rotation map
      nobody tapped would store an empty site and quietly break the rotation
-     it exists for. */
+     it exists for. Nor can a new dose while several episodes are active
+     and none has been picked - that is exactly the ambiguity this ticket
+     exists to stop from being drawn into the wrong drug's curve. */
   let editorCanSave = $derived(
     editor !== null &&
       !isNaN(parseFloat(editor.dose)) &&
       (!editorIsInjection || editor.injectionSite !== '') &&
-      (!editorIsTopical || editor.applicationSite !== '')
+      (!editorIsTopical || editor.applicationSite !== '') &&
+      (!editorNeedsDrugPick || editor.drug !== '')
   );
 
   async function saveDose() {
@@ -219,6 +258,8 @@
        Each branch refuses an untapped picker outright rather than falling
        through to the next, which would have written an injection as though
        it had no site to record. */
+    const drug = editor.drug.trim() || null;
+
     if (isInjectionDose(editor)) {
       if (editor.injectionSite === '') return;
       await journal.doses.upsertDose({
@@ -230,7 +271,8 @@
         injectionSite: editor.injectionSite,
         vehicle: editor.vehicle,
         status: editor.status,
-        scheduled
+        scheduled,
+        drug
       });
     } else if (isTopicalDose(editor)) {
       if (editor.applicationSite === '') return;
@@ -242,7 +284,8 @@
         doseUnit,
         applicationSite: editor.applicationSite,
         status: editor.status,
-        scheduled
+        scheduled,
+        drug
       });
     } else if (editor.route === 'oral' || editor.route === 'sublingual') {
       /* Spelled out rather than left as a bare `else`: the editor's draft is a
@@ -255,7 +298,8 @@
         dose,
         doseUnit,
         status: editor.status,
-        scheduled
+        scheduled,
+        drug
       });
     }
     editor = null;
@@ -297,7 +341,7 @@
       <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: WINDOW_DAYS })}</p>
       <div class="list-group">
         {#each [...doses].reverse() as dose (dose.id)}
-          {@const episode = resolveEpisodeAt(episodes, dose.timestamp)}
+          {@const attribution = attributeDose(episodes, dose)}
           {@const site = siteOf(dose)}
           <button
             class="list-row"
@@ -318,7 +362,13 @@
                 {#if isInjectionDose(dose) && dose.vehicle}· {vehicleLabel(dose.vehicle)}{/if}
               </span>
               <span class="row-subtitle">
-                {episode ? m.doses_under_episode({ drug: episode.drug }) : m.doses_no_episode()}
+                {#if attribution.episode}
+                  {m.doses_under_episode({ drug: attribution.episode.drug })}
+                {:else if attribution.ambiguous}
+                  {m.doses_ambiguous_episode()}
+                {:else}
+                  {m.doses_no_episode()}
+                {/if}
               </span>
               {#if dose.scheduled}
                 <span class="row-subtitle">
@@ -338,6 +388,8 @@
         {/snippet}
       </EmptyState>
     {/if}
+  {:else if activeEpisodes.length > 1}
+    <p class="notice notice-info" style="margin-top:var(--space-4)">{m.adherence_multiple_episodes()}</p>
   {:else if !activeEpisode}
     <p class="notice notice-info" style="margin-top:var(--space-4)">{m.adherence_no_episode()}</p>
   {:else if !activeSchedule}
@@ -432,6 +484,27 @@
         </div>
       </div>
       <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-4)">{m.dose_time_hint()}</p>
+
+      {#if editorNeedsDrugPick}
+        <div class="field">
+          <span class="field-label" id="dose-drug-label">{m.dose_drug_label()}</span>
+          <p class="muted small">{m.dose_drug_hint()}</p>
+          <div class="tag-row" role="group" aria-labelledby="dose-drug-label">
+            {#each activeDrugChoices as drug (drug)}
+              <button
+                type="button"
+                class="tag-chip"
+                class:is-selected={editor.drug === drug}
+                aria-pressed={editor.drug === drug}
+                data-dose-drug={drug}
+                onclick={() => pickDrug(drug)}
+              >
+                {drug}
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
 
       <div class="field">
         <span class="field-label" id="dose-route-label">{m.dose_route_label()}</span>

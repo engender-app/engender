@@ -23,6 +23,7 @@ async function episode(journal: Journal, startEpochDay: number, overrides: Parti
     route: 'oral',
     interval: 'every day',
     startEpochDay,
+    endEpochDay: null,
     ...overrides
   });
 }
@@ -235,8 +236,19 @@ test('neither hormone’s results reach the other hormone’s curve', async () =
   await journal.doses.upsertDose({ timestamp: at(FROM), route: 'gel', dose: 2, doseUnit: 'mg', applicationSite: 'thigh' });
   await journal.labs.upsertResult({ epochDay: FROM, analyte: 'estradiol', value: 210, unit: 'pg/mL', drawTime: '10:00' });
 
+  // Both episodes are concurrently active by now (phase 5 ticket 38), so
+  // the dose names its own drug the way the dose editor would have
+  // prompted for it - see the pure-function test's sibling in
+  // hormoneCurveQualitative.test.ts for the drug-less, ambiguous case.
   await episode(journal, FROM + 3, { drug: 'testosterone', route: 'gel' });
-  await journal.doses.upsertDose({ timestamp: at(FROM + 4), route: 'gel', dose: 50, doseUnit: 'mg', applicationSite: 'shoulder' });
+  await journal.doses.upsertDose({
+    timestamp: at(FROM + 4),
+    route: 'gel',
+    dose: 50,
+    doseUnit: 'mg',
+    applicationSite: 'shoulder',
+    drug: 'testosterone'
+  });
   await journal.labs.upsertResult({ epochDay: FROM + 4, analyte: 'testosterone', value: 500, unit: 'ng/dL', drawTime: '10:00' });
 
   const e2 = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: true });

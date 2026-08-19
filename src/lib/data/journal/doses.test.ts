@@ -4,14 +4,14 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { resolveEpisodeAt } from '../regimenEpisode.ts';
+import { attributeDose } from '../regimenEpisode.ts';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 import type { Journal } from './journal.ts';
 
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
 
-async function episode(journal: Journal, startEpochDay: number, drug: string) {
+async function episode(journal: Journal, startEpochDay: number, drug: string, endEpochDay: number | null = null) {
   return journal.regimen.upsertEpisode({
     drug,
     ester: null,
@@ -19,7 +19,8 @@ async function episode(journal: Journal, startEpochDay: number, drug: string) {
     doseUnit: 'mg',
     route: 'oral',
     interval: 'daily',
-    startEpochDay
+    startEpochDay,
+    endEpochDay
   });
 }
 
@@ -45,7 +46,8 @@ test('an injection carries a site and a vehicle, and round-trips both', async ()
     injectionSite: 'ventrogluteal-left',
     vehicle: 'oil',
     status: 'taken',
-    scheduled: null
+    scheduled: null,
+    drug: null
   });
 });
 
@@ -64,6 +66,7 @@ test('a patch carries an application site and no vehicle', async () => {
     'applicationSite',
     'dose',
     'doseUnit',
+    'drug',
     'id',
     'route',
     'scheduled',
@@ -156,34 +159,38 @@ test('a dose stores no regimen episode: attribution comes from its timestamp eve
 
 test('a corrective episode with a past start date changes which episode an already-logged dose resolves to', async () => {
   const { journal } = await journalWithBuiltIns();
-  await episode(journal, 100, 'estradiol');
+  const wrongId = await episode(journal, 100, 'estradiol');
   await journal.doses.upsertDose({ timestamp: at(150), route: 'oral', dose: 2, doseUnit: 'mg' });
 
   const [dose] = await journal.doses.getDoses(150, 150);
-  assert.equal(resolveEpisodeAt(await journal.regimen.getEpisodes(), dose.timestamp)?.drug, 'estradiol');
+  assert.equal(attributeDose(await journal.regimen.getEpisodes(), dose).episode?.drug, 'estradiol');
 
   // Logged well after the fact: the episode that was really in effect.
+  // Correcting the mistaken one's end alongside it is what makes this a
+  // real correction rather than two drugs concurrently active (ticket 38) -
+  // the person is saying "this one was wrong", not "both were true".
+  await journal.regimen.endEpisode(wrongId, 139);
   await episode(journal, 140, 'estradiol valerate');
 
-  assert.equal(resolveEpisodeAt(await journal.regimen.getEpisodes(), dose.timestamp)?.drug, 'estradiol valerate');
+  assert.equal(attributeDose(await journal.regimen.getEpisodes(), dose).episode?.drug, 'estradiol valerate');
 });
 
 test('backdating a dose re-resolves its episode instead of keeping the one it was saved under', async () => {
   const { journal } = await journalWithBuiltIns();
-  await episode(journal, 100, 'first');
+  await episode(journal, 100, 'first', 199);
   await episode(journal, 200, 'second');
 
   const id = await journal.doses.upsertDose({ timestamp: at(250), route: 'oral', dose: 2, doseUnit: 'mg' });
   const episodes = await journal.regimen.getEpisodes();
 
   const [saved] = await journal.doses.getDoses(250, 250);
-  assert.equal(resolveEpisodeAt(episodes, saved.timestamp)?.drug, 'second');
+  assert.equal(attributeDose(episodes, saved).episode?.drug, 'second');
 
   await journal.doses.upsertDose({ id, timestamp: at(150), route: 'oral', dose: 2, doseUnit: 'mg' });
 
   const [backdated] = await journal.doses.getDoses(150, 150);
   assert.equal(backdated.id, id);
-  assert.equal(resolveEpisodeAt(episodes, backdated.timestamp)?.drug, 'first');
+  assert.equal(attributeDose(episodes, backdated).episode?.drug, 'first');
   assert.deepEqual(await journal.doses.getDoses(250, 250), []);
 });
 

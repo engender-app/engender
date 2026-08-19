@@ -18,6 +18,7 @@ async function episode(journal: Journal, startEpochDay: number, overrides: Parti
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay,
+    endEpochDay: null,
     ...overrides
   });
 }
@@ -51,12 +52,12 @@ test('with no episodes and no doses at all, every counter comes back empty rathe
 
   const counters = await journal.exposure.getCounters(19000, 19020);
 
-  assert.deepEqual(counters, { doseTotals: [], routeDays: [], regimenDays: [] });
+  assert.deepEqual(counters, { doseTotals: [], routeDays: [], regimenDays: [], excludedDoses: 0 });
 });
 
 test('a dose change to a new episode on the same route still folds into one route-days total', async () => {
   const { journal } = await journalWithBuiltIns();
-  await episode(journal, 19000);
+  await episode(journal, 19000, { endEpochDay: 19009 });
   await episode(journal, 19010, { dose: 6 });
 
   const counters = await journal.exposure.getCounters(19000, 19019);

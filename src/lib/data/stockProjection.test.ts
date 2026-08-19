@@ -16,6 +16,7 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay: DAY_0,
+    endEpochDay: null,
     hidden: false,
     ...overrides
   };
@@ -80,6 +81,22 @@ test('a dose logged under a different drug does not count, even in a matching ep
   const projection = projectStock(stock, doses, [otherEpisode], DAY_0 + 5);
 
   assert.equal(projection.remaining, 10);
+});
+
+test('a drug-less dose left ambiguous by two concurrent episodes of different drugs consumes no stock, and is counted excluded (case 4)', () => {
+  /* The bug ticket 38 exists to close: before concurrency was representable,
+     a route/window match alone was enough to consume the wrong drug's stock.
+     Two concurrent episodes for different drugs, and a dose naming no drug
+     of its own, must not deplete either stock - and the exclusion must be
+     counted, not silently dropped. */
+  const stock = { drug: 'estradiol valerate', quantity: 10, unit: 'vials', recordedEpochDay: DAY_0 };
+  const episodes = [episode({ startEpochDay: DAY_0 }), episode({ id: 'ep-2', drug: 'spironolactone', startEpochDay: DAY_0 })];
+  const doses = [dose(DAY_0 + 1)];
+
+  const projection = projectStock(stock, doses, episodes, DAY_0 + 5);
+
+  assert.equal(projection.remaining, 10);
+  assert.equal(projection.excludedDoses, 1);
 });
 
 test('drug matching trims surrounding whitespace and nothing else', () => {

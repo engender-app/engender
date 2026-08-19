@@ -114,11 +114,14 @@ CREATE INDEX idx_tally_kind_day ON tally_event(kind, epoch_day);
    this. uuid-only identity (ADR-0002): every regimen episode is a user's
    own row, with no built-in counterpart to key by.
 
-   No `end_epoch_day` column: an episode's end is derived from the next
-   episode's start, never stored (ADR-0010), which is what lets a
+   No `end_epoch_day` column here: an episode's end was derived from the
+   next episode's start, never stored (ADR-0010), which is what let a
    retroactive correction (a new episode inserted with a past start date)
    change every affected record's attribution without a migration or a
-   stored link to rewrite. */
+   stored link to rewrite. v40 adds the column and stops relying on that
+   derivation, once two episodes for different drugs are allowed to
+   overlap and there is no longer a single "next" episode to derive one
+   from. */
 const SCHEMA_V7 = `
 CREATE TABLE regimen_episode (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1368,6 +1371,47 @@ DROP TABLE personal_effect;
 ALTER TABLE personal_effect_v39 RENAME TO personal_effect;
 `;
 
+/* v40: overlapping regimen episodes and dose-level drug attribution (phase
+   5 ticket 38, CONTEXT: "Regimen episode", "Dose event"). Two plain
+   nullable columns, no rebuild - neither changes an existing CHECK or NOT
+   NULL shape.
+
+   `regimen_episode.end_epoch_day` reverses part of v7's own comment: an
+   episode's end is now a value the person sets by ending it explicitly,
+   not a day derived from whichever episode happens to sort next. That
+   derivation stops being able to answer the question at all once two
+   episodes for different drugs are allowed to overlap on purpose - there
+   is no longer one "next" episode to read an end off. The backfill below
+   computes every *existing* episode's end from that old derivation
+   (the next episode overall, ordered start_epoch_day then id - the same
+   order regimenEpisode.ts's functions have always required - one epoch
+   day before it starts, or NULL for the last one) so every journal that
+   predates this migration displays and resolves exactly as it did before:
+   this is filling in a fact that was already true and implicit, not
+   reinterpreting what a stored episode means. A journal's episodes never
+   overlapped under the old model (only one episode could ever be active
+   at a time), so this backfill cannot manufacture overlap out of history
+   that never had any.
+
+   `dose_event.drug` is additive and always starts NULL: no existing dose
+   needs one, since attribution only needs a dose's own drug once more
+   than one episode can be active on the day it was logged, which no
+   pre-v40 journal could ever produce. */
+const SCHEMA_V40 = `
+ALTER TABLE regimen_episode ADD COLUMN end_epoch_day INTEGER;
+ALTER TABLE dose_event ADD COLUMN drug TEXT;
+
+UPDATE regimen_episode AS e
+   SET end_epoch_day = (
+     SELECT n.start_epoch_day - 1
+       FROM regimen_episode n
+      WHERE n.start_epoch_day > e.start_epoch_day
+         OR (n.start_epoch_day = e.start_epoch_day AND n.id > e.id)
+      ORDER BY n.start_epoch_day, n.id
+      LIMIT 1
+   );
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1407,7 +1451,8 @@ export const migrations: Migration[] = [
   { version: 36, sql: SCHEMA_V36 },
   { version: 37, sql: SCHEMA_V37 },
   { version: 38, sql: SCHEMA_V38 },
-  { version: 39, sql: SCHEMA_V39 }
+  { version: 39, sql: SCHEMA_V39 },
+  { version: 40, sql: SCHEMA_V40 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

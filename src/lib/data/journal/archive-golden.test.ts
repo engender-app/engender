@@ -220,7 +220,8 @@ async function everySection(): Promise<Journal> {
     doseUnit: 'mg',
     route: 'im',
     interval: 'every 2 weeks',
-    startEpochDay: 19000
+    startEpochDay: 19000,
+    endEpochDay: null
   });
   await journal.doses.upsertDose({
     timestamp: 1_700_000_000_000,

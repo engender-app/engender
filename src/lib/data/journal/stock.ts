@@ -9,7 +9,7 @@
    owner for either one. Routing every reminder write through
    RemindersArea.upsertReminder keeps assertValidRule and the schema's own
    CHECK the one place a reminder rule is validated, the same guarantee
-   ticket 02's dose log gets from resolveEpisodeAt rather than re-deriving
+   ticket 02's dose log gets from attributeDose rather than re-deriving
    attribution itself. */
 
 import type { SqliteDriver } from '../sqlite/driver';
