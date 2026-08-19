@@ -5,7 +5,7 @@
    sightings, so a fresh date replaces the old one in place. No episode
    reference: what a marker is read against - the earliest regimen
    episode's start day - is resolved above this seam
-   (regimenEpisode.ts's earliestEpisodeStartEpochDay), not stored here. */
+   (regimenEpisode.ts's earliestEpisode), not stored here. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PersonalEffect, PersonalEffectType } from '../types';

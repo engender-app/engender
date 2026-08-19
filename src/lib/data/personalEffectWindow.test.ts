@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { epochDayFromLocalDate } from './epochDay.ts';
+import type { PersonalEffectType, RegimenEpisode } from './types.ts';
 import {
   literatureCovers,
   literatureWindow,
@@ -15,13 +16,14 @@ const ANCHOR = epochDayFromLocalDate(new Date(2024, 0, 1)); // 2024-01-01
    exist at all. These two stand in for the two journals the gating is about
    - one whose only regimen episode is estradiol, one whose only episode is
    testosterone. */
-const ON_E = { drug: 'estradiol valerate', startEpochDay: ANCHOR };
-const ON_T = { drug: 'testosterone enanthate', startEpochDay: ANCHOR };
+type Anchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay'>;
+const ON_E: Anchor = { drug: 'estradiol valerate', startEpochDay: ANCHOR };
+const ON_T: Anchor = { drug: 'testosterone enanthate', startEpochDay: ANCHOR };
 
-/** The window a covered effect definitely has, so an arithmetic test can go
+/** The band a covered effect definitely has, so an arithmetic test can go
     straight at the numbers without repeating the null check the gating
     tests below make on purpose. */
-function windowDays(effect: Parameters<typeof literatureWindowDays>[0], anchor: typeof ON_E) {
+function bandOf(effect: PersonalEffectType, anchor: Anchor) {
   const days = literatureWindowDays(effect, anchor);
   assert.ok(days !== null, `expected ${effect} to have a band against ${anchor.drug}`);
   return days;
@@ -42,7 +44,7 @@ test('every one of the eight fixed effects has a literature window', () => {
 });
 
 test('onset and completion are counted forward from the anchor in calendar months', () => {
-  const days = windowDays('breast_development', ON_E);
+  const days = bandOf('breast_development', ON_E);
   assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
   assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
@@ -50,19 +52,19 @@ test('onset and completion are counted forward from the anchor in calendar month
 });
 
 test('skin softening has no defined completion window at all', () => {
-  const days = windowDays('skin_softening', ON_E);
+  const days = bandOf('skin_softening', ON_E);
   assert.ok(days.onset);
   assert.equal(days.completion, null);
 });
 
 test('hair changes has an open-ended completion window - a start with no end', () => {
-  const days = windowDays('hair_changes', ON_E);
+  const days = bandOf('hair_changes', ON_E);
   assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2027, 0, 1))); // +36 months
   assert.equal(days.completion?.end, null);
 });
 
 test('masculinizing fat redistribution onset and completion count forward from the anchor', () => {
-  const days = windowDays('masculinizing_fat_redistribution', ON_T);
+  const days = bandOf('masculinizing_fat_redistribution', ON_T);
   assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
   assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
@@ -70,13 +72,13 @@ test('masculinizing fat redistribution onset and completion count forward from t
 });
 
 test('voice drop and facial/body hair windows match the masculinizing time-course table', () => {
-  const voice = windowDays('voice_drop', ON_T);
+  const voice = bandOf('voice_drop', ON_T);
   assert.equal(voice.onset.start, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(voice.onset.end, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
   assert.equal(voice.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
   assert.equal(voice.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
 
-  const hair = windowDays('facial_body_hair', ON_T);
+  const hair = bandOf('facial_body_hair', ON_T);
   assert.equal(hair.onset.start, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(hair.onset.end, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
   assert.equal(hair.completion?.start, epochDayFromLocalDate(new Date(2028, 0, 1))); // +48 months
@@ -84,7 +86,7 @@ test('voice drop and facial/body hair windows match the masculinizing time-cours
 });
 
 test('cycle cessation has no defined completion ceiling, like skin softening', () => {
-  const days = windowDays('cycle_cessation', ON_T);
+  const days = bandOf('cycle_cessation', ON_T);
   assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
   assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(days.completion, null);
