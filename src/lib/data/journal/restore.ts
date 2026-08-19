@@ -180,6 +180,7 @@ async function discardJournalRows(driver: SqliteDriver): Promise<void> {
     'DELETE FROM measurement',
     'DELETE FROM side_effect',
     'DELETE FROM cycle_event',
+    'DELETE FROM journaling_pause',
     'DELETE FROM personal_effect',
     'DELETE FROM wear_session',
     'DELETE FROM hair_stage',

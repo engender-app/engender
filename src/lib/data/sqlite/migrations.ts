@@ -938,6 +938,25 @@ CREATE TABLE roadmap_goal (
 );
 `;
 
+/* v29: a declared, dated break from journaling (phase 5 ticket 21, CONTEXT:
+   "Streak" - amended). Modeled on `dose_pause` (v8): a dated range, open
+   while `end_epoch_day` is null. No `episode_id` here, unlike dose_pause -
+   this has nothing to do with a regimen, and has to work whether or not one
+   exists, the same reasoning `side_effect` (v11) gives. No `reason` column
+   either: ticket 21's scope is a start day and an optional end day only, not
+   a planned/accidental distinction - `Streak`'s computation treats every
+   pause the same regardless of why it was declared. */
+const SCHEMA_V29 = `
+CREATE TABLE journaling_pause (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  start_epoch_day INTEGER NOT NULL,
+  end_epoch_day   INTEGER,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX idx_journaling_pause_start ON journaling_pause(start_epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -966,7 +985,8 @@ export const migrations: Migration[] = [
   { version: 25, sql: SCHEMA_V25 },
   { version: 26, sql: SCHEMA_V26 },
   { version: 27, sql: SCHEMA_V27 },
-  { version: 28, sql: SCHEMA_V28 }
+  { version: 28, sql: SCHEMA_V28 },
+  { version: 29, sql: SCHEMA_V29 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

@@ -1569,6 +1569,31 @@ try {
   ok('a custom goal appends to its track and ticks through the same tri-state a bundled goal does');
 } catch (e) { fail('transition roadmap custom goal', e); }
 
+/* 26. the journaling pause (phase 5 ticket 21): Home's streak line goes
+   quiet while a pause covers today, and resuming brings it straight back
+   rather than waiting a day - the exact bug an inclusive end day would
+   cause if `resumeToday()` used today instead of yesterday as the end. */
+try {
+  await fresh('/');
+  await page.waitForSelector('[data-home-streak]');
+
+  await page.goto(BASE + '/settings/journaling-pause', { waitUntil: 'networkidle' });
+  await page.locator('[data-new-pause]').click();
+  await page.locator('[data-confirm-pause]').click();
+  await page.waitForSelector('[data-resume-pause]');
+
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  if (await page.locator('[data-home-streak]').count()) throw new Error('the streak line still shows while a pause covers today');
+
+  await page.goto(BASE + '/settings/journaling-pause', { waitUntil: 'networkidle' });
+  await page.locator('[data-resume-pause]').click();
+  await page.waitForSelector('[data-new-pause]');
+
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-home-streak]');
+  ok('the streak line quiets while a journaling pause covers today, and resuming brings it back the same day');
+} catch (e) { fail('journaling pause', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');

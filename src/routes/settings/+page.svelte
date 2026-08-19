@@ -76,6 +76,7 @@
     { key: 'letters', icon: 'book', title: () => m.letters_title(), subtitle: () => m.letters_row_sub(), href: '/settings/letters' },
     { key: 'roadmap', icon: 'globe', title: () => m.roadmap_title(), subtitle: () => m.roadmap_row_sub(), href: '/settings/roadmap' },
     { key: 'streak-goal', icon: 'sparkle', title: () => m.streak_goal_title(), subtitle: () => m.streak_goal_row_sub(), href: '/settings/streak-goal' },
+    { key: 'journaling-pause', icon: 'moon', title: () => m.journaling_pause_title(), subtitle: () => m.journaling_pause_row_sub(), href: '/settings/journaling-pause' },
     { key: 'hormone-curve', icon: 'curve', title: () => m.curve_title(), subtitle: () => m.curve_sub(), href: '/settings/hormone-curve' },
     { key: 'hair-progress', icon: 'comb', title: () => m.hair_progress(), subtitle: () => m.hair_progress_sub(), href: '/settings/hair-progress' },
     { key: 'surgery', icon: 'flag', title: () => m.surgery_journey_title(), subtitle: () => m.surgery_journey_sub(), href: '/settings/surgery' },

@@ -6,6 +6,7 @@
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { fmtDay } from '$lib/data/dates';
   import type { Entry, TallyKind } from '$lib/data/types';
+  import { isPausedOn } from '$lib/data/journalingPause';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
@@ -53,8 +54,14 @@
     return [...byDay.entries()];
   });
 
-  let streakQuery = liveQuery(['entry'], (j) => j.stats.streak(today));
+  let streakQuery = liveQuery(['entry', 'journalingPause'], (j) => j.stats.streak(today));
   let streak = $derived(streakQuery.value ?? 0);
+
+  /* The journaling pause (phase 5 ticket 21): the streak line is a nudge,
+     the same as the check-in prompt, so it goes quiet while a pause covers
+     today rather than showing a frozen number with nothing to explain it. */
+  let pausesQuery = liveQuery(['journalingPause'], (j) => j.journalingPauses.getPauses());
+  let pausedToday = $derived(isPausedOn(pausesQuery.value ?? [], today));
   let metricSheetOpen = $state(false);
 
   function onQuickLog(v: number | null) {
@@ -139,8 +146,8 @@
   <header class="home-header">
     <h1 class="home-hero" translate="no">{m.app_name()}</h1>
     <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-    {#if streak > 1}
-      <p class="home-streak"><Icon name="sparkle" size={14} /> {streak} {m.streak_row()}</p>
+    {#if streak > 1 && !pausedToday}
+      <p class="home-streak" data-home-streak><Icon name="sparkle" size={14} /> {streak} {m.streak_row()}</p>
     {/if}
   </header>
 

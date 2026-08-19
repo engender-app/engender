@@ -18,6 +18,7 @@
    and dimension values every time it is opened (ADR-0010). */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
+import { isPausedOn } from '../journalingPause';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Photo, TallyKind } from '../types';
@@ -351,27 +352,43 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     },
 
     async streak(todayEpochDay) {
-      /* Same numbering trick as bestStreakIn, counted from the newest day
-         backwards: day + rn is constant across the leading run and drops at
-         the first gap, so counting the rows that still match the newest
-         day's value counts that run and nothing else.
+      /* Amended for the journaling pause (phase 5 ticket 21, CONTEXT:
+         "Streak"): a day inside a pause range is neither a gap nor a
+         logged day, so it bridges the run without extending its count.
+         `bestStreakEver`/`recap`'s bestStreakIn deliberately keeps the
+         original entry-only gaps-and-islands query below - CONTEXT.md's
+         "Best streak" is a different question, about the range being
+         looked at rather than the run ending today, and ticket 21's own
+         acceptance criteria name only Streak's computation.
 
-         `latest` is empty unless the newest day is today or yesterday, and
-         the cross join then yields no rows at all - which is how "the run
-         ended before yesterday" comes back as zero rather than as a stale
-         streak. Entries dated in the future are excluded outright; a
-         mistyped date must not inflate a streak. */
-      const rows = await driver.query<{ n: number }>(
-        `WITH days AS (
-               SELECT DISTINCT epoch_day AS day FROM entry WHERE epoch_day <= ? AND trashed_at IS NULL
-             ),
-              numbered AS (SELECT day, ROW_NUMBER() OVER (ORDER BY day DESC) AS rn FROM days),
-              latest AS (SELECT day FROM numbered WHERE rn = 1 AND day >= ? - 1)
-         SELECT COUNT(*) AS n FROM numbered, latest
-         WHERE numbered.day + numbered.rn = latest.day + 1`,
-        [todayEpochDay, todayEpochDay]
+         An open pause has no end day, so it cannot be expanded into rows
+         with a fixed-width SQL query without a bound; walking backwards in
+         plain code instead is also what makes "entry, or entry-or-paused"
+         easy to keep straight, so this reads two small tables once and
+         walks the same way `doseSchedule.ts`'s pure functions do. The walk
+         is bounded by the streak's own length, exactly like the SQL
+         version it replaces. */
+      const entryRows = await driver.query<{ day: number }>(
+        'SELECT DISTINCT epoch_day AS day FROM entry WHERE epoch_day <= ? AND trashed_at IS NULL',
+        [todayEpochDay]
       );
-      return rows[0]?.n ?? 0;
+      const pauseRows = await driver.query<{ start_epoch_day: number; end_epoch_day: number | null }>(
+        'SELECT start_epoch_day, end_epoch_day FROM journaling_pause WHERE start_epoch_day <= ?',
+        [todayEpochDay]
+      );
+      const entryDays = new Set(entryRows.map((r) => r.day));
+      const pauses = pauseRows.map((r) => ({ startEpochDay: r.start_epoch_day, endEpochDay: r.end_epoch_day }));
+
+      let day = todayEpochDay;
+      if (!entryDays.has(day) && !isPausedOn(pauses, day)) day -= 1;
+      if (!entryDays.has(day) && !isPausedOn(pauses, day)) return 0;
+
+      let count = 0;
+      while (entryDays.has(day) || isPausedOn(pauses, day)) {
+        if (entryDays.has(day)) count++;
+        day -= 1;
+      }
+      return count;
     },
 
     async bestStreakEver(todayEpochDay) {
