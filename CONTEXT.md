@@ -655,6 +655,16 @@ The folder or document provider chosen to receive scheduled archives on Android.
 It belongs to this installation and never travels in an archive.
 _Avoid_: Cloud account, backup server
 
+**Clinician summary section**:
+One part of the printable summary someone brings to a medical appointment, named
+by its key in the assembled summary. A part appears because it registers a
+section, which declares how it is read - through the read path of the area that
+owns the rows - and, by where it is declared, where it prints. A part with no
+section does not print. A section never computes a figure its own area does not
+already produce, which is what keeps the summary a view rather than a second
+opinion about the same rows.
+_Avoid_: Report, block, page (several sections print on one page)
+
 **Portable preference**:
 A setting that describes the journal and travels in an archive: display name,
 active preset, metric, palette, theme, language, and the check-in's time.
