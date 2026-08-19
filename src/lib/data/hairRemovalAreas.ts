@@ -1,10 +1,12 @@
 /* Hair-removal treatment areas (phase 5 ticket 08): a fixed list of areas an
    electrolysis/laser session can be logged against.
 
-   Deliberately its own list rather than BODY_REGION_KEYS (bodyMap.ts):
-   that one is dysphoria-scoped, and ticket 09 (phase 4)'s own out-of-scope
-   line rules out widening it to any body-map region beyond physical
-   dysphoria tracking. Treatment areas are finer-grained and procedural, not
+   Deliberately its own list rather than the body-region vocabulary
+   (bodyRegions.ts, CONTEXT: "Reference data" - amended by ticket 30): that
+   one is dysphoria-scoped, and ticket 09 (phase 4)'s own out-of-scope line
+   rules out widening it to any body-map region beyond physical dysphoria
+   tracking - ticket 30 opened that list to custom rows but left this
+   exclusion alone. Treatment areas are finer-grained and procedural, not
    dysphoria hotspots, so this is a second, separate closed vocabulary
    rather than a reuse or extension of that one - the two are never merged.
 

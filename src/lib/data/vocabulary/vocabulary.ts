@@ -10,7 +10,6 @@
    "which rows", and this answers "called what". */
 
 import { m } from '$lib/paraglide/messages';
-import { BODY_REGION_KEYS } from '../bodyMap';
 import { MOOD_RANGE, type MetricRange } from '../metricRange';
 import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
@@ -18,6 +17,7 @@ import { reference } from '../live/reference.svelte';
 import { entryPromptRows, entryTemplateRows, milestoneTemplateRows } from './builtins';
 import type {
   Affirmation,
+  BodyRegion,
   EntryPrompt,
   EntryTemplate,
   GenderDimension,
@@ -50,6 +50,10 @@ function localizeDimension(d: GenderDimension): GenderDimension {
 
 function localizeAffirmation(a: Affirmation): Affirmation {
   return a.builtIn ? { ...a, text: affirmationText(a.id) } : a;
+}
+
+function localizeBodyRegion(r: BodyRegion): BodyRegion {
+  return r.builtIn ? { ...r, name: bodyRegionName(r.id) } : r;
 }
 
 function localizeTag(t: Tag): Tag {
@@ -140,11 +144,18 @@ export const vocabulary = {
   get milestoneTemplates(): MilestoneTemplate[] {
     return milestoneTemplates.map(localizeTemplate);
   },
-  /** Every body region the picker offers (ticket 09), keys only until
-      named here - not a stored reference-data row, the same fixed-list
-      shape as milestone templates. */
-  get bodyRegions(): { key: string; name: string }[] {
-    return BODY_REGION_KEYS.map((key) => ({ key, name: bodyRegionName(key) }));
+  /** Every body region, hidden built-ins and custom ones included, in the
+      wording the user sees (ticket 09, reference-data area since ticket
+      30) - what an entry card or the trend chart resolves a logged
+      region's key against. */
+  get bodyRegions(): BodyRegion[] {
+    return reference.bodyRegions.map(localizeBodyRegion);
+  },
+  /** What the entry editor and the body-map picker offer: hidden regions
+      removed (CONTEXT: "Hidden"), the same "not hidden" filter
+      `visibleTagGroups` already applies to tags. */
+  get visibleBodyRegions(): BodyRegion[] {
+    return reference.visibleBodyRegions.map(localizeBodyRegion);
   },
   /** The gender dimension a metric key names, or null when the metric is
       mood. Also null for a key no dimension carries, which is how the name,
