@@ -528,3 +528,37 @@ export interface MedicationStock {
       `upsertEntry` (stock.ts) is the only thing that clears it. */
   reminderDismissed: boolean;
 }
+
+/** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind
+    of record owns it and `id` is that record's own travelling identity
+    (ADR-0002). Not a closed union like PhotoOwner (photos.ts) - no owner
+    table ships with this ticket, so the pair is what lets a future owner
+    kind reuse this table with no schema change of its own. */
+export interface ChecklistOwner {
+  kind: string;
+  id: string;
+}
+
+/** One line of a checklist (phase 5 ticket 05, CONTEXT: "Checklist"): free
+    text the user wrote, checked or not, and whether it is still open past
+    whatever event closed its checklist's usual window - a visit, a
+    procedure's recovery close-out. Never bundled content: unlike a
+    **Roadmap goal**, there is nothing behind an item but what the user
+    typed, the distinction CONTEXT already draws between Custom and
+    Built-in. */
+export interface ChecklistItem {
+  id: string;
+  content: string;
+  checked: boolean;
+  carriedForward: boolean;
+}
+
+/** An ordered list of checklist items, standalone or scoped to one owner
+    record (phase 5 ticket 05). Ticket 07's recovery checklist and ticket
+    11's appointment prep list are both this same shape - the owner is what
+    differs between the two call sites, not the item. */
+export interface Checklist {
+  id: string;
+  owner: ChecklistOwner | null;
+  items: ChecklistItem[];
+}

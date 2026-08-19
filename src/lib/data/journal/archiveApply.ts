@@ -561,6 +561,54 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
   );
 }
 
+const nextChecklistItemOrderIndex = async (driver: SqliteDriver, checklistId: number): Promise<number> => {
+  const rows = await driver.query<{ next: number }>(
+    'SELECT COALESCE(MAX(order_index), -1) + 1 AS next FROM checklist_item WHERE checklist_id = ?',
+    [checklistId]
+  );
+  return rows[0].next;
+};
+
+/* A checklist's identity - its uuid and owner - is fixed at creation and
+   never edited above this seam (checklists.ts has no setter for either), so
+   unlike applyTagGroups there is nothing to UPDATE on a checklist row that
+   is already here. Only its items are walked in both modes, the same reason
+   an existing tag group still has its tags walked. */
+export async function applyChecklists({ driver, mode, journal, ts }: Restoring): Promise<void> {
+  const checklists = await presentIds(driver, 'SELECT uuid AS id FROM checklist');
+  const items = await presentIds(driver, 'SELECT uuid AS id FROM checklist_item');
+
+  for (const checklist of journal.checklists) {
+    if (!checklists.has(checklist.id)) {
+      await driver.run('INSERT INTO checklist (uuid, owner_kind, owner_uuid, updated_at) VALUES (?, ?, ?, ?)', [
+        checklist.id,
+        checklist.ownerKind,
+        checklist.ownerId,
+        ts
+      ]);
+    }
+
+    const checklistRowId = await rowidWhere(driver, 'checklist', 'uuid = ?', [checklist.id], 'checklist uuid');
+    for (const [itemIndex, item] of checklist.items.entries()) {
+      if (items.has(item.id)) {
+        if (mode === 'merge') continue;
+        await driver.run(
+          `UPDATE checklist_item SET checklist_id = ?, content = ?, checked = ?, carried_forward = ?, order_index = ?, updated_at = ?
+           WHERE uuid = ?`,
+          [checklistRowId, item.content, flag(item.checked), flag(item.carriedForward), itemIndex, ts, item.id]
+        );
+        continue;
+      }
+      const orderIndex = mode === 'replace' ? itemIndex : await nextChecklistItemOrderIndex(driver, checklistRowId);
+      await driver.run(
+        `INSERT INTO checklist_item (uuid, checklist_id, content, checked, carried_forward, order_index, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [item.id, checklistRowId, item.content, flag(item.checked), flag(item.carriedForward), orderIndex, ts]
+      );
+    }
+  }
+}
+
 /* Matched by uuid, like applyDoubtEntries: a tryout is not a single value
    ticket 14's Replace can safely retire, it is a dated record someone
    might still be adding felt-sense entries against. */

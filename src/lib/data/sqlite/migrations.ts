@@ -629,6 +629,44 @@ DROP TABLE personal_effect;
 ALTER TABLE personal_effect_v19 RENAME TO personal_effect;
 `;
 
+/* v20: free-text checklists (phase 5 ticket 05, CONTEXT: "Checklist"). A
+   checklist item is entirely the user's own content with no bundled
+   counterpart, so both a checklist and its items carry a minted uuid like
+   any other user-owned row (ADR-0002) rather than a content key -
+   `roadmap_check` (v18) is the opposite case, a tick with no data of its
+   own.
+
+   A checklist's owner is a nullable (kind, uuid) pair rather than a foreign
+   key: no owner table ships with this ticket (ticket 07's procedure is the
+   first one that will), and the pair lets that or any later owner kind
+   reuse this table with no migration of its own. Both columns are NULL
+   together for a standalone checklist (ticket 11) or set together for an
+   owned one (ticket 07); the CHECK rules out the half-set case a typo could
+   otherwise write silently. */
+const SCHEMA_V20 = `
+CREATE TABLE checklist (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  owner_kind TEXT,
+  owner_uuid TEXT,
+  updated_at INTEGER NOT NULL,
+  CHECK ((owner_kind IS NULL) = (owner_uuid IS NULL))
+);
+CREATE INDEX idx_checklist_owner ON checklist(owner_kind, owner_uuid);
+
+CREATE TABLE checklist_item (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  checklist_id    INTEGER NOT NULL REFERENCES checklist(id) ON DELETE CASCADE,
+  content         TEXT NOT NULL,
+  checked         INTEGER NOT NULL DEFAULT 0,
+  carried_forward INTEGER NOT NULL DEFAULT 0,
+  order_index     INTEGER NOT NULL DEFAULT 0,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX idx_checklist_item_checklist ON checklist_item(checklist_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -648,7 +686,8 @@ export const migrations: Migration[] = [
   { version: 16, sql: SCHEMA_V16 },
   { version: 17, sql: SCHEMA_V17 },
   { version: 18, sql: SCHEMA_V18 },
-  { version: 19, sql: SCHEMA_V19 }
+  { version: 19, sql: SCHEMA_V19 },
+  { version: 20, sql: SCHEMA_V20 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

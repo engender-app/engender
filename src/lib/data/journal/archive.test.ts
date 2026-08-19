@@ -558,6 +558,10 @@ const CARRIED: Record<string, string[]> = {
   // episode_id does (ADR-0002).
   tryout_felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
+  checklist: ['uuid', 'owner_kind', 'owner_uuid'],
+  // checklist_id travels as the checklist's own uuid, the way dose_pause's
+  // episode_id does (ADR-0002).
+  checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };
