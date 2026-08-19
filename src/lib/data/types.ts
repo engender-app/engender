@@ -632,35 +632,65 @@ export interface RegimenTemplate {
   lean: Lean;
 }
 
-/** The eight fixed markers a personal effects timeline tracks: four
-    feminizing (phase 4 ticket 07) and four masculinizing (phase 5 ticket
-    02), sharing one closed table rather than two parallel ones - one
-    timeline anchored to the earliest regimen episode overall is the right
-    shape regardless of hormone direction. Ticket 07 called this list
-    closed and not open-ended or user-extensible; ticket 02 deliberately
-    reverses that rule once, to reach trans-masc parity, and closes the
-    list again at eight - not a precedent for a ninth. "Masculinizing fat
-    redistribution" is a distinct effect from "fat redistribution" above,
-    not the same marker read two ways: the two describe different, not
-    opposite, changes, and collapsing them into one bidirectional marker
-    would need a sign or direction field this table has no room for.
-    "Hair changes" and "facial/body hair" are each a single first-noticed
-    date like the rest - ticket 09's Norwood-Hamilton staging and photo
-    scheduling is a separate, deeper module every one of them coexists
-    alongside untouched. */
-export type PersonalEffectType =
-  | 'breast_development'
-  | 'fat_redistribution'
-  | 'skin_softening'
-  | 'hair_changes'
-  | 'voice_drop'
-  | 'facial_body_hair'
-  | 'masculinizing_fat_redistribution'
-  | 'cycle_cessation';
+/** A stable key into `personal_effect_type` (migrations.ts v39) - an open
+    vocabulary now, not a closed union. Phase 4 ticket 07 closed this list
+    at four feminizing markers; phase 5 ticket 02 reopened it once to
+    reach trans-masc parity and closed it again at eight, calling that
+    closure final. Phase 5 ticket 41 is the third revisit and stops
+    closing it: roughly forty feminizing and thirty masculinizing
+    built-ins, plus whatever a person adds of their own, the same
+    `key: string` a `MeasurementType` or `BodyRegion` uses rather than a
+    string-literal union `labels.ts` would otherwise have to cover
+    exhaustively. "Masculinizing fat redistribution" stays a distinct key
+    from "fat redistribution" - the two describe different, not opposite,
+    changes - and every existing key from the eight is unchanged. */
+export type PersonalEffectType = string;
 
-/* One row per effect (migrations.ts v12), matched exactly like
-   MedicationStock's drug: a person is always answering "when did I first
-   notice this", never logging a series of sightings. No episode
+/** Which of the source material's two time-course tables a built-in
+    effect's window is a claim about, and so which hormone it names
+    (phase 4 ticket 07, widened phase 5 ticket 41). A property of the
+    effect, not a field ever stored on a marker or asked of a person - the
+    app has no gender or direction field and this does not become the
+    first one. Null only for a custom effect: a person's own addition
+    carries no direction pushed onto it by this app, and renders in
+    neither the feminizing nor masculinizing group of the timeline. */
+export type EffectDirection = 'feminizing' | 'masculinizing';
+
+/** A named, toggleable collection over the effect catalogue (phase 5
+    ticket 41, CONTEXT: "Effect category"), the same semantics as `TagGroup`
+    - turning one off hides its effects from the timeline and the "mark a
+    change" picker without touching any marker already recorded against
+    them. Built-in only: five or six categories taken from the source
+    material's own grouping, no custom-category creation asked for, so
+    unlike `TagGroup` there is no `builtIn` flag or per-row add. */
+export interface EffectCategory {
+  key: string;
+  name: string;
+  enabled: boolean;
+}
+
+/** One row of the effect catalogue itself - what `personal_effect.effect`
+    is allowed to name, now that migrations.ts v39 has dropped the CHECK
+    that used to enumerate it. Built-in rows are seeded by key and
+    localized at display time (`labels.ts`), the same split `BodyRegion`
+    and `MeasurementType` use; a custom row's `name` is stored verbatim,
+    never translated and never reseeded, and its `key` is the uuid minted
+    for it (ADR-0002). `categoryKey` is nullable because a custom effect
+    may be added uncategorised, and `direction` is nullable for the reason
+    `EffectDirection` gives - only a built-in's direction is a claim from
+    the literature or the community catalogue it comes from. */
+export interface PersonalEffectCatalogEntry {
+  key: string;
+  name: string;
+  builtIn: boolean;
+  hidden: boolean;
+  categoryKey: string | null;
+  direction: EffectDirection | null;
+}
+
+/* One row per effect (migrations.ts v12, widened v37), matched exactly
+   like MedicationStock's drug: a person is always answering "when did I
+   first notice this", never logging a series of sightings. No episode
    reference: what this marker is read against - the earliest regimen
    episode's start day - is resolved above the journal seam
    (regimenEpisode.ts), not stored here. */
