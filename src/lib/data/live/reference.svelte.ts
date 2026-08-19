@@ -131,6 +131,15 @@ export const reference = {
     return mirror.presets.find((p) => p.id === prefs.activePreset) ?? mirror.presets[0] ?? EMPTY_PRESET;
   },
 
+  /** The milestone the journey anchor preference points at (phase 5 ticket
+      25), or null when no anchor is set or it names a milestone this install
+      no longer has. No fallback to another milestone the way `activePreset`
+      falls back to the first preset: unset is a legitimate resting state
+      here, not a gap to paper over. */
+  get journeyAnchor(): Milestone | null {
+    return mirror.milestones.find((mi) => mi.id === prefs.journeyAnchorMilestoneId) ?? null;
+  },
+
   /** The active preset's dimensions, in the preset's order, skipping keys no
       dimension carries. */
   get activeDimensions(): GenderDimension[] {

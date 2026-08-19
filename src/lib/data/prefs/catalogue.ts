@@ -146,6 +146,15 @@ export interface PreferenceValues {
   /** The target streak length, in days, for `streakGoalHabit`. Null exactly
       when `streakGoalHabit` is null - the two are set and cleared together. */
   streakGoalTargetDays: number | null;
+  /** The milestone id that durations, stats ranges and wrapped figures are
+      measured from (phase 5 ticket 25), or null when none is chosen - a
+      resting state the app never nags about, the same way an unset
+      `streakGoalHabit` is never a bug to fix. Mirrors `activePreset`: one
+      global choice rather than a per-surface one, so wrapped and a stats
+      range cannot disagree about how long the person has been on their own
+      journey. A milestone this install no longer has resolves to unset
+      rather than falling back to another one. */
+  journeyAnchorMilestoneId: string | null;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
@@ -197,6 +206,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hormoneCurveFitToOwnLabs: false,
   streakGoalHabit: null,
   streakGoalTargetDays: null,
+  journeyAnchorMilestoneId: null,
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
@@ -219,7 +229,8 @@ export const PORTABLE_KEYS = [
   'checkInAffirmationsEnabled',
   'preferredLabUnits',
   'streakGoalHabit',
-  'streakGoalTargetDays'
+  'streakGoalTargetDays',
+  'journeyAnchorMilestoneId'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
