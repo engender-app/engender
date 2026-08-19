@@ -20,7 +20,7 @@
    delete - only the row naming the files lives here. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import { isHairStaging } from '../hairStageScales';
+import { isGradedScale, isHairStaging } from '../hairStageScales';
 import type { HairStage } from '../types';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import type { PhotoFileStore } from './journal';
@@ -89,7 +89,7 @@ function checkedStaging(input: HairStageInput): { scale: string; stage: string; 
   return {
     scale: input.scale,
     stage: input.stage,
-    description: input.scale === 'other' ? (input.description ?? '') : ''
+    description: isGradedScale(input.scale) ? '' : (input.description ?? '')
   };
 }
 const toHairPhoto = (row: HairPhotoRow): HairPhoto => ({ id: row.uuid, epochDay: row.epoch_day, fileName: row.file_path });

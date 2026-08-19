@@ -125,11 +125,23 @@ const SINCLAIR_GRADE_NAME: Record<SinclairGrade, Message> = {
   '5': m.hair_sinclair_5
 };
 
-/** The name of a staging's grade, under the scale it belongs to. Never
-    called for 'other', which publishes no grades - a staging under that one
-    shows the person's own words instead. */
+/* Keyed by scale rather than reached by a ternary, so a scale can only ever
+   be read against its own wording: a lookup that fell back to one scale's
+   map would hand back the wrong classification's label, which is the exact
+   confusion this file exists to prevent. 'other' publishes no grades, so its
+   map is empty by construction rather than by convention. */
+const HAIR_GRADE_NAME: Record<HairScale, Record<string, Message>> = {
+  norwood_hamilton: NORWOOD_HAMILTON_STAGE_NAME,
+  sinclair: SINCLAIR_GRADE_NAME,
+  other: {}
+};
+
+/** The name of a staging's grade, under the scale it belongs to, or the raw
+    grade for a pair this build's vocabulary does not list. Empty for a scale
+    that publishes no grades - a staging under that one shows the person's
+    own words instead (isGradedScale, hairStageScales.ts). */
 export const hairStageName = (scale: string, stage: string): string =>
-  scale === 'sinclair' ? lookup(SINCLAIR_GRADE_NAME, stage) : lookup(NORWOOD_HAMILTON_STAGE_NAME, stage);
+  lookup(HAIR_GRADE_NAME[scale as HairScale] ?? {}, stage);
 
 const HAIR_SCALE_NAME: Record<HairScale, Message> = {
   norwood_hamilton: m.hair_scale_norwood_hamilton,
