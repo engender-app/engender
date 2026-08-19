@@ -8,7 +8,8 @@
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
   import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
-  import { capturePhoto, pickPhotos } from '$lib/stores/photoPicking';
+  import { capturePhoto, pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
+  import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { startRecording, type ActiveRecording } from '$lib/stores/voiceRecording';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -19,6 +20,7 @@
   import TagPicker from '$lib/components/TagPicker.svelte';
   import BodyRegionPicker from '$lib/components/BodyRegionPicker.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -153,9 +155,32 @@
     for (const photo of await pickPhotos()) entryDraft.addPhoto(photo);
   }
 
+  // The just-captured shot, waiting on the alignment review (ticket 12)
+  // before it joins entryDraft.photos - retaking simply overwrites this
+  // without touching the draft, and backing out of the camera leaves
+  // whichever shot was already under review in place.
+  let reviewingPhoto = $state<NormalizedPhoto | null>(null);
+
+  // The context is this entry: the last photo already in its own draft,
+  // stored or just picked, not the journal's last photo overall.
+  let reviewReference = $derived.by((): ReferencePhoto | null => {
+    const last = entryDraft.photos.at(-1);
+    if (!last) return null;
+    return last.kind === 'stored'
+      ? last.photo.fileName
+        ? { fileName: last.photo.fileName }
+        : null
+      : { bytes: last.photo.full };
+  });
+
   async function takePhoto() {
     const photo = await capturePhoto();
-    if (photo) entryDraft.addPhoto(photo);
+    if (photo) reviewingPhoto = photo;
+  }
+
+  function useReviewedPhoto(photo: NormalizedPhoto) {
+    entryDraft.addPhoto(photo);
+    reviewingPhoto = null;
   }
 
   // Unset while nothing is being recorded; the record/stop button reads
@@ -399,4 +424,12 @@
       <button class="btn btn-ghost" onclick={() => (deleteOpen = false)}><span>{m.keep_it()}</span></button>
     </div>
   </Sheet>
+
+  <PhotoAlignmentReview
+    photo={reviewingPhoto}
+    reference={reviewReference}
+    onAccept={useReviewedPhoto}
+    onRetake={takePhoto}
+    onCancel={() => (reviewingPhoto = null)}
+  />
 </div>

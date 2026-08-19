@@ -10,11 +10,12 @@
   import { HAIR_REMOVAL_METHODS } from '$lib/data/types';
   import type { HairRemovalPhoto } from '$lib/data/journal/hairRemoval';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { capturePhoto, pickPhotos } from '$lib/stores/photoPicking';
+  import { capturePhoto, pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
   import Icon from '$lib/components/Icon.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -99,8 +100,20 @@
     await storePhoto(photo ?? null);
   }
 
+  // The context is this session: its own last photo, already loaded above.
+  let reviewingPhoto = $state<NormalizedPhoto | null>(null);
+  let reviewReference = $derived<ReferencePhoto | null>(
+    photos.length ? { fileName: photos[photos.length - 1].fileName } : null
+  );
+
   async function captureSessionPhoto() {
-    await storePhoto(await capturePhoto());
+    const photo = await capturePhoto();
+    if (photo) reviewingPhoto = photo;
+  }
+
+  async function useReviewedPhoto(photo: NormalizedPhoto) {
+    reviewingPhoto = null;
+    await storePhoto(photo);
   }
 
   async function deletePhoto() {
@@ -287,4 +300,12 @@
       </div>
     {/if}
   </Sheet>
+
+  <PhotoAlignmentReview
+    photo={reviewingPhoto}
+    reference={reviewReference}
+    onAccept={useReviewedPhoto}
+    onRetake={captureSessionPhoto}
+    onCancel={() => (reviewingPhoto = null)}
+  />
 </div>

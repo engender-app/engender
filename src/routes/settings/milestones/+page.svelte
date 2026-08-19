@@ -5,9 +5,11 @@
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
-  import { capturePhoto, pickPhotos, type EditorPhoto } from '$lib/stores/photoPicking';
+  import { capturePhoto, pickPhotos, type EditorPhoto, type ReferencePhoto } from '$lib/stores/photoPicking';
+  import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -17,13 +19,17 @@
      the stored row, a picked replacement, or none - and `storedPhotoId`
       remembers what was there when the editor opened, so Save can describe
       preserve, remove or replace. Nothing is committed until Save (F1), so
-      closing the sheet undoes both. */
+      closing the sheet undoes both. `originalPhoto` is that same starting
+      point held separately: the alignment review (ticket 12) compares a
+      retake against the photo this milestone had before this edit, even
+      after removing it clears `photo` to make room for a new one. */
   let editor = $state<{
     id?: string;
     name: string;
     date: string;
     photo: EditorPhoto | null;
     storedPhotoId: string | null;
+    originalPhoto: Photo | null;
     templateKey: string | null;
   } | null>(null);
   let deleteTarget = $state<Milestone | null>(null);
@@ -46,6 +52,7 @@
           date: dateInputValueFromEpochDay(existing.epochDay),
           photo: existing.photo && { kind: 'stored', photo: existing.photo },
           storedPhotoId: existing.photo?.id ?? null,
+          originalPhoto: existing.photo ?? null,
           templateKey: existing.templateKey
         }
       : {
@@ -53,6 +60,7 @@
           date: dateInputValueFromEpochDay(todayEpochDay()),
           photo: null,
           storedPhotoId: null,
+          originalPhoto: null,
           templateKey: template?.key ?? null
         };
   }
@@ -62,9 +70,19 @@
     if (photo && editor) editor.photo = { kind: 'picked', photo };
   }
 
+  let reviewingPhoto = $state<NormalizedPhoto | null>(null);
+  let reviewReference = $derived<ReferencePhoto | null>(
+    editor?.originalPhoto?.fileName ? { fileName: editor.originalPhoto.fileName } : null
+  );
+
   async function takePhoto() {
     const photo = await capturePhoto();
-    if (photo && editor) editor.photo = { kind: 'picked', photo };
+    if (photo) reviewingPhoto = photo;
+  }
+
+  function useReviewedPhoto(photo: NormalizedPhoto) {
+    if (editor) editor.photo = { kind: 'picked', photo };
+    reviewingPhoto = null;
   }
 
   async function saveMilestone() {
@@ -197,4 +215,12 @@
       </div>
     {/if}
   </Sheet>
+
+  <PhotoAlignmentReview
+    photo={reviewingPhoto}
+    reference={reviewReference}
+    onAccept={useReviewedPhoto}
+    onRetake={takePhoto}
+    onCancel={() => (reviewingPhoto = null)}
+  />
 </div>

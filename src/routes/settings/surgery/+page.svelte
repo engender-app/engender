@@ -18,11 +18,12 @@
   import type { ChecklistItem, Procedure, ProcedureConsult } from '$lib/data/types';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { capturePhoto, pickPhotos } from '$lib/stores/photoPicking';
+  import { capturePhoto, pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -168,8 +169,21 @@
     await storePhoto(photo ?? null);
   }
 
+  // The context is this procedure's recovery log: its own last photo,
+  // already loaded above.
+  let reviewingPhoto = $state<NormalizedPhoto | null>(null);
+  let reviewReference = $derived<ReferencePhoto | null>(
+    photos.length ? { fileName: photos[photos.length - 1].fileName } : null
+  );
+
   async function captureRecoveryPhoto() {
-    await storePhoto(await capturePhoto());
+    const photo = await capturePhoto();
+    if (photo) reviewingPhoto = photo;
+  }
+
+  async function useReviewedPhoto(photo: NormalizedPhoto) {
+    reviewingPhoto = null;
+    await storePhoto(photo);
   }
 
   async function deletePhoto() {
@@ -476,6 +490,14 @@
       </div>
     {/if}
   </Sheet>
+
+  <PhotoAlignmentReview
+    photo={reviewingPhoto}
+    reference={reviewReference}
+    onAccept={useReviewedPhoto}
+    onRetake={captureRecoveryPhoto}
+    onCancel={() => (reviewingPhoto = null)}
+  />
 </div>
 
 <style>
