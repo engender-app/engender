@@ -869,6 +869,35 @@ ALTER TABLE entry ADD COLUMN starred INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE photo ADD COLUMN starred INTEGER NOT NULL DEFAULT 0;
 `;
 
+/* v27: video notes (phase 5 ticket 22, CONTEXT: "Video note"). The third
+   file-carrying entry citizen alongside photo and voice_recording, and
+   structurally voice_recording's twin (v17) rather than photo's: ticket 22
+   excludes milestone ownership the same way ticket 24 did, so `entry_id` is
+   plain NOT NULL with no CHECK across two nullable columns.
+
+   Its own table for v17's reason - SQLite cannot ALTER a table-level CHECK
+   in place, so widening `photo` was never available - and because a video
+   note and a voice recording are not the same thing to read: an area that
+   wants one does not want the other.
+
+   One file, no thumbnail pair. A poster frame would be derived state and
+   ADR-0010 keeps that out of the schema; playback reads the video itself
+   (VideoNotePlayer.svelte). It shares photo's file store, so the boot
+   orphan sweep has to read this table too (sweepOrphanPhotos,
+   journal/photos.ts) or every saved video note looks orphaned the moment
+   it runs. */
+const SCHEMA_V27 = `
+CREATE TABLE video_note (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  entry_id    INTEGER NOT NULL REFERENCES entry(id) ON DELETE CASCADE,
+  file_path   TEXT NOT NULL,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  updated_at  INTEGER NOT NULL
+);
+CREATE INDEX idx_video_note_entry ON video_note(entry_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -895,7 +924,8 @@ export const migrations: Migration[] = [
   { version: 23, sql: SCHEMA_V23 },
   { version: 24, sql: SCHEMA_V24 },
   { version: 25, sql: SCHEMA_V25 },
-  { version: 26, sql: SCHEMA_V26 }
+  { version: 26, sql: SCHEMA_V26 },
+  { version: 27, sql: SCHEMA_V27 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

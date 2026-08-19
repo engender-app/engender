@@ -34,6 +34,16 @@ export interface VoiceRecording {
   fileName: string;
 }
 
+/** A short in-app video recording belonging to exactly one entry (phase 5
+    ticket 22, CONTEXT: "Video note"). VoiceRecording's shape, and its own
+    interface rather than a shared one for the reason journal/videoNotes.ts
+    gives: a rename on one must not silently change the other. One file, no
+    thumbnail - a poster frame would be derived state (ADR-0010). */
+export interface VideoNote {
+  id: string;
+  fileName: string;
+}
+
 export interface Entry {
   id: number;
   epochDay: number;
@@ -44,6 +54,7 @@ export interface Entry {
   tags: string[];
   photos: Photo[];
   recordings: VoiceRecording[];
+  videos: VideoNote[];
   /** By body-region key (bodyMap.ts), independent of dims and tags -
       ticket 09 does not require ticket 02's "physical" dysphoria tag to be
       present to log a region. */

@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 26);
+  assert.equal(db.getUserVersion(), 27);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -43,6 +43,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'tag',
     'tag_group',
     'tally_event',
+    'video_note',
     'voice_recording',
     'wear_session'
   ]) {
@@ -283,7 +284,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 26);
+  assert.equal(db.getUserVersion(), 27);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -346,6 +347,7 @@ test('deleting an entry cascades to its photos, dimension values, tag links and 
   exec("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', 1, 'a.jpg', 1000)");
   exec("INSERT INTO entry_body_region (entry_id, region, intensity) VALUES (1, 'chest', 40)");
   exec("INSERT INTO voice_recording (uuid, entry_id, file_path, updated_at) VALUES ('v1', 1, 'v1.webm', 1000)");
+  exec("INSERT INTO video_note (uuid, entry_id, file_path, updated_at) VALUES ('n1', 1, 'n1.webm', 1000)");
 
   // Foreign keys are off by default per connection in SQLite.
   exec('PRAGMA foreign_keys = ON');
@@ -356,6 +358,7 @@ test('deleting an entry cascades to its photos, dimension values, tag links and 
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM entry_tag').get()?.['n'], 0);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM entry_body_region').get()?.['n'], 0);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM voice_recording').get()?.['n'], 0);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM video_note').get()?.['n'], 0);
   // The tag and dimension themselves are reference data and must survive.
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM tag').get()?.['n'], 1);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM gender_dimension').get()?.['n'], 1);
@@ -376,4 +379,24 @@ test('v24 entry gets a nullable trashed_at column, indexed, defaulting to NULL',
 
   const indexes = (db.raw.prepare("PRAGMA index_list(entry)").all() as Array<{ name: string }>).map((i) => i.name);
   assert.ok(indexes.includes('idx_entry_trashed_at'));
+});
+
+test('v27 video_note is entry-only, ordered, and unique by uuid', async () => {
+  const db = await migratedDb();
+  const exec = (sql: string) => db.raw.exec(sql);
+  exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e1', 19180, 1000, '', 1000)");
+  exec("INSERT INTO video_note (uuid, entry_id, file_path, updated_at) VALUES ('n1', 1, 'n1.webm', 1000)");
+
+  // order_index defaults, the way voice_recording's does, so an insert that
+  // does not name it still lands somewhere deterministic.
+  const row = db.raw.prepare('SELECT * FROM video_note WHERE uuid = ?').get('n1') as {
+    order_index: number;
+    entry_id: number;
+  };
+  assert.equal(row.order_index, 0);
+  assert.equal(row.entry_id, 1);
+
+  assert.throws(() =>
+    exec("INSERT INTO video_note (uuid, entry_id, file_path, updated_at) VALUES ('n1', 1, 'other.webm', 1000)")
+  );
 });

@@ -142,4 +142,12 @@
          Declared here only so that runtime request has something to grant. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Video notes (phase 5 ticket 22), by the same route: the same
+         onPermissionRequest maps the WebView's VIDEO_CAPTURE resource to
+         CAMERA (BridgeWebChromeClient.java lines 104-105), so getUserMedia
+         asking for video is all it takes and there is no native bridge here
+         either. RECORD_AUDIO above covers the sound half - a video note
+         records both. No <uses-feature>: a device without a camera should
+         still install and use every other part of the journal. -->
+    <uses-permission android:name="android.permission.CAMERA" />
 </manifest>

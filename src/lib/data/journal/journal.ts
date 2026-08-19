@@ -42,6 +42,7 @@ import { makeStockArea, type StockArea } from './stock';
 import { makeTagsArea, type TagsArea } from './tags';
 import { makeTallyArea, type TallyArea } from './tally';
 import { makeTryoutsArea, type TryoutsArea } from './tryouts';
+import { makeVideoArea, type VideoArea } from './videoNotes';
 import { makeVoiceArea, type VoiceArea } from './voiceRecordings';
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
 import { reconcileBuiltIns } from './reconcile';
@@ -83,6 +84,11 @@ export interface Journal {
       this owns no attach/remove of its own; those stay on upsertEntry's
       attachRecordings/removeRecordingIds (voiceRecordings.ts). */
   voice: VoiceArea;
+
+  /** Every video note (phase 5 ticket 22), read back dated and oldest first
+      - entry-only, so like `voice` it has no attach/remove of its own:
+      entries.ts owns the rows through attachVideos/removeVideoIds. */
+  videos: VideoArea;
   labs: LabsArea;
   measurements: MeasurementsArea;
   reminders: RemindersArea;
@@ -229,6 +235,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     milestones: makeMilestonesArea(driver, files),
     photos: makePhotosArea(driver, files),
     voice: makeVoiceArea(driver),
+    videos: makeVideoArea(driver),
     labs,
     measurements: makeMeasurementsArea(driver),
     reminders,
