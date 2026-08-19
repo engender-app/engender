@@ -93,11 +93,12 @@ const SECTIONS = [
   section({ name: 'journalingPauses', read: read.readJournalingPauses, apply: apply.applyJournalingPauses }),
   section({ name: 'effectCategories', read: read.readEffectCategories, apply: apply.applyEffectCategories }),
   section({ name: 'personalEffectTypes', read: read.readPersonalEffectTypes, apply: apply.applyPersonalEffectTypes }),
-  // No `after`: personal_effect.effect stores an effect's domain key
-  // directly with no FK (migrations.ts v37 dropped its CHECK), the same
-  // reason bodyRegions needs none. Declared after personalEffectTypes
-  // anyway, reference data before the rows that name it, matching the
-  // convention entries/dimensions/tagGroups set.
+  // `after` here is a convention, not a requirement `applyPersonalEffects`
+  // enforces: personal_effect.effect stores an effect's domain key
+  // directly with no FK (migrations.ts v37 dropped its CHECK), so nothing
+  // breaks if this ran first. Declared after personalEffectTypes anyway -
+  // reference data before the rows that name it - matching the convention
+  // entries/dimensions/tagGroups set.
   section({
     name: 'personalEffects',
     after: ['personalEffectTypes'],

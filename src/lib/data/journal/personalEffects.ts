@@ -7,7 +7,7 @@
    episode's start day - is resolved above this seam
    (regimenEpisode.ts's earliestEpisode), not stored here.
 
-   Phase 5 ticket 41 widens the effect an marker names from a closed
+   Phase 5 ticket 41 widens the effect a marker names from a closed
    eight-key union to `personal_effect_type`, an open reference-data
    vocabulary - the same move measurements.ts made for `measurement_type`
    (phase 5 ticket 29), and this file bundles the two concerns the same
