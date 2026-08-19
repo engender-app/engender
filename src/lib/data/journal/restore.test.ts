@@ -124,7 +124,7 @@ async function populated() {
     provider: 'Diagnostyka'
   });
 
-  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, everyNDays: 14, dosesPerDay: 1 });
+  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null });
   const dosePause = await journal.doses.upsertPause({
     episodeId: episode,
     startEpochDay: 19100,
@@ -339,7 +339,7 @@ test('a dose log travels with its schedule and pauses, still hung off the right 
   assert.equal(dose.route === 'im' ? dose.vehicle : null, 'oil');
 
   assert.deepEqual(await target.journal.doses.getSchedules(), [
-    { id: source.schedule, episodeId: source.episode, everyNDays: 14, dosesPerDay: 1 }
+    { id: source.schedule, episodeId: source.episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null }
   ]);
   assert.deepEqual(await target.journal.doses.getPauses(), [
     { id: source.dosePause, episodeId: source.episode, startEpochDay: 19100, endEpochDay: null, reason: 'planned' }
