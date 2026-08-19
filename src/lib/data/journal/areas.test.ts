@@ -525,7 +525,7 @@ test('a second marker for the same effect replaces the date rather than adding a
   assert.equal(markers[0].firstNoticedEpochDay, 19120);
 });
 
-test('each of the four effects keeps its own marker', async () => {
+test('each of the eight effects keeps its own marker', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 100 });
   await journal.personalEffects.upsertMarker({ effect: 'fat_redistribution', firstNoticedEpochDay: 200 });
@@ -535,6 +535,34 @@ test('each of the four effects keeps its own marker', async () => {
   assert.deepEqual(
     markers.map((m) => m.effect).toSorted(),
     ['breast_development', 'fat_redistribution']
+  );
+});
+
+/* masculinizing effects timeline pack (phase 5 ticket 02) */
+
+test('masculinizing fat redistribution is a distinct marker from fat redistribution, not the same one read two ways', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.personalEffects.upsertMarker({ effect: 'fat_redistribution', firstNoticedEpochDay: 100 });
+  await journal.personalEffects.upsertMarker({ effect: 'masculinizing_fat_redistribution', firstNoticedEpochDay: 200 });
+
+  const markers = await journal.personalEffects.getMarkers();
+  assert.equal(markers.length, 2);
+  assert.deepEqual(
+    markers.map((m) => m.effect).toSorted(),
+    ['fat_redistribution', 'masculinizing_fat_redistribution']
+  );
+});
+
+test('each new masculinizing marker (voice drop, facial/body hair, cycle cessation) can be set independently', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.personalEffects.upsertMarker({ effect: 'voice_drop', firstNoticedEpochDay: 100 });
+  await journal.personalEffects.upsertMarker({ effect: 'facial_body_hair', firstNoticedEpochDay: 200 });
+  await journal.personalEffects.upsertMarker({ effect: 'cycle_cessation', firstNoticedEpochDay: 300 });
+
+  const markers = await journal.personalEffects.getMarkers();
+  assert.deepEqual(
+    markers.map((m) => m.effect).toSorted(),
+    ['cycle_cessation', 'facial_body_hair', 'voice_drop']
   );
 });
 

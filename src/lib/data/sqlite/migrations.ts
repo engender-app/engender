@@ -333,7 +333,7 @@ CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
    replaces the old one rather than appending to a log. No row at all
    means the effect has not been marked yet, which is why the column is
    NOT NULL rather than nullable - there is nothing to store until a
-   person marks it.
+   person marks it. Widened to eight markers by v19.
 
    No regimen-episode reference: the anchor these markers are read against
    is the earliest episode's start day (regimenEpisode.ts), resolved above
@@ -598,6 +598,37 @@ CREATE TABLE roadmap_check (
 );
 `;
 
+/* v19: the personal effects timeline widens to eight markers, adding
+   voice drop, facial/body hair, masculinizing fat redistribution and
+   cycle cessation alongside v12's four feminizing ones (phase 5 ticket
+   02). Deliberate reversal of v12's own closed-list rule, once, to reach
+   trans-masc parity - see PersonalEffectType's doc comment (types.ts) for
+   why, and why eight is the new closed count rather than an opening to a
+   ninth.
+
+   SQLite cannot ALTER a column CHECK in place, the same limitation v13's
+   comment describes for `photo`'s owner CHECK - so this is a rebuild:
+   copy the table under the widened constraint, drop the old one, rename.
+   Existing markers carry across unchanged; only the allowed vocabulary
+   grows. */
+const SCHEMA_V19 = `
+CREATE TABLE personal_effect_v19 (
+  id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid                    TEXT NOT NULL UNIQUE,
+  effect                  TEXT NOT NULL UNIQUE
+                          CHECK (effect IN (
+                            'breast_development','fat_redistribution','skin_softening','hair_changes',
+                            'voice_drop','facial_body_hair','masculinizing_fat_redistribution','cycle_cessation'
+                          )),
+  first_noticed_epoch_day INTEGER NOT NULL,
+  updated_at              INTEGER NOT NULL
+);
+INSERT INTO personal_effect_v19 (id, uuid, effect, first_noticed_epoch_day, updated_at)
+  SELECT id, uuid, effect, first_noticed_epoch_day, updated_at FROM personal_effect;
+DROP TABLE personal_effect;
+ALTER TABLE personal_effect_v19 RENAME TO personal_effect;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -616,7 +647,8 @@ export const migrations: Migration[] = [
   { version: 15, sql: SCHEMA_V15 },
   { version: 16, sql: SCHEMA_V16 },
   { version: 17, sql: SCHEMA_V17 },
-  { version: 18, sql: SCHEMA_V18 }
+  { version: 18, sql: SCHEMA_V18 },
+  { version: 19, sql: SCHEMA_V19 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database
