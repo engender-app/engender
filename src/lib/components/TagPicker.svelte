@@ -20,6 +20,7 @@
     class="tag-chip"
     class:is-selected={selected.includes(t.id)}
     aria-pressed={selected.includes(t.id)}
+    data-tag={t.id}
     onclick={() => onToggle(t.id)}
   >
     {#if selected.includes(t.id)}<Icon name="check" size={14} />{/if}{t.label}
@@ -28,14 +29,14 @@
 
 <div class="tag-picker">
   {#each groups as g (g.key)}
-    <div class="tag-group">
+    <div class="tag-group" data-tag-group={g.key}>
       <span class="tag-group-name">{g.name}</span>
       <div class="tag-row" role="group" aria-label={m.tags_group_aria({ group: g.name })}>
         {#each g.tags as t (t.id)}
           {#if t.description}
             <span class="tag-chip-wrap">
               {@render chip(t)}
-              <button class="icon-btn tag-info-btn" aria-label={m.tag_info_aria({ label: t.label })} onclick={() => (infoTag = t)}>
+              <button class="icon-btn tag-info-btn" data-tag-info={t.id} aria-label={m.tag_info_aria({ label: t.label })} onclick={() => (infoTag = t)}>
                 <Icon name="info" size={14} />
               </button>
             </span>

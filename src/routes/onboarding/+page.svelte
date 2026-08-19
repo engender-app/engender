@@ -81,7 +81,7 @@
           {#each vocabulary.presets as p (p.id)}
             <button class="list-row" data-preset={p.id} onclick={() => (preset = p.id)}>
               <span class="row-text">
-                <span class="row-title">{p.name}</span>
+                <span class="row-title" data-row-title>{p.name}</span>
                 <span class="row-subtitle">{vocabulary.presetDimensionNames(p.dims)}</span>
               </span>
               {#if preset === p.id}<Icon name="check" size={20} />{/if}
