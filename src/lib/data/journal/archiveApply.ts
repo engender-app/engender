@@ -801,6 +801,17 @@ export async function applyCycleEvents({ driver, journal, ts }: Restoring): Prom
   );
 }
 
+export async function applyJournalingPauses({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM journaling_pause');
+
+  const inserting = journal.journalingPauses.filter((pause) => !present.has(pause.id));
+  await insertRows(
+    driver,
+    'INSERT INTO journaling_pause (uuid, start_epoch_day, end_epoch_day, updated_at)',
+    inserting.map((pause) => [pause.id, pause.startEpochDay, pause.endEpochDay, ts])
+  );
+}
+
 /* Matched by `effect`, not by uuid: personal_effect is UNIQUE per effect
    (migrations.ts v12), one row that a fresh date replaces in place rather
    than a log of past dates - the same reasoning applyMedicationStock gives

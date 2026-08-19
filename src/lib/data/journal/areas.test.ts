@@ -538,6 +538,35 @@ test('cycle events update by id, throw on unknown ids and delete idempotently', 
   assert.deepEqual(await journal.cycleEvents.getCycleEvents(), []);
 });
 
+/* journaling pause (phase 5 ticket 21) */
+
+test('a journaling pause round-trips with no episode reference, ordered by start day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.journalingPauses.upsertPause({ startEpochDay: 200, endEpochDay: 210 });
+  const id = await journal.journalingPauses.upsertPause({ startEpochDay: 100, endEpochDay: null });
+
+  const pauses = await journal.journalingPauses.getPauses();
+  assert.deepEqual(pauses.map((p) => p.startEpochDay), [100, 200]);
+  assert.deepEqual(pauses[0], { id, startEpochDay: 100, endEpochDay: null });
+});
+
+test('journaling pauses update by id, throw on unknown ids and delete idempotently', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.journalingPauses.upsertPause({ startEpochDay: 100, endEpochDay: null });
+
+  await journal.journalingPauses.upsertPause({ id, startEpochDay: 100, endEpochDay: 105 });
+  assert.equal((await journal.journalingPauses.getPauses())[0].endEpochDay, 105);
+
+  await assert.rejects(
+    journal.journalingPauses.upsertPause({ id: 'nope', startEpochDay: 1, endEpochDay: null }),
+    /unknown journaling pause/
+  );
+
+  await journal.journalingPauses.deletePause(id);
+  await assert.rejects(journal.journalingPauses.deletePause(id), /unknown journaling pause/);
+  assert.deepEqual(await journal.journalingPauses.getPauses(), []);
+});
+
 /* personal effects timeline (phase 4 ticket 07) */
 
 test('no marker exists until an effect is set; getMarkers only returns what was marked', async () => {

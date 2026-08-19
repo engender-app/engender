@@ -30,6 +30,11 @@
    `stockReminderListenerAttached`. */
 
 import type { Reminder } from '$lib/data/types';
+/* Relative, not `$lib/...`: platform-sync.test.ts's vitest config has no
+   SvelteKit plugin (ADR-0017) and cannot resolve the alias, and this pure
+   module (unlike buildAndroidReminderPayload below) has no reason to be
+   mocked out. */
+import { isPausedOn } from '../data/journalingPause';
 import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
 import { resolveAndroidBackAction } from './back-navigation';
@@ -50,6 +55,10 @@ export interface PlatformSyncDeps {
     reminders: { getReminders(): Promise<Reminder[]> };
     entries: { recentDays(dayCount: number): Promise<Array<{ epochDay: number }>> };
     stock: { reconcileRunOutReminders(asOfEpochDay: number): Promise<void> };
+    /** The journaling pause (phase 5 ticket 21): while one covers today,
+        the check-in prompt goes quiet the same way a streak surface does,
+        without touching the `checkInEnabled` preference itself. */
+    journalingPauses: { getPauses(): Promise<Array<{ startEpochDay: number; endEpochDay: number | null }>> };
   };
   onTablesWritten: (listener: (tables: string[]) => void) => void;
   androidReminders: {
@@ -108,11 +117,15 @@ export function assembleReminderSyncPayload(input: {
   checkInAffirmationsEnabled: boolean;
   affirmationLines: string[];
   hideNotificationTitles: boolean;
+  /** Whether a journaling pause covers today (phase 5 ticket 21). Gated
+      here, not by clearing the `checkInEnabled` preference, so the prompt
+      resumes on its own once the pause ends. */
+  pausedToday: boolean;
   texts: AndroidReminderTexts;
 }): AndroidReminderSyncPayload {
   return buildAndroidReminderPayload({
     reminders: input.reminders,
-    checkInEnabled: input.checkInEnabled,
+    checkInEnabled: input.checkInEnabled && !input.pausedToday,
     checkInTime: input.checkInTime,
     checkInAffirmations: input.checkInAffirmationsEnabled ? input.affirmationLines : [],
     latestEntryEpochDay: input.recentEntries[0]?.epochDay ?? null,
@@ -132,9 +145,10 @@ const syncReminderSchedules = coalescing(
   async () => {
     const deps = activeDeps();
     if (!deps.isAndroid() || !deps.isReady()) return;
-    const [reminders, recentEntries] = await Promise.all([
+    const [reminders, recentEntries, pauses] = await Promise.all([
       deps.journal.reminders.getReminders(),
-      deps.journal.entries.recentDays(1)
+      deps.journal.entries.recentDays(1),
+      deps.journal.journalingPauses.getPauses()
     ]);
     await deps.androidReminders.sync(
       assembleReminderSyncPayload({
@@ -145,6 +159,7 @@ const syncReminderSchedules = coalescing(
         checkInAffirmationsEnabled: deps.prefs.checkInAffirmationsEnabled,
         affirmationLines: deps.affirmationLines(),
         hideNotificationTitles: deps.prefs.hideNotificationTitles,
+        pausedToday: isPausedOn(pauses, deps.todayEpochDay()),
         texts: deps.reminderTexts()
       })
     );
@@ -190,7 +205,9 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   if (!subscribedToTableWrites) {
     subscribedToTableWrites = true;
     deps.onTablesWritten((tables) => {
-      if (tables.includes('reminder') || tables.includes('entry')) void syncReminderSchedules();
+      if (tables.includes('reminder') || tables.includes('entry') || tables.includes('journalingPause')) {
+        void syncReminderSchedules();
+      }
     });
     deps.onTablesWritten((tables) => {
       if (tables.includes('dose') || tables.includes('stock')) void reconcileStockRunOutReminders();

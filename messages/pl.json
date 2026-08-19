@@ -2058,5 +2058,19 @@
   "surgery_checklist_delete_sheet": "Usuń punkt",
   "surgery_checklist_delete_q": "Usunąć ten punkt?",
   "clinician_summary_procedures_empty": "Nie ma zapisanych zabiegów.",
-  "surgery_add": "Dodaj operację"
+  "surgery_add": "Dodaj operację",
+  "journaling_pause_title": "Przerwa w pisaniu",
+  "journaling_pause_row_sub": "świadoma przerwa, cicha, dopóki trwa",
+  "journaling_pause_intro": "Przerwa to świadoma decyzja, nie zapominanie. Pytanie dnia i licznik serii milczą, dopóki trwa, a powrót nigdy nie wygląda jak zerwana seria.",
+  "journaling_pause_running_since": "Przerwa trwa od {day}",
+  "journaling_pause_running_hint": "Pytanie dnia i seria milczą, aż zakończysz przerwę.",
+  "journaling_pause_resume": "Wróć do pisania",
+  "journaling_pause_start_label": "Od",
+  "journaling_pause_end_label": "Do",
+  "journaling_pause_end_hint": "Zostaw puste, jeśli przerwa jeszcze trwa.",
+  "journaling_pause_start": "Zacznij przerwę",
+  "journaling_pause_history_title": "Poprzednie przerwy",
+  "journaling_pause_range_to": "do",
+  "journaling_pause_ongoing": "trwa",
+  "journaling_pause_delete_aria": "Usuń przerwę od {from}"
 }

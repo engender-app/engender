@@ -27,6 +27,7 @@ import { makeQualitativeCurveArea, type QualitativeCurveArea } from './hormoneCu
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
 import { makeIntervalMoodPatternArea, type IntervalMoodPatternArea } from './intervalMoodPattern';
+import { makeJournalingPausesArea, type JournalingPausesArea } from './journalingPauses';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeLettersArea, type LettersArea } from './letters';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
@@ -125,6 +126,12 @@ export interface Journal {
       reason sideEffects has none - charted against regimen episode
       history above this seam rather than owning a link to one. */
   cycleEvents: CycleEventsArea;
+  /** A declared, dated break from journaling (phase 5 ticket 21, CONTEXT:
+      "Streak" - amended). No episode reference, the same reason cycleEvents
+      has none. `stats.streak()` reads its rows directly to decide which
+      days inside a pause do not count as a gap; this area owns only the
+      rows themselves. */
+  journalingPauses: JournalingPausesArea;
   /** The binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear
       session"). Owns its own optional Reminder by an auto_source marker,
       the same way stock owns its run-out reminder - hence the dependency
@@ -248,6 +255,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     qualitativeCurve: makeQualitativeCurveArea(doses, regimen, labs),
     sideEffects,
     cycleEvents: makeCycleEventsArea(driver),
+    journalingPauses: makeJournalingPausesArea(driver),
     wearSessions: makeWearSessionsArea(driver, reminders),
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
     personalEffects: makePersonalEffectsArea(driver),
