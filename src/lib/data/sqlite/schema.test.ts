@@ -395,15 +395,66 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 });
 
-test('v13 hair_stage rejects a value outside the published Norwood-Hamilton scale', async () => {
-  const db = await migratedDb();
+type HairStageDb = Awaited<ReturnType<typeof migratedDb>>;
 
-  assert.doesNotThrow(() =>
-    db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h1', 100, '3v', 1000)")
-  );
-  assert.throws(() =>
-    db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h2', 100, '8', 1000)")
-  );
+const insertHairStage =
+  (db: HairStageDb) =>
+  (uuid: string, scale: string, stage: string, description = '') =>
+    db.raw.exec(
+      `INSERT INTO hair_stage (uuid, epoch_day, scale, stage, description, updated_at) VALUES ('${uuid}', 100, '${scale}', '${stage}', '${description}', 1000)`
+    );
+
+test('v36 hair_stage rejects a grade the named scale does not publish', async () => {
+  const db = await migratedDb();
+  const insert = insertHairStage(db);
+
+  assert.doesNotThrow(() => insert('h1', 'norwood_hamilton', '3v'));
+  assert.doesNotThrow(() => insert('h2', 'sinclair', '5'));
+
+  // '3v' and '7' are Norwood-Hamilton codes and Sinclair publishes neither,
+  // so the pair is refused even though each half is valid somewhere.
+  assert.throws(() => insert('h3', 'sinclair', '3v'));
+  assert.throws(() => insert('h4', 'sinclair', '7'));
+  assert.throws(() => insert('h5', 'norwood_hamilton', '8'));
+  assert.throws(() => insert('h6', 'ludwig', 'ii'));
+});
+
+test('v36 hair_stage keeps a free-text description to the scale that has no grades', async () => {
+  const db = await migratedDb();
+  const insert = insertHairStage(db);
+
+  assert.doesNotThrow(() => insert('h1', 'other', '', 'diffuse thinning all over the top'));
+  // Neither of these, and nothing written down, is a record too.
+  assert.doesNotThrow(() => insert('h2', 'other', ''));
+
+  assert.throws(() => insert('h3', 'other', '3'));
+  assert.throws(() => insert('h4', 'norwood_hamilton', '3', 'and some prose'));
+});
+
+test('v36 carries the v13 table across as Norwood-Hamilton stagings', async () => {
+  const preV36 = migrations.filter((m) => m.version <= 13);
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), preV36);
+  db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h1', 19180, '3a', 1000)");
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), 36);
+
+  const row = db.raw.prepare('SELECT * FROM hair_stage WHERE uuid = ?').get('h1') as {
+    epoch_day: number;
+    scale: string;
+    stage: string;
+    description: string;
+    updated_at: number;
+  };
+  // Norwood-Hamilton was the only vocabulary there was, so every row that
+  // predates this migration is one, and its stage goes on meaning what it
+  // meant.
+  assert.equal(row.scale, 'norwood_hamilton');
+  assert.equal(row.stage, '3a');
+  assert.equal(row.description, '');
+  assert.equal(row.epoch_day, 19180);
+  assert.equal(row.updated_at, 1000);
 });
 
 test('v13 hair_photo is its own table, not a third owner on photo', async () => {

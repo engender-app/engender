@@ -14,6 +14,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
 import { resolveEpisodeAt } from '../regimenEpisode.ts';
 import { epochDayFromTimestamp } from '../epochDay.ts';
+import { emptyArchiveJournal } from './archiveSections.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
 import type { RestoreContents } from './restore.ts';
@@ -819,4 +820,25 @@ test('restore overlaps photo file writes rather than waiting on each one', async
   });
 
   assert.ok(maxActiveWrites > 1, `writes were sequential (max overlap ${maxActiveWrites})`);
+});
+
+/* The one hand-written payload in this file, and it earns the exception the
+   header makes: no snapshot this build can take produces an archive without
+   a `scale`, because every row has had one since phase 5 ticket 33. This is
+   what a backup written by an older build actually looks like, and the only
+   way to check it still restores is to write one. */
+test('a staging from an archive written before there were two scales restores as Norwood-Hamilton', async () => {
+  const target = await device();
+
+  await target.journal.archive.replace({
+    journal: {
+      ...emptyArchiveJournal(),
+      hairStages: [{ id: 'legacy-staging', epochDay: 19200, stage: '3a' }]
+    },
+    files: (async function* () {})()
+  });
+
+  assert.deepEqual(await target.journal.hairProgress.getStages(), [
+    { id: 'legacy-staging', epochDay: 19200, scale: 'norwood_hamilton', stage: '3a', description: '' }
+  ]);
 });

@@ -568,10 +568,20 @@ export async function readPersonalEffects({ driver }: SectionRead): Promise<Arch
 }
 
 export async function readHairStages({ driver }: SectionRead): Promise<ArchiveHairStage[]> {
-  const rows = await driver.query<{ uuid: string; epoch_day: number; stage: string }>(
-    'SELECT uuid, epoch_day, stage FROM hair_stage ORDER BY epoch_day, id'
-  );
-  return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, stage: r.stage }));
+  const rows = await driver.query<{
+    uuid: string;
+    epoch_day: number;
+    scale: string;
+    stage: string;
+    description: string;
+  }>('SELECT uuid, epoch_day, scale, stage, description FROM hair_stage ORDER BY epoch_day, id');
+  return rows.map((r) => ({
+    id: r.uuid,
+    epochDay: r.epoch_day,
+    scale: r.scale,
+    stage: r.stage,
+    description: r.description
+  }));
 }
 
 /* Reads its rows from the context rather than the driver, the way the entry
