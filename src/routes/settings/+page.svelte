@@ -36,63 +36,9 @@
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
 
   /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
-     count of the enabled ones - which only the Android build displays at all.
-     Milestones are mirrored, so their count needs no query. */
+     count of the enabled ones - which only the Android build displays at all. */
   let reminders = liveQuery(['reminder'], (j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.value ?? []).filter((r) => r.enabled).length);
-
-  /* Every care row is icon + title + subtitle + href. Reminders is marked
-     `live` because its subtitle reads reactive state (isWeb, activeReminders,
-     checkInEnabled) rather than just formatting a fixed count the way
-     milestones' subtitle does, and it's the only row whose trailing icon
-     varies by platform. */
-  type CareRow = {
-    key: string;
-    icon: string;
-    title: () => string;
-    subtitle: () => string;
-    href: string;
-    live?: boolean;
-    trailing?: () => { name: string; size: number };
-  };
-
-  const CARE_ROWS: CareRow[] = [
-    { key: 'reminders', icon: 'bell', title: () => m.reminders(), href: '/settings/reminders', live: true,
-      subtitle: () => isWeb ? m.reminders_web_sub() : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() }),
-      trailing: () => (isWeb ? { name: 'info', size: 18 } : { name: 'chevronRight', size: 20 }) },
-    { key: 'milestones', icon: 'flag', title: () => m.milestones(), subtitle: () => m.settings_milestones_sub({ count: vocabulary.milestones.length }), href: '/settings/milestones' },
-    { key: 'journey-anchor', icon: 'flag',
-      title: () => m.journey_anchor_title(),
-      subtitle: () => {
-        const anchor = vocabulary.journeyAnchor;
-        return anchor ? m.journey_anchor_row_sub_set({ name: anchor.name }) : m.journey_anchor_row_sub_unset();
-      },
-      href: '/settings/journey-anchor' },
-    { key: 'affirmations', icon: 'sparkle', title: () => m.affirmations_row_title(), subtitle: () => m.affirmations_row_sub(), href: '/settings/affirmations' },
-    { key: 'body-regions', icon: 'heart', title: () => m.body_regions_row_title(), subtitle: () => m.body_regions_row_sub(), href: '/settings/body-regions' },
-    { key: 'photos', icon: 'image', title: () => m.progress_photos(), subtitle: () => m.progress_photos_sub(), href: '/settings/photos' },
-    { key: 'voice', icon: 'mic', title: () => m.recordings_label(), subtitle: () => m.voice_compare_sub(), href: '/settings/voice' },
-    { key: 'labs', icon: 'flask', title: () => m.lab_results(), subtitle: () => m.lab_results_sub(), href: '/settings/labs' },
-    { key: 'measurements', icon: 'ruler', title: () => m.body_measurements(), subtitle: () => m.body_measurements_sub(), href: '/settings/measurements' },
-    { key: 'sizes', icon: 'package', title: () => m.size_log(), subtitle: () => m.size_log_sub(), href: '/settings/sizes' },
-    { key: 'regimen', icon: 'timeline', title: () => m.regimen(), subtitle: () => m.regimen_row_sub(), href: '/settings/regimen' },
-    { key: 'side-effects', icon: 'zap', title: () => m.side_effects(), subtitle: () => m.side_effects_sub(), href: '/settings/side-effects' },
-    { key: 'cycle-events', icon: 'calendar', title: () => m.cycle_events(), subtitle: () => m.cycle_events_sub(), href: '/settings/cycle-events' },
-    { key: 'wear', icon: 'clock', title: () => m.wear_log(), subtitle: () => m.wear_log_sub(), href: '/settings/wear' },
-    { key: 'hair-removal', icon: 'shuffle', title: () => m.hair_removal(), subtitle: () => m.hair_removal_sub(), href: '/settings/hair-removal' },
-    { key: 'effects', icon: 'sparkle', title: () => m.effects_timeline(), subtitle: () => m.effects_timeline_sub(), href: '/settings/effects' },
-    { key: 'tryouts', icon: 'tag', title: () => m.tryout_title(), subtitle: () => m.tryout_row_sub(), href: '/settings/tryouts' },
-    { key: 'letters', icon: 'book', title: () => m.letters_title(), subtitle: () => m.letters_row_sub(), href: '/settings/letters' },
-    { key: 'roadmap', icon: 'globe', title: () => m.roadmap_title(), subtitle: () => m.roadmap_row_sub(), href: '/settings/roadmap' },
-    { key: 'streak-goal', icon: 'sparkle', title: () => m.streak_goal_title(), subtitle: () => m.streak_goal_row_sub(), href: '/settings/streak-goal' },
-    { key: 'journaling-pause', icon: 'moon', title: () => m.journaling_pause_title(), subtitle: () => m.journaling_pause_row_sub(), href: '/settings/journaling-pause' },
-    { key: 'hormone-curve', icon: 'curve', title: () => m.curve_title(), subtitle: () => m.curve_sub(), href: '/settings/hormone-curve' },
-    { key: 'hair-progress', icon: 'comb', title: () => m.hair_progress(), subtitle: () => m.hair_progress_sub(), href: '/settings/hair-progress' },
-    { key: 'surgery', icon: 'flag', title: () => m.surgery_journey_title(), subtitle: () => m.surgery_journey_sub(), href: '/settings/surgery' },
-    { key: 'appointment-prep', icon: 'check', title: () => m.appointment_prep_title(), subtitle: () => m.appointment_prep_row_sub(), href: '/settings/appointment-prep' },
-    { key: 'clinician-summary', icon: 'share', title: () => m.clinician_summary_row(), subtitle: () => m.clinician_summary_row_sub(), href: '/settings/clinician-summary' },
-    { key: 'resources', icon: 'globe', title: () => m.resources_title(), subtitle: () => m.resources_row_sub(), href: '/settings/resources' }
-  ];
 
   let presetSheet = $state(false);
   let metricSheet = $state(false);
@@ -274,6 +220,58 @@
       </span>
       <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
     </a>
+    <a class="list-row" href="/settings/reminders">
+      <span class="row-icon"><Icon name="bell" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.reminders()}</span>
+        <span class="row-subtitle">
+          {isWeb ? m.reminders_web_sub() : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() })}
+        </span>
+      </span>
+      <span class="row-trailing"><Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} /></span>
+    </a>
+    <a class="list-row" href="/settings/journey-anchor">
+      <span class="row-icon"><Icon name="flag" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.journey_anchor_title()}</span>
+        <span class="row-subtitle">
+          {vocabulary.journeyAnchor ? m.journey_anchor_row_sub_set({ name: vocabulary.journeyAnchor.name }) : m.journey_anchor_row_sub_unset()}
+        </span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
+    <a class="list-row" href="/settings/affirmations">
+      <span class="row-icon"><Icon name="sparkle" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.affirmations_row_title()}</span>
+        <span class="row-subtitle">{m.affirmations_row_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
+    <a class="list-row" href="/settings/body-regions">
+      <span class="row-icon"><Icon name="heart" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.body_regions_row_title()}</span>
+        <span class="row-subtitle">{m.body_regions_row_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
+    <a class="list-row" href="/settings/streak-goal">
+      <span class="row-icon"><Icon name="sparkle" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.streak_goal_title()}</span>
+        <span class="row-subtitle">{m.streak_goal_row_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
+    <a class="list-row" href="/settings/journaling-pause">
+      <span class="row-icon"><Icon name="moon" size={22} /></span>
+      <span class="row-text">
+        <span class="row-title">{m.journaling_pause_title()}</span>
+        <span class="row-subtitle">{m.journaling_pause_row_sub()}</span>
+      </span>
+      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
+    </a>
     <div class="list-row" style="cursor:default">
       <span class="row-icon"><Icon name="tag" size={22} /></span>
       <span class="row-text">
@@ -405,25 +403,6 @@
       </span>
       <span class="row-trailing"><Icon name="chevronDown" size={20} /></span>
     </button>
-  </div>
-
-  <SectionTitle text={m.settings_care()} />
-  <div class="list-group">
-    {#each CARE_ROWS as row (row.key)}
-      <a class="list-row" href={row.href}>
-        <span class="row-icon"><Icon name={row.icon} size={22} /></span>
-        <span class="row-text">
-          <span class="row-title">{row.title()}</span>
-          <span class="row-subtitle">{row.subtitle()}</span>
-        </span>
-        {#if row.trailing}
-          {@const t = row.trailing()}
-          <span class="row-trailing"><Icon name={t.name} size={t.size} /></span>
-        {:else}
-          <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-        {/if}
-      </a>
-    {/each}
   </div>
 
   <SectionTitle text={m.settings_privacy()} />
