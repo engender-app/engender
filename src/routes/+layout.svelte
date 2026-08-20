@@ -61,6 +61,10 @@
     { href: '/', key: 'home', icon: 'home', label: () => m.nav_home() },
     { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_calendar() },
     { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_stats() },
+    /* ADR-0036: the tab now opens the More hub, not Settings directly, but
+       `key` stays 'settings' - it's what the walkthrough's data-nav-item
+       selector and activeKey below already key off, and Settings is still
+       what this tab leads to, one hop further in. */
     { href: '/more', key: 'settings', icon: 'dots', label: () => m.nav_more() },
   ];
 
