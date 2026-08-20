@@ -17,8 +17,11 @@ const TAB_ROUTES: TabRoute[] = [
      over the same journal, rather than getting IA a new tab. A wrapped
      joins that group for the same reason, even though Home is where it is
      offered from. Body map, tally and compare are the same kind of
-     look-back, linked from Stats' own recap cards; on-this-day reuses
-     WrappedCompact for the same reason (ticket 09). */
+     look-back, linked from Stats' own recap cards. On-this-day joins for
+     the same reason as wrapped, not body-map/tally/compare - it too is
+     offered from Home (OnThisDayHomeCard), not from Stats, but it reuses
+     WrappedCompact's presentation the same way a wrapped week does
+     (ticket 09). */
   {
     key: 'stats',
     prefixes: ['/stats', '/recap', '/timeline', '/wrapped', '/body-map', '/tally', '/compare', '/on-this-day']
