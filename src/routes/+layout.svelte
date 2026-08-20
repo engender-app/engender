@@ -26,6 +26,7 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
+  import { activeTabKey } from '$lib/navigation/active-tab';
   import { androidReminders } from '$lib/reminders/android-bridge';
   import { affirmationLines } from '$lib/reminders/affirmations';
   import { androidDisguise } from '$lib/disguise/android-bridge';
@@ -113,22 +114,7 @@
       path.startsWith('/onboarding') ||
       path === '/settings/lock'
   );
-  let activeKey = $derived(
-    path === '/' ? 'home'
-    : path.startsWith('/calendar') || path.startsWith('/day') || path.startsWith('/search') ? 'calendar'
-    /* SH-001: Timeline used to light no tab at all, which read as having
-       left the app's structure. It groups with Stats/Recap as a look-back
-       view over the same journal, rather than getting IA a new tab. A
-       wrapped joins that group for the same reason, even though Home is
-       where it is offered from. */
-    : path.startsWith('/stats') ||
-        path.startsWith('/recap') ||
-        path.startsWith('/timeline') ||
-        path.startsWith('/wrapped')
-      ? 'stats'
-    : path.startsWith('/settings') || path.startsWith('/more') ? 'settings'
-    : ''
-  );
+  let activeKey = $derived(activeTabKey(path));
 
   /* Theme, palette, disguise → document. */
   let systemDark = $state(false);
