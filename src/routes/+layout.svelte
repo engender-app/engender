@@ -61,7 +61,7 @@
     { href: '/', key: 'home', icon: 'home', label: () => m.nav_home() },
     { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_calendar() },
     { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_stats() },
-    { href: '/settings', key: 'settings', icon: 'settings', label: () => m.nav_settings() },
+    { href: '/more', key: 'settings', icon: 'dots', label: () => m.nav_more() },
   ];
 
   /* The gate (F13). It is asked here rather than in a route guard because
@@ -122,7 +122,7 @@
         path.startsWith('/timeline') ||
         path.startsWith('/wrapped')
       ? 'stats'
-    : path.startsWith('/settings') ? 'settings'
+    : path.startsWith('/settings') || path.startsWith('/more') ? 'settings'
     : ''
   );
 
