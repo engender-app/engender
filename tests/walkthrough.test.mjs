@@ -748,8 +748,11 @@ try {
   await page.waitForSelector('[data-home-hello]');
 
   /* Off again, or every flow after this one meets the gate. In-app, not
-     page.goto: a fresh load is a cold start, and a cold start locks. */
+     page.goto: a fresh load is a cold start, and a cold start locks. Settings
+     is a hub row now (ticket 03), not the tab itself, so this is one hop
+     longer than it was. */
   await page.locator('[data-nav-item="settings"]').click();
+  await page.locator('a[href="/settings"]').click();
   await page.locator('a[href="/settings/security"]').click();
   await page.getByRole('switch', { name: 'App lock' }).click();
   /* The switch reads back off, and the hash may never appear in the
@@ -1759,6 +1762,34 @@ try {
   ok('two concurrent regimen episodes stay active together, a dose logged during the overlap is attributed by an explicit pick, and ending one restores single-episode behaviour');
 } catch (e) {
   fail('concurrent regimen episodes and dose attribution', e);
+}
+
+/* Characterization pass for the More hub (phase 5 ticket 03): every route
+   Settings used to link, directly or by way of the new /more hub, still
+   answers at its own address - ADR-0036 moves who links to a route, never
+   the route itself, and this is the thing that would catch a slip. */
+try {
+  const SETTINGS_AREA_ROUTES = [
+    '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
+    '/settings/security', '/settings/tags', '/settings/trash', '/settings/reminders',
+    '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
+    '/settings/streak-goal', '/settings/journaling-pause', '/settings/photos',
+    '/settings/measurements', '/settings/sizes', '/settings/hair-progress',
+    '/settings/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
+    '/settings/cycle-events', '/settings/side-effects', '/settings/surgery',
+    '/settings/appointment-prep', '/settings/clinician-summary', '/settings/milestones',
+    '/settings/roadmap', '/settings/letters', '/settings/tryouts', '/settings/voice',
+    '/settings/wear', '/settings/effects', '/settings/resources',
+  ];
+  for (const route of SETTINGS_AREA_ROUTES) {
+    await page.goto(BASE + route, { waitUntil: 'networkidle' });
+    if ((await page.getByRole('heading', { level: 1 }).count()) === 0) {
+      throw new Error(`${route} rendered no heading - not reachable`);
+    }
+  }
+  ok(`all ${SETTINGS_AREA_ROUTES.length} settings-area routes still answer at their own address`);
+} catch (e) {
+  fail('More hub route characterization', e);
 }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
