@@ -22,6 +22,11 @@
     { key: 'labs', icon: 'flask', title: () => m.lab_results(), subtitle: () => m.lab_results_sub(), href: '/settings/labs' },
     { key: 'regimen', icon: 'timeline', title: () => m.regimen(), subtitle: () => m.regimen_row_sub(), href: '/settings/regimen' },
     { key: 'hormone-curve', icon: 'curve', title: () => m.curve_title(), subtitle: () => m.curve_sub(), href: '/settings/hormone-curve' },
+    /* Ticket 09: doses was reachable only from inside regimen and
+       hormone-curve, both settings screens - this row gives it an inbound
+       link from outside the settings subtree, alongside the two it comes
+       from. */
+    { key: 'doses', icon: 'clock', title: () => m.doses(), subtitle: () => m.doses_row_sub(), href: '/doses' },
     { key: 'cycle-events', icon: 'calendar', title: () => m.cycle_events(), subtitle: () => m.cycle_events_sub(), href: '/settings/cycle-events' },
     { key: 'side-effects', icon: 'zap', title: () => m.side_effects(), subtitle: () => m.side_effects_sub(), href: '/settings/side-effects' },
     { key: 'surgery', icon: 'flag', title: () => m.surgery_journey_title(), subtitle: () => m.surgery_journey_sub(), href: '/settings/surgery' },
