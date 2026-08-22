@@ -57,8 +57,8 @@ A boolean on an Entry or a Photo marking it as chosen counterevidence,
 sitting outside Entry's seven-field content closure - the same category the
 uuid/day/timestamp identity fields already are - so starring or unstarring
 never changes whether an entry exists. Reachable from a starred shelf off
-search, and joins euphoria-tagged entries in the doubt journal's
-counterevidence pool (see **Doubt entry**).
+search, and joins euphoria-tagged entries in the pool a **counterevidence
+check** reads.
 
 **Voice recording**:
 An in-app audio recording belonging to exactly one entry, held in the same
@@ -200,8 +200,8 @@ type on the same entry. Three built-in tags carry it, read as equals rather than
 one general tag plus two ordinary ones that happen to mention euphoria:
 `g-euphoria` (general), `g-soc-eu` (social) and `g-body-eu` (body). Someone not
 pursuing body changes tags social euphoria far more than the general tag, so
-anything asking "did this day carry a euphoria capture" - the doubt journal's
-counterevidence pool, the good-day rule below - checks all three.
+anything asking "did this day carry a euphoria capture" - a **counterevidence
+check**'s pool, the good-day rule below - checks all three.
 
 A **body-region feeling**'s own euphoria intensity also qualifies, at or above
 50 on any single logged region (phase 5 ticket 44, `GOOD_DAY_REGION_EUPHORIA_FLOOR`)
@@ -549,9 +549,10 @@ _Avoid_: Export (the archive owns that word), report, backup
 
 **Book part**:
 One kind of record a journal book may carry - entries, their photos, tags,
-milestones, doubt entries, side effects, or the opening page. Every part is
-answered before the book is assembled, and an unchosen part is never read, so
-it cannot reach the page by way of something drawing it anyway.
+milestones, side effects, or the opening page. Every part is answered before
+the book is assembled, and an unchosen part is never read, so it cannot reach
+the page by way of something drawing it anyway. Doubt entries were a part
+once; ADR-0037 removed the record type they came from.
 _Avoid_: Section (a clinician summary section prints because it registers; a
 book part prints because it was picked)
 
@@ -585,17 +586,20 @@ bar. Neither the region's own dysphoria intensity nor a combination of the two
 ever enters this rule, matching ticket 31's refusal of any net or scored
 figure across a region's two axes.
 
-**Doubt entry**:
-A free-write record for a "not trans enough" spiral, timestamped and its own
-record type - no mood, dimension values, tags or note (CONTEXT: "Entry").
-Writing one surfaces the user's own past **euphoria capture**-tagged entries
-and entries carrying a body region at or above the same euphoria floor
-(CONTEXT: "Euphoria capture"), alongside any **Starred** ones, as
-counterevidence, reached from a persistent Home affordance rather than the
-normal new-entry flow.
+**Counterevidence check**:
+An on-demand, read-only look at the user's own past **euphoria capture**-tagged
+entries and entries carrying a body region at or above the same euphoria floor
+(CONTEXT: "Euphoria capture"), alongside any **Starred** ones - reached with a
+single tap, not through the normal new-entry flow, for someone whose dysphoria
+is overwhelming right now. Nothing is written by opening one. Replaces the
+**Doubt entry**, which asked the person to write the spiral down before
+showing this same pool; ADR-0037 retires that half and the data it had already
+recorded.
+_Avoid_: Doubt entry (retired, ADR-0037), doubt journal, panic button (names
+the moment it's used in, not the mechanism)
 
 **Counterevidence snapshot**:
-A one-tap, saved copy of the counterevidence a doubt entry's composer was
+A one-tap, saved copy of the counterevidence a **counterevidence check** was
 showing at the moment of the tap, kept for rereading later rather than
 re-derived on read - a euphoria-tagged entry edited, untagged or deleted
 afterwards must not change what a past snapshot showed.
