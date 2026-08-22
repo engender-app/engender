@@ -121,7 +121,6 @@ const SECTIONS = [
   section({ name: 'procedures', read: read.readProcedures, apply: apply.applyProcedures }),
   section({ name: 'reminders', read: read.readReminders, apply: apply.applyReminders }),
   section({ name: 'tallyEvents', read: read.readTallyEvents, apply: apply.applyTallyEvents }),
-  section({ name: 'doubtEntries', read: read.readDoubtEntries, apply: apply.applyDoubtEntries }),
   section({
     name: 'counterevidenceSnapshots',
     read: read.readCounterevidenceSnapshots,

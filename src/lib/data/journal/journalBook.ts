@@ -1,9 +1,9 @@
 /* The journal book (phase 5 ticket 17, CONTEXT: "Journal book"): everything
    a person chose to put in a keepsake print of a chosen range, assembled in
-   one read. A view over rows entries, milestones, the doubt journal and side
-   effects own, the same way clinicianSummary.ts is a view over its own five
-   areas - nothing here is stored, and nothing here computes a figure one of
-   those areas does not already produce (ADR-0010).
+   one read. A view over rows entries, milestones and side effects own, the
+   same way clinicianSummary.ts is a view over its own five areas - nothing
+   here is stored, and nothing here computes a figure one of those areas
+   does not already produce (ADR-0010).
 
    This is not a second clinician summary and deliberately does not reuse
    that area's section registry. The audience is the person themselves, the
@@ -12,16 +12,14 @@
    was *chosen*, section by section, rather than everything the range holds.
 
    Which is why an unchosen type is not read at all rather than read and
-   left undrawn. The inclusion below decides what the SQL asks for, so a
-   book that was told to leave out doubt entries has no doubt entry in it to
-   leak - and an entry's photos and tags are stripped here rather than in
-   the markup, so the screen has nothing to opt back in by accident.
+   left undrawn. The inclusion below decides what the SQL asks for - and an
+   entry's photos and tags are stripped here rather than in the markup, so
+   the screen has nothing to opt back in by accident.
 
    Wording is not here (ADR-0016): the inclusion picker's labels live in
    vocabulary/journalBookLabels.ts, keyed the same way. */
 
-import type { DoubtEntry, Entry, Milestone, Photo, SideEffect } from '../types';
-import type { DoubtJournalArea } from './doubtJournal';
+import type { Entry, Milestone, Photo, SideEffect } from '../types';
 import type { EntriesArea } from './entries';
 import type { MilestonesArea } from './milestones';
 import type { SideEffectsArea } from './sideEffects';
@@ -48,7 +46,6 @@ export interface JournalBookInclusion {
       other in. */
   dysphoriaEuphoriaTags: boolean;
   milestones: boolean;
-  doubtEntries: boolean;
   sideEffects: boolean;
   openingPage: boolean;
 }
@@ -65,7 +62,6 @@ export const JOURNAL_BOOK_INCLUSION_KEYS: readonly JournalBookInclusionKey[] = [
   'openingPage',
   'tags',
   'dysphoriaEuphoriaTags',
-  'doubtEntries',
   'sideEffects'
 ];
 
@@ -74,16 +70,15 @@ export const JOURNAL_BOOK_INCLUSION_KEYS: readonly JournalBookInclusionKey[] = [
 
     Everything else starts off. An archive is encrypted and stays on the
     device; this is the one export meant to be printed, handed over or left
-    on a shelf, so the types that say the most about a bad week - a doubt
-    entry, a side effect's severity, a dysphoria or euphoria tag - are opted
-    into rather than out of. */
+    on a shelf, so the types that say the most about a bad week - a side
+    effect's severity, a dysphoria or euphoria tag - are opted into rather
+    than out of. */
 export const JOURNAL_BOOK_DEFAULT_INCLUSION: JournalBookInclusion = {
   entries: true,
   photos: true,
   tags: false,
   dysphoriaEuphoriaTags: false,
   milestones: true,
-  doubtEntries: false,
   sideEffects: false,
   openingPage: false
 };
@@ -121,7 +116,6 @@ export interface JournalBook {
       unlike every on-screen list in the app. */
   entries: JournalBookEntry[];
   milestones: Milestone[];
-  doubtEntries: DoubtEntry[];
   sideEffects: SideEffect[];
   /** Null unless the opening page was asked for. */
   opening: JournalBookOpening | null;
@@ -130,7 +124,6 @@ export interface JournalBook {
 export interface JournalBookAreas {
   entries: EntriesArea;
   milestones: MilestonesArea;
-  doubtJournal: DoubtJournalArea;
   sideEffects: SideEffectsArea;
   stats: StatsArea;
   tags: TagsArea;
@@ -211,14 +204,13 @@ export function makeJournalBookArea(areas: JournalBookAreas): JournalBookArea {
     async getBook(fromEpochDay, toEpochDay, inclusion) {
       // Concurrent because the parts are independent - none of them reads
       // what another produced.
-      const [entries, milestones, doubtEntries, sideEffects, opening] = await Promise.all([
+      const [entries, milestones, sideEffects, opening] = await Promise.all([
         inclusion.entries ? readEntries(areas, fromEpochDay, toEpochDay, inclusion) : [],
         inclusion.milestones ? readMilestones(areas, fromEpochDay, toEpochDay) : [],
-        inclusion.doubtEntries ? areas.doubtJournal.getEntriesInRange(fromEpochDay, toEpochDay) : [],
         inclusion.sideEffects ? areas.sideEffects.getSideEffectsInRange(fromEpochDay, toEpochDay) : [],
         inclusion.openingPage ? readOpening(areas, fromEpochDay, toEpochDay) : null
       ]);
-      return { fromEpochDay, toEpochDay, entries, milestones, doubtEntries, sideEffects, opening };
+      return { fromEpochDay, toEpochDay, entries, milestones, sideEffects, opening };
     }
   };
 }

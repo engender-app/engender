@@ -4,7 +4,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
-  import type { CounterevidenceEntry, CounterevidenceSnapshot, DoubtEntry } from '$lib/data/types';
+  import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
@@ -21,38 +21,19 @@
   const HISTORY_LIMIT = 50;
 
   let today = $derived(todayEpochDay());
-  let text = $state('');
 
   let counterevidenceQuery = liveQuery(['entry', 'tag'], (j) =>
     j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT)
   );
   let counterevidence = $derived(counterevidenceQuery.value ?? []);
 
-  let entriesQuery = liveQuery(['doubtJournal'], (j) => j.doubtJournal.getEntries(HISTORY_LIMIT));
-  let pastEntries = $derived(entriesQuery.value ?? []);
-
   let snapshotsQuery = liveQuery(['doubtJournal'], (j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
   let snapshots = $derived(snapshotsQuery.value ?? []);
-
-  async function saveEntry() {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    await journal.doubtJournal.addEntry({ epochDay: today, text: trimmed });
-    text = '';
-  }
 
   async function saveSnapshot() {
     if (counterevidence.length === 0) return;
     const items: CounterevidenceEntry[] = counterevidence.map((e) => ({ epochDay: e.epochDay, mood: e.mood, note: e.note }));
     await journal.doubtJournal.saveSnapshot(today, items);
-  }
-
-  let entryDeleteTarget = $state<DoubtEntry | null>(null);
-  async function deleteEntry() {
-    if (!entryDeleteTarget) return;
-    const id = entryDeleteTarget.id;
-    entryDeleteTarget = null;
-    await journal.doubtJournal.deleteEntry(id);
   }
 
   let snapshotDeleteTarget = $state<CounterevidenceSnapshot | null>(null);
@@ -72,19 +53,6 @@
     <h1 class="screen-title">{m.doubt_title()}</h1>
   </header>
 
-  <div class="card">
-    <p class="quicklog-title">{m.doubt_compose_title()}</p>
-    <textarea class="input" rows="5" placeholder={m.doubt_compose_placeholder()} bind:value={text}></textarea>
-    <button
-      class="btn btn-primary btn-block"
-      style="margin-top:var(--space-3)"
-      disabled={text.trim().length === 0}
-      onclick={saveEntry}
-    >
-      <span>{m.doubt_save_entry()}</span>
-    </button>
-  </div>
-
   <SectionTitle text={m.doubt_counterevidence_title()} />
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.doubt_counterevidence_sub()}</p>
   {#if counterevidenceQuery.loading}
@@ -98,23 +66,6 @@
     </button>
   {:else}
     <EmptyState title={m.doubt_no_counterevidence_title()} text={m.doubt_no_counterevidence_body()} />
-  {/if}
-
-  {#if pastEntries.length}
-    <SectionTitle text={m.doubt_past_entries_title()} />
-    <div class="list-group">
-      {#each pastEntries as entry (entry.id)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">{dayLabel(entry.epochDay)} · {fmtTime(entry.timestamp)}</span>
-            <span class="row-subtitle">{entry.text}</span>
-          </span>
-          <button class="icon-btn" aria-label={m.doubt_entry_delete_sheet()} onclick={() => (entryDeleteTarget = entry)}>
-            <Icon name="trash" size={18} />
-          </button>
-        </div>
-      {/each}
-    </div>
   {/if}
 
   {#if snapshots.length}
@@ -135,17 +86,6 @@
       </div>
     {/each}
   {/if}
-
-  <Sheet open={entryDeleteTarget !== null} title={m.doubt_entry_delete_sheet()} onClose={() => (entryDeleteTarget = null)}>
-    {#if entryDeleteTarget}
-      <h3>{m.doubt_entry_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.doubt_entry_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-doubt-entry onclick={deleteEntry}><span>{m.doubt_entry_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (entryDeleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
 
   <Sheet open={snapshotDeleteTarget !== null} title={m.doubt_snapshot_delete_sheet()} onClose={() => (snapshotDeleteTarget = null)}>
     {#if snapshotDeleteTarget}

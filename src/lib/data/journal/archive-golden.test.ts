@@ -66,7 +66,6 @@ const SECTIONS = [
   'procedures',
   'reminders',
   'tallyEvents',
-  'doubtEntries',
   'counterevidenceSnapshots',
   'letters',
   'roadmapChecks',
@@ -94,7 +93,7 @@ async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
-/** A journal with something in all 37 sections, and the customizations that
+/** A journal with something in all 36 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, a renamed and a hidden built-in tag, a hidden dimension, a
@@ -206,7 +205,6 @@ async function everySection(): Promise<Journal> {
     enabled: true
   });
   await journal.tally.log({ epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' });
-  await journal.doubtJournal.addEntry({ epochDay: 20000, text: 'am I even trans enough for this' });
   await journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]);
   await journal.letters.addLetter({ epochDay: 20000, text: 'read this in a year', unlockEpochDay: 20365 });
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');

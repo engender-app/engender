@@ -272,17 +272,6 @@ export interface TallyEvent {
   context: string;
 }
 
-/* Free-write reflection for a "not trans enough" spiral (phase 4 ticket
-   11, CONTEXT: "Doubt entry"). Its own record type, the same reasoning
-   TallyEvent above is not a variant of Entry: no mood, dimension values,
-   tags or note - just the one free-write field. */
-export interface DoubtEntry {
-  id: string;
-  epochDay: number;
-  timestamp: number;
-  text: string;
-}
-
 /** One of the user's own euphoria-tagged entries, copied into a
     CounterevidenceSnapshot rather than referenced by id - see the
     ADR-0010 exception argued at migrations.ts v14. Deliberately thinner

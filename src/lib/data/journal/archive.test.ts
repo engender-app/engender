@@ -118,7 +118,6 @@ async function populated() {
     recordedEpochDay: 19000
   });
 
-  const doubtEntry = await journal.doubtJournal.addEntry({ epochDay: 20000, text: 'am I even trans enough for this' });
   const counterevidenceSnapshot = await journal.doubtJournal.saveSnapshot(20000, [
     { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
   ]);
@@ -170,7 +169,6 @@ async function populated() {
     cycleEvent,
     journalingPause,
     personalEffect,
-    doubtEntry,
     counterevidenceSnapshot,
     tryout,
     feltSense,
@@ -372,19 +370,11 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
   ]);
 });
 
-test('a doubt entry travels whole, and a counterevidence snapshot travels with its items copied in rather than referenced', async () => {
-  const { journal, doubtEntry, counterevidenceSnapshot } = await populated();
+test('a counterevidence snapshot travels with its items copied in rather than referenced', async () => {
+  const { journal, counterevidenceSnapshot } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
-  assert.deepEqual(snapshot.journal.doubtEntries, [
-    {
-      id: doubtEntry,
-      epochDay: 20000,
-      timestamp: snapshot.journal.doubtEntries[0].timestamp,
-      text: 'am I even trans enough for this'
-    }
-  ]);
   assert.deepEqual(snapshot.journal.counterevidenceSnapshots, [
     {
       id: counterevidenceSnapshot,
@@ -675,7 +665,6 @@ const CARRIED: Record<string, string[]> = {
   // way dose_pause's episode_id does (ADR-0002).
   procedure_consult: ['uuid', 'procedure_id', 'epoch_day'],
   procedure_photo: ['uuid', 'procedure_id', 'epoch_day', 'file_path'],
-  doubt_entry: ['uuid', 'epoch_day', 'timestamp', 'text'],
   doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
   doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
   letter: ['uuid', 'epoch_day', 'text', 'unlock_epoch_day'],

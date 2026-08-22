@@ -582,19 +582,6 @@ export async function applyTallyEvents({ driver, journal, ts }: Restoring): Prom
   );
 }
 
-/* Matched by uuid, like applyMeasurements: a doubt entry is a dated series,
-   never a single replaced value. */
-export async function applyDoubtEntries({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM doubt_entry');
-
-  const inserting = journal.doubtEntries.filter((entry) => !present.has(entry.id));
-  await insertRows(
-    driver,
-    'INSERT INTO doubt_entry (uuid, epoch_day, timestamp, text, updated_at)',
-    inserting.map((entry) => [entry.id, entry.epochDay, entry.timestamp, entry.text, ts])
-  );
-}
-
 /* Matched by uuid, like applyEntries: a snapshot's items are inserted
    right after it, against the rowid the insert above just produced - the
    same owner-then-detail-rows order applyEntries uses for photos. */
@@ -630,7 +617,7 @@ export async function applyCounterevidenceSnapshots({ driver, journal, ts }: Res
   await insertRows(driver, 'INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note)', itemRows);
 }
 
-/* Matched by uuid, like applyDoubtEntries: a letter is a dated series, not
+/* Matched by uuid, like applyTallyEvents: a letter is a dated series, not
    a single replaced value, and carries no children of its own to insert
    afterwards. */
 export async function applyLetters({ driver, journal, ts }: Restoring): Promise<void> {
@@ -737,7 +724,7 @@ export async function applyChecklists({ driver, mode, journal, ts }: Restoring):
   }
 }
 
-/* Matched by uuid, like applyDoubtEntries: a tryout is not a single value
+/* Matched by uuid, like applyTallyEvents: a tryout is not a single value
    ticket 14's Replace can safely retire, it is a dated record someone
    might still be adding felt-sense entries against. Its photos are walked
    the same way applyProcedures walks a procedure's: each is its own row
