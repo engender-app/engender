@@ -162,7 +162,6 @@ test('the JSON reads as a file, indented, version first', () => {
     "procedures": [],
     "reminders": [],
     "tallyEvents": [],
-    "doubtEntries": [],
     "counterevidenceSnapshots": [],
     "letters": [],
     "roadmapChecks": [],
@@ -177,7 +176,8 @@ test('the JSON reads as a file, indented, version first', () => {
     "checklists": [],
     "wearSessions": []
   },
-  "preferences": {`
+  "preferences": {
+    "name": "Ola",`
   );
   assert.match(written, /\n {4}"name": "Ola",\n {4}"activePreset": "p-fem-masc",/);
   assert.match(written, /\n {4}"palette": "lesbian",/);

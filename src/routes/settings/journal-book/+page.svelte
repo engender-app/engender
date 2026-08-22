@@ -58,7 +58,7 @@
      read that would have found it rather than only the markup that would
      have drawn it - the same shape the wrapped screen's `wrappedEnabled`
      check uses, and the point of the flags living in the assembly. */
-  let bookQuery = liveQuery(['entry', 'photo', 'tag', 'milestone', 'doubtJournal', 'sideEffect'], (j) =>
+  let bookQuery = liveQuery(['entry', 'photo', 'tag', 'milestone', 'sideEffect'], (j) =>
     range ? j.journalBook.getBook(range.start, range.end, inclusion) : Promise.resolve(null)
   );
   let book = $derived(bookQuery.value);
@@ -88,7 +88,6 @@
       book.opening === null &&
       book.entries.length === 0 &&
       book.milestones.length === 0 &&
-      book.doubtEntries.length === 0 &&
       book.sideEffects.length === 0
   );
 
@@ -204,18 +203,6 @@
               <span class="row-subtitle">{dayLong(milestone.epochDay)}</span>
             </span>
           </div>
-        {/each}
-      </div>
-    {/if}
-
-    {#if book.doubtEntries.length}
-      <SectionTitle text={journalBookPartName('doubtEntries')} />
-      <div class="section-block">
-        {#each book.doubtEntries as doubt (doubt.id)}
-          <article class="book-entry" data-book-doubt>
-            <h3 class="book-day">{dayLong(doubt.epochDay)}</h3>
-            <p class="book-note">{doubt.text}</p>
-          </article>
         {/each}
       </div>
     {/if}

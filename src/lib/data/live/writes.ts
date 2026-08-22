@@ -78,9 +78,8 @@ export type TableName =
      in here - that is an ordinary 'checklist' row, and a write to it has to
      invalidate the appointment prep list's reads too. */
   | 'procedure'
-  /* One name for doubt entries and counterevidence snapshots alike (phase
-     4 ticket 11): both belong to the same doubt-journal screen, the same
-     reasoning 'hairProgress' gives. */
+  /* Counterevidence snapshots (phase 4 ticket 11; the doubt-entry half of
+     this screen's writes retired by phase 5 ticket 16). */
   | 'doubtJournal'
   /* A tryout's own fields (phase 4 ticket 16). Its felt-sense history is
      'feltSense' instead, below: once a milestone could own one too (phase
@@ -384,12 +383,10 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
   },
   doubtJournal: {
     writes: {
-      addEntry: ['doubtJournal'],
-      deleteEntry: ['doubtJournal'],
       saveSnapshot: ['doubtJournal'],
       deleteSnapshot: ['doubtJournal']
     },
-    reads: ['getEntries', 'getEntriesInRange', 'getSnapshots']
+    reads: ['getSnapshots']
   },
   tryouts: {
     writes: {

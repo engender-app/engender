@@ -133,7 +133,6 @@ async function populated() {
     reason: 'planned'
   });
 
-  const doubtEntry = await journal.doubtJournal.addEntry({ epochDay: 20000, text: 'am I even trans enough for this' });
   const counterevidenceSnapshot = await journal.doubtJournal.saveSnapshot(20000, [
     { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
   ]);
@@ -168,7 +167,6 @@ async function populated() {
     dose,
     schedule,
     dosePause,
-    doubtEntry,
     counterevidenceSnapshot,
     tryout,
     feltSense
@@ -264,9 +262,6 @@ test('merge adds what this device does not have and leaves what it has alone', a
   const episodes = await target.journal.regimen.getEpisodes();
   assert.equal(episodes.length, 1);
   assert.equal(episodes[0].drug, 'estradiol valerate');
-  const doubtEntries = await target.journal.doubtJournal.getEntries(10);
-  assert.equal(doubtEntries.length, 1);
-  assert.equal(doubtEntries[0].text, 'am I even trans enough for this');
   const snapshots = await target.journal.doubtJournal.getSnapshots(10);
   assert.deepEqual(snapshots[0].items, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]);
   const tryouts = await target.journal.tryouts.getTryouts();
@@ -278,14 +273,13 @@ test('merge adds what this device does not have and leaves what it has alone', a
   ]);
 });
 
-test('merging the same archive twice duplicates neither a doubt entry nor a counterevidence snapshot', async () => {
+test('merging the same archive twice duplicates no counterevidence snapshot', async () => {
   const source = await populated();
   const target = await device();
 
   await target.journal.archive.merge(await exported(source.journal));
   await target.journal.archive.merge(await exported(source.journal));
 
-  assert.equal((await target.journal.doubtJournal.getEntries(10)).length, 1);
   assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
 });
 
@@ -503,7 +497,6 @@ test("replace installs the archive's journal and discards this device's", async 
   const myMilestone = await target.journal.milestones.upsertMilestone({ name: 'mine', epochDay: 19500 });
   const myMeasurementType = await target.journal.measurements.addCustomMeasurementType('Mine');
   await target.journal.tally.log({ epochDay: 19500, kind: 'correctly_gendered' });
-  await target.journal.doubtJournal.addEntry({ epochDay: 19500, text: 'mine' });
   const myTryout = await target.journal.tryouts.upsertTryout({
     kind: 'pronouns',
     label: 'they/them',
@@ -517,9 +510,6 @@ test("replace installs the archive's journal and discards this device's", async 
   assert.equal((await target.journal.milestones.getMilestones()).map((m) => m.name).includes('mine'), false);
   assert.equal((await target.journal.tally.getEvents('correctly_gendered')).length, 0, "this device's tally event is gone");
   assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1, "the archive's tally event is here");
-  const doubtEntries = await target.journal.doubtJournal.getEntries(10);
-  assert.equal(doubtEntries.length, 1, "this device's doubt entry is gone");
-  assert.equal(doubtEntries[0].text, 'am I even trans enough for this', "the archive's doubt entry is here");
   assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
   const tryouts = await target.journal.tryouts.getTryouts();
   assert.equal(tryouts.some((t) => t.id === myTryout), false, "this device's tryout is gone");
@@ -786,6 +776,27 @@ test('a lab result from an archive written before the dosing context existed sti
   assert.equal(restored.provider, '');
   assert.equal(restored.drawTime, null);
   assert.equal(restored.timing, null);
+});
+
+/* An archive packed before ticket 16 (ADR-0037) still names a `doubtEntries`
+   section on the wire - this build's registry has no entry for it any more
+   (archiveSections.ts). The payload type says otherwise, but it is a cast
+   over JSON.parse output, so the importer sees the same extra key a real
+   pre-ticket archive would carry: absent from `ARCHIVE_SECTION_NAMES`, and
+   therefore never read, never applied, and never the reason a restore
+   fails. */
+test('an archive naming the retired doubtEntries section restores without erroring, and simply drops it', async () => {
+  const source = await populated();
+  const contents = await exported(source.journal);
+  const withRetiredSection = {
+    ...contents.journal,
+    doubtEntries: [{ id: 'a-pre-ticket-16-doubt-entry', epochDay: 20000, timestamp: 1_700_000_000_000, text: 'am I even trans enough for this' }]
+  };
+
+  const target = await device();
+  await assert.doesNotReject(target.journal.archive.replace({ ...contents, journal: withRetiredSection }));
+
+  assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
 });
 
 test('importing into a journal that has never been through a boot works', async () => {
