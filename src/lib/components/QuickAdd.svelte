@@ -185,13 +185,12 @@
     TARGETS.find((target) => target.key === key)?.run();
   }
 
-  /* The stagger, and the cap on it. Rows leave the button one after another
-     from the bottom up; six steps of 28ms is 168ms of stagger on top of a
-     240ms travel, which is the whole fan open in under half a second. The
-     exit has no stagger at all - they go back as one object. */
-  const STAGGER_STEP = 28;
-  const ROW_COUNT = ROWS.length + 1; // the mood row counts as one
-  const rowDelay = (index: number) => (isReducedMotion() ? 0 : (ROW_COUNT - 1 - index) * STAGGER_STEP);
+  /* No stagger. The first version dealt the rows out one after another from
+     the bottom up, which put the longest delay on the row furthest from the
+     button - and that row is the mood picker, the one thing most likely to
+     be what the press was for. It arrived last and read as lag rather than
+     as choreography. The fan is one object leaving the button and one
+     object going back into it, so every row moves together, in and out.
 
   /* Every row travels the same token distance back toward the button; what
      says they came out of it is the stagger, not a per-row offset invented
@@ -199,11 +198,10 @@
      distance, the same one a sheet rises by. */
   const travel = () => motionDistance('--motion-distance-md', 24);
 
-  function fanIn(_node: Element, { index }: { index: number }) {
+  function fanIn(_node: Element) {
     if (isReducedMotion()) return { duration: crossfadeDuration(), css: (t: number) => `opacity: ${t}` };
     return {
       duration: motionDuration('--dur-med', 240),
-      delay: rowDelay(index),
       css: (t: number, u: number) =>
         `opacity: ${t}; transform: translateY(${u * travel()}px) scale(${0.88 + 0.12 * t})`
     };
@@ -233,14 +231,23 @@
     armed = targetAt(e) ?? null;
   }
 
-  /* One rule for both gestures: on release, whatever the pointer is over
+  /* One rule for both gestures: on release, whatever the pointer was over
      wins. The add control is not a target, so letting go without having
      gone anywhere chooses nothing and leaves the fan up for the next tap -
-     which is the tap flow, falling out of the same line as the slide. */
-  function slideEnd(e: PointerEvent) {
+     which is the tap flow, falling out of the same line as the slide.
+
+     It runs whatever `armed` already holds rather than hit testing the
+     release a second time. That is the same thing the person was being
+     shown a moment earlier - the armed row is the app's answer to "what
+     happens if I let go" - so re-deriving it can only ever disagree with
+     what they were promised, and on a touchscreen it did: the row armed
+     and highlighted correctly all the way up the fan, and then the release
+     chose nothing, because a pointerup's coordinates are not reliably the
+     last place the finger actually was. Read what was shown. */
+  function slideEnd() {
     if (!ui.chooserPressing) return;
     ui.chooserPressing = false;
-    const key = targetAt(e);
+    const key = armed;
     armed = null;
     if (key) runTarget(key);
   }
@@ -273,7 +280,7 @@
   ></div>
 
   <div class="fan" role="group" aria-label={m.quick_add_title()} data-fan>
-    <div class="fan-moods" in:fanIn={{ index: 0 }} out:fanOut>
+    <div class="fan-moods" in:fanIn out:fanOut>
       {#each MOODS as value (value)}
         <button
           class="fan-mood"
@@ -293,7 +300,7 @@
         class="fan-row"
         class:is-pair={row.length > 1}
         class:starts-group={GROUP_STARTS.has(i)}
-        in:fanIn={{ index: i + 1 }}
+        in:fanIn
         out:fanOut
       >
         {#each row as target (target.key)}

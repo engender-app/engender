@@ -570,6 +570,11 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .fan {
   position: absolute;
   z-index: 55;
+  /* The slide crosses these, so they must not start a scroll or a text
+     selection under the finger either. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
   left: 50%;
   transform: translateX(-50%);
   bottom: calc(var(--nav-clearance) + var(--space-2));

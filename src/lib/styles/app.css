@@ -199,6 +199,22 @@ body {
 }
 .nav-item:hover { color: var(--text); }
 
+.nav-add,
+.rail-add {
+  /* Why the press-and-slide did nothing on a phone. app.css gives every
+     button `touch-action: manipulation`, which still lets the browser claim
+     a vertical drag as a pan - so the moment the finger moved off the
+     button the gesture became a scroll, Chromium fired pointercancel, and
+     the fan was left open with nothing tracking the finger. It worked with
+     a mouse the whole time, which is exactly how it got missed.
+
+     `none` hands this control's drags to the app. It is the one control in
+     the app that owns a drag, and the page does not scroll under it
+     anyway. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 .nav-add {
   justify-self: center;
   width: 56px; height: 56px;
