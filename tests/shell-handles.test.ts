@@ -12,8 +12,13 @@ import { describe, expect, it } from 'vitest';
    then breaks silently the next time that class is restyled - which is the
    failure ADR-0029 exists to stop.
 
-   Screen-level controls are deliberately out of scope: they belong to their
-   own screens and their own tickets. What is checked is the chrome. */
+   What is checked is the chrome. Screen-level controls are out of scope
+   here and belong to their own screens and tickets - with one exception
+   that is worth naming rather than leaving to be discovered: the shell's
+   own walkthrough flows measure real screens, so Home's header and hero
+   and the More hub's rows carry handles this ticket added. They are there
+   for the safe-area checks, which have to measure where a screen's content
+   actually starts, and not for those screens' own tests. */
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 
@@ -30,9 +35,18 @@ const SHELL = [
    it here would make that defect look answered. */
 const INTERACTIVE = /<(button|a|input|select|textarea)(\s[^>]*)?>/gs;
 
+/* Svelte attribute values are expressions, and an expression can hold the
+   very character the tag matcher stops at - `class:starts-group={i > 0 &&
+   ...}` truncated a tag before its handle and reported a false offender.
+   The values are not what is being checked here, only the attribute names,
+   so they go before matching. */
+function withoutExpressions(source: string): string {
+  return source.replace(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g, '{}');
+}
+
 function untagged(source: string): string[] {
   const offenders: string[] = [];
-  for (const match of source.matchAll(INTERACTIVE)) {
+  for (const match of withoutExpressions(source).matchAll(INTERACTIVE)) {
     const attrs = match[2] ?? '';
     /* An id counts, because ADR-0029's vocabulary is "a data-* attribute,
        an id, or an ARIA role/state" - the rule is against class names and

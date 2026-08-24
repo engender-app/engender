@@ -60,7 +60,7 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
   import type { TallyKind } from '$lib/data/types';
-  import { crossfadeDuration, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { toast } from '$lib/stores/toasts.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
@@ -138,30 +138,51 @@
   const MOODS = [1, 2, 3, 4, 5];
   const MOOD_TARGET = 'mood-';
 
-  type FanRow = { key: string; icon: string; label: () => string; run: () => void };
+  /* Grouped rather than flat (spec 04), and the grouping is the row: a row
+     holds one target or a pair of them, and a gap opens where one group
+     ends. Headings were the other option and a fan is the wrong surface for
+     them - it is something a thumb crosses, and four headings in it are
+     four more things to slide past on the way to a target.
 
-  const ROWS: FanRow[] = [
-    { key: 'today', icon: 'sun', label: () => m.today(), run: chooseToday },
-    { key: 'photo', icon: 'image', label: () => m.quick_add_photo(), run: addPhoto },
-    { key: 'another-day', icon: 'calendar', label: () => m.another_day(), run: openBackdate },
-    {
-      key: 'tally-misgendered',
-      icon: 'x',
-      label: () => m.tally_misgendered(),
-      run: () => void logTally('misgendered')
-    },
-    {
-      key: 'tally-correctly_gendered',
-      icon: 'check',
-      label: () => m.tally_correctly_gendered(),
-      run: () => void logTally('correctly_gendered')
-    },
-    { key: 'dose', icon: 'clock', label: () => m.doses_add_aria(), run: logDose }
+     The two tally directions share a row because they are one question
+     asked twice, the same way the five moods are one scale. A pair lays
+     itself out like a mood cell, icon over label, so the longer of the two
+     labels has two lines rather than an ellipsis. */
+  type FanTarget = { key: string; icon: string; label: () => string; run: () => void };
+
+  const ROWS: FanTarget[][] = [
+    [{ key: 'today', icon: 'sun', label: () => m.today(), run: chooseToday }],
+    [{ key: 'another-day', icon: 'calendar', label: () => m.another_day(), run: openBackdate }],
+    [{ key: 'photo', icon: 'image', label: () => m.quick_add_photo(), run: addPhoto }],
+    [
+      {
+        key: 'tally-misgendered',
+        icon: 'x',
+        label: () => m.tally_misgendered(),
+        run: () => void logTally('misgendered')
+      },
+      {
+        key: 'tally-correctly_gendered',
+        icon: 'check',
+        label: () => m.tally_correctly_gendered(),
+        run: () => void logTally('correctly_gendered')
+      }
+    ],
+    /* doses_empty_action rather than doses_add_aria: this is a visible
+       label, and the aria string is not the one to render even where the
+       two read the same. */
+    [{ key: 'dose', icon: 'clock', label: () => m.doses_empty_action(), run: logDose }]
   ];
+
+  /* Where a gap opens, by row index. Entry is three rows, the tally is one,
+     and a dose is its own thing. */
+  const GROUP_STARTS = new Set([3, 4]);
+
+  const TARGETS = ROWS.flat();
 
   function runTarget(key: string) {
     if (key.startsWith(MOOD_TARGET)) return pickMood(Number(key.slice(MOOD_TARGET.length)));
-    ROWS.find((row) => row.key === key)?.run();
+    TARGETS.find((target) => target.key === key)?.run();
   }
 
   /* The stagger, and the cap on it. Rows leave the button one after another
@@ -172,11 +193,11 @@
   const ROW_COUNT = ROWS.length + 1; // the mood row counts as one
   const rowDelay = (index: number) => (isReducedMotion() ? 0 : (ROW_COUNT - 1 - index) * STAGGER_STEP);
 
-  /* Travel is expressed as a distance down toward the button rather than as
-     a measured position, because the fan is anchored on the button already:
-     every row only has to fall back the height of what is between it and
-     the button, and the shared origin comes out of the geometry for free. */
-  const TRAVEL = 18;
+  /* Every row travels the same token distance back toward the button; what
+     says they came out of it is the stagger, not a per-row offset invented
+     here. The tokens are the one motion language and this is tier 2's own
+     distance, the same one a sheet rises by. */
+  const travel = () => motionDistance('--motion-distance-md', 24);
 
   function fanIn(_node: Element, { index }: { index: number }) {
     if (isReducedMotion()) return { duration: crossfadeDuration(), css: (t: number) => `opacity: ${t}` };
@@ -184,7 +205,7 @@
       duration: motionDuration('--dur-med', 240),
       delay: rowDelay(index),
       css: (t: number, u: number) =>
-        `opacity: ${t}; transform: translateY(${u * (TRAVEL + index * 10)}px) scale(${0.88 + 0.12 * t})`
+        `opacity: ${t}; transform: translateY(${u * travel()}px) scale(${0.88 + 0.12 * t})`
     };
   }
 
@@ -192,7 +213,7 @@
     if (isReducedMotion()) return { duration: crossfadeDuration(), css: (t: number) => `opacity: ${t}` };
     return {
       duration: motionDuration('--dur-fast', 150),
-      css: (t: number, u: number) => `opacity: ${t}; transform: translateY(${u * TRAVEL}px) scale(${0.9 + 0.1 * t})`
+      css: (t: number, u: number) => `opacity: ${t}; transform: translateY(${u * travel()}px) scale(${0.9 + 0.1 * t})`
     };
   }
 
@@ -267,19 +288,27 @@
       {/each}
     </div>
 
-    {#each ROWS as row, i (row.key)}
-      <button
-        class="fan-item"
-        class:is-armed={armed === row.key}
-        data-fan-target={row.key}
-        data-choose={row.key}
+    {#each ROWS as row, i (row[0].key)}
+      <div
+        class="fan-row"
+        class:is-pair={row.length > 1}
+        class:starts-group={GROUP_STARTS.has(i)}
         in:fanIn={{ index: i + 1 }}
         out:fanOut
-        onclick={row.run}
       >
-        <span class="fan-icon"><Icon name={row.icon} size={20} /></span>
-        <span class="fan-label">{row.label()}</span>
-      </button>
+        {#each row as target (target.key)}
+          <button
+            class="fan-item"
+            class:is-armed={armed === target.key}
+            data-fan-target={target.key}
+            data-choose={target.key}
+            onclick={target.run}
+          >
+            <span class="fan-icon"><Icon name={target.icon} size={20} /></span>
+            <span class="fan-label">{target.label()}</span>
+          </button>
+        {/each}
+      </div>
     {/each}
   </div>
 {/if}

@@ -51,7 +51,7 @@
   } = $props();
 </script>
 
-<header class="screen-header {klass}" class:is-title-hidden={titleHidden} data-screen-header>
+<header class="screen-header {klass}" class:is-collapsed={titleHidden && !back && !actions} data-screen-header>
   <!-- The subtitle is a row of its own rather than a second line inside the
        title's box. Beside the back control it would centre the arrow
        against the whole block, which drops it to the middle of a header

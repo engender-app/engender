@@ -126,9 +126,10 @@
        becomes the thing it opened. The plus turns 45 degrees into a cross
        while the fan is up, which is tier 2 - the control the fan came out
        of is the control that puts it away, and the turn is what says so.
-       Transform only, and under reduced motion the rotation goes while the
-       pressed state and the fan both stay, which is the substitute rather
-       than a deletion. -->
+       Transform only. Under reduced motion the turn stops being a turn and
+       the cross is simply there, which is the substitution: what goes is
+       the movement, not the cue that this button now closes what it
+       opened. -->
   <button
     class="nav-add press-add"
     data-nav-fab

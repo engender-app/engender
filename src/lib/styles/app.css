@@ -221,10 +221,6 @@ body {
   transition: transform var(--dur-med) var(--ease-out);
 }
 .nav-add-mark.is-open { transform: rotate(45deg); }
-html[data-a11y-motion='reduce'] .nav-add-mark.is-open { transform: none; }
-@media (prefers-reduced-motion: reduce) {
-  .nav-add-mark.is-open { transform: none; }
-}
 /* ============================================================
    Tier 2: one screen becoming another (phase 5 ticket 18).
 

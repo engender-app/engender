@@ -18,8 +18,12 @@
 /* A hidden title is taken out of the flow, so the header's own padding
    would otherwise be 32px of nothing above the screen's first group
    heading - which is most of the gap the redundant title was leaving
-   behind in the first place. The heading below brings its own space. */
-.screen-header.is-title-hidden { padding: 0; }
+   behind in the first place. The heading below brings its own space.
+
+   Only when the title was the whole row, though: a screen can hide its
+   title and still have a back control or an action, and those still need
+   somewhere to sit. */
+.screen-header.is-collapsed { padding: 0; }
 .screen-header-row {
   display: flex; align-items: center; gap: var(--space-3);
 }
@@ -575,9 +579,13 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   gap: var(--space-2);
 }
 
-/* Rows share one shape so the slide crosses a regular rhythm: every target
-   is the same height, and the gap between two is small enough that a finger
-   never falls between them without landing on one. */
+/* Rows share one shape so the slide crosses a regular rhythm: every row is
+   the same height, and the gap between two is small enough that a finger
+   never falls between them without landing on one. A row holds one target
+   or a pair; the pair splits the row rather than adding a rank to cross. */
+.fan-row { display: grid; grid-template-columns: 1fr; gap: var(--space-2); }
+.fan-row.is-pair { grid-template-columns: 1fr 1fr; }
+
 .fan-item,
 .fan-moods {
   min-height: var(--touch-target);
@@ -589,6 +597,7 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .fan-item {
   display: flex; align-items: center; gap: var(--space-3);
   padding: 0 var(--space-4);
+  min-width: 0;
   color: var(--text);
   font: inherit; font-weight: var(--weight-medium);
   text-align: left;
@@ -596,6 +605,29 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   transition-property: transform, background-color, color;
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
+}
+/* The gap that does the grouping. The column is reversed, so the space
+   goes below the row that opens a group in source order, which is above it
+   on screen. */
+.fan-row.starts-group { margin-bottom: var(--space-4); }
+
+/* A pair lays out like a mood cell - icon over label, centred, and the
+   label allowed a second line. Side by side at a phone's width there is
+   about 90px of text room per half, and "Correctly gendered" wants 145;
+   ellipsing the longer of two labels that only mean anything as a pair is
+   the one thing this row must not do. */
+.fan-row.is-pair .fan-item {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2);
+  text-align: center;
+}
+.fan-row.is-pair .fan-label {
+  white-space: normal;
+  overflow: visible;
+  font-size: var(--text-sm);
+  line-height: 1.25;
 }
 .fan-icon { display: grid; place-items: center; color: var(--accent); flex-shrink: 0; }
 .fan-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

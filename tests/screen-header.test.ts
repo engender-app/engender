@@ -52,9 +52,27 @@ describe('every screen gets its header from one component', () => {
   });
 
   it('does not repeat a tab name in the screen that tab opens', () => {
-    /* DIRECTION.md 3d, and the More hub is the case that motivates the
-       prop: a visible title directly above the first group heading is two
-       headers saying nearly the same thing. */
-    expect(read('src/routes/more/+page.svelte')).toMatch(/<ScreenHeader[^>]*titleHidden/);
+    /* DIRECTION.md 3d. Written as the rule rather than as a list of the
+       screens that happen to follow it: a screen whose title is the very
+       message its tab is labelled with has to hide it, so adding a fifth
+       tab or renaming one cannot quietly leave a screen repeating itself.
+
+       Stats is the deliberate exception DIRECTION names, and it falls out
+       of the same rule rather than needing an entry here: its title is
+       stats_title, not nav_stats, because the period is in it. */
+    const TAB_TITLES = new Map([
+      ['src/routes/calendar/+page.svelte', 'm.nav_calendar()'],
+      ['src/routes/stats/+page.svelte', 'm.nav_stats()'],
+      ['src/routes/more/+page.svelte', 'm.nav_more()']
+    ]);
+
+    const repeating: string[] = [];
+    for (const [file, tabTitle] of TAB_TITLES) {
+      const header = read(file).match(/<ScreenHeader[^>]*\/?>/s)?.[0] ?? '';
+      if (header.includes(`title={${tabTitle}}`) && !header.includes('titleHidden')) {
+        repeating.push(file);
+      }
+    }
+    expect(repeating).toEqual([]);
   });
 });
