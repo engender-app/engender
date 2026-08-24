@@ -1896,8 +1896,16 @@ for (const kind of ['misgendered', 'correctly_gendered']) {
        reason it is in this fan. */
     await openQuickAdd('/stats');
     await page.locator(`[data-choose="tally-${kind}"]`).click();
+    /* The write landing is a thing you can see: the row flies into the add
+       control and the control catches it with a tick. Asserted because it
+       is the only confirmation an in-place action has that is anywhere near
+       the thumb that pressed it, and because it plays when the write comes
+       back rather than when the finger lifts - so its absence would mean
+       the write never returned, not merely that an animation was dropped. */
+    await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
     await page.waitForSelector('[data-toast-kind="tally"]', { timeout: 8000 });
     if (!page.url().includes('/stats')) throw new Error(`logging a tally left for ${page.url()}`);
+    await page.waitForSelector('[data-fan-flight]', { state: 'detached', timeout: 8000 });
     ok(`quick add: ${kind} logs from wherever you are, without leaving it`);
   } catch (e) { fail(`quick add tally ${kind}`, e); }
 }

@@ -80,6 +80,81 @@
     armed = null;
   }
 
+  /* Telling you it landed, for the two things that never leave the screen
+     (phase 5 ticket 18).
+
+     A tally and a wear session both resolve in place, which is the whole
+     reason they are worth reaching from anywhere - and it left them with
+     nothing to show for it but a toast at the other end of the screen from
+     the thumb that just pressed. The row you chose flies into the add
+     button instead, and the button catches it with a tick: the exact
+     reverse of the fan coming out of it, so the gesture closes the loop it
+     opened. Tier 3, change within a screen - something was written, and
+     this is the mark moving rather than a new surface arriving to say so.
+
+     Nothing waits for it. The fan is already shut and the app is already
+     usable; the flight is an overlay with no pointer events that happens to
+     still be on screen. It starts when the write comes back rather than
+     when the finger lifts, so it means "this is recorded" and not "this was
+     sent" - the round trip is tens of milliseconds, so the honesty is free.
+
+     Under reduced motion nothing travels and the tick still appears, for
+     the same duration. The toast stays either way: it is role="status", so
+     it is the half of this a screen reader gets. */
+  const CATCH_MS = 520;
+
+  let flight = $state<{ x: number; y: number; dx: number; dy: number } | null>(null);
+  let flightTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** The line from a target to the add control, measured before the fan
+      closes and both of them are gone, in the app's own coordinates. */
+  function flightFrom(key: string) {
+    const app = document.querySelector('[data-app-root]')?.getBoundingClientRect();
+    const row = document.querySelector(`[data-fan-target="${key}"]`)?.getBoundingClientRect();
+    const add = document.querySelector<HTMLElement>('[data-nav-fab]')?.offsetParent
+      ? document.querySelector('[data-nav-fab]')?.getBoundingClientRect()
+      : document.querySelector('[data-rail-add]')?.getBoundingClientRect();
+    if (!app || !row || !add) return null;
+    const centre = (box: DOMRect) => ({ x: box.left + box.width / 2, y: box.top + box.height / 2 });
+    const from = centre(row);
+    const to = centre(add);
+    return { x: from.x - app.left, y: from.y - app.top, dx: to.x - from.x, dy: to.y - from.y };
+  }
+
+  /* Every in-place action goes through here, so the confirmation cannot get
+     out of step with the write. Nothing is shown until the write has come
+     back: the mark flies and the control ticks on the resolved path only,
+     and the failed path says so instead of leaving a tap that looks like it
+     worked. It also stops a rejection escaping into the window as an
+     unhandled promise, which is what the failed path used to do - and that
+     was worse than a wrong confirmation, because it showed nothing at all. */
+  async function confirmed(
+    from: ReturnType<typeof flightFrom>,
+    write: () => Promise<unknown>,
+    kind: string
+  ) {
+    try {
+      await write();
+    } catch (error) {
+      console.error(`quick add: ${kind} was not written`, error);
+      toast(m.quick_add_failed(), { kind: `${kind}-failed` });
+      return;
+    }
+    land(from);
+    toast(m.quick_saved(), { kind });
+  }
+
+  function land(from: ReturnType<typeof flightFrom>) {
+    if (flightTimer) clearTimeout(flightTimer);
+    flight = from;
+    ui.chooserConfirming = true;
+    flightTimer = setTimeout(() => {
+      flight = null;
+      ui.chooserConfirming = false;
+      flightTimer = null;
+    }, CATCH_MS);
+  }
+
   /* The same route Home's quick log and the Android widget already use, so
      a mood picked here lands in the editor the same way it lands from
      either of those. launch-routes.json pins that shape and is untouched. */
@@ -122,12 +197,12 @@
      (CONTEXT: "Tally event"), which is what makes it worth reaching from
      any screen: the fan closes and you are still where you were. */
   async function logTally(kind: TallyKind) {
+    const from = flightFrom(`tally-${kind}`);
     close();
     /* Read here rather than captured when the component mounted: the app
        survives backgrounding, so a value taken at init logs to yesterday
        for anyone who leaves it open across midnight. */
-    await journal.tally.log({ epochDay: todayEpochDay(), kind });
-    toast(m.quick_saved(), { kind: 'tally' });
+    await confirmed(from, () => journal.tally.log({ epochDay: todayEpochDay(), kind }), 'tally');
   }
 
   /* The wear session, and the reason it earns a slot the others would not
@@ -147,9 +222,20 @@
   $effect(() => {
     if (!ui.chooserOpen) return;
     let stale = false;
-    void journal.wearSessions.getRunningSession().then((session) => {
-      if (!stale) running = session;
-    });
+    void journal.wearSessions
+      .getRunningSession()
+      .then((session) => {
+        if (!stale) running = session;
+      })
+      /* A journal that cannot be read is a journal that cannot be written
+         either, so the write behind this row will fail and say so. What
+         this catch is for is the rejection itself: unhandled, it reaches
+         the window as a page error, and the walkthrough fails its whole run
+         on one of those. The row falls back to offering a start, which is
+         what it says with nothing running. */
+      .catch((error) => {
+        console.error('quick add: could not read the running wear session', error);
+      });
     return () => {
       stale = true;
     };
@@ -166,18 +252,21 @@
      what leaves a reminder the wear screen set alone (wearSessions.ts). */
   async function toggleWear() {
     const session = running;
+    const from = flightFrom('wear');
     close();
-    if (session) {
-      await journal.wearSessions.upsertSession({
-        id: session.id,
-        startTimestamp: session.startTimestamp,
-        durationMs: Date.now() - session.startTimestamp,
-        note: session.note
-      });
-    } else {
-      await journal.wearSessions.upsertSession({ startTimestamp: Date.now(), durationMs: null });
-    }
-    toast(m.quick_saved(), { kind: 'wear' });
+    await confirmed(
+      from,
+      () =>
+        session
+          ? journal.wearSessions.upsertSession({
+              id: session.id,
+              startTimestamp: session.startTimestamp,
+              durationMs: Date.now() - session.startTimestamp,
+              note: session.note
+            })
+          : journal.wearSessions.upsertSession({ startTimestamp: Date.now(), durationMs: null }),
+      'wear'
+    );
   }
 
   function logDose() {
@@ -427,6 +516,20 @@
         </span>
       </button>
     </div>
+  </div>
+{/if}
+
+{#if flight}
+  <!-- aria-hidden, and not because it says nothing: the toast beside it is
+       role="status" and carries the same news in words, so announcing this
+       too would say it twice. -->
+  <div
+    class="fan-flight"
+    aria-hidden="true"
+    data-fan-flight
+    style={`--flight-x:${flight.x}px;--flight-y:${flight.y}px;--flight-dx:${flight.dx}px;--flight-dy:${flight.dy}px`}
+  >
+    <Icon name="check" size={22} />
   </div>
 {/if}
 

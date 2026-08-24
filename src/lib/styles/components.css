@@ -683,6 +683,60 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .fan-mood:hover,
 .fan-mood:focus-visible { background: var(--accent-soft); color: var(--on-accent-soft); }
 
+/* The mark travelling from the row you chose into the add control (phase 5
+   ticket 18, tier 3). Transform and opacity only, over the same
+   --dur-med/--ease-out every other tier-2 and tier-3 move in the app uses,
+   and it never takes a pointer event: the fan is already shut and the app
+   is already usable behind it. */
+.fan-flight {
+  position: absolute;
+  z-index: 55;
+  left: var(--flight-x);
+  top: var(--flight-y);
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-float);
+  pointer-events: none;
+  animation: fan-flight var(--dur-med) var(--ease-out) forwards;
+}
+@keyframes fan-flight {
+  from { transform: translate(0, 0) scale(1); opacity: 1; }
+  to { transform: translate(var(--flight-dx), var(--flight-dy)) scale(0.45); opacity: 0; }
+}
+
+/* And the catch. The button takes the mark in, which is the same shape as
+   it throwing the fan out, so the gesture ends where it started. The pulse
+   waits out the flight rather than playing under it - two things moving at
+   once would read as one thing wobbling. */
+.nav-add.is-catching,
+.rail-add.is-catching {
+  animation: add-catch var(--dur-slow) var(--ease-out) var(--dur-med) both;
+}
+@keyframes add-catch {
+  0% { transform: scale(1); }
+  38% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+/* Substitute, never delete: nothing travels and nothing pulses, and the
+   tick still appears on the button for exactly as long. What goes is the
+   movement, not the news. */
+html[data-a11y-motion='reduce'] .fan-flight,
+html[data-a11y-motion='reduce'] .nav-add.is-catching,
+html[data-a11y-motion='reduce'] .rail-add.is-catching { animation: none; }
+html[data-a11y-motion='reduce'] .fan-flight { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .fan-flight,
+  .nav-add.is-catching,
+  .rail-add.is-catching { animation: none; }
+  .fan-flight { display: none; }
+}
+
 /* At the rail's width the fan comes off the rail's add button, which is
    near the top left rather than at the bottom centre. Beside the rail
    rather than over it: the rail is 220px wide, which truncates "Correctly
