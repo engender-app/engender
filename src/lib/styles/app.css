@@ -210,6 +210,108 @@ body {
 /* The press, the shadow and the shadow's collapse all come from .press-add
    in motion/press.css, which owns both ends of that material. Nothing about
    the gesture is restated here. */
+
+/* Tier 2: the add control turns into the sheet's dismiss while the sheet is
+   up. On --dur-med with tier 2's own easing, because it belongs to the
+   navigation into the sheet rather than to the press that started it. */
+.nav-add-mark {
+  display: grid; place-items: center;
+  transition: transform var(--dur-med) var(--ease-out);
+}
+.nav-add-mark.is-open { transform: rotate(45deg); }
+html[data-a11y-motion='reduce'] .nav-add-mark.is-open { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-add-mark.is-open { transform: none; }
+}
+/* ============================================================
+   Tier 2: one screen becoming another (phase 5 ticket 18).
+
+   The pattern is chosen by $lib/navigation/screen-transition.ts and arrives
+   as data-nav on <html>; the layout starts a view transition and these
+   rules say what it looks like. Only the scroll region is named, so the old
+   and new screens animate against each other while the bar and the rail
+   fall into the root group and cross-fade - which is what an active tab
+   indicator moving should do anyway.
+
+   Every duration and easing comes from the same tokens the Svelte-driven
+   transitions read ($lib/motion/tokens.ts), which is ticket 09's rule for
+   keeping the two from drifting. What is not shared is the mechanism: these
+   run on the compositor over a captured frame, which is the reason this
+   ticket could wire tier 2 through the whole app without remounting a page
+   component on every navigation.
+   ============================================================ */
+.app-main { view-transition-name: screen; }
+
+/* The outgoing screen leaves faster than the incoming one arrives. An exit
+   that takes as long as an entrance reads as the app hesitating before it
+   answers, and Material's own fade-through is asymmetric for the same
+   reason. */
+::view-transition-old(screen) {
+  animation-duration: var(--dur-fast);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+}
+::view-transition-new(screen) {
+  animation-duration: var(--dur-med);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+}
+
+/* Between the four tabs: fade-through. The outgoing screen settles to 0.97
+   and the incoming one arrives from 1.03, so the pair never reads as one
+   screen scaling twice. No horizontal slide - the tabs are peers, and
+   sliding implies an order they do not have. */
+html[data-nav='fade-through']::view-transition-old(screen) {
+  animation-name: screen-fade-out;
+}
+html[data-nav='fade-through']::view-transition-new(screen) {
+  animation-name: screen-fade-in;
+}
+@keyframes screen-fade-out { to { opacity: 0; transform: scale(0.97); } }
+@keyframes screen-fade-in { from { opacity: 0; transform: scale(1.03); } }
+
+/* Into a detail, and back out of it: shared-axis-X. Both halves travel
+   --motion-distance-md so the pair reads as one axis rather than as two
+   independent moves. */
+html[data-nav='shared-axis']::view-transition-old(screen) {
+  animation-name: screen-axis-out;
+}
+html[data-nav='shared-axis']::view-transition-new(screen) {
+  animation-name: screen-axis-in;
+}
+html[data-nav='shared-axis-back']::view-transition-old(screen) {
+  animation-name: screen-axis-back-out;
+}
+html[data-nav='shared-axis-back']::view-transition-new(screen) {
+  animation-name: screen-axis-back-in;
+}
+@keyframes screen-axis-out { to { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
+@keyframes screen-axis-in { from { opacity: 0; transform: translateX(var(--motion-distance-md)); } }
+@keyframes screen-axis-back-out { to { opacity: 0; transform: translateX(var(--motion-distance-md)); } }
+@keyframes screen-axis-back-in { from { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
+
+/* Substitute, never delete: the movement goes and the crossfade stays, over
+   --dur-crossfade, which the 1ms clamp deliberately does not reach. A screen
+   change that cuts with no acknowledgement at all is a worse answer to
+   "reduce motion" than a change of opacity that moves nothing. */
+html[data-a11y-motion='reduce']::view-transition-old(screen),
+html[data-a11y-motion='reduce']::view-transition-new(screen) {
+  animation-name: screen-crossfade;
+  animation-duration: var(--dur-crossfade) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(screen),
+  ::view-transition-new(screen) {
+    animation-name: screen-crossfade;
+    animation-duration: var(--dur-crossfade) !important;
+  }
+}
+@keyframes screen-crossfade { from { opacity: 0; } }
+html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-direction: reverse; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(screen) { animation-direction: reverse; }
+}
+
 /* ---------- desktop: left rail + centred column ---------- */
 .app-rail { display: none; }
 @container app (min-width: 1024px) {

@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { fade, fly } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   import type { Snippet } from 'svelte';
-  import { motionDistance, motionDuration } from '$lib/motion/tokens';
+  import { motionDuration } from '$lib/motion/tokens';
+  import { sheetRise } from '$lib/motion/navigation';
 
   let {
     open = $bindable(false),
@@ -15,6 +16,69 @@
   function close() {
     open = false;
     onClose?.();
+  }
+
+  /* Dismissal follows the drag rather than replaying the entrance backwards
+     (DIRECTION.md, tier 2). The drag offset lives on a wrapper and the
+     entrance/exit transition on the sheet inside it, because a Svelte
+     transition writes `transform` on the element it is applied to and would
+     overwrite an inline one; on two elements the two compose, and letting go
+     past the threshold leaves the sheet where the finger left it while the
+     exit carries it the rest of the way.
+
+     A drag only starts when the sheet is scrolled to its top. Sheets in this
+     app can be taller than the screen - the dose editor is a form - and a
+     downward swipe inside one means "scroll up" until there is no up left. */
+  const DISMISS_DISTANCE = 96;
+  const DISMISS_VELOCITY = 0.5; // px per ms
+
+  let dragY = $state(0);
+  let dragging = $state(false);
+  let dragFrom = 0;
+  let dragAt = 0;
+  let dragPointer: number | null = null;
+
+  function dragStart(e: PointerEvent) {
+    if (dragPointer !== null || !sheetEl || sheetEl.scrollTop > 0) return;
+    if ((e.target as HTMLElement).closest('input, select, textarea')) return;
+    dragPointer = e.pointerId;
+    dragFrom = e.clientY;
+    dragAt = e.timeStamp;
+  }
+
+  function dragMove(e: PointerEvent) {
+    if (e.pointerId !== dragPointer) return;
+    const dy = e.clientY - dragFrom;
+    /* Downward only. An upward drag is not a dismissal and rubber-banding
+       the sheet above its resting place would just be movement. */
+    if (dy <= 0) {
+      dragY = 0;
+      return;
+    }
+    if (!dragging && dy > 4) {
+      dragging = true;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    }
+    if (dragging) dragY = dy;
+  }
+
+  /* The component outlives one opening, so a sheet dismissed by a drag would
+     otherwise come back already pushed down by however far it was thrown. */
+  $effect(() => {
+    if (open) dragY = 0;
+  });
+
+  function dragEnd(e: PointerEvent) {
+    if (e.pointerId !== dragPointer) return;
+    const velocity = dragY / Math.max(1, e.timeStamp - dragAt);
+    const dismissed = dragging && (dragY > DISMISS_DISTANCE || velocity > DISMISS_VELOCITY);
+    dragPointer = null;
+    dragging = false;
+    if (dismissed) {
+      close();
+    } else {
+      dragY = 0;
+    }
   }
 
   /* Focus the field a sheet exists to fill; otherwise the sheet itself,
@@ -98,7 +162,7 @@
 
 {#if open}
   <div
-    class="sheet-scrim is-open"
+    class="sheet-scrim scrim-withdraw is-open"
     role="presentation"
     transition:fade={{ duration: motionDuration('--dur-med', 240) }}
     onclick={(e) => {
@@ -107,16 +171,27 @@
     {@attach lockBackground}
   >
     <div
-      class="sheet"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      tabindex="-1"
-      transition:fly={{ y: motionDistance('--motion-distance-md', 24), duration: motionDuration('--dur-med', 240) }}
-      {@attach focusInitial}
+      class="sheet-drag"
+      role="presentation"
+      class:is-dragging={dragging}
+      style:transform={dragY ? `translateY(${dragY}px)` : undefined}
+      onpointerdown={dragStart}
+      onpointermove={dragMove}
+      onpointerup={dragEnd}
+      onpointercancel={dragEnd}
     >
-      <div class="sheet-handle"></div>
-      {@render children()}
+      <div
+        class="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabindex="-1"
+        transition:sheetRise
+        {@attach focusInitial}
+      >
+        <div class="sheet-handle"></div>
+        {@render children()}
+      </div>
     </div>
   </div>
 {/if}

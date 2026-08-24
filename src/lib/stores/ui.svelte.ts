@@ -1,6 +1,12 @@
 /* Small cross-screen UI state. */
 
 export const ui = $state({
-  /** The today/another-day chooser (F1), openable from FAB, rail and Home. */
+  /** Quick add's fan (F1, phase 5 ticket 18), openable from the bar and the rail. */
   chooserOpen: false,
+  /* Whether the pointer that opened the fan is still down. The add control
+     sets it and quick add clears it, because the press-and-slide gesture
+     starts on one component and finishes on another: the button opens the
+     fan on the way down, and the fan resolves whatever the finger is over
+     on the way up. */
+  chooserPressing: false
 });
