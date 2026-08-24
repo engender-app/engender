@@ -1910,6 +1910,36 @@ try {
 } catch (e) { fail('quick add dose', e); }
 
 try {
+  /* The wear session is the one target that reads the journal before it
+     draws itself, because it is two things: nothing running, so this
+     starts; something running, so this stops it. Both resolve in place, and
+     the whole point of it being here is that a session started late is a
+     session recorded wrong - so this checks it never leaves the screen, and
+     that the row comes back saying the other thing. */
+  await openQuickAdd('/stats');
+  const startLabel = (await page.locator('[data-choose="wear"]').textContent()).trim();
+  if (await page.locator('[data-choose="wear"][data-wear-running]').count()) {
+    throw new Error('a session was already running on a fresh journal');
+  }
+  await page.locator('[data-choose="wear"]').click();
+  await page.waitForSelector('[data-toast-kind="wear"]', { timeout: 8000 });
+  if (!page.url().includes('/stats')) throw new Error(`starting a session left for ${page.url()}`);
+
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-choose="wear"][data-wear-running]', { timeout: 8000 });
+  const stopLabel = (await page.locator('[data-choose="wear"]').textContent()).trim();
+  if (stopLabel === startLabel) throw new Error(`the row still says "${stopLabel}" with a session running`);
+  await page.locator('[data-choose="wear"]').click();
+  await page.waitForSelector('[data-toast-kind="wear"]', { timeout: 8000 });
+
+  await page.goto(BASE + '/settings/wear', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+  if (!(await page.getByRole('heading', { level: 1 }).count())) throw new Error('the wear log did not render');
+  ok('quick add: a wear session starts and stops in place, and the row says which');
+} catch (e) { fail('quick add wear session', e); }
+
+try {
   await fresh('/');
   await slideToTarget('[data-choose="photo"]');
   await page.waitForSelector('#ed-note');
