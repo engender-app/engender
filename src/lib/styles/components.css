@@ -648,16 +648,20 @@ html[data-a11y-motion='reduce'] .fan-mood.is-armed { transform: none; }
   .fan-mood.is-armed { transform: none; }
 }
 
-/* At the rail's width the fan hangs off the rail's own add button instead,
-   which is near the top left rather than at the bottom centre. */
+/* At the rail's width the fan comes off the rail's add button, which is
+   near the top left rather than at the bottom centre. Beside the rail
+   rather than over it: the rail is 220px wide, which truncates "Correctly
+   gendered" and every mood label, and covering the four tabs to show a menu
+   hides the navigation the menu sits inside. Ordered top down here, because
+   there is no thumb to be nearest to. */
 @container app (min-width: 1024px) {
   .fan {
-    left: var(--space-4);
+    left: calc(var(--rail-width) + var(--inset-left) + var(--space-3));
     right: auto;
     transform: none;
     bottom: auto;
-    top: calc(var(--inset-top) + 108px);
-    width: calc(var(--rail-width) - 2 * var(--space-4));
+    top: calc(var(--inset-top) + var(--space-6));
+    width: 280px;
     flex-direction: column;
   }
 }

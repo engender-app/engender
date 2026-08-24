@@ -11,7 +11,7 @@
      tie when more than one episode is active at once for different drugs
      (regimenEpisode.ts). */
   import { page } from '$app/state';
-  import { goto } from '$app/navigation';
+  import { replaceState } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt, attributeDose } from '$lib/data/regimenEpisode';
@@ -185,7 +185,11 @@
   $effect(() => {
     if (page.url.searchParams.get('add') !== '1') return;
     openEditor(null);
-    goto('/doses', { replaceState: true, noScroll: true, keepFocus: true });
+    /* replaceState rather than goto: this only has to take the param off the
+       URL, and a goto would start a second navigation on top of the one that
+       just landed here, which aborts it and leaves the shell's transition
+       promise rejecting for nothing. */
+    replaceState('/doses', {});
   });
 
   function openEditor(dose: DoseEvent | null) {
