@@ -83,14 +83,14 @@ describe('shared-axis-X, into a detail from a list', () => {
 describe('sheet rise', () => {
   it('rises by the sheet distance and lands at rest', () => {
     stubDocument(TOKENS);
-    const { css } = sheetRise(node, {});
+    const { css } = sheetRise(node);
     expect(frame(css!, 0)).toMatch(/translateY\(24px\)/);
     expect(frame(css!, 1)).toMatch(/translateY\(0px\)/);
   });
 
   it('crossfades with no transform at all under reduced motion', () => {
     stubDocument(TOKENS, true);
-    expect(frame(sheetRise(node, {}).css!, 0.5)).not.toContain('transform');
+    expect(frame(sheetRise(node).css!, 0.5)).not.toContain('transform');
   });
 });
 

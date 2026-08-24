@@ -1,6 +1,6 @@
 /* Bundled typefaces — local woff2 only, no network requests.
    Nunito (variable, wght 200–1000) — UI and body text.
-   Outfit (variable, wght 100–900) — display: hero, screen titles, big numbers.
+   Outfit (variable, wght 100-900) for display: hero, screen titles, big numbers.
    Both are OFL-licensed (F-Droid compatible) and cover latin + latin-ext (Polish). */
 
 @font-face {
