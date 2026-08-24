@@ -7,7 +7,7 @@
 :root {
   /* --- Type --- */
   --font-body: 'Nunito', system-ui, sans-serif;
-  --font-display: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+  --font-display: 'Outfit', 'Nunito', system-ui, sans-serif;
 
   --text-xs: 0.75rem;    /* 12px — timestamps, legends */
   --text-sm: 0.875rem;   /* 14px — secondary text, chips */
@@ -19,6 +19,11 @@
 
   --leading-body: 1.5;
   --leading-display: 1.2;
+
+  /* Outfit sets wide by default and needs pulling in at display sizes; Baloo
+     2 did not, and wanted 0. Every rule that reaches for --font-display
+     wants this with it. */
+  --display-track: -0.024em;
 
   --weight-regular: 450;
   --weight-medium: 600;
@@ -44,24 +49,70 @@
   --radius-xl: 26px;     /* sheets, hero surfaces */
   --radius-pill: 999px;  /* tags, mood ring, segmented controls */
 
+  /* The redesign names two shapes rather than picking a step off the ramp
+     above, because both are load-bearing: --r-card is every surface a
+     screen is built from, and --r-add is the floating add button and the
+     nav bar it sits in, which have to agree. Ticket 17 keeps the ticket's
+     and the prototype's names for these two; --radius-* stays the ramp. */
+  --r-card: 20px;
+  --r-add: 18px;
+
   /* --- Elevation: soft ambient, never harsh --- */
   --shadow-1: 0 1px 2px rgb(15 30 40 / 0.05), 0 2px 8px rgb(15 30 40 / 0.05);
   --shadow-2: 0 2px 4px rgb(15 30 40 / 0.06), 0 8px 24px rgb(15 30 40 / 0.09);
   --shadow-3: 0 4px 8px rgb(15 30 40 / 0.08), 0 16px 48px rgb(15 30 40 / 0.14);
 
+  /* The redesign separates surfaces with a line, not a plane, so it has one
+     shadow: the floating nav bar and its add button, which genuinely do sit
+     over the content. Dark theme's is in palettes.css with the ramp's. */
+  --shadow-float: 0 4px 16px -6px rgb(15 30 40 / 0.22), 0 1px 3px rgb(15 30 40 / 0.10);
+
   /* --- Motion (ticket 09: one token language for every shared transition,
      Svelte-driven ones included - see $lib/motion/tokens.ts) --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* A press has to overshoot and settle, which a cubic-bezier cannot do:
+     --ease-spring's control points bulge past 1 but the curve still
+     approaches its end monotonically from one side. linear() samples a real
+     spring, so a control let go of springs past its resting size and comes
+     back. A browser too old to parse linear() drops the declaration and the
+     transition falls back to `ease`, which is the right failure. */
+  --ease-press: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%,
+    0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161,
+    1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%,
+    0.975 57.1%, 0.997 69.4%, 1.003 82.6%, 1);
+
+  /* One duration per motion tier (DIRECTION.md (ticket 15's branch)). --dur-fast is tier 1's
+     press, --dur-med tier 2's navigation, --dur-slow tier 3's change within
+     a screen. --dur-press is longer than --dur-fast on purpose: on
+     --ease-press the control is 94% of the way there by 44ms, well inside
+     --dur-fast, and the rest of the 260ms is the overshoot settling rather
+     than the response arriving. */
   --dur-fast: 150ms;
   --dur-med: 240ms;
   --dur-slow: 380ms;
+  --dur-press: 260ms;
+
+  /* Tier 0, the app's whole ambient motion budget: Home's flag sun arrives
+     over --dur-authored and then breathes on --dur-breathe. */
+  --dur-authored: 700ms;
+  --dur-breathe: 7s;
+
+  /* The reduced-motion contract substitutes rather than deletes, and tier
+     2's substitute is a crossfade - which needs a duration the clamp below
+     cannot reach, or it is an instant cut instead. Left out of both clamp
+     blocks on purpose: prefers-reduced-motion is about movement, and a
+     change of opacity does not move anything. Only $lib/motion's
+     JS-driven transitions can honour it, since the !important rules below
+     flatten every CSS transition regardless of its token. */
+  --dur-crossfade: 120ms;
   --motion-distance-sm: 10px;  /* toast */
   --motion-distance-md: 24px;  /* sheet */
   --stagger-step: 50ms;
 
   /* --- Layout --- */
-  --touch-target: 44px;
+  --touch-target: 48px;   /* Android's floor, which is the stricter of the two platforms this ships on */
   --content-max: 640px;      /* centred column at desktop width */
   --rail-width: 220px;       /* desktop navigation rail */
   --bottom-nav-height: 64px;
@@ -81,10 +132,15 @@ html[data-a11y-legibility='boost'] {
   --border: color-mix(in oklab, var(--text) 24%, var(--bg));
 }
 
+/* --dur-breathe is deliberately not clamped here. It belongs to an infinite
+   loop, and a 1ms infinite loop is a strobe rather than stillness (MO-001);
+   a tier-0 loop stops with `animation: none` under both selectors instead. */
 html[data-a11y-motion='reduce'] {
   --dur-fast: 1ms;
   --dur-med: 1ms;
   --dur-slow: 1ms;
+  --dur-press: 1ms;
+  --dur-authored: 1ms;
 }
 
 html[data-a11y-motion='reduce'] *,
@@ -99,6 +155,8 @@ html[data-a11y-motion='reduce'] *::after {
     --dur-fast: 1ms;
     --dur-med: 1ms;
     --dur-slow: 1ms;
+    --dur-press: 1ms;
+    --dur-authored: 1ms;
   }
   *, *::before, *::after {
     animation-duration: 1ms !important;
