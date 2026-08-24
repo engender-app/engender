@@ -6,6 +6,11 @@
   import '$lib/styles/app.css';
   import '$lib/styles/components.css';
   import '$lib/styles/screens.css';
+  /* Last on purpose (phase 5 ticket 28). .scrim-withdraw is an opt-in
+     material a screen adds on top of a component's own class, and it has to
+     win the tint it overrides - at equal specificity that means arriving
+     after components.css rather than with the rest of $lib/motion. */
+  import '$lib/motion/materials.css';
 
   import { page } from '$app/state';
   import { assets } from '$app/paths';

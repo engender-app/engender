@@ -67,6 +67,14 @@
      over the content. Dark theme's is in palettes.css with the ramp's. */
   --shadow-float: 0 4px 16px -6px rgb(15 30 40 / 0.22), 0 1px 3px rgb(15 30 40 / 0.10);
 
+  /* Where that shadow goes while the control is held down (phase 5 ticket
+     28, tier 1). The offset and the spread both come in, because a control
+     moving toward the surface has less distance to cast across - the press
+     scales it down at the same time, and the two together read as the button
+     meeting the surface rather than shrinking in place. Dark theme's is in
+     palettes.css with --shadow-float's. */
+  --shadow-float-pressed: 0 1px 5px -3px rgb(15 30 40 / 0.26), 0 1px 2px rgb(15 30 40 / 0.12);
+
   /* --- Motion (ticket 09: one token language for every shared transition,
      Svelte-driven ones included - see $lib/motion/tokens.ts) --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -111,6 +119,36 @@
   --motion-distance-sm: 10px;  /* toast */
   --motion-distance-md: 24px;  /* sheet */
   --stagger-step: 50ms;
+
+  /* --- Materials beyond transform and opacity (phase 5 ticket 28) ---
+
+     The withdrawal: the scrim behind a sheet blurs what it covers, so the
+     screen underneath is plainly still there and plainly not what is being
+     read. This app has a reason to own that gesture rather than borrow it -
+     disguise mode and the app lock exist because being seen with it can be
+     unsafe, so withdrawing legibility is already part of its vocabulary
+     rather than a glass effect.
+
+     The radius is a constant and never animates. A radius that changes
+     re-blurs the whole region every frame; a radius that is fixed rasterises
+     once and the scrim crossfades over it, which is the same opacity
+     animation tier 2 already runs. What that actually costs on the target
+     phone is ticket 27's measurement, taken over real screens. This value is
+     what the material is designed at, not a number anyone has yet proved.
+
+     Deliberately separate from the nav bar's own blur in app.css, which
+     happens to be 12px too: that one is a translucent chrome surface and
+     this one is a legibility withdrawal. Same number now, different jobs, and
+     nothing should make them move together. */
+  --blur-withdraw: 12px;
+
+  /* The tint that rides with the blur. Thinner than --scrim on purpose: the
+     blur is doing the withdrawing, so the tint only has to say "not this",
+     and a lighter one leaves the palette behind it readable as colour. Where
+     the blur cannot happen, --scrim itself is the fallback state - which is
+     what the app ships today, so the degraded state is a designed one rather
+     than an accident. */
+  --scrim-withdraw: color-mix(in oklab, var(--scrim) 55%, transparent);
 
   /* --- Layout --- */
   --touch-target: 48px;   /* Android's floor, which is the stricter of the two platforms this ships on */
