@@ -286,13 +286,16 @@ describe('tier 1, response', () => {
           if (!segment.includes('var(--dur-press)')) stray.push(`${where} { transition: ... ${segment} }`);
         }
 
-        /* Longhands carry it by position: the nth curve belongs to the nth
-           duration, so the pair is only intact if the indices line up. */
+        /* Longhands carry it by position, and a list shorter than the
+           property list repeats from its start rather than running out, so
+           the duration belonging to curve n is n wrapped by the list's own
+           length. Indexing straight would fail a rule that names one
+           duration for two curves, which is legal and correct CSS. */
         const curves = splitTopLevel(declared['transition-timing-function'] ?? '');
         const durations = splitTopLevel(declared['transition-duration'] ?? '');
         curves.forEach((curve, i) => {
           if (curve !== 'var(--ease-press)') return;
-          if (durations[i] !== 'var(--dur-press)') {
+          if (durations[i % durations.length] !== 'var(--dur-press)') {
             stray.push(`${where} { --ease-press at ${i}, but --dur-press is not }`);
           }
         });
@@ -302,17 +305,9 @@ describe('tier 1, response', () => {
     expect(stray, 'the spring needs its whole 260ms or it snaps instead of settling').toEqual([]);
   });
 
-  /* --ease-press is a linear(), and a WebView older than Chrome 113 cannot
-     parse it. Because it arrives through var(), the failure is not a
-     fallback: the declaration is invalid at computed-value time, so the
-     whole `transition:` shorthand becomes `unset` and every property named
-     in it loses its transition, press or not. Verified on the API 26
-     emulator, this app's minSdk, where the shorthand computed to
-     `all 0s ease`.
-
-     So a shorthand may name --ease-press only if the press is all of it.
-     Mix it with anything else and that something else has to survive the
-     old WebView, which means longhands. */
+  /* A shorthand may name --ease-press only if the press is all of it: on a
+     WebView too old to parse the linear(), the whole shorthand is lost, not
+     just the press. Why that happens is at --ease-press in theme/base.css. */
   it('never puts the spring in a shorthand beside a property it would strand', () => {
     const mixed: string[] = [];
     for (const { path, css } of styleSources()) {

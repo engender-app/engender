@@ -64,15 +64,10 @@
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
   border: none; cursor: pointer;
-  /* Longhands rather than the shorthand, because --ease-press is a
-     linear() and a WebView older than Chrome 113 cannot parse it. var()
-     defers to computed-value time, where an unparseable value takes the
-     whole declaration to `unset` rather than only its own segment - so in
-     the shorthand form this button lost its background, shadow and filter
-     transitions along with its press. Measured, not reasoned: on the API 26
-     emulator's Chrome 69 WebView the shorthand computed to `all 0s ease`
-     and these longhands kept every duration, with only the curve falling
-     back to `ease`. filter has no curve of its own here, same as before. */
+  /* Longhands because the press shares this rule with three properties
+     that are not the press; --ease-press in a shorthand would take all
+     four down on an old WebView. The mechanism is at --ease-press in
+     theme/base.css. filter has no curve of its own, same as before. */
   transition-property: transform, background, box-shadow, filter;
   transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
   transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out), ease;
