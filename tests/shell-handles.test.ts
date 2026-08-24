@@ -74,18 +74,25 @@ describe('the shell hands the walkthrough a grip on everything it can press', ()
     }
   });
 
-  it('gives quick add a handle per target, keeping the two the old sheet had', () => {
+  it('offers every target spec 04 names, each with its own handle', () => {
     const quickAdd = read('src/lib/components/QuickAdd.svelte');
-    /* data-choose="today" and data-choose="date" predate this rebuild and
-       are what several walkthrough flows already grip. Spec 04 asks for the
-       suite to pass with no selector repairs, so the rebuild keeps both
-       rather than renaming them to match the new ones. */
-    expect(quickAdd).toContain("key: 'today'");
+    /* data-choose="date" predates the rebuild and is what the backdate flow
+       already grips, so it survived rather than being renamed to match the
+       handles beside it.
+
+       data-choose="today" did not survive, and that is the one deliberate
+       selector repair in this ticket: "Today" was a row of its own until it
+       was merged into the mood row, because an entry cannot be saved
+       without a mood and a blank entry for today was a mood picker with an
+       extra tap in front of it. Picking a mood is how today's entry starts,
+       so mood-N is what the flows grip now. */
+    expect(quickAdd).not.toContain('data-choose="today"');
     expect(quickAdd).toContain('data-choose="date"');
     for (const key of ['photo', 'another-day', 'tally-misgendered', 'tally-correctly_gendered', 'dose']) {
-      expect(quickAdd, `${key} is offered`).toContain(`key: '${key}'`);
+      expect(quickAdd, `${key} is offered`).toContain(`data-fan-target="${key}"`);
     }
-    expect(quickAdd).toContain('data-fan-target');
+    /* The five moods, which are the entry-for-today target. */
+    expect(quickAdd).toContain('MOOD_TARGET + value');
   });
 });
 

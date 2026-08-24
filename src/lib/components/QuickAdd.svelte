@@ -64,6 +64,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
+  import MoodFace from './MoodFace.svelte';
   import Sheet from './Sheet.svelte';
 
   let backdateOpen = $state(false);
@@ -87,12 +88,14 @@
     goto(`/entry/new/today?seedMood=${v}`);
   }
 
-  /* Preserved exactly: today by epoch day, a backdate through the same
-     parse, neither changed by the fan growing around them. */
-  function chooseToday() {
-    close();
-    goto(`/entry/new/${todayEpochDay()}`);
-  }
+  /* The backdate, unchanged: the same parse, through the same route.
+
+     "Today" used to be a row of its own, opening a blank entry. It is gone,
+     merged into the mood row above it, because the three of them were one
+     thing wearing three labels: an entry cannot be saved without a mood
+     (entry_needs_mood), so a blank entry for today is a mood picker with an
+     extra tap in front of it. Picking a mood is how you start today's
+     entry, and the editor still lets you change it. */
   function chooseDate() {
     const day = epochDayFromDateInputValue(backdate);
     if (day == null) return;
@@ -100,15 +103,16 @@
     goto(`/entry/new/${day}`);
   }
 
-  /* The one target that cannot be a single action: a backdate needs a date
-     before it can go anywhere, so it hands over to a small sheet. */
+  /* The one target that cannot resolve in a gesture: a backdate needs a
+     date before it can go anywhere, so it hands over to a small sheet. */
   function openBackdate() {
     close();
     backdateOpen = true;
   }
 
-  /* A photo is recorded on an entry, so the surface that records it is the
-     editor, opened on today with its picker already up. */
+  /* A photo is recorded on an entry too, but it is not the same choice as a
+     mood: it says what the entry is for rather than how the day felt, and
+     it opens the picker on the way. */
   function addPhoto() {
     close();
     goto('/entry/new/today?seedPhoto=1');
@@ -134,55 +138,29 @@
   /* Nearest the thumb first, because the order is a reachability decision
      rather than an editorial one: the mood row is where a slide lands with
      the least travel, and a dose is the one of these nobody logs in a
-     hurry. */
+     hurry.
+
+     Grouped as three cards rather than six floating pills. A card per group
+     is the app's own list surface - one plane, hairline separators, the
+     icon in the accent - so the fan reads as three things the button can
+     make rather than as a stack of identical rounded rectangles, which is
+     the generic shape DIRECTION.md's decision 2b exists to avoid. It also
+     gives the slide a better target: the highlight moves inside one plane
+     instead of jumping between separate objects. */
   const MOODS = [1, 2, 3, 4, 5];
   const MOOD_TARGET = 'mood-';
 
-  /* Grouped rather than flat (spec 04), and the grouping is the row: a row
-     holds one target or a pair of them, and a gap opens where one group
-     ends. Headings were the other option and a fan is the wrong surface for
-     them - it is something a thumb crosses, and four headings in it are
-     four more things to slide past on the way to a target.
-
-     The two tally directions share a row because they are one question
-     asked twice, the same way the five moods are one scale. A pair lays
-     itself out like a mood cell, icon over label, so the longer of the two
-     labels has two lines rather than an ellipsis. */
-  type FanTarget = { key: string; icon: string; label: () => string; run: () => void };
-
-  const ROWS: FanTarget[][] = [
-    [{ key: 'today', icon: 'sun', label: () => m.today(), run: chooseToday }],
-    [{ key: 'another-day', icon: 'calendar', label: () => m.another_day(), run: openBackdate }],
-    [{ key: 'photo', icon: 'image', label: () => m.quick_add_photo(), run: addPhoto }],
-    [
-      {
-        key: 'tally-misgendered',
-        icon: 'x',
-        label: () => m.tally_misgendered(),
-        run: () => void logTally('misgendered')
-      },
-      {
-        key: 'tally-correctly_gendered',
-        icon: 'check',
-        label: () => m.tally_correctly_gendered(),
-        run: () => void logTally('correctly_gendered')
-      }
-    ],
-    /* doses_empty_action rather than doses_add_aria: this is a visible
-       label, and the aria string is not the one to render even where the
-       two read the same. */
-    [{ key: 'dose', icon: 'clock', label: () => m.doses_empty_action(), run: logDose }]
-  ];
-
-  /* Where a gap opens, by row index. Entry is three rows, the tally is one,
-     and a dose is its own thing. */
-  const GROUP_STARTS = new Set([3, 4]);
-
-  const TARGETS = ROWS.flat();
+  const ACTIONS: Record<string, () => void> = {
+    'another-day': openBackdate,
+    photo: addPhoto,
+    'tally-misgendered': () => void logTally('misgendered'),
+    'tally-correctly_gendered': () => void logTally('correctly_gendered'),
+    dose: logDose
+  };
 
   function runTarget(key: string) {
     if (key.startsWith(MOOD_TARGET)) return pickMood(Number(key.slice(MOOD_TARGET.length)));
-    TARGETS.find((target) => target.key === key)?.run();
+    ACTIONS[key]?.();
   }
 
   /* No stagger. The first version dealt the rows out one after another from
@@ -228,7 +206,25 @@
 
   function slideMove(e: PointerEvent) {
     if (!ui.chooserPressing) return;
-    armed = targetAt(e) ?? null;
+    const target = targetAt(e);
+    if (target) {
+      armed = target;
+      return;
+    }
+    /* Between two cards there is a gap, and a finger crossing it is not
+       changing its mind - it is on its way somewhere. Clearing there made
+       the highlight flicker off and on as the finger travelled up the fan,
+       and left an 8px band where letting go did nothing. Inside the fan the
+       last armed target holds; outside it, including back over the add
+       control, the arming clears, which is what makes releasing on the
+       button choose nothing. */
+    armed = withinFan(e) ? armed : null;
+  }
+
+  function withinFan(e: PointerEvent): boolean {
+    const fan = document.querySelector('[data-fan]')?.getBoundingClientRect();
+    if (!fan) return false;
+    return e.clientX >= fan.left && e.clientX <= fan.right && e.clientY >= fan.top && e.clientY <= fan.bottom;
   }
 
   /* One rule for both gestures: on release, whatever the pointer was over
@@ -279,44 +275,87 @@
     onclick={close}
   ></div>
 
+  <!-- Source order is the phone's, nearest the thumb first: the bar's fan
+       is a reversed column, so the first card here is the lowest on screen.
+       The rail's is a plain column, where the same order reads top down. -->
   <div class="fan" role="group" aria-label={m.quick_add_title()} data-fan>
-    <div class="fan-moods" in:fanIn out:fanOut>
-      {#each MOODS as value (value)}
-        <button
-          class="fan-mood"
-          class:is-armed={armed === MOOD_TARGET + value}
-          data-fan-target={MOOD_TARGET + value}
-          aria-label={moodName(value)}
-          onclick={() => pickMood(value)}
-        >
-          <span class="fan-mood-dot" style="background:var(--mood-{value})"></span>
-          <span class="fan-mood-label">{moodName(value)}</span>
-        </button>
-      {/each}
-    </div>
-
-    {#each ROWS as row, i (row[0].key)}
-      <div
-        class="fan-row"
-        class:is-pair={row.length > 1}
-        class:starts-group={GROUP_STARTS.has(i)}
-        in:fanIn
-        out:fanOut
+    <!-- The entry card. Everything in it makes an entry, and the mood row
+         at the bottom is the one that makes today's - which is why "Today"
+         is not a row of its own any more. -->
+    <div class="fan-card" in:fanIn out:fanOut>
+      <button
+        class="fan-item"
+        class:is-armed={armed === 'photo'}
+        data-fan-target="photo"
+        data-choose="photo"
+        onclick={ACTIONS.photo}
       >
-        {#each row as target (target.key)}
+        <span class="fan-icon"><Icon name="image" size={22} /></span>
+        <span class="fan-label">{m.quick_add_photo()}</span>
+      </button>
+      <button
+        class="fan-item"
+        class:is-armed={armed === 'another-day'}
+        data-fan-target="another-day"
+        data-choose="another-day"
+        onclick={ACTIONS['another-day']}
+      >
+        <span class="fan-icon"><Icon name="calendar" size={22} /></span>
+        <span class="fan-label">{m.another_day()}</span>
+      </button>
+      <div class="fan-moods">
+        {#each MOODS as value (value)}
           <button
-            class="fan-item"
-            class:is-armed={armed === target.key}
-            data-fan-target={target.key}
-            data-choose={target.key}
-            onclick={target.run}
+            class="fan-mood"
+            class:is-armed={armed === MOOD_TARGET + value}
+            data-fan-target={MOOD_TARGET + value}
+            aria-label={moodName(value)}
+            onclick={() => pickMood(value)}
           >
-            <span class="fan-icon"><Icon name={target.icon} size={20} /></span>
-            <span class="fan-label">{target.label()}</span>
+            <MoodFace {value} size={34} />
+            <span class="fan-mood-label">{moodName(value)}</span>
           </button>
         {/each}
       </div>
-    {/each}
+    </div>
+
+    <!-- One question asked twice, so one card holding both halves, the way
+         the five moods are one scale. -->
+    <div class="fan-card is-pair" in:fanIn out:fanOut>
+      <button
+        class="fan-item"
+        class:is-armed={armed === 'tally-misgendered'}
+        data-fan-target="tally-misgendered"
+        data-choose="tally-misgendered"
+        onclick={ACTIONS['tally-misgendered']}
+      >
+        <span class="fan-icon"><Icon name="x" size={22} /></span>
+        <span class="fan-label">{m.tally_misgendered()}</span>
+      </button>
+      <button
+        class="fan-item"
+        class:is-armed={armed === 'tally-correctly_gendered'}
+        data-fan-target="tally-correctly_gendered"
+        data-choose="tally-correctly_gendered"
+        onclick={ACTIONS['tally-correctly_gendered']}
+      >
+        <span class="fan-icon"><Icon name="check" size={22} /></span>
+        <span class="fan-label">{m.tally_correctly_gendered()}</span>
+      </button>
+    </div>
+
+    <div class="fan-card" in:fanIn out:fanOut>
+      <button
+        class="fan-item"
+        class:is-armed={armed === 'dose'}
+        data-fan-target="dose"
+        data-choose="dose"
+        onclick={ACTIONS.dose}
+      >
+        <span class="fan-icon"><Icon name="clock" size={22} /></span>
+        <span class="fan-label">{m.doses_empty_action()}</span>
+      </button>
+    </div>
   </div>
 {/if}
 

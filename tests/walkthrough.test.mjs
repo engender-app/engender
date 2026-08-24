@@ -98,7 +98,12 @@ try {
 try {
   await fresh('/');
   await page.locator('[data-nav-fab]').click();
-  await page.locator('[data-choose="today"]').click();
+  /* Today's entry is a mood now: "Today" was a row of its own until phase 5
+     ticket 18 merged it into the mood row, because an entry cannot be saved
+     without a mood and a blank one was a mood picker with an extra tap in
+     front of it. Each of these flows sets its own mood in the editor
+     afterwards, so what they prove is unchanged. */
+  await page.locator('[data-fan-target="mood-3"]').click();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-mood="5"]').click();
   await page.locator('[data-tag="g-soc-eu"]').click();
@@ -135,8 +140,16 @@ try {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
 
-  await page.locator('[data-nav-fab]').click();
-  await page.locator('[data-choose="today"]').click();
+  /* Straight to the unseeded editor, which is the state this flow is about.
+     It used to get here through quick add's "Today", and phase 5 ticket 18
+     merged that row into the mood row - so every entry quick add starts now
+     carries a seedMood, and a seedMood is precisely what makes the editor
+     offer the scale sheet *instead of* this nudge (EntryEditor.svelte). The
+     flow's own note above already says its remaining domain is a mood-only
+     save started from the full editor; this is that, with the one step that
+     no longer produces it removed. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-mood="2"]').click();
   await page.locator('[data-save]').click();
@@ -156,8 +169,16 @@ try {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
 
-  await page.locator('[data-nav-fab]').click();
-  await page.locator('[data-choose="today"]').click();
+  /* Straight to the unseeded editor, which is the state this flow is about.
+     It used to get here through quick add's "Today", and phase 5 ticket 18
+     merged that row into the mood row - so every entry quick add starts now
+     carries a seedMood, and a seedMood is precisely what makes the editor
+     offer the scale sheet *instead of* this nudge (EntryEditor.svelte). The
+     flow's own note above already says its remaining domain is a mood-only
+     save started from the full editor; this is that, with the one step that
+     no longer produces it removed. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-mood="3"]').click();
   await page.locator('[data-save]').click();
@@ -1812,7 +1833,7 @@ try {
 async function openQuickAdd(path = '/') {
   await fresh(path);
   await page.locator('[data-nav-fab]').click();
-  await page.waitForSelector('[data-choose="today"]');
+  await page.waitForSelector('[data-fan-target="mood-3"]');
 }
 
 /** Press the add button, slide onto a target, let go - one pointer, never
@@ -1822,6 +1843,11 @@ async function slideToTarget(selector) {
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.waitForSelector('[data-fan]');
+  /* The fan is in the DOM before it has finished arriving, and it arrives by
+     travelling: measuring it mid-transition reads a box up to
+     --motion-distance-md away from where it settles, which is enough to aim
+     the drag into the gap between two cards. */
+  await page.waitForTimeout(500);
   const to = await page.locator(selector).boundingBox();
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
   await page.waitForSelector(`${selector}[class*="is-armed"]`, { timeout: 4000 });
@@ -1838,9 +1864,10 @@ try {
 
 try {
   await openQuickAdd();
-  await page.locator('[data-choose="today"]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
   await page.waitForSelector('#ed-note');
-  ok('quick add: today still opens the editor for today');
+  await page.waitForSelector('[data-mood="3"][aria-checked="true"]');
+  ok("quick add: a mood is how today's entry starts, seeded with it");
 } catch (e) { fail('quick add today', e); }
 
 try {
@@ -1884,7 +1911,7 @@ try {
 
 try {
   await fresh('/');
-  await slideToTarget('[data-choose="today"]');
+  await slideToTarget('[data-choose="photo"]');
   await page.waitForSelector('#ed-note');
   ok('quick add: pressing and sliding onto a row runs it, with no second tap');
 } catch (e) { fail('quick add slide to a row', e); }
@@ -1907,7 +1934,7 @@ try {
   await page.waitForSelector('[data-fan]');
   await page.mouse.up();
   await page.waitForTimeout(300);
-  if (!(await page.locator('[data-choose="today"]').count())) {
+  if (!(await page.locator('[data-fan-target="mood-3"]').count())) {
     throw new Error('releasing on the button chose something, or closed the fan');
   }
   ok('quick add: releasing without going anywhere leaves the fan up to tap');
