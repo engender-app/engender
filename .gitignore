@@ -26,7 +26,8 @@ docs/
 
 # The same rule for the other assistants, listed ahead of anyone using one, since
 # the repo is public and these files carry working notes rather than product
-# decisions. A decision that matters belongs in docs/adr/ or CONTEXT.md instead.
+# decisions. Where a decision that matters is written down is covered below,
+# under the briefs - docs/adr/ and CONTEXT.md are both kept out of the repo too.
 .agents/
 AGENTS.md
 GEMINI.md
@@ -74,3 +75,20 @@ prototype/
 # note as prototype/ above applies: ignoring it here stops new/changed files
 # in it from showing up, not what git already tracks there.
 mockup/
+
+# The briefs the agent skills read, and the config that routes them. Same rule as
+# docs/ above: they are working documents rather than product, they change far more
+# often than the code they describe, and the repo is public - PRODUCT.md and
+# SCREENS.md in particular carry unshipped screen-by-screen plans.
+#
+# Two things follow from this and are worth knowing before wondering where they went.
+# Source comments across src/ cite CONTEXT.md by name as the domain authority, and on
+# a clone those references now point at a file that is not there. And impeccable's
+# context.mjs reads PRODUCT.md to resolve the platform, so on a clone it falls back to
+# treating the app as a website - which is the exact failure phase 5 ticket 29 fixed.
+# Both are accepted on the same trade docs/ already made: these live with whoever is
+# working on the app, not in the public tree.
+PRODUCT.md
+SCREENS.md
+CONTEXT.md
+.impeccable/
