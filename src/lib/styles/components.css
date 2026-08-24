@@ -80,7 +80,21 @@
    the two halves equal until then. */
 .btn:active { transform: scale(0.94); }
 .btn-primary { background: var(--grad-accent); color: var(--on-accent); box-shadow: var(--shadow-1); }
-.btn-primary:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); filter: saturate(1.15); }
+/* Behind a hover query because this rule sits after .btn:active and carries
+   the same specificity, so on a touch screen it wins. Chromium applies
+   :hover on tap and leaves it applied until something else is tapped, which
+   means from the second tap onwards this transform replaced the press
+   scale and the button stopped answering at all. Felt on a Pixel 10a before
+   it was traced. The add button escaped it by luck of ordering - its
+   :active is written after its :hover.
+
+   DIRECTION's tier 4 says no hover-dependent motion, so a pointer that
+   cannot hover losing this is the intended reading, not a fallback. The
+   other five hover transforms in these sheets have the same exposure and
+   are ticket 18's, not this ticket's. */
+@media (hover: hover) {
+  .btn-primary:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); filter: saturate(1.15); }
+}
 .btn-soft { background: var(--accent-soft); color: var(--on-accent-soft); }
 .btn-ghost { background: none; color: var(--accent); }
 .btn-danger { background: var(--danger-soft); color: var(--danger); }
