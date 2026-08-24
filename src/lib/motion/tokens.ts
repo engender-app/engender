@@ -3,7 +3,30 @@
    can clamp their durations the way it clamps every CSS animation and
    transition. These mirror the same --dur-* and --motion-distance- tokens
    and the same html[data-a11y-motion] signal +layout.svelte already stamps, so
-   a Svelte transition and its CSS neighbours never drift apart. */
+   a Svelte transition and its CSS neighbours never drift apart.
+
+   It also carries the two pieces every JS-driven transition here shares: the
+   easing, and opacity-alone, which is what both tier 2's reduced-motion
+   substitute and tier 3's no-clip-path fallback come down to. */
+
+import { quintOut } from 'svelte/easing';
+import type { TransitionConfig } from 'svelte/transition';
+
+/** --ease-out, for the transitions that cannot read a CSS token.
+
+    --ease-out is cubic-bezier(0.22, 1, 0.36, 1). quintOut tracks it to within
+    0.011 across the whole curve, which is under a tenth of a pixel over a 24px
+    travel, so the two really are one easing rather than two that happen to
+    look alike. */
+export const EASE_OUT = quintOut;
+
+/** Opacity alone over `duration`, which two different jobs both need: tier
+    2's reduced-motion substitute, and tier 3's fallback where the runtime has
+    no clip-path. Shared from here rather than written out in both, since the
+    shape is identical and only the duration differs. */
+export function fadeOnly(duration: number): TransitionConfig {
+  return { duration, easing: EASE_OUT, css: (t) => `opacity: ${t}` };
+}
 
 interface MotionDocument {
   documentElement: { dataset: Record<string, string | undefined> };

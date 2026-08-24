@@ -16,7 +16,7 @@
    below - stop under reduced motion, fill forwards so the end state is the
    resting state, or end on the same values the base rule already declares. */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -26,6 +26,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const SHEETS = [
   'src/lib/theme/base.css',
   'src/lib/motion/press.css',
+  'src/lib/motion/materials.css',
   'src/lib/styles/app.css',
   'src/lib/styles/components.css',
   'src/lib/styles/screens.css'
@@ -90,6 +91,26 @@ function normalise(prop: string, value: string | undefined) {
 }
 
 const sheets = SHEETS.map((path) => ({ path, css: stripComments(readFileSync(join(root, path), 'utf8')) }));
+
+/** Every `<style>` block in the app's components and routes, comments
+    stripped, for the one check that has to hold outside the shared sheets. */
+function svelteStyleBlocks(): { path: string; css: string }[] {
+  const out: { path: string; css: string }[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.svelte')) {
+        const source = readFileSync(full, 'utf8');
+        for (const [, block] of source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
+          out.push({ path: full.slice(root.length), css: stripComments(block) });
+        }
+      }
+    }
+  };
+  walk(join(root, 'src'));
+  return out;
+}
 const allRules = sheets.flatMap(({ path, css }) => rules(css).map((rule) => ({ ...rule, path })));
 
 const isReduceContext = (rule: Rule) =>
@@ -192,8 +213,119 @@ describe('tier 1, response', () => {
     expect([...covered].sort()).toEqual(['.press-add:active', '.press:active']);
   });
 
+  /* Phase 5 ticket 28: the press also collapses the one floating control's
+     shadow, so the button reads as meeting the surface rather than shrinking
+     in place. Capped to that control - it is the app's only element with a
+     shadow to collapse, and a 56px repaint is the smallest area any of this
+     ticket's materials touch. */
+  it('collapses the floating control shadow on the same duration as the scale', () => {
+    const press = readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8');
+    expect(press).toMatch(/transition:[^;]*box-shadow var\(--dur-press\) var\(--ease-press\)/);
+    expect(press).toMatch(/\.press-add:active\s*\{[^}]*box-shadow:\s*var\(--shadow-float-pressed\)/);
+  });
+
+  it('leaves the shadow of every other control alone, which is the cap', () => {
+    const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
+    for (const rule of rules(press)) {
+      if (!/box-shadow/.test(rule.body)) continue;
+      expect(rule.prelude, 'only the floating control animates a shadow').not.toMatch(/\.press[,:]|\.press$/);
+    }
+  });
+
+  it('restores the resting shadow under both reduced-motion paths', () => {
+    const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
+    const restored = rules(press)
+      .filter(isReduceContext)
+      .filter((rule) => /box-shadow:\s*var\(--shadow-float\)/.test(rule.body))
+      .flatMap((rule) =>
+        rule.prelude.split(',').map((s) => s.trim().replace(/^html\[data-a11y-motion='reduce'\]\s*/, ''))
+      );
+    expect(restored.filter((selector) => selector === '.press-add:active')).toHaveLength(2);
+  });
+
   it('is loaded by the app shell', () => {
     expect(readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8')).toContain("import '$lib/motion/press.css'");
+  });
+});
+
+describe('tier 2, the withdrawal', () => {
+  const materials = () => readFileSync(join(root, 'src/lib/motion/materials.css'), 'utf8');
+
+  /* The material is a blur that is there or not there, never a blur that
+     changes radius - the reason is written out once, at --blur-withdraw in
+     theme/base.css. */
+  it('holds the blur radius constant and animates opacity alone', () => {
+    /* The reduced-motion rules are the substitute, not the material: they
+       set the radius to none, which is the whole point of them. */
+    const scrim = rules(stripComments(materials())).filter(
+      (rule) => rule.prelude.includes('.scrim-withdraw') && !isReduceContext(rule)
+    );
+    expect(scrim.length, 'the tier-2 withdrawal has to exist to be capped').toBeGreaterThan(0);
+
+    for (const rule of scrim) {
+      const declared = declarations(rule.body);
+      if (declared['backdrop-filter']) {
+        expect(declared['backdrop-filter'], 'the radius is a token, not a number').toContain(
+          'var(--blur-withdraw)'
+        );
+      }
+      const transition = declared.transition ?? '';
+      expect(transition, 'a transition that names a filter animates its radius').not.toMatch(/filter/);
+      expect(transition, 'transition: all would animate the radius by accident').not.toMatch(/\ball\b/);
+    }
+  });
+
+  it('falls back to a deliberate flat scrim where backdrop-filter is missing', () => {
+    const supports = rules(stripComments(materials())).filter((rule) =>
+      rule.context.some((at) => at.includes('backdrop-filter'))
+    );
+    expect(supports.length, 'the fallback is a @supports state, not an unstyled one').toBeGreaterThan(0);
+  });
+
+  it('drops the blur under both reduced-motion paths and keeps the tint', () => {
+    const reduced = rules(stripComments(materials())).filter(isReduceContext);
+    const dropped = reduced
+      .filter((rule) => /backdrop-filter:\s*none/.test(rule.body))
+      .flatMap((rule) =>
+        rule.prelude.split(',').map((s) => s.trim().replace(/^html\[data-a11y-motion='reduce'\]\s*/, ''))
+      );
+    expect(dropped.filter((selector) => selector === '.scrim-withdraw')).toHaveLength(2);
+    for (const rule of reduced) {
+      expect(rule.body, 'the substitute keeps the scrim, it just stops withdrawing').not.toMatch(
+        /display:\s*none/
+      );
+    }
+  });
+});
+
+describe('the cap that spans every material', () => {
+  /* A keyframe blur ramp is the expensive shape this ticket is deliberately
+     not shipping: every frame re-blurs the region at a new radius.
+
+     This is the one check that has to reach past SHEETS. Every other rule
+     here is about a primitive that lives in a shared stylesheet, but a
+     keyframe can be written in any component's own <style> block, and the
+     screen tickets are about to write a lot of those. A cap that only covers
+     the six shared sheets would go quietly vacuous exactly when it starts to
+     matter. */
+  it('interpolates no blur radius anywhere, component styles included', () => {
+    const offenders: string[] = [];
+
+    for (const rule of allRules) {
+      if (!rule.prelude.startsWith('@keyframes')) continue;
+      if (rule.body.includes('blur(')) offenders.push(`${rule.path}: ${rule.prelude}`);
+    }
+
+    const components = svelteStyleBlocks();
+    expect(components.length, 'no component <style> blocks found - the walk has drifted').toBeGreaterThan(0);
+    for (const { path, css } of components) {
+      for (const rule of rules(css)) {
+        if (!rule.prelude.startsWith('@keyframes')) continue;
+        if (rule.body.includes('blur(')) offenders.push(`${path}: ${rule.prelude}`);
+      }
+    }
+
+    expect(offenders, 'a blur radius may be present or absent, never interpolated').toEqual([]);
   });
 });
 
@@ -213,7 +345,14 @@ describe('the token layer behind the five tiers', () => {
       '--dur-crossfade',
       '--ease-press',
       '--ease-out',
-      '--ease-spring'
+      '--ease-spring',
+      /* Phase 5 ticket 28's two new materials that are expressed as tokens:
+         the withdrawal's fixed blur radius and the pressed step of the app's
+         one shadow. The third, tier 3's wipe, is geometry rather than a
+         value and lives in $lib/motion/reveal.ts. */
+      '--blur-withdraw',
+      '--scrim-withdraw',
+      '--shadow-float-pressed'
     ]) {
       expect(base, `${token} is what a tier reaches for instead of a number`).toContain(`${token}:`);
     }
