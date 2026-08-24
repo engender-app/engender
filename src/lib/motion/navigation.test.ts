@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TransitionConfig } from 'svelte/transition';
 
@@ -14,7 +16,9 @@ function stubDocument(vars: Record<string, string>, reduced = false) {
 }
 
 const TOKENS = {
+  '--dur-fast': '150ms',
   '--dur-med': '240ms',
+  '--dur-slow': '380ms',
   '--dur-crossfade': '120ms',
   '--motion-distance-md': '24px'
 };
@@ -47,6 +51,16 @@ describe('fade-through, between the four tabs', () => {
     const { css } = fadeThrough(node, {}, { direction: 'out' });
     expect(frame(css!, 1)).toMatch(/scale\(1\)/);
     expect(frame(css!, 0)).toMatch(/scale\(0\.97\)/);
+  });
+
+  /* Material's fade-through is asymmetric on purpose. An exit that takes as
+     long as an entrance reads as the app hesitating before it answers. */
+  it('leaves faster than it arrives', () => {
+    stubDocument(TOKENS);
+    expect(fadeThrough(node, {}, { direction: 'out' }).duration).toBe(150);
+    expect(fadeThrough(node, {}, { direction: 'in' }).duration).toBe(240);
+    expect(sharedAxisX(node, {}, { direction: 'out' }).duration).toBe(150);
+    expect(sharedAxisX(node, {}, { direction: 'in' }).duration).toBe(240);
   });
 
   it('crossfades with no transform at all under reduced motion', () => {
@@ -118,5 +132,18 @@ describe('container transform, into the entry editor', () => {
     stubDocument(TOKENS);
     expect(typeof containerSend(node, { key: 'entry-1' })).toBe('function');
     expect(typeof containerReceive(node, { key: 'entry-1' })).toBe('function');
+  });
+
+  /* The only tier-2 pattern that carries a box across the screen and
+     resizes it on the way, so it gets the longest of the three durations
+     rather than the same one a fade uses. Asserted against the source
+     rather than the running transition: the pair defers until both boxes
+     exist, so nothing here can observe the duration it was built with. A
+     grep is a weak test, but the alternative is asserting the stub back to
+     itself, which would pass whatever the module does. */
+  it('is configured with the longest tier-2 duration, not the shared one', () => {
+    const source = readFileSync(new URL('./navigation.ts', import.meta.url), 'utf8');
+    const configured = /crossfade\(\{[\s\S]*?duration:\s*\(\)\s*=>\s*motionDuration\('(--dur-[a-z]+)'/.exec(source);
+    expect(configured?.[1], 'the crossfade should not share --dur-med with the fade').toBe('--dur-slow');
   });
 });
