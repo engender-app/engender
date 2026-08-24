@@ -317,6 +317,22 @@
   padding-bottom: var(--space-2);
 }
 
+/* Whatever comes first in an entry - a title, or the note where there is
+   no title - sits level with the face and the hour beside it. The face is
+   26px and a line of text is not, so the first line is nudged down by half
+   the difference. `lh` is the exact measure of that line and Chromium has
+   had it since 110; 3px under it is what an older WebView gets, which is
+   within half a pixel of both sizes the kit sets here. */
+.kit-entry-body > :first-child {
+  padding-top: 3px;
+}
+
+@supports (padding-top: 1lh) {
+  .kit-entry-body > :first-child {
+    padding-top: calc((26px - 1lh) / 2);
+  }
+}
+
 .kit-entry-title {
   display: block;
   font-size: var(--text-md);
@@ -384,14 +400,16 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The flag under the number, as wide as the number is: the real stripes at
-   their real values, in stripe order, in the flag's own proportions. The
-   value is an inline-block so the bar measures the digits rather than the
-   column they sit in, and the whole thing is hidden from a screen reader -
-   it says nothing the number does not.
+/* The flag under the number: the real stripes at their real values, in
+   stripe order, in the flag's own proportions, turned a quarter so the
+   bands run across the bar rather than down it. The value is an
+   inline-block so the bar measures the digits rather than the column they
+   sit in, and the whole thing is hidden from a screen reader - it says
+   nothing the number does not.
 
-   10px so a seven-band flag still has a band and a half of height each;
-   under that agender and rainbow turn into a smudge. */
+   A little longer than the number and thin: at 6px it reads as a rule that
+   happens to be a flag, which is what an underline should be, and every
+   flag's bands stay full height whatever the count. */
 .kit-tile-value {
   display: inline-block;
 }
@@ -399,7 +417,8 @@
 .kit-tiles[style*='--flag-fill'] .kit-tile-value::after {
   content: '';
   display: block;
-  height: 10px;
+  width: calc(100% + var(--space-3));
+  height: 6px;
   margin-top: var(--space-2);
   border-radius: 3px;
   background-image: var(--flag-fill);

@@ -168,8 +168,13 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
   return roles[index % roles.length];
 }
 
-/** The whole flag as one CSS fill: hard-edged bands, top to bottom, in
+/** The whole flag as one CSS fill: hard-edged bands, left to right, in
     stripe order and in the flag's own proportions.
+
+    A quarter turn from how a flag flies, because of where it is used: the
+    bar under a tile's number is wide and short, and a flag's own stripes
+    across it would be slivers a pixel tall. Turned, each band is as tall as
+    the bar and the count is read along it.
 
     Hard stops rather than a gradient - it is a flag, not a wash - and built
     from the stripe list at render time, so bisexual's doubled stops keep its
@@ -190,7 +195,7 @@ export function flagFill(stripes: string[]): string {
   const stops = bands.map(
     (stripe, i) => `${stripe} ${(step * i).toFixed(3)}% ${(step * (i + 1)).toFixed(3)}%`
   );
-  return `linear-gradient(to bottom, ${stops.join(', ')})`;
+  return `linear-gradient(to right, ${stops.join(', ')})`;
 }
 
 /** The roles for whatever palette and theme the document is currently in.
