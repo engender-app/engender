@@ -324,6 +324,29 @@ describe('tier 1, response', () => {
     expect(mixed, 'an unparseable linear() takes the whole shorthand with it, not just its own half').toEqual([]);
   });
 
+  /* Ticket 29: the two shipped controls press to the same depth as the
+     primitive, so ticket 18 applying .press to them changes the curve's
+     owner and nothing a user can feel. Read off press.css rather than
+     written out here, so the primitive stays the one place the number
+     lives. */
+  it('presses the shipped controls to the depth the primitive declares', () => {
+    const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
+    const depthOf = (selector: string, css: string) =>
+      rules(css).find((rule) => rule.prelude === selector && !isReduceContext(rule))?.body.match(
+        /transform:\s*(scale\([^)]*\))/
+      )?.[1];
+
+    const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
+    const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
+
+    expect(depthOf('.btn:active', components), '.btn presses to .press\'s depth').toBe(
+      depthOf('.press:active', press)
+    );
+    expect(depthOf('.nav-fab:active', app), 'the add button presses to .press-add\'s depth').toBe(
+      depthOf('.press-add:active', press)
+    );
+  });
+
   it('is loaded by the app shell', () => {
     expect(readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8')).toContain("import '$lib/motion/press.css'");
   });
