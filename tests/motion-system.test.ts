@@ -111,6 +111,12 @@ function svelteStyleBlocks(): { path: string; css: string }[] {
   walk(join(root, 'src'));
   return out;
 }
+/** The shared sheets plus every component's own <style> block. A curve can
+    be written in either, so the checks about which curves exist read both. */
+function styleSources() {
+  return [...sheets, ...svelteStyleBlocks()];
+}
+
 const allRules = sheets.flatMap(({ path, css }) => rules(css).map((rule) => ({ ...rule, path })));
 
 const isReduceContext = (rule: Rule) =>
@@ -243,6 +249,23 @@ describe('tier 1, response', () => {
     expect(restored.filter((selector) => selector === '.press-add:active')).toHaveLength(2);
   });
 
+  /* Phase 5 ticket 29: --ease-press is a sampled spring, and the sample is
+     260ms long. --dur-fast cuts it at 150ms, which is after the control has
+     arrived (94% by 44ms) but well before the overshoot has settled, so the
+     control snaps to its resting size instead of springing back to it. The
+     curve and the duration are one decision, and a rule that takes half of
+     it gets the worse half. */
+  it('never cuts the spring short by pairing it with another duration', () => {
+    const stray: string[] = [];
+    for (const { path, css } of styleSources()) {
+      const reads = css.match(/var\(--ease-press\)/g)?.length ?? 0;
+      const paired = css.match(/var\(--dur-press\)\s+var\(--ease-press\)/g)?.length ?? 0;
+      if (reads !== paired) stray.push(`${path}: ${reads} read --ease-press, ${paired} on --dur-press`);
+    }
+
+    expect(stray, 'the spring needs its whole 260ms or it snaps instead of settling').toEqual([]);
+  });
+
   it('is loaded by the app shell', () => {
     expect(readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8')).toContain("import '$lib/motion/press.css'");
   });
@@ -345,7 +368,6 @@ describe('the token layer behind the five tiers', () => {
       '--dur-crossfade',
       '--ease-press',
       '--ease-out',
-      '--ease-spring',
       /* Phase 5 ticket 28's two new materials that are expressed as tokens:
          the withdrawal's fixed blur radius and the pressed step of the app's
          one shadow. The third, tier 3's wipe, is geometry rather than a
@@ -365,5 +387,45 @@ describe('the token layer behind the five tiers', () => {
         '--dur-breathe'
       );
     }
+  });
+});
+
+
+describe('the curves the tiers reach for', () => {
+  /* Phase 5 ticket 29 retired --ease-spring, a cubic-bezier whose control
+     points bulged past 1 so a press would overshoot. It never could: a
+     cubic-bezier approaches its end from one side however far its handles
+     reach, so all the bulge bought was a curve that arrived fast and hard.
+     --ease-press, a linear() sampled off a real spring, is what actually
+     overshoots and settles, and everything that was never a press wanted a
+     plain deceleration all along.
+
+     Held here because the taste rule behind it - real objects decelerate,
+     bounce and elastic read as dated - is not something a curve can be
+     argued back into one rule at a time. The bounds match Impeccable's
+     mechanical detector so the two agree on what counts. */
+  it('bounces nowhere: no cubic-bezier control point leaves its own range', () => {
+    const offenders: string[] = [];
+    for (const { path, css } of styleSources()) {
+      for (const match of css.matchAll(
+        /cubic-bezier\(\s*([\d.-]+)\s*,\s*([\d.-]+)\s*,\s*([\d.-]+)\s*,\s*([\d.-]+)\s*\)/g
+      )) {
+        const [y1, y2] = [parseFloat(match[2]), parseFloat(match[4])];
+        if (y1 < -0.1 || y1 > 1.1 || y2 < -0.1 || y2 > 1.1) offenders.push(`${path}: ${match[0]}`);
+      }
+    }
+
+    expect(offenders, 'an overshoot belongs to --ease-press, which samples a spring properly').toEqual([]);
+  });
+
+  it('names no bounce, elastic or spring easing in an animation', () => {
+    const offenders: string[] = [];
+    for (const { path, css } of styleSources()) {
+      for (const match of css.matchAll(/animation(?:-name)?\s*:\s*([^;{}]+)/g)) {
+        if (/bounce|elastic|wobble|jiggle|spring/i.test(match[1])) offenders.push(`${path}: ${match[0].trim()}`);
+      }
+    }
+
+    expect(offenders, 'a keyframe that needs an overshoot writes the overshoot into its frames').toEqual([]);
   });
 });

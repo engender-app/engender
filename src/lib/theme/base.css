@@ -78,14 +78,24 @@
   /* --- Motion (ticket 09: one token language for every shared transition,
      Svelte-driven ones included - see $lib/motion/tokens.ts) --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 
-  /* A press has to overshoot and settle, which a cubic-bezier cannot do:
-     --ease-spring's control points bulge past 1 but the curve still
-     approaches its end monotonically from one side. linear() samples a real
-     spring, so a control let go of springs past its resting size and comes
-     back. A browser too old to parse linear() drops the declaration and the
-     transition falls back to `ease`, which is the right failure. */
+  /* There used to be an --ease-spring beside this, a cubic-bezier whose two
+     vertical control points sat above 1 so that a press would overshoot. It
+     never could. A cubic-bezier approaches its end from one side however far
+     its handles reach, so the bulge only bought a curve that arrived fast
+     and hard, and Impeccable's detector reads that shape as bounce easing on
+     sight. Phase 5 ticket 29 walked its twelve readers: four were presses
+     and took --ease-press, the other eight were hovers, selections and
+     ambient loops that wanted a plain deceleration all along, so the token
+     had no role left and went. The old curve's numbers are deliberately not
+     written out here - the detector scans comments too, and an epitaph that
+     quotes the literal keeps flagging a curve nothing uses.
+
+     A press has to overshoot and settle, which is what linear() is for - it
+     samples a real spring, so a control let go of springs past its resting
+     size and comes back. A browser too old to parse linear() drops the
+     declaration and the transition falls back to `ease`, which is the right
+     failure. */
   --ease-press: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%,
     0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161,
     1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%,
