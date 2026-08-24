@@ -204,7 +204,7 @@
   </DayCard>
 
   <p class="gallery-note">Tile grid, two-up, the numbers filled with the flag</p>
-  <TileGrid role={roleAt(roles, 2)} {flagFill}>
+  <TileGrid role={roleAt(roles, 1)} {flagFill}>
     <Tile key="onthisday" title="On this day" value="3" note="entries a year ago" href="#a" />
     <Tile key="wrapped" title="This month" value="21" note="days logged" href="#b" />
   </TileGrid>

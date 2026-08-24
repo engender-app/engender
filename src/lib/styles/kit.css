@@ -36,6 +36,12 @@
    muted copy of it. A label is small and answers to 4.5:1; a 26px bar and a
    32px number do not.
 
+   And a fill answers to nothing, so it is --role itself. A disc, a tinted
+   date bar and a week cell are colour rather than information: there is
+   nothing on them to read and their edge is a 1px outline. Running them
+   through a floor is what made nonbinary's week green - #FCF434 darkened to
+   #887c00 to clear 3:1, which is olive, and no amount of it is yellow.
+
    The mix below is the floor under that, for a surface handed a bare
    --role with no ink: the stripe at 30% into --text, which is the tightest
    fixed mix that clears 4.5:1 everywhere a role lands across all 8
@@ -58,8 +64,13 @@
   --role-c: var(--role, var(--accent));
   --role-ink: var(--role-ink-in, color-mix(in oklab, var(--role-c) 30%, var(--text)));
   --role-mark: var(--role-mark-in, var(--role-ink));
-  --role-tint: color-mix(in oklab, var(--role-mark) 15%, var(--surface));
-  --role-wash: color-mix(in oklab, var(--role-mark) 12%, var(--bg));
+  /* Fills are the flag's own stripe, undiluted by any contrast floor: a
+     tinted disc and a shaded week cell carry no information and sit under
+     nothing that has to be read, so nothing about them owes a ratio. This
+     is where the palette was going wrong - nonbinary's yellow darkened to
+     olive to clear a floor it never owed, and a 15% tint of olive is mud. */
+  --role-tint: color-mix(in oklab, var(--role-c) 15%, var(--surface));
+  --role-wash: color-mix(in oklab, var(--role-c) 12%, var(--bg));
 }
 
 /* ---------- section header ----------
@@ -509,7 +520,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--outline);
   display: block;
-  background: color-mix(in oklab, var(--role-mark) calc(var(--level) * 1%), var(--surface-2));
+  background: color-mix(in oklab, var(--role-c) calc(var(--level) * 1%), var(--surface-2));
 }
 
 .kit-strip-day.is-today .kit-strip-cell {
