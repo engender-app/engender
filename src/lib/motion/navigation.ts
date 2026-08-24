@@ -46,12 +46,21 @@ function crossfadeOnly(): TransitionConfig {
   };
 }
 
-/** A tier-2 transition over the shared duration and easing, or its
-    reduced-motion substitute. Every primitive is this plus one line of
-    geometry, which is the whole point of the tier being a tier. */
-function tier2(css: (t: number, u: number) => string): TransitionConfig {
+/** A tier-2 transition over the shared easing, or its reduced-motion
+    substitute. Every primitive is this plus one line of geometry, which is
+    the whole point of the tier being a tier.
+
+    The screen being left goes on --dur-fast and the one arriving on
+    --dur-med, because an exit that takes as long as an entrance reads as
+    the app hesitating before it answers. Material's fade-through is
+    asymmetric for the same reason - it fades the outgoing screen out in
+    roughly 90ms and the incoming one in over roughly 210ms, rather than
+    crossfading both over one duration. */
+function tier2(css: (t: number, u: number) => string, direction?: Direction): TransitionConfig {
   if (isReducedMotion()) return crossfadeOnly();
-  return { duration: motionDuration('--dur-med', 240), easing: EASE_OUT, css };
+  const duration =
+    direction === 'out' ? motionDuration('--dur-fast', 150) : motionDuration('--dur-med', 240);
+  return { duration, easing: EASE_OUT, css };
 }
 
 /**
@@ -71,7 +80,7 @@ export function fadeThrough(
   /* Outgoing shrinks past its resting size, incoming settles down onto it,
      so the two never read as the same screen scaling twice. */
   const travel = options.direction === 'out' ? -0.03 : 0.03;
-  return tier2((t, u) => `opacity: ${t}; transform: scale(${1 + travel * u})`);
+  return tier2((t, u) => `opacity: ${t}; transform: scale(${1 + travel * u})`, options.direction);
 }
 
 /**
@@ -88,7 +97,10 @@ export function sharedAxisX(
   const distance = motionDistance('--motion-distance-md', 24);
   const away = params.back ? -1 : 1;
   const sign = options.direction === 'out' ? -away : away;
-  return tier2((t, u) => `opacity: ${t}; transform: translateX(${sign * distance * u}px)`);
+  return tier2(
+    (t, u) => `opacity: ${t}; transform: translateX(${sign * distance * u}px)`,
+    options.direction
+  );
 }
 
 /**
@@ -106,7 +118,13 @@ export function sheetRise(_node: Element): TransitionConfig {
    it the token duration is all this needs to speak the same language as
    everything above. */
 const [send, receive] = crossfade({
-  duration: () => motionDuration('--dur-med', 240),
+  /* --dur-slow rather than --dur-med, which is what the other three tier-2
+     patterns run on: this is the only one that carries a box across the
+     screen and resizes it on the way, and Material gives a container
+     transform its longest standard duration for exactly that reason. At
+     240ms the card arrives before the eye has followed it, which loses the
+     one thing the pattern exists to show. */
+  duration: () => motionDuration('--dur-slow', 380),
   easing: EASE_OUT
 });
 
