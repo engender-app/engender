@@ -9,9 +9,26 @@
   import { roleStyle } from './role';
   import type { Role } from '$lib/theme/roles';
 
-  let { role, children }: { role?: Role; children: Snippet } = $props();
+  let {
+    role,
+    flagFill,
+    children
+  }: {
+    role?: Role;
+    /** The whole flag as a fill, from $lib/theme/roles. The tiles' numbers
+        are drawn with it; the tiles themselves keep the section's one
+        stripe, so a pair reads as one area of the screen. */
+    flagFill?: string;
+    children: Snippet;
+  } = $props();
 </script>
 
-<div class="kit-tiles" data-tile-grid style={roleStyle(role)}>
+<div
+  class="kit-tiles"
+  data-tile-grid
+  style={[roleStyle(role), flagFill ? `--flag-fill: ${flagFill}` : undefined]
+    .filter(Boolean)
+    .join('; ') || undefined}
+>
   {@render children()}
 </div>

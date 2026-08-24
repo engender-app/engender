@@ -26,7 +26,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
-  import { readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
+  import { readFlagFill, readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
 
   const PALETTES = [
     'trans',
@@ -42,6 +42,7 @@
   let palette = $state('trans');
   let theme = $state('dark');
   let roles = $state<Role[]>([]);
+  let flagFill = $state('none');
   let mood = $state<number | null>(4);
   let dismissed = $state(false);
 
@@ -57,6 +58,7 @@
 
   function readRoles() {
     roles = readFlagRoles();
+    flagFill = readFlagFill();
   }
 
   /* ?measure=1 runs the chart's re-tween against a transform-and-opacity
@@ -201,24 +203,10 @@
     <DayEntry key="c" time="22:40" mood={4} note="Tired, but not in the bad way." />
   </DayCard>
 
-  <p class="gallery-note">Tile grid, two-up, a stripe each</p>
-  <TileGrid>
-    <Tile
-      key="onthisday"
-      role={roleAt(roles, 2)}
-      title="On this day"
-      value="3"
-      note="entries a year ago"
-      href="#a"
-    />
-    <Tile
-      key="wrapped"
-      role={roleAt(roles, 3)}
-      title="This month"
-      value="21"
-      note="days logged"
-      href="#b"
-    />
+  <p class="gallery-note">Tile grid, two-up, the numbers filled with the flag</p>
+  <TileGrid role={roleAt(roles, 2)} {flagFill}>
+    <Tile key="onthisday" title="On this day" value="3" note="entries a year ago" href="#a" />
+    <Tile key="wrapped" title="This month" value="21" note="days logged" href="#b" />
   </TileGrid>
 
   <SectionHeading text="Uncontained" />

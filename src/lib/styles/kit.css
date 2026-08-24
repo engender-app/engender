@@ -372,6 +372,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The flag, through the numerals themselves: hard-edged bands in stripe
+   order, built from --motif-stripes at render time so every flag keeps its
+   own count and its own proportions. The colour above stays as the
+   declared value, so a runtime without background-clip gets the section's
+   mark rather than a transparent number. */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .kit-tiles[style*='--flag-fill'] .kit-tile-value {
+    background-image: var(--flag-fill);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
 .kit-tile-note {
   font-size: var(--text-sm);
   color: var(--text-2);
@@ -464,8 +478,16 @@
 /* ---------- bare strip ----------
 
    The week, uncontained: it sits directly on the page with no card around
-   it. Same single-hue intensity the heat map uses (ADR-0012), so a day's
-   cell and a calendar cell shade the same value the same way. */
+   it.
+
+   Its intensity ramp is built from the section's own stripe rather than
+   from --heat-*, which the rest of the app derives from --accent. Both are
+   single-hue and neither judges (ADR-0012), but the accent is one colour
+   the palette picked and the stripe is the flag's - and a week strip on the
+   trans palette shading in the accent's rose while the icon discs beside it
+   are the flag's blue is what "the colours do not relate to the flag" looks
+   like. The steps are the heat ramp's own (22, 45, 70, 100), so a cell here
+   and a calendar cell still read as the same scale. */
 .kit-strip {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -487,6 +509,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--outline);
   display: block;
+  background: color-mix(in oklab, var(--role-mark) calc(var(--level) * 1%), var(--surface-2));
 }
 
 .kit-strip-day.is-today .kit-strip-cell {

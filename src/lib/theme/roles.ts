@@ -24,6 +24,7 @@
    mix toward --text and does wash the colour out; it is a floor rather than
    the intended path, and tests/kit-roles.test.ts holds both to 4.5:1. */
 
+import { ringColour } from '../motion/flagSun';
 import { chromaOf, colorMixOklab, contrast, lightnessOf, withLightness } from './colour';
 
 export interface Role {
@@ -161,6 +162,31 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
   return roles[index % roles.length];
 }
 
+/** The whole flag as one CSS fill: hard-edged bands, top to bottom, in
+    stripe order and in the flag's own proportions.
+
+    Hard stops rather than a gradient - it is a flag, not a wash - and built
+    from the stripe list at render time, so bisexual's doubled stops keep its
+    2:1:2 proportion for free and a ninth palette needs nothing taught here.
+
+    The per-theme nudge is the sun's (`$lib/motion/flagSun`), because it is
+    the same problem: a white band on a light card and a near-black one on a
+    dark card are bands nobody can see. Sharing it also means a flag looks
+    the same wherever the app paints it whole.
+
+    Used where the flag itself is the material rather than one section's
+    colour - a tile's number is filled with it. */
+export function flagFill(stripes: string[], dark: boolean): string {
+  const bands = stripeRoles(stripes).length ? stripes : [];
+  if (bands.length === 0) return 'none';
+  const step = 100 / bands.length;
+  const stops = bands.map((stripe, i) => {
+    const colour = ringColour(stripe, dark);
+    return `${colour} ${(step * i).toFixed(3)}% ${(step * (i + 1)).toFixed(3)}%`;
+  });
+  return `linear-gradient(to bottom, ${stops.join(', ')})`;
+}
+
 /** The roles for whatever palette and theme the document is currently in.
 
     Read off the DOM rather than from a parallel table in TypeScript, the
@@ -171,10 +197,24 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
 export function readFlagRoles(doc: Document = document): Role[] {
   const style = getComputedStyle(doc.documentElement);
   const read = (token: string) => style.getPropertyValue(token).trim();
-  const stripes = read('--motif-stripes')
+  // Every ground a role can land on: the page, both card surfaces.
+  return flagRoles(readStripes(doc), read('--text'), [
+    read('--bg'),
+    read('--surface'),
+    read('--surface-2')
+  ]);
+}
+
+/** The active flag as a fill, for whatever palette and theme the document
+    is currently in. Read the same way and at the same time as the roles. */
+export function readFlagFill(doc: Document = document): string {
+  return flagFill(readStripes(doc), doc.documentElement.dataset.theme === 'dark');
+}
+
+function readStripes(doc: Document): string[] {
+  return getComputedStyle(doc.documentElement)
+    .getPropertyValue('--motif-stripes')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  // Every ground a role can land on: the page, both card surfaces.
-  return flagRoles(stripes, read('--text'), [read('--bg'), read('--surface'), read('--surface-2')]);
 }
