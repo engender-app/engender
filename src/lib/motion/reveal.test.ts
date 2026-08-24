@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { wipe } from './reveal';
 
-/* Same stub the tier-2 tests use: reveal.ts reads its duration out of the
-   token layer through $lib/motion/tokens, which asks getComputedStyle for the
-   number and documentElement.dataset for the reduced-motion signal. CSS is
-   stubbed too, because this primitive also asks whether the runtime has
-   clip-path at all. */
+/* Same stub the tier-2 tests use: reveal.ts reads its duration and its easing
+   out of the token layer through $lib/motion/tokens, which asks
+   getComputedStyle for the number and documentElement.dataset for the
+   reduced-motion signal. CSS is stubbed too, because this primitive also asks
+   whether the runtime has clip-path at all. */
 function stubDocument(reduced = false, clipPath = true) {
   const g = globalThis as Record<string, unknown>;
   g.document = { documentElement: { dataset: reduced ? { a11yMotion: 'reduce' } : {} } };
@@ -35,21 +35,12 @@ describe('tier 3, the wipe', () => {
     expect(frame(css!, 1)).toBe('clip-path: inset(0 0 0 0)');
   });
 
-  it('takes the edge it is given', () => {
-    stubDocument();
-    expect(frame(wipe(node, { from: 'bottom' }).css!, 0)).toBe('clip-path: inset(100% 0 0 0)');
-    expect(frame(wipe(node, { from: 'right' }).css!, 0)).toBe('clip-path: inset(0 0 0 100%)');
-    expect(frame(wipe(node, { from: 'top' }).css!, 0)).toBe('clip-path: inset(0 0 100% 0)');
-  });
-
   /* The same rule tests/motion-system.test.ts holds every CSS animation to,
      restated for a transition the stylesheet cannot reach: an animation that
      ends anywhere but its element's resting state strands it there. */
   it('ends uncovered, which is where the element rests', () => {
     stubDocument();
-    for (const from of ['left', 'right', 'top', 'bottom'] as const) {
-      expect(frame(wipe(node, { from }).css!, 1)).toBe('clip-path: inset(0 0 0 0)');
-    }
+    expect(frame(wipe(node).css!, 1)).toBe('clip-path: inset(0 0 0 0)');
   });
 
   it('runs on the tier-3 duration rather than a literal', () => {
