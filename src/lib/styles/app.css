@@ -109,7 +109,7 @@ body {
   border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-2), 0 0 0 5px color-mix(in oklab, var(--accent) 16%, transparent);
-  transition: transform var(--dur-med) var(--ease-spring), box-shadow var(--dur-fast);
+  transition: transform var(--dur-press) var(--ease-press), box-shadow var(--dur-fast);
 }
 /* SH-002: the 90deg spin was decorative-only on the app's primary action,
    and hover-only, so phone users never saw it - a scale/elevation response
