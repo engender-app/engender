@@ -81,6 +81,9 @@ body {
     var(--bottom-nav-height) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
   );
   --nav-float-gap: var(--space-3);
+  /* The gap between the bar's edge and the controls inside it, which is
+     also what separates the bar's corner radius from --r-add's. */
+  --nav-bar-pad: 5px;
 }
 
 .screen {
@@ -148,7 +151,6 @@ body {
   align-items: center;
   z-index: 30;
 }
-.app { --nav-bar-pad: 5px; }
 
 /* The bar's corner and the add button's are the same shape, one padding
    step apart, so the button reads as sitting inside the plane rather than

@@ -66,8 +66,6 @@
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
-  const today = todayEpochDay();
-
   let backdateOpen = $state(false);
   let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
 
@@ -121,7 +119,10 @@
      any screen: the fan closes and you are still where you were. */
   async function logTally(kind: TallyKind) {
     close();
-    await journal.tally.log({ epochDay: today, kind });
+    /* Read here rather than captured when the component mounted: the app
+       survives backgrounding, so a value taken at init logs to yesterday
+       for anyone who leaves it open across midnight. */
+    await journal.tally.log({ epochDay: todayEpochDay(), kind });
     toast(m.quick_saved(), { kind: 'tally' });
   }
 
@@ -135,6 +136,7 @@
      the least travel, and a dose is the one of these nobody logs in a
      hurry. */
   const MOODS = [1, 2, 3, 4, 5];
+  const MOOD_TARGET = 'mood-';
 
   type FanRow = { key: string; icon: string; label: () => string; run: () => void };
 
@@ -158,7 +160,7 @@
   ];
 
   function runTarget(key: string) {
-    if (key.startsWith('mood-')) return pickMood(Number(key.slice(5)));
+    if (key.startsWith(MOOD_TARGET)) return pickMood(Number(key.slice(MOOD_TARGET.length)));
     ROWS.find((row) => row.key === key)?.run();
   }
 
@@ -167,8 +169,8 @@
      240ms travel, which is the whole fan open in under half a second. The
      exit has no stagger at all - they go back as one object. */
   const STAGGER_STEP = 28;
-  const rowDelay = (index: number) => (isReducedMotion() ? 0 : (ROW_COUNT - 1 - index) * STAGGER_STEP);
   const ROW_COUNT = ROWS.length + 1; // the mood row counts as one
+  const rowDelay = (index: number) => (isReducedMotion() ? 0 : (ROW_COUNT - 1 - index) * STAGGER_STEP);
 
   /* Travel is expressed as a distance down toward the button rather than as
      a measured position, because the fan is anchored on the button already:
@@ -249,14 +251,13 @@
     onclick={close}
   ></div>
 
-  <div class="fan" role="menu" aria-label={m.quick_add_title()} data-fan>
-    <div class="fan-row fan-moods" role="none" in:fanIn={{ index: 0 }} out:fanOut>
+  <div class="fan" role="group" aria-label={m.quick_add_title()} data-fan>
+    <div class="fan-moods" in:fanIn={{ index: 0 }} out:fanOut>
       {#each MOODS as value (value)}
         <button
           class="fan-mood"
-          class:is-armed={armed === `mood-${value}`}
-          role="menuitem"
-          data-fan-target={`mood-${value}`}
+          class:is-armed={armed === MOOD_TARGET + value}
+          data-fan-target={MOOD_TARGET + value}
           aria-label={moodName(value)}
           onclick={() => pickMood(value)}
         >
@@ -270,7 +271,6 @@
       <button
         class="fan-item"
         class:is-armed={armed === row.key}
-        role="menuitem"
         data-fan-target={row.key}
         data-choose={row.key}
         in:fanIn={{ index: i + 1 }}
@@ -289,7 +289,8 @@
 <Sheet bind:open={backdateOpen} title={m.another_day()}>
   <h3>{m.another_day()}</h3>
   <p class="muted small" style="margin-bottom:var(--space-4)">{m.new_entry_when()}</p>
-  <div class="spread">
+  <label class="field-label" for="backdate">{m.another_day()}</label>
+  <div class="spread" style="margin-top:var(--space-2)">
     <input
       class="input"
       type="date"
