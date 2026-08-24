@@ -3,33 +3,51 @@
    cap, the re-tween between datasets, and the single-hue bar ramp's
    leader - can be held to a value without mounting anything.
 
-   The cap is the load-bearing one. Tier 3's re-tween interpolates an SVG
-   path on the main thread inside a Capacitor WebView, and a year of daily
-   entries is 365 points. Resampling both datasets onto one fixed grid is
-   what makes the tween possible at all - two arrays of different lengths
-   have no pairwise interpolation - and capping that grid is what keeps the
-   per-frame cost the same whether the range is a week or a year. */
+   The area chart is scrolled rather than squashed: every point keeps its
+   own slot, and a year is read a week at a time by dragging. So the cap is
+   on how many points can exist before neighbours are averaged, and the
+   resampling exists for the tween alone - to count two datasets the same
+   way for as long as one is turning into the other. */
 
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_SAMPLES,
+  MAX_POINTS,
   areaPath,
+  bucket,
   lerpSamples,
   resample,
   share
 } from '../src/lib/charts/geometry';
 
+describe('bucket', () => {
+  it('leaves a year of daily points exactly as they are', () => {
+    const year = Array.from({ length: 365 }, (_, i) => ({ x: i, y: i % 7 }));
+    expect(bucket(year)).toEqual(year);
+  });
+
+  it('averages a longer range down to the cap', () => {
+    const threeYears = Array.from({ length: 1095 }, (_, i) => ({ x: i, y: 10 }));
+    const capped = bucket(threeYears);
+    expect(capped.length).toBe(MAX_POINTS);
+    expect(capped.every((p) => p.y === 10)).toBe(true);
+    expect(capped[0].x).toBeLessThan(capped[capped.length - 1].x);
+  });
+
+  it('sorts by position, so an out-of-order write does not fold the line back', () => {
+    expect(bucket([{ x: 3, y: 1 }, { x: 1, y: 2 }])).toEqual([{ x: 1, y: 2 }, { x: 3, y: 1 }]);
+  });
+});
+
 describe('resample', () => {
-  it('reproduces a straight line exactly, whatever the sample count', () => {
+  it('reproduces a straight line exactly, whatever the count', () => {
     const points = [
       { x: 0, y: 0 },
       { x: 10, y: 100 }
     ];
-    const ys = resample(points, 11);
-    expect(ys).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
+    expect(resample(points, 11)).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
   });
 
-  it('keeps every vertex of a polyline it samples at or above its own length', () => {
+  it('keeps every vertex of a polyline it reads at its own length', () => {
     const points = [
       { x: 0, y: 4 },
       { x: 1, y: 9 },
@@ -49,9 +67,12 @@ describe('resample', () => {
     expect(resample(points, 4)).toEqual([0, 5, 10, 10]);
   });
 
-  it('caps a year of daily points at the grid it is given', () => {
-    const year = Array.from({ length: 365 }, (_, i) => ({ x: i, y: i % 7 }));
-    expect(resample(year).length).toBe(MAX_SAMPLES);
+  it('reads a week onto a year of positions, which is what the tween needs', () => {
+    const week = Array.from({ length: 7 }, (_, i) => ({ x: i, y: i * 10 }));
+    const onto = resample(week, 365);
+    expect(onto.length).toBe(365);
+    expect(onto[0]).toBe(0);
+    expect(onto[364]).toBe(60);
   });
 
   it('holds a single point flat across the grid rather than drawing nothing', () => {
@@ -77,9 +98,6 @@ describe('lerpSamples', () => {
   });
 
   it('cuts to the incoming dataset when the two grids disagree', () => {
-    // Only reachable if a caller resamples the two datasets onto different
-    // grids, which the components never do; interpolating pairwise across
-    // a length mismatch would silently draw a shape belonging to neither.
     expect(lerpSamples([0, 100], b, 0.5)).toEqual(b);
   });
 });
@@ -87,28 +105,57 @@ describe('lerpSamples', () => {
 describe('areaPath', () => {
   const box = { width: 100, height: 50, min: 0, max: 100 };
 
-  it('draws the line left to right with the value scale inverted', () => {
-    expect(areaPath([0, 100], box).line).toBe('M0,50 L100,0');
+  it('places every value in its own slot, left to right', () => {
+    expect(areaPath([0, 50, 100], box).dots).toEqual([
+      { x: 0, y: 50 },
+      { x: 50, y: 25 },
+      { x: 100, y: 0 }
+    ]);
+  });
+
+  it('smooths the line without overshooting a value nobody logged', () => {
+    // A monotone curve through a rise and a plateau stays inside the two
+    // values it runs between: a spline that overshoots would draw a day
+    // above the highest reading there is.
+    const { line } = areaPath([0, 100, 100], box);
+    expect(line.startsWith('M')).toBe(true);
+    expect(line).toMatch(/C/);
+    const ys = [...line.matchAll(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)].map((m) => Number(m[2]));
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(50);
   });
 
   it('closes the fill down to the baseline', () => {
-    expect(areaPath([0, 100], box).fill).toBe('M0,50 L100,0 L100,50 L0,50 Z');
+    const { fill } = areaPath([0, 100], box);
+    expect(fill.startsWith('M')).toBe(true);
+    expect(fill.endsWith('Z')).toBe(true);
+    expect(fill).toContain('50'); // the baseline the fill returns along
   });
 
-  it('reports the latest point so the chart can ring it', () => {
+  it('reports the latest position so the chart can ring it', () => {
     expect(areaPath([0, 50, 100], box).last).toEqual({ x: 100, y: 0 });
   });
 
   it('clamps a value outside the scale rather than drawing past the box', () => {
-    expect(areaPath([-20, 140], box).line).toBe('M0,50 L100,0');
+    expect(areaPath([-20, 140], box).dots).toEqual([
+      { x: 0, y: 50 },
+      { x: 100, y: 0 }
+    ]);
   });
 
-  it('flattens a flat scale onto the baseline instead of dividing by zero', () => {
-    expect(areaPath([5, 5], { ...box, min: 5, max: 5 }).line).toBe('M0,50 L100,50');
+  it('flattens a scale with no span onto the baseline instead of dividing by zero', () => {
+    expect(areaPath([5, 5], { ...box, min: 5, max: 5 }).dots).toEqual([
+      { x: 0, y: 50 },
+      { x: 100, y: 50 }
+    ]);
+  });
+
+  it('centres a lone reading rather than pinning it to the left edge', () => {
+    expect(areaPath([50], box).dots).toEqual([{ x: 50, y: 25 }]);
   });
 
   it('has no path and no latest point when there is nothing to draw', () => {
-    expect(areaPath([], box)).toEqual({ line: '', fill: '', last: null });
+    expect(areaPath([], box)).toEqual({ line: '', fill: '', dots: [], last: null });
   });
 });
 

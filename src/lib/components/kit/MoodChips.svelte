@@ -9,15 +9,19 @@
      five colours used as small dots on a dark panel have almost no
      separation from each other or from the panel.
 
-     Nothing sits in the tile but its label. Selection is the accent taking
-     the tile's edge, and the dot that used to mark it was the pattern the
-     ramp's own note argues against reintroduced on top of a border that
-     already said the same thing.
+     The face inside is the same one an entry carries in a day card, minus
+     its disc: on a tile already filled with the mood's own colour a filled
+     circle would be invisible, and what is left - the eyes and the mouth -
+     is the part that says which step this is. Selection is the accent
+     taking the tile's edge. An earlier pass marked it with a dot as well,
+     which is the pattern the ramp's own note argues against, on top of a
+     border that already said the same thing.
 
      Labels come from the vocabulary rather than from a catalogue read here,
      which is where every other mood label in the app comes from. */
   import { m } from '$lib/paraglide/messages';
   import { moodName } from '$lib/data/vocabulary/labels';
+  import MoodFace from './MoodFace.svelte';
 
   let {
     value = null,
@@ -44,6 +48,7 @@
       data-mood-chip={step}
       onclick={() => onPick(step === value ? null : step)}
     >
+      <MoodFace {step} size={26} disc={false} />
       <span aria-hidden="true">{moodName(step)}</span>
     </button>
   {/each}
