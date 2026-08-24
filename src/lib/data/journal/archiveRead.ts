@@ -23,7 +23,6 @@ import type {
   ArchiveDoseEvent,
   ArchiveDosePause,
   ArchiveDoseSchedule,
-  ArchiveDoubtEntry,
   ArchiveEffectCategory,
   ArchiveEntry,
   ArchiveFeltSenseEntry,
@@ -434,13 +433,6 @@ export async function readJournalingPauses({ driver }: SectionRead): Promise<Arc
     'SELECT uuid, start_epoch_day, end_epoch_day FROM journaling_pause ORDER BY start_epoch_day, id'
   );
   return rows.map((r) => ({ id: r.uuid, startEpochDay: r.start_epoch_day, endEpochDay: r.end_epoch_day }));
-}
-
-export async function readDoubtEntries({ driver }: SectionRead): Promise<ArchiveDoubtEntry[]> {
-  const rows = await driver.query<{ uuid: string; epoch_day: number; timestamp: number; text: string }>(
-    'SELECT uuid, epoch_day, timestamp, text FROM doubt_entry ORDER BY epoch_day, timestamp, id'
-  );
-  return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, timestamp: r.timestamp, text: r.text }));
 }
 
 export async function readCounterevidenceSnapshots({ driver }: SectionRead): Promise<ArchiveCounterevidenceSnapshot[]> {
