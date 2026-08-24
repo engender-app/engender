@@ -72,7 +72,13 @@
   transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
   transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out), ease;
 }
-.btn:active { transform: scale(0.97); }
+/* Tier 1's depth, which is .press's in $lib/motion/press.css. 0.97 was 3%
+   of travel and the spring had nothing to act on - checked on a Pixel 10a,
+   where the press only became a press at this value. The primitive is still
+   what owns the number; when ticket 18 puts .press on these buttons this
+   line becomes the redundant half of an agreement, and a test below keeps
+   the two halves equal until then. */
+.btn:active { transform: scale(0.94); }
 .btn-primary { background: var(--grad-accent); color: var(--on-accent); box-shadow: var(--shadow-1); }
 .btn-primary:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); filter: saturate(1.15); }
 .btn-soft { background: var(--accent-soft); color: var(--on-accent-soft); }

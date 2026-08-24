@@ -120,7 +120,9 @@ body {
    and hover-only, so phone users never saw it - a scale/elevation response
    is the part that reads as a press response on Android. */
 .nav-fab:hover { transform: scale(1.08); box-shadow: var(--shadow-3), 0 0 0 7px color-mix(in oklab, var(--accent) 20%, transparent); }
-.nav-fab:active { transform: scale(0.97); }
+/* The add button takes the deeper press, matching .press-add - see .btn's
+   note in components.css for why the number moved. */
+.nav-fab:active { transform: scale(0.9); }
 
 /* ---------- desktop: left rail + centred column ---------- */
 .app-rail { display: none; }
