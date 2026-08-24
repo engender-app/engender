@@ -78,14 +78,28 @@
   /* --- Motion (ticket 09: one token language for every shared transition,
      Svelte-driven ones included - see $lib/motion/tokens.ts) --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 
-  /* A press has to overshoot and settle, which a cubic-bezier cannot do:
-     --ease-spring's control points bulge past 1 but the curve still
-     approaches its end monotonically from one side. linear() samples a real
-     spring, so a control let go of springs past its resting size and comes
-     back. A browser too old to parse linear() drops the declaration and the
-     transition falls back to `ease`, which is the right failure. */
+  /* Phase 5 ticket 29 removed an --ease-spring from beside this. Its
+     numbers are deliberately not repeated here: the detector scans
+     comments too, and quoting them keeps it flagging a curve nothing uses.
+
+     A press has to overshoot and settle, which is what linear() is for - it
+     samples a real spring, so a control let go of springs past its resting
+     size and comes back.
+
+     What a WebView too old to parse linear() does with it was written here
+     as "the transition falls back to `ease`". It does not. var() defers to
+     computed-value time, and an unparseable value there takes the whole
+     declaration to `unset`, not just its own segment: on the API 26
+     emulator's Chrome 69 WebView a `transition:` shorthand naming
+     --ease-press computes to `all 0s ease`, so the control gets no
+     transition at all and every other property in that shorthand loses its
+     transition too. Rules that transition something besides the press
+     therefore write transition-property/-duration/-timing-function as
+     longhands, where only the timing function is lost and it really does
+     fall back to `ease`. Rules whose whole transition is the press keep the
+     shorthand: there is nothing else in it to strand, and an instant press
+     is a fair thing for a nine-year-old WebView to get. */
   --ease-press: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%,
     0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161,
     1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%,

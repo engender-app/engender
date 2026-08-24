@@ -4,7 +4,7 @@
 
 ## Platform
 
-web
+adaptive
 
 ## Users
 
@@ -44,6 +44,21 @@ Settings (`/settings`) holds only preferences, though most existing feature
 routes still live under `/settings/*` URLs since only their entry point
 moved, not the URL (ADR-0036, shipped). Every screen lights a tab in the
 bottom bar/rail (ADR/ticket 09, shipped, see `src/lib/navigation/active-tab.ts`).
+
+Android is the only native target; there is no iOS build and none is
+planned, so where a reference offers both, Android's half is the one that
+applies. Neither surface is a fallback for the other: the PWA is not a
+degraded wrapper, and the wrapper is not a shell around a website.
+
+The app owes Android its OS guarantees - the predictive back gesture,
+window insets, a 48dp touch floor, the system's remove-animations setting -
+and it takes Material 3's navigation and motion patterns mapped to its own
+shape rather than applied by rote. It does not take Material's skin. Type
+is bundled Nunito and Outfit, colour comes from the 8 flag palettes rather
+than Material colour roles or Dynamic Color, and surfaces separate with a
+line rather than tonal elevation. Those are identity decisions, not gaps to
+close, and an audit that reads them as Material violations has misread the
+product.
 
 ## Capabilities and Constraints
 

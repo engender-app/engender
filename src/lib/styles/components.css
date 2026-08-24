@@ -64,11 +64,42 @@
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
   border: none; cursor: pointer;
-  transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), filter var(--dur-fast);
+  /* Longhands because the press shares this rule with three properties
+     that are not the press; --ease-press in a shorthand would take all
+     four down on an old WebView. The mechanism is at --ease-press in
+     theme/base.css. filter has no curve of its own, same as before. */
+  transition-property: transform, background, box-shadow, filter;
+  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out), ease;
 }
+/* 0.97 and not tier 1's 0.94, decided on a Pixel 10a after the stuck-hover
+   bug below was fixed. The first comparison was run against a button whose
+   press was being cancelled, so it was working against broken rather than
+   one depth against another; with both honest, 0.97 was the one chosen.
+
+   This is a deliberate disagreement with .press in $lib/motion/press.css,
+   which declares 0.94 because DIRECTION asks for it. When ticket 18 applies
+   .press to these buttons the depth will go to 0.94 unless that primitive
+   is revisited, so this is a decision to carry forward, not a value that
+   drifted. The add button keeps the deeper 0.90 and does still agree with
+   .press-add. The test below pins both halves of that. */
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--grad-accent); color: var(--on-accent); box-shadow: var(--shadow-1); }
-.btn-primary:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); filter: saturate(1.15); }
+/* Behind a hover query because this rule sits after .btn:active and carries
+   the same specificity, so on a touch screen it wins. Chromium applies
+   :hover on tap and leaves it applied until something else is tapped, which
+   means from the second tap onwards this transform replaced the press
+   scale and the button stopped answering at all. Felt on a Pixel 10a before
+   it was traced. The add button escaped it by luck of ordering - its
+   :active is written after its :hover.
+
+   DIRECTION's tier 4 says no hover-dependent motion, so a pointer that
+   cannot hover losing this is the intended reading, not a fallback. The
+   other five hover transforms in these sheets have the same exposure and
+   are ticket 18's, not this ticket's. */
+@media (hover: hover) {
+  .btn-primary:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); filter: saturate(1.15); }
+}
 .btn-soft { background: var(--accent-soft); color: var(--on-accent-soft); }
 .btn-ghost { background: none; color: var(--accent); }
 .btn-danger { background: var(--danger-soft); color: var(--danger); }
@@ -131,7 +162,7 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 .switch-thumb {
   width: 22px; height: 22px; border-radius: 50%;
   background: var(--surface); box-shadow: var(--shadow-1);
-  transition: transform var(--dur-med) var(--ease-spring);
+  transition: transform var(--dur-med) var(--ease-out);
 }
 .switch input:checked + .switch-track { background: var(--accent); border-color: var(--accent); }
 .switch input:checked + .switch-track .switch-thumb { transform: translateX(16px); }
@@ -190,9 +221,9 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
   background: none; border: none; cursor: pointer;
   padding: var(--space-2) 2px; border-radius: var(--radius-md);
-  transition: transform var(--dur-med) var(--ease-spring);
+  transition: transform var(--dur-med) var(--ease-out);
 }
-.mood-face { width: 44px; height: 44px; transition: transform var(--dur-med) var(--ease-spring), opacity var(--dur-fast); }
+.mood-face { width: 44px; height: 44px; transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast); }
 .mood-face-bg { transition: fill var(--dur-med) var(--ease-out); }
 .mood-face-ink {
   fill: var(--text); opacity: 0.75;
@@ -221,7 +252,7 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .mood-btn:not(.is-selected) .mood-face { opacity: 0.55; }
 .mood-picker:not(:has(.is-selected)) .mood-face { opacity: 1; }
 .mood-btn:hover .mood-face { transform: translateY(-3px); opacity: 0.9; }
-.mood-btn.is-selected .mood-face { transform: scale(1.18); opacity: 1; animation: mood-pop var(--dur-slow) var(--ease-spring); }
+.mood-btn.is-selected .mood-face { transform: scale(1.18); opacity: 1; animation: mood-pop var(--dur-slow) var(--ease-out); }
 @keyframes mood-pop {
   0% { transform: scale(0.9); }
   55% { transform: scale(1.32) rotate(-5deg); }
@@ -259,7 +290,7 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   background: var(--surface);
   border: 3px solid var(--accent);
   box-shadow: var(--shadow-1);
-  transition: transform var(--dur-fast) var(--ease-spring);
+  transition: transform var(--dur-press) var(--ease-press);
 }
 .dim-slider input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.15); }
 .dim-slider input[type="range"]::-moz-range-track {
@@ -388,7 +419,7 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
    as currentColor here, replacing a mix-blend-mode + [style*="--heat-3"]
    substring hack that approximated contrast rather than computing it. */
 .hm-cell.has-entries .hm-num { color: inherit; font-weight: var(--weight-bold); }
-.hm-cell.has-entries { cursor: pointer; transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur-fast); }
+.hm-cell.has-entries { cursor: pointer; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast); }
 .hm-cell.has-entries:hover { transform: scale(1.08); box-shadow: var(--shadow-1); z-index: 1; }
 .hm-cell.is-today { outline: 2.5px solid var(--focus-ring); outline-offset: 1.5px; }
 
@@ -529,7 +560,7 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   position: relative; z-index: 1;
   color: var(--accent);
   display: flex;
-  animation: bloom-beat 3.2s var(--ease-spring) infinite;
+  animation: bloom-beat 3.2s var(--ease-out) infinite;
 }
 @keyframes bloom-beat {
   0%, 100% { transform: scale(1); }
@@ -679,7 +710,7 @@ html[data-a11y-motion='reduce'] .confetti .cf {
 .pin-dot {
   width: 16px; height: 16px; border-radius: 50%;
   border: 2px solid var(--accent-border); background: none;
-  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-spring);
+  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .pin-dot.is-filled { background: var(--accent); border-color: var(--accent); transform: scale(1.1); }
 .pin-pad {
@@ -743,7 +774,7 @@ html[data-a11y-motion='reduce'] .confetti .cf {
   width: 26px; height: 26px; border-radius: 50%;
   background: var(--surface); border: 3px solid var(--accent);
   box-shadow: var(--shadow-1);
-  transition: scale var(--dur-fast) var(--ease-spring);
+  transition: scale var(--dur-press) var(--ease-press);
 }
 .melt-thumb:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .melt-slider[data-dragging] .melt-thumb { scale: 1.15; }

@@ -109,13 +109,20 @@ body {
   border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-2), 0 0 0 5px color-mix(in oklab, var(--accent) 16%, transparent);
-  transition: transform var(--dur-med) var(--ease-spring), box-shadow var(--dur-fast);
+  /* Longhands for the same reason .btn has them: the shorthand would take
+     this shadow transition down with the press on any WebView too old to
+     parse --ease-press's linear(). */
+  transition-property: transform, box-shadow;
+  transition-duration: var(--dur-press), var(--dur-fast);
+  transition-timing-function: var(--ease-press), ease;
 }
 /* SH-002: the 90deg spin was decorative-only on the app's primary action,
    and hover-only, so phone users never saw it - a scale/elevation response
    is the part that reads as a press response on Android. */
 .nav-fab:hover { transform: scale(1.08); box-shadow: var(--shadow-3), 0 0 0 7px color-mix(in oklab, var(--accent) 20%, transparent); }
-.nav-fab:active { transform: scale(0.97); }
+/* The add button takes the deeper press, matching .press-add - see .btn's
+   note in components.css for why the number moved. */
+.nav-fab:active { transform: scale(0.9); }
 
 /* ---------- desktop: left rail + centred column ---------- */
 .app-rail { display: none; }
