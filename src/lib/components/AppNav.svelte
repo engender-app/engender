@@ -38,6 +38,37 @@
   const TRAILING = NAV.slice(2);
 
   let activeKey = $derived(activeTabKey(page.url.pathname));
+
+  /* Quick add opens on the way down, not on click, because the press and
+     the tap are the same gesture: holding it and sliding onto a target is
+     one continuous move, and a fan that waited for the click would not be
+     under the finger yet when the finger started moving. QuickAdd.svelte
+     listens on the window from there and resolves whatever the pointer is
+     over when it comes up.
+
+     The click that follows a pointer sequence is then swallowed, or the
+     control would toggle twice per tap. A keyboard Enter fires a click with
+     no pointer sequence in front of it, which is why the click handler is
+     still what opens the fan for a keyboard. */
+  let openedByPointer = false;
+
+  function addPointerDown() {
+    openedByPointer = true;
+    if (ui.chooserOpen) {
+      ui.chooserOpen = false;
+      return;
+    }
+    ui.chooserOpen = true;
+    ui.chooserPressing = true;
+  }
+
+  function addClick() {
+    if (openedByPointer) {
+      openedByPointer = false;
+      return;
+    }
+    ui.chooserOpen = !ui.chooserOpen;
+  }
 </script>
 
 <nav class="app-rail" data-app-rail aria-label={m.nav_main()}>
@@ -48,8 +79,16 @@
   <div class="rail-brand">
     <span class="brand-mark"></span><span translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</span>
   </div>
-  <button class="rail-add press-add" data-rail-add onclick={() => (ui.chooserOpen = true)}>
-    <Icon name="plus" size={20} /><span>{m.new_entry()}</span>
+  <button
+    class="rail-add press-add"
+    data-rail-add
+    aria-expanded={ui.chooserOpen}
+    aria-haspopup="menu"
+    onpointerdown={addPointerDown}
+    onclick={addClick}
+  >
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen}><Icon name="plus" size={20} /></span>
+    <span>{m.quick_add_title()}</span>
   </button>
   {#each NAV as item (item.key)}
     <a
@@ -64,7 +103,7 @@
   {/each}
 </nav>
 
-<nav class="app-nav" data-app-nav aria-label={m.nav_main()}>
+<nav class="app-nav" class:is-fan-open={ui.chooserOpen} data-app-nav aria-label={m.nav_main()}>
   {#each LEADING as item (item.key)}
     <a
       class="nav-item press"
@@ -81,8 +120,24 @@
       <span class="nav-label" data-nav-label>{item.label()}</span>
     </a>
   {/each}
-  <button class="nav-add press-add" data-nav-fab aria-label={m.new_entry()} onclick={() => (ui.chooserOpen = true)}>
-    <Icon name="plus" size={26} />
+  <!-- The add action's own animation (spec 04), and it names its tier
+       rather than inventing a curve. The button does not explode: it
+       becomes the thing it opened. The plus turns 45 degrees into a cross
+       while the fan is up, which is tier 2 - the control the fan came out
+       of is the control that puts it away, and the turn is what says so.
+       Transform only, and under reduced motion the rotation goes while the
+       pressed state and the fan both stay, which is the substitute rather
+       than a deletion. -->
+  <button
+    class="nav-add press-add"
+    data-nav-fab
+    aria-label={m.quick_add_title()}
+    aria-expanded={ui.chooserOpen}
+    aria-haspopup="menu"
+    onpointerdown={addPointerDown}
+    onclick={addClick}
+  >
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen}><Icon name="plus" size={26} /></span>
   </button>
   {#each TRAILING as item (item.key)}
     <a

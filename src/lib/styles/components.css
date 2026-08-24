@@ -513,20 +513,154 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   opacity: 0; transition: opacity var(--dur-med) var(--ease-out);
 }
 .sheet-scrim.is-open { opacity: 1; }
+/* Carries the drag, so the sheet inside it keeps its transition's transform
+   to itself (Sheet.svelte). Sized to the sheet rather than to the scrim, or
+   it would swallow the backdrop taps that dismiss. */
+.sheet-drag {
+  width: 100%; max-width: 520px;
+  display: flex;
+  touch-action: pan-y;
+}
+/* Springing back from a drag that did not dismiss. Off while the finger is
+   down, or every frame of the drag would be chasing a 240ms tween. */
+.sheet-drag:not(.is-dragging) {
+  transition: transform var(--dur-med) var(--ease-out);
+}
 .sheet {
   background: var(--surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: var(--space-3) var(--space-5) calc(var(--space-6) + var(--inset-bottom));
-  width: 100%; max-width: 520px;
+  width: 100%;
+  /* Percent of the scrim, which is the app frame - not dvh. The demo bar
+     and the phone-frame preview both make the app shorter than the
+     viewport, and a sheet measured against the viewport then runs off the
+     top of the frame it is inside. */
   max-height: 85%;
   overflow-y: auto;
   overscroll-behavior: contain;
-  transform: translateY(24px);
-  transition: transform var(--dur-med) var(--ease-out);
   box-shadow: var(--shadow-3);
 }
-.sheet-scrim.is-open .sheet { transform: translateY(0); }
 .sheet-handle { width: 40px; height: 4px; border-radius: var(--radius-pill); background: var(--border); margin: 0 auto var(--space-4); }
+
+/* Quick add's fan (phase 5 ticket 18, spec 04).
+
+   Anchored on the add control rather than floating in the middle of the
+   screen, because the gesture that reaches it starts there: the rows come
+   out from under the thumb and the thumb slides onto one. Everything here
+   is positioned against the same tokens the bar itself uses, so the fan and
+   the bar cannot drift apart the way a measured offset would.
+
+   The bar is lifted above the scrim while the fan is up. Dimming the
+   control the fan came out of would break the one thing the plus-to-cross
+   turn is saying, which is that this is still the same button. */
+/* Above the toasts (z-index 50), which is not an arbitrary choice: a toast
+   sits centred just above the bar, which is exactly where the fan opens, so
+   at any lower layer a toast still on screen would take the taps and swallow
+   the slide's hit testing. While the fan is up, the fan is what is being
+   used; the toast goes under the scrim with everything else. */
+.fan-scrim {
+  position: absolute; inset: 0; z-index: 54;
+}
+.app-nav.is-fan-open { z-index: 56; }
+
+.fan {
+  position: absolute;
+  z-index: 55;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--nav-clearance) + var(--space-2));
+  width: min(320px, calc(100% - 2 * var(--space-5)));
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-2);
+}
+
+/* Rows share one shape so the slide crosses a regular rhythm: every target
+   is the same height, and the gap between two is small enough that a finger
+   never falls between them without landing on one. */
+.fan-item,
+.fan-moods {
+  min-height: var(--touch-target);
+  border: 1px solid var(--border);
+  border-radius: var(--r-add);
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+}
+.fan-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 0 var(--space-4);
+  color: var(--text);
+  font: inherit; font-weight: var(--weight-medium);
+  text-align: left;
+  cursor: pointer;
+  transition-property: transform, background-color, color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+.fan-icon { display: grid; place-items: center; color: var(--accent); flex-shrink: 0; }
+.fan-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Armed: what happens if the finger comes up here. It is the same state a
+   hover or a keyboard focus shows, because it answers the same question. */
+.fan-item.is-armed,
+.fan-item:hover,
+.fan-item:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.fan-item.is-armed .fan-icon,
+.fan-item:hover .fan-icon,
+.fan-item:focus-visible .fan-icon { color: var(--on-accent); }
+.fan-item.is-armed { transform: scale(1.03); }
+
+/* The mood row is a row within the row: slide up onto it, then across it.
+   Two axes, and the second one is the scale's own direction. */
+.fan-moods {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: var(--space-1);
+  gap: var(--space-1);
+}
+.fan-mood {
+  display: grid; justify-items: center; align-content: center; gap: 3px;
+  min-width: 0;
+  padding: var(--space-1) 2px;
+  border: none; border-radius: calc(var(--r-add) - var(--space-1));
+  background: none;
+  color: var(--text-2);
+  font: inherit; font-size: var(--text-xs); font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition-property: transform, background-color, color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+.fan-mood-dot { width: 20px; height: 20px; border-radius: 50%; }
+.fan-mood-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fan-mood.is-armed,
+.fan-mood:hover,
+.fan-mood:focus-visible { background: var(--surface-2); color: var(--text); }
+.fan-mood.is-armed { transform: scale(1.06); }
+
+html[data-a11y-motion='reduce'] .fan-item.is-armed,
+html[data-a11y-motion='reduce'] .fan-mood.is-armed { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .fan-item.is-armed,
+  .fan-mood.is-armed { transform: none; }
+}
+
+/* At the rail's width the fan hangs off the rail's own add button instead,
+   which is near the top left rather than at the bottom centre. */
+@container app (min-width: 1024px) {
+  .fan {
+    left: var(--space-4);
+    right: auto;
+    transform: none;
+    bottom: auto;
+    top: calc(var(--inset-top) + 108px);
+    width: calc(var(--rail-width) - 2 * var(--space-4));
+    flex-direction: column;
+  }
+}
 .sheet h3 { font-family: var(--font-display); font-size: var(--text-xl); margin: 0 0 var(--space-4); }
 .mode-desktop .sheet { border-radius: var(--radius-xl); }
 

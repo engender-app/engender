@@ -18,10 +18,10 @@
 
   import { page } from '$app/state';
   import { assets } from '$app/paths';
-  import { goto } from '$app/navigation';
+  import { goto, onNavigate } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { journal, onTablesWritten } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -34,7 +34,9 @@
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
+  import { screenTransition } from '$lib/navigation/screen-transition';
   import AppNav from '$lib/components/AppNav.svelte';
+  import QuickAdd from '$lib/components/QuickAdd.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import { androidReminders } from '$lib/reminders/android-bridge';
@@ -47,7 +49,6 @@
   import LockScreen from '$lib/components/LockScreen.svelte';
   import PassphraseGate from '$lib/components/PassphraseGate.svelte';
   import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
   import UpdateNotice from '$lib/components/UpdateNotice.svelte';
   import { startAutoExportScheduler, stopAutoExportScheduler } from '$lib/data/archive/auto-export-scheduler';
@@ -104,15 +105,59 @@
   let schemaTooNew = $derived(gate === 'schema-too-new');
 
   let path = $derived(page.url.pathname);
+  /* The routes that render without chrome whoever is looking at them, as
+     opposed to the gate states below, which depend on how boot went. Split
+     out because the tier-2 transition has to ask the question about a route
+     it has not arrived at yet. */
+  const chromelessPath = (p: string) => p.startsWith('/onboarding') || p === '/settings/lock';
   let chromeless = $derived(
     locked ||
       needsPassphrase ||
       needsAuthentication ||
       needsDeviceRecovery ||
       schemaTooNew ||
-      path.startsWith('/onboarding') ||
-      path === '/settings/lock'
+      chromelessPath(path)
   );
+
+  /* Tier 2 (phase 5 ticket 18): one screen becoming another.
+
+     Driven by the View Transitions API rather than by a keyed block with
+     Svelte transitions on it. A keyed block is the usual way to get an
+     outgoing and an incoming screen on screen together, and it would have
+     cost a remount of every page component on every navigation - including
+     the ones SvelteKit deliberately reuses across a parameter change. The
+     view transition captures the old frame as an image instead, so nothing
+     unmounts, nothing re-queries, and the whole pair composites off the
+     main thread, which is the performance contract on a mid-range phone.
+
+     Where the API is missing the guard below returns immediately and the
+     navigation is an instant cut, which is a fair substitute and the same
+     one reduced motion asks for.
+
+     The pattern itself is chosen by screen-transition.ts and lands on
+     <html> as a data attribute for app.css to read - the decision is a
+     table, and this is only the wiring. */
+  onNavigate((navigation) => {
+    if (!document.startViewTransition || !navigation.to) return;
+    const pattern = screenTransition({
+      from: navigation.from?.url.pathname ?? null,
+      to: navigation.to.url.pathname,
+      type: navigation.type,
+      delta: navigation.delta,
+      isAndroid: isAndroid(),
+      isChromeless: chromeless || chromelessPath(navigation.to.url.pathname)
+    });
+    if (pattern === 'none') return;
+
+    return new Promise((resolve) => {
+      document.documentElement.dataset.nav = pattern;
+      const transition = document.startViewTransition(async () => {
+        resolve();
+        await navigation.complete;
+      });
+      void transition.finished.finally(() => delete document.documentElement.dataset.nav);
+    });
+  });
 
   /* Theme, palette, disguise → document. */
   let systemDark = $state(false);
@@ -209,20 +254,6 @@
       restoring = false;
       restoreFailed = true;
     }
-  }
-
-  /* New-entry chooser (F1). */
-  let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
-
-  function chooseToday() {
-    ui.chooserOpen = false;
-    goto(`/entry/new/${todayEpochDay()}`);
-  }
-  function chooseDate() {
-    const day = epochDayFromDateInputValue(backdate);
-    if (day == null) return;
-    ui.chooserOpen = false;
-    goto(`/entry/new/${day}`);
   }
 
   /* Every Android-only effect that used to live here one at a time -
@@ -363,29 +394,7 @@
       {/if}
     </main>
 
-    <Sheet bind:open={ui.chooserOpen} title={m.new_entry()}>
-      <h3>{m.new_entry()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.new_entry_when()}</p>
-      <div class="stack-3">
-        <button class="btn btn-primary" data-choose="today" onclick={chooseToday}>
-          <Icon name="sun" size={20} /><span>{m.today()}</span>
-        </button>
-        <div class="card" style="box-shadow:none;background:var(--surface-2)">
-          <label class="field-label" for="backdate">{m.another_day()}</label>
-          <div class="spread" style="margin-top:var(--space-2)">
-            <input
-              class="input"
-              type="date"
-              id="backdate"
-              name="backdate"
-              max={dateInputValueFromEpochDay(todayEpochDay())}
-              bind:value={backdate}
-            />
-            <button class="btn btn-soft" data-choose="date" onclick={chooseDate}>{m.go()}</button>
-          </div>
-        </div>
-      </div>
-    </Sheet>
+    <QuickAdd />
 
     <Toasts />
   </div>
