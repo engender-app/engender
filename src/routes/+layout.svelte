@@ -34,9 +34,9 @@
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
+  import AppNav from '$lib/components/AppNav.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
-  import { activeTabKey } from '$lib/navigation/active-tab';
   import { androidReminders } from '$lib/reminders/android-bridge';
   import { affirmationLines } from '$lib/reminders/affirmations';
   import { androidDisguise } from '$lib/disguise/android-bridge';
@@ -67,17 +67,6 @@
      effect below stamps them on <html>. From an effect it would land one
      step too late and briefly undo what app.html's pre-paint script did. */
   startBoot();
-
-  const NAV = [
-    { href: '/', key: 'home', icon: 'home', label: () => m.nav_home() },
-    { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_calendar() },
-    { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_stats() },
-    /* ADR-0036: the tab now opens the More hub, not Settings directly, but
-       `key` stays 'settings' - it's what the walkthrough's data-nav-item
-       selector and activeKey below already key off, and Settings is still
-       what this tab leads to, one hop further in. */
-    { href: '/more', key: 'settings', icon: 'dots', label: () => m.nav_more() },
-  ];
 
   /* The gate (F13). It is asked here rather than in a route guard because
      a guard runs after navigation: `locked` has to decide what renders,
@@ -124,7 +113,6 @@
       path.startsWith('/onboarding') ||
       path === '/settings/lock'
   );
-  let activeKey = $derived(activeTabKey(path));
 
   /* Theme, palette, disguise → document. */
   let systemDark = $state(false);
@@ -346,28 +334,15 @@
     <!-- SH-004: without this, a keyboard user tabbed through the whole rail
          before reaching content on desktop. -->
     <a href="#app-main" class="skip-link">{m.skip_to_content()}</a>
+    <!-- Before <main>, which is what puts the rail to the left of the
+         content at desktop width without an `order` (order moves boxes and
+         leaves tab order where it was, so the two would disagree). On a
+         phone the same markup is the floating bar, absolutely positioned,
+         so its place in the document does not decide where it sits - only
+         that a keyboard reaches the tabs before the screen, which is what
+         the skip link above exists to answer. -->
     {#if !chromeless}
-      <nav class="app-rail" aria-label={m.nav_main()}>
-        <div class="rail-brand">
-          <span class="brand-mark"></span><span translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</span>
-        </div>
-        <div class="rail-new">
-          <button class="btn btn-primary" style="width:100%" onclick={() => (ui.chooserOpen = true)}>
-            <Icon name="plus" size={20} /><span>{m.new_entry()}</span>
-          </button>
-        </div>
-        {#each NAV as item (item.key)}
-          <a
-            class="rail-item"
-            class:is-active={activeKey === item.key}
-            data-rail-item={item.key}
-            href={item.href}
-            aria-current={activeKey === item.key ? 'page' : undefined}
-          >
-            <Icon name={item.icon} size={22} /><span>{item.label()}</span>
-          </a>
-        {/each}
-      </nav>
+      <AppNav />
     {/if}
 
     <main class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
@@ -387,38 +362,6 @@
         {@render children()}
       {/if}
     </main>
-
-    {#if !chromeless}
-      <nav class="app-nav" data-app-nav aria-label={m.nav_main()}>
-        {#each NAV.slice(0, 2) as item (item.key)}
-          <a
-            class="nav-item"
-            class:is-active={activeKey === item.key}
-            data-nav-item={item.key}
-            href={item.href}
-            aria-current={activeKey === item.key ? 'page' : undefined}
-          >
-            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label" data-nav-label>{item.label()}</span>
-          </a>
-        {/each}
-        <div class="nav-fab-slot">
-          <button class="nav-fab" data-nav-fab aria-label={m.new_entry()} onclick={() => (ui.chooserOpen = true)}>
-            <Icon name="plus" size={26} />
-          </button>
-        </div>
-        {#each NAV.slice(2) as item (item.key)}
-          <a
-            class="nav-item"
-            class:is-active={activeKey === item.key}
-            data-nav-item={item.key}
-            href={item.href}
-            aria-current={activeKey === item.key ? 'page' : undefined}
-          >
-            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label" data-nav-label>{item.label()}</span>
-          </a>
-        {/each}
-      </nav>
-    {/if}
 
     <Sheet bind:open={ui.chooserOpen} title={m.new_entry()}>
       <h3>{m.new_entry()}</h3>
