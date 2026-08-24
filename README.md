@@ -214,7 +214,7 @@ SvelteKit + Svelte 5 (runes) + TypeScript, `adapter-static` SPA. Melt UI
 builders where they exist today (slider, toggle); sheets are a small custom
 dialog until Melt's Svelte 5 dialog lands. Paraglide for i18n (en/pl,
 `messages/`). Hand-rolled SVG charts on `d3-scale` + `d3-shape`. Rive runtime
-wired with graceful fallbacks. Fonts (Nunito, Baloo 2) bundled in
+wired with graceful fallbacks. Fonts (Nunito, Outfit) bundled in
 `static/fonts` and served from the same origin as the app bundle, with no
 runtime requests to third-party services.
 

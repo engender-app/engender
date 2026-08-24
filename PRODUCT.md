@@ -71,7 +71,7 @@ bottom bar/rail (ADR/ticket 09, shipped, see `src/lib/navigation/active-tab.ts`)
 
 Voice per `docs/ui-copy.md`: second person, sentence case, British
 spelling, warm but not chirpy, never genders the reader, no emoji, no em or
-en dashes, no "we". Type is bundled Nunito (body) and Baloo 2 (display).
+en dashes, no "we". Type is bundled Nunito (body) and Outfit (display).
 The app name is a working title; the rename decision is open and out of
 scope for any UI work.
 
