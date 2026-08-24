@@ -16,6 +16,7 @@
   import BarRows from '$lib/components/kit/BarRows.svelte';
   import BareStrip from '$lib/components/kit/BareStrip.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
   import Distribution from '$lib/components/kit/Distribution.svelte';
@@ -50,11 +51,23 @@
      watched rather than read about. "Year" is 365 points, which is the
      count the cap in $lib/charts/geometry exists for. */
   let range = $state<'week' | 'year'>('week');
-  const WEEK = Array.from({ length: 7 }, (_, i) => ({ x: i, y: [62, 58, 71, 44, 80, 76, 68][i] }));
-  const YEAR = Array.from({ length: 365 }, (_, i) => ({
-    x: i,
-    y: 50 + 26 * Math.sin(i / 23) + 12 * Math.sin(i / 3.1)
-  }));
+
+  /* Three scales on one chart, which is what the picker is for: switching
+     the metric re-tweens rather than redrawing. */
+  const METRICS = [
+    { value: 'gender', label: 'Gender feeling' },
+    { value: 'euphoria', label: 'Euphoria' },
+    { value: 'voice', label: 'Voice' }
+  ];
+  let metric = $state('gender');
+  const SHIFT: Record<string, number> = { gender: 0, euphoria: 1.7, voice: 3.4 };
+  const WEEK = (shift: number) =>
+    Array.from({ length: 7 }, (_, i) => ({ x: i, y: 60 + 18 * Math.sin(i / 1.4 + shift) }));
+  const YEAR = (shift: number) =>
+    Array.from({ length: 365 }, (_, i) => ({
+      x: i,
+      y: 50 + 26 * Math.sin(i / 23 + shift) + 12 * Math.sin(i / 3.1 + shift)
+    }));
 
   function readRoles() {
     roles = readFlagRoles();
@@ -252,8 +265,17 @@
   </SectionHeading>
 
   <ChartCard heading="Day by day" kind="area" role={roleAt(roles, 0)}>
+    {#snippet control()}
+      <ChartPicker
+        key="metric"
+        value={metric}
+        options={METRICS}
+        label="Which scale to chart"
+        onPick={(v) => (metric = v)}
+      />
+    {/snippet}
     <AreaChart
-      points={range === 'week' ? WEEK : YEAR}
+      points={range === 'week' ? WEEK(SHIFT[metric]) : YEAR(SHIFT[metric])}
       ariaLabel="Gender feeling, day by day"
       from={range === 'week' ? '18 Aug' : '25 Aug 2025'}
       to="24 Aug"

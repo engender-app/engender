@@ -8,7 +8,12 @@
      line one step darker.
 
      The dismiss is a drawn icon, not a multiplication sign standing in for
-     one - the same audit, the same list. */
+     one - the same audit, the same list.
+
+     The action sits on its own row under the text rather than inside the
+     column beside the icon. With it in the column, the icon centred against
+     the text plus a 48px button and so sat visibly below the line it
+     belongs to. */
   import Icon from '../Icon.svelte';
   import { roleStyle } from './role';
   import type { Role } from '$lib/theme/roles';
@@ -42,11 +47,6 @@
   <div class="kit-notice-body">
     {#if title}<strong class="kit-notice-title">{title}</strong>{/if}
     <p class="kit-notice-text">{text}</p>
-    {#if action}
-      <button type="button" class="kit-notice-act" data-notice-action onclick={action.onclick}>
-        {action.label}
-      </button>
-    {/if}
   </div>
   {#if dismiss}
     <button
@@ -57,6 +57,11 @@
       onclick={dismiss.onclick}
     >
       <Icon name="x" size={20} />
+    </button>
+  {/if}
+  {#if action}
+    <button type="button" class="kit-notice-act" data-notice-action onclick={action.onclick}>
+      {action.label}
     </button>
   {/if}
 </div>
