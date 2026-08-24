@@ -16,7 +16,6 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import PrideAurora from '$lib/components/PrideAurora.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -249,7 +248,6 @@
 </script>
 
 <div class="screen">
-  <PrideAurora />
   <header class="screen-header">
     <a class="icon-btn" href="/stats" aria-label={m.back()}><Icon name="arrowLeft" /></a>
     <h1 class="screen-title">{m.recap()}</h1>

@@ -2,7 +2,6 @@
   import { m } from '$lib/paraglide/messages';
   import { resetApp } from '$lib/stores/boot.svelte';
   import Icon from './Icon.svelte';
-  import PrideAurora from './PrideAurora.svelte';
   import Sheet from './Sheet.svelte';
 
   let resetOpen = $state(false);
@@ -23,7 +22,6 @@
 </script>
 
 <div class="screen">
-  <PrideAurora />
   <div class="applock">
     <div class="applock-badge"><Icon name="alert" size={30} /></div>
     <h1 class="ob-title" style="text-align:center">{m.dbr_title()}</h1>

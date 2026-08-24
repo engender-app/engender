@@ -24,7 +24,6 @@
   import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import Icon from '$lib/components/Icon.svelte';
-  import PrideAurora from '$lib/components/PrideAurora.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import WrappedCompact from '$lib/components/WrappedCompact.svelte';
 
@@ -89,7 +88,6 @@
 </script>
 
 <div class="screen">
-  <PrideAurora />
   <header class="screen-header">
     <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/')}><Icon name="arrowLeft" /></button>
     <h1 class="screen-title" data-screen-title="on-this-day">{m.on_this_day()}</h1>
