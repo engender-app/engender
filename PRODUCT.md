@@ -71,7 +71,7 @@ bottom bar/rail (ADR/ticket 09, shipped, see `src/lib/navigation/active-tab.ts`)
 
 Voice per `docs/ui-copy.md`: second person, sentence case, British
 spelling, warm but not chirpy, never genders the reader, no emoji, no em or
-en dashes, no "we". Type is bundled Nunito (body) and Baloo 2 (display).
+en dashes, no "we". Type is bundled Nunito (body) and Outfit (display).
 The app name is a working title; the rename decision is open and out of
 scope for any UI work.
 
@@ -96,6 +96,6 @@ brief is `SCREENS.md`. Demo data renders every screen without a journal
 ## Accessibility & Inclusion
 
 Floor from `docs/ui-copy.md` and the phase-5 UX spec: usable at 390px width
-and 200% zoom, touch targets >= 44px, WCAG 4.5:1 for body text (3:1 large),
+and 200% zoom, touch targets >= 48px (Android's floor, which is the stricter of the two platforms), WCAG 4.5:1 for body text (3:1 large),
 the palette contrast test guards on-colour pairs across all 8 palettes x 2
 themes.

@@ -128,6 +128,18 @@ function heatStepPercent(step: 1 | 2 | 3) {
   return Number(match[1]);
 }
 
+/** The accent percentage in a `color-mix(in oklab, var(--accent) N%,
+    var(--text))` token, read out of :root for the same reason
+    heatStepPercent() reads the ramp there: a formula change in the CSS
+    should move this test with it rather than leave it asserting a number
+    nobody kept in step. */
+function accentMixPercent(token: string) {
+  const raw = rawDeclaration(blockBody(':root'), token)!;
+  const match = /var\(--accent\)\s*(\d+)%/.exec(raw);
+  if (!match) throw new Error(`Could not read the accent percentage out of --${token}: ${raw}`);
+  return Number(match[1]);
+}
+
 /** heat-0..4 hex for a palette/theme, matching palettes.css's formulas. */
 function heatRamp(palette: string, theme: (typeof THEMES)[number]) {
   const t = tokenMap(palette, theme);
@@ -236,6 +248,31 @@ describe('palette contrast coverage', () => {
               `${preset}/${theme} mood-${step} vs ${palette}'s --text has ${ratio.toFixed(2)}:1, needs 4.5:1`
             ).toBeGreaterThanOrEqual(4.5);
           }
+        }
+      }
+    }
+  });
+
+  /* Ticket 17: --accent is the heat ramp's top step as well as the app's
+     one accent, so it is sized to be sat on, not to be read as text. On
+     trans light it measured 4.10:1 against --surface-2 and 4.38:1 against
+     --bg, under the 4.5:1 floor small accent-coloured text needs.
+     --accent-ink is the same hue pulled toward --text until it clears that
+     floor on all three surfaces, in every palette and theme - so a section
+     link or a caption can be accent-coloured without a per-palette
+     exception. The ramp keeps raw --accent; this token is text only. */
+  it('keeps --accent-ink readable as small text on all three surfaces in every palette and theme', () => {
+    const percent = accentMixPercent('accent-ink');
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        const ink = colorMixOklab(t.accent, percent, t.text);
+        for (const surface of ['bg', 'surface', 'surface-2']) {
+          const ratio = contrast(ink, t[surface]);
+          expect(
+            ratio,
+            `${palette}/${theme}: accent-ink (${ink}) on ${surface} (${t[surface]}) has ${ratio.toFixed(2)}:1, needs 4.5:1`
+          ).toBeGreaterThanOrEqual(4.5);
         }
       }
     }
