@@ -24,7 +24,6 @@
    mix toward --text and does wash the colour out; it is a floor rather than
    the intended path, and tests/kit-roles.test.ts holds both to 4.5:1. */
 
-import { ringColour } from '../motion/flagSun';
 import { chromaOf, colorMixOklab, contrast, lightnessOf, withLightness } from './colour';
 
 export interface Role {
@@ -176,21 +175,21 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
     from the stripe list at render time, so bisexual's doubled stops keep its
     2:1:2 proportion for free and a ninth palette needs nothing taught here.
 
-    The per-theme nudge is the sun's (`$lib/motion/flagSun`), because it is
-    the same problem: a white band on a light card and a near-black one on a
-    dark card are bands nobody can see. Sharing it also means a flag looks
-    the same wherever the app paints it whole.
+    **The colours are the flag's own, exactly.** Nothing here is nudged for a
+    theme, unlike the roles above and unlike the sun on Home: those are the
+    flag used as a screen's colour, and this is the flag being shown as
+    itself. A white band on a light card is faint, and that is what a white
+    band is.
 
-    Used where the flag itself is the material rather than one section's
-    colour - a tile's number is filled with it. */
-export function flagFill(stripes: string[], dark: boolean): string {
-  const bands = stripeRoles(stripes).length ? stripes : [];
+    Used where the flag is the material rather than one section's colour -
+    the bar under a tile's number. */
+export function flagFill(stripes: string[]): string {
+  const bands = stripes.map((s) => s.trim()).filter(Boolean);
   if (bands.length === 0) return 'none';
   const step = 100 / bands.length;
-  const stops = bands.map((stripe, i) => {
-    const colour = ringColour(stripe, dark);
-    return `${colour} ${(step * i).toFixed(3)}% ${(step * (i + 1)).toFixed(3)}%`;
-  });
+  const stops = bands.map(
+    (stripe, i) => `${stripe} ${(step * i).toFixed(3)}% ${(step * (i + 1)).toFixed(3)}%`
+  );
   return `linear-gradient(to bottom, ${stops.join(', ')})`;
 }
 
@@ -212,10 +211,11 @@ export function readFlagRoles(doc: Document = document): Role[] {
   ]);
 }
 
-/** The active flag as a fill, for whatever palette and theme the document
-    is currently in. Read the same way and at the same time as the roles. */
+/** The active flag as a fill. Read the same way and at the same time as the
+    roles; unlike them it does not depend on the theme, because the flag's
+    colours do not. */
 export function readFlagFill(doc: Document = document): string {
-  return flagFill(readStripes(doc), doc.documentElement.dataset.theme === 'dark');
+  return flagFill(readStripes(doc));
 }
 
 function readStripes(doc: Document): string[] {

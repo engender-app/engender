@@ -7,12 +7,12 @@
      the slop audit removed from Home. Here the number sits under the title
      it belongs to and a tile with nothing to report is a title and a note.
 
-     The number is filled with the flag: hard-edged bands, in stripe order,
-     through the numerals themselves. It is the one place in the kit where
-     the flag appears whole rather than one stripe at a time, and it is
-     drawn from --flag-fill, which the grid above sets from
-     $lib/theme/roles. Where a runtime cannot clip a background to text the
-     number is the section's own mark colour, which is what it was before.
+     Under the number is the flag itself, as a bar the width of the number:
+     the real stripes at their real hex values, in stripe order and in the
+     flag's own proportions, nudged for nothing. It is the one place in the
+     kit where the flag is shown as itself rather than used as a screen's
+     colour, and it is drawn from --flag-fill, which the grid above sets
+     from $lib/theme/roles.
 
      `.press` is tier 1, from $lib/motion/press.css: the whole tile answers
      a press by scaling, which a full-width list row cannot do without
