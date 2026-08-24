@@ -111,6 +111,24 @@ function svelteStyleBlocks(): { path: string; css: string }[] {
   walk(join(root, 'src'));
   return out;
 }
+/** The comma-separated parts of one property value, ignoring the commas
+    inside a function like cubic-bezier() or linear(). */
+function splitTopLevel(value: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < value.length; i++) {
+    if (value[i] === '(') depth++;
+    else if (value[i] === ')') depth--;
+    else if (value[i] === ',' && depth === 0) {
+      out.push(value.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  out.push(value.slice(start).trim());
+  return out;
+}
+
 /** The shared sheets plus every component's own <style> block. A curve can
     be written in either, so the checks about which curves exist read both. */
 function styleSources() {
@@ -258,12 +276,57 @@ describe('tier 1, response', () => {
   it('never cuts the spring short by pairing it with another duration', () => {
     const stray: string[] = [];
     for (const { path, css } of styleSources()) {
-      const reads = css.match(/var\(--ease-press\)/g)?.length ?? 0;
-      const paired = css.match(/var\(--dur-press\)\s+var\(--ease-press\)/g)?.length ?? 0;
-      if (reads !== paired) stray.push(`${path}: ${reads} read --ease-press, ${paired} on --dur-press`);
+      for (const rule of rules(css)) {
+        const declared = declarations(rule.body);
+        const where = `${path}: ${rule.prelude}`;
+
+        /* A shorthand carries the pair inside one segment. */
+        for (const segment of splitTopLevel(declared.transition ?? '')) {
+          if (!segment.includes('var(--ease-press)')) continue;
+          if (!segment.includes('var(--dur-press)')) stray.push(`${where} { transition: ... ${segment} }`);
+        }
+
+        /* Longhands carry it by position: the nth curve belongs to the nth
+           duration, so the pair is only intact if the indices line up. */
+        const curves = splitTopLevel(declared['transition-timing-function'] ?? '');
+        const durations = splitTopLevel(declared['transition-duration'] ?? '');
+        curves.forEach((curve, i) => {
+          if (curve !== 'var(--ease-press)') return;
+          if (durations[i] !== 'var(--dur-press)') {
+            stray.push(`${where} { --ease-press at ${i}, but --dur-press is not }`);
+          }
+        });
+      }
     }
 
     expect(stray, 'the spring needs its whole 260ms or it snaps instead of settling').toEqual([]);
+  });
+
+  /* --ease-press is a linear(), and a WebView older than Chrome 113 cannot
+     parse it. Because it arrives through var(), the failure is not a
+     fallback: the declaration is invalid at computed-value time, so the
+     whole `transition:` shorthand becomes `unset` and every property named
+     in it loses its transition, press or not. Verified on the API 26
+     emulator, this app's minSdk, where the shorthand computed to
+     `all 0s ease`.
+
+     So a shorthand may name --ease-press only if the press is all of it.
+     Mix it with anything else and that something else has to survive the
+     old WebView, which means longhands. */
+  it('never puts the spring in a shorthand beside a property it would strand', () => {
+    const mixed: string[] = [];
+    for (const { path, css } of styleSources()) {
+      for (const rule of rules(css)) {
+        const transition = declarations(rule.body).transition;
+        if (!transition?.includes('var(--ease-press)')) continue;
+        const segments = splitTopLevel(transition);
+        if (segments.length > 1 && segments.some((s) => !s.includes('var(--ease-press)'))) {
+          mixed.push(`${path}: ${rule.prelude} { transition: ${transition} }`);
+        }
+      }
+    }
+
+    expect(mixed, 'an unparseable linear() takes the whole shorthand with it, not just its own half').toEqual([]);
   });
 
   it('is loaded by the app shell', () => {
