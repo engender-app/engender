@@ -24,18 +24,34 @@
    mix toward --text and does wash the colour out; it is a floor rather than
    the intended path, and tests/kit-roles.test.ts holds both to 4.5:1. */
 
-import { colorMixOklab, contrast, lightnessOf, withLightness } from './colour';
+import { chromaOf, colorMixOklab, contrast, lightnessOf, withLightness } from './colour';
 
 export interface Role {
   /** The flag's own stripe, unchanged. */
   stripe: string;
-  /** The stripe as a label colour on this theme. */
+  /** The stripe as a small-text colour on this theme: 4.5:1. */
   ink: string;
+  /** The stripe as a mark: a chart line, a bar, an icon, a number set at
+      display size. 3:1, which is the floor those actually answer to, and
+      the difference is what keeps the app looking like the flag rather
+      than like a darkened copy of it. */
+  mark: string;
 }
 
-/** The contrast floor an ink is pushed to: WCAG AA for body text, which is
-    the strictest thing a role is used for (a 12px day bar). */
-const FLOOR = 4.5;
+/** The two floors a role is held to.
+
+    TEXT is WCAG AA for body text, which the smallest thing a role colours
+    answers to - a 12px day bar, a 14px tile title.
+
+    MARK is AA for large text and for non-text graphics, which is what a
+    chart line, a bar, an icon glyph and a 32px display number are. Holding
+    those to the text floor was the first build's mistake: it darkened every
+    bright stripe on the light theme and lightened every dark one on the
+    dark theme until the palette stopped reading as the flag it came from.
+    Two floors, so a mark stays near its stripe and a label is still
+    readable. */
+const TEXT_FLOOR = 4.5;
+const MARK_FLOOR = 3;
 
 /** How much of the ink kit.css mixes into a surface for the two fills a
     role paints behind itself - the icon disc, and the wash under a pressed
@@ -78,7 +94,12 @@ export function stripeRoles(stripes: string[]): string[] {
     colour is the answer: an area with no colour reads as an area with no
     colour, which is worse than the flag and better than a label nobody can
     read. */
-export function legibleInk(stripe: string, text: string, grounds: string[]): string {
+export function legibleInk(
+  stripe: string,
+  text: string,
+  grounds: string[],
+  floor: number = TEXT_FLOOR
+): string {
   /* Each ground three times: as itself, and under each of the two fills
      the ink paints behind itself. A role writes on the page and on a card,
      and it also writes on the disc it tints and over the row it washes -
@@ -87,7 +108,7 @@ export function legibleInk(stripe: string, text: string, grounds: string[]): str
   const passes = (candidate: string) =>
     grounds.every((g) =>
       [g, colorMixOklab(candidate, ROLE_TINT_PCT, g), colorMixOklab(candidate, ROLE_WASH_PCT, g)].every(
-        (ground) => contrast(candidate, ground) >= FLOOR
+        (ground) => contrast(candidate, ground) >= floor
       )
     );
   if (passes(stripe)) return stripe;
@@ -104,11 +125,30 @@ export function legibleInk(stripe: string, text: string, grounds: string[]): str
   return text;
 }
 
-/** The active flag's stripes as the roles a screen hands its areas. */
+/** Below this a stripe is a shade rather than a colour. The eight flags'
+    white, black, near-black and mid-grey bands all sit under it; every hue
+    any of them carries sits well above. */
+const ACHROMATIC = 0.02;
+
+/** The active flag's stripes as the roles a screen hands its areas, its
+    colours first and its shades after them.
+
+    Stripe order is the flag's, and a flag's own order is what the sun on
+    Home draws (see $lib/motion/flagSun). A screen is not a flag, though: it
+    hands role 1 to its first area, and on trans that would be the white
+    band, so the first thing coloured on the screen would be grey. Every
+    stripe still gets a turn - the shades follow the colours rather than
+    being dropped - which keeps the white band a part of the palette without
+    letting it be the first thing anyone sees of it. */
 export function flagRoles(stripes: string[], text: string, grounds: string[]): Role[] {
-  return stripeRoles(stripes).map((stripe) => ({
+  const ordered = [
+    ...stripeRoles(stripes).filter((s) => chromaOf(s) >= ACHROMATIC),
+    ...stripeRoles(stripes).filter((s) => chromaOf(s) < ACHROMATIC)
+  ];
+  return ordered.map((stripe) => ({
     stripe,
-    ink: legibleInk(stripe, text, grounds)
+    ink: legibleInk(stripe, text, grounds, TEXT_FLOOR),
+    mark: legibleInk(stripe, text, grounds, MARK_FLOOR)
   }));
 }
 

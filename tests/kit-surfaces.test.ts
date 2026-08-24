@@ -114,7 +114,7 @@ describe('the charts', () => {
        own ink, mood's own ramp, and the surface it is diluted into - never
        a second accent and never a literal. */
     const allowed =
-      /^(--role-ink|--dist-fill|--surface|--outline|--text-2?|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
+      /^(--role-ink|--role-mark|--dist-fill|--surface|--outline|--text-2?|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
     for (const [, token] of chartCss.matchAll(/var\((--[a-z0-9-]+)/g)) {
       if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
       expect(token, `${token} in the chart rules`).toMatch(allowed);

@@ -201,10 +201,24 @@
     <DayEntry key="c" time="22:40" mood={4} note="Tired, but not in the bad way." />
   </DayCard>
 
-  <p class="gallery-note">Tile grid, two-up, each carrying its own reading</p>
-  <TileGrid role={roleAt(roles, 2)}>
-    <Tile key="onthisday" title="On this day" value="3" note="entries a year ago" href="#a" />
-    <Tile key="wrapped" title="This month" value="21" note="days logged" href="#b" />
+  <p class="gallery-note">Tile grid, two-up, a stripe each</p>
+  <TileGrid>
+    <Tile
+      key="onthisday"
+      role={roleAt(roles, 2)}
+      title="On this day"
+      value="3"
+      note="entries a year ago"
+      href="#a"
+    />
+    <Tile
+      key="wrapped"
+      role={roleAt(roles, 3)}
+      title="This month"
+      value="21"
+      note="days logged"
+      href="#b"
+    />
   </TileGrid>
 
   <SectionHeading text="Uncontained" />

@@ -15,7 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { colorMixOklab, contrast, toRgb } from '../src/lib/theme/colour';
+import { chromaOf, colorMixOklab, contrast, lightnessOf, toRgb } from '../src/lib/theme/colour';
 import {
   ROLE_TINT_PCT,
   ROLE_WASH_PCT,
@@ -27,6 +27,12 @@ import {
 
 const palettes = readFileSync('src/lib/theme/palettes.css', 'utf8');
 const kit = readFileSync('src/lib/styles/kit.css', 'utf8');
+
+/** How far a derived colour has moved from its stripe, in OKLab lightness,
+    which is the only axis either of them moves along. */
+function distance(a: string, b: string): number {
+  return Math.abs(lightnessOf(a) - lightnessOf(b));
+}
 
 const PALETTES = [
   'trans',
@@ -75,9 +81,9 @@ function roleInkPercent(): number {
     still leaves a fill that is there. */
 function tintPercent(token: 'role-tint' | 'role-wash'): number {
   const raw = new RegExp(
-    String.raw`--${token}:\s*color-mix\(in oklab,\s*var\(--role-ink\)\s*(\d+)%`
+    String.raw`--${token}:\s*color-mix\(in oklab,\s*var\(--role-(?:ink|mark)\)\s*(\d+)%`
   ).exec(kit);
-  if (!raw) throw new Error(`kit.css no longer derives --${token} from --role-ink`);
+  if (!raw) throw new Error(`kit.css no longer derives --${token} from a role colour`);
   return Number(raw[1]);
 }
 
@@ -104,6 +110,21 @@ describe('stripeRoles', () => {
     }
   });
 
+  it("hands a screen the flag's colours before its shades", () => {
+    // A screen gives role 1 to its first area. On trans that stripe order
+    // would make it the white band, and the first coloured thing on the
+    // screen would be grey. The shades follow rather than being dropped.
+    for (const palette of PALETTES) {
+      const tokens = tokensOf(palette, 'light');
+      const roles = flagRoles(stripesOf(palette), tokens.text, [tokens.bg, tokens.surface]);
+      const chroma = roles.map((r) => chromaOf(r.stripe) >= 0.02);
+      expect(chroma.indexOf(false) === -1 || chroma.lastIndexOf(true) < chroma.indexOf(false)).toBe(
+        true
+      );
+      expect(roles.length).toBe(stripeRoles(stripesOf(palette)).length);
+    }
+  });
+
   it('matches on the colour rather than on how it was written', () => {
     expect(stripeRoles([' #ffffff ', '#FFFFFF'])).toEqual(['#ffffff']);
   });
@@ -127,34 +148,67 @@ describe('roleAt', () => {
   });
 });
 
-describe('the ink a role writes with', () => {
+describe('the two colours a role carries', () => {
   const grounds = (t: Record<string, string>) => [t.bg, t.surface, t['surface-2']];
+
+  /* Every ground a role lands on: the page, both card surfaces, and the two
+     fills a role paints behind itself. Both fills are mixed from the mark,
+     because that is what kit.css derives them from. */
+  function allGrounds(tokens: Record<string, string>, role: { mark: string }) {
+    return [
+      ...grounds(tokens),
+      colorMixOklab(role.mark, ROLE_TINT_PCT, tokens.surface),
+      colorMixOklab(role.mark, ROLE_WASH_PCT, tokens.bg)
+    ];
+  }
 
   for (const palette of PALETTES) {
     for (const theme of THEMES) {
-      it(`clears 4.5:1 on every surface it lands on, ${palette} ${theme}`, () => {
+      it(`inks small text to 4.5:1 and marks to 3:1, ${palette} ${theme}`, () => {
         const tokens = tokensOf(palette, theme);
         for (const role of flagRoles(stripesOf(palette), tokens.text, grounds(tokens))) {
-          for (const ground of [
-            ...grounds(tokens),
-            // The two fills a role paints behind itself: the icon disc, and
-            // the row it washes while pressed. Both are mixed from the ink,
-            // so both move with it.
-            colorMixOklab(role.ink, ROLE_TINT_PCT, tokens.surface),
-            colorMixOklab(role.ink, ROLE_WASH_PCT, tokens.bg)
-          ]) {
+          for (const ground of allGrounds(tokens, role)) {
             expect(
               contrast(role.ink, ground),
-              `${palette}/${theme} stripe ${role.stripe} inked ${role.ink} on ${ground}`
+              `${palette}/${theme} ${role.stripe} inked ${role.ink} on ${ground}`
             ).toBeGreaterThanOrEqual(4.5);
+            expect(
+              contrast(role.mark, ground),
+              `${palette}/${theme} ${role.stripe} marked ${role.mark} on ${ground}`
+            ).toBeGreaterThanOrEqual(3);
           }
+        }
+      });
+
+      it(`never walks a mark further from the flag than the label, ${palette} ${theme}`, () => {
+        const tokens = tokensOf(palette, theme);
+        for (const role of flagRoles(stripesOf(palette), tokens.text, grounds(tokens))) {
+          expect(
+            distance(role.mark, role.stripe),
+            `${palette}/${theme} ${role.stripe}`
+          ).toBeLessThanOrEqual(distance(role.ink, role.stripe) + 0.001);
         }
       });
     }
   }
 
+  it('keeps a mark nearer the flag wherever the stripe has to move at all', () => {
+    /* The whole reason there are two. A bright stripe on a dark theme
+       already clears both floors and neither colour moves; the difference
+       shows on the theme where the stripe is close to its ground. Trans
+       pink on the light theme is the case the second round was looking at
+       when it said the colours did not relate to the flag. */
+    const light = tokensOf('trans', 'light');
+    const roles = flagRoles(stripesOf('trans'), light.text, [
+      light.bg,
+      light.surface,
+      light['surface-2']
+    ]);
+    const pink = roles.find((r) => r.stripe === '#F5A9B8')!;
+    expect(distance(pink.mark, pink.stripe)).toBeLessThan(distance(pink.ink, pink.stripe) - 0.05);
+  });
+
   it('leaves a stripe alone where the stripe already reads', () => {
-    // Genderfluid's magenta on its light theme is already past the floor.
     expect(legibleInk('#000000', '#1B2B36', ['#FFFFFF'])).toBe('#000000');
   });
 
