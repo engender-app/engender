@@ -16,7 +16,7 @@
    below - stop under reduced motion, fill forwards so the end state is the
    resting state, or end on the same values the base rule already declares. */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -91,6 +91,26 @@ function normalise(prop: string, value: string | undefined) {
 }
 
 const sheets = SHEETS.map((path) => ({ path, css: stripComments(readFileSync(join(root, path), 'utf8')) }));
+
+/** Every `<style>` block in the app's components and routes, comments
+    stripped, for the one check that has to hold outside the shared sheets. */
+function svelteStyleBlocks(): { path: string; css: string }[] {
+  const out: { path: string; css: string }[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.svelte')) {
+        const source = readFileSync(full, 'utf8');
+        for (const [, block] of source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
+          out.push({ path: full.slice(root.length), css: stripComments(block) });
+        }
+      }
+    }
+  };
+  walk(join(root, 'src'));
+  return out;
+}
 const allRules = sheets.flatMap(({ path, css }) => rules(css).map((rule) => ({ ...rule, path })));
 
 const isReduceContext = (rule: Rule) =>
@@ -232,10 +252,8 @@ describe('tier 2, the withdrawal', () => {
   const materials = () => readFileSync(join(root, 'src/lib/motion/materials.css'), 'utf8');
 
   /* The material is a blur that is there or not there, never a blur that
-     changes radius. A radius that animates re-blurs the whole region every
-     frame; a radius that is fixed rasterises once and the scrim crossfades
-     over it. Which of the two the app can afford is ticket 27's measurement,
-     but only one of them is worth measuring. */
+     changes radius - the reason is written out once, at --blur-withdraw in
+     theme/base.css. */
   it('holds the blur radius constant and animates opacity alone', () => {
     /* The reduced-motion rules are the substitute, not the material: they
        set the radius to none, which is the whole point of them. */
@@ -282,13 +300,32 @@ describe('tier 2, the withdrawal', () => {
 
 describe('the cap that spans every material', () => {
   /* A keyframe blur ramp is the expensive shape this ticket is deliberately
-     not shipping: every frame re-blurs the region at a new radius. Nothing in
-     the app's stylesheets may interpolate one, whatever tier it belongs to. */
-  it('interpolates no blur radius anywhere', () => {
+     not shipping: every frame re-blurs the region at a new radius.
+
+     This is the one check that has to reach past SHEETS. Every other rule
+     here is about a primitive that lives in a shared stylesheet, but a
+     keyframe can be written in any component's own <style> block, and the
+     screen tickets are about to write a lot of those. A cap that only covers
+     the six shared sheets would go quietly vacuous exactly when it starts to
+     matter. */
+  it('interpolates no blur radius anywhere, component styles included', () => {
+    const offenders: string[] = [];
+
     for (const rule of allRules) {
       if (!rule.prelude.startsWith('@keyframes')) continue;
-      expect(rule.body, `${rule.prelude} interpolates a blur radius`).not.toContain('blur(');
+      if (rule.body.includes('blur(')) offenders.push(`${rule.path}: ${rule.prelude}`);
     }
+
+    const components = svelteStyleBlocks();
+    expect(components.length, 'no component <style> blocks found - the walk has drifted').toBeGreaterThan(0);
+    for (const { path, css } of components) {
+      for (const rule of rules(css)) {
+        if (!rule.prelude.startsWith('@keyframes')) continue;
+        if (rule.body.includes('blur(')) offenders.push(`${path}: ${rule.prelude}`);
+      }
+    }
+
+    expect(offenders, 'a blur radius may be present or absent, never interpolated').toEqual([]);
   });
 });
 
@@ -314,6 +351,7 @@ describe('the token layer behind the five tiers', () => {
          one shadow. The third, tier 3's wipe, is geometry rather than a
          value and lives in $lib/motion/reveal.ts. */
       '--blur-withdraw',
+      '--scrim-withdraw',
       '--shadow-float-pressed'
     ]) {
       expect(base, `${token} is what a tier reaches for instead of a number`).toContain(`${token}:`);

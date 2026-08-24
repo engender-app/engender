@@ -17,43 +17,18 @@
    measurement over real screens, not this ticket's guess: a wipe over a
    365-point path could repaint more per frame than the tween it replaced.
 
-   Like the tier-2 primitives in navigation.ts, this reads its duration out of
-   the token layer and writes its own reduced-motion substitute, because the
-   1ms clamp in theme/base.css is a CSS rule and never touches a Svelte
-   transition. */
+   Left to right, and only left to right. A wipe from another edge is a
+   parameter this has no use for yet, so the first screen that needs one adds
+   it rather than this ticket shipping three directions nothing calls.
 
-import { quintOut } from 'svelte/easing';
+   Like the tier-2 primitives in navigation.ts, this reads its duration and
+   its easing out of the token layer and writes its own reduced-motion
+   substitute, because the 1ms clamp in theme/base.css is a CSS rule and never
+   touches a Svelte transition. */
+
 import type { TransitionConfig } from 'svelte/transition';
 
-import { isReducedMotion, motionDuration } from './tokens';
-
-/* --ease-out, sampled the same way navigation.ts samples it - see the note
-   there for why quintOut and cubic-bezier(0.22, 1, 0.36, 1) are one easing
-   rather than two that look alike. */
-const EASE_OUT = quintOut;
-
-/** The edge the content is uncovered from. */
-export type Edge = 'left' | 'right' | 'top' | 'bottom';
-
-/** `inset()` covering `covered` of the element from the opposite side, so
-    the named edge is the one the content appears at. */
-function coveredFrom(edge: Edge, covered: number): string {
-  /* Plain 0 rather than 0% at the end, so the last frame is literally
-     `inset(0 0 0 0)` - the element's resting geometry written the way the
-     stylesheet would write it, rather than a value that only normalises to
-     it. tests/motion-system.test.ts has to do that normalising for CSS; a
-     transition can just not need it. */
-  const amount = covered === 0 ? '0' : `${Math.round(covered * 100)}%`;
-  const sides = {
-    /* inset() is top right bottom left: uncovering from the left means the
-       right is what stays clipped. */
-    left: ['0', amount, '0', '0'],
-    right: ['0', '0', '0', amount],
-    top: ['0', '0', amount, '0'],
-    bottom: [amount, '0', '0', '0']
-  }[edge];
-  return `inset(${sides.join(' ')})`;
-}
+import { EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from './tokens';
 
 /** Whether the runtime can clip at all.
 
@@ -66,7 +41,7 @@ function canClip(): boolean {
 }
 
 /**
- * Tier 3, change within a screen: a wipe.
+ * Tier 3, change within a screen: a wipe, uncovering from the left.
  *
  * Usable as `in:wipe` and `out:wipe` - Svelte runs the timeline backwards on
  * the way out, so content leaves by being covered again from the same edge.
@@ -79,12 +54,23 @@ function canClip(): boolean {
  * That is a weaker version of the same idea rather than a broken one, which
  * is what a degradation path has to be.
  */
-export function wipe(_node: Element, params: { from?: Edge } = {}): TransitionConfig {
+export function wipe(_node: Element): TransitionConfig {
   if (isReducedMotion()) return { duration: 0 };
 
   const duration = motionDuration('--dur-slow', 380);
-  if (!canClip()) return { duration, easing: EASE_OUT, css: (t) => `opacity: ${t}` };
+  if (!canClip()) return fadeOnly(duration);
 
-  const from = params.from ?? 'left';
-  return { duration, easing: EASE_OUT, css: (_t, u) => `clip-path: ${coveredFrom(from, u)}` };
+  return {
+    duration,
+    easing: EASE_OUT,
+    /* inset() is top right bottom left, so uncovering from the left means the
+       right is what stays clipped.
+
+       Plain 0 rather than 0% at the end, so the last frame is literally
+       `inset(0 0 0 0)` - the element's resting geometry written the way the
+       stylesheet would write it, rather than a value that only normalises to
+       it. tests/motion-system.test.ts has to do that normalising for CSS; a
+       transition can just not need it. */
+    css: (_t, u) => `clip-path: inset(0 ${u === 0 ? '0' : `${Math.round(u * 100)}%`} 0 0)`
+  };
 }
