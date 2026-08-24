@@ -25,7 +25,6 @@
   import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import Icon from './Icon.svelte';
-  import PrideAurora from './PrideAurora.svelte';
   import Sheet from './Sheet.svelte';
 
   let passphrase = $state('');
@@ -132,7 +131,6 @@
 
 {#if screen === 'conversion-refused'}
   <div class="screen">
-    <PrideAurora />
     <div class="applock">
       <div class="applock-badge"><Icon name="alert" size={30} /></div>
       <h1 class="ob-title" style="text-align:center">{m.pp_convert_refused_title()}</h1>
@@ -150,7 +148,6 @@
   </div>
 {:else if screen === 'converting'}
   <div class="screen">
-    <PrideAurora />
     <div class="applock">
       <div class="applock-badge"><Icon name="lock" size={30} /></div>
       <h1 class="ob-title" style="text-align:center">{m.pp_converting_title()}</h1>
@@ -166,7 +163,6 @@
   </div>
 {:else if screen === 'form'}
 <div class="screen">
-  <PrideAurora />
   <div class="applock">
     <div class="applock-badge"><Icon name="lock" size={30} /></div>
     <!-- No name in the unlock greeting on purpose: the display name lives in

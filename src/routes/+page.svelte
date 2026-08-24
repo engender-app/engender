@@ -13,7 +13,7 @@
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import PrideAurora from '$lib/components/PrideAurora.svelte';
+  import FlagSun from '$lib/components/FlagSun.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import MilestoneCard from '$lib/components/MilestoneCard.svelte';
@@ -142,8 +142,12 @@
 </script>
 
 <div class="screen">
-  <PrideAurora />
   <header class="home-header">
+    <!-- Home-only, and never under disguise (ADR-0035) - checked on
+         prefs.disguise here rather than inside FlagSun, so the one place
+         that decides whether the sun renders at all matches every other
+         disguise gate in the app. -->
+    {#if !prefs.disguise}<FlagSun />{/if}
     <h1 class="home-hero" translate="no">{m.app_name()}</h1>
     <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     {#if streak > 1 && !pausedToday}

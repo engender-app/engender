@@ -20,7 +20,6 @@
   import { bioGateDecision } from '$lib/lock/bio-consent';
   import { isAndroid } from '$lib/platform';
   import Icon from './Icon.svelte';
-  import PrideAurora from './PrideAurora.svelte';
   import Sheet from './Sheet.svelte';
 
   /* onCancel is what makes setup optional: without it, a toggle flipped by
@@ -221,7 +220,6 @@
 </script>
 
 <div class="screen">
-  <PrideAurora />
   <div class="applock" data-applock>
     <div class="applock-badge"><Icon name="lock" size={30} /></div>
     <h1 class="ob-title" style="text-align:center">{title}</h1>

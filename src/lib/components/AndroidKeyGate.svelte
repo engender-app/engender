@@ -29,7 +29,6 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bioGateDecision } from '$lib/lock/bio-consent';
   import Icon from './Icon.svelte';
-  import PrideAurora from './PrideAurora.svelte';
   import Sheet from './Sheet.svelte';
 
   let busy = $state(false);
@@ -108,7 +107,6 @@
        header says why the platform does this). A risk screen: the whole
        consequence, then the single action there is. -->
   <div class="screen">
-    <PrideAurora />
     <div class="applock">
       <div class="applock-badge"><Icon name="alert" size={30} /></div>
       <h1 class="ob-title" style="text-align:center">{m.ak_invalidated_title()}</h1>
@@ -125,7 +123,6 @@
        to. The only screen here that asks for something outside the app, and
        the only one whose action is "look again". -->
   <div class="screen">
-    <PrideAurora />
     <div class="applock">
       <div class="applock-badge"><Icon name="lock" size={30} /></div>
       <h1 class="ob-title" style="text-align:center">{m.ak_no_lock_title()}</h1>
@@ -139,7 +136,6 @@
   </div>
 {:else}
   <div class="screen">
-    <PrideAurora />
     <div class="applock">
       <div class="applock-badge"><Icon name="fingerprint" size={30} /></div>
       <!-- No name in the greeting, for the same reason the passphrase gate
