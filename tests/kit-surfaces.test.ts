@@ -29,17 +29,19 @@ function markup(file: string): string {
 const chartCss = kitNoComments.slice(kitNoComments.indexOf('.kit-chart {'));
 
 describe('the surfaces', () => {
-  it('has one component per surface and per chart kind', () => {
+  it('has one component per surface, its rows, and per chart kind', () => {
     expect(components.sort()).toEqual([
       'AreaChart.svelte',
       'BarRows.svelte',
       'BareStrip.svelte',
       'ChartCard.svelte',
       'DayCard.svelte',
+      'DayEntry.svelte',
       'Distribution.svelte',
       'ListCard.svelte',
       'ListRow.svelte',
       'MoodChips.svelte',
+      'MoodFace.svelte',
       'Notice.svelte',
       'SectionHeading.svelte',
       'Tile.svelte',
@@ -111,7 +113,8 @@ describe('the charts', () => {
        same colour. So the only colours a mark may name are the section's
        own ink, mood's own ramp, and the surface it is diluted into - never
        a second accent and never a literal. */
-    const allowed = /^(--role-ink|--dist-fill|--surface|--outline|--text-2?|--bar-share|--mood-\d)$/;
+    const allowed =
+      /^(--role-ink|--dist-fill|--surface|--outline|--text-2?|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
     for (const [, token] of chartCss.matchAll(/var\((--[a-z0-9-]+)/g)) {
       if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
       expect(token, `${token} in the chart rules`).toMatch(allowed);
@@ -128,8 +131,8 @@ describe('the charts', () => {
   });
 
   it('caps how many points a chart draws, whatever range it is given', async () => {
-    const { MAX_SAMPLES, resample } = await import('../src/lib/charts/geometry');
-    const year = Array.from({ length: 365 }, (_, i) => ({ x: i, y: i % 5 }));
-    expect(resample(year).length).toBe(MAX_SAMPLES);
+    const { MAX_POINTS, bucket } = await import('../src/lib/charts/geometry');
+    const decade = Array.from({ length: 3650 }, (_, i) => ({ x: i, y: i % 5 }));
+    expect(bucket(decade).length).toBe(MAX_POINTS);
   });
 });

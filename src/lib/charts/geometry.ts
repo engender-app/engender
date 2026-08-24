@@ -3,10 +3,13 @@
    the ticket pins - the point cap and the re-tween between datasets - are
    worth testing without a DOM.
 
-   Everything here works on an even grid of values rather than on the
-   points a caller passes. That grid is what makes tier 3's re-tween
-   possible: a week and a year have nothing to interpolate pairwise until
-   both are sampled onto the same number of positions. */
+   The area chart is a timeline you scroll rather than a range squashed into
+   a card, so a point keeps its own slot at any range and a year is read a
+   week at a time by dragging. That decides the shape of everything here:
+   the chart draws its real points, and the only thing capped is how many
+   of them there can be before neighbouring ones are averaged together. */
+
+import { area as d3area, line as d3line, curveLinear, curveMonotoneX } from 'd3-shape';
 
 export interface Point {
   /** Domain position - an epoch day, an index, whatever the caller counts in. */
@@ -14,29 +17,54 @@ export interface Point {
   y: number;
 }
 
-/** How many positions a chart draws, whatever range it is showing.
+/** The most positions a chart will draw, however long a range it is handed.
 
-    A year of daily entries is 365 points, and tier 3 interpolates the whole
-    path on the main thread inside a Capacitor WebView on a mid-range
-    Android phone. 120 is one position per ~3px across a 390px screen's
-    chart, which is finer than the 2.5px stroke drawing it, and it makes the
-    per-frame cost of the re-tween identical for a week and for a year. */
-export const MAX_SAMPLES = 120;
+    Every frame of tier 3's re-tween rebuilds the whole path on the main
+    thread inside a Capacitor WebView, so this is the number that decides
+    what the tween costs at its worst. A year of daily entries is 365 and
+    sits under it; a multi-year range is averaged down into this many
+    buckets rather than drawn point by point, which is also the only
+    honest thing to do once a point is narrower than the stroke. */
+export const MAX_POINTS = 400;
+
+/** `points` averaged into at most `max` evenly spaced buckets.
+
+    Under the cap this is the identity, which is the case that matters: a
+    week is seven days and a year is 365, and neither is touched. */
+export function bucket(points: Point[], max: number = MAX_POINTS): Point[] {
+  if (points.length <= max) return [...points].sort((a, b) => a.x - b.x);
+  const sorted = [...points].sort((a, b) => a.x - b.x);
+  const size = sorted.length / max;
+  const out: Point[] = [];
+  for (let i = 0; i < max; i++) {
+    const slice = sorted.slice(Math.floor(i * size), Math.max(Math.floor((i + 1) * size), Math.floor(i * size) + 1));
+    out.push({
+      x: slice.reduce((sum, p) => sum + p.x, 0) / slice.length,
+      y: slice.reduce((sum, p) => sum + p.y, 0) / slice.length
+    });
+  }
+  return out;
+}
 
 /** Reads `points` onto `n` evenly spaced positions across its own x range.
 
+    This is what makes a re-tween possible at all: a week and a year have
+    nothing to interpolate pairwise until both are counted the same way, so
+    the outgoing dataset is read onto the incoming one's own point count and
+    the two are then mixed position by position.
+
     Linear along the polyline rather than bucket-averaged: a seven-point
-    week resamples to a shape that passes through all seven of its values,
-    so a short range is not smoothed on its way through the cap. A year is
-    subsampled at ~3px, which is the resolution the stroke has anyway. */
-export function resample(points: Point[], n: number = MAX_SAMPLES): number[] {
-  if (points.length === 0) return [];
+    week read onto 365 positions still passes through all seven of its
+    values, so the shape the tween starts from is the shape that was on
+    screen. */
+export function resample(points: Point[], n: number): number[] {
+  if (points.length === 0 || n <= 0) return [];
   const sorted = [...points].sort((a, b) => a.x - b.x);
   const x0 = sorted[0].x;
   const x1 = sorted[sorted.length - 1].x;
   // A single point, or several logged against the same position, is a flat
   // line at that value rather than an empty chart.
-  if (x1 === x0) return Array.from({ length: n }, () => sorted[sorted.length - 1].y);
+  if (x1 === x0 || n === 1) return Array.from({ length: n }, () => sorted[sorted.length - 1].y);
 
   const out: number[] = [];
   let seg = 0;
@@ -45,8 +73,7 @@ export function resample(points: Point[], n: number = MAX_SAMPLES): number[] {
     while (seg < sorted.length - 2 && sorted[seg + 1].x < x) seg++;
     const a = sorted[seg];
     const b = sorted[seg + 1];
-    const t = (x - a.x) / (b.x - a.x);
-    out.push(a.y + (b.y - a.y) * t);
+    out.push(a.y + (b.y - a.y) * ((x - a.x) / (b.x - a.x)));
   }
   return out;
 }
@@ -55,9 +82,9 @@ export function resample(points: Point[], n: number = MAX_SAMPLES): number[] {
     the incoming dataset, mixed.
 
     A length mismatch cuts to the incoming dataset rather than interpolating
-    across it. Only a caller that resampled its two datasets onto different
-    grids can produce one, and the shape that would come out belongs to
-    neither reading. */
+    across it. Only a caller that failed to resample onto one grid can
+    produce one, and the shape that would come out belongs to neither
+    reading. */
 export function lerpSamples(from: number[], to: number[], t: number): number[] {
   if (from.length !== to.length) return to;
   return to.map((b, i) => from[i] + (b - from[i]) * t);
@@ -74,15 +101,17 @@ export interface AreaPath {
   line: string;
   /** The same line, closed down to the baseline. */
   fill: string;
+  /** Where each value sits, for the marks a finger scrolls between. */
+  dots: { x: number; y: number }[];
   /** The latest position, for the ring the area chart puts on it. */
   last: { x: number; y: number } | null;
 }
 
-export function areaPath(samples: number[], box: AreaBox): AreaPath {
-  if (samples.length === 0) return { line: '', fill: '', last: null };
+export function areaPath(values: number[], box: AreaBox, smooth: boolean = true): AreaPath {
+  if (values.length === 0) return { line: '', fill: '', dots: [], last: null };
 
   const span = box.max - box.min;
-  const xs = (i: number) => (samples.length === 1 ? 0 : (box.width * i) / (samples.length - 1));
+  const xs = (i: number) => (values.length === 1 ? box.width / 2 : (box.width * i) / (values.length - 1));
   const ys = (v: number) => {
     // A scale with no span - one dimension pinned to a single value - sits
     // on the baseline rather than dividing by zero.
@@ -91,13 +120,38 @@ export function areaPath(samples: number[], box: AreaBox): AreaPath {
     return box.height - ((clamped - box.min) / span) * box.height;
   };
 
-  const points = samples.map((v, i) => `${round(xs(i))},${round(ys(v))}`);
-  const line = `M${points[0]} ${points.slice(1).map((p) => `L${p}`).join(' ')}`.trim();
-  const lastX = round(xs(samples.length - 1));
+  const dots = values.map((v, i) => ({ x: round(xs(i)), y: round(ys(v)) }));
+
+  /* Monotone rather than straight segments or a plain spline: it rounds the
+     corners a reading turns without inventing a peak between two days that
+     were never that far apart, which a Catmull-Rom or a cardinal curve
+     will. A chart of someone's own history has no business overshooting a
+     value they logged.
+
+     Straight segments while a tween is playing, though. A monotone path
+     over a year is three cubic control points per day where a polyline is
+     one position, and on a Pixel 10a rebuilding the smoothed version every
+     frame put the p95 frame at 33.3ms against a 16.7ms baseline - visibly
+     dropped frames, in the one direction that matters. At 14px a point the
+     difference between the two curves is a fraction of the stroke width
+     while the line is moving, and the smoothing arrives when it stops. */
+  const curve = smooth ? curveMonotoneX : curveLinear;
+  const line = d3line<Point>()
+    .x((p) => p.x)
+    .y((p) => p.y)
+    .curve(curve);
+  const fill = d3area<Point>()
+    .x((p) => p.x)
+    .y0(box.height)
+    .y1((p) => p.y)
+    .curve(curve);
+  const shape = dots.map((d) => ({ x: d.x, y: d.y }));
+
   return {
-    line,
-    fill: `${line} L${lastX},${round(box.height)} L0,${round(box.height)} Z`,
-    last: { x: lastX, y: round(ys(samples[samples.length - 1])) }
+    line: line(shape) ?? '',
+    fill: fill(shape) ?? '',
+    dots,
+    last: dots[dots.length - 1]
   };
 }
 
