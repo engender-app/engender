@@ -385,15 +385,33 @@
 
 /* The flag, through the numerals themselves: hard-edged bands in stripe
    order, built from --motif-stripes at render time so every flag keeps its
-   own count and its own proportions. The colour above stays as the
-   declared value, so a runtime without background-clip gets the section's
-   mark rather than a transparent number. */
+   own count and its own proportions. The colour above stays as the declared
+   value, so a runtime without background-clip gets the section's mark
+   rather than a transparent number.
+
+   The fill is sized to the digits rather than to the line box. A line box
+   is an em tall and a digit is about 0.72 of one, so a flag spread over the
+   line has its outermost bands land in the leading above and below the
+   number - trans loses both of its blues, and what is left reads as a
+   sliced numeral rather than as a flag. `cap` is the exact measure and
+   Chromium has had it since 111; the em value under it is what an older
+   WebView uses, and it is within a pixel at this size. */
 @supports (background-clip: text) or (-webkit-background-clip: text) {
   .kit-tiles[style*='--flag-fill'] .kit-tile-value {
     background-image: var(--flag-fill);
+    background-repeat: no-repeat;
+    background-size: 100% 0.72em;
+    background-position: 0 0.06em;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+
+  @supports (height: 1cap) {
+    .kit-tiles[style*='--flag-fill'] .kit-tile-value {
+      background-size: 100% 1cap;
+      background-position: 0 calc(1em - 1cap - 0.22em);
+    }
   }
 }
 
