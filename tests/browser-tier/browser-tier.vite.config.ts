@@ -85,6 +85,11 @@ interface ServerResponse {
 
 export default defineConfig({
   root: import.meta.dirname,
+  /* The app's static directory, so the kit gallery (phase 5 ticket 20) draws
+     in Nunito and Outfit rather than in whatever the machine's system-ui
+     happens to be. Type is half of what that page is reviewed for, and every
+     other probe here is unaffected by a few more files being reachable. */
+  publicDir: resolve(import.meta.dirname, '../../static'),
   plugins: [svelte(), sqlocal(), mutableServiceWorker()],
   resolve: {
     alias: {
