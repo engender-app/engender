@@ -8,6 +8,7 @@
   import { intlLocale } from '$lib/data/dates';
   import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
 
   const TYPES = [
@@ -93,11 +94,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings/reminders" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{isNew ? m.rem_new_title() : m.rem_edit_title()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={isNew ? m.rem_new_title() : m.rem_edit_title()} back="/settings/reminders" />
 
   <div class="card editor-section">
     <div class="field">

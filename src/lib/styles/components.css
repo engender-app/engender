@@ -4,18 +4,39 @@
    ============================================================ */
 
 /* ---------- text & primitives ---------- */
+/* ScreenHeader.svelte's own styles (phase 5 ticket 18); nothing else
+   should wear these class names.
+
+   The horizontal padding is gone. It used to be var(--space-5) on top of
+   the same value on .screen, so every screen title sat 40px in while the
+   content under it sat 20px in, and the two never lined up. Aligned to the
+   left, the title now starts a screen where its first card does. */
 .screen-header {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-5) var(--space-5) var(--space-3);
+  padding: var(--space-5) 0 var(--space-3);
   position: relative;
 }
+/* A hidden title is taken out of the flow, so the header's own padding
+   would otherwise be 32px of nothing above the screen's first group
+   heading - which is most of the gap the redundant title was leaving
+   behind in the first place. The heading below brings its own space. */
+.screen-header.is-title-hidden { padding: 0; }
+.screen-header-row {
+  display: flex; align-items: center; gap: var(--space-3);
+}
 .screen-title {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-display);
   font-size: var(--text-2xl);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--display-track);
   line-height: var(--leading-display);
-  flex: 1;
   margin: 0;
+}
+.screen-subtitle {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  margin: var(--space-2) 0 0;
 }
 .header-action { display: flex; gap: var(--space-2); }
 

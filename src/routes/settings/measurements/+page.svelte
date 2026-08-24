@@ -8,6 +8,7 @@
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Measurement } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -132,20 +133,16 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.body_measurements()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.body_measurements()} back="/settings" subtitle={m.measurements_intro()}>
+    {#snippet actions()}
       <button class="icon-btn" data-manage-types aria-label={m.measurement_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
       </button>
       <button class="icon-btn" data-add aria-label={m.measurement_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
-    </div>
-  </header>
-
-  <p class="muted small" style="margin-bottom:var(--space-3)">{m.measurements_intro()}</p>
+    {/snippet}
+  </ScreenHeader>
   <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
   {#if !prefs.measurementProtocolDismissed[type] && PROTOCOL[type]}

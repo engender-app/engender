@@ -87,7 +87,7 @@ try {
   await page.locator('[data-mood="4"]').click();
   await page.waitForSelector('#ed-note');
   await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
-  await page.locator('[data-editor-back]').click();
+  await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-entry-card]');
   const afterCards = await page.locator('[data-entry-card]').count();
   if (afterCards !== beforeCards) throw new Error(`home entry count changed: ${beforeCards} -> ${afterCards}`);

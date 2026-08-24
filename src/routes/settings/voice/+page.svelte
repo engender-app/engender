@@ -10,6 +10,7 @@
     toggleCompareAnchor
   } from '$lib/data/voice/compare-state';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -45,11 +46,7 @@
 
 <div class="screen">
   {#if comparing && pair}
-    <header class="screen-header">
-      <button class="icon-btn" aria-label={m.back()} onclick={() => (comparing = false)}><Icon name="arrowLeft" /></button>
-      <h1 class="screen-title">{m.vc_compare()}</h1>
-      <div class="header-action"></div>
-    </header>
+    <ScreenHeader title={m.vc_compare()} back={() => (comparing = false)} />
     <p class="compare-gap">{gapLabel}</p>
     <div class="compare-wrap">
       {#each [{ i: pair.left, which: 'left' as const, canPrev: pair.left > 0, canNext: pair.left < pair.right - 1 }, { i: pair.right, which: 'right' as const, canPrev: pair.right > pair.left + 1, canNext: pair.right < recordings.length - 1 }] as side (side.which)}
@@ -72,11 +69,7 @@
       </button>
     </div>
   {:else}
-    <header class="screen-header">
-      <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-      <h1 class="screen-title">{m.recordings_label()}</h1>
-      <div class="header-action"></div>
-    </header>
+    <ScreenHeader title={m.recordings_label()} back="/settings" />
     {#if recordingsQuery.loading}
       <Skeleton variant="line" count={4} />
     {:else if recordings.length}

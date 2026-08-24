@@ -17,6 +17,7 @@
   import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -182,12 +183,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.hair_progress()}</h1>
-  </header>
-
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_intro()}</p>
+  <ScreenHeader title={m.hair_progress()} back="/settings" subtitle={m.hair_intro()} />
 
   {#if dosesQuery.loading}
     <Skeleton variant="block" count={1} />

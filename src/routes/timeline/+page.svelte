@@ -8,6 +8,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
 
   type Item =
     | { kind: 'milestone'; m: Milestone; status: string; future: boolean }
@@ -47,13 +48,11 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.timeline()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.timeline()} back="/">
+    {#snippet actions()}
       <a class="icon-btn" href="/settings/milestones" aria-label={m.tl_add_aria()}><Icon name="plus" size={22} /></a>
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
 
   {#if vocabulary.milestones.length}
     <p class="muted small" style="margin-bottom:var(--space-5)">{m.tl_intro()}</p>

@@ -4,8 +4,8 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import Icon from '$lib/components/Icon.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -34,11 +34,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/stats" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.body_map_title()}</h1>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.body_map_sub()}</p>
+  <ScreenHeader title={m.body_map_title()} back="/stats" subtitle={m.body_map_sub()} />
 
   {#if regions.length}
     <Segmented

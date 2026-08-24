@@ -12,6 +12,7 @@
   import type { StockProjectionRow } from '$lib/data/journal/stock';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -75,16 +76,13 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings/regimen" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.stock_title()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.stock_title()} back="/settings/regimen" subtitle={m.stock_intro()}>
+    {#snippet actions()}
       <button class="icon-btn" data-add aria-label={m.stock_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
-    </div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.stock_intro()}</p>
+    {/snippet}
+  </ScreenHeader>
 
   {#if rowsQuery.loading}
     <Skeleton variant="block" count={1} />

@@ -44,6 +44,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -313,16 +314,13 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings/regimen" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.doses()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.doses()} back="/settings/regimen" subtitle={m.doses_intro()}>
+    {#snippet actions()}
       <button class="icon-btn" data-add aria-label={m.doses_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
-    </div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.doses_intro()}</p>
+    {/snippet}
+  </ScreenHeader>
 
   <Segmented
     name={m.doses()}

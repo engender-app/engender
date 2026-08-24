@@ -11,6 +11,7 @@
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -113,12 +114,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.milestones()}</h1>
-    <div class="header-action"></div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.ms_intro()}</p>
+  <ScreenHeader title={m.milestones()} back="/settings" subtitle={m.ms_intro()} />
 
   <div class="card editor-section">
     <div class="spread" style="margin-bottom:var(--space-3)">

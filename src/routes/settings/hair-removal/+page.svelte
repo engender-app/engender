@@ -13,6 +13,7 @@
   import { pickPhotos } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
@@ -116,15 +117,13 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.hair_removal()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.hair_removal()} back="/settings">
+    {#snippet actions()}
       <button class="icon-btn" data-add aria-label={m.hair_removal_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
 
   {#if sessionsQuery.loading}
     <Skeleton variant="block" count={1} />

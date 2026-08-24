@@ -6,6 +6,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
 
@@ -48,12 +49,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.custom_dimension()}</h1>
-    <div class="header-action"></div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.cd_intro()}</p>
+  <ScreenHeader title={m.custom_dimension()} back="/settings" subtitle={m.cd_intro()} />
 
   <div class="card editor-section">
     <div class="field">

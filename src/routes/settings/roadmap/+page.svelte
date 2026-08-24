@@ -18,6 +18,7 @@
     roadmapTrackName
   } from '$lib/data/vocabulary/roadmapLabels';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -76,12 +77,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.roadmap_title()}</h1>
-  </header>
-
-  <p class="muted small">{m.roadmap_intro()}</p>
+  <ScreenHeader title={m.roadmap_title()} back="/settings" subtitle={m.roadmap_intro()} />
   <div class="card" style="margin:var(--space-3) 0">
     <p class="quicklog-title">{roadmapPackName(pack.key)}</p>
     <p class="small" style="margin:0">{roadmapPackCaveat(pack.key)}</p>

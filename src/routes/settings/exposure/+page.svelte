@@ -8,7 +8,7 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { routeLabel } from '$lib/data/vocabulary/doseLabels';
-  import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -23,11 +23,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings/regimen" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.exposure_title()}</h1>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.exposure_intro()}</p>
+  <ScreenHeader title={m.exposure_title()} back="/settings/regimen" subtitle={m.exposure_intro()} />
 
   <div class="segmented" role="radiogroup" aria-label={m.exposure_range_group()} style="margin-bottom:var(--space-4)">
     {#each RANGES as r (r)}

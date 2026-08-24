@@ -7,6 +7,7 @@
   import { metricKey } from '$lib/data/prefs/catalogue';
   import Icon from '$lib/components/Icon.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
@@ -132,9 +133,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <h1 class="screen-title" data-screen-title>{m.stats_title({ days: String(range) })}</h1>
-  </header>
+  <ScreenHeader title={m.stats_title({ days: String(range) })} />
 
   <div class="segmented" role="radiogroup" aria-label={m.stats_range_group()} style="margin-bottom:var(--space-4)">
     {#each RANGES as r (r)}

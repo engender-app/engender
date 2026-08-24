@@ -5,6 +5,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -27,11 +28,7 @@
 </script>
 
 <div class="screen" data-screen>
-  <header class="screen-header">
-    <a class="icon-btn" href="/search" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.starred_shelf_title()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={m.starred_shelf_title()} back="/search" />
 
   {#if loading}
     <Skeleton variant="card" count={3} />

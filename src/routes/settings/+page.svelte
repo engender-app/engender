@@ -5,6 +5,7 @@
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -89,7 +90,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header"><h1 class="screen-title">{m.nav_settings()}</h1></header>
+  <ScreenHeader title={m.nav_settings()} />
 
   <SectionTitle text={m.settings_appearance()} />
   <div class="card">

@@ -35,6 +35,7 @@
   import type { DoseEvent, LabResult } from '$lib/data/types';
   import type { Snippet } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -292,16 +293,13 @@
 {/snippet}
 
 <div class="screen">
-  <header class="screen-header no-print">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.clinician_summary_title()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.clinician_summary_title()} back="/settings" class="no-print" subtitle={m.clinician_summary_intro()}>
+    {#snippet actions()}
       <button class="icon-btn" aria-label={m.clinician_summary_print()} onclick={printSummary}>
         <Icon name="share" size={22} />
       </button>
-    </div>
-  </header>
-  <p class="muted small no-print" style="margin-bottom:var(--space-4)">{m.clinician_summary_intro()}</p>
+    {/snippet}
+  </ScreenHeader>
 
   <div class="card no-print" style="margin-bottom:var(--space-4)">
     <div class="cd-endpoints">
