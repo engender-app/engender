@@ -4,7 +4,23 @@
    ============================================================ */
 
 /* ---------- Home ---------- */
-.home-header { position: relative; padding: var(--space-7) 0 var(--space-4); z-index: 1; }
+/* Ticket 19: widened past .screen's own horizontal padding (negative
+   margin) and padded back out to the same inset, so the flag sun's corner
+   point lands exactly on the screen's true top right corner rather than
+   the padded content edge - matching "centred exactly on the screen's top
+   right corner" (DIRECTION.md) - while the greeting text keeps its usual
+   alignment with everything below it. overflow: hidden clips the sun's
+   bleed to a clean quarter instead of a scrollable overhang; min-height
+   keeps that quarter from clipping again against this header's own bottom
+   edge before the innermost ring finishes drawing (SUN_OUTER/2 in
+   $lib/motion/flagSun.ts). */
+.home-header {
+  position: relative; z-index: 1;
+  padding: var(--space-7) var(--space-5) var(--space-4);
+  margin: 0 calc(-1 * var(--space-5));
+  overflow: hidden;
+  min-height: 175px;
+}
 .home-hero {
   font-family: var(--font-display);
   font-size: 2.4rem; font-weight: 700;

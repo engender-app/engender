@@ -681,28 +681,48 @@ html[data-a11y-motion='reduce'] .confetti .cf {
    glyph itself keeps its size; this only grows the surrounding hit area. */
 .notice .icon-btn { width: var(--touch-target); height: var(--touch-target); color: inherit; }
 
-/* ---------- pride aurora motif ---------- */
-.pride-aurora {
-  position: absolute; top: -70px; left: -25%; right: -25%; height: 280px;
-  background: linear-gradient(105deg, var(--motif-stripes));
-  background-size: 170% 100%;
-  filter: blur(30px) saturate(1.35);
-  opacity: 0.6;
+/* ---------- flag sun (ticket 19, DIRECTION.md's tier 0) ----------
+   Replaces the pride aurora above: one concentric ring per stripe instead
+   of a blurred wash, Home-only (ADR-0035). `.sun` is a zero-size point
+   pinned to the screen's top right corner; each ring centres on that same
+   point via translate(-50%, -50%) and is sized/coloured per-instance
+   through --d/--c, set inline by FlagSun.svelte from --motif-stripes.
+
+   Confined to .home-header on purpose: that header is already the app's
+   one deliberately-stacked surface (position: relative; z-index: 1), so
+   the sun's negative z-index only has to beat its own header siblings, and
+   can never end up in front of a later .card the way the aurora's did
+   (ADR-0035's "Consequences": a positioned element paints over a static
+   sibling regardless of DOM order, however z-index reads). */
+.sun {
+  position: absolute; top: 0; right: 0; width: 0; height: 0;
+  z-index: -1;
   pointer-events: none;
-  border-radius: 50%;
-  z-index: 0;
-  mask-image: linear-gradient(to bottom, black 25%, transparent 92%);
-  -webkit-mask-image: linear-gradient(to bottom, black 25%, transparent 92%);
-  /* MO-005: used to drift back and forth forever - the largest permanently
-     animating element in the app, and the likeliest motion cost against the
-     Android performance guardrail. Plays once on entry and rests on its
-     final frame. */
-  animation: aurora-drift var(--dur-slow) var(--ease-out) both;
 }
-[data-theme="dark"] .pride-aurora { opacity: 0.42; }
-@keyframes aurora-drift {
-  from { background-position: 0% 0; transform: translateY(0); }
-  to { background-position: 100% 0; transform: translateY(10px); }
+.sun i {
+  position: absolute; top: 0; left: 0; display: block; border-radius: 50%;
+  width: var(--d); height: var(--d); background: var(--c);
+  transform: translate(-50%, -50%);
+  animation:
+    ring-in var(--dur-authored) cubic-bezier(0.2, 0.7, 0.3, 1) var(--in-delay) both,
+    breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
+}
+@keyframes ring-in {
+  from { transform: translate(-50%, -50%) scale(0); }
+  to { transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.035); }
+}
+/* MO-001: the global reduce rule clamps every animation's duration to 1ms,
+   which turns breathe's infinite loop into a restart-every-millisecond
+   flicker instead of stillness. Stopped outright instead, same as the
+   app's other four decorative loops - the rings rest at their own base
+   rule (no scale term, i.e. scale(1)), fully drawn. */
+html[data-a11y-motion='reduce'] .sun i { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .sun i { animation: none; }
 }
 
 /* ---------- PIN pad ---------- */
