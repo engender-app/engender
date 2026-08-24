@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { colorMixOklab, contrast, luminance, toRgb } from '../src/lib/theme/colour';
 
 const css = readFileSync('src/lib/theme/palettes.css', 'utf8');
 
@@ -39,82 +40,6 @@ function moodPresetTokenMap(preset: string, theme: (typeof THEMES)[number]) {
     out[match[1]] = match[2];
   }
   return out;
-}
-
-function toRgb(hex: string) {
-  const raw = hex.slice(1);
-  return {
-    r: Number.parseInt(raw.slice(0, 2), 16),
-    g: Number.parseInt(raw.slice(2, 4), 16),
-    b: Number.parseInt(raw.slice(4, 6), 16)
-  };
-}
-
-function linear(n: number) {
-  const s = n / 255;
-  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-}
-
-function luminance(hex: string) {
-  const { r, g, b } = toRgb(hex);
-  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
-}
-
-function contrast(a: string, b: string) {
-  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-/* ---- OKLab color-mix, replicated to evaluate the heat-map ramp's
-   `color-mix(in oklab, ...)` formulas the same way a browser would. ---- */
-function srgbToLinear(c: number) {
-  c /= 255;
-  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-}
-function linearToSrgb(c: number) {
-  c = Math.max(0, Math.min(1, c));
-  return c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055;
-}
-function rgbToOklab([r, g, b]: number[]) {
-  const [lr, lg, lb] = [srgbToLinear(r), srgbToLinear(g), srgbToLinear(b)];
-  const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
-  const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
-  const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
-  const l_ = Math.cbrt(l);
-  const m_ = Math.cbrt(m);
-  const s_ = Math.cbrt(s);
-  return [
-    0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_,
-    1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_,
-    0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
-  ];
-}
-function oklabToRgb([L, a, b]: number[]) {
-  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
-  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
-  const s_ = L - 0.0894841775 * a - 1.291485548 * b;
-  const l = l_ ** 3;
-  const m = m_ ** 3;
-  const s = s_ ** 3;
-  const lr = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-  const lg = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-  const lb = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
-  return [linearToSrgb(lr) * 255, linearToSrgb(lg) * 255, linearToSrgb(lb) * 255];
-}
-function toHex(rgb: number[]) {
-  return (
-    '#' +
-    rgb
-      .map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0'))
-      .join('')
-  );
-}
-/** `color-mix(in oklab, hexA pctA%, hexB)` as the browser evaluates it. */
-function colorMixOklab(hexA: string, pctA: number, hexB: string) {
-  const a = rgbToOklab(Object.values(toRgb(hexA)));
-  const b = rgbToOklab(Object.values(toRgb(hexB)));
-  const t = pctA / 100;
-  return toHex(oklabToRgb([0, 1, 2].map((i) => a[i] * t + b[i] * (1 - t))));
 }
 
 /** The accent percentage in `--heat-N: color-mix(in oklab, var(--accent)

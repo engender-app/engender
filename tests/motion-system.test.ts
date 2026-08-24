@@ -29,6 +29,7 @@ const SHEETS = [
   'src/lib/motion/materials.css',
   'src/lib/styles/app.css',
   'src/lib/styles/components.css',
+  'src/lib/styles/kit.css',
   'src/lib/styles/screens.css'
 ];
 

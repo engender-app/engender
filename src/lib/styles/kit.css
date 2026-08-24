@@ -1,0 +1,966 @@
+/* The surface kit and the chart kit (phase 5 ticket 20).
+
+   These are the surfaces every redesigned screen is assembled from, and
+   they exist as several kinds on purpose: DIRECTION.md's decision 2b says
+   one rounded card repeated down a screen is what made the app read as
+   generic, so a screen picks the surfaces its content needs rather than
+   pouring everything into the same box.
+
+   Everything here follows the two-surface rule. Separation is a 1px
+   outline, never a shadow - the app's one shadow belongs to the floating
+   nav bar and its add button - and colour arrives as flat fill and as
+   coloured text, never as a gradient, a glow or a veil.
+
+   The classes are prefixed `kit-` while the old world is still standing.
+   `.card`, `.list-row` and `.section-title` in components.css are the
+   screens' current vocabulary and the screen tickets replace them one
+   screen at a time; the prefix is what lets both exist in the same
+   stylesheet until the last of them goes. */
+
+/* ---------- section colour ----------
+
+   A screen's areas each take one stripe of the active flag (DIRECTION.md).
+   The stripe arrives as --role on the surface, from $lib/theme/roles.ts,
+   and everything a surface needs is derived from it here rather than at
+   each call site.
+
+   A role arrives as three values, all from $lib/theme/roles.ts: --role, the
+   flag's own stripe; --role-ink-in, the version of it that carries small
+   text at 4.5:1; and --role-mark-in, the version that draws a chart line, a
+   bar, an icon or a display number at 3:1.
+
+   Two of them because the floors are different and the difference is
+   visible. Holding a mark to the text floor darkens every bright stripe on
+   the light theme and lightens every dark one on the dark theme, and the
+   app stops looking like the flag it came from and starts looking like a
+   muted copy of it. A label is small and answers to 4.5:1; a 26px bar and a
+   32px number do not.
+
+   And a fill answers to nothing, so it is --role itself. A disc, a tinted
+   date bar and a week cell are colour rather than information: there is
+   nothing on them to read and their edge is a 1px outline. Running them
+   through a floor is what made nonbinary's week green - #FCF434 darkened to
+   #887c00 to clear 3:1, which is olive, and no amount of it is yellow.
+
+   The mix below is the floor under that, for a surface handed a bare
+   --role with no ink: the stripe at 30% into --text, which is the tightest
+   fixed mix that clears 4.5:1 everywhere a role lands across all 8
+   palettes and both themes. It is deliberately the fallback rather than the
+   path - a fixed mix toward --text desaturates as it goes, so on the dark
+   theme every stripe comes out a pastel of itself. tests/kit-roles.test.ts
+   holds both to 4.5:1. Where no role is given at all the accent stands in,
+   which is what an uncoloured screen area already looks like.
+
+   Everything a surface paints is derived from one of the two rather than
+   from the raw stripe, for the reason they exist at all: a flag has a white
+   band, and a white line on a white card is not a chart. The raw stripe
+   survives as --role-c, which nothing but the fallback ink reads. */
+.kit-row,
+.kit-day,
+.kit-tile,
+.kit-strip,
+.kit-chart,
+.kit-notice {
+  --role-c: var(--role, var(--accent));
+  --role-ink: var(--role-ink-in, color-mix(in oklab, var(--role-c) 30%, var(--text)));
+  --role-mark: var(--role-mark-in, var(--role-ink));
+  /* Fills are the flag's own stripe, undiluted by any contrast floor: a
+     tinted disc and a shaded week cell carry no information and sit under
+     nothing that has to be read, so nothing about them owes a ratio. This
+     is where the palette was going wrong - nonbinary's yellow darkened to
+     olive to clear a floor it never owed, and a 15% tint of olive is mud. */
+  --role-tint: color-mix(in oklab, var(--role-c) 15%, var(--surface));
+  --role-wash: color-mix(in oklab, var(--role-c) 12%, var(--bg));
+}
+
+/* ---------- section header ----------
+
+   Display face at the screen-title size with no icon (DIRECTION.md 3c).
+   The 12.5px letterspaced grey label it replaces was the flattest possible
+   way to divide a screen: a screen should read as a few named areas, not
+   as an undifferentiated column of cards. The rows below carry the icons;
+   the heading does not. */
+.kit-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-5) var(--space-1) var(--space-3);
+}
+
+.kit-heading:first-child {
+  padding-top: var(--space-2);
+}
+
+.kit-heading h2 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-display);
+  letter-spacing: var(--display-track);
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kit-heading-action {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding-inline: var(--space-3);
+  color: var(--accent-ink);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  text-decoration: none;
+}
+
+/* ---------- list card ----------
+
+   Rows with a hairline separator, an icon disc, a title, an optional
+   subtitle and a chevron. The separator runs the full width of the card:
+   an earlier pass removed separators entirely and a long list stopped
+   reading as a list.
+
+   Subtitles are earned rather than standard (DIRECTION.md 3b) - the More
+   hub's 22 rows carry titles alone - so the row draws whatever it is
+   given and nothing reserves space for a subtitle that is not there. */
+.kit-list {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+
+.kit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--touch-target);
+  position: relative;
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition-property: background-color;
+  transition-duration: var(--dur-fast);
+}
+
+.kit-row + .kit-row::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: var(--hairline);
+}
+
+/* Tier 1, response: a row is the width of the screen, and scaling one
+   moves the whole card. What answers the press here is the fill. */
+.kit-row:active {
+  background: var(--role-wash);
+}
+
+.kit-row-ico {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--role-mark);
+  background: var(--role-tint);
+}
+
+.kit-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.kit-row-title {
+  display: block;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: 1.25;
+}
+
+.kit-row-sub {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  line-height: 1.25;
+}
+
+.kit-row-trail {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+/* ---------- day card ----------
+
+   Entries grouped under a tinted date bar. The tint is the section's own
+   stripe, which is what makes a run of days read as one area of the screen
+   rather than as a stack of identical cards.
+
+   Inside, the day is a timeline: a hairline runs down the entries and each
+   mood sits on it, with the time beside the mark. The shape of a day -
+   three entries close together in the evening, one in the morning - is
+   then visible before a word of it is read. It also does the job the
+   separator lines were doing between entries, so those are gone and the
+   rows close up; DIRECTION.md's decision 3 asks for tighter rather than
+   airier, and two entries a whole card-padding apart was the opposite. */
+.kit-day {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+
+.kit-day-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--role-tint);
+  color: var(--role-ink);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+}
+
+.kit-day-aside {
+  margin-left: auto;
+  color: var(--text-2);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.kit-day-body {
+  padding: var(--space-2) 0 var(--space-3);
+}
+
+.kit-entry {
+  display: grid;
+  grid-template-columns: auto 26px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0 var(--space-3);
+  padding: 0 var(--space-4);
+}
+
+/* The hour sits on the same 26px line the face does, so the two read as one
+   mark on the rail rather than as a label that slipped. */
+.kit-entry-time {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The rail: one segment per entry, running the whole height of its row so
+   the segments meet. Drawn behind the mark, and stopping half way through
+   the first and last one so the line begins and ends on a mood rather than
+   in mid-air. An entry whose note runs to two lines is taller than its
+   face, which is what left the first version of this in pieces. */
+.kit-entry-mark {
+  position: relative;
+  display: grid;
+  grid-template-rows: 26px 1fr;
+  justify-items: center;
+  align-self: stretch;
+}
+
+.kit-entry-mark::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--hairline);
+}
+
+/* 13px is the middle of the 26px face at the top of the cell. */
+.kit-entry:first-child .kit-entry-mark::before { top: 13px; }
+.kit-entry:last-child .kit-entry-mark::before { bottom: calc(100% - 13px); }
+
+.kit-entry-mark > * {
+  position: relative;
+  grid-row: 1;
+  align-self: center;
+}
+
+/* An entry logged without a mood still sits on the rail, as a plain node
+   rather than as a gap in it. */
+.kit-entry-nomood {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid var(--outline-strong);
+}
+
+.kit-entry-body {
+  min-width: 0;
+  padding-bottom: var(--space-2);
+}
+
+/* Whatever comes first in an entry - a title, or the note where there is
+   no title - sits level with the face and the hour beside it. The face is
+   26px and a line of text is not, so the first line is nudged down by half
+   the difference. `lh` is the exact measure of that line and Chromium has
+   had it since 110; 3px under it is what an older WebView gets, which is
+   within half a pixel of both sizes the kit sets here. */
+.kit-entry-body > :first-child {
+  padding-top: 3px;
+}
+
+@supports (padding-top: 1lh) {
+  .kit-entry-body > :first-child {
+    padding-top: calc((26px - 1lh) / 2);
+  }
+}
+
+.kit-entry-title {
+  display: block;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  line-height: 1.3;
+}
+
+.kit-entry-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- tile grid ----------
+
+   Two-up destinations that carry their own data. Deliberately not
+   icon-plus-heading-plus-text cards: the craft floor names that pattern as
+   the lazy page scaffold, and the first prototype round shipped it before
+   the slop audit caught it. A tile shows a title and the number or line
+   that is the reason to go there. */
+.kit-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.kit-tile {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  min-height: 108px;
+  padding: var(--space-4);
+  background: var(--role-tint);
+  /* The edge is the stripe rather than the app's grey outline: two tiles
+     side by side each take their own colour from the flag, so the pair
+     reads as two of its bands rather than as one tinted block repeated. */
+  border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);
+  border-radius: var(--r-card);
+  color: inherit;
+  text-decoration: none;
+}
+
+.kit-tile-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  color: var(--role-ink);
+}
+
+.kit-tile-value {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--display-track);
+  line-height: 1;
+  /* Display size, so it answers to the 3:1 floor and keeps the stripe. */
+  color: var(--role-mark);
+  justify-self: start;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The flag under the number: the real stripes at their real values, in
+   stripe order, in the flag's own proportions, turned a quarter so the
+   bands run across the bar rather than down it. The value is an
+   inline-block so the bar measures the digits rather than the column they
+   sit in, and the whole thing is hidden from a screen reader - it says
+   nothing the number does not.
+
+   A little longer than the number and thin: at 6px it reads as a rule that
+   happens to be a flag, which is what an underline should be, and every
+   flag's bands stay full height whatever the count. */
+.kit-tile-value {
+  display: inline-block;
+}
+
+.kit-tiles[style*='--flag-fill'] .kit-tile-value::after {
+  content: '';
+  display: block;
+  width: calc(100% + var(--space-3));
+  height: 6px;
+  margin-top: var(--space-2);
+  border-radius: 3px;
+  background-image: var(--flag-fill);
+}
+
+.kit-tile-note {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- mood's face ----------
+
+   The drawing an entry and a chip both carry. The ink is --text at the
+   opacity the picker has always drawn it at, which the ADR-0025 ramp is
+   built to carry at 4.5:1 whichever step is underneath. */
+.kit-face {
+  width: var(--face-size);
+  height: var(--face-size);
+  display: block;
+  flex: 0 0 auto;
+}
+
+.kit-face-disc {
+  fill: var(--face-mood);
+}
+
+.kit-face-eye {
+  fill: var(--text);
+  opacity: 0.75;
+}
+
+.kit-face-mouth {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+/* On a chip the face sits on the mood's own fill with no disc of its own,
+   and the ink comes up to full strength: there is no circle under it doing
+   half the work of saying which step this is. */
+.kit-chip .kit-face-eye,
+.kit-chip .kit-face-mouth {
+  opacity: 1;
+}
+
+/* ---------- chip row ----------
+
+   The mood picker, flush to the page with no container at all. Mood is a
+   filled tile with its label inside it rather than a dot, because the
+   ADR-0025 ramp is built to be sat on: its steps are chosen so --text
+   clears 4.5:1 on top of them, and on the dark theme they are all dark, so
+   as small dots on a dark panel they have almost no separation. */
+.kit-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: var(--space-2);
+}
+
+.kit-chip {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-2);
+  min-height: 56px;
+  padding: var(--space-3) 2px var(--space-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+  background: var(--chip-fill, var(--surface));
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+/* The selected chip takes the accent's own edge rather than a fill, since
+   the fill is already carrying the mood step. Two pixels of border rather
+   than one, and the resting chip reserves the same box, so selecting one
+   moves nothing beside it. */
+.kit-chip[aria-checked='true'] {
+  border: 2px solid var(--accent);
+  padding: calc(var(--space-3) - 1px) 1px calc(var(--space-2) - 1px);
+}
+
+
+/* ---------- bare strip ----------
+
+   The week, uncontained: it sits directly on the page with no card around
+   it.
+
+   Its intensity ramp is built from the section's own stripe rather than
+   from --heat-*, which the rest of the app derives from --accent. Both are
+   single-hue and neither judges (ADR-0012), but the accent is one colour
+   the palette picked and the stripe is the flag's - and a week strip on the
+   trans palette shading in the accent's rose while the icon discs beside it
+   are the flag's blue is what "the colours do not relate to the flag" looks
+   like. The steps are the heat ramp's own (22, 45, 70, 100), so a cell here
+   and a calendar cell still read as the same scale. */
+.kit-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding: 0 var(--space-1);
+}
+
+.kit-strip-day {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  min-width: 0;
+}
+
+.kit-strip-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--outline);
+  display: block;
+  background: color-mix(in oklab, var(--role-c) calc(var(--level) * 1%), var(--surface-2));
+}
+
+.kit-strip-day.is-today .kit-strip-cell {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.kit-strip-name {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-2);
+}
+
+/* ---------- notice ----------
+
+   One outline, no coloured bar down its side. A 4px accent border-left is
+   named in the craft floor as the single most recognisable AI-UI tell, and
+   the slop audit took it off the backup notice this replaces. The notice
+   earns its weight from --outline-strong instead: the same line as a card,
+   one step darker. */
+.kit-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--outline-strong);
+  border-radius: var(--r-card);
+  font-size: var(--text-sm);
+}
+
+/* The icon takes the same disc a list row's does. At 20px on bare card it
+   read as something that had failed to load rather than as a mark, and the
+   disc is the vocabulary the kit already has for exactly this. */
+.kit-notice-ico {
+  grid-column: 1;
+  grid-row: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--role-mark);
+  background: var(--role-tint);
+}
+
+.kit-notice-body {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.kit-notice-title {
+  display: block;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+
+.kit-notice-text {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.kit-notice-act {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  margin: 0 0 calc(var(--space-2) * -1) calc(var(--space-3) * -1);
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+.kit-notice-x {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  margin: -10px -10px 0 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+/* ============================================================
+   The chart kit.
+
+   Flat marks carrying their own values: no gridlines, no legend, no axis
+   furniture, and single-hue intensity with the leader at full strength and
+   the rest a diluted step of the same hue - which is the style read off
+   zabka-dashboard and also what ADR-0012 requires.
+
+   What is deliberately not taken from that reference is its editorial
+   habit. There every chart is headed by a sentence stating the finding and
+   a paragraph explaining it. Here a heading names what the chart shows and
+   never what it means: "Day by day", not "Gender feeling moved from 50 to
+   80". PRODUCT.md says the app never interprets a value, and a headline is
+   an interpretation. There is nowhere in these rules for that paragraph to
+   go, which is the point.
+   ============================================================ */
+
+.kit-chart {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  padding: var(--space-4);
+}
+
+.kit-chart-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.kit-chart-head h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-lg);
+  line-height: var(--leading-display);
+  letter-spacing: var(--display-track);
+  color: var(--text);
+}
+
+/* The heading's one control, and it sits inside the heading's own line
+   rather than towering over it: the pill is as tall as the text beside it.
+
+   A control still has to be 48dp to press, so the select is the full touch
+   target, invisible, laid over the pill. The one that is seen and the one
+   that is pressed are the same control - the span is inert and hidden from
+   a screen reader, and every event, every announcement and the platform's
+   own picker belong to the select. */
+.kit-chart-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  max-width: 52%;
+}
+
+.kit-chart-pick select {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: var(--touch-target);
+  min-height: var(--touch-target);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.kit-chart-pick-face {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  height: calc(var(--text-lg) * var(--leading-display));
+  padding: 0 var(--space-2) 0 var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+
+.kit-chart-pick-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kit-chart-pick-face svg {
+  flex: 0 0 auto;
+  color: var(--text-2);
+}
+
+.kit-chart-pick select:focus-visible + .kit-chart-pick-face {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.kit-chart-body {
+  margin-top: var(--space-3);
+}
+
+.kit-chart-empty {
+  margin: var(--space-3) 0 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+/* --- area ---
+
+   A timeline that scrolls rather than a range squashed into a card. The
+   value gutter sits outside the scroller: a scale that slides away with the
+   data is not a scale. */
+.kit-area {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.kit-area-scale {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 132px;
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  /* Each label names the line it sits on: the plot is inset by 7px top and
+     bottom for the ring, and the label centres on the line rather than
+     sitting under it. */
+  padding-block: calc(7px - 0.55em);
+}
+
+.kit-area-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  /* The far end is the newest reading, which is what a chart of your own
+     history opens on. */
+  direction: rtl;
+}
+
+.kit-area-scroll::-webkit-scrollbar { display: none; }
+
+.kit-area-plot {
+  display: block;
+  direction: ltr;
+  overflow: visible;
+}
+
+.kit-area-fill {
+  fill: color-mix(in oklab, var(--role-mark) 16%, transparent);
+}
+
+.kit-area-line {
+  fill: none;
+  stroke: var(--role-mark);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* The latest reading, ringed on the line rather than annotated beside it:
+   the mark is the label. Filled with the card colour so the line does not
+   show through it. */
+.kit-area-ring {
+  fill: var(--surface);
+  stroke: var(--role-mark);
+  stroke-width: 2.5;
+}
+
+.kit-area-dot {
+  fill: var(--role-mark);
+  opacity: 0.55;
+}
+
+/* The range beneath, under the plot rather than under the gutter. */
+.kit-area-range {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- horizontal bars ---
+
+   The bar runs the full width of the card with its label and its value on
+   a line above it, rather than sitting in a right-hand column behind a
+   label gutter. Single-hue: the leader is the stripe at full strength and
+   every other bar is one diluted step of that same colour, which is the
+   whole of the ramp. */
+.kit-bars {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.kit-bar-label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.kit-bar-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kit-bar-value {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.kit-bar-track {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.kit-bar-mark {
+  display: block;
+  height: 26px;
+  border-radius: 8px;
+  width: calc(var(--bar-share) * 1%);
+  min-width: 2px;
+  background: color-mix(in oklab, var(--role-mark) 62%, var(--surface));
+  transform: scaleX(1);
+  transform-origin: left center;
+  animation: kit-bar-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--bar-index, 0) * var(--stagger-step));
+  transition-property: width;
+  transition-duration: var(--dur-slow);
+  transition-timing-function: var(--ease-out);
+}
+
+@keyframes kit-bar-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.kit-bar-mark.is-leader {
+  background: var(--role-mark);
+}
+
+/* --- vertical distribution ---
+
+   Mood's own ramp (ADR-0025), which is independent of the flag palette:
+   the bar for each step is that step's colour, so the distribution is read
+   against the same scale the picker uses. */
+.kit-dist {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--space-2);
+  align-items: end;
+  height: 124px;
+}
+
+.kit-dist-step {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-2);
+  justify-items: center;
+  height: 100%;
+}
+
+.kit-dist-count {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.kit-dist-mark {
+  display: block;
+  width: 100%;
+  align-self: end;
+  height: calc(var(--bar-share) * 1%);
+  min-height: 6px;
+  border-radius: 6px 6px 2px 2px;
+  border: 1px solid var(--outline);
+  background: var(--dist-fill, var(--role-mark));
+  transition-property: height;
+  transition-duration: var(--dur-slow);
+  transition-timing-function: var(--ease-out);
+}
+
+.kit-dist-name {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
