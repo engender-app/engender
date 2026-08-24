@@ -1412,6 +1412,22 @@ UPDATE regimen_episode AS e
    );
 `;
 
+/* v41: the doubt journal's free-write composer is removed (phase 5 ticket
+   16, ADR-0037, CONTEXT: "Counterevidence check" replaces "Doubt entry").
+   `/doubt` becomes a pure read over the counterevidence pool; there is
+   nothing left to write a `doubt_entry` row for.
+
+   The table is dropped outright, taking every existing row with it - the
+   app's one deliberate exception to giving deletion an undo window
+   (ADR-0037), with no export prompt and no grace period. `doubt_snapshot`
+   and `doubt_snapshot_entry` carry no foreign key to `doubt_entry` and are
+   untouched: a snapshot is its own frozen copy of what it showed, not a
+   reference to a doubt entry. SQLite drops a table's indexes with the
+   table, so `idx_doubt_entry_epoch_day` needs no statement of its own. */
+const SCHEMA_V41 = `
+DROP TABLE doubt_entry;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1452,7 +1468,8 @@ export const migrations: Migration[] = [
   { version: 37, sql: SCHEMA_V37 },
   { version: 38, sql: SCHEMA_V38 },
   { version: 39, sql: SCHEMA_V39 },
-  { version: 40, sql: SCHEMA_V40 }
+  { version: 40, sql: SCHEMA_V40 },
+  { version: 41, sql: SCHEMA_V41 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

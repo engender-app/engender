@@ -1,51 +1,10 @@
-/* The doubt journal area (phase 4 ticket 11, CONTEXT: "Doubt entry",
-   "Counterevidence snapshot"). */
+/* The doubt journal area (phase 4 ticket 11, CONTEXT: "Counterevidence
+   snapshot"; its free-write doubt entries retired by phase 5 ticket 16,
+   ADR-0037). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
-
-test('a doubt entry round-trips its text, and reads back newest first', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const earlier = await journal.doubtJournal.addEntry({ epochDay: 100, text: 'maybe this is all in my head' });
-  const later = await journal.doubtJournal.addEntry({ epochDay: 102, text: 'am I even trans enough for this' });
-
-  assert.match(later, UUID_PATTERN);
-  const entries = await journal.doubtJournal.getEntries(10);
-  assert.equal(entries.length, 2);
-  assert.equal(entries[0].id, later);
-  assert.equal(entries[1].id, earlier);
-  assert.equal(entries[0].text, 'am I even trans enough for this');
-  assert.equal(entries[0].epochDay, 102);
-});
-
-test('blank text is refused before it ever reaches a screen', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await assert.rejects(journal.doubtJournal.addEntry({ epochDay: 100, text: '   ' }));
-});
-
-test('a doubt entry carries no mood, dimension values, tags or note, and writes no entry row', async () => {
-  const { journal, db } = await journalWithBuiltIns();
-  await journal.doubtJournal.addEntry({ epochDay: 100, text: 'spiraling again' });
-
-  const [entry] = await journal.doubtJournal.getEntries(10);
-  for (const field of ['mood', 'note', 'tags', 'dims']) {
-    assert.ok(!(field in entry), `a doubt entry must not carry ${field}`);
-  }
-
-  const entries = await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM entry');
-  assert.equal(entries[0].n, 0, 'a doubt entry is its own record type, not an Entry');
-});
-
-test('deleting a doubt entry is idempotent', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.doubtJournal.addEntry({ epochDay: 100, text: 'not sure about any of this' });
-
-  await journal.doubtJournal.deleteEntry(id);
-  await journal.doubtJournal.deleteEntry(id); // idempotent
-
-  assert.deepEqual(await journal.doubtJournal.getEntries(10), []);
-});
 
 test('a counterevidence snapshot round-trips its items in order, and reads back newest first', async () => {
   const { journal } = await journalWithBuiltIns();

@@ -1,10 +1,7 @@
-/* The doubt journal (phase 4 ticket 11, CONTEXT: "Doubt entry",
-   "Counterevidence snapshot"): free-write reflection for a "not trans
-   enough" spiral, plus on-demand snapshots of the counterevidence shown
-   while writing one. Two tables, one area - the same shape hairProgress.ts
-   uses for stagings and photos - since both halves belong to the same
-   composer screen and nothing reads one without the feature the other is
-   part of.
+/* The doubt journal (phase 4 ticket 11; the free-write half retired by
+   phase 5 ticket 16, ADR-0037, CONTEXT: "Counterevidence check"): on-demand
+   snapshots of the counterevidence shown on `/doubt`, the one thing this
+   area still writes.
 
    Counterevidence itself - the user's own past euphoria-tagged and starred
    entries - is not read through here: it is entries.counterevidencePool
@@ -13,33 +10,14 @@
    entries, so a person can curate their own "proof" too; ticket 32 widened
    the tag query itself to EUPHORIA_TAG_KEYS, all three euphoria tags
    rather than the general one alone). This area only owns what it alone
-   writes: the free-write text, and a snapshot's frozen copy of whatever
-   that query returned at save time. */
+   writes: a snapshot's frozen copy of whatever that query returned at save
+   time. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { CounterevidenceEntry, CounterevidenceSnapshot, DoubtEntry } from '../types';
+import type { CounterevidenceEntry, CounterevidenceSnapshot } from '../types';
 import { mintUuid, now, rowidByUuid } from './support';
 
-export interface DoubtEntryInput {
-  epochDay: number;
-  text: string;
-}
-
 export interface DoubtJournalArea {
-  /** Newest first, the same order entriesWithTag reads counterevidence in. */
-  getEntries(limit: number): Promise<DoubtEntry[]>;
-  /** Every doubt entry whose day falls in the range, oldest first. Its own
-      read rather than a slice of `getEntries`: the journal book (phase 5
-      ticket 17) covers a range someone chose rather than the recent past,
-      and a limit that happened to be large enough for the doubt screen
-      would silently drop the older half of a year's book. */
-  getEntriesInRange(fromEpochDay: number, toEpochDay: number): Promise<DoubtEntry[]>;
-  /** Returns the entry's id. Throws on blank text: a doubt entry's one
-      field is the whole point of the record, unlike Entry's "at least one
-      of six" rule. */
-  addEntry(input: DoubtEntryInput): Promise<string>;
-  /** Idempotent, like the journal's other deletes. */
-  deleteEntry(id: string): Promise<void>;
   /** Newest first. */
   getSnapshots(limit: number): Promise<CounterevidenceSnapshot[]>;
   /** `items` travels as the whole set the composer was showing at the
@@ -50,53 +28,11 @@ export interface DoubtJournalArea {
   deleteSnapshot(id: string): Promise<void>;
 }
 
-type DoubtEntryRow = { uuid: string; epoch_day: number; timestamp: number; text: string };
 type SnapshotRow = { id: number; uuid: string; epoch_day: number; timestamp: number };
 type SnapshotItemRow = { snapshot_id: number; epoch_day: number; mood: number | null; note: string };
 
-const toDoubtEntry = (row: DoubtEntryRow): DoubtEntry => ({
-  id: row.uuid,
-  epochDay: row.epoch_day,
-  timestamp: row.timestamp,
-  text: row.text
-});
-
 export function makeDoubtJournalArea(driver: SqliteDriver): DoubtJournalArea {
   return {
-    async getEntries(limit) {
-      const rows = await driver.query<DoubtEntryRow>(
-        'SELECT uuid, epoch_day, timestamp, text FROM doubt_entry ORDER BY epoch_day DESC, timestamp DESC, id DESC LIMIT ?',
-        [limit]
-      );
-      return rows.map(toDoubtEntry);
-    },
-
-    async getEntriesInRange(fromEpochDay, toEpochDay) {
-      const rows = await driver.query<DoubtEntryRow>(
-        `SELECT uuid, epoch_day, timestamp, text FROM doubt_entry
-         WHERE epoch_day >= ? AND epoch_day <= ?
-         ORDER BY epoch_day, timestamp, id`,
-        [fromEpochDay, toEpochDay]
-      );
-      return rows.map(toDoubtEntry);
-    },
-
-    async addEntry(input) {
-      if (input.text.trim().length === 0) throw new Error('a doubt entry needs some text');
-
-      const uuid = mintUuid();
-      const ts = now();
-      await driver.run(
-        'INSERT INTO doubt_entry (uuid, epoch_day, timestamp, text, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [uuid, input.epochDay, ts, input.text, ts]
-      );
-      return uuid;
-    },
-
-    async deleteEntry(id) {
-      await driver.run('DELETE FROM doubt_entry WHERE uuid = ?', [id]);
-    },
-
     async getSnapshots(limit) {
       const rows = await driver.query<SnapshotRow>(
         'SELECT id, uuid, epoch_day, timestamp FROM doubt_snapshot ORDER BY epoch_day DESC, timestamp DESC, id DESC LIMIT ?',

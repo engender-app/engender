@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 40);
+  assert.equal(db.getUserVersion(), 41);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -343,7 +343,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 40);
+  assert.equal(db.getUserVersion(), 41);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -375,7 +375,7 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 40);
+  assert.equal(db.getUserVersion(), 41);
 
   const row = db.raw.prepare('SELECT * FROM measurement WHERE uuid = ?').get('m1') as {
     type: string;
@@ -404,7 +404,7 @@ test('v39 drops the CHECK on personal_effect.effect and adds effect_category/per
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 40);
+  assert.equal(db.getUserVersion(), 41);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -488,7 +488,7 @@ test('v37 carries the v13 table across as Norwood-Hamilton stagings', async () =
   db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h1', 19180, '3a', 1000)");
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 40);
+  assert.equal(db.getUserVersion(), 41);
 
   const row = db.raw.prepare('SELECT * FROM hair_stage WHERE uuid = ?').get('h1') as {
     epoch_day: number;
@@ -519,7 +519,7 @@ test('v38 carries the v8 dose_schedule table across as everyNDays, with no weekd
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 40);
+  assert.equal(db.getUserVersion(), 41);
 
   const row = db.raw.prepare('SELECT * FROM dose_schedule WHERE uuid = ?').get('s1') as {
     recurrence_kind: string;
@@ -617,7 +617,7 @@ test('v40 backfills end_epoch_day from the pre-v40 next-episode inference, and a
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 40);
+  assert.equal(db.getUserVersion(), 41);
 
   const episodes = (
     db.raw.prepare('SELECT uuid, end_epoch_day FROM regimen_episode ORDER BY start_epoch_day').all() as Array<{
@@ -632,6 +632,38 @@ test('v40 backfills end_epoch_day from the pre-v40 next-episode inference, and a
 
   const dose = db.raw.prepare('SELECT drug FROM dose_event WHERE uuid = ?').get('d1') as { drug: string | null };
   assert.equal(dose.drug, null);
+});
+
+test('v41 drops doubt_entry and every row it held, leaving doubt_snapshot and its items untouched', async () => {
+  const preV41 = migrations.filter((m) => m.version <= 40);
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), preV41);
+  db.raw.exec(
+    "INSERT INTO doubt_entry (uuid, epoch_day, timestamp, text, updated_at) VALUES ('d1', 20000, 1000, 'am I even trans enough for this', 1000)"
+  );
+  db.raw.exec("INSERT INTO doubt_snapshot (uuid, epoch_day, timestamp, updated_at) VALUES ('s1', 20000, 1000, 1000)");
+  db.raw.exec(
+    "INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note) VALUES (1, 0, 19500, 5, 'euphoric at the appointment')"
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), 41);
+
+  const tables = db.raw
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'doubt%'")
+    .all()
+    .map((r) => (r as { name: string }).name);
+  assert.deepEqual(tables.sort(), ['doubt_snapshot', 'doubt_snapshot_entry']);
+
+  const snapshot = db.raw.prepare('SELECT uuid, epoch_day FROM doubt_snapshot WHERE uuid = ?').get('s1') as
+    | { uuid: string; epoch_day: number }
+    | undefined;
+  assert.equal(snapshot?.uuid, 's1');
+  assert.equal(snapshot?.epoch_day, 20000);
+  const item = db.raw.prepare('SELECT note FROM doubt_snapshot_entry WHERE snapshot_id = 1').get() as
+    | { note: string }
+    | undefined;
+  assert.equal(item?.note, 'euphoric at the appointment');
 });
 
 test('v27 video_note is entry-only, ordered, and unique by uuid', async () => {

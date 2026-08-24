@@ -1,8 +1,8 @@
 /* The journal book (phase 5 ticket 17): a keepsake assembly over rows
-   entries, milestones, the doubt journal and side effects own, recomputed on
-   every read. The inclusion picker is what these tests are mostly about -
-   what a book carries has to be decided by the choice, not by the renderer
-   deciding what to draw. */
+   entries, milestones and side effects own, recomputed on every read. The
+   inclusion picker is what these tests are mostly about - what a book
+   carries has to be decided by the choice, not by the renderer deciding
+   what to draw. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -28,7 +28,6 @@ const everything: JournalBookInclusion = {
   tags: true,
   dysphoriaEuphoriaTags: true,
   milestones: true,
-  doubtEntries: true,
   sideEffects: true,
   openingPage: true
 };
@@ -47,8 +46,6 @@ async function seeded(): Promise<Journal> {
   await journal.entries.upsertEntry({ epochDay: 19_000, mood: 2, note: 'before the range' });
   await journal.milestones.upsertMilestone({ name: 'first appointment', epochDay: 20_002 });
   await journal.milestones.upsertMilestone({ name: 'long before', epochDay: 19_001 });
-  await journal.doubtJournal.addEntry({ epochDay: 20_003, text: 'a hard evening' });
-  await journal.doubtJournal.addEntry({ epochDay: 19_002, text: 'an older hard evening' });
   await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 20_004 });
   await journal.sideEffects.upsertSideEffect({ name: 'older headache', severity: 2, epochDay: 19_003 });
   return journal;
@@ -65,7 +62,6 @@ test('the default inclusion carries entries, their photos and milestones, and no
   assert.equal(book.milestones.length, 1);
   assert.equal(book.milestones[0].name, 'first appointment');
   assert.deepEqual(book.entries[0].tags, []);
-  assert.deepEqual(book.doubtEntries, []);
   assert.deepEqual(book.sideEffects, []);
   assert.equal(book.opening, null);
 });
@@ -76,8 +72,6 @@ test('every record type appears once it is chosen', async () => {
   const book = await journal.journalBook.getBook(20_000, 20_010, everything);
 
   assert.deepEqual(book.entries[0].tags, ['g-euphoria']);
-  assert.equal(book.doubtEntries.length, 1);
-  assert.equal(book.doubtEntries[0].text, 'a hard evening');
   assert.equal(book.sideEffects.length, 1);
   assert.equal(book.sideEffects[0].name, 'headache');
   assert.notEqual(book.opening, null);
@@ -96,7 +90,7 @@ test('a record type left out is absent even when the range holds one', async () 
 
   assert.deepEqual(book.entries, []);
   assert.deepEqual(book.milestones, []);
-  assert.equal(book.doubtEntries.length, 1);
+  assert.equal(book.sideEffects.length, 1);
 });
 
 test('an entry carries no photo when photos are left out', async () => {
@@ -117,8 +111,6 @@ test('every section is filtered to the chosen range', async () => {
   assert.equal(book.entries[0].note, 'before the range');
   assert.equal(book.milestones.length, 1);
   assert.equal(book.milestones[0].name, 'long before');
-  assert.equal(book.doubtEntries.length, 1);
-  assert.equal(book.doubtEntries[0].text, 'an older hard evening');
   assert.equal(book.sideEffects.length, 1);
   assert.equal(book.sideEffects[0].name, 'older headache');
 });

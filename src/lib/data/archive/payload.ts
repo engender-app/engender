@@ -266,13 +266,6 @@ export interface ArchiveJournalingPause {
   endEpochDay: number | null;
 }
 
-export interface ArchiveDoubtEntry {
-  id: string;
-  epochDay: number;
-  timestamp: number;
-  text: string;
-}
-
 /** A time-capsule letter (phase 4 ticket 19), sealed until `unlockEpochDay`
     - never stored as a `sealed` flag, the same reasoning ArchiveMilestone
     carries no `kind`. */
@@ -645,7 +638,6 @@ export interface ArchiveJournal {
   procedures: ArchiveProcedure[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
-  doubtEntries: ArchiveDoubtEntry[];
   counterevidenceSnapshots: ArchiveCounterevidenceSnapshot[];
   letters: ArchiveLetter[];
   roadmapChecks: ArchiveRoadmapCheck[];

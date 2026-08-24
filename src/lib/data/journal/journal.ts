@@ -169,11 +169,10 @@ export interface Journal {
   clinicianSummary: ClinicianSummaryArea;
   /** A keepsake print of a chosen range, carrying only the record types the
       person picked (phase 5 ticket 17). A view over rows entries,
-      milestones, the doubt journal and side effects own, like
-      clinicianSummary above and for the same reason - but a different
-      audience, a different set of parts, and an inclusion the caller
-      supplies rather than a fixed section list. Never a restore format: the
-      archive stays the only one. */
+      milestones and side effects own, like clinicianSummary above and for
+      the same reason - but a different audience, a different set of parts,
+      and an inclusion the caller supplies rather than a fixed section list.
+      Never a restore format: the archive stays the only one. */
   journalBook: JournalBookArea;
   /** "First noticed" markers against an open effect catalogue (phase 4
       ticket 07, widened well past its original four/eight by phase 5
@@ -201,8 +200,9 @@ export interface Journal {
       body-region vocabulary (bodyRegions.ts). No episode reference, the
       same reason sideEffects has none. */
   hairRemoval: HairRemovalArea;
-  /** Free-write doubt entries and their saved counterevidence snapshots
-      (phase 4 ticket 11). Reads the counterevidence itself through
+  /** Saved counterevidence snapshots (phase 4 ticket 11; its free-write
+      doubt entries retired by phase 5 ticket 16, ADR-0037). Reads the
+      counterevidence itself through
       entries.counterevidencePool(EUPHORIA_TAG_KEYS, …) (phase 5 ticket 14: a
       union of those tags and starred entries; ticket 32 widened the tag
       list itself from 'g-euphoria' alone to all three euphoria tags) -
@@ -311,7 +311,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     journalingPauses: makeJournalingPausesArea(driver),
     wearSessions: makeWearSessionsArea(driver, reminders),
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
-    journalBook: makeJournalBookArea({ entries, milestones, doubtJournal, sideEffects, stats, tags }),
+    journalBook: makeJournalBookArea({ entries, milestones, sideEffects, stats, tags }),
     personalEffects: makePersonalEffectsArea(driver),
     effectCategories: makeEffectCategoriesArea(driver),
     hairProgress: makeHairProgressArea(driver, files),
