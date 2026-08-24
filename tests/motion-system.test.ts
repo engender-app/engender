@@ -324,12 +324,15 @@ describe('tier 1, response', () => {
     expect(mixed, 'an unparseable linear() takes the whole shorthand with it, not just its own half').toEqual([]);
   });
 
-  /* Ticket 29: the two shipped controls press to the same depth as the
-     primitive, so ticket 18 applying .press to them changes the curve's
-     owner and nothing a user can feel. Read off press.css rather than
-     written out here, so the primitive stays the one place the number
-     lives. */
-  it('presses the shipped controls to the depth the primitive declares', () => {
+  /* Ticket 29 settled both shipped depths on a Pixel 10a, and they did not
+     land in the same place. The add button agrees with .press-add, so
+     ticket 18 applying the primitive to it changes the curve's owner and
+     nothing a hand can feel. .btn does not agree, on purpose: 0.97 was
+     chosen over tier 1's 0.94 by feel. Both halves are pinned here so the
+     disagreement stays a decision somebody made rather than something that
+     drifted, and so ticket 18 finds out from a failing test rather than
+     from the app changing under it. */
+  it('presses each shipped control to the depth that was chosen for it', () => {
     const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
     const depthOf = (selector: string, css: string) =>
       rules(css).find((rule) => rule.prelude === selector && !isReduceContext(rule))?.body.match(
@@ -339,11 +342,14 @@ describe('tier 1, response', () => {
     const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
     const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
 
-    expect(depthOf('.btn:active', components), '.btn presses to .press\'s depth').toBe(
-      depthOf('.press:active', press)
-    );
     expect(depthOf('.nav-fab:active', app), 'the add button presses to .press-add\'s depth').toBe(
       depthOf('.press-add:active', press)
+    );
+    expect(depthOf('.btn:active', components), '.btn was chosen at 0.97, against the primitive').toBe(
+      'scale(0.97)'
+    );
+    expect(depthOf('.press:active', press), 'the primitive still says what DIRECTION asks for').toBe(
+      'scale(0.94)'
     );
   });
 
