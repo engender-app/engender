@@ -17,7 +17,6 @@
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, checkForNewerRelease } from '$lib/pwa/update';
   import Icon from './Icon.svelte';
-  import PrideAurora from './PrideAurora.svelte';
 
   let looking = $state(false);
   let nothingNewer = $state(false);
@@ -39,7 +38,6 @@
 </script>
 
 <div class="screen">
-  <PrideAurora />
   <div class="applock">
     <div class="applock-badge"><Icon name="alert" size={30} /></div>
     <h1 class="ob-title" style="text-align:center">{m.boot_schema_too_new_title()}</h1>

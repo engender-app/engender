@@ -4,7 +4,6 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import PrideAurora from '$lib/components/PrideAurora.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
   import Switch from '$lib/components/Switch.svelte';
 
@@ -26,7 +25,6 @@
 </script>
 
 <div class="screen">
-  <PrideAurora />
   <div class="onboarding">
     <!-- NAV-006: onboarding had no way back between steps at all - a typo in
          the name step, for example, could only be finished past rather than
