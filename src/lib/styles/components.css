@@ -584,61 +584,49 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   gap: var(--space-2);
 }
 
-/* Rows share one shape so the slide crosses a regular rhythm: every row is
-   the same height, and the gap between two is small enough that a finger
-   never falls between them without landing on one. A row holds one target
-   or a pair; the pair splits the row rather than adding a rank to cross. */
-.fan-row { display: grid; grid-template-columns: 1fr; gap: var(--space-2); }
-.fan-row.is-pair { grid-template-columns: 1fr 1fr; }
+/* A card per group, in the app's own list-surface language: one plane, a
+   hairline between rows, the icon in the accent. Six separate floating
+   pills read as a stack of identical rounded rectangles, which is the
+   generic shape decision 2b exists to avoid - and they gave the slide a
+   worse target, because the highlight jumped between objects instead of
+   moving inside one.
 
-.fan-item,
-.fan-moods {
-  min-height: var(--touch-target);
+   The fan's shadow is the bar's, and it is the same one: this is the other
+   half of the app's single floating element, so it casts what the bar
+   casts rather than picking a second elevation. */
+.fan-card {
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-add);
-  background: var(--surface);
   box-shadow: var(--shadow-float);
+  overflow: hidden;
 }
+/* One question asked twice: two halves of a row, split by the same hairline
+   that separates rows elsewhere. */
+.fan-card.is-pair { display: grid; grid-template-columns: 1fr 1fr; }
+.fan-card.is-pair .fan-item + .fan-item { border-left: 1px solid var(--border); }
+
 .fan-item {
   display: flex; align-items: center; gap: var(--space-3);
-  padding: 0 var(--space-4);
+  width: 100%;
+  min-height: 56px;
   min-width: 0;
+  padding: var(--space-2) var(--space-4);
+  border: none; background: none;
   color: var(--text);
   font: inherit; font-weight: var(--weight-medium);
   text-align: left;
   cursor: pointer;
-  transition-property: transform, background-color, color;
+  transition-property: background-color, color;
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
-/* The gap that does the grouping. The column is reversed, so the space
-   goes below the row that opens a group in source order, which is above it
-   on screen. */
-.fan-row.starts-group { margin-bottom: var(--space-4); }
-
-/* A pair lays out like a mood cell - icon over label, centred, and the
-   label allowed a second line. Side by side at a phone's width there is
-   about 90px of text room per half, and "Correctly gendered" wants 145;
-   ellipsing the longer of two labels that only mean anything as a pair is
-   the one thing this row must not do. */
-.fan-row.is-pair .fan-item {
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: var(--space-2);
-  text-align: center;
-}
-.fan-row.is-pair .fan-label {
-  white-space: normal;
-  overflow: visible;
-  font-size: var(--text-sm);
-  line-height: 1.25;
-}
+.fan-item + .fan-item { border-top: 1px solid var(--border); }
 .fan-icon { display: grid; place-items: center; color: var(--accent); flex-shrink: 0; }
 .fan-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Armed: what happens if the finger comes up here. It is the same state a
-   hover or a keyboard focus shows, because it answers the same question. */
+/* Armed: what happens if the finger comes up here. The same state a hover
+   or a keyboard focus shows, because it answers the same question. */
 .fan-item.is-armed,
 .fan-item:hover,
 .fan-item:focus-visible {
@@ -648,42 +636,52 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .fan-item.is-armed .fan-icon,
 .fan-item:hover .fan-icon,
 .fan-item:focus-visible .fan-icon { color: var(--on-accent); }
-.fan-item.is-armed { transform: scale(1.03); }
 
-/* The mood row is a row within the row: slide up onto it, then across it.
-   Two axes, and the second one is the scale's own direction. */
+/* A pair's halves stack their icon over the label, so the longer of two
+   labels that only mean anything together gets a second line rather than an
+   ellipsis: side by side at a phone's width there is about 90px of text
+   room per half, and "Correctly gendered" wants 145. */
+.fan-card.is-pair .fan-item {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-3) var(--space-2);
+  text-align: center;
+}
+.fan-card.is-pair .fan-label {
+  white-space: normal;
+  overflow: visible;
+  font-size: var(--text-sm);
+  line-height: 1.25;
+}
+
+/* The mood row is the bottom of the entry card, not a card of its own:
+   picking a mood is how today's entry starts, so it belongs to the surface
+   that makes entries. Nearest the thumb of everything in the fan, because
+   it is the one most often wanted. */
 .fan-moods {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  padding: var(--space-1);
-  gap: var(--space-1);
+  border-top: 1px solid var(--border);
 }
 .fan-mood {
-  display: grid; justify-items: center; align-content: center; gap: 3px;
-  min-width: 0;
-  padding: var(--space-1) 2px;
-  border: none; border-radius: calc(var(--r-add) - var(--space-1));
+  display: grid; justify-items: center; align-content: center; gap: 2px;
+  min-width: 0; min-height: 56px;
+  padding: var(--space-2) 2px;
+  border: none;
   background: none;
   color: var(--text-2);
   font: inherit; font-size: var(--text-xs); font-weight: var(--weight-bold);
   cursor: pointer;
-  transition-property: transform, background-color, color;
+  transition-property: background-color, color;
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
-.fan-mood-dot { width: 20px; height: 20px; border-radius: 50%; }
+.fan-mood + .fan-mood { border-left: 1px solid var(--border); }
 .fan-mood-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fan-mood.is-armed,
 .fan-mood:hover,
-.fan-mood:focus-visible { background: var(--surface-2); color: var(--text); }
-.fan-mood.is-armed { transform: scale(1.06); }
-
-html[data-a11y-motion='reduce'] .fan-item.is-armed,
-html[data-a11y-motion='reduce'] .fan-mood.is-armed { transform: none; }
-@media (prefers-reduced-motion: reduce) {
-  .fan-item.is-armed,
-  .fan-mood.is-armed { transform: none; }
-}
+.fan-mood:focus-visible { background: var(--accent-soft); color: var(--on-accent-soft); }
 
 /* At the rail's width the fan comes off the rail's add button, which is
    near the top left rather than at the bottom centre. Beside the rail
