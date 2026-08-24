@@ -1,0 +1,62 @@
+/* The motion materials that reach past transform and opacity (phase 5
+   ticket 28), at the level a stylesheet can carry them.
+
+   DIRECTION.md's performance contract, which lives on ticket 15's branch,
+   said only transform and opacity animate, because the target is a Capacitor
+   WebView on a mid-range Android phone rather than a desktop browser. This
+   ticket amends that: the palette gains bounded blur, a clip-path reveal
+   (tier 3, in reveal.ts) and an animated shadow (tier 1, in press.css). The
+   limit that replaces the prohibition is a number rather than a taste, and
+   the number comes from ticket 27's benchmarking pass over real screens - so
+   what is written down here is each material's cap, and every cap is drawn
+   so that measurement can only tighten it.
+
+   Tier 2's material lives here: the withdrawal.
+
+   Applying it is deliberately not this ticket's job. Ticket 28 adds material
+   to the motion layer and the screen tickets spend it, so nothing in the app
+   carries .scrim-withdraw yet. It is a complete primitive rather than a
+   fragment: the class alone is the whole material, and putting it on a scrim
+   is the only thing left to do. */
+
+/* Tier 2, the withdrawal: the screen behind a sheet stops being readable
+   without stopping being there.
+
+   Cap: one scrim, one radius, and the radius never animates - see
+   --blur-withdraw in theme/base.css for why that is the whole point of the
+   material rather than a detail of it. What holds the cap here is that only
+   opacity is named in the transition below, and neither `filter` nor `all`
+   appears in it, which is a thing a test can check rather than a thing this
+   comment promises. */
+.scrim-withdraw {
+  background: var(--scrim);
+  transition: opacity var(--dur-med) var(--ease-out);
+}
+
+/* The support fallback, and the shape of it is the point: the material is
+   additive, so where backdrop-filter is missing nothing applies and the rule
+   above stands on its own - the flat --scrim tint the app ships today. A
+   degraded state that is the previous design rather than an unstyled one. */
+@supports (backdrop-filter: blur(1px)) {
+  .scrim-withdraw {
+    background: var(--scrim-withdraw);
+    backdrop-filter: blur(var(--blur-withdraw));
+  }
+}
+
+/* The reduced-motion substitute is that same state, and on purpose: a blur
+   arriving over the screen is movement-adjacent even though nothing travels,
+   so it does not survive either reduced-motion path. What replaces it is the
+   full-strength tint, which still says "not this" without the withdrawal.
+   Substitute, never delete - the scrim itself stays, and so does everything
+   the sheet above it does. */
+html[data-a11y-motion='reduce'] .scrim-withdraw {
+  background: var(--scrim);
+  backdrop-filter: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scrim-withdraw {
+    background: var(--scrim);
+    backdrop-filter: none;
+  }
+}

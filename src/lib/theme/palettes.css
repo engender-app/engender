@@ -190,6 +190,7 @@
   --shadow-2: 0 2px 4px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.35);
   --shadow-3: 0 4px 8px rgb(0 0 0 / 0.4), 0 16px 48px rgb(0 0 0 / 0.5);
   --shadow-float: 0 4px 16px -6px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.22);
+  --shadow-float-pressed: 0 1px 5px -3px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.26);
   /* Dark theme's --on-accent is a near-black tone built for the fully
      saturated accent (heat-4); heat-3 is lighter than that, so the generic
      default here is the opposite pick from light theme's. Four palettes

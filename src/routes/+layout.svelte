@@ -2,10 +2,19 @@
   import '$lib/theme/fonts.css';
   import '$lib/theme/base.css';
   import '$lib/theme/palettes.css';
-  import '$lib/motion/press.css';
   import '$lib/styles/app.css';
   import '$lib/styles/components.css';
   import '$lib/styles/screens.css';
+  /* $lib/motion last, after the sheets it applies over (phase 5 ticket 28).
+     Both files are opt-in classes a screen puts on top of a component's own
+     class - .press-add on the add button, .scrim-withdraw on a scrim - and
+     each declares a resting value the material animates away from. At equal
+     specificity the later sheet wins, so a material that arrived before
+     components.css would lose its own resting shadow or tint to whatever the
+     shell declares, and animate between two states that were never designed
+     as a pair. */
+  import '$lib/motion/press.css';
+  import '$lib/motion/materials.css';
 
   import { page } from '$app/state';
   import { assets } from '$app/paths';

@@ -16,8 +16,7 @@
    whatever colour or outline change the control also carries stays. The
    scale is the only part of a press that moves anything. */
 
-.press,
-.press-add {
+.press {
   transition: transform var(--dur-press) var(--ease-press);
 }
 
@@ -26,18 +25,55 @@
 }
 
 /* The add button is the app's one floating control and takes the deeper
-   press, so the thing most often tapped is also the most physical. */
-.press-add:active {
-  transform: scale(0.9);
+   press, so the thing most often tapped is also the most physical.
+
+   It is also the only control with a shadow, so it is the only one whose
+   press can carry the second half of the gesture (phase 5 ticket 28): the
+   shadow collapses as the button goes down, and the two together read as
+   the button meeting the surface rather than shrinking in place. Held to
+   this one control on purpose - 56px of shadow repainting is the smallest
+   area any of this ticket's materials touches, and every other pressable
+   thing in the app is a flat surface with no elevation to lose.
+
+   Both ends of the collapse are declared here rather than left to the
+   shell that mounts the button. A material that animates between two
+   states owns both of them, or the primitive is half a definition and
+   whoever applies it has to remember the other half. Nothing else in the
+   app reads --shadow-float yet; when ticket 18 builds the nav bar and its
+   button it will declare the resting shadow too, and this line becomes the
+   redundant half of an agreement rather than the only half of one.
+
+   On --ease-press like the scale, so the shadow overshoots and settles with
+   it. One gesture, one curve. */
+.press-add {
+  box-shadow: var(--shadow-float);
+  transition:
+    transform var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
 }
 
-html[data-a11y-motion='reduce'] .press:active,
-html[data-a11y-motion='reduce'] .press-add:active {
+.press-add:active {
+  transform: scale(0.9);
+  box-shadow: var(--shadow-float-pressed);
+}
+
+/* The shadow goes back with the scale rather than collapsing on its own: an
+   elevation change with no movement to explain it reads as a flicker, not as
+   a press. What stays is whatever colour or outline change the control
+   carries, which is the substitute. */
+html[data-a11y-motion='reduce'] .press:active {
   transform: none;
 }
+html[data-a11y-motion='reduce'] .press-add:active {
+  transform: none;
+  box-shadow: var(--shadow-float);
+}
 @media (prefers-reduced-motion: reduce) {
-  .press:active,
+  .press:active {
+    transform: none;
+  }
   .press-add:active {
     transform: none;
+    box-shadow: var(--shadow-float);
   }
 }

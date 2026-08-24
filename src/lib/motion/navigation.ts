@@ -20,17 +20,17 @@
    transitions in the first place - which is exactly why the substitute has
    to be written out here rather than left to the stylesheet. */
 
-import { quintOut } from 'svelte/easing';
 import { crossfade } from 'svelte/transition';
 import type { TransitionConfig } from 'svelte/transition';
 
-import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from './tokens';
-
-/* --ease-out is cubic-bezier(0.22, 1, 0.36, 1). quintOut tracks it to
-   within 0.011 across the whole curve, which is under a tenth of a pixel
-   over a 24px travel, so the two really are one easing rather than two
-   that happen to look alike. */
-const EASE_OUT = quintOut;
+import {
+  crossfadeDuration,
+  EASE_OUT,
+  fadeOnly,
+  isReducedMotion,
+  motionDistance,
+  motionDuration
+} from './tokens';
 
 /* Svelte reports 'both' for a bare `transition:`, which cannot tell an
    entrance from an exit. Each primitive below reads it as an entrance,
@@ -39,13 +39,7 @@ type Direction = 'in' | 'out' | 'both';
 
 /** The substitute every tier-2 primitive falls back to under reduced
     motion: the same crossfade, none of the movement. */
-function crossfadeOnly(): TransitionConfig {
-  return {
-    duration: crossfadeDuration(),
-    easing: EASE_OUT,
-    css: (t) => `opacity: ${t}`
-  };
-}
+const crossfadeOnly = (): TransitionConfig => fadeOnly(crossfadeDuration());
 
 /** A tier-2 transition over the shared easing, or its reduced-motion
     substitute. Every primitive is this plus one line of geometry, which is
