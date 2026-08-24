@@ -25,8 +25,14 @@ function markup(file: string): string {
     .replace(/<style[\s\S]*?<\/style>/g, '');
 }
 
-/** The chart kit's own section of the stylesheet. */
-const chartCss = kitNoComments.slice(kitNoComments.indexOf('.kit-chart {'));
+/** Just the rules that draw a chart's marks - the line, its fill, the
+    bars, the distribution. The card around them and the picker on its
+    heading are chrome, and chrome is allowed the app's own surface and
+    accent colours; the single-hue rule is about the marks. */
+const markCss = kitNoComments
+  .split('}')
+  .filter((rule) => /\.kit-(area|bar|dist)[a-z-]*/.test(rule.split('{')[0] ?? ''))
+  .join('}');
 
 describe('the surfaces', () => {
   it('has one component per surface, its rows, and per chart kind', () => {
@@ -35,6 +41,7 @@ describe('the surfaces', () => {
       'BarRows.svelte',
       'BareStrip.svelte',
       'ChartCard.svelte',
+      'ChartPicker.svelte',
       'DayCard.svelte',
       'DayEntry.svelte',
       'Distribution.svelte',
@@ -115,13 +122,17 @@ describe('the charts', () => {
        a second accent and never a literal. */
     const allowed =
       /^(--role-ink|--role-mark|--dist-fill|--surface|--outline|--text-2?|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
-    for (const [, token] of chartCss.matchAll(/var\((--[a-z0-9-]+)/g)) {
+    for (const [, token] of markCss.matchAll(/var\((--[a-z0-9-]+)/g)) {
       if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
       expect(token, `${token} in the chart rules`).toMatch(allowed);
     }
     // And no raw colour anywhere in them.
-    expect(chartCss).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-    expect(chartCss).not.toMatch(/\b(rgb|hsl)a?\(/);
+    expect(markCss).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(markCss).not.toMatch(/\b(rgb|hsl)a?\(/);
+    // The filter above has to have found the marks at all.
+    expect(markCss).toMatch(/\.kit-area-line/);
+    expect(markCss).toMatch(/\.kit-bar-mark/);
+    expect(markCss).toMatch(/\.kit-dist-mark/);
   });
 
   it('draws no gridline, no legend and no axis', () => {

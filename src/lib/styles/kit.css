@@ -569,9 +569,10 @@
    earns its weight from --outline-strong instead: the same line as a card,
    one step darker. */
 .kit-notice {
-  display: flex;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
+  gap: 0 var(--space-3);
   padding: var(--space-4);
   background: var(--surface);
   border: 1px solid var(--outline-strong);
@@ -583,7 +584,8 @@
    read as something that had failed to load rather than as a mark, and the
    disc is the vocabulary the kit already has for exactly this. */
 .kit-notice-ico {
-  flex: 0 0 auto;
+  grid-column: 1;
+  grid-row: 1;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -594,7 +596,8 @@
 }
 
 .kit-notice-body {
-  flex: 1;
+  grid-column: 2;
+  grid-row: 1;
   min-width: 0;
 }
 
@@ -611,10 +614,13 @@
 }
 
 .kit-notice-act {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   min-height: var(--touch-target);
-  margin: var(--space-1) 0 0 calc(var(--space-3) * -1);
+  margin: 0 0 calc(var(--space-2) * -1) calc(var(--space-3) * -1);
   padding-inline: var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);
@@ -627,11 +633,12 @@
 }
 
 .kit-notice-x {
-  flex: 0 0 auto;
-  align-self: flex-start;
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
   width: var(--touch-target);
   height: var(--touch-target);
-  margin: -10px -10px 0 auto;
+  margin: -10px -10px 0 0;
   display: grid;
   place-items: center;
   border: 0;
@@ -681,6 +688,47 @@
   line-height: var(--leading-display);
   letter-spacing: var(--display-track);
   color: var(--text);
+}
+
+/* The heading's one control. A pill on the sunken surface so it reads as
+   something to press without taking a second edge weight, and the chevron
+   is drawn rather than left to the platform's own arrow, which is the one
+   part of a native select that never matches a design. */
+.kit-chart-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  max-width: 52%;
+}
+
+.kit-chart-pick select {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-pill);
+  min-height: var(--touch-target);
+  max-width: 100%;
+  padding: 0 calc(var(--space-6) + var(--space-1)) 0 var(--space-4);
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.kit-chart-pick select:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.kit-chart-pick svg {
+  position: absolute;
+  right: var(--space-3);
+  color: var(--text-2);
+  pointer-events: none;
 }
 
 .kit-chart-body {
