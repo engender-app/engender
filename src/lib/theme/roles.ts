@@ -54,11 +54,11 @@ export interface Role {
 const TEXT_FLOOR = 4.5;
 const MARK_FLOOR = 3;
 
-/** How much of the ink kit.css mixes into a surface for the two fills a
+/** How much of the stripe kit.css mixes into a surface for the two fills a
     role paints behind itself - the icon disc, and the wash under a pressed
     row. Declared here rather than only in the CSS because the ink has to
-    clear the floor against the fills it causes, which is circular until one
-    side owns the number. tests/kit-roles.test.ts holds kit.css to these. */
+    clear its floor against those fills, and it cannot do that without
+    knowing them. tests/kit-roles.test.ts holds kit.css to these. */
 export const ROLE_TINT_PCT = 15;
 export const ROLE_WASH_PCT = 12;
 
@@ -101,14 +101,21 @@ export function legibleInk(
   grounds: string[],
   floor: number = TEXT_FLOOR
 ): string {
-  /* Each ground three times: as itself, and under each of the two fills
-     the ink paints behind itself. A role writes on the page and on a card,
-     and it also writes on the disc it tints and over the row it washes -
-     both of which are that same surface pulled a little way toward the ink,
-     and so a little way toward the ink's own lightness. */
+  /* Each ground three times: as itself, and under each of the two fills a
+     role paints behind itself. A role writes on the page and on a card, and
+     it also writes on the disc it tints and over the row it washes - both
+     of which are that same surface pulled a little way toward the flag's
+     own stripe.
+
+     Toward the stripe, not toward the candidate: a fill carries no
+     information and sits under nothing that has to be read, so it is the
+     flag's colour rather than a version of it adjusted for contrast.
+     Adjusting a fill is what turned nonbinary's yellow disc brown - the
+     yellow darkened to clear a floor it never owed, and a tint of that is
+     mud. */
   const passes = (candidate: string) =>
     grounds.every((g) =>
-      [g, colorMixOklab(candidate, ROLE_TINT_PCT, g), colorMixOklab(candidate, ROLE_WASH_PCT, g)].every(
+      [g, colorMixOklab(stripe, ROLE_TINT_PCT, g), colorMixOklab(stripe, ROLE_WASH_PCT, g)].every(
         (ground) => contrast(candidate, ground) >= floor
       )
     );

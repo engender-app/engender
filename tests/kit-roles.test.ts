@@ -77,11 +77,12 @@ function roleInkPercent(): number {
 }
 
 /** The same, for the tinted fills a role paints behind itself. Both are
-    mixed from the ink rather than from the raw stripe, so a white band
-    still leaves a fill that is there. */
+    mixed from the flag's own stripe: a fill carries no information and
+    answers to no floor, and running one through a floor is what turned
+    nonbinary's yellow disc brown. */
 function tintPercent(token: 'role-tint' | 'role-wash'): number {
   const raw = new RegExp(
-    String.raw`--${token}:\s*color-mix\(in oklab,\s*var\(--role-(?:ink|mark)\)\s*(\d+)%`
+    String.raw`--${token}:\s*color-mix\(in oklab,\s*var\(--role-c\)\s*(\d+)%`
   ).exec(kit);
   if (!raw) throw new Error(`kit.css no longer derives --${token} from a role colour`);
   return Number(raw[1]);
@@ -152,13 +153,13 @@ describe('the two colours a role carries', () => {
   const grounds = (t: Record<string, string>) => [t.bg, t.surface, t['surface-2']];
 
   /* Every ground a role lands on: the page, both card surfaces, and the two
-     fills a role paints behind itself. Both fills are mixed from the mark,
-     because that is what kit.css derives them from. */
-  function allGrounds(tokens: Record<string, string>, role: { mark: string }) {
+     fills a role paints behind itself. Both fills are mixed from the
+     stripe, because that is what kit.css derives them from. */
+  function allGrounds(tokens: Record<string, string>, role: { stripe: string }) {
     return [
       ...grounds(tokens),
-      colorMixOklab(role.mark, ROLE_TINT_PCT, tokens.surface),
-      colorMixOklab(role.mark, ROLE_WASH_PCT, tokens.bg)
+      colorMixOklab(role.stripe, ROLE_TINT_PCT, tokens.surface),
+      colorMixOklab(role.stripe, ROLE_WASH_PCT, tokens.bg)
     ];
   }
 
@@ -244,8 +245,8 @@ describe("kit.css's fallback ink", () => {
             tokens.bg,
             tokens.surface,
             tokens['surface-2'],
-            colorMixOklab(inked, tintPercent('role-tint'), tokens.surface),
-            colorMixOklab(inked, tintPercent('role-wash'), tokens.bg)
+            colorMixOklab(stripe, tintPercent('role-tint'), tokens.surface),
+            colorMixOklab(stripe, tintPercent('role-wash'), tokens.bg)
           ]) {
             expect(
               contrast(inked, ground),
