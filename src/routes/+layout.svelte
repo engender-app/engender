@@ -2,6 +2,7 @@
   import '$lib/theme/fonts.css';
   import '$lib/theme/base.css';
   import '$lib/theme/palettes.css';
+  import '$lib/motion/press.css';
   import '$lib/styles/app.css';
   import '$lib/styles/components.css';
   import '$lib/styles/screens.css';

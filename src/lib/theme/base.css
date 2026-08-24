@@ -98,6 +98,15 @@
      over --dur-authored and then breathes on --dur-breathe. */
   --dur-authored: 700ms;
   --dur-breathe: 7s;
+
+  /* The reduced-motion contract substitutes rather than deletes, and tier
+     2's substitute is a crossfade - which needs a duration the clamp below
+     cannot reach, or it is an instant cut instead. Left out of both clamp
+     blocks on purpose: prefers-reduced-motion is about movement, and a
+     change of opacity does not move anything. Only $lib/motion's
+     JS-driven transitions can honour it, since the !important rules below
+     flatten every CSS transition regardless of its token. */
+  --dur-crossfade: 120ms;
   --motion-distance-sm: 10px;  /* toast */
   --motion-distance-md: 24px;  /* sheet */
   --stagger-step: 50ms;

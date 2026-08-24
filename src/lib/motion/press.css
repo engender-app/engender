@@ -1,0 +1,42 @@
+/* Tier 1 of DIRECTION.md's motion system: response.
+
+   Every control answers a press by scaling down and springing back. This
+   is where an animator's hand actually shows - not in things arriving, but
+   in things having weight when touched - so it is the one tier that
+   applies to nearly every interactive element in the app, and it lives
+   next to the tier-2 transitions rather than in the component stylesheet.
+
+   It is CSS rather than a Svelte action because :active already tracks a
+   press correctly in the Chromium WebView this ships inside, and because
+   the release half - the overshoot on --ease-press - is the transition
+   playing backwards, which needs no JavaScript to arrange.
+
+   Reduced motion substitutes rather than deletes: the transform goes, and
+   whatever colour or outline change the control also carries stays. The
+   scale is the only part of a press that moves anything. */
+
+.press,
+.press-add {
+  transition: transform var(--dur-press) var(--ease-press);
+}
+
+.press:active {
+  transform: scale(0.94);
+}
+
+/* The add button is the app's one floating control and takes the deeper
+   press, so the thing most often tapped is also the most physical. */
+.press-add:active {
+  transform: scale(0.9);
+}
+
+html[data-a11y-motion='reduce'] .press:active,
+html[data-a11y-motion='reduce'] .press-add:active {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .press:active,
+  .press-add:active {
+    transform: none;
+  }
+}
