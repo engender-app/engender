@@ -45,7 +45,7 @@ export function motionDistance(token: '--motion-distance-sm' | '--motion-distanc
 
     Deliberately not motionDuration(): that returns 0 under reduced motion,
     which is the right answer for a movement and the wrong one here.
-    DIRECTION.md (ticket 15's branch)'s contract substitutes rather than deletes - tier 2 becomes
+    The reduced-motion contract substitutes rather than deletes - tier 2 becomes
     a crossfade, and a crossfade with no duration is an instant cut.
     prefers-reduced-motion is about movement; opacity does not move
     anything. --dur-crossfade sits outside base.css's clamp blocks for the

@@ -83,7 +83,8 @@
     1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%,
     0.975 57.1%, 0.997 69.4%, 1.003 82.6%, 1);
 
-  /* One duration per motion tier (DIRECTION.md (ticket 15's branch)). --dur-fast is tier 1's
+  /* One duration per motion tier, per the motion brief on ticket 15's
+     branch. --dur-fast is tier 1's
      press, --dur-med tier 2's navigation, --dur-slow tier 3's change within
      a screen. --dur-press is longer than --dur-fast on purpose: on
      --ease-press the control is 94% of the way there by 44ms, well inside

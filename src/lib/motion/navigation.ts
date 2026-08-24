@@ -1,4 +1,5 @@
-/* Tier 2 of DIRECTION.md (ticket 15's branch)'s motion system: how one screen becomes another.
+/* Tier 2 of the motion system set out in DIRECTION.md, which lives on
+   ticket 15's branch: how one screen becomes another.
 
    Material 3's navigation patterns, mapped to this app's actual shape -
    fade-through between the four tabs because they are peers rather than a

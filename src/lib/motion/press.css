@@ -1,4 +1,5 @@
-/* Tier 1 of DIRECTION.md (ticket 15's branch)'s motion system: response.
+/* Tier 1 of the motion system set out in DIRECTION.md, which lives on
+   ticket 15's branch: response.
 
    Every control answers a press by scaling down and springing back. This
    is where an animator's hand actually shows - not in things arriving, but
