@@ -17,19 +17,24 @@
      system as a gender heat cell.
    ============================================================ */
 
-/* ---------- Transgender (default) ---------- */
+/* ---------- Transgender (default) ----------
+   Ticket 17: the accent was #0F7DAE, a cold clinical blue, which was doing
+   most of the work of making the default palette read as a medical
+   instrument. --accent and --accent-2 swap so the flag's rose leads. The
+   rose then had to darken from #C25B79 to #B85272, because --accent is also
+   heat-4 and white on it measured 4.14:1 against the 4.5:1 floor. */
 [data-palette="trans"] {
   --motif-stripes: #5BCEFA, #F5A9B8, #FFFFFF, #F5A9B8, #5BCEFA;
 }
 [data-palette="trans"][data-theme="light"] {
   --bg: #F4F8FB; --surface: #FFFFFF; --surface-2: #E9F1F7;
   --text: #1B2B36; --text-2: #55707F; --border: #D9E5EE;
-  --accent: #0F7DAE; --accent-2: #C25B79;
+  --accent: #B85272; --accent-2: #0F7DAE;
 }
 [data-palette="trans"][data-theme="dark"] {
   --bg: #0D141A; --surface: #151F27; --surface-2: #1D2A34;
   --text: #E8F1F7; --text-2: #9DB4C3; --border: #2B3C49;
-  --accent: #63C4EE; --accent-2: #F0A3B6;
+  --accent: #F0A3B6; --accent-2: #63C4EE;
 }
 
 /* ---------- Nonbinary ---------- */
@@ -184,6 +189,7 @@
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 8px rgb(0 0 0 / 0.25);
   --shadow-2: 0 2px 4px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.35);
   --shadow-3: 0 4px 8px rgb(0 0 0 / 0.4), 0 16px 48px rgb(0 0 0 / 0.5);
+  --shadow-float: 0 4px 16px -6px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.22);
   /* Dark theme's --on-accent is a near-black tone built for the fully
      saturated accent (heat-4); heat-3 is lighter than that, so the generic
      default here is the opposite pick from light theme's. Four palettes
@@ -223,6 +229,24 @@
   --grad-accent: linear-gradient(120deg, var(--accent-2), var(--accent) 65%);
 
   --focus-ring: color-mix(in oklab, var(--accent) 70%, var(--text));
+
+  /* Accent as small text. --accent is sized to be sat on (it is heat-4, and
+     --on-accent reads on top of it), which leaves it short of 4.5:1 as 14px
+     text on a page background in some palettes - 4.10:1 on trans light. This
+     is the same hue pulled 28% toward --text until it clears the floor on
+     bg, surface and surface-2 in all 8 palettes x 2 themes, guarded in
+     tests/palette-contrast.test.ts. The heat ramp keeps raw --accent. */
+  --accent-ink: color-mix(in oklab, var(--accent) 72%, var(--text));
+
+  /* Lines. The redesign separates surfaces with a hairline and never with a
+     shadow, so three weights of line rather than one --border: --outline is
+     a card's edge, --outline-strong a control that has to hold its own edge
+     against a fill, --hairline a separator inside a surface. All three are
+     --text at low alpha rather than mixes toward --surface, so one value
+     works over a card and over the page tint underneath it. */
+  --outline: color-mix(in oklab, var(--text) 19%, transparent);
+  --outline-strong: color-mix(in oklab, var(--text) 30%, transparent);
+  --hairline: color-mix(in oklab, var(--text) 14%, transparent);
 }
 
 /* ============================================================
