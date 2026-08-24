@@ -24,6 +24,11 @@
   }
 
   let { days, role }: { days: StripDay[]; role?: Role } = $props();
+
+  /* The heat ramp's own steps (palettes.css), so a cell here and a calendar
+     cell shade the same value the same way - the hue is the only thing that
+     differs, and it differs because this one is the flag's. */
+  const LEVELS = [0, 22, 45, 70, 100];
 </script>
 
 <div class="kit-strip" data-week-strip style={roleStyle(role)}>
@@ -31,7 +36,7 @@
     <div class="kit-strip-day" class:is-today={day.isToday}>
       <span
         class="kit-strip-cell"
-        style={`background: var(--heat-${day.level})`}
+        style={`--level: ${LEVELS[Math.max(0, Math.min(4, day.level))]}`}
         role="img"
         aria-label={day.label}
         data-week-cell={day.key}
