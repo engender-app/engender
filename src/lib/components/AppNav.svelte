@@ -83,7 +83,6 @@
     class="rail-add press-add"
     data-rail-add
     aria-expanded={ui.chooserOpen}
-    aria-haspopup="menu"
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
@@ -103,23 +102,25 @@
   {/each}
 </nav>
 
+<!-- The indicator is on the anchor, not on a wrapper inside it, so it covers
+     the icon and the label as one shape (DIRECTION.md). A pill behind the
+     icon alone leaves the label sitting outside the lit area, which reads as
+     two elements rather than one tab. -->
+{#snippet tab(item: (typeof NAV)[number])}
+  <a
+    class="nav-item press"
+    class:is-active={activeKey === item.key}
+    data-nav-item={item.key}
+    href={item.href}
+    aria-current={activeKey === item.key ? 'page' : undefined}
+  >
+    <span class="nav-icon"><Icon name={item.icon} size={24} /></span>
+    <span class="nav-label" data-nav-label>{item.label()}</span>
+  </a>
+{/snippet}
+
 <nav class="app-nav" class:is-fan-open={ui.chooserOpen} data-app-nav aria-label={m.nav_main()}>
-  {#each LEADING as item (item.key)}
-    <a
-      class="nav-item press"
-      class:is-active={activeKey === item.key}
-      data-nav-item={item.key}
-      href={item.href}
-      aria-current={activeKey === item.key ? 'page' : undefined}
-    >
-      <!-- The indicator is on the anchor, not on a wrapper inside it, so it
-           covers the icon and the label as one shape (DIRECTION.md). A pill
-           behind the icon alone leaves the label sitting outside the lit
-           area, which reads as two elements rather than one tab. -->
-      <span class="nav-icon"><Icon name={item.icon} size={24} /></span>
-      <span class="nav-label" data-nav-label>{item.label()}</span>
-    </a>
-  {/each}
+  {#each LEADING as item (item.key)}{@render tab(item)}{/each}
   <!-- The add action's own animation (spec 04), and it names its tier
        rather than inventing a curve. The button does not explode: it
        becomes the thing it opened. The plus turns 45 degrees into a cross
@@ -133,22 +134,10 @@
     data-nav-fab
     aria-label={m.quick_add_title()}
     aria-expanded={ui.chooserOpen}
-    aria-haspopup="menu"
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
     <span class="nav-add-mark" class:is-open={ui.chooserOpen}><Icon name="plus" size={26} /></span>
   </button>
-  {#each TRAILING as item (item.key)}
-    <a
-      class="nav-item press"
-      class:is-active={activeKey === item.key}
-      data-nav-item={item.key}
-      href={item.href}
-      aria-current={activeKey === item.key ? 'page' : undefined}
-    >
-      <span class="nav-icon"><Icon name={item.icon} size={24} /></span>
-      <span class="nav-label" data-nav-label>{item.label()}</span>
-    </a>
-  {/each}
+  {#each TRAILING as item (item.key)}{@render tab(item)}{/each}
 </nav>
