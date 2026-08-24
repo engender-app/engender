@@ -1,0 +1,134 @@
+/* Tier 2 of DIRECTION.md's motion system: how one screen becomes another.
+
+   Material 3's navigation patterns, mapped to this app's actual shape -
+   fade-through between the four tabs because they are peers rather than a
+   sequence, shared-axis-X from a list into a detail because that one is a
+   sequence, and a container transform only into the entry editor, which is
+   the single place where the thing tapped genuinely becomes the thing that
+   opens.
+
+   These sit next to tokens.ts rather than inside it because they are built
+   out of it: every duration and distance below comes from the same
+   --dur-* and --motion-distance-* tokens the CSS reads, which is ticket
+   09's rule for keeping a Svelte transition and its CSS neighbours from
+   drifting apart. Nothing here invents a number.
+
+   The reduced-motion contract is substitute, never delete: each primitive
+   drops its transform and crossfades instead, over a duration the 1ms
+   clamp cannot reach. That clamp is a CSS rule, so it never touched these
+   transitions in the first place - which is exactly why the substitute has
+   to be written out here rather than left to the stylesheet. */
+
+import { quintOut } from 'svelte/easing';
+import { crossfade } from 'svelte/transition';
+import type { TransitionConfig } from 'svelte/transition';
+
+import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from './tokens';
+
+/* --ease-out is cubic-bezier(0.22, 1, 0.36, 1). quintOut tracks it to
+   within 0.011 across the whole curve, which is under a tenth of a pixel
+   over a 24px travel, so the two really are one easing rather than two
+   that happen to look alike. */
+const EASE_OUT = quintOut;
+
+type Direction = 'in' | 'out' | 'both';
+
+/** The substitute every tier-2 primitive falls back to under reduced
+    motion: the same crossfade, none of the movement. */
+function crossfadeOnly(): TransitionConfig {
+  return {
+    duration: crossfadeDuration(),
+    easing: EASE_OUT,
+    css: (t) => `opacity: ${t}`
+  };
+}
+
+/**
+ * Tier 2, between the four tabs: fade-through. The outgoing screen fades
+ * out and settles to 0.97, the incoming one fades in from 1.03. No
+ * horizontal slide, because sliding implies an order the four tabs do not
+ * have.
+ *
+ * Use as `in:fadeThrough` and `out:fadeThrough`; a bare `transition:`
+ * cannot tell the two apart and gets the incoming shape both ways.
+ */
+export function fadeThrough(
+  _node: Element,
+  params: { duration?: number } = {},
+  options: { direction?: Direction } = {}
+): TransitionConfig {
+  if (isReducedMotion()) return crossfadeOnly();
+
+  /* Outgoing shrinks past its resting size, incoming settles down onto it,
+     so the two never read as the same screen scaling twice. */
+  const travel = options.direction === 'out' ? -0.03 : 0.03;
+  return {
+    duration: params.duration ?? motionDuration('--dur-med', 240),
+    easing: EASE_OUT,
+    css: (t, u) => `opacity: ${t}; transform: scale(${1 + travel * u})`
+  };
+}
+
+/**
+ * Tier 2, into a detail from a list: shared-axis-X. The incoming screen
+ * enters from `--motion-distance-md` away and the outgoing one leaves by
+ * the same distance, so the pair reads as one axis rather than two
+ * independent moves. `back: true` reverses the axis for the return trip.
+ */
+export function sharedAxisX(
+  _node: Element,
+  params: { back?: boolean; duration?: number } = {},
+  options: { direction?: Direction } = {}
+): TransitionConfig {
+  if (isReducedMotion()) return crossfadeOnly();
+
+  const distance = motionDistance('--motion-distance-md', 24);
+  const away = params.back ? -1 : 1;
+  const sign = options.direction === 'out' ? -away : away;
+  return {
+    duration: params.duration ?? motionDuration('--dur-med', 240),
+    easing: EASE_OUT,
+    css: (t, u) => `opacity: ${t}; transform: translateX(${sign * distance * u}px)`
+  };
+}
+
+/**
+ * Tier 2, sheets: rise by `--motion-distance-md`. Dismissal is the
+ * component's job rather than this one's - it follows the drag rather than
+ * replaying this backwards.
+ */
+export function sheetRise(_node: Element, params: { duration?: number } = {}): TransitionConfig {
+  if (isReducedMotion()) return crossfadeOnly();
+
+  const distance = motionDistance('--motion-distance-md', 24);
+  return {
+    duration: params.duration ?? motionDuration('--dur-med', 240),
+    easing: EASE_OUT,
+    css: (t, u) => `opacity: ${t}; transform: translateY(${distance * u}px)`
+  };
+}
+
+/* svelte/transition's crossfade already is a container transform: it
+   measures both boxes and tweens position and size between them. Handing
+   it the token duration is all this needs to speak the same language as
+   everything above. */
+const [send, receive] = crossfade({
+  duration: () => motionDuration('--dur-med', 240),
+  easing: EASE_OUT
+});
+
+/**
+ * Tier 2, into the entry editor: container transform, the one screen where
+ * the source really does become the destination. Put `containerSend` on
+ * the card and `containerReceive` on the editor, keyed by the entry id.
+ *
+ * Under reduced motion both halves stop deferring to each other and just
+ * crossfade, because a FLIP between two boxes is nothing but movement.
+ */
+export function containerSend(node: Element, params: { key: unknown }) {
+  return isReducedMotion() ? crossfadeOnly() : send(node, params);
+}
+
+export function containerReceive(node: Element, params: { key: unknown }) {
+  return isReducedMotion() ? crossfadeOnly() : receive(node, params);
+}

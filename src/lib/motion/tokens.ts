@@ -31,3 +31,16 @@ export function motionDuration(token: '--dur-fast' | '--dur-med' | '--dur-slow',
 export function motionDistance(token: '--motion-distance-sm' | '--motion-distance-md', fallback: number): number {
   return readCssNumber(token, fallback);
 }
+
+/** How long a reduced-motion substitute crossfades for.
+
+    Deliberately not motionDuration(): that returns 0 under reduced motion,
+    which is the right answer for a movement and the wrong one here.
+    DIRECTION.md's contract substitutes rather than deletes - tier 2 becomes
+    a crossfade, and a crossfade with no duration is an instant cut.
+    prefers-reduced-motion is about movement; opacity does not move
+    anything. --dur-crossfade sits outside base.css's clamp blocks for the
+    same reason. */
+export function crossfadeDuration(fallback = 120): number {
+  return readCssNumber('--dur-crossfade', fallback);
+}
