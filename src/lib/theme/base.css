@@ -79,17 +79,9 @@
      Svelte-driven ones included - see $lib/motion/tokens.ts) --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* There used to be an --ease-spring beside this, a cubic-bezier whose two
-     vertical control points sat above 1 so that a press would overshoot. It
-     never could. A cubic-bezier approaches its end from one side however far
-     its handles reach, so the bulge only bought a curve that arrived fast
-     and hard, and Impeccable's detector reads that shape as bounce easing on
-     sight. Phase 5 ticket 29 walked its twelve readers: four were presses
-     and took --ease-press, the other eight were hovers, selections and
-     ambient loops that wanted a plain deceleration all along, so the token
-     had no role left and went. The old curve's numbers are deliberately not
-     written out here - the detector scans comments too, and an epitaph that
-     quotes the literal keeps flagging a curve nothing uses.
+  /* Phase 5 ticket 29 removed an --ease-spring from beside this. Its
+     numbers are deliberately not repeated here: the detector scans
+     comments too, and quoting them keeps it flagging a curve nothing uses.
 
      A press has to overshoot and settle, which is what linear() is for - it
      samples a real spring, so a control let go of springs past its resting
