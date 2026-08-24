@@ -59,7 +59,7 @@
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { journal } from '$lib/data/live/journal.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import type { TallyKind } from '$lib/data/types';
+  import type { TallyKind, WearSession } from '$lib/data/types';
   import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { toast } from '$lib/stores/toasts.svelte';
   import { ui } from '$lib/stores/ui.svelte';
@@ -130,6 +130,56 @@
     toast(m.quick_saved(), { kind: 'tally' });
   }
 
+  /* The wear session, and the reason it earns a slot the others would not
+     (CONTEXT: "Wear session"). Starting one writes a row with no duration
+     and stopping it later fills the duration in, so the moment you log it
+     is the data rather than a note about when you remembered. Everything
+     else in this fan can be reached a screen later at no cost; a session
+     started late is a session recorded wrong.
+
+     Read once each time the fan opens rather than subscribed to. This
+     component is mounted for the whole life of the app, so a live query
+     here would run on every cold boot and stay subscribed behind every
+     screen, to answer a question nothing can change while the fan is up -
+     the fan covers the app, and the only way to start or stop a session
+     from anywhere else is to close it first. */
+  let running = $state<WearSession | null>(null);
+  $effect(() => {
+    if (!ui.chooserOpen) return;
+    let stale = false;
+    void journal.wearSessions.getRunningSession().then((session) => {
+      if (!stale) running = session;
+    });
+    return () => {
+      stale = true;
+    };
+  });
+
+  /* One target, two things, and the label says which: nothing is running so
+     this starts, or something is and this stops it. Both are a single write
+     with nothing left to choose, which is what lets it resolve in place the
+     way a tally does.
+
+     `reminderHoursAfterStart` is omitted on purpose in both directions. On
+     a start that means no reminder, which matches the wear log's own line
+     that any reminder is entirely your own call; on a stop, omitting it is
+     what leaves a reminder the wear screen set alone (wearSessions.ts). */
+  async function toggleWear() {
+    const session = running;
+    close();
+    if (session) {
+      await journal.wearSessions.upsertSession({
+        id: session.id,
+        startTimestamp: session.startTimestamp,
+        durationMs: Date.now() - session.startTimestamp,
+        note: session.note
+      });
+    } else {
+      await journal.wearSessions.upsertSession({ startTimestamp: Date.now(), durationMs: null });
+    }
+    toast(m.quick_saved(), { kind: 'wear' });
+  }
+
   function logDose() {
     close();
     goto('/doses?add=1');
@@ -155,7 +205,8 @@
     photo: addPhoto,
     'tally-misgendered': () => void logTally('misgendered'),
     'tally-correctly_gendered': () => void logTally('correctly_gendered'),
-    dose: logDose
+    dose: logDose,
+    wear: () => void toggleWear()
   };
 
   function runTarget(key: string) {
@@ -354,6 +405,26 @@
       >
         <span class="fan-icon"><Icon name="clock" size={22} /></span>
         <span class="fan-label">{m.doses_empty_action()}</span>
+      </button>
+      <!-- The icon changes with the label because they are saying the same
+           thing: a running session is a thing to stop. `timeline` for the
+           other half is not a stand-in - it is a start dot, a span and an
+           end dot, which is exactly the shape of a wear session, and it is
+           already the app's mark for something measured between two
+           moments. It is a lighter glyph than the ones above it, which is
+           the icon set's own weight rather than this row's. -->
+      <button
+        class="fan-item"
+        class:is-armed={armed === 'wear'}
+        data-fan-target="wear"
+        data-choose="wear"
+        data-wear-running={running ? '' : undefined}
+        onclick={ACTIONS.wear}
+      >
+        <span class="fan-icon"><Icon name={running ? 'stop' : 'timeline'} size={22} /></span>
+        <span class="fan-label">
+          {running ? m.wear_session_stop_action() : m.wear_session_start_action()}
+        </span>
       </button>
     </div>
   </div>
