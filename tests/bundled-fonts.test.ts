@@ -10,8 +10,7 @@
    tests/browser-tier/verify-build.mjs asserts all four reach the offline
    shell's precache. */
 
-import { existsSync, statSync } from 'node:fs';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';

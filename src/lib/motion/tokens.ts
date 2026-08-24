@@ -24,7 +24,16 @@ function readCssNumber(token: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export function motionDuration(token: '--dur-fast' | '--dur-med' | '--dur-slow', fallback: number): number {
+/** A duration that reduced motion is allowed to take to zero.
+
+    --dur-crossfade is deliberately absent from the union: it exists because
+    this function returns 0 under reduced motion, so routing it through here
+    would reintroduce the instant cut it was added to prevent. Read it with
+    crossfadeDuration() instead. */
+export function motionDuration(
+  token: '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored',
+  fallback: number
+): number {
   return isReducedMotion() ? 0 : readCssNumber(token, fallback);
 }
 
@@ -36,11 +45,11 @@ export function motionDistance(token: '--motion-distance-sm' | '--motion-distanc
 
     Deliberately not motionDuration(): that returns 0 under reduced motion,
     which is the right answer for a movement and the wrong one here.
-    DIRECTION.md's contract substitutes rather than deletes - tier 2 becomes
+    DIRECTION.md (ticket 15's branch)'s contract substitutes rather than deletes - tier 2 becomes
     a crossfade, and a crossfade with no duration is an instant cut.
     prefers-reduced-motion is about movement; opacity does not move
     anything. --dur-crossfade sits outside base.css's clamp blocks for the
     same reason. */
-export function crossfadeDuration(fallback = 120): number {
-  return readCssNumber('--dur-crossfade', fallback);
+export function crossfadeDuration(): number {
+  return readCssNumber('--dur-crossfade', 120);
 }

@@ -1,4 +1,4 @@
-/* Tier 2 of DIRECTION.md's motion system: how one screen becomes another.
+/* Tier 2 of DIRECTION.md (ticket 15's branch)'s motion system: how one screen becomes another.
 
    Material 3's navigation patterns, mapped to this app's actual shape -
    fade-through between the four tabs because they are peers rather than a
@@ -31,6 +31,9 @@ import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } fr
    that happen to look alike. */
 const EASE_OUT = quintOut;
 
+/* Svelte reports 'both' for a bare `transition:`, which cannot tell an
+   entrance from an exit. Each primitive below reads it as an entrance,
+   which is why they are documented as `in:`/`out:` pairs. */
 type Direction = 'in' | 'out' | 'both';
 
 /** The substitute every tier-2 primitive falls back to under reduced
@@ -41,6 +44,14 @@ function crossfadeOnly(): TransitionConfig {
     easing: EASE_OUT,
     css: (t) => `opacity: ${t}`
   };
+}
+
+/** A tier-2 transition over the shared duration and easing, or its
+    reduced-motion substitute. Every primitive is this plus one line of
+    geometry, which is the whole point of the tier being a tier. */
+function tier2(css: (t: number, u: number) => string): TransitionConfig {
+  if (isReducedMotion()) return crossfadeOnly();
+  return { duration: motionDuration('--dur-med', 240), easing: EASE_OUT, css };
 }
 
 /**
@@ -54,19 +65,13 @@ function crossfadeOnly(): TransitionConfig {
  */
 export function fadeThrough(
   _node: Element,
-  params: { duration?: number } = {},
+  _params: Record<string, never> = {},
   options: { direction?: Direction } = {}
 ): TransitionConfig {
-  if (isReducedMotion()) return crossfadeOnly();
-
   /* Outgoing shrinks past its resting size, incoming settles down onto it,
      so the two never read as the same screen scaling twice. */
   const travel = options.direction === 'out' ? -0.03 : 0.03;
-  return {
-    duration: params.duration ?? motionDuration('--dur-med', 240),
-    easing: EASE_OUT,
-    css: (t, u) => `opacity: ${t}; transform: scale(${1 + travel * u})`
-  };
+  return tier2((t, u) => `opacity: ${t}; transform: scale(${1 + travel * u})`);
 }
 
 /**
@@ -77,19 +82,13 @@ export function fadeThrough(
  */
 export function sharedAxisX(
   _node: Element,
-  params: { back?: boolean; duration?: number } = {},
+  params: { back?: boolean } = {},
   options: { direction?: Direction } = {}
 ): TransitionConfig {
-  if (isReducedMotion()) return crossfadeOnly();
-
   const distance = motionDistance('--motion-distance-md', 24);
   const away = params.back ? -1 : 1;
   const sign = options.direction === 'out' ? -away : away;
-  return {
-    duration: params.duration ?? motionDuration('--dur-med', 240),
-    easing: EASE_OUT,
-    css: (t, u) => `opacity: ${t}; transform: translateX(${sign * distance * u}px)`
-  };
+  return tier2((t, u) => `opacity: ${t}; transform: translateX(${sign * distance * u}px)`);
 }
 
 /**
@@ -97,15 +96,9 @@ export function sharedAxisX(
  * component's job rather than this one's - it follows the drag rather than
  * replaying this backwards.
  */
-export function sheetRise(_node: Element, params: { duration?: number } = {}): TransitionConfig {
-  if (isReducedMotion()) return crossfadeOnly();
-
+export function sheetRise(_node: Element): TransitionConfig {
   const distance = motionDistance('--motion-distance-md', 24);
-  return {
-    duration: params.duration ?? motionDuration('--dur-med', 240),
-    easing: EASE_OUT,
-    css: (t, u) => `opacity: ${t}; transform: translateY(${distance * u}px)`
-  };
+  return tier2((t, u) => `opacity: ${t}; transform: translateY(${distance * u}px)`);
 }
 
 /* svelte/transition's crossfade already is a container transform: it
