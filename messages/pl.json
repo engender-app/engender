@@ -12,6 +12,7 @@
   "new_entry_when": "Z jakiego dnia jest ten wpis? Jeden dzień może mieć kilka wpisów.",
   "quick_add_title": "Szybki zapis",
   "quick_add_photo": "Zdjęcie",
+  "quick_add_failed": "Nie udało się tego zapisać.",
   "quick_saved": "Zapisano. To się liczy.",
   "add_details": "Dodaj szczegóły",
   "recent_entries": "Ostatnie wpisy",

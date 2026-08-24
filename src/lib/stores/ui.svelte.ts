@@ -8,5 +8,10 @@ export const ui = $state({
      starts on one component and finishes on another: the button opens the
      fan on the way down, and the fan resolves whatever the finger is over
      on the way up. */
-  chooserPressing: false
+  chooserPressing: false,
+  /* A write that finished without going anywhere just landed, and the add
+     control is reporting it. Lives here rather than in quick add because
+     the two halves are in different components: the fan measures the flight
+     and the control catches it. */
+  chooserConfirming: false
 });

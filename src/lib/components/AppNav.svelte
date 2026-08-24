@@ -81,12 +81,15 @@
   </div>
   <button
     class="rail-add press-add"
+    class:is-catching={ui.chooserConfirming}
     data-rail-add
     aria-expanded={ui.chooserOpen}
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
-    <span class="nav-add-mark" class:is-open={ui.chooserOpen}><Icon name="plus" size={20} /></span>
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserConfirming}>
+      <Icon name={ui.chooserConfirming ? 'check' : 'plus'} size={20} />
+    </span>
     <span>{m.quick_add_title()}</span>
   </button>
   {#each NAV as item (item.key)}
@@ -132,13 +135,16 @@
        opened. -->
   <button
     class="nav-add press-add"
+    class:is-catching={ui.chooserConfirming}
     data-nav-fab
     aria-label={m.quick_add_title()}
     aria-expanded={ui.chooserOpen}
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
-    <span class="nav-add-mark" class:is-open={ui.chooserOpen}><Icon name="plus" size={26} /></span>
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserConfirming}>
+      <Icon name={ui.chooserConfirming ? 'check' : 'plus'} size={26} />
+    </span>
   </button>
   {#each TRAILING as item (item.key)}{@render tab(item)}{/each}
 </nav>
