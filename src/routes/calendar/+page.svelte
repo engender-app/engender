@@ -36,7 +36,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.nav_calendar()}>
+  <ScreenHeader title={m.nav_calendar()} titleHidden>
     {#snippet actions()}
       <a class="icon-btn" href="/search" aria-label={m.search()}><Icon name="search" size={22} /></a>
     {/snippet}
