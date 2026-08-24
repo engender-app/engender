@@ -495,7 +495,7 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .sheet {
   background: var(--surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  padding: var(--space-3) var(--space-5) calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-3) var(--space-5) calc(var(--space-6) + var(--inset-bottom));
   width: 100%; max-width: 520px;
   max-height: 85%;
   overflow-y: auto;
@@ -510,7 +510,7 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .mode-desktop .sheet { border-radius: var(--radius-xl); }
 
 .toast {
-  position: absolute; left: 50%; bottom: calc(var(--bottom-nav-height) + var(--space-4));
+  position: absolute; left: 50%; bottom: var(--nav-clearance);
   transform: translate(-50%, 10px);
   background: var(--text); color: var(--bg);
   border-radius: var(--radius-md);

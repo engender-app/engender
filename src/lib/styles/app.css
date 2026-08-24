@@ -38,6 +38,25 @@ body {
   overflow: hidden;
 }
 
+/* The one place the window insets are spent (phase 5 ticket 18).
+
+   Both halves of the shell's safe-area defect are fixed by putting them
+   here rather than in the screen wrapper. Top content used to render under
+   a display cutout because nothing consumed the top inset at all; bottom
+   content cleared the bar only when a screen used .screen and did not
+   override its padding, which made clearance a thing 61 screens each had
+   to remember. The scroll region is every screen's parent whether or not
+   it wraps itself in anything, so padding it is not a rule a screen can
+   opt out of by being written differently.
+
+   A decorative bleed opts back out explicitly and locally - Home's flag
+   sun pulls itself up by --inset-top so its corner point lands on the real
+   screen corner (screens.css). That is the only intended direction for an
+   exception: content is safe unless something says otherwise in as many
+   words.
+
+   Left and right are here for landscape, where the cutout is beside the
+   content rather than above it. */
 .app-main {
   flex: 1;
   overflow-y: auto;
@@ -45,10 +64,27 @@ body {
   position: relative;
   scrollbar-width: thin;
   overscroll-behavior: contain;
+  padding-top: var(--inset-top);
+  padding-left: var(--inset-left);
+  padding-right: var(--inset-right);
+  padding-bottom: var(--nav-clearance);
+}
+
+/* What the floating bar occupies, measured from the bottom of the window:
+   its own height, the gap it floats above the edge by, the system inset
+   under that, and a breath so the last row of content does not stop dead
+   against the bar's shadow. Named here rather than inlined because both
+   the scroll region above and any screen with its own sticky footer - the
+   entry editor's save bar - have to agree on it. */
+.app {
+  --nav-clearance: calc(
+    var(--bottom-nav-height) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
+  );
+  --nav-float-gap: var(--space-3);
 }
 
 .screen {
-  padding: 0 var(--space-5) calc(var(--bottom-nav-height) + var(--space-7));
+  padding: 0 var(--space-5);
   animation: screen-in var(--dur-med) var(--ease-out);
   position: relative;
   min-height: 100%;
@@ -73,78 +109,138 @@ body {
 .milestone-scroller > :nth-child(2) { animation-delay: var(--stagger-step); }
 .milestone-scroller > :nth-child(n+3) { animation-delay: calc(var(--stagger-step) * 2); }
 
-/* ---------- phone: bottom tab bar + FAB ---------- */
+/* ---------- phone: the floating bar ----------
+
+   DIRECTION.md's decision 2 gives the whole app one shadow, and this is
+   it. Everything else separates with a 1px line; the bar is the only
+   element that genuinely sits over the content rather than beside it, so
+   it is the only one with anything to cast.
+
+   It floats rather than spanning the edge. That is what lets the bottom
+   inset be a gap the bar sits above instead of padding inside a full-width
+   plane - on a gesture-navigation phone the system's own handle then has
+   the strip to itself, and the bar reads as an object on the screen rather
+   than as the screen's bottom edge.
+
+   Opaque, not translucent. The previous bar was a blurred 88% surface,
+   which is the veil decision 2 rules out; and the app now owns blur as a
+   specific material (the withdrawal behind a sheet, motion/materials.css),
+   so spending it on chrome as well would make the one place it means
+   something mean nothing.
+   ---------- */
 .app-nav {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: color-mix(in oklab, var(--surface) 88%, transparent);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid var(--border);
-  display: flex; align-items: stretch;
+  position: absolute;
+  left: calc(var(--nav-float-gap) + var(--inset-left));
+  right: calc(var(--nav-float-gap) + var(--inset-right));
+  bottom: calc(var(--nav-float-gap) + var(--inset-bottom));
+  height: var(--bottom-nav-height);
+  border-radius: calc(var(--r-add) + var(--nav-bar-pad));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-float);
+  padding: var(--nav-bar-pad);
+  /* Five equal cells: two tabs, the add button, two tabs. Equal rather
+     than auto so the four labels sit on a regular rhythm whatever their
+     translations are, and so the add button is on the bar's true centre
+     line rather than wherever the text either side of it happens to end. */
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
   z-index: 30;
 }
-.nav-item {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  color: var(--text-2); text-decoration: none;
-  font-size: var(--text-xs); font-weight: var(--weight-medium);
-  transition: color var(--dur-fast) var(--ease-out);
-}
-.nav-item.is-active { color: var(--accent); font-weight: var(--weight-bold); }
-.nav-item:hover { color: var(--text); }
-/* SH-003: colour alone marked the active tab. The pill is a shape cue behind
-   the icon, so the active state still reads with colour vision deficiency
-   or on a screen turned all the way down. */
-.nav-icon {
-  display: flex; align-items: center; justify-content: center;
-  padding: 3px 16px; border-radius: var(--radius-pill);
-  transition: background var(--dur-fast) var(--ease-out);
-}
-.nav-item.is-active .nav-icon { background: var(--accent-soft); }
-.nav-fab-slot { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
-.nav-fab {
-  position: absolute; top: -24px;
-  width: 56px; height: 56px; border-radius: 50%;
-  background: var(--grad-accent); color: var(--on-accent);
-  border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--shadow-2), 0 0 0 5px color-mix(in oklab, var(--accent) 16%, transparent);
-  /* Longhands for the same reason .btn has them: the shorthand would take
-     this shadow transition down with the press on any WebView too old to
-     parse --ease-press's linear(). */
-  transition-property: transform, box-shadow;
-  transition-duration: var(--dur-press), var(--dur-fast);
-  transition-timing-function: var(--ease-press), ease;
-}
-/* SH-002: the 90deg spin was decorative-only on the app's primary action,
-   and hover-only, so phone users never saw it - a scale/elevation response
-   is the part that reads as a press response on Android. */
-.nav-fab:hover { transform: scale(1.08); box-shadow: var(--shadow-3), 0 0 0 7px color-mix(in oklab, var(--accent) 20%, transparent); }
-/* The add button takes the deeper press, matching .press-add - see .btn's
-   note in components.css for why the number moved. */
-.nav-fab:active { transform: scale(0.9); }
+.app { --nav-bar-pad: 5px; }
 
+/* The bar's corner and the add button's are the same shape, one padding
+   step apart, so the button reads as sitting inside the plane rather than
+   as a second unrelated rounded thing. That is the agreement DIRECTION.md
+   asks --r-add to carry, and it is why the bar's radius is derived from it
+   here instead of being its own number. */
+.nav-item {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  justify-self: stretch;
+  min-width: 0;
+  min-height: var(--touch-target);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--r-add);
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  /* Longhands, not the shorthand: .press supplies the transform on
+     --ease-press, and a shorthand here would replace it - see the note on
+     --ease-press in theme/base.css for what an old WebView then does with
+     the whole declaration. */
+  transition-property: color, background-color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+.nav-icon { display: grid; place-items: center; }
+/* One line, ellipsed rather than wrapped: a two-line label would grow the
+   bar's height on one tab and not the others. */
+.nav-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* SH-003: colour alone marked the active tab, which disappears with a
+   colour vision deficiency or on a screen turned all the way down. The
+   indicator is a filled shape behind the whole tab - icon and label
+   together, per DIRECTION.md - so the active state carries a second cue
+   that survives both. */
+.nav-item.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.nav-item:hover { color: var(--text); }
+
+.nav-add {
+  justify-self: center;
+  width: 56px; height: 56px;
+  border-radius: var(--r-add);
+  border: none;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+/* The press, the shadow and the shadow's collapse all come from .press-add
+   in motion/press.css, which owns both ends of that material. Nothing about
+   the gesture is restated here. */
 /* ---------- desktop: left rail + centred column ---------- */
 .app-rail { display: none; }
 @container app (min-width: 1024px) {
-  .app { flex-direction: row; }
+  .app {
+    flex-direction: row;
+    /* Nothing floats over the content at this width, so the clearance is a
+       breath at the end of the column rather than room for a bar. */
+    --nav-clearance: var(--space-8);
+  }
   .app-nav { display: none; }
   .app-rail {
     display: flex; flex-direction: column; gap: var(--space-1);
-    width: var(--rail-width); flex-shrink: 0;
-    padding: var(--space-6) var(--space-4);
+    width: calc(var(--rail-width) + var(--inset-left)); flex-shrink: 0;
+    padding: calc(var(--space-6) + var(--inset-top)) var(--space-4)
+             calc(var(--space-6) + var(--inset-bottom))
+             calc(var(--space-4) + var(--inset-left));
     border-right: 1px solid var(--border);
     background: var(--surface);
+    overflow-y: auto;
   }
-  .app-main { flex: 1; }
+  /* The rail has taken the left inset, so the scroll region beside it only
+     owes the right one. */
+  .app-main { flex: 1; padding-left: 0; }
   .screen {
     max-width: calc(var(--content-max) + 2 * var(--space-5));
     margin: 0 auto;
-    padding-bottom: var(--space-8);
   }
 }
 .rail-brand {
   font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg);
+  letter-spacing: var(--display-track);
   padding: 0 var(--space-3) var(--space-5);
   display: flex; align-items: center; gap: var(--space-2);
 }
@@ -153,13 +249,27 @@ body {
   background: linear-gradient(135deg, var(--motif-stripes));
   flex-shrink: 0;
 }
-.rail-new { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); }
+/* The bar's add button, laid on its side. Same fill, same corner, same
+   press - the rail is the same navigation at a width that has room for
+   words, not a different one. */
+.rail-add {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  width: 100%; min-height: var(--touch-target);
+  margin-bottom: var(--space-4);
+  padding: 0 var(--space-4);
+  border: none; border-radius: var(--r-add);
+  background: var(--accent); color: var(--on-accent);
+  font: inherit; font-weight: var(--weight-bold);
+  cursor: pointer;
+}
 .rail-item {
   display: flex; align-items: center; gap: var(--space-3);
   padding: 10px var(--space-3); min-height: var(--touch-target);
-  border-radius: var(--radius-md);
+  border-radius: var(--r-add);
   color: var(--text-2); text-decoration: none; font-weight: var(--weight-medium);
-  transition: background var(--dur-fast), color var(--dur-fast);
+  transition-property: color, background-color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
 }
 .rail-item:hover { background: var(--surface-2); color: var(--text); }
 .rail-item.is-active { background: var(--accent-soft); color: var(--on-accent-soft); font-weight: var(--weight-bold); }
@@ -177,7 +287,7 @@ body {
   text-decoration: none; font-weight: var(--weight-bold);
   transition: top var(--dur-fast) var(--ease-out);
 }
-.skip-link:focus { top: var(--space-3); }
+.skip-link:focus { top: calc(var(--space-3) + var(--inset-top)); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -237,11 +347,22 @@ body {
     --shadow-2: none;
   }
 
+  /* Paper has neither a display cutout nor a floating bar, so the insets
+     and the clearance both go to zero rather than printing as blank
+     margins on top of @page's own. */
+  html[data-palette][data-theme] {
+    --inset-top: 0px;
+    --inset-right: 0px;
+    --inset-bottom: 0px;
+    --inset-left: 0px;
+  }
+
   .app-viewport,
   .app,
   .app-main {
     height: auto;
     overflow: visible;
+    padding: 0;
   }
 
   .app-rail,

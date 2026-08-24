@@ -1792,6 +1792,117 @@ try {
   fail('More hub route characterization', e);
 }
 
+/* The shell's window insets (phase 5 ticket 18).
+
+   A headless desktop Chromium reports every safe-area inset as 0, so
+   env(safe-area-inset-*) can never exercise the defect here - which is why
+   the shell reads --inset-* tokens the layout can be told to change. This
+   flow sets them to a phone's numbers and then asserts against the real
+   rendered geometry rather than against the stylesheet: where content
+   actually starts, and where the bar actually ends.
+
+   The device check the acceptance list asks for is a separate thing and
+   this does not stand in for it. What this catches is a regression - a
+   screen or a control that stops consuming the insets, on every run,
+   without anyone plugging a phone in. */
+const CUTOUT = { top: 48, right: 0, bottom: 24, left: 0 };
+
+async function withSimulatedInsets(fn) {
+  await page.evaluate((cutout) => {
+    for (const [side, px] of Object.entries(cutout)) {
+      document.documentElement.style.setProperty(`--inset-${side}`, `${px}px`);
+    }
+  }, CUTOUT);
+  try {
+    return await fn();
+  } finally {
+    await page.evaluate(() => {
+      for (const side of ['top', 'right', 'bottom', 'left']) {
+        document.documentElement.style.removeProperty(`--inset-${side}`);
+      }
+    });
+  }
+}
+
+try {
+  await fresh('/more');
+  await withSimulatedInsets(async () => {
+    /* The hub's own first content, not a wrapper's padding: whatever the
+       screen is built from has to start below the cutout. */
+    const contentTop = await page
+      .getByRole('heading', { level: 2 })
+      .first()
+      .evaluate((node) => node.getBoundingClientRect().top);
+    if (contentTop < CUTOUT.top) {
+      throw new Error(`More hub content starts at ${contentTop}px, under a ${CUTOUT.top}px cutout`);
+    }
+    ok('a screen renders clear of the top inset');
+  });
+} catch (e) { fail('top inset clears content', e); }
+
+try {
+  await fresh('/more');
+  await withSimulatedInsets(async () => {
+    const { barBottom, viewportBottom } = await page.evaluate(() => {
+      const bar = document.querySelector('[data-app-nav]').getBoundingClientRect();
+      const viewport = document.querySelector('[data-app-viewport]').getBoundingClientRect();
+      return { barBottom: bar.bottom, viewportBottom: viewport.bottom };
+    });
+    if (barBottom > viewportBottom - CUTOUT.bottom) {
+      throw new Error(
+        `bar ends at ${barBottom}px, inside the ${CUTOUT.bottom}px bottom inset (viewport ends ${viewportBottom}px)`
+      );
+    }
+    ok('the bar floats clear of the bottom inset');
+  });
+} catch (e) { fail('bottom inset clears the bar', e); }
+
+try {
+  await fresh('/more');
+  await withSimulatedInsets(async () => {
+    /* The scroll region reserves the bar's whole footprint, so the last
+       thing on a screen is reachable rather than sitting under it. Asserted
+       by scrolling to the end and measuring, because the padding being
+       declared is not the same claim as the content clearing. */
+    const lastRowBottom = await page.evaluate(async () => {
+      const main = document.querySelector('[data-app-scroll-region]');
+      main.scrollTop = main.scrollHeight;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const rows = document.querySelectorAll('[data-hub-row]');
+      return rows[rows.length - 1].getBoundingClientRect().bottom;
+    });
+    const barTop = await page
+      .locator('[data-app-nav]')
+      .evaluate((node) => node.getBoundingClientRect().top);
+    if (lastRowBottom > barTop) {
+      throw new Error(`last row ends at ${lastRowBottom}px, under a bar starting at ${barTop}px`);
+    }
+    ok('scrolled to the end, the last row still clears the bar');
+  });
+} catch (e) { fail('bar clearance survives a full scroll', e); }
+
+try {
+  await fresh('/');
+  await withSimulatedInsets(async () => {
+    /* Home's flag sun is the one deliberate exception, and it is worth a
+       test of its own: if it ever stopped bleeding, the sun's centre would
+       drift off the window corner and every ring would show as more than a
+       quarter. Decoration crosses the inset, the greeting under it does
+       not. */
+    const { headerTop, greetingTop } = await page.evaluate(() => ({
+      headerTop: document.querySelector('[data-home-header]').getBoundingClientRect().top,
+      greetingTop: document.querySelector('[data-home-hero]').getBoundingClientRect().top
+    }));
+    if (headerTop >= CUTOUT.top) {
+      throw new Error(`the flag sun's header starts at ${headerTop}px and never reaches the corner`);
+    }
+    if (greetingTop < CUTOUT.top) {
+      throw new Error(`the greeting starts at ${greetingTop}px, under a ${CUTOUT.top}px cutout`);
+    }
+    ok('the flag sun bleeds into the inset and the greeting under it does not');
+  });
+} catch (e) { fail('Home bleeds decoration only', e); }
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');

@@ -63,7 +63,7 @@
     <SectionTitle text={group.title()} />
     <div class="list-group">
       {#each group.rows as row (row.key)}
-        <a class="list-row" href={row.href}>
+        <a class="list-row" href={row.href} data-hub-row={row.key}>
           <span class="row-icon"><Icon name={row.icon} size={22} /></span>
           <span class="row-text">
             <span class="row-title">{row.title()}</span>
@@ -76,7 +76,7 @@
   {/each}
 
   <div class="list-group">
-    <a class="list-row" href="/settings">
+    <a class="list-row" href="/settings" data-hub-row="settings">
       <span class="row-icon"><Icon name="settings" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.nav_settings()}</span>

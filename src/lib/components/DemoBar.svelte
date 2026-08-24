@@ -3,7 +3,7 @@
   import Icon from './Icon.svelte';
   import { resetDemo, markFirstRun } from '$lib/data/demo/controls';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { frame } from '$lib/data/demo/frame.svelte';
+  import { frame, SIMULATED_INSETS } from '$lib/data/demo/frame.svelte';
 
   /* Review-only controls (dev/demo builds): theme, phone frame, reset, jump.
      The palette picker is NOT here — it lives in Settings, as in the real app. */
@@ -63,6 +63,21 @@
     document.body.classList.toggle('demo-phone-frame', frame.mode === 'phone');
     return () => document.body.classList.remove('demo-phone-frame');
   });
+
+  /* Written onto <html> as inline custom properties, which outrank the
+     env() defaults in theme/base.css without the stylesheet knowing this
+     control exists. Removing them puts the app back on the real device's
+     insets rather than on a hardcoded zero. */
+  $effect(() => {
+    const root = document.documentElement;
+    const sides = ['top', 'right', 'bottom', 'left'] as const;
+    if (frame.insets) {
+      for (const side of sides) root.style.setProperty(`--inset-${side}`, SIMULATED_INSETS[side]);
+    }
+    return () => {
+      for (const side of sides) root.style.removeProperty(`--inset-${side}`);
+    };
+  });
 </script>
 
 <div class="demo-bar">
@@ -78,6 +93,14 @@
   <div class="demo-group" role="group" aria-label="Viewport">
     <button class="demo-btn" class:is-active={frame.mode === 'phone'} onclick={() => (frame.mode = 'phone')}>Phone</button>
     <button class="demo-btn" class:is-active={frame.mode === 'responsive'} onclick={() => (frame.mode = 'responsive')}>Web</button>
+  </div>
+  <div class="demo-group" role="group" aria-label="Safe area">
+    <button
+      class="demo-btn"
+      aria-pressed={frame.insets}
+      class:is-active={frame.insets}
+      onclick={() => (frame.insets = !frame.insets)}>Simulate cutout</button
+    >
   </div>
   <button
     class="demo-btn"
