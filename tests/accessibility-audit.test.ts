@@ -22,6 +22,18 @@ describe('phase 2 accessibility seams', () => {
     expect(stats).toContain('m.values_title');
   });
 
+  /* Ticket 17: --touch-target was 44px, which is the iOS number. The app
+     ships an Android wrapper too (android/), and Android's floor is 48dp,
+     so 44 left the segmented control, the sheet dismiss button and the
+     section links under the platform minimum on the platform most people
+     will run this on. Every control in the app sizes itself from this one
+     token, so the floor is worth asserting rather than trusting. */
+  it('sizes the touch target for the stricter of the two platforms it ships on', () => {
+    const base = read('src/lib/theme/base.css');
+    const value = /--touch-target:\s*(\d+)px/.exec(base)?.[1];
+    expect(Number(value), '--touch-target should be at least Android\'s 48dp floor').toBeGreaterThanOrEqual(48);
+  });
+
   it('keeps reduced-motion support wired in both token and component layers', () => {
     const base = read('src/lib/theme/base.css');
     const app = read('src/lib/styles/app.css');
