@@ -164,6 +164,7 @@
   <div
     class="sheet-scrim scrim-withdraw is-open"
     role="presentation"
+    data-sheet-scrim
     transition:fade={{ duration: motionDuration('--dur-med', 240) }}
     onclick={(e) => {
       if (e.target === e.currentTarget) close();
@@ -173,6 +174,7 @@
     <div
       class="sheet-drag"
       role="presentation"
+      data-sheet-drag
       class:is-dragging={dragging}
       style:transform={dragY ? `translateY(${dragY}px)` : undefined}
       onpointerdown={dragStart}
@@ -186,6 +188,7 @@
         aria-modal="true"
         aria-label={title}
         tabindex="-1"
+        data-sheet
         transition:sheetRise
         {@attach focusInitial}
       >

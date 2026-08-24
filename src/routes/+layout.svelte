@@ -138,6 +138,14 @@
      <html> as a data attribute for app.css to read - the decision is a
      table, and this is only the wiring. */
   onNavigate((navigation) => {
+    /* The bar sits above quick add's scrim so the add control stays sharp
+       while the fan is up, which leaves the four tabs pressable behind it.
+       Rather than making them inert - which would need the button to escape
+       the bar's own stacking context - any navigation closes the fan. That
+       is the right answer for every other way out of it too: a deep link, a
+       notification, the back button. */
+    ui.chooserOpen = false;
+
     if (!document.startViewTransition || !navigation.to) return;
     const pattern = screenTransition({
       from: navigation.from?.url.pathname ?? null,
@@ -153,9 +161,18 @@
       document.documentElement.dataset.nav = pattern;
       const transition = document.startViewTransition(async () => {
         resolve();
-        await navigation.complete;
+        /* Both of these reject rather than resolve when a navigation is
+           superseded - a redirect landing on top of it, a second tap, a
+           screen that rewrites its own URL as it mounts - and neither
+           rejection means anything went wrong. Swallowed here rather than
+           left to the window: an unhandled rejection per aborted navigation
+           is noise that buries a real one, and the walkthrough fails the
+           whole run on it. */
+        await navigation.complete.catch(() => {});
       });
-      void transition.finished.finally(() => delete document.documentElement.dataset.nav);
+      void transition.finished
+        .catch(() => {})
+        .finally(() => delete document.documentElement.dataset.nav);
     });
   });
 
@@ -364,7 +381,7 @@
     {/if}
     <!-- SH-004: without this, a keyboard user tabbed through the whole rail
          before reaching content on desktop. -->
-    <a href="#app-main" class="skip-link">{m.skip_to_content()}</a>
+    <a href="#app-main" class="skip-link" data-skip-link>{m.skip_to_content()}</a>
     <!-- Before <main>, which is what puts the rail to the left of the
          content at desktop width without an `order` (order moves boxes and
          leaves tab order where it was, so the two would disagree). On a
