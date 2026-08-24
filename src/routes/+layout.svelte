@@ -5,6 +5,7 @@
   import '$lib/styles/app.css';
   import '$lib/styles/components.css';
   import '$lib/styles/screens.css';
+  import '$lib/styles/kit.css';
   /* $lib/motion last, after the sheets it applies over (phase 5 ticket 28).
      Both files are opt-in classes a screen puts on top of a component's own
      class - .press-add on the add button, .scrim-withdraw on a scrim - and
