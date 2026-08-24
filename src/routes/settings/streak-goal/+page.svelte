@@ -12,6 +12,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { GOAL_ACHIEVEMENT_DAYS, GOAL_TARGET_PRESETS, goalProgress, reachedAchievements } from '$lib/data/streakGoal';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -43,11 +44,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.streak_goal_title()}</h1>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.streak_goal_intro()}</p>
+  <ScreenHeader title={m.streak_goal_title()} back="/settings" subtitle={m.streak_goal_intro()} />
 
   <div class="card">
     <div class="pref-row">

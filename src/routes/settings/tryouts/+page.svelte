@@ -6,6 +6,7 @@
   import type { Tryout } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -28,14 +29,11 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.tryout_title()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.tryout_title()} back="/settings" subtitle={m.tryout_intro()}>
+    {#snippet actions()}
       <a class="icon-btn" href="/settings/tryouts/new" aria-label={m.tryout_add()}><Icon name="plus" size={22} /></a>
-    </div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.tryout_intro()}</p>
+    {/snippet}
+  </ScreenHeader>
 
   {#if tryoutsQuery.loading}
     <Skeleton variant="line" count={3} />

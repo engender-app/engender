@@ -23,6 +23,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -167,11 +168,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings/photos" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.pj_title()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={m.pj_title()} back="/settings/photos" />
 
   {#if photosQuery.loading}
     <Skeleton variant="card" count={2} />

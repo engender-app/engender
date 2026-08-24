@@ -15,6 +15,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
 
   let sorted = $derived(vocabulary.milestones);
@@ -25,12 +26,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.journey_anchor_title()}</h1>
-    <div class="header-action"></div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.journey_anchor_intro()}</p>
+  <ScreenHeader title={m.journey_anchor_title()} back="/settings" subtitle={m.journey_anchor_intro()} />
 
   <div class="list-group">
     <button

@@ -3,6 +3,7 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
 
   let builtIns = $derived(vocabulary.bodyRegions.filter((r) => r.builtIn));
@@ -13,12 +14,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.body_regions_row_title()}</h1>
-    <div class="header-action"></div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.body_regions_intro()}</p>
+  <ScreenHeader title={m.body_regions_row_title()} back="/settings" subtitle={m.body_regions_intro()} />
 
   <section class="card" style="margin-bottom:var(--space-4)">
     <h2 class="editor-heading" style="margin-bottom:var(--space-3)">{m.body_regions_builtin_heading()}</h2>

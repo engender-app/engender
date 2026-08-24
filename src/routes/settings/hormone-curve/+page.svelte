@@ -30,6 +30,7 @@
   import { fmtDay, intlLocale } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -238,10 +239,7 @@
 {/snippet}
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.curve_title()}</h1>
-  </header>
+  <ScreenHeader title={m.curve_title()} back="/settings" />
 
   {#if injectableQuery.loading || qualLoading || !injectableView || !qualAnswered}
     <Skeleton variant="block" count={2} />

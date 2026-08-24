@@ -4,8 +4,8 @@
   import { TRASH_WINDOW_DAYS } from '$lib/data/journal/entries';
   import { toast } from '$lib/stores/toasts.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -25,11 +25,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.trash_title()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={m.trash_title()} back="/settings" />
 
   {#if trashQuery.loading}
     <Skeleton variant="line" count={3} />

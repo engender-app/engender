@@ -14,6 +14,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
   /* One query, not a union of a table and a column: entry photos and
@@ -73,11 +74,7 @@
 
 <div class="screen">
   {#if comparing && pair}
-    <header class="screen-header">
-      <button class="icon-btn" aria-label={m.back()} onclick={() => (comparing = false)}><Icon name="arrowLeft" /></button>
-      <h1 class="screen-title">{m.ph_compare()}</h1>
-      <div class="header-action"></div>
-    </header>
+    <ScreenHeader title={m.ph_compare()} back={() => (comparing = false)} />
     <p class="compare-gap" data-compare-gap>{gapLabel}</p>
     <div class="compare-wrap">
       {#each [{ i: pair.left, which: 'left' as const, canPrev: pair.left > 0, canNext: pair.left < pair.right - 1 }, { i: pair.right, which: 'right' as const, canPrev: pair.right > pair.left + 1, canNext: pair.right < photos.length - 1 }] as side (side.which)}
@@ -122,11 +119,7 @@
       </button>
     </div>
   {:else}
-    <header class="screen-header">
-      <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-      <h1 class="screen-title">{m.progress_photos()}</h1>
-      <div class="header-action"></div>
-    </header>
+    <ScreenHeader title={m.progress_photos()} back="/settings" />
     {#if photosQuery.loading}
       <Skeleton variant="card" count={2} />
     {:else if photos.length}

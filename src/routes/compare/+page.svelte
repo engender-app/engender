@@ -4,7 +4,7 @@
   import { customInclusiveRange, dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import type { Journal } from '$lib/data/journal/journal';
-  import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
@@ -75,11 +75,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/stats" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.compare_title()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={m.compare_title()} back="/stats" />
 
   <div class="compare-wrap">
     <div class="card compare-picker">

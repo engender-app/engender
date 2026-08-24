@@ -24,6 +24,7 @@
   import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import WrappedCompact from '$lib/components/WrappedCompact.svelte';
 
@@ -88,11 +89,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/')}><Icon name="arrowLeft" /></button>
-    <h1 class="screen-title" data-screen-title="on-this-day">{m.on_this_day()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={m.on_this_day()} screen="on-this-day" back={() => smartBack('/')} />
 
   {#if !prefs.onThisDayEnabled}
     <div class="notice notice-info" role="status">
