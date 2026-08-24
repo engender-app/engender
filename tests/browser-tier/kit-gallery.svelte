@@ -203,7 +203,7 @@
     <DayEntry key="c" time="22:40" mood={4} note="Tired, but not in the bad way." />
   </DayCard>
 
-  <p class="gallery-note">Tile grid, two-up, the numbers filled with the flag</p>
+  <p class="gallery-note">Tile grid, two-up, the flag under the number</p>
   <TileGrid role={roleAt(roles, 1)} {flagFill}>
     <Tile key="onthisday" title="On this day" value="3" note="entries a year ago" href="#a" />
     <Tile key="wrapped" title="This month" value="21" note="days logged" href="#b" />
