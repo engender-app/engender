@@ -109,7 +109,12 @@ body {
   border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-2), 0 0 0 5px color-mix(in oklab, var(--accent) 16%, transparent);
-  transition: transform var(--dur-press) var(--ease-press), box-shadow var(--dur-fast);
+  /* Longhands for the same reason .btn has them: the shorthand would take
+     this shadow transition down with the press on any WebView too old to
+     parse --ease-press's linear(). */
+  transition-property: transform, box-shadow;
+  transition-duration: var(--dur-press), var(--dur-fast);
+  transition-timing-function: var(--ease-press), ease;
 }
 /* SH-002: the 90deg spin was decorative-only on the app's primary action,
    and hover-only, so phone users never saw it - a scale/elevation response

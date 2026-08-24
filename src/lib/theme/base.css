@@ -93,9 +93,21 @@
 
      A press has to overshoot and settle, which is what linear() is for - it
      samples a real spring, so a control let go of springs past its resting
-     size and comes back. A browser too old to parse linear() drops the
-     declaration and the transition falls back to `ease`, which is the right
-     failure. */
+     size and comes back.
+
+     What a WebView too old to parse linear() does with it was written here
+     as "the transition falls back to `ease`". It does not. var() defers to
+     computed-value time, and an unparseable value there takes the whole
+     declaration to `unset`, not just its own segment: on the API 26
+     emulator's Chrome 69 WebView a `transition:` shorthand naming
+     --ease-press computes to `all 0s ease`, so the control gets no
+     transition at all and every other property in that shorthand loses its
+     transition too. Rules that transition something besides the press
+     therefore write transition-property/-duration/-timing-function as
+     longhands, where only the timing function is lost and it really does
+     fall back to `ease`. Rules whose whole transition is the press keep the
+     shorthand: there is nothing else in it to strand, and an instant press
+     is a fair thing for a nine-year-old WebView to get. */
   --ease-press: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%,
     0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161,
     1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%,
