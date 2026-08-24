@@ -11,12 +11,15 @@
      `.press` is tier 1, from $lib/motion/press.css: the whole tile answers
      a press by scaling, which a full-width list row cannot do without
      moving the card around it. */
+  import { roleStyle } from './role';
+  import type { Role } from '$lib/theme/roles';
   let {
     title,
     value,
     note,
     href,
-    key
+    key,
+    role
   }: {
     title: string;
     /** The tile's reading, already formatted. */
@@ -25,10 +28,14 @@
     note?: string;
     href: string;
     key?: string;
+    /** Its own stripe. A grid of tiles that all inherit the section's one
+        role is a grid of one colour, and the point of a two-up pair is that
+        each carries a different reading. */
+    role?: Role;
   } = $props();
 </script>
 
-<a class="kit-tile press" data-tile={key} {href}>
+<a class="kit-tile press" data-tile={key} {href} style={roleStyle(role)}>
   <span class="kit-tile-title">{title}</span>
   {#if value}<span class="kit-tile-value">{value}</span>{/if}
   {#if note}<span class="kit-tile-note">{note}</span>{/if}

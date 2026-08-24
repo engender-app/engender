@@ -103,3 +103,10 @@ export function withLightness(hex: string, lightness: number): string {
 export function lightnessOf(hex: string): number {
   return rgbToOklab(toRgb(hex))[0];
 }
+
+/** How far a colour is from grey, in OKLab. A flag's white and near-black
+    bands come out at essentially zero; every hue it carries does not. */
+export function chromaOf(hex: string): number {
+  const [, a, b] = rgbToOklab(toRgb(hex));
+  return Math.hypot(a, b);
+}
