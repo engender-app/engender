@@ -43,7 +43,7 @@
 
 {#snippet body()}
   {#if icon}
-    <span class="kit-row-ico"><Icon name={icon} size={20} /></span>
+    <span class="kit-row-ico"><Icon name={icon} size={22} /></span>
   {/if}
   <span class="kit-row-text">
     <span class="kit-row-title">{title}</span>
@@ -51,7 +51,7 @@
   </span>
   <span class="kit-row-trail">
     {#if trailing}{@render trailing()}{/if}
-    {#if chevron}<Icon name="chevronRight" size={20} />{/if}
+    {#if chevron}<Icon name="chevronRight" size={22} />{/if}
   </span>
 {/snippet}
 
