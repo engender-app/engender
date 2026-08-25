@@ -193,6 +193,21 @@
     )
   );
 
+  /* The values sheet, in the same bars as everything else on the screen. The
+     bar's length is where the day sits in the metric's own range, which is
+     what makes a quiet week visible as a run of short bars. */
+  let valueRows = $derived<BarRow[]>(
+    seriesFor(shown.key)
+      .toReversed()
+      .map((point) => ({
+        key: String(point.day),
+        name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
+        note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
+        value: fmtNativeValue(shown.key, point.value),
+        amount: (point.value - shown.min) / Math.max(shown.max - shown.min, 1)
+      }))
+  );
+
   let insightEntriesQuery = liveQuery(['entry', 'tag'], (j) => {
     const sheet = insightSheet;
     if (!sheet) return Promise.resolve([]);
@@ -531,18 +546,18 @@
     />
   </ListCard>
 
+  <!-- Every reading in the range, as numbers. It was three columns of text
+       per row, which is a table of one column that matters (Alicja,
+       2026-08-25: "crowded and boring"). It is the bar rows the rest of the
+       screen is drawn in: the date names the row, the value is the reading,
+       and the bar puts it where it sits in the scale - so a run of quiet days
+       is visible in the list and not only in the chart above it. Newest
+       first, because that is the end of the range you came from. -->
   <Sheet open={valueSheet} title={shown.name} onClose={() => (valueSheet = false)}>
-    <h3>{m.values_title({ name: shown.name })}</h3>
-    <div class="value-list">
-      {#each seriesFor(shown.key).toReversed() as p (p.day)}
-        <div class="value-row" data-value-row>
-          <span>{fmtDay(p.day, { day: 'numeric', month: 'short' })}</span>
-          <span class="muted small">{p.count > 1 ? m.avg_of({ count: String(p.count) }) : ''}</span>
-          <strong>{fmtNativeValue(shown.key, p.value)}</strong>
-        </div>
-      {/each}
-    </div>
-    <button class="btn btn-ghost" onclick={() => (valueSheet = false)}><span>{m.done()}</span></button>
+    <BarRows rows={valueRows} />
+    <button class="btn btn-ghost" style="margin-top:var(--space-4)" onclick={() => (valueSheet = false)}>
+      <span>{m.done()}</span>
+    </button>
   </Sheet>
 
   <Sheet open={insightSheet !== null} title={insightSheet?.label ?? ''} onClose={() => (insightSheet = null)}>

@@ -265,6 +265,18 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 /* SH-102: 34px min-height and a 2px gap were under both the 44px touch
    target and the 8px touch spacing minimums, on the control theme,
    language, stats range and several pickers all repeat. */
+/* A segment is a button or a link (Segmented.svelte renders whichever the
+   choice is), and a link brought an underline and text sitting at the top of
+   its own box with it. Both are the anchor's defaults rather than anything
+   this control asked for. */
+a.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
+
 .segment {
   border: none; background: none; cursor: pointer;
   padding: 6px 14px; min-width: var(--touch-target); min-height: var(--touch-target);
@@ -303,8 +315,14 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
   width: var(--seg-w, 0);
   translate: var(--seg-x, 0) 0;
   border-radius: var(--radius-pill);
-  background: var(--surface);
-  box-shadow: var(--shadow-1);
+  /* Lifted off the track rather than being the app's other surface. On the
+     dark theme --surface and --surface-2 are two steps of near-black and the
+     pill disappeared into the control it sits in (Alicja, 2026-08-25: "the
+     colour of the switcher highlight in dark mode shouldn't be that close to
+     the bg colour - it blends"). Mixed toward the text so it lightens on
+     dark and darkens on light, which is the same direction on both. */
+  background: color-mix(in oklab, var(--text) 11%, var(--surface));
+  border: 1px solid var(--outline);
   pointer-events: none;
   transition: translate var(--dur-med) var(--ease-out), width var(--dur-med) var(--ease-out);
 }

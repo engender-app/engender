@@ -23,6 +23,7 @@
      that matters, in place of the gradient text the craft floor refuses. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtMonthName } from '$lib/data/dates';
+  import { epochDayFromLocalDate } from '$lib/data/epochDay';
   import { moodYear } from '$lib/charts/moodYear';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { MOOD_RANGE } from '$lib/data/metricRange';
@@ -94,6 +95,9 @@
      yearly retrospective is for - and a month is still legible in it as a
      block of columns (Alicja, 2026-08-25). */
   let grid = $derived(moodYear(year, moodTrend.map((p) => ({ day: p.day, value: p.value }))));
+
+  const shortMonth = (month: number) =>
+    fmtDay(epochDayFromLocalDate(new Date(year, month, 1)), { month: 'short' });
 
   const dayLabel = (epochDay: number, step: number | null) => {
     const day = fmtDay(epochDay, { weekday: 'short', day: 'numeric', month: 'short' });
@@ -173,7 +177,10 @@
 </div>
 
 <ChartCard heading={m.wrapped_year_months()} kind="wrapped-months" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-  <MoodYear {grid} monthName={(month) => fmtMonthName(year, month)} {dayLabel} />
+  <!-- Short month names: full ones took 70px of a 340px card, which is a
+       fifth of the grid's width spent on labels the reader already knows the
+       order of. -->
+  <MoodYear {grid} monthName={shortMonth} {dayLabel} />
 </ChartCard>
 
 <SectionHeading text={m.wrapped_year_figures()} />

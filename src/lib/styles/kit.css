@@ -1199,7 +1199,11 @@ a.kit-entry:active {
   transform: scaleX(1);
   transform-origin: left center;
   animation: kit-bar-in var(--dur-slow) var(--ease-out) both;
-  animation-delay: calc(var(--bar-index, 0) * var(--stagger-step));
+  /* Capped, because the index is a row's place in the set and a set can be
+     long: the values list is one row per day, and at 365 rows an uncapped
+     stagger is eighteen seconds of bars arriving. Twelve steps is the point
+     where a set reads as arriving in order rather than as arriving at once. */
+  animation-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
   transition-property: width;
   transition-duration: var(--dur-slow);
   transition-timing-function: var(--ease-out);

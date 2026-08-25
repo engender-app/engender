@@ -48,11 +48,30 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
 
   if (isBack(from, to, type, delta)) return isAndroid ? 'none' : 'shared-axis-back';
 
+  /* A screen with several views of itself is not a sequence. Wrapped's four
+     cadence tabs are one screen showing a different period, so crossing them
+     is tier 3 - change within a screen - and the chart's own re-tween is what
+     carries it. Slid as a shared axis the whole screen travelled and every
+     figure on it was torn down and rebuilt (Alicja, 2026-08-25: "the
+     switchers in wrapped shouldn't make the screen re-render").
+
+     A table rather than a rule, and one entry long, for the same reason the
+     rest of this file is a table: /entry/1 to /entry/2 is also two leaves of
+     one route and it is emphatically not this - it is the container transform
+     ticket 22 built. Which of the two a route is cannot be read off its
+     shape. */
+  if (SWITCHES_VIEWS_IN_PLACE.some((parent) => from.startsWith(parent) && to.startsWith(parent))) {
+    return 'none';
+  }
+
   /* Within one tab the app is a stack, across tabs it is four peers. That
      is the whole rule, and it is why the tab table is the one that answers
      this rather than a second list of "detail routes" kept beside it. */
   return activeTabKey(from) === activeTabKey(to) ? 'shared-axis' : 'fade-through';
 }
+
+/** Routes whose sub-paths are views of one screen rather than steps into it. */
+const SWITCHES_VIEWS_IN_PLACE = ['/wrapped/'];
 
 /* Two ways back, and both have to count.
    The system's back and the browser's arrive as a popstate with a negative
