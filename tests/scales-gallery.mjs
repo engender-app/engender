@@ -88,11 +88,11 @@ for (const palette of PALETTES) {
 await wear('trans', 'dark');
 
 // Mid-tick, at the point the mark is drawing itself in. --dur-slow is
-// 380ms, so 150 is a little under halfway and the mark is a stroke rather
-// than a check.
+// 380ms, but --ease-out is front-loaded enough that 150ms is already most
+// of the way drawn - 60ms is where the stroke still reads as a stroke.
 await openSheet();
 await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
-await page.waitForTimeout(150);
+await page.waitForTimeout(60);
 await shoot('sheet-mid-tick');
 await page.waitForTimeout(500);
 await shoot('sheet-four-ticked');
