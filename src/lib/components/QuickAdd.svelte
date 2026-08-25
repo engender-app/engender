@@ -61,7 +61,6 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import type { TallyKind, WearSession } from '$lib/data/types';
   import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
-  import { toast } from '$lib/stores/toasts.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
   import MoodFace from './MoodFace.svelte';
@@ -85,8 +84,7 @@
 
      A tally and a wear session both resolve in place, which is the whole
      reason they are worth reaching from anywhere - and it left them with
-     nothing to show for it but a toast at the other end of the screen from
-     the thumb that just pressed. The row you chose flies into the add
+     nothing to show for it where the thumb that pressed actually was. The row you chose flies into the add
      button instead, and the button catches it with a tick: the exact
      reverse of the fan coming out of it, so the gesture closes the loop it
      opened. Tier 3, change within a screen - something was written, and
@@ -98,9 +96,15 @@
      when the finger lifts, so it means "this is recorded" and not "this was
      sent" - the round trip is tens of milliseconds, so the honesty is free.
 
-     Under reduced motion nothing travels and the tick still appears, for
-     the same duration. The toast stays either way: it is role="status", so
-     it is the half of this a screen reader gets. */
+     Under reduced motion nothing travels and the marks still appear, for
+     the same duration.
+
+     Neither outcome raises a toast. The control says both things where the
+     thumb already is, and a line of text at the far end of the screen was
+     the same news a second time. What a toast was also doing, though, is
+     the part an animation cannot do at all: it was role="status", so a
+     screen reader spoke it. That half stays, as a visually hidden live
+     region below - the announcement without the notification. */
   /* The beats, and why they are sequenced rather than stacked. The first
      version started the flight the instant the write came back, which was
      while the fan was still on its way out - so two things moved at once
@@ -115,6 +119,7 @@
   const flightMs = () => motionDuration('--dur-slow', 380);
   const HOLD_MS = 700;
 
+  let announcement = $state('');
   let flight = $state<{ x: number; y: number; dx: number; dy: number } | null>(null);
   let flightTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -146,6 +151,11 @@
     kind: string,
     target: string
   ) {
+    /* Cleared before the write and set after it, which is what makes a
+       second identical action speak again: a live region announces a change
+       of text, and setting the same string twice is not one. The await
+       between the two guarantees they land as separate updates. */
+    announcement = '';
     try {
       /* Review only, and it cannot ship: `__DEMO__` is a literal Rollup
          folds away, and the flag it reads is set by the demo bar, which a
@@ -159,11 +169,11 @@
     } catch (error) {
       console.error(`quick add: ${kind} was not written`, error);
       refuse();
-      toast(m.quick_add_failed(), { kind: `${kind}-failed` });
+      announcement = m.quick_add_failed();
       return;
     }
     land(from);
-    toast(m.quick_saved(), { kind });
+    announcement = m.quick_saved();
   }
 
   let caughtTimer: ReturnType<typeof setTimeout> | null = null;
@@ -556,10 +566,17 @@
   </div>
 {/if}
 
+<!-- The half of the confirmation that is not a picture. Always in the DOM
+     rather than rendered with the outcome, because a live region only
+     announces a change of text inside a region that was already there; one
+     that appears carrying its message is often missed. Hidden, not silent:
+     nothing here is drawn, and the animation is what a sighted person
+     reads. -->
+<p class="visually-hidden" role="status" aria-live="polite" data-quick-add-status>{announcement}</p>
+
 {#if flight}
-  <!-- aria-hidden, and not because it says nothing: the toast beside it is
-       role="status" and carries the same news in words, so announcing this
-       too would say it twice. -->
+  <!-- aria-hidden: the live region above already carries this in words, and
+       announcing the picture too would say it twice. -->
   <div
     class="fan-flight"
     aria-hidden="true"

@@ -1895,7 +1895,14 @@ for (const kind of ['misgendered', 'correctly_gendered']) {
        back rather than when the finger lifts - so its absence would mean
        the write never returned, not merely that an animation was dropped. */
     await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
-    await page.waitForSelector('[data-toast-kind="tally"]', { timeout: 8000 });
+    /* And the half of the confirmation a screen reader gets. Checked for
+       being non-empty rather than for what it says, so this is a live
+       region that speaks, not an assertion about wording. */
+    await page.waitForFunction(
+      () => (document.querySelector('[data-quick-add-status]')?.textContent ?? '').trim().length > 0,
+      null,
+      { timeout: 8000 }
+    );
     if (!page.url().includes('/stats')) throw new Error(`logging a tally left for ${page.url()}`);
     await page.waitForSelector('[data-fan-flight]', { state: 'detached', timeout: 8000 });
     ok(`quick add: ${kind} logs from wherever you are, without leaving it`);
@@ -1912,18 +1919,29 @@ try {
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-fan]');
   await page.locator('[data-choose="tally-misgendered"]').click();
-  await page.waitForSelector('[data-toast-kind="tally-failed"]', { timeout: 8000 });
+  await page.waitForFunction(
+    () => document.querySelector('[data-nav-fab]')?.className.includes('is-refusing'),
+    null,
+    { timeout: 8000 }
+  );
   if (await page.locator('[data-fan-flight]').count()) {
     throw new Error('a failed write sent the mark flying anyway');
   }
+  /* A failure is announced too, and it is the same region rather than a
+     second one: a screen reader user gets told either way. */
+  const spoken = await page.locator('[data-quick-add-status]').textContent();
+  if (!spoken?.trim()) throw new Error('a failed write said nothing to a screen reader');
   const refused = await page.locator('[data-nav-fab]').evaluate((node) => ({
     shaking: node.className.includes('is-refusing'),
     catching: node.className.includes('is-catching')
   }));
   if (!refused.shaking) throw new Error('the add control did not answer the failure');
   if (refused.catching) throw new Error('the add control played the landed animation on a failure');
-  if (await page.locator('[data-toast-kind="tally"]').count()) {
-    throw new Error('a failed write raised the saved toast');
+  if (await page.locator('[data-nav-fab] [data-add-mark="check"][data-shown]').count()) {
+    throw new Error('a failed write wore the landed mark');
+  }
+  if (!(await page.locator('[data-nav-fab] [data-add-mark="alert"][data-shown]').count())) {
+    throw new Error('a failed write did not wear the refused mark');
   }
   await page.evaluate(() => delete document.documentElement.dataset.demoFail);
   ok('quick add: a write that fails says so, and borrows none of the landed animation');
@@ -1949,7 +1967,7 @@ try {
     throw new Error('a session was already running on a fresh journal');
   }
   await page.locator('[data-choose="wear"]').click();
-  await page.waitForSelector('[data-toast-kind="wear"]', { timeout: 8000 });
+  await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
   if (!page.url().includes('/stats')) throw new Error(`starting a session left for ${page.url()}`);
 
   await page.locator('[data-nav-fab]').click();
@@ -1957,7 +1975,7 @@ try {
   const stopLabel = (await page.locator('[data-choose="wear"]').textContent()).trim();
   if (stopLabel === startLabel) throw new Error(`the row still says "${stopLabel}" with a session running`);
   await page.locator('[data-choose="wear"]').click();
-  await page.waitForSelector('[data-toast-kind="wear"]', { timeout: 8000 });
+  await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
 
   await page.goto(BASE + '/settings/wear', { waitUntil: 'networkidle' });
   await booted();
