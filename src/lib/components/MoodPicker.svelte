@@ -24,7 +24,7 @@
         aria-label={mood.label}
         onclick={() => onPick(mood.value === value ? null : mood.value)}
       >
-        <MoodFace value={mood.value} />
+        <MoodFace step={mood.value} size={44} blink />
         <span class="mood-label">{mood.label}</span>
       </button>
     {/each}

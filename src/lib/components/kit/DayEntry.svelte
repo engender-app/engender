@@ -32,7 +32,7 @@
      timeline (ADR-0029). Same concept, same handle, whichever surface it is
      drawn on. */
   import Icon from '../Icon.svelte';
-  import MoodFace from './MoodFace.svelte';
+  import MoodFace from '../MoodFace.svelte';
 
   let {
     time,
@@ -65,14 +65,14 @@
 {#snippet body()}
   <span class="kit-entry-time">{time}</span>
   <span class="kit-entry-mark">
-    {#if mood}<MoodFace step={mood} size={22} />{:else}<i class="kit-entry-nomood"></i>{/if}
+    {#if mood}<MoodFace step={mood} size={28} />{:else}<i class="kit-entry-nomood"></i>{/if}
   </span>
   <div class="kit-entry-body">
     {#if title}<b class="kit-entry-title">{title}</b>{/if}
     {#if note}<p class="kit-entry-note" data-entry-note>{note}</p>{/if}
     {#if tags?.length || marks?.length}
       <span class="kit-entry-meta">
-        {#each marks ?? [] as mark (mark)}<Icon name={mark} size={14} />{/each}
+        {#each marks ?? [] as mark (mark)}<Icon name={mark} size={16} />{/each}
         {#each tags ?? [] as tag (tag)}<span class="kit-pill">{tag}</span>{/each}
       </span>
     {/if}

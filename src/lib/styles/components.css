@@ -358,17 +358,38 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   padding: var(--space-2) 2px; border-radius: var(--radius-md);
   transition: transform var(--dur-med) var(--ease-out);
 }
-.mood-face { width: 44px; height: 44px; transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast); }
-.mood-face-bg { transition: fill var(--dur-med) var(--ease-out); }
-.mood-face-ink {
+/* One face for every surface (phase 5 ticket 31): the picker's 44px, quick
+   add's 34, a chip's 26, a day card's 22. The size arrives as --face-size and
+   the mood's own colour as --face-mood, both set by the component, so a
+   surface asks for a size rather than getting a rule of its own here. */
+.mood-face {
+  width: var(--face-size);
+  height: var(--face-size);
+  display: block;
+  flex: 0 0 auto;
+  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast);
+}
+.mood-face-disc { fill: var(--face-mood); transition: fill var(--dur-med) var(--ease-out); }
+/* The eyes, in both their forms. Steps 2 to 4 draw two dots and fill them;
+   steps 1 and 5 draw lids as one stroked path, at the mouth's own weight, so
+   the whole face is one drawing at one weight (moodFace.ts says why the ends
+   of the ramp are the two that differ). */
+.mood-face-eye {
   fill: var(--text); opacity: 0.75;
   transform-box: fill-box; transform-origin: center;
-  animation: face-blink 4.6s infinite;
 }
-.mood-btn:nth-child(2) .mood-face-ink { animation-delay: 0.6s; }
-.mood-btn:nth-child(3) .mood-face-ink { animation-delay: 1.2s; }
-.mood-btn:nth-child(4) .mood-face-ink { animation-delay: 1.8s; }
-.mood-btn:nth-child(5) .mood-face-ink { animation-delay: 2.4s; }
+.mood-face-eye.is-lids {
+  fill: none;
+  stroke: var(--text); stroke-width: 1.6; stroke-linecap: round;
+}
+/* Only where a surface asked for it, and never on a day card: six entries
+   would be six blinking faces, and the app spends its one ambient loop on
+   the flag sun (DIRECTION.md, tier 0). The delay comes from the step, so a
+   row of five is staggered on any surface rather than only under .mood-btn. */
+.mood-face.is-alive .mood-face-eye {
+  animation: face-blink 4.6s infinite;
+  animation-delay: var(--blink-delay, 0s);
+}
 @keyframes face-blink {
   0%, 92%, 100% { transform: scaleY(1); }
   95% { transform: scaleY(0.12); }
@@ -379,9 +400,9 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
    feature. These five decorative loops stop outright instead; each rests on
    a frame already inside its own keyframes (open eyes is face-blink's
    resting frame with no transform applied at all). */
-html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
+html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: none; }
 @media (prefers-reduced-motion: reduce) {
-  .mood-face-ink { animation: none; }
+  .mood-face.is-alive .mood-face-eye { animation: none; }
 }
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
 .mood-btn:not(.is-selected) .mood-face { opacity: 0.55; }
@@ -393,7 +414,7 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   55% { transform: scale(1.32) rotate(-5deg); }
   100% { transform: scale(1.18); }
 }
-.mood-btn.is-selected .mood-face-bg { stroke: var(--text); stroke-width: 0.8; }
+.mood-btn.is-selected .mood-face-disc { stroke: var(--text); stroke-width: 0.8; }
 .mood-label { font-size: var(--text-xs); color: var(--text-2); font-weight: var(--weight-medium); }
 .mood-btn.is-selected .mood-label { color: var(--text); font-weight: var(--weight-bold); }
 .mood-picker.is-compact .mood-face { width: 38px; height: 38px; }
@@ -903,6 +924,33 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .fan-mood.is-armed,
 .fan-mood:hover,
 .fan-mood:focus-visible { background: var(--accent-soft); color: var(--on-accent-soft); }
+
+/* The magnifier (phase 5 ticket 31). --mood-mag is written per face by
+   QuickAdd.svelte from the pointer's distance to that face, so this rule is
+   only the shape of the response: bigger, and lifted by enough that the
+   growth goes upward into the row above rather than down through the label.
+   At the 1.24 peak on a 34px face that is 8px of growth against 5px of lift,
+   so the bottom of the face stays where it is and the top rises.
+
+   Tier 1, so --dur-fast, and the transition is doing a second job here: the
+   scale is re-aimed on every pointermove, so the easing reads as a filter on
+   a moving finger rather than as a delay behind it.
+
+   The `scale` and `translate` properties rather than one `transform`, because
+   the picker's own states use `transform` on this same element and a
+   shorthand here would be a second author of the same property on a
+   different surface.
+
+   Nothing is declared for reduced motion, and nothing needs to be: QuickAdd
+   leaves --mood-mag at 1 there rather than not writing it, so there is no
+   scale to undo, and the armed colour above is the whole answer. That is the
+   substitution rather than a deletion - what goes is the movement, not the
+   cue. */
+.fan-mood .mood-face {
+  scale: var(--mood-mag, 1);
+  translate: 0 calc((1 - var(--mood-mag, 1)) * 20px);
+  transition: scale var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
+}
 
 /* The mark travelling from the row you chose into the add control (phase 5
    ticket 18, tier 3). Transform and opacity only, over the same

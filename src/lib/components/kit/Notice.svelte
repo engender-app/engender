@@ -84,7 +84,7 @@
 </script>
 
 <div class="kit-notice" data-notice={key} style={roleStyle(role)} {...rest}>
-  <span class="kit-notice-ico"><Icon name={icon} size={20} /></span>
+  <span class="kit-notice-ico"><Icon name={icon} size={22} /></span>
   <div class="kit-notice-body">
     {#if title}<strong class="kit-notice-title">{title}</strong>{/if}
     {#if text}<p class="kit-notice-text">{text}</p>{/if}

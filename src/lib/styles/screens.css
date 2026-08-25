@@ -111,18 +111,42 @@
    Out of the flow, which is what lets the streak sit close under the
    greeting. In flow the band's own height was 22px of permanent gap between
    the two lines, on every day the confetti fires and none of the days it
-   does not - a moment cannot be allowed to decide the resting layout. The
-   pieces fall through the space above the line instead.
+   does not - a moment cannot be allowed to decide the resting layout.
+
+   It used to sit entirely above the line, and from there the pieces fell
+   through the greeting: the band's own top was one line-height under "Hi
+   Alice" and the fall started 10px above even that. It starts at the streak
+   line's own top edge now (Alicja, 2026-08-25), so what the confetti crosses
+   is the fact it is about.
+
+   The two moments then went different ways, which is the point of the
+   is-burst variant below. A milestone's falls, and falls far enough to cross
+   its notice. A streak's is thrown: it goes up, fans out, tumbles and
+   decelerates, because a run of days is something you are keeping up rather
+   than something arriving.
 
    Only transform and opacity move, per the performance contract, and the
    pieces are 5x8 rectangles so there is nothing to rasterize. */
+/* The milestone day's own band. The notice is a full-width card, so the
+   pieces cross its top edge rather than a line of text, and the wrapper is
+   only here to be the thing they are positioned against. */
+.home-celebrate {
+  position: relative;
+}
 .home-cheer {
   position: absolute;
-  bottom: 100%;
+  top: 0;
   left: 0;
   width: 100%;
-  height: 18px;
+  /* Far enough down to cross the notice it is thrown over rather than
+     stopping at its top edge (Alicja, 2026-08-25). */
+  height: 46px;
   pointer-events: none;
+}
+/* The streak's, which goes the other way and needs far less room: up from
+   the line, not down across a card. */
+.home-cheer.is-burst {
+  height: 16px;
 }
 .home-cheer i {
   position: absolute;
@@ -135,22 +159,63 @@
      bottom of the band and invisible. Declared so the 1ms clamp has
      somewhere true to strand it (tests/motion-system.test.ts). */
   opacity: 0;
-  transform: translateY(18px) rotate(var(--r));
+  transform: translateY(46px) rotate(var(--r));
   animation: cheer-fall calc(var(--dur-authored) * 2) linear var(--d) both;
 }
 .home-cheer i:nth-child(3n) { background: var(--accent); }
 .home-cheer i:nth-child(3n + 1) { background: var(--accent-2); }
 .home-cheer i:nth-child(3n + 2) { background: color-mix(in oklab, var(--accent) 50%, var(--accent-2)); }
+/* Same single interval, for the same reason. This one is linear, so position
+   and opacity both move steadily and tracking each other is all it takes. */
 @keyframes cheer-fall {
-  0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
-  14% { opacity: 1; }
-  100% { transform: translateY(18px) rotate(var(--r)); opacity: 0; }
+  0% { transform: translateY(-2px) rotate(0deg); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translateY(46px) rotate(var(--r)); opacity: 0; }
+}
+
+/* Thrown rather than dropped: up, out and tumbling, on --ease-out so the
+   pieces decelerate towards the top the way something thrown does at its
+   apex. It stops 13px above the line and is already fading by then, which is
+   what keeps it off the greeting - the pieces reach the bottom of that line's
+   box at their faintest rather than crossing the words (Alicja, 2026-08-25:
+   "it shouldn't cover the 'hi alice' text too much").
+
+   Shorter than the fall, because a throw is over faster than a drop, and the
+   resting values here are restated rather than inherited: this rule is where
+   the animation is declared, so this is where the 1ms clamp has to find the
+   end state (tests/motion-system.test.ts). */
+.home-cheer.is-burst i {
+  opacity: 0;
+  transform: translate(var(--dx, 0), -11px) rotate(var(--r));
+  animation: cheer-burst calc(var(--dur-authored) * 2) var(--ease-out) var(--d) both;
+}
+/* One fade interval, from just after the throw to the very end, and no stops
+   in between. That is what puts the opacity on the same curve as the
+   position, which is the thing that was wrong: a timing function eases each
+   keyframe interval separately, so holding opacity at 1 until a third of the
+   way through gave the transform - specified at 0% and 100% only, and so
+   eased across the whole duration - time to arrive and park before the fade
+   had started. The piece stopped, then disappeared (Alicja, 2026-08-25).
+
+   Sharing the interval means sharing the easing: the fade goes fast early and
+   slowly late, exactly as the travel does, so a piece is dimming the whole
+   way up and is nearly gone by the time it reaches the top. */
+@keyframes cheer-burst {
+  0% { transform: translate(0, 2px) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translate(var(--dx, 0), -11px) rotate(var(--r)); opacity: 0; }
 }
 /* Substituted rather than clamped: at 1ms this is a flicker, and the moment
    it stands for is "well done", which the line underneath already says. */
 html[data-a11y-motion='reduce'] .home-cheer i { animation: none; }
+/* The burst needs saying separately in the media block below: `.home-cheer i`
+   is one class and this is two, so without it the more specific rule keeps
+   its animation and the clamp turns a thrown piece into a 1ms flicker. The
+   attribute selector above already outweighs it. */
+html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .home-cheer i { animation: none; }
+  .home-cheer.is-burst i { animation: none; }
 }
 
 /* Tier 3: the skeleton crossfades into the day cards. Both children sit in
@@ -455,7 +520,37 @@ html[data-a11y-motion='reduce'] .home-cheer i { animation: none; }
 
 /* ---------- Calendar & day detail ---------- */
 .cal-monthbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
-.cal-month { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; }
+/* The clip the month is covered by. One grid cell holding both labels, so
+   the outgoing and incoming month occupy the same place rather than pushing
+   each other, and overflow hidden is what makes the leaving one disappear
+   behind an edge instead of fading in mid-air. min-width so a long month in
+   Polish shortens the slot rather than the buttons either side of it. */
+.cal-month-slot {
+  display: grid;
+  overflow: hidden;
+  min-width: 0;
+  text-align: center;
+}
+.cal-month-slot > * { grid-area: 1 / 1; }
+.cal-month { margin: 0; font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; }
+
+/* The metric picker, on its own line under the month rather than inside a
+   sentence with a link in it, and up against its own label rather than at the
+   end of the line.
+
+   The end of the line is where a section's switch goes on Home, and it is the
+   wrong place here: the next-month chevron sits directly above it, and both
+   are 48px targets, so a thumb reaching for one lands on the other. Found by
+   doing it - a tap aimed at the chevron opened the metric picker (Alicja,
+   2026-08-25: "it's easy to click the right arrow on accident"). Nothing is
+   above the label, so that is where the control goes. */
+.cal-metric {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
 .day-entry-row { display: grid; grid-template-columns: 64px 1fr; gap: var(--space-2); align-items: start; }
 .day-entry-time { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--text-2); padding-top: var(--space-4); text-align: right; }
 

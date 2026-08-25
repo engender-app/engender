@@ -92,6 +92,12 @@
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
+  /* The action goes to the far end of the line rather than sitting against
+     the words. SectionHeading has described it as "right-aligned on the
+     heading's own line" since ticket 20 and this is the rule that makes that
+     true - the metric picker on Home read as part of the heading text
+     (Alicja, 2026-08-25). */
+  justify-content: space-between;
   padding: var(--space-5) var(--space-1) var(--space-3);
 }
 
@@ -508,84 +514,90 @@ a.kit-entry:active {
   overflow: hidden;
 }
 
-/* ---------- mood's face ----------
+/* ---------- mood row ----------
 
-   The drawing an entry and a chip both carry. The ink is --text at the
-   opacity the picker has always drawn it at, which the ADR-0025 ramp is
-   built to carry at 4.5:1 whichever step is underneath. */
-.kit-face {
-  width: var(--face-size);
-  height: var(--face-size);
-  display: block;
-  flex: 0 0 auto;
-}
+   Five moods, flush to the page with no container at all: a circle in the
+   step's own colour with its face in it, and the label under it.
 
-.kit-face-disc {
-  fill: var(--face-mood);
-}
+   It was a filled tile with the label inside and the face drawn without its
+   disc, and the tile was there for a reason worth recording. ADR-0025's five
+   steps are literal hexes chosen so --text clears 4.5:1 on top of them - the
+   ramp is built to be sat on - and on the dark theme all five are dark, so
+   five small flat dots on a dark panel barely separate from each other or
+   from the panel. The tile gave each step the area to read as a colour.
 
-.kit-face-eye {
-  fill: var(--text);
-  opacity: 0.75;
-}
+   What carries that now is the drawing rather than the area: ticket 31 put
+   2.2 units of mouth or a change of curve direction between neighbouring
+   steps and gave the ramp's two ends lids instead of dots, so a step is
+   legible from its face alone at 22px - smaller than these are. Colour is no
+   longer the only thing telling the five apart, which is the job the tile was
+   doing.
 
-.kit-face-mouth {
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  opacity: 0.75;
-}
-
-/* On a chip the face sits on the mood's own fill with no disc of its own,
-   and the ink comes up to full strength: there is no circle under it doing
-   half the work of saying which step this is. */
-.kit-chip .kit-face-eye,
-.kit-chip .kit-face-mouth {
-  opacity: 1;
-}
-
-/* ---------- chip row ----------
-
-   The mood picker, flush to the page with no container at all. Mood is a
-   filled tile with its label inside it rather than a dot, because the
-   ADR-0025 ramp is built to be sat on: its steps are chosen so --text
-   clears 4.5:1 on top of them, and on the dark theme they are all dark, so
-   as small dots on a dark panel they have almost no separation. */
-.kit-chips {
+   Selection is a ring outside the circle rather than a border on a tile,
+   which is the answer the editor's picker already gives (DIRECTION.md, tier
+   3: a picked mood lifts and takes its ring). An outline rather than a
+   border, so nothing reflows when it appears and the five stay on their
+   grid. */
+.kit-moods {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-2);
+  /* An outline and nothing else. Flush to the page was the original decision
+     and it read as five circles loose on it rather than as one control, but
+     the fill that came with the border made it a card - and this row is a
+     control on the page, not another surface stacked on it (Alicja,
+     2026-08-25: "the border is good, but it shouldnt have bg color"). */
+  padding: var(--space-3) var(--space-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
 }
 
-.kit-chip {
+.kit-mood {
   display: grid;
   justify-items: center;
   align-content: center;
   gap: var(--space-2);
-  min-height: 56px;
-  padding: var(--space-3) 2px var(--space-2);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius-md);
-  background: var(--chip-fill, var(--surface));
-  color: var(--text);
+  min-width: 0;
+  /* The circle is 40 and the label is one line, so the target clears the
+     48px floor on its own; declared anyway, because the floor is the rule
+     and not a thing to be inferred from a sum. */
+  min-height: var(--touch-target);
+  padding: var(--space-2) 0;
+  border: none;
+  background: none;
+  color: var(--text-2);
   font: inherit;
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
-  text-align: center;
-  overflow-wrap: anywhere;
   cursor: pointer;
+  transition-property: color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
 }
 
-/* The selected chip takes the accent's own edge rather than a fill, since
-   the fill is already carrying the mood step. Two pixels of border rather
-   than one, and the resting chip reserves the same box, so selecting one
-   moves nothing beside it. */
-.kit-chip[aria-checked='true'] {
-  border: 2px solid var(--accent);
-  padding: calc(var(--space-3) - 1px) 1px calc(var(--space-2) - 1px);
+.kit-mood .mood-face {
+  border-radius: 50%;
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+  transition: outline-color var(--dur-fast) var(--ease-out);
 }
 
+.kit-mood[aria-checked='true'] {
+  color: var(--text);
+}
+
+.kit-mood[aria-checked='true'] .mood-face {
+  outline-color: var(--accent);
+}
+
+/* The label is one line and the five share the row's width, so a long
+   translation ellipses rather than pushing its neighbours around. */
+.kit-mood > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ---------- bare strip ----------
 

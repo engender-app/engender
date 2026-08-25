@@ -58,7 +58,7 @@ describe('phase 2 accessibility seams', () => {
       ...(components.match(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g) ?? [])
     ].join('\n');
 
-    for (const selector of ['.mood-face-ink', '.bloom i', '.bloom-core', '.confetti .cf']) {
+    for (const selector of ['.mood-face.is-alive .mood-face-eye', '.bloom i', '.bloom-core', '.confetti .cf']) {
       const escaped = selector.replace(/[.[\]]/g, '\\$&');
       const stopped = new RegExp(`${escaped}[^{]*\\{[^}]*animation:\\s*none`);
       expect(reduceBlocks, `${selector} should stop under reduced motion, not clamp to 1ms`).toMatch(stopped);

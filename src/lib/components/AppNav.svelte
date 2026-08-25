@@ -19,6 +19,7 @@
   import { activeTabKey } from '$lib/navigation/active-tab';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
+  import { boxesMatch, squash, stretch, type Axis, type Box } from '$lib/motion/indicator';
   import Icon from './Icon.svelte';
 
   const NAV = [
@@ -29,7 +30,7 @@
        `key` stays 'settings' - it is what the walkthrough's data-nav-item
        selector and active-tab.ts's own table already key off, and Settings
        is still what this tab leads to, one hop further in. */
-    { href: '/more', key: 'settings', icon: 'dots', label: () => m.nav_more() }
+    { href: '/more', key: 'settings', icon: 'grid', label: () => m.nav_more() }
   ];
 
   /* The bar splits its four tabs around the add button, so the button sits
@@ -79,15 +80,134 @@
     }
     ui.chooserOpen = !ui.chooserOpen;
   }
+
+  /* The lit tab, as one shape that travels rather than four backgrounds that
+     switch (phase 5 ticket 31). The arithmetic - when two measurements are
+     the same place, and how far the shape deforms on the way - is in
+     $lib/motion/indicator.ts with its own tests; what has to live here is the
+     measuring, because only the DOM knows where a tab actually is.
+
+     One table over both shapes rather than a block each. The first pass had
+     two of everything - two effects, two pills, two sets of five attributes -
+     and the cost showed up immediately as divergence: only the bar got a
+     ResizeObserver, on the reasoning that the rail's rows stack from the top
+     and stay put whatever the window does. Which is true, and irrelevant,
+     because the rail is `display: none` below the shell's breakpoint. Every
+     rail tab measures 0 on a phone, so the pill recorded {0, 0, 0, 0} as a
+     real position and, with nothing to re-measure it, held that forever -
+     widen the window and the rail's active row had no fill at all, because
+     this same commit took the background off `.rail-item.is-active`. The
+     `laidOut` guard below is the fix for the measurement and observing both
+     navs is the fix for the recovery; one table is what stops the next
+     divergence. */
+  type Shape = { key: 'bar' | 'rail'; axis: Axis };
+
+  const SHAPES: Shape[] = [
+    { key: 'bar', axis: 'x' },
+    { key: 'rail', axis: 'y' }
+  ];
+
+  type Pill = { box: Box; sx: number; sy: number; shown: boolean };
+
+  const HIDDEN: Pill = { box: { x: 0, y: 0, w: 0, h: 0 }, sx: 1, sy: 1, shown: false };
+
+  let pill = $state<Record<string, Pill>>({ bar: HIDDEN, rail: HIDDEN });
+  let sliding = $state<Record<string, boolean>>({ bar: false, rail: false });
+  let navs = $state<Record<string, HTMLElement | undefined>>({});
+  let tabs = $state<Record<string, Record<string, HTMLElement | undefined>>>({ bar: {}, rail: {} });
+
+  /* A tab that is not laid out has no position to travel to or from. Both
+     navs are in the DOM at every width and one of them is always display:
+     none (app.css), so this is the normal state of one of them rather than an
+     edge case, and 0 is not a place. */
+  function laidOut(el: HTMLElement | undefined): el is HTMLElement {
+    return !!el && el.offsetWidth > 0 && el.offsetHeight > 0;
+  }
+
+  /* offsetLeft/offsetTop rather than getBoundingClientRect: both navs are the
+     offsetParent of their own tabs, so these already are the numbers the
+     pill's own `translate` wants, with no scroll position or ancestor
+     transform mixed in. A rect would have to be subtracted from the nav's own
+     rect to get back here, and the rail scrolls. */
+  function place(prev: Pill, el: HTMLElement | undefined, axis: Axis, animate: boolean) {
+    if (!laidOut(el)) return { next: prev.shown ? { ...prev, shown: false } : prev, moved: false };
+    const box = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+    if (prev.shown && boxesMatch(prev.box, box)) return { next: prev, moved: false };
+    /* Two placements that are not slides. The first one, because the app does
+       not slide the pill into the tab you opened it on - it starts there. And
+       a re-measure after a nav changed size, because a rotation is not a
+       navigation: the tab under the pill never changed, so replaying the
+       travel would be the app claiming something happened. That second case
+       is also how a nav that was display: none arrives at a real position. */
+    if (!prev.shown || !animate) return { next: { box, sx: 1, sy: 1, shown: true }, moved: false };
+    const peak = stretch(prev.box, box, axis);
+    const thin = squash(peak);
+    const across = axis === 'x';
+    return {
+      next: { box, sx: across ? peak : thin, sy: across ? thin : peak, shown: true },
+      moved: true
+    };
+  }
+
+  function measure(shape: Shape, animate: boolean) {
+    const { next, moved } = place(pill[shape.key], tabs[shape.key][activeKey], shape.axis, animate);
+    if (next !== pill[shape.key]) pill[shape.key] = next;
+    /* Cleared as well as set. A pill that goes unshown mid-slide never gets
+       its animationend, because a display: none element fires none, and the
+       class would otherwise still be on it when the nav came back. */
+    if (moved) sliding[shape.key] = true;
+    else if (!next.shown && sliding[shape.key]) sliding[shape.key] = false;
+  }
+
+  $effect(() => {
+    for (const shape of SHAPES) measure(shape, true);
+  });
+
+  /* Both navs, and the rail is the one that needs it most: it goes from
+     display: none to laid out when the window crosses the shell's breakpoint,
+     which changes its size from nothing to something and is the only signal
+     that its rows now have positions worth reading. */
+  $effect(() => {
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      for (const shape of SHAPES) measure(shape, false);
+    });
+    for (const shape of SHAPES) {
+      const nav = navs[shape.key];
+      if (nav) observer.observe(nav);
+    }
+    return () => observer.disconnect();
+  });
 </script>
 
-<nav class="app-rail" data-app-rail aria-label={m.nav_main()}>
+<!-- Behind the tabs in source order and in paint order, so a tab's icon and
+     its label sit on top of the shape that lights them. -->
+{#snippet lit(shape: 'bar' | 'rail')}
+  <span
+    class="nav-pill"
+    class:is-shown={pill[shape].shown}
+    class:is-sliding={sliding[shape]}
+    aria-hidden="true"
+    data-nav-pill={shape}
+    style:--pill-x="{pill[shape].box.x}px"
+    style:--pill-y="{pill[shape].box.y}px"
+    style:--pill-w="{pill[shape].box.w}px"
+    style:--pill-h="{pill[shape].box.h}px"
+    style:--pill-sx={pill[shape].sx}
+    style:--pill-sy={pill[shape].sy}
+    onanimationend={() => (sliding[shape] = false)}
+  ></span>
+{/snippet}
+
+<nav bind:this={navs.rail} class="app-rail" data-app-rail aria-label={m.nav_main()}>
   <!-- The disguised name, same as the tab title and the launcher entry
        (F24): the rail is the one piece of chrome that says the app's name
        out loud, so it follows the preference like every other surface that
        does. -->
   <div class="rail-brand">
-    <span class="brand-mark"></span><span translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</span>
+    <span class="brand-mark"><Icon name="brand" size={22} /></span><span translate="no"
+      >{prefs.disguise ? 'Notes' : m.app_name()}</span
+    >
   </div>
   <button
     class="rail-add press-add"
@@ -110,8 +230,10 @@
     </span>
     <span>{m.quick_add_title()}</span>
   </button>
+  {@render lit('rail')}
   {#each NAV as item (item.key)}
     <a
+      bind:this={tabs.rail[item.key]}
       class="rail-item press"
       class:is-active={activeKey === item.key}
       data-rail-item={item.key}
@@ -129,6 +251,7 @@
      two elements rather than one tab. -->
 {#snippet tab(item: (typeof NAV)[number])}
   <a
+    bind:this={tabs.bar[item.key]}
     class="nav-item press"
     class:is-active={activeKey === item.key}
     data-nav-item={item.key}
@@ -140,7 +263,14 @@
   </a>
 {/snippet}
 
-<nav class="app-nav" class:is-fan-open={ui.chooserOpen} data-app-nav aria-label={m.nav_main()}>
+<nav
+  bind:this={navs.bar}
+  class="app-nav"
+  class:is-fan-open={ui.chooserOpen}
+  data-app-nav
+  aria-label={m.nav_main()}
+>
+  {@render lit('bar')}
   {#each LEADING as item (item.key)}{@render tab(item)}{/each}
   <!-- The add action's own animation (spec 04), and it names its tier
        rather than inventing a curve. The button does not explode: it
