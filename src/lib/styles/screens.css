@@ -526,6 +526,19 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 }
 .setup-reveal > * { overflow: hidden; }
 .setup-reveal.is-open { grid-template-rows: 1fr; }
+/* The kit draws a row's separator with `.kit-row + .kit-row`, and this
+   wrapper stands between the two rows so the adjacency never matches. The
+   card lost its hairline and read as one block rather than as two settings.
+   Same geometry as the kit's own rule, and only while the row is showing -
+   a 1px line at the top of a track collapsed to 0fr is a line with nothing
+   under it. */
+.setup-reveal.is-open .kit-row::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: var(--hairline);
+}
 
 .setup-foot {
   margin-top: auto;
