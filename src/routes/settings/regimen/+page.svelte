@@ -266,6 +266,7 @@
         {#each [...episodes].reverse() as episode (episode.id)}
           <ListRow
             key={episode.id}
+            data-episode={episode.id}
             icon="flask"
             title={episode.drug}
             subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
@@ -333,13 +334,14 @@
     <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.episodes)}>
       <ListRow
         key="own"
+        data-own
         icon="pencil"
         title={m.regimen_own_title()}
         subtitle={m.regimen_own_sub()}
         onclick={() => openEditor(null, null)}
       />
       {#each vocabulary.regimenTemplates as tp (tp.key)}
-        <ListRow key={tp.key} icon="flask" title={tp.name} onclick={() => openEditor(null, tp)} />
+        <ListRow key={tp.key} data-template={tp.key} icon="flask" title={tp.name} onclick={() => openEditor(null, tp)} />
       {/each}
     </ListCard>
   </Sheet>

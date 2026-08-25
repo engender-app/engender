@@ -299,6 +299,7 @@
         <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}>
           <ListRow
             key="running"
+            data-wear-running
             icon="clock"
             title={m.wear_session_running_card_title()}
             subtitle={runningElapsed
@@ -321,6 +322,7 @@
               {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
               <ListRow
                 key={session.id}
+                data-wear-session={session.id}
                 icon="clock"
                 title={m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}
                 subtitle={session.note

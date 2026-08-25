@@ -100,6 +100,7 @@
         {#each [...effects].reverse() as effect (effect.id)}
           <ListRow
             key={effect.id}
+            data-side-effect={effect.id}
             icon="zap"
             title={effect.name}
             subtitle={`${fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })} · ${severityName(effect.severity)}`}

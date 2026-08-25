@@ -106,6 +106,7 @@
         {#each rows as row (row.entry.id)}
           <ListRow
             key={row.entry.id}
+            data-stock={row.entry.id}
             icon="package"
             title={row.entry.drug}
             subtitle={`${m.stock_remaining({ count: row.projection.remaining, unit: row.entry.unit })} · ${m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}`}

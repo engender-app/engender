@@ -153,6 +153,7 @@
       {#each sorted as mi (mi.id)}
         <ListRow
           key={mi.id}
+          data-milestone={mi.id}
           icon="flag"
           title={mi.name}
           subtitle={`${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`}
@@ -195,13 +196,14 @@
     <ListCard role={roleAt(activeFlag.roles, 0)}>
       <ListRow
         key="own"
+        data-own
         icon="pencil"
         title={m.ms_own_title()}
         subtitle={m.ms_own_sub()}
         onclick={() => openEditor(null, null)}
       />
       {#each shown as tp (tp.key)}
-        <ListRow key={tp.key} icon="flag" title={tp.name} onclick={() => openEditor(null, tp)} />
+        <ListRow key={tp.key} data-template={tp.key} icon="flag" title={tp.name} onclick={() => openEditor(null, tp)} />
       {/each}
     </ListCard>
   </Sheet>

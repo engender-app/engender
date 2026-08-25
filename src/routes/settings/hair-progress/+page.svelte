@@ -247,6 +247,7 @@
               {@const graded = isGradedScale(s.scale)}
               <ListRow
                 key={s.id}
+                data-hair-stage={s.id}
                 icon="comb"
                 title={graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}
                 subtitle={stageSubtitle(s.epochDay)}

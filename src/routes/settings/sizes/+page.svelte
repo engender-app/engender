@@ -113,6 +113,7 @@
         {#each [...records].reverse() as r (r.id)}
           <ListRow
             key={r.id}
+            data-size-record={r.id}
             icon="package"
             title={r.brand ? `${r.size} · ${r.brand}` : r.size}
             subtitle={r.fitNote ? `${dayLabel(r.epochDay)} · ${r.fitNote}` : dayLabel(r.epochDay)}

@@ -391,6 +391,7 @@
             {@const site = siteOf(dose)}
             <ListRow
               key={dose.id}
+              data-dose={dose.id}
               icon="clock"
               title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
               subtitle={[

@@ -23,7 +23,8 @@
     chevron = true,
     leading,
     trailing,
-    action
+    action,
+    ...rest
   }: {
     title: string;
     subtitle?: string;
@@ -55,6 +56,12 @@
         same reason Notice's dismiss does - an icon button with no
         accessible name cannot be reached by voice or announced at all. */
     action?: { icon: string; label: string; onclick: () => void };
+    /** The caller's own attributes, landing on the row itself - the same
+        contract Tile and Notice already have. `data-list-row` names the
+        slot and the handle beside it names the thing in it, which is what
+        lets a screen keep the walkthrough handle it has had since phase 4
+        while the container underneath it changes (ADR-0029). */
+    [attribute: string]: unknown;
   } = $props();
 </script>
 
@@ -79,7 +86,7 @@
      keyboard behaviour and different announcements, and the tag has to be
      legible to the compiler for it to check either. -->
 {#if action}
-  <div class="kit-row is-split" data-list-row={key}>
+  <div class="kit-row is-split" data-list-row={key} {...rest}>
     {#if href}
       <a class="kit-row-main" {href} {onclick}>{@render body()}</a>
     {:else}
@@ -96,7 +103,7 @@
     </button>
   </div>
 {:else if href}
-  <a class="kit-row" data-list-row={key} {href} {onclick}>{@render body()}</a>
+  <a class="kit-row" data-list-row={key} {href} {onclick} {...rest}>{@render body()}</a>
 {:else}
-  <button type="button" class="kit-row" data-list-row={key} {onclick}>{@render body()}</button>
+  <button type="button" class="kit-row" data-list-row={key} {onclick} {...rest}>{@render body()}</button>
 {/if}

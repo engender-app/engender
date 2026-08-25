@@ -58,6 +58,7 @@
         {#each tryouts as t (t.id)}
           <ListRow
             key={t.id}
+            data-tryout={t.id}
             icon="tag"
             title={t.label}
             subtitle={`${tryoutKindName(t.kind)} · ${rangeLabel(t)}`}
