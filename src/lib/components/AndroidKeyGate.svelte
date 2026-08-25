@@ -28,6 +28,7 @@
   import { bootState, openAndroidJournal, resetApp } from '$lib/stores/boot.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bioGateDecision } from '$lib/lock/bio-consent';
+  import GateScreen from './GateScreen.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -106,81 +107,69 @@
   <!-- The one state with no way back into this journal (JournalKeystore's
        header says why the platform does this). A risk screen: the whole
        consequence, then the single action there is. -->
-  <div class="screen">
-    <div class="applock">
-      <div class="applock-badge"><Icon name="alert" size={30} /></div>
-      <h1 class="ob-title" style="text-align:center">{m.ak_invalidated_title()}</h1>
-      <p class="ob-text" style="text-align:center" data-key-invalidated>{m.ak_invalidated_body()}</p>
-      <div style="text-align:center;margin-top:var(--space-6)">
-        <button class="btn btn-danger" data-open-reset onclick={() => (resetOpen = true)}>
-          <span>{m.reset_confirm()}</span>
-        </button>
-      </div>
+  <GateScreen icon="alert" tone="alert" title={m.ak_invalidated_title()}>
+    <p class="gate-body" data-key-invalidated>{m.ak_invalidated_body()}</p>
+    <div class="gate-actions">
+      <button class="btn btn-danger" data-open-reset onclick={() => (resetOpen = true)}>
+        <span>{m.reset_confirm()}</span>
+      </button>
     </div>
-  </div>
+  </GateScreen>
 {:else if refusal?.wayForward === 'setDeviceLock'}
   <!-- No screen lock at all, so there is nothing for Keystore to bind a key
        to. The only screen here that asks for something outside the app, and
        the only one whose action is "look again". -->
-  <div class="screen">
-    <div class="applock">
-      <div class="applock-badge"><Icon name="lock" size={30} /></div>
-      <h1 class="ob-title" style="text-align:center">{m.ak_no_lock_title()}</h1>
-      <p class="ob-text" style="text-align:center" data-needs-device-lock>{m.ak_no_lock_body()}</p>
-      <div style="text-align:center;margin-top:var(--space-6)">
-        <button class="btn btn-primary" data-check-again disabled={busy} onclick={() => authenticate(false)}>
-          <span>{busy ? m.ak_unlocking() : m.ak_check_again()}</span>
-        </button>
-      </div>
+  <GateScreen icon="lock" title={m.ak_no_lock_title()}>
+    <p class="gate-body" data-needs-device-lock>{m.ak_no_lock_body()}</p>
+    <div class="gate-actions">
+      <button class="btn btn-primary" data-check-again disabled={busy} onclick={() => authenticate(false)}>
+        <span>{busy ? m.ak_unlocking() : m.ak_check_again()}</span>
+      </button>
     </div>
-  </div>
+  </GateScreen>
 {:else}
-  <div class="screen">
-    <div class="applock">
-      <div class="applock-badge"><Icon name="fingerprint" size={30} /></div>
-      <!-- No name in the greeting, for the same reason the passphrase gate
-           has none: the display name lives in the encrypted journal, and this
-           screen renders before it can be read. -->
-      <h1 class="ob-title" style="text-align:center">{m.ak_unlock_title()}</h1>
-      <!-- Polite rather than an alert: the prompt is Android's own dialog and
-           takes the focus, so this line is what is waiting underneath when it
-           goes, not something that interrupts. -->
-      <p class="ob-text" style="text-align:center" aria-live="polite" data-key-status>{explanation}</p>
+  <!-- No name in the greeting, for the same reason the passphrase gate has
+       none: the display name lives in the encrypted journal, and this screen
+       renders before it can be read. -->
+  <GateScreen icon="fingerprint" title={m.ak_unlock_title()}>
+    <!-- Polite rather than an alert: the prompt is Android's own dialog and
+         takes the focus, so this line is what is waiting underneath when it
+         goes, not something that interrupts. -->
+    <p class="gate-body" aria-live="polite" data-key-status>{explanation}</p>
 
-      <div class="stack-3" style="margin-top:var(--space-4)">
-        {#if refusal === null || refusal.wayForward === 'retry'}
-          <button class="btn btn-primary" data-key-retry disabled={busy} onclick={() => authenticate(false)}>
-            <span>{busy ? m.ak_unlocking() : m.ak_unlock_action()}</span>
-          </button>
-        {/if}
-        {#if refusal !== null}
-          <!-- Offered after every refusal, not only after the ones whose way
-               forward names it: a sensor that just said no is a reason to
-               reach for the device credential whatever the reason was, and
-               this is the button that is never wrong to have. -->
-          <button
-            class="btn"
-            class:btn-primary={refusal.wayForward === 'deviceCredential'}
-            class:btn-soft={refusal.wayForward !== 'deviceCredential'}
-            data-key-device-credential
-            disabled={busy}
-            onclick={() => authenticate(true)}
-          >
-            <span>{m.ak_use_device_lock()}</span>
-          </button>
-        {/if}
-      </div>
-
-      <div style="text-align:center;margin-top:var(--space-6)">
-        <button class="btn btn-ghost" data-forgot-key onclick={() => (resetOpen = true)}>
-          <span>{m.ak_forgot()}</span>
+    <div class="gate-actions">
+      {#if refusal === null || refusal.wayForward === 'retry'}
+        <button class="btn btn-primary" data-key-retry disabled={busy} onclick={() => authenticate(false)}>
+          <span>{busy ? m.ak_unlocking() : m.ak_unlock_action()}</span>
         </button>
-      </div>
+      {/if}
+      {#if refusal !== null}
+        <!-- Offered after every refusal, not only after the ones whose way
+             forward names it: a sensor that just said no is a reason to
+             reach for the device credential whatever the reason was, and
+             this is the button that is never wrong to have. -->
+        <button
+          class="btn"
+          class:btn-primary={refusal.wayForward === 'deviceCredential'}
+          class:btn-soft={refusal.wayForward !== 'deviceCredential'}
+          data-key-device-credential
+          disabled={busy}
+          onclick={() => authenticate(true)}
+        >
+          <span>{m.ak_use_device_lock()}</span>
+        </button>
+      {/if}
+    </div>
+
+    <div class="gate-foot">
+      <button class="btn btn-ghost" data-forgot-key onclick={() => (resetOpen = true)}>
+        <span>{m.ak_forgot()}</span>
+      </button>
       {#if resetError}
         <p class="pin-status small" role="alert" data-key-reset-failed>{resetError}</p>
       {/if}
     </div>
-  </div>
+  </GateScreen>
 {/if}
 
 <Sheet bind:open={resetOpen} title={m.ak_forgot()}>

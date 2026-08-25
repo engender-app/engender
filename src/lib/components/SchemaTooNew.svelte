@@ -16,7 +16,7 @@
 
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, checkForNewerRelease } from '$lib/pwa/update';
-  import Icon from './Icon.svelte';
+  import GateScreen from './GateScreen.svelte';
 
   let looking = $state(false);
   let nothingNewer = $state(false);
@@ -37,22 +37,18 @@
   }
 </script>
 
-<div class="screen">
-  <div class="applock">
-    <div class="applock-badge"><Icon name="alert" size={30} /></div>
-    <h1 class="ob-title" style="text-align:center">{m.boot_schema_too_new_title()}</h1>
-    <p class="ob-text" style="text-align:center" data-schema-too-new>{m.boot_schema_too_new_body()}</p>
-    <div class="stack-3" style="margin-top:var(--space-4)">
-      <button class="btn btn-primary" data-look-for-newer disabled={looking} onclick={lookForNewer}>
-        <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>
-      </button>
-      {#if nothingNewer}
-        <!-- SF-004: this result used to appear with no announcement - a
-             silent content swap for anyone not looking at the screen. -->
-        <p class="ob-text small" style="text-align:center" role="status" data-nothing-newer>
-          {m.boot_schema_too_new_still_old()}
-        </p>
-      {/if}
-    </div>
+<GateScreen icon="alert" tone="alert" title={m.boot_schema_too_new_title()}>
+  <p class="gate-body" data-schema-too-new>{m.boot_schema_too_new_body()}</p>
+  <div class="gate-actions">
+    <button class="btn btn-primary" data-look-for-newer disabled={looking} onclick={lookForNewer}>
+      <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>
+    </button>
+    {#if nothingNewer}
+      <!-- SF-004: this result used to appear with no announcement - a
+           silent content swap for anyone not looking at the screen. -->
+      <p class="gate-body is-small" role="status" data-nothing-newer>
+        {m.boot_schema_too_new_still_old()}
+      </p>
+    {/if}
   </div>
-</div>
+</GateScreen>

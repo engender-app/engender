@@ -1304,31 +1304,87 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
 }
 
 /* ---------- PIN pad ---------- */
-.pin-dots { display: flex; gap: var(--space-4); justify-content: center; margin: var(--space-6) 0; }
+.pin-dots { display: flex; gap: var(--space-4); justify-content: center; margin: var(--space-6) 0 var(--space-4); }
 .pin-dot {
-  width: 16px; height: 16px; border-radius: 50%;
+  width: 14px; height: 14px; border-radius: 50%;
   border: 2px solid var(--accent-border); background: none;
-  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  /* Longhands rather than a shorthand, because one of the three curves is
+     --ease-press: an unparseable linear() takes a whole shorthand with it
+     on an old WebView, and the colour change would go with it. See
+     --ease-press in theme/base.css.
+
+     The digit lands on the spring while the colour arrives flat, which is
+     the difference between a dot appearing and a dot being put there. */
+  transition-property: background-color, border-color, transform;
+  transition-duration: var(--dur-fast), var(--dur-fast), var(--dur-press);
+  transition-timing-function: var(--ease-out), var(--ease-out), var(--ease-press);
 }
-.pin-dot.is-filled { background: var(--accent); border-color: var(--accent); transform: scale(1.1); }
+.pin-dot.is-filled { background: var(--accent); border-color: var(--accent); transform: scale(1.15); }
+
+/* A wrong PIN is refused rather than merely reported. The row shakes once
+   and the digits clear, which is the same thing the status line says in
+   words a beat later - and the line is what carries it under reduced
+   motion, where the clamp takes this to its resting `none` and nothing
+   moves. Substitute, not delete: the sentence was always the substance. */
+@keyframes pin-refuse {
+  from, to { transform: none; }
+  15% { transform: translateX(-7px); }
+  35% { transform: translateX(6px); }
+  55% { transform: translateX(-4px); }
+  75% { transform: translateX(2px); }
+}
+.pin-dots.is-refused { animation: pin-refuse var(--dur-slow) var(--ease-out); }
+
+/* The wait, as a length. The seconds are already on the status line and
+   they are the information; this is the shape of them, so a glance answers
+   "nearly over" without reading a number. Its duration is the whole
+   remaining wait, set inline when the countdown starts, and it fills
+   forwards so its end state is its resting state.
+
+   Gone entirely under reduced motion rather than clamped: at 1ms the rail
+   would empty instantly and then sit empty for the rest of a wait it is
+   supposed to be describing, which is worse than not drawing it. */
+.pin-wait { height: 3px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; max-width: 200px; margin: 0 auto var(--space-3); }
+.pin-wait i {
+  display: block; height: 100%; background: var(--danger);
+  transform-origin: left center;
+  animation: pin-wait-drain var(--wait, 0ms) linear forwards;
+}
+@keyframes pin-wait-drain {
+  from { transform: scaleX(1); }
+  to { transform: none; }
+}
+html[data-a11y-motion='reduce'] .pin-wait { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pin-wait { display: none; }
+}
+
 .pin-pad {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3);
   max-width: 280px; margin: 0 auto;
 }
+/* Flat with an outline, not a plane with a shadow. DIRECTION.md's decision
+   2 gives the whole app one shadow and it belongs to the floating nav bar;
+   twelve elevated keys on a screen with no chrome were the loudest place
+   the old language survived. */
 .pin-key {
-  height: 64px; border-radius: var(--radius-pill);
-  border: none; background: var(--surface);
-  font-family: var(--font-display); font-size: var(--text-xl); color: var(--text);
-  cursor: pointer; box-shadow: var(--shadow-1);
-  transition: background var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+  height: 62px; border-radius: var(--radius-pill);
+  border: 1px solid var(--outline); background: var(--surface);
+  font-family: var(--font-display); font-size: var(--text-xl); font-variant-numeric: tabular-nums;
+  letter-spacing: var(--display-track); color: var(--text);
+  cursor: pointer;
+  transition-property: background-color, border-color, transform;
+  transition-duration: var(--dur-fast), var(--dur-fast), var(--dur-press);
+  transition-timing-function: var(--ease-out), var(--ease-out), var(--ease-press);
   display: flex; align-items: center; justify-content: center;
 }
 .pin-key:hover { background: var(--surface-2); }
-/* A 64px key is a compact control, so it takes the primitive's depth rather
+/* A 62px key is a compact control, so it takes the primitive's depth rather
    than the 0.96 it was given before anyone had written down what the number
    meant. */
 .pin-key:active { transform: scale(var(--press-depth)); }
-.pin-key.is-ghost { background: none; box-shadow: none; }
+.pin-key.is-ghost { background: none; border-color: transparent; }
+.pin-key.is-ghost:hover { background: var(--surface-2); }
 .pin-key:disabled { cursor: default; opacity: 0.45; }
 .pin-key:disabled:active { transform: none; }
 /* Holds its line whether or not there is anything to say, so the pad does
