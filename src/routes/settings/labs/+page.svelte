@@ -519,7 +519,7 @@
            afterwards (ticket 03, box 6). A saved result with no hours figure
            says what would give it one, rather than staying blank. -->
       {#if editor.id}
-        <div class="card editor-section" data-lab-context>
+        <div class="kit-panel editor-section" data-lab-context>
           <h4>{m.labs_context_title()}</h4>
           {#if editor.timing}
             <p class="lab-context">{labTimingLabel(editor.timing)}</p>
@@ -605,7 +605,7 @@
       {/if}
       <div class="stack-3">
         {#each ocrRows as row, i (i)}
-          <div class="card editor-section">
+          <div class="kit-panel editor-section">
             <label class="small" style="display:flex;gap:8px;align-items:center;margin-bottom:var(--space-2)">
               <input type="checkbox" checked={row.include} onchange={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, include: (e.target as HTMLInputElement).checked } : r); handleOcrRowsChange(updated); }} />
               <span>{m.labs_ocr_row_include()}</span>

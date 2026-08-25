@@ -174,6 +174,33 @@
   overflow: hidden;
 }
 
+/* ---------- the plain panel ----------
+
+   The second of DIRECTION.md decision 2's two surfaces with nothing else
+   on it: page and card, and this is a card that is not a list, a day, a
+   tile grid, a chart or a notice.
+
+   Deliberately last, and deliberately dull. Decision 2b exists because one
+   rounded card repeated down a screen is what made the app read as
+   generic, so the answer to "which surface does this content want" is
+   almost always one of the six that carry a shape of their own. What is
+   left over is a run of form fields that has to be told apart from the run
+   under it - one review row of an import against the next, a saved
+   result's frozen context against the fields that are still editable - and
+   there is nothing list-shaped, day-shaped or chart-shaped about that.
+
+   It is the kit's version of the old world's `.card`, which is what those
+   places were using: same job, and this one carries the outline instead of
+   a shadow and the kit's tighter padding instead of the old 20px
+   (DIRECTION.md decisions 2 and 3). A screen reaching for it where one of
+   the six would do is the failure mode; the six come first. */
+.kit-panel {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  padding: var(--space-4);
+}
+
 .kit-row {
   display: flex;
   align-items: center;
