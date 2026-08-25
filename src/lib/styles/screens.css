@@ -70,6 +70,11 @@
 /* Both of these carry their own space and would otherwise be paid twice. */
 .home > .kit-heading,
 .home > .kit-tiles { margin-bottom: 0; }
+/* The chip row is flush to the page with no container of its own, so the
+   only thing separating it from what follows is this. At the column's usual
+   12px the look-back tiles sat directly under the moods and the two read as
+   one block. */
+.home > .kit-chips { margin-bottom: var(--space-5); }
 /* The caption belongs to the strip above it, so it sits closer than a
    section does to the next section. */
 .home > .kit-strip { margin-bottom: var(--space-2); }
@@ -82,7 +87,8 @@
 .home-streak-wrap {
   display: inline-grid;
   justify-items: start;
-  margin-top: var(--space-3);
+  position: relative;
+  margin-top: var(--space-2);
 }
 .home-streak {
   margin: 0;
@@ -102,13 +108,20 @@
    category as the sun's entrance, and it spends the authored duration
    twice over.
 
+   Out of the flow, which is what lets the streak sit close under the
+   greeting. In flow the band's own height was 22px of permanent gap between
+   the two lines, on every day the confetti fires and none of the days it
+   does not - a moment cannot be allowed to decide the resting layout. The
+   pieces fall through the space above the line instead.
+
    Only transform and opacity move, per the performance contract, and the
    pieces are 5x8 rectangles so there is nothing to rasterize. */
 .home-cheer {
-  position: relative;
-  display: block;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
   width: 100%;
-  height: 22px;
+  height: 18px;
   pointer-events: none;
 }
 .home-cheer i {
@@ -122,7 +135,7 @@
      bottom of the band and invisible. Declared so the 1ms clamp has
      somewhere true to strand it (tests/motion-system.test.ts). */
   opacity: 0;
-  transform: translateY(22px) rotate(var(--r));
+  transform: translateY(18px) rotate(var(--r));
   animation: cheer-fall calc(var(--dur-authored) * 2) linear var(--d) both;
 }
 .home-cheer i:nth-child(3n) { background: var(--accent); }
@@ -131,7 +144,7 @@
 @keyframes cheer-fall {
   0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
   14% { opacity: 1; }
-  100% { transform: translateY(22px) rotate(var(--r)); opacity: 0; }
+  100% { transform: translateY(18px) rotate(var(--r)); opacity: 0; }
 }
 /* Substituted rather than clamped: at 1ms this is a flicker, and the moment
    it stands for is "well done", which the line underneath already says. */
