@@ -16,13 +16,22 @@
 
      `.press` is tier 1, from $lib/motion/press.css: the whole tile answers
      a press by scaling, which a full-width list row cannot do without
-     moving the card around it. */
+     moving the card around it.
+
+     Anything else the caller puts on it lands on the anchor. That is how a
+     screen stamps its own walkthrough handle without the kit learning what
+     wrapped or on-this-day are: `data-tile` names the slot, and the
+     capability handle beside it names the offer, which is the one the
+     walkthrough has been gripping since phase 4 (ADR-0029). A tile whose
+     only name were its slot would have cost that suite a rename for a
+     capability that never went anywhere. */
   let {
     title,
     value,
     note,
     href,
-    key
+    key,
+    ...rest
   }: {
     title: string;
     /** The tile's reading, already formatted. */
@@ -31,10 +40,12 @@
     note?: string;
     href: string;
     key?: string;
+    /** The caller's own attributes - a handle, an aria-describedby. */
+    [attribute: string]: unknown;
   } = $props();
 </script>
 
-<a class="kit-tile press" data-tile={key} {href}>
+<a class="kit-tile press" data-tile={key} {href} {...rest}>
   <span class="kit-tile-title">{title}</span>
   {#if value}<span class="kit-tile-value">{value}</span>{/if}
   {#if note}<span class="kit-tile-note">{note}</span>{/if}

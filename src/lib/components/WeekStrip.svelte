@@ -1,12 +1,19 @@
 <script lang="ts">
+  /* The last seven days, as the kit's bare strip (phase 5 ticket 20's
+     surface, wired to the journal here). This component is the
+     journal-connected caller BareStrip.svelte names: it owns the query, the
+     locale's day letters and the heat level, and the strip owns how a week
+     is drawn. */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { heatLevel } from '$lib/data/metricRange';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import BareStrip from './kit/BareStrip.svelte';
+  import type { Role } from '$lib/theme/roles';
 
-  let { metric }: { metric: string } = $props();
+  let { metric, role }: { metric: string; role?: Role } = $props();
 
   /* Read on every recompute rather than captured once, so a session left open
      across midnight moves the strip on with the next write instead of holding
@@ -26,27 +33,19 @@
     const byDay = new Map((averages.value ?? []).map((point) => [point.day, point.value]));
     return Array.from({ length: 7 }, (_, idx) => {
       const day = week.first + idx;
+      const level = heatLevel(byDay.get(day) ?? null, range);
       return {
-        day,
-        level: heatLevel(byDay.get(day) ?? null, range),
+        key: day,
+        name: fmtDay(day, { weekday: 'narrow' }),
+        level,
         isToday: day === week.last,
+        label:
+          level === 0
+            ? m.week_cell_no_entry({ day: fmtDay(day, { weekday: 'long' }) })
+            : m.week_cell_level({ day: fmtDay(day, { weekday: 'long' }), level: String(level) })
       };
     });
   });
 </script>
 
-<div class="week-strip">
-  {#each days as d (d.day)}
-    <span class="week-day" class:is-today={d.isToday}>
-      <span
-        class="week-cell"
-        style="background:var(--heat-{d.level})"
-        role="img"
-        aria-label={d.level === 0
-          ? m.week_cell_no_entry({ day: fmtDay(d.day, { weekday: 'long' }) })
-          : m.week_cell_level({ day: fmtDay(d.day, { weekday: 'long' }), level: String(d.level) })}
-      ></span>
-      <span class="week-name">{fmtDay(d.day, { weekday: 'narrow' })}</span>
-    </span>
-  {/each}
-</div>
+<BareStrip {days} {role} />
