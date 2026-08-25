@@ -280,6 +280,18 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 /* SH-102: 34px min-height and a 2px gap were under both the 44px touch
    target and the 8px touch spacing minimums, on the control theme,
    language, stats range and several pickers all repeat. */
+/* A segment is a button or a link (Segmented.svelte renders whichever the
+   choice is), and a link brought an underline and text sitting at the top of
+   its own box with it. Both are the anchor's defaults rather than anything
+   this control asked for. */
+a.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
+
 .segment {
   border: none; background: none; cursor: pointer;
   padding: 6px 14px; min-width: var(--touch-target); min-height: var(--touch-target);
@@ -287,13 +299,14 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--text-2);
   white-space: nowrap;
-  /* Longhands rather than a shorthand: this rule transitions three things
-     and only the press is on --ease-press, and a shorthand naming that token
-     strands the other two on an old WebView. The mechanism is at
-     --ease-press in theme/base.css. */
-  transition-property: transform, background, color;
-  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast);
-  transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out);
+  /* Two things, and neither is a transform: this control's press is the
+     pill's, not the label's (see .segment:active below). --ease-press went
+     with the transform it was for, which also takes the WebView caveat with
+     it - a shorthand naming that token stranded the other properties on an
+     old WebView, and there is no longer a reason to name it here at all. */
+  transition-property: background, color;
+  transition-duration: var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-out), var(--ease-out);
 }
 .segment:hover { color: var(--text); }
 /* The pill behind it is .segment-pill now, one element for the whole control,
@@ -318,11 +331,27 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
   width: var(--seg-w, 0);
   translate: var(--seg-x, 0) 0;
   border-radius: var(--radius-pill);
-  background: var(--surface);
-  box-shadow: var(--shadow-1);
+  /* Lifted off the track rather than being the app's other surface. On the
+     dark theme --surface and --surface-2 are two steps of near-black and the
+     pill disappeared into the control it sits in (Alicja, 2026-08-25: "the
+     colour of the switcher highlight in dark mode shouldn't be that close to
+     the bg colour - it blends"). Mixed toward the text so it lightens on
+     dark and darkens on light, which is the same direction on both. */
+  background: color-mix(in oklab, var(--text) 11%, var(--surface));
+  border: 1px solid var(--outline);
   pointer-events: none;
   transition: translate var(--dur-med) var(--ease-out), width var(--dur-med) var(--ease-out);
 }
+/* A set of short labels - a range in days, a count of steps. The buttons
+   keep the 48dp press height Android asks for and the pill is drawn shorter
+   inside it, so the thing that slides is a pill crossing the set rather than
+   a dot moving between dots: six segments reading "7d" through "365d" are
+   about as wide as they are tall, and at that ratio --radius-pill draws a
+   circle. Phase 5 UX ticket 23. */
+.segmented.is-compact { display: flex; width: 100%; }
+.segmented.is-compact .segment { flex: 1; min-width: 0; padding-inline: var(--space-1); }
+.segmented.is-compact .segment-pill { top: 9px; bottom: 9px; }
+
 .segment-pill.is-sliding {
   scale: 1 1;
   animation: segment-slide var(--dur-med) var(--ease-out);
@@ -342,7 +371,19 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
    looked identical mid-tap, so a mistap on the active segment read as
    nothing happening at all. It presses to the compact depth like every other
    control its size, and it presses whether or not it is the active one. */
-.segment:active { transform: scale(var(--press-depth)); }
+/* A segment is the third control that answers a press without shrinking, and
+   like the other two it has to say why: the pill crossing the set is already
+   the response, and scaling the label as well is two answers to one press -
+   the words bounce under the finger while the highlight slides out from under
+   it (Alicja, 2026-08-25: "lose the text bounce effect when clicking on the
+   switcher - just leave the highlight animation").
+
+   The other two are in DIRECTION.md's tier 1: a slider thumb takes a ring
+   because a press on it is the start of a carry, and a row the width of the
+   screen fills with a wash because scaling a row moves the card it sits in.
+   What answers here is the colour the label already takes when it becomes
+   the active one, which the transition below still carries. */
+.segment:active { color: var(--text); }
 
 /* ---------- inputs ---------- */
 .field { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
@@ -1111,10 +1152,15 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
 
 /* ---------- decorative motion stage (ticket 09: RiveSlot's CSS fallback is
    now its only content - see RiveSlot.svelte) ---------- */
+/* The wash reaches transparent inside its own box. At `transparent 75%` on
+   an ellipse centred at 60% height it was still coloured where the box ends,
+   and `overflow: hidden` cut it off along a hard horizontal line (Alicja,
+   2026-08-25, on the yearly wrapped's cover - it is the same stage on the
+   empty state and in onboarding). */
 .rive-stage {
   position: relative;
   border-radius: var(--radius-lg);
-  background: radial-gradient(ellipse at 50% 60%, var(--accent-soft), transparent 75%);
+  background: radial-gradient(ellipse 72% 62% at 50% 48%, var(--accent-soft), transparent 68%);
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
   width: 100%;

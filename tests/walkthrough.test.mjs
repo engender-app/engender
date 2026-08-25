@@ -430,19 +430,38 @@ try {
   ok('structured search filters combine with text, show chips and clear-all');
 } catch (e) { fail('structured search filters', e); }
 
-/* 6. stats range + value list */
+/* 6. stats range + value list.
+
+   The handles moved with ticket 23's rebuild: the range is the shared
+   Segmented control's, the period is the header's subtitle rather than half
+   of its title, the values open from their own control instead of by
+   pressing a chart, and a tag insight is a bar rather than a list row. */
 try {
   await fresh('/stats');
-  await page.locator('[data-range="90"]').click();
-  const title = await page.locator('[data-screen-title]').textContent();
-  if (!title.includes('90')) throw new Error('title: ' + title);
-  await page.locator('[data-chart-card]').first().click();
-  await page.waitForSelector('[data-value-row]');
-  /* Tag insights name a built-in tag, so a blank title means the key never
+  await page.locator('[data-segment="90"]').click();
+  const period = await page.locator('[data-screen-subtitle]').textContent();
+  if (!period.includes('90')) throw new Error('period: ' + period);
+  await page.locator('[data-values-open]').click();
+  /* The sheet is the screen's own bar rows now: a row per day, the date
+     naming it and the value on it as text. */
+  await page.waitForSelector('[data-bar-row] [data-bar-value]');
+  await page.locator('[data-sheet-scrim]').first().click();
+  /* Tag insights name a built-in tag, so a blank label means the key never
      got resolved. */
-  const insight = await page.locator('[data-row-title]').first().textContent();
+  const insight = await page
+    .locator('[data-chart-card="tag-insights"] [data-bar-name]')
+    .first()
+    .textContent();
   if (!insight?.trim()) throw new Error('tag insight has no label');
-  ok('stats range, value list and named tag insights');
+  /* Every scale gets a bar, including one nothing was logged against. */
+  if (!(await page.locator('[data-chart-card="scales"] [data-bar-row]').count())) {
+    throw new Error('no scale bars drawn');
+  }
+  /* Five mood steps, always, so the columns stay under the right faces. */
+  if ((await page.locator('[data-dist-step]').count()) !== 5) {
+    throw new Error('the mood distribution should always draw its five steps');
+  }
+  ok('stats range, value list, named tag insights and the scale bars');
 } catch (e) { fail('stats', e); }
 
 /* 6b. ticket 18's three view-only screens: chronological milestones with
@@ -484,15 +503,21 @@ try {
   await page.locator('[data-compare-side="right"]').getByRole('button', { name: 'Later photo' }).click();
   if ((await rightDate.textContent()) === rightBefore) throw new Error('the right photo did not move through time');
 
-  await fresh('/recap');
-  for (let i = 0; i < 7; i++) await page.locator('[data-next]').click();
-  await page.waitForSelector('[data-confetti]');
-  if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('recap is not view-only');
-  await fresh('/recap?period=year');
-  const yearTitle = await page.locator('[data-recap-title]').textContent();
-  const previousYear = await page.evaluate(() => new Date().getFullYear() - 1);
-  if (yearTitle?.trim() !== `Your ${previousYear}`) throw new Error('year recap title: ' + yearTitle);
-  ok('timeline, progress-photo compare and on-demand recap');
+  /* The on-demand recap this flow used to step through is gone (ticket 23,
+     spec 07): its period picker is a wrapped, and what used to be a
+     carousel over a range is now /wrapped/range. Checked here rather than
+     dropped, because "nothing links to the deleted route" is the half of
+     that spec a unit test cannot see. */
+  await fresh('/wrapped/range');
+  await page.waitForSelector('[data-list-row="range-picker"]');
+  await page.locator('[data-list-row="range-picker"]').click();
+  await page.waitForSelector('[data-list-row="range-d90"]');
+  await page.locator('[data-list-row="range-d90"]').click();
+  await page.waitForFunction(() => location.search.includes('named=d90'));
+  if (await page.getByRole('button', { name: /share|export/i }).count()) {
+    throw new Error('a picked range is not shareable, since the share card is built from a cadence');
+  }
+  ok('timeline, progress-photo compare and the wrapped range that replaced recap');
 } catch (e) { fail('ticket 18 view-only screens', e); }
 
 /* 6c. lab result CRUD and per-analyte chart */
@@ -1352,15 +1377,31 @@ try {
 
    Last, and after the reset in flow 18 has put the persona back, because it
    writes five backdated entries into last June. The persona only covers the
-   last 150 days, so without them the previous calendar year is below the
-   entry floor and the yearly presentation has nothing to render - which is
-   itself worth asserting first, since it is the floor doing its job. */
+   last 150 days plus a sparse backfill of the year before last (phase 5 UX
+   ticket 23 - without it the one period /wrapped/year covers was empty by
+   construction and the screen could not be reviewed at all). So the year has
+   entries and the flow adds a handful more to a known month.
+
+   The floor is asserted first, because it is worth proving before anything
+   is rendered on top of it - and against a period that is genuinely thin
+   rather than one that happens to be. A picked range can address any window,
+   so it addresses one nobody could have logged in: the floor applying to
+   those on the same terms as a completed cadence is one of spec 07's own
+   acceptance boxes. */
 try {
-  await fresh('/wrapped/year');
+  const emptyWindow = await page.evaluate(() => {
+    const day = (d) => new Date(d * 86400000).toISOString().slice(0, 10);
+    const start = Math.floor(Date.UTC(2019, 0, 1) / 86400000);
+    return { from: day(start), to: day(start + 40) };
+  });
+  await fresh(`/wrapped/range?named=custom&from=${emptyWindow.from}&to=${emptyWindow.to}`);
+  await page.waitForSelector('[data-wrapped-thin], [data-wrapped-stats]');
   if (!(await page.locator('[data-wrapped-thin]').count())) {
-    throw new Error('a year the persona never logged should be below the entry floor');
+    throw new Error('a window nobody logged in should be below the entry floor');
   }
-  if (await page.locator('[data-wrapped-cover]').count()) throw new Error('a suppressed year still drew its cover');
+  if (await page.locator('[data-wrapped-stats]').count()) {
+    throw new Error('a suppressed range still drew its figures');
+  }
 
   const lastJune = await page.evaluate(() => Math.floor(Date.UTC(new Date().getFullYear() - 1, 5, 10) / 86400000));
   for (let offset = 0; offset < 5; offset++) {
@@ -1375,17 +1416,38 @@ try {
   /* The yearly presentation: a cover, the year read month by month, and the
      figures as one run rather than the compact template's separate cards. */
   await fresh('/wrapped/year');
+  if (await page.locator('[data-wrapped-thin]').count()) {
+    throw new Error('the backfilled year should clear the entry floor');
+  }
   await page.waitForSelector('[data-wrapped-cover-year]');
   const coverYear = (await page.locator('[data-wrapped-cover-year]').textContent())?.trim();
   const previousYear = await page.evaluate(() => String(new Date().getFullYear() - 1));
   if (coverYear !== previousYear) throw new Error('yearly wrapped cover shows ' + coverYear);
-  if ((await page.locator('[data-wrapped-month]').count()) !== 12) {
+  /* Twelve months of days rather than twelve bars: the year is a cell per
+     day on mood's own ramp now, and a month is a block of them. A silent
+     month is still a block - a year with a quiet spring reads as one, and
+     dropping its row would close the gap up. */
+  const months = page.locator('[data-chart-card="wrapped-months"] [data-year-month]');
+  if ((await months.count()) !== 12) {
     throw new Error('the year should read as twelve months, silent ones included');
   }
-  const juneValue = (
-    await page.locator('[data-wrapped-month]').nth(5).locator('[data-wrapped-month-value]').textContent()
-  )?.trim();
-  if (!juneValue) throw new Error('the month the entries went into has no average');
+  const june = months.nth(5);
+  if ((await june.locator('[data-year-cell]').count()) !== 30) {
+    throw new Error('June should be thirty cells, one per day');
+  }
+  /* The five entries this flow wrote landed in June, and a day that carried a
+     mood draws the picker's own face rather than an empty outline. */
+  if ((await june.locator('[data-year-cell] svg').count()) < 5) {
+    throw new Error('the month the entries went into drew no moods');
+  }
+  const yearCells = page.locator('[data-chart-card="wrapped-months"] [data-year-cell]');
+  const dayCount = await page.evaluate(() => {
+    const year = new Date().getFullYear() - 1;
+    return (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365;
+  });
+  if ((await yearCells.count()) !== dayCount) {
+    throw new Error(`the year should be ${dayCount} cells, found ` + (await yearCells.count()));
+  }
   if (!(await page.locator('[data-wrapped-figure]').count())) throw new Error('the year has no figures');
   /* Structurally distinct, not the compact template scaled up: the stat
      tiles and per-question cards belong to the other presentation. */
@@ -1401,16 +1463,22 @@ try {
 
   /* All three cadences reachable without typing a URL: Home offers one, and
      the switcher is what makes the other two anything but orphans (SH-001). */
-  const tabs = page.locator('[data-wrapped-cadences] a');
-  if ((await tabs.count()) !== 3) throw new Error('the cadence switcher offers ' + (await tabs.count()));
+  const tabs = page.locator('[data-segmented="wrapped-cadences"] a');
+  /* Four: the three completed cadences plus the arbitrary range wrapped
+     absorbed from recap (ticket 23, spec 07). */
+  if ((await tabs.count()) !== 4) throw new Error('the cadence switcher offers ' + (await tabs.count()));
   await tabs.nth(2).click();
   await page.waitForSelector('[data-wrapped-cover-year]', { timeout: 15000 });
-  const activeTab = await page.locator('[data-wrapped-cadences] [aria-current="page"]').getAttribute('href');
+  const activeTab = await page
+    .locator('[data-segmented="wrapped-cadences"] [aria-current="page"]')
+    .getAttribute('href');
   if (activeTab !== '/wrapped/year') throw new Error('the switcher marks ' + activeTab + ' as current');
 
   await fresh('/wrapped/nonsense');
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('an unknown cadence should say so');
-  if (await page.locator('[data-wrapped-cadences]').count()) throw new Error('an unknown cadence still drew a switcher');
+  if (await page.locator('[data-segmented="wrapped-cadences"]').count()) {
+    throw new Error('an unknown cadence still drew a switcher');
+  }
 
   /* Home offers exactly one card, for whichever cadence is freshest today,
      and it links to that cadence's screen. */
@@ -1551,7 +1619,7 @@ try {
   await page.waitForSelector('[data-home-hello]', { timeout: 10000 });
 
   await fresh('/on-this-day');
-  if (await page.locator('[data-wrapped-title]', { hasText: 'Six months ago' }).count()) { // text-under-test: the distance label
+  if (await page.locator('[data-lookback="sixMonths"]').count()) {
     throw new Error('a day below the good-day bar surfaced anyway');
   }
 
@@ -1564,15 +1632,24 @@ try {
   await page.waitForSelector('[data-home-hello]', { timeout: 10000 });
 
   await fresh('/on-this-day');
-  const sixMonthSection = page.locator('[data-wrapped-title]', { hasText: 'Six months ago' }); // text-under-test: the distance label
+  const sixMonthSection = page.locator('[data-lookback="sixMonths"]');
   if (!(await sixMonthSection.count())) throw new Error('a euphoria capture should have qualified this day');
+  /* Spec 05: the entries themselves, not a count of them, and each one
+     opens where every other drawing of an entry opens. */
+  const resurfaced = sixMonthSection.locator('[data-entry-card]');
+  if (!(await resurfaced.count())) throw new Error('a resurfaced day shows no entries');
+  const opens = await resurfaced.first().getAttribute('href');
+  if (!/^\/entry\/\d+$/.test(opens ?? '')) throw new Error('a resurfaced entry opens ' + opens);
+  if (await sixMonthSection.locator('[data-chart="area"]').count()) {
+    throw new Error('the chart that cannot draw over one day is back');
+  }
 
   await fresh('/');
   const hadWrappedCard = await page.locator('[data-wrapped-card]').count();
   const card = page.locator('[data-on-this-day-card]');
   if ((await card.count()) !== 1) throw new Error('Home should offer the on-this-day card now, found ' + (await card.count()));
   await card.click();
-  await page.waitForSelector('[data-wrapped-title]');
+  await page.waitForSelector('[data-lookback]');
 
   /* The toggle turns the feature off entirely, and leaves wrapped's own
      toggle and card untouched (CONTEXT/ticket scope: independent toggles). */
@@ -1584,7 +1661,7 @@ try {
     throw new Error("turning on-this-day off changed wrapped's own card");
   }
   await fresh('/on-this-day');
-  if (await page.locator('[data-wrapped-stats], [data-wrapped-title]').count()) {
+  if (await page.locator('[data-lookback]').count()) {
     throw new Error('on-this-day still rendered a day with the feature turned off');
   }
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('the off state explains nothing');
