@@ -58,12 +58,21 @@ describe('the surfaces', () => {
       'ListCard.svelte',
       'ListRow.svelte',
       'MoodChips.svelte',
+      /* Two marks phase 5 UX ticket 23 added, both because an existing one
+         was answering the wrong question. MoodYear is a year of days at a
+         face each - twelve bars said where a year's shape went and a
+         retrospective wanted what the year was. PairedDots is two readings
+         of one scale with the gap between them, which is what a correlation
+         card is: bars measured every row against the longest one and made
+         six of them read as a third copy of the chart above. */
+      'MoodYear.svelte',
       /* MoodFace is deliberately not here. Ticket 31 folded the kit's face
          and the picker's into one component at src/lib/components, because
          the two were one drawing with two sets of markup and the eyes could
          not be changed without changing both. A chip and a day card ask it
          for a size; the picker asks for a blink. */
       'Notice.svelte',
+      'PairedDots.svelte',
       'SectionHeading.svelte',
       'Tile.svelte',
       'TileGrid.svelte'
@@ -135,14 +144,21 @@ describe('the charts', () => {
        own ink, mood's own ramp, and the surface it is diluted into - never
        a second accent and never a literal.
 
-       --role-wash and --surface-2 joined the list with two things phase 5 UX
-       ticket 23 added inside the marks' own selectors: the pressable bar
-       row's fill, and the scrub readout's pill. Both are chrome - the same
-       as the card and the picker - and neither introduces a hue: the wash is
-       mixed from the same stripe as the bar above it, and the pill is one of
-       the app's own two surfaces. */
+       --role-draw is what a mark is drawn in now, and it is the stripe
+       itself. Ticket 20's handoff had held a bar to 3:1 like a chart line,
+       which on nonbinary's light theme is olive; DIRECTION.md's strongest
+       instruction is that every colour drawn as the flag is the flag's own
+       hex, and Alicja restated it for marks in capitals (2026-08-25). The
+       3:1 version stays for a glyph inside a tinted disc of its own colour,
+       where a white band would otherwise be nothing at all.
+
+       --role-wash and --surface-2 are here for two pieces of chrome inside
+       the marks' own selectors: the pressable bar row's press fill, and the
+       scrub readout's pill. Neither introduces a hue - the wash is mixed
+       from the same stripe as the bar above it, and the pill is one of the
+       app's own two surfaces. */
     const allowed =
-      /^(--role-ink|--role-mark|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text-2?|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
+      /^(--role-ink|--role-mark|--role-draw|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
     for (const [, token] of markCss.matchAll(/var\((--[a-z0-9-]+)/g)) {
       if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
       expect(token, `${token} in the chart rules`).toMatch(allowed);

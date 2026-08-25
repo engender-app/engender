@@ -1281,7 +1281,12 @@ a.kit-entry:active {
    outline and never a face. */
 .kit-year-cell.is-empty {
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  /* An outline drawn inward rather than an inset box-shadow: the kit
+     separates with a line and never with a shadow, and a ring that happens
+     to be spelled `box-shadow` is still spelled `box-shadow`. Inward, so the
+     cell keeps its square box and the grid stays on its columns. */
+  outline: 1px solid var(--hairline);
+  outline-offset: -1px;
 }
 
 /* --- paired dots ---
@@ -1325,11 +1330,21 @@ a.kit-entry:active {
   position: relative;
   height: 18px;
   margin-top: 6px;
-  /* The scale itself, as the faintest line the theme has. Not a gridline and
-     not an axis: there are no ticks on it and nothing is written along it. */
-  background:
-    linear-gradient(var(--hairline), var(--hairline)) center / 100% 2px no-repeat;
+}
+
+/* The scale itself, as the faintest line the theme has. Not a gridline and
+   not an axis: there are no ticks on it and nothing is written along it.
+   Drawn as a child rather than as a two-stop gradient on the track, because
+   the kit paints flat colour and a gradient of one colour is still a
+   gradient to anything reading this. */
+.kit-paired-track::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 2px;
+  transform: translateY(-50%);
   border-radius: 1px;
+  background: var(--hairline);
 }
 
 /* The distance between the two readings, which is the reading. */

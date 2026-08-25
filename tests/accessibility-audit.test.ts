@@ -22,8 +22,12 @@ describe('phase 2 accessibility seams', () => {
     const stats = read('src/routes/stats/+page.svelte');
     expect(stats).toContain('data-values-open');
     expect(stats).toContain('Sheet open={valueSheet}');
-    expect(stats).toContain('data-value-row');
-    expect(stats).toContain('m.values_title');
+    /* The sheet is the screen's own bar rows now, and a bar carries its
+       value as text - which is the property this check is about. It used to
+       be three columns of text per row, which is a table with one column
+       that matters. */
+    expect(stats).toContain('valueRows');
+    expect(stats).toContain('<BarRows rows={valueRows} />');
   });
 
   /* Ticket 17: --touch-target was 44px, which is the iOS number. The app

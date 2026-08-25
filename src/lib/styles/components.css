@@ -284,13 +284,14 @@ a.segment {
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--text-2);
   white-space: nowrap;
-  /* Longhands rather than a shorthand: this rule transitions three things
-     and only the press is on --ease-press, and a shorthand naming that token
-     strands the other two on an old WebView. The mechanism is at
-     --ease-press in theme/base.css. */
-  transition-property: transform, background, color;
-  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast);
-  transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out);
+  /* Two things, and neither is a transform: this control's press is the
+     pill's, not the label's (see .segment:active below). --ease-press went
+     with the transform it was for, which also takes the WebView caveat with
+     it - a shorthand naming that token stranded the other properties on an
+     old WebView, and there is no longer a reason to name it here at all. */
+  transition-property: background, color;
+  transition-duration: var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-out), var(--ease-out);
 }
 .segment:hover { color: var(--text); }
 /* The pill behind it is .segment-pill now, one element for the whole control,
@@ -355,7 +356,19 @@ a.segment {
    looked identical mid-tap, so a mistap on the active segment read as
    nothing happening at all. It presses to the compact depth like every other
    control its size, and it presses whether or not it is the active one. */
-.segment:active { transform: scale(var(--press-depth)); }
+/* A segment is the third control that answers a press without shrinking, and
+   like the other two it has to say why: the pill crossing the set is already
+   the response, and scaling the label as well is two answers to one press -
+   the words bounce under the finger while the highlight slides out from under
+   it (Alicja, 2026-08-25: "lose the text bounce effect when clicking on the
+   switcher - just leave the highlight animation").
+
+   The other two are in DIRECTION.md's tier 1: a slider thumb takes a ring
+   because a press on it is the start of a carry, and a row the width of the
+   screen fills with a wash because scaling a row moves the card it sits in.
+   What answers here is the colour the label already takes when it becomes
+   the active one, which the transition below still carries. */
+.segment:active { color: var(--text); }
 
 /* ---------- inputs ---------- */
 .field { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
