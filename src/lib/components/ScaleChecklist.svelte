@@ -48,11 +48,17 @@
     addHref?: string;
   } = $props();
 
-  /* Hidden scales are left out, the same "not hidden" filter every other
-     picker in the app applies - hiding one is already the answer to "I
-     never want to see this", and offering it back here would be the app
-     asking a question it has been told the answer to. */
-  let scales = $derived(vocabulary.visibleDimensions);
+  /* Every scale, not `visibleDimensions`. This list has to offer exactly
+     what the editor can draw, and `reference.activeDimensions` does not
+     filter on hidden - so filtering here would let a scale be ticked, drawn
+     on every entry screen, and absent from the only list that could untick
+     it. Nothing can set that flag on a dimension today anyway: no screen
+     calls `setDimensionHidden`, so the only way one arrives is an archive
+     from a build that had such a screen. If hiding a scale ever ships, it
+     is that ticket's job to decide whether hiding also unticks - and those
+     two answers have to be decided together, which is the argument for not
+     guessing at half of it here. */
+  let scales = $derived(vocabulary.dimensions);
   let isTicked = $derived((key: string) => ticked.includes(key));
 </script>
 
