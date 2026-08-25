@@ -5,6 +5,7 @@
   import { readPhoto } from '$lib/stores/photoFiles';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
+  import Slider from './Slider.svelte';
 
   /* The compare-and-retake step ticket 12 asks for instead of a live camera
      overlay (ADR-0033): once the native camera intent returns a shot, this is
@@ -98,16 +99,17 @@
       {/if}
     </div>
     {#if referenceUrl}
-      <label class="field-label" for="photo-review-opacity">{m.photo_review_compare_label()}</label>
-      <input
-        id="photo-review-opacity"
-        class="onion-opacity"
-        type="range"
-        min="0"
-        max="100"
-        bind:value={opacity}
-        data-onion-opacity
-      />
+      <!-- The app's slider, not a native range: this was the one live
+           input[type="range"] left, and it carried no thumb styling at all,
+           so both engines drew their own control here. -->
+      <span class="field-label">{m.photo_review_compare_label()}</span>
+      <div class="onion-opacity" data-onion-opacity>
+        <Slider
+          value={opacity}
+          onInput={(v) => (opacity = v)}
+          label={m.photo_review_compare_label()}
+        />
+      </div>
     {/if}
     <div class="stack-3">
       <button class="btn btn-primary" data-use-photo onclick={() => onAccept(photo)}>

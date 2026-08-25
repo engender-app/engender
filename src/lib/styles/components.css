@@ -70,10 +70,16 @@
   width: var(--touch-target); height: var(--touch-target);
   border-radius: var(--radius-pill);
   color: var(--text); background: none; border: none; cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out);
+  /* Longhands: only the press is on --ease-press, and a shorthand naming
+     that token strands the background with it on an old WebView. The
+     mechanism is at --ease-press in theme/base.css. */
+  transition-property: transform, background;
+  transition-duration: var(--dur-press), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out);
   text-decoration: none;
 }
 .icon-btn:hover { background: var(--surface-2); }
+.icon-btn:active { transform: scale(var(--press-depth)); }
 .icon .muted, .icon.muted { color: var(--text-2); }
 /* A starred toggle reads as filled rather than only outlined - the same
    currentColor treatment every other icon here already uses, so it still
@@ -108,6 +114,14 @@
    and press.css is where all three depths are written. A .btn cannot press
    to a fourth number any more, which is what this used to be. */
 .btn:active { transform: scale(var(--press-depth-wide)); }
+/* What a control that cannot be pressed does instead, which until now was
+   nothing: a disabled .btn was pixel-identical to a live one. Onboarding's
+   Continue button is disabled until a preset is picked and looked pressable
+   the whole time. Browsers do not match :active on a disabled control, so the
+   press already did not fire; what was missing was saying so. Same 0.45 the
+   PIN pad's dead keys already use. */
+.btn:disabled { cursor: default; opacity: 0.45; }
+.icon-btn:disabled { cursor: default; opacity: 0.45; }
 .btn-primary { background: var(--grad-accent); color: var(--on-accent); box-shadow: var(--shadow-1); }
 /* Behind a hover query because this rule sits after .btn:active and carries
    the same specificity, so on a touch screen it wins. Chromium applies
@@ -129,10 +143,16 @@
 .btn-danger { background: var(--danger-soft); color: var(--danger); }
 .btn-block { width: 100%; }
 
+/* The ring, and nothing else. This used to also set
+   `border-radius: var(--radius-xs)`, which at (0,2,0) outranks every control's
+   own radius at (0,1,0): a focused .icon-btn stopped being a circle, a focused
+   .btn stopped being a pill, and the slider's round thumb - which carries
+   tabindex for melt to focus - became a 6px squircle with a ring round it.
+   The intent was a slightly rounded ring on square things, and a square
+   element getting a square ring is the right answer for that anyway. */
 :is(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: var(--radius-xs);
 }
 
 /* ---------- cards & rows ---------- */
@@ -172,25 +192,53 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 .row-trailing { display: flex; align-items: center; gap: var(--space-2); color: var(--text-2); font-size: var(--text-sm); }
 
 /* ---------- switch ---------- */
-/* SH-101: the visible track is 28px tall, under the 44px minimum, and it is
-   the most repeated control in Settings. The hit area grows to 44px without
-   the track itself growing. */
-.switch { display: inline-flex; align-items: center; justify-content: center; min-height: var(--touch-target); cursor: pointer; }
-.switch input { position: absolute; opacity: 0; width: 44px; height: 28px; cursor: pointer; }
+/* One switch, and one accessibility contract for it. This was styled twice:
+   once for a hidden checkbox with `:checked` selectors, and once further down
+   the file for a button carrying aria-checked, each restating the checked and
+   focus rules. Only the button was ever built - Switch.svelte, on melt's
+   Toggle - so the checkbox half was a second contract with no markup behind
+   it, and its rules were the ones a reader hit first.
+
+   SH-101: the visible track is 28px tall and 44px wide, under the 48px
+   minimum, and it is the most repeated control in Settings. The hit area
+   grows to 48px in both directions without the track growing with it - it
+   used to grow in one, which left it 4px short across the axis a thumb
+   actually misses on.
+
+   It shrinks when touched like every other control its size. A switch is
+   tapped and released, not carried, so there is no reason for it to answer
+   differently from a button. */
+.switch {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--touch-target); min-height: var(--touch-target);
+  border: none; background: none; padding: 0;
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-press);
+}
+.switch:active { transform: scale(var(--press-depth)); }
 .switch-track {
   width: 44px; height: 28px; border-radius: var(--radius-pill);
   background: var(--surface-2); border: 1px solid var(--border);
   display: flex; align-items: center; padding: 2px;
-  transition: background var(--dur-med) var(--ease-out);
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
+/* The travel is the state, so it survives reduced motion as an instant cut
+   rather than as nothing. --dur-fast and not --dur-med: a flip is a response
+   to a tap, and 240ms of thumb sliding after the finger is gone reads as the
+   control catching up. */
 .switch-thumb {
   width: 22px; height: 22px; border-radius: 50%;
-  background: var(--surface); box-shadow: var(--shadow-1);
-  transition: transform var(--dur-med) var(--ease-out);
+  /* Off, the thumb is drawn in --text-2 rather than in --surface. --surface on
+     --surface-2 is two greys about 1.2:1 apart, so on the dark theme the
+     control read as an empty pill with nothing in it and the off state was
+     indistinguishable from a disabled one. On it goes to --on-accent, which
+     is the colour the palette guards against --accent. */
+  background: var(--text-2); box-shadow: var(--shadow-1);
+  transition: translate var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
 }
-.switch input:checked + .switch-track { background: var(--accent); border-color: var(--accent); }
-.switch input:checked + .switch-track .switch-thumb { transform: translateX(16px); }
-.switch input:focus-visible + .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.switch[aria-checked="true"] .switch-track { background: var(--accent); border-color: var(--accent); }
+.switch[aria-checked="true"] .switch-thumb { background: var(--on-accent); translate: 16px; }
+.switch:focus-visible .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 /* ---------- segmented ---------- */
 .segmented {
@@ -208,7 +256,7 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
    language, stats range and several pickers all repeat. */
 .segment {
   border: none; background: none; cursor: pointer;
-  padding: 6px 14px; min-height: var(--touch-target);
+  padding: 6px 14px; min-width: var(--touch-target); min-height: var(--touch-target);
   border-radius: var(--radius-pill);
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--text-2);
@@ -300,27 +348,180 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .mood-btn.is-selected .mood-label { color: var(--text); font-weight: var(--weight-bold); }
 .mood-picker.is-compact .mood-face { width: 38px; height: 38px; }
 
-/* ---------- dimension slider ---------- */
+/* ---------- the slider ---------- */
+/* One slider, and one set of rules for it. The two it replaced disagreed on
+   which state they took a press from (`:active` against a `data-dragging`
+   attribute), which property they animated (`transform: scale` against the
+   `scale` property) and how big the thumb was (26px, or 20px in Gecko), and
+   agreed on the number 1.15 by coincidence.
+
+   The geometry is a stack inside one 48px row, which is the touch target the
+   whole row carries: a full-width groove, a lane inset by half a thumb that
+   the thumb's centre travels, and a ruler of marks under it. The inset is
+   what stops the thumb hanging off the ends of its own track at 0 and at the
+   maximum; the pointer still maps across the whole row, which is what a
+   native range does too. */
+/* The lane both halves of the assembly measure from. The inset is half a
+   thumb, and it lives here rather than on .slider because the readout in the
+   head row is outside the control and lines up with the same lane. */
+.dim-slider, .slider {
+  --slider-thumb: 26px;
+  --slider-inset: 13px;
+}
 .dim-slider { margin-bottom: var(--space-5); }
-.dim-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-1); }
+
+/* The name sits in the card's text column. The readout does not: it lives in
+   its own layer over this row so it can leave the right-hand edge and go and
+   sit above the thumb, which is where you are looking while you drag. Both
+   halves of that travel are transforms - the layer carries the position
+   along the lane, the readout centres itself on it - so a drag composites
+   instead of laying out. */
+.dim-head { position: relative; display: flex; align-items: baseline; margin-bottom: var(--space-1); }
 .dim-name { font-weight: var(--weight-bold); }
+.dim-readout {
+  position: absolute;
+  left: var(--slider-inset); right: var(--slider-inset); bottom: 0;
+  height: 0;
+  pointer-events: none;
+  translate: 100% 0;
+  transition: translate var(--dur-med) var(--ease-out);
+}
 .dim-value {
+  position: absolute; left: 0; bottom: 0;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
   font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600;
-  color: var(--accent); min-width: 2.2ch; text-align: right;
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  /* Parked, the digits line up with the endpoint word under the same end of
+     the lane rather than with the pill's edge, so the 10px the pill needs
+     while it is held does not push the resting number out of the column. */
+  translate: calc(-100% + 10px) 0;
+  /* Longhands, and every curve named: theme/base.css's note on --ease-press
+     applies to any shorthand carrying a token an old WebView cannot parse. */
+  transition-property: translate, scale, background-color, color, box-shadow;
+  transition-duration: var(--dur-med), var(--dur-med), var(--dur-fast), var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-out), var(--ease-out), var(--ease-out), var(--ease-out), var(--ease-out);
+}
+/* Held, the readout becomes the head of the fill it is standing on: same
+   colour, lifted off the row, leaning 4px down towards the thumb. --slider-pct
+   is the same percentage the control positions its own thumb by, set by
+   DimensionSlider because a custom property does not travel back up the tree
+   from the control that owns it. */
+.dim-slider.is-holding .dim-readout { translate: var(--slider-pct) 0; }
+.dim-slider.is-holding .dim-value {
+  translate: -50% 4px;
+  scale: 1.08;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-1);
 }
 .value-row, .chart-avg, .chip-value, .hm-num, .pin-dots { font-variant-numeric: tabular-nums; }
-/* No native range input is left in the app, which is how the two engines
-   stopped drawing two different sliders. What was here styled
-   input[type="range"] for both: a 26px ::-webkit-slider-thumb with a press
-   transition, and a 20px ::-moz-range-thumb with neither, on a track that
-   Chromium faked with a gradient and Gecko drew with ::-moz-range-progress.
-   Nobody chose either of those; they are what the engines default to after
-   partial styling. The markup that wore them had already moved to the custom
-   slider below, so the rules were dead as well as inconsistent. The photo
-   review's onion-skin control was the one live native range and it moved to
-   the same component. */
-.dim-ends { display: flex; justify-content: space-between; font-size: var(--text-xs); color: var(--text-2); margin-top: -4px; }
+
+.slider {
+  position: relative;
+  height: var(--touch-target);
+  cursor: pointer;
+}
+.slider:focus-visible { outline: none; }
+.slider-track {
+  position: absolute; left: 0; right: 0; top: 15px; height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+}
+.slider-lane { position: absolute; left: var(--slider-inset); right: var(--slider-inset); top: 0; bottom: 0; }
+/* Starts at the groove's true left edge and ends under the thumb's centre,
+   so the fill and the thumb meet rather than one overshooting the other. */
+.slider-fill {
+  position: absolute; top: 15px; height: 10px;
+  left: calc(-1 * var(--slider-inset));
+  width: calc(var(--percentage) + var(--slider-inset));
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+/* The ruler. Every stop the thumb can rest on is marked, which is what makes
+   the coarser step on the 0-100 scale legible rather than mysterious: the
+   marks say the control has 21 positions, so nobody wonders why it will not
+   stop on 63. The mark under the thumb answers as the thumb crosses it, and
+   that is the detent - the only feedback a step has, short of a vibration
+   the web cannot ask for. */
+.slider-ruler {
+  position: absolute; left: 0; right: 0; top: 34px;
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
+.slider-tick {
+  width: 1.5px; height: 5px;
+  border-radius: 1px;
+  /* Not --border: at #2B3C49 on the dark card's #151F27 that is 1.6:1, and a
+     1.5px mark at 1.6:1 is not a quiet mark, it is an absent one. Mixed from
+     --text so it lands the same distance from the surface on both themes. */
+  background: color-mix(in oklab, var(--text) 45%, transparent);
+  transform-origin: top center;
+  transition: background-color var(--dur-fast) var(--ease-out), scale var(--dur-fast) var(--ease-out);
+}
+.slider-tick.is-major { height: 7px; background: var(--text-2); }
+.slider-tick.is-here { background: var(--accent); scale: 1 1.7; }
+/* Held, the whole instrument steps up a level of contrast. The ruler is
+   reference furniture at rest and the thing being read while a finger is on
+   it, and those are two different jobs for one set of marks. */
+.slider.is-holding .slider-tick { background: var(--text-2); }
+.slider.is-holding .slider-tick.is-major { background: var(--text); }
+.slider.is-holding .slider-tick.is-here { background: var(--accent); }
+
+/* The thumb neither shrinks nor grows, which is the one place this ticket
+   parts with tier 1. A press on a button is the whole gesture; a press on a
+   thumb is the start of a carry. Shrinking reads as the control slipping out
+   from under the finger, and growing - which is what both old sliders did,
+   at 1.15 - covers the marks and the fill the thumb is being aimed at. So
+   the answer goes outside its body instead: a ring in the accent, visible
+   around a fingertip rather than under it. It is a colour change, so
+   reduced motion keeps it whole. */
+.slider-thumb {
+  position: absolute;
+  left: var(--percentage); top: 7px;
+  width: var(--slider-thumb); height: var(--slider-thumb);
+  translate: -50% 0;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--accent);
+  box-shadow: var(--shadow-1);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.slider.is-holding .slider-thumb {
+  box-shadow: var(--shadow-1), 0 0 0 9px color-mix(in oklab, var(--accent) 20%, transparent);
+}
+/* The ring belongs to the control, not to the thumb: melt focuses the thumb
+   on pointerdown so a keyboard user and a finger both end up with the thumb
+   as activeElement, and Chromium calls a programmatic focus visible. Left
+   alone that put a focus ring on the slider after every touch drag. The root
+   is the tab stop, so the root having focus is what a ring means. */
+.slider-thumb:focus-visible { outline: none; }
+.slider:focus-visible .slider-thumb { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* An unset slider (ticket 31). The thumb has to rest somewhere, and where it
+   rests is not a value anyone logged - on a body region both axes start this
+   way, so a mid-track thumb would otherwise read as a middling score. Dimmed
+   rather than hidden: the control is still there to be used. The ruler is not
+   dimmed with it, because the scale is true whether or not there is a value
+   on it yet. */
+.slider.is-unset .slider-fill,
+.slider.is-unset .slider-thumb { opacity: 0.45; }
+/* And no mark claims to be standing on a value, because there is not one. */
+.slider.is-unset .slider-tick.is-here {
+  background: color-mix(in oklab, var(--text) 45%, transparent);
+  scale: 1;
+}
+.dim-slider.is-unset .dim-value { font-style: italic; color: var(--text-2); }
+
+/* Inset to the lane, so the two endpoint words line up under the two
+   positions the thumb can actually reach. */
+.dim-ends {
+  display: flex; justify-content: space-between;
+  padding: 0 var(--slider-inset);
+  font-size: var(--text-xs); color: var(--text-2); margin-top: 2px;
+}
 
 /* ---------- tags ---------- */
 .tag-group { margin-bottom: var(--space-4); }
@@ -452,14 +653,6 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
    line segments rather than the heat legend's squares, because that is what
    they stand for, and the dashed one repeats the chart's own dash so the
    pairing survives for anyone who cannot separate the two colours. */
-/* An unset slider (ticket 31). The thumb has to rest somewhere, and where it
-   rests is not a value anyone logged - on a body region both axes start this
-   way, so a mid-track thumb would otherwise read as a middling score. Dimmed
-   rather than hidden: the control is still there to be used. */
-.dim-slider.is-unset .melt-track,
-.dim-slider.is-unset .melt-thumb { opacity: 0.45; }
-.dim-slider.is-unset .dim-value { font-style: italic; color: var(--text-2); }
-
 .chart-legend {
   display: flex; gap: var(--space-4); flex-wrap: wrap;
   list-style: none; padding: 0; margin: var(--space-3) 0 0;
@@ -932,7 +1125,7 @@ html[data-a11y-motion='reduce'] .confetti .cf {
   width: 100%; height: 100%;
   object-fit: contain;
 }
-.onion-opacity { width: 100%; margin-bottom: var(--space-4); }
+.onion-opacity { margin-bottom: var(--space-4); }
 
 /* ---------- empty state ---------- */
 .empty-state {
@@ -1072,30 +1265,6 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
   .sheet { border-radius: var(--radius-xl); }
   .toast { bottom: var(--space-6); }
 }
-
-/* ---------- melt slider (DimensionSlider) ---------- */
-.melt-slider {
-  position: relative; height: var(--touch-target);
-  display: flex; align-items: center;
-  cursor: pointer;
-}
-.melt-track { width: 100%; height: 10px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
-.melt-range { height: 100%; width: var(--percentage); background: var(--accent); border-radius: var(--radius-pill); }
-.melt-thumb {
-  position: absolute; left: var(--percentage); transform: translateX(-50%);
-  width: 26px; height: 26px; border-radius: 50%;
-  background: var(--surface); border: 3px solid var(--accent);
-  box-shadow: var(--shadow-1);
-  transition: scale var(--dur-press) var(--ease-press);
-}
-.melt-thumb:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.melt-slider[data-dragging] .melt-thumb { scale: 1.15; }
-
-/* ---------- switch as a melt Toggle button ---------- */
-button.switch { border: none; background: none; padding: 0; cursor: pointer; display: inline-flex; }
-.switch[aria-checked="true"] .switch-track { background: var(--accent); border-color: var(--accent); }
-.switch[aria-checked="true"] .switch-thumb { transform: translateX(16px); }
-.switch:focus-visible .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 /* ---------- loading placeholders ---------- */
 /* Entry lists, stats, search and recap read through a worker and cannot

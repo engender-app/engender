@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { Slider } from 'melt/builders';
+  /* A named scale with two endpoints, which is the labelled form of the
+     app's one slider. The instrument itself is Slider.svelte; what this adds
+     is the name, the readout that travels to the thumb while the control is
+     being held, and the two endpoint words. */
+  import Slider from './Slider.svelte';
+  import { displayValue } from './sliderScale';
   import { m } from '$lib/paraglide/messages';
 
   /** A gender dimension satisfies this structurally; so does anything else
@@ -20,32 +25,36 @@
     onInput,
   }: { dim: SliderScale; value?: number | null; onInput: (v: number) => void } = $props();
 
-  // Melt UI slider (headless behaviour, our tokens do the styling).
-  const slider = new Slider({
-    min: () => dim.min,
-    max: () => dim.max,
-    step: 1,
-    value: () => value ?? Math.round((dim.min + dim.max) / 2),
-    onValueChange: (v) => onInput(v),
-  });
+  let holding = $state(false);
+
+  /* The same fraction the control positions its thumb by, worked out again
+     here because the readout lives above the control rather than inside it
+     and a custom property set on the control does not reach it. */
+  const percent = $derived(
+    ((displayValue(value, dim.min, dim.max) - dim.min) / (dim.max - dim.min)) * 100
+  );
 </script>
 
-<div class="dim-slider" class:is-unset={value == null}>
+<div
+  class="dim-slider"
+  class:is-unset={value == null}
+  class:is-holding={holding}
+  style:--slider-pct="{percent}%"
+>
   <div class="dim-head">
     <span class="dim-name" data-dim-name>{dim.name}</span>
-    <output class="dim-value" data-dim-value>{value ?? m.slider_unset()}</output>
+    <div class="dim-readout">
+      <output class="dim-value" data-dim-value>{value ?? m.slider_unset()}</output>
+    </div>
   </div>
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div
-    {...slider.root}
-    class="melt-slider"
-    data-melt-slider
-    onpointerup={() => { if (value == null) onInput(slider.value); }}
-    onkeyup={() => { if (value == null) onInput(slider.value); }}
-    aria-label={m.slider_aria({ name: dim.name, low: dim.low, high: dim.high })}
-  >
-    <div class="melt-track"><div class="melt-range"></div></div>
-    <div {...slider.thumb} class="melt-thumb"></div>
-  </div>
+  <Slider
+    bind:holding
+    min={dim.min}
+    max={dim.max}
+    {value}
+    {onInput}
+    unset={value == null}
+    label={m.slider_aria({ name: dim.name, low: dim.low, high: dim.high })}
+  />
   <div class="dim-ends"><span>{dim.low}</span><span>{dim.high}</span></div>
 </div>

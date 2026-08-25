@@ -42,7 +42,7 @@
             {#if tg.hidden}<span class="muted small">{m.tags_hidden()}</span>{/if}
             <span class="managed-actions">
               <button class="icon-btn" data-up aria-label={m.tags_move_up({ label: tg.label })} disabled={i === 0}
-                style={i === 0 ? 'opacity:.3' : ''} onclick={() => moveUp(g, i)}>
+                onclick={() => moveUp(g, i)}>
                 <Icon name="chevronLeft" size={16} />
               </button>
               <button class="icon-btn" aria-label={m.tags_rename_aria({ label: tg.label })}

@@ -196,10 +196,10 @@ try {
   ok('mood-only save nudges when enabled and stays quiet when disabled');
 } catch (e) { fail('nudge flow', e); }
 
-/* 3. melt slider keyboard interaction */
+/* 3. slider keyboard interaction */
 try {
   await fresh('/entry/new/today');
-  const thumb = page.locator('[data-melt-slider]').first();
+  const thumb = page.locator('[data-slider]').first();
   await thumb.focus();
   await page.keyboard.press('ArrowRight');
   // A number, not "anything but the unset marker": comparing against the
@@ -208,8 +208,8 @@ try {
   if (!Number.isFinite(Number(out.trim()))) {
     throw new Error('slider value did not update: ' + JSON.stringify(out));
   }
-  ok('melt slider responds to keyboard');
-} catch (e) { fail('melt slider', e); }
+  ok('slider responds to keyboard');
+} catch (e) { fail('slider', e); }
 
 /* 4. calendar → day → add another */
 try {

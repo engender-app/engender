@@ -53,10 +53,10 @@
         <div class="compare-side">
           <VoicePlayer fileName={recordings[side.i].fileName} />
           <div class="compare-nav">
-            <button class="icon-btn" disabled={!side.canPrev} style={side.canPrev ? '' : 'opacity:.3'}
+            <button class="icon-btn" disabled={!side.canPrev}
               aria-label={m.vc_earlier()} onclick={() => step(side.which, -1)}><Icon name="chevronLeft" size={18} /></button>
             <span class="small">{fmtDay(recordings[side.i].epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            <button class="icon-btn" disabled={!side.canNext} style={side.canNext ? '' : 'opacity:.3'}
+            <button class="icon-btn" disabled={!side.canNext}
               aria-label={m.vc_later()} onclick={() => step(side.which, 1)}><Icon name="chevronRight" size={18} /></button>
           </div>
         </div>

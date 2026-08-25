@@ -81,10 +81,10 @@
         <div class="compare-side" data-compare-side={side.which}>
           <PhotoThumb photo={photos[side.i]} size={150} />
           <div class="compare-nav">
-            <button class="icon-btn" disabled={!side.canPrev} style={side.canPrev ? '' : 'opacity:.3'}
+            <button class="icon-btn" disabled={!side.canPrev}
               aria-label={m.ph_earlier()} onclick={() => step(side.which, -1)}><Icon name="chevronLeft" size={18} /></button>
             <span class="small" data-compare-date>{fmtDay(photos[side.i].epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            <button class="icon-btn" disabled={!side.canNext} style={side.canNext ? '' : 'opacity:.3'}
+            <button class="icon-btn" disabled={!side.canNext}
               aria-label={m.ph_later()} onclick={() => step(side.which, 1)}><Icon name="chevronRight" size={18} /></button>
           </div>
           <span class="muted small">{photos[side.i].milestoneName ?? m.ph_from_entry()}</span>
