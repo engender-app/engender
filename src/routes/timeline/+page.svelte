@@ -1,85 +1,96 @@
 <script lang="ts">
+  /* The milestone timeline (phase 5 UX ticket 23's rebuild of ticket 18's
+     screen). Past and future on one rail, the long empty stretches
+     compressed, and a marker for where today falls among them.
+
+     What the rail is built from is $lib/data/timelineItems - the ordering,
+     the gap rule and today's place are calendar arithmetic and belong in a
+     module with tests rather than in markup. That is also where the defect
+     went: the marker used to be inserted only between two milestones, so a
+     journal whose milestones were all still ahead drew a timeline of the
+     future with no present on it.
+
+     Milestones are mirrored (ADR-0004), so this screen needs no loading
+     state: they arrive with boot, bounded at tens of rows and already in
+     date order from the journal.
+
+     The rail takes the flag rather than the accent, the same rule every
+     other area of the app follows (DIRECTION.md). A future milestone is the
+     same mark drawn hollow, which is the one place on this screen where
+     colour carries a meaning - and it is a fact about time, not a judgement,
+     so ADR-0012 has nothing to say about it. */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
+  import { timelineItems } from '$lib/data/timelineItems';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import type { Milestone } from '$lib/data/types';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+  import { roleStyle } from '$lib/components/kit/role';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
 
-  type Item =
-    | { kind: 'milestone'; m: Milestone; status: string; future: boolean }
-    | { kind: 'gap'; label: string; id: string }
-    | { kind: 'today'; id: string };
+  let today = $derived(todayEpochDay());
+  let items = $derived(timelineItems(vocabulary.milestones, today));
 
-  /* Milestones are mirrored (ADR-0004), so this screen needs no loading
-     state: they arrive with boot, bounded at tens of rows and already in
-     date order from the journal. */
-  let items = $derived.by(() => {
-    const ms = vocabulary.milestones;
-    const today = todayEpochDay();
-    const out: Item[] = [];
-    let prevDay: number | null = null;
-    let todayInserted = false;
-    for (const mi of ms) {
-      if (!todayInserted && prevDay != null && prevDay <= today && mi.epochDay > today) {
-        out.push({ kind: 'today', id: 'today' });
-        todayInserted = true;
-      }
-      if (prevDay != null && mi.epochDay - prevDay > 420) {
-        const label = fmtDuration(calendarDuration(prevDay, mi.epochDay));
-        out.push({ kind: 'gap', label, id: 'gap-' + mi.id });
-      }
-      const s = milestoneStatus(mi, today);
-      const status =
-        s.type === 'countdown'
-          ? m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) })
-          : s.type === 'today'
-            ? m.ms_status_today()
-            : m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
-      out.push({ kind: 'milestone', m: mi, status, future: mi.epochDay > today });
-      prevDay = mi.epochDay;
-    }
-    return out;
-  });
+  const statusOf = (milestone: Milestone) => {
+    const s = milestoneStatus(milestone, today);
+    if (s.type === 'countdown') return m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) });
+    if (s.type === 'today') return m.ms_status_today();
+    return m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
+  };
+
+  const gapLabel = (fromEpochDay: number, toEpochDay: number) =>
+    fmtDuration(calendarDuration(fromEpochDay, toEpochDay));
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.timeline()} back="/">
+  <ScreenHeader title={m.timeline()} subtitle={m.tl_intro()} screen="timeline" back="/">
     {#snippet actions()}
-      <a class="icon-btn" href="/settings/milestones" aria-label={m.tl_add_aria()}><Icon name="plus" size={22} /></a>
+      <a class="icon-btn press" href="/settings/milestones" aria-label={m.tl_add_aria()}>
+        <Icon name="plus" size={22} />
+      </a>
     {/snippet}
   </ScreenHeader>
 
-  {#if vocabulary.milestones.length}
-    <p class="muted small" style="margin-bottom:var(--space-5)">{m.tl_intro()}</p>
-    <div class="timeline">
-      {#each items as item (item.kind === 'milestone' ? item.m.id : item.id)}
+  {#if items.length}
+    <!-- One role for the whole rail rather than one per item: the rail is a
+         single area of the screen, and a colour per milestone would make the
+         palette a sequence of unrelated marks. -->
+    <div class="timeline" style={roleStyle(roleAt(activeFlag.roles, 0))}>
+      {#each items as item (item.id)}
         {#if item.kind === 'today'}
-          <div class="tl-item tl-today">
+          <div class="tl-item tl-today" data-tl-today>
             <span class="tl-dot is-today"></span>
-            <div class="tl-body"><span class="tl-name muted small">{m.tl_you_are_here()}</span></div>
+            <p class="tl-here">{m.tl_you_are_here()}</p>
           </div>
         {:else if item.kind === 'gap'}
-          <div class="tl-gap" data-tl-gap aria-label={m.tl_gap_aria({ duration: item.label })}>
-            <span class="tl-gap-line"></span><span class="tl-gap-label">{m.tl_gap_label({ duration: item.label })}</span><span class="tl-gap-line"></span>
+          {@const label = gapLabel(item.fromEpochDay, item.toEpochDay)}
+          <!-- The axis runs behind this rather than being interrupted by it,
+               so the label is the only thing here: two dashed rules either
+               side of it were what broke the line into pieces. -->
+          <div class="tl-gap" data-tl-gap aria-label={m.tl_gap_aria({ duration: label })}>
+            <span class="tl-gap-label">{m.tl_gap_label({ duration: label })}</span>
           </div>
         {:else}
-          <div class="tl-item" class:is-future={item.future}>
+          <div class="tl-item" class:is-future={item.future} data-tl-item={item.milestone.id}>
             <span class="tl-dot"></span>
-            <div class="tl-body card">
-              <div class="spread">
-                <span class="tl-name" data-tl-name>{item.m.name}</span>
-                {#if item.future}<span class="tl-count">{item.status}</span>{/if}
+            <div class="tl-body">
+              <div class="tl-head">
+                <span class="tl-name" data-tl-name>{item.milestone.name}</span>
+                {#if item.future}<span class="tl-count">{statusOf(item.milestone)}</span>{/if}
               </div>
-              <span class="tl-date muted small">
-                {fmtDay(item.m.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{item.future ? '' : ' · ' + item.status}
+              <span class="tl-date">
+                {fmtDay(item.milestone.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{item.future
+                  ? ''
+                  : ` · ${statusOf(item.milestone)}`}
               </span>
-              {#if item.m.photo}
-                <div style="margin-top:var(--space-3)"><PhotoThumb photo={item.m.photo} size={88} /></div>
+              {#if item.milestone.photo}
+                <div class="tl-photo"><PhotoThumb photo={item.milestone.photo} size={88} /></div>
               {/if}
             </div>
           </div>
@@ -87,10 +98,7 @@
       {/each}
     </div>
   {:else}
-    <EmptyState
-      title={m.tl_empty_title()}
-      text={m.tl_empty_body()}
-    >
+    <EmptyState title={m.tl_empty_title()} text={m.tl_empty_body()}>
       {#snippet action()}
         <a class="btn btn-primary" href="/settings/milestones"><span>{m.tl_empty_action()}</span></a>
       {/snippet}

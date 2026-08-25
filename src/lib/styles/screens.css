@@ -406,14 +406,23 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   font-size: 0.8rem; font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Recap ----------
-   The onboarding classes this block used to share with recap are gone
-   (phase 5 ticket 26): the first run has its own frame now, and .ob-title
-   and .onboarding-progress went with the screens that used them. The three
-   that stayed - the dot, the body line and the stacked action column - are
-   still recap's and two settings screens', so they keep the names those
-   screens already call them by. */
-.recap-progress { display: flex; gap: 6px; justify-content: center; margin-bottom: var(--space-7); }
+/* ---------- What the .ob- prefix still means ----------
+
+   Not onboarding, any more. The first run has its own frame (below), and
+   ticket 26 took .onboarding, .onboarding-progress and .ob-title with it.
+   Recap went the other way in the same merge: ticket 23 absorbed it into
+   wrapped and deleted the route, which took .recap-progress and the .recap-*
+   block that used to sit further down this file.
+
+   .ob-text is what is left with users, and it has plenty - both settings
+   screens that carry an explanation, and the body of every sheet the gates
+   open. It keeps its name because renaming a class nine screens call by it
+   is a rename ticket, not a merge.
+
+   .ob-dot and .ob-actions have none. Neither ticket killed them on its own:
+   the first run stopped using them in 26, recap stopped existing in 23, and
+   they are dead only as the sum of the two. Left rather than swept up inside
+   a merge commit that has no business deleting either ticket's code. */
 .ob-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-2); transition: background var(--dur-med); }
 .ob-dot.is-done { background: var(--accent); }
 .ob-text { color: var(--text-2); margin-bottom: var(--space-5); }
@@ -435,7 +444,19 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    of furniture that had to move: the sun owns the top right corner of this
    screen the way it owns Home's, and text laid over a flag's white band on
    a light theme is text nobody can read. */
-.screen-setup { display: flex; flex-direction: column; }
+/* How much bigger the sun is than the 350px it is drawn at. One number,
+   because the head's reserve is the sun's own radius and the two must not
+   be able to disagree: a sun grown without the room under it grown too is
+   a flag with a title inside it.
+
+   Declared here rather than on .setup, which is where it was first written
+   and where it did nothing: the sun lives in .setup-sky, and .setup-sky is
+   .setup's sibling rather than its child. A custom property that never
+   reaches its reader is not a default, it is an invalid value - the whole
+   `calc()` around it fails, the `transform` with it, and the sun draws at
+   full size wherever it happens to be anchored. The fallback below is the
+   belt to that braces. */
+.screen-setup { display: flex; flex-direction: column; --sun-mult: 1; }
 .setup {
   flex: 1 0 auto;
   display: flex; flex-direction: column;
@@ -469,7 +490,7 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    --grow is set per step by the route. */
 .setup-sun {
   position: absolute; top: 0; right: 0; width: 0; height: 0;
-  transform: scale(var(--grow, 1));
+  transform: scale(calc(var(--grow, 1) * var(--sun-mult, 1)));
   transition: transform var(--dur-slow) var(--ease-out);
 }
 
@@ -483,7 +504,7 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 
    The back arrow lives in that space, at the top left, where the sun's
    quarter never reaches. */
-.setup-head { min-height: 176px; padding-top: var(--space-2); }
+.setup-head { min-height: calc(176px * var(--sun-mult, 1)); padding-top: var(--space-2); }
 
 /* One grid cell holding every step, so the one arriving and the one
    leaving overlap instead of stacking and doubling the screen's height
@@ -625,92 +646,86 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 
 /* ---------- the first run, wide ----------
 
-   Every other screen in the app answers a wide window by growing a
-   navigation rail beside a centred column. The first run is chromeless, so
-   it has no rail to grow, and the phone layout at 1400px is a 420px column
-   adrift in the middle of the window with the flag in a corner nobody has
-   any reason to be looking at. The composition runs down the screen when
-   the screen is wider than it is tall.
+   Nothing of its own. app.css already centres every screen in a 640px
+   column at desktop width, and the first run is a screen: the same column,
+   the same measure, the sun in its own top right corner exactly the way
+   Home draws it. That is what "looks like the rest of the app" means here.
 
-   So: two columns. The step at a comfortable measure on the left, the flag
-   on the right at more than twice the size, and the whole thing centred in
-   the window rather than pinned to the top of it.
+   What stood here was a two-column split - the step centred in the left
+   half, the flag filling the right. It answered the first complaint (a
+   narrow column adrift in a wide window with the flag in a far corner) and
+   created two worse ones. The block was centred in half a window rather
+   than in the window, so it read as pushed to one side on every screen but
+   a laptop's. And the three rows hugged their content and re-centred as a
+   block, so every step change moved the whole composition vertically -
+   which is what "glitches as if it was loading twice" actually was.
 
-   The sun stays in the top right corner rather than moving somewhere more
-   convenient, because that is where Home draws it a second later and the
-   handover being one object at one place is the whole reason it is a sun
-   rather than a picture. What changes at this width is how much of it there
-   is: a quarter of a 350px circle is a field on a phone and a detail in the
-   corner of a desktop window, so it is multiplied up rather than moved. The
-   multiplier rides on --grow instead of replacing it, so the growth through
-   the flow is the same seven steps at a different size.
+   The phone layout has neither problem, because its frame is fixed: the
+   head reserves the sun's room at the top, the foot sits at the bottom, and
+   the stage between them fills whatever is left and centres its own
+   content. Only the step moves. Letting the desktop have that same frame
+   inside the app's own column is both fixes and no new code.
 
-   Bound to the app container rather than the viewport, like every other
-   width rule here: the demo bar's phone frame works by constraining that
-   container, and a viewport query would ignore it. */
-@container app (min-width: 900px) {
-  /* Out of the app's desktop content cap. app.css centres every screen in
-     640px at this width, which is right for a journal you read and wrong
-     for the one screen with no chrome around it: it left the flag a 240px
-     sliver at the edge of a column instead of half the composition. The
-     band below is what replaces it - wide enough for two columns, capped so
-     the flag stays beside the step on a very wide monitor rather than
-     drifting off toward the window edge. */
-  .screen-setup { max-width: none; margin: 0; }
+   What the width does buy is where the sun hangs from. On a phone it hooks
+   round the top right corner, which is Home's own treatment and the only
+   place a 350px circle fits. A desktop window has room, and hooking it
+   round a corner there wastes three quarters of the drawing on the far side
+   of two edges. So its centre comes off the corner and sits on the top edge
+   instead, inside the window rather than past it: only the upper half is
+   cut, and the whole lower half of the flag shows as concentric arcs
+   hanging into the page. Half again as big, with the head's reserve growing
+   by the same number, so the step's first line still starts underneath it
+   rather than inside it.
+
+   The layer has to escape the column to do that - app.css caps .screen at
+   640px and centres it, and the sun belongs to the window rather than to
+   the measure. 100cqw rather than 100vw: the demo bar's phone frame works
+   by constraining the app container, and a viewport unit would walk
+   straight through it. */
+@container app (min-width: 1024px) {
+  /* Bigger than the phone's, and no bigger than that. The sun hangs 192px
+     into the page at the finish; a step centred in a 900px window starts
+     around 240px down, so the flag stops above the first line rather than
+     behind it. Growing it further is what puts a title inside a flag on a
+     short window, and there is no height query to catch that: the app
+     container is declared inline-size, so a rule cannot ask how tall the
+     window is. */
+  .screen-setup { --sun-mult: 1.1; }
   .setup {
-    max-width: none;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    /* Three rows that hug their content and centre as one block. `1fr` on
-       the middle row stretched the stage to the full height and put 300px
-       of nothing between the last control and the buttons. */
-    grid-template-rows: auto auto auto;
-    column-gap: var(--space-10);
-    align-content: center;
-    flex: 1 0 auto;
+    /* Centred in the window, which is the whole of the complaint this
+       answers. The step used to sit under a 264px reserve with its buttons
+       pinned to the bottom edge, so the content was pushed low and the
+       empty space was all in one place. */
+    justify-content: center;
   }
-  /* Centred inside the left half rather than pinned to one edge of a band.
-     A fixed band left the composition floating in the middle of a wide
-     monitor with a quarter of the window empty on either side of it; half
-     and half fills whatever it is given, and the measure stays a measure
-     because the column caps itself rather than the window doing it. */
-  .setup-head,
-  .setup-stage,
-  .setup-foot {
-    grid-column: 1;
-    width: min(460px, 100%);
-    margin-inline: auto;
+  /* Out of the flow, so what gets centred is the step and its buttons
+     rather than the step, its buttons and the sun's empty room. The arrow
+     stays where it is on a phone: top left, clear of the flag. */
+  .setup-head {
+    position: absolute;
+    top: var(--space-2);
+    left: 0;
+    min-height: 0;
+    z-index: 2;
   }
-  /* Nothing to reserve above the step any more: the flag is beside it
-     rather than over it, so the head holds the back arrow and no more. */
-  .setup-head { min-height: var(--touch-target); }
-  .setup-stage { padding-top: var(--space-4); }
-  .setup-foot { padding-top: var(--space-6); margin-top: 0; }
-  /* Two ghost buttons side by side again, which is what the phone layout
-     could not afford: there is room here for both labels on one line. */
-  .setup-outs { flex-direction: row; gap: var(--space-2); }
-  .setup-outs .btn { flex: 1; }
+  .setup-stage { flex: 0 0 auto; }
+  .setup-foot { margin-top: var(--space-8); }
 
-  /* The right half, edge to edge and top to bottom. The flag is a field
-     here rather than a mark in a corner: at 2.4 it was a badge floating in
-     the upper right of a large dark area with nothing relating it to the
-     step beside it. */
   .setup-sky {
-    top: calc(-1 * var(--inset-top));
-    bottom: 0;
     left: 50%;
-    right: calc(-1 * var(--space-5));
-    height: auto;
+    right: auto;
+    width: 100cqw;
+    margin-left: -50cqw;
+    height: calc(300px + var(--inset-top));
   }
-  .setup-sun { transform: scale(calc(var(--grow, 1) * 4.6)); }
+  /* Off the corner and onto the top edge, and left of where a corner would
+     have put it: the arcs close on both sides instead of running off the
+     window, and the flag sits over the column it belongs to rather than
+     away in the margin. Its lowest point is a quarter of the way down a
+     laptop screen, which is above where the centred step starts. */
+  .setup-sun { top: 0; right: auto; left: 62%; }
 }
-.recap-stage { max-width: 420px; margin: 0 auto; text-align: center; padding-top: var(--space-6); position: relative; z-index: 1; }
-.recap-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; margin: var(--space-5) 0 var(--space-3); }
-.recap-body { color: var(--text-2); margin-bottom: var(--space-6); }
-.recap-progress { margin: var(--space-5) 0; }
-.recap-cta { color: var(--text); text-decoration: none; }
-.recap-periods { margin-bottom: var(--space-3); }
-.recap-custom-picker { margin-bottom: var(--space-3); }
+
 .recap-custom-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -718,20 +733,32 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   text-align: left;
 }
 
-/* ---------- Wrapped ----------
-   Two presentations, deliberately unalike (phase 4 features ticket 01). The
-   weekly/monthly one is a stack of the same small cards the rest of the app
-   uses; the yearly one is a cover plus full-width sections, so a year does
-   not read as a longer week. Everything below the first block belongs to one
-   or the other, never to both. */
-/* The cadence switcher's segments are links, not the buttons .segment was
-   written for, so they need the anchor's underline off and the text centred
-   inside the 44px minimum height rather than sitting at its top. */
-.wrapped-cadences { margin-bottom: var(--space-3); position: relative; z-index: 1; }
-.wrapped-cadences .segment { display: inline-flex; align-items: center; text-decoration: none; }
+/* Nothing on these screens stacks above anything. Every surface here
+   carried `position: relative; z-index: 1`, which existed to sit above
+   PrideAurora - the full-page gradient wash this redesign dropped - and
+   outlived it. On a screen whose own stacking context is created by the
+   entrance animation's transform, a z-index of 1 is enough to paint the
+   cadence switcher over the floating navigation bar, which must always be
+   on top (Alicja, 2026-08-25). Three more of these survive on screens this
+   ticket does not own: .applock, .onboarding and two in the search area.
+
+   ---------- Wrapped ----------
+   Two presentations, deliberately unalike (phase 4 features ticket 01,
+   rebuilt on the kit by phase 5 UX ticket 23). Both are built from the kit's
+   own surfaces now, so what is left here is the three things the kit has no
+   surface for - the head, the cover, and the photo strip - plus the figure
+   values inside a list row. Everything below the first block belongs to one
+   presentation or the other, never to both. */
+/* The cadence switcher is the shared segmented control in its link mode
+   now, and centring a link inside a segment is that control's own job
+   (components.css, a.segment) rather than this screen's. */
 
 /* Weekly and monthly. */
-.wrapped-head { position: relative; z-index: 1; padding: var(--space-4) 0 var(--space-5); text-align: center; }
+/* The period's name, with room either side of it. It is the one line on the
+   screen that says which period every figure below belongs to, and it sat
+   close enough to the switcher above and the figures below to read as part of
+   one of them (Alicja, 2026-08-25). */
+.wrapped-head { padding: var(--space-6) 0 var(--space-6); text-align: center; }
 .wrapped-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; line-height: var(--leading-display); }
 .wrapped-sub { color: var(--text-2); font-size: var(--text-sm); margin-top: var(--space-2); }
 .wrapped-stats {
@@ -748,13 +775,8 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 }
 .wrapped-stat strong { display: block; font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; }
 .wrapped-stat span { display: block; font-size: var(--text-xs); color: var(--text-2); margin-top: 2px; }
-.wrapped-block + .wrapped-block { margin-top: var(--space-3); }
-.wrapped-milestones { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
-.wrapped-milestone { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
-.wrapped-milestone > span:nth-of-type(1) { flex: 1; min-width: 0; }
-.wrapped-milestone svg { color: var(--accent); flex-shrink: 0; }
 .wrapped-photos { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
-.wrapped-thin { text-align: center; padding: var(--space-8) var(--space-4); position: relative; z-index: 1; }
+.wrapped-thin { text-align: center; padding: var(--space-8) var(--space-4); }
 .wrapped-thin .muted { margin-top: var(--space-2); }
 
 /* The wrapped card (ticket 16): a self-contained frame, unlike the wrapped
@@ -780,76 +802,56 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 }
 
 /* Yearly. */
-.wrapped-cover { position: relative; z-index: 1; text-align: center; padding: var(--space-4) 0 var(--space-7); }
+.wrapped-cover { text-align: center; padding: var(--space-4) 0 var(--space-7); }
 .wrapped-cover-label {
   font-size: var(--text-xs); font-weight: var(--weight-bold);
   text-transform: uppercase; letter-spacing: 0.14em;
   color: var(--text-2);
 }
+/* The year at display size, in the text colour. It was gradient text, which
+   the craft floor refuses outright: emphasis comes from weight and size, and
+   the colour on this screen belongs to the flag underneath. */
 .wrapped-cover-year {
   font-family: var(--font-display);
-  font-size: 4rem; font-weight: 700; line-height: 1;
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: var(--display-track);
   margin: var(--space-2) 0 var(--space-3);
-  background: linear-gradient(105deg, var(--accent) 20%, var(--accent-2) 60%, var(--accent));
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
+
+/* The flag itself under the year, turned a quarter so the bands run across
+   it - the same treatment the kit's tile gives a number that matters, and
+   the same rule: every colour drawn as the flag is the flag's own hex.
+   --flag-fill arrives from $lib/theme/roles, which hands out nothing at all
+   under disguise (ADR-0035), so the bar is simply absent there. */
+.wrapped-cover-flag {
+  display: block;
+  width: 96px;
+  height: 8px;
+  margin: 0 auto var(--space-4);
+  border-radius: 2px;
+  background: var(--flag-fill);
+}
+
 .wrapped-cover-intro { color: var(--text-2); max-width: 30ch; margin: 0 auto; }
-.wrapped-year-section { margin-bottom: var(--space-7); position: relative; z-index: 1; }
-.wrapped-year-heading {
-  font-size: var(--text-xs); font-weight: var(--weight-bold);
-  text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--text-2);
-  margin-bottom: var(--space-3);
-}
-.wrapped-months { display: flex; flex-direction: column; gap: var(--space-2); }
-.wrapped-month {
-  display: grid; grid-template-columns: 5.5rem 1fr 2.5rem;
-  align-items: center; gap: var(--space-3);
-  font-size: var(--text-sm);
-}
-.wrapped-month-name { color: var(--text-2); }
-.wrapped-month-bar { height: 10px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
-.wrapped-month-fill {
-  display: block; height: 100%;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--accent-2), var(--accent));
-}
-.wrapped-month-value { text-align: right; font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
-.wrapped-figures {
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1);
-  overflow: hidden;
-}
-.wrapped-figure { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); padding: var(--space-4); }
-.wrapped-figure + .wrapped-figure { border-top: 1px solid var(--border); }
-.wrapped-figure dt { font-size: var(--text-sm); color: var(--text-2); }
-.wrapped-figure dd { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; text-align: right; }
 .wrapped-photo-strip {
   display: flex; gap: var(--space-3);
   overflow-x: auto; padding-bottom: var(--space-2);
   scrollbar-width: none;
   margin: 0 calc(-1 * var(--space-5)); padding-left: var(--space-5); padding-right: var(--space-5);
 }
-.wrapped-year-timeline { display: flex; flex-direction: column; }
-.wrapped-year-milestone {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3) 0;
-  font-size: var(--text-sm);
-}
-.wrapped-year-milestone + .wrapped-year-milestone { border-top: 1px solid var(--border); }
-.wrapped-year-dot {
-  display: flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--accent-soft); color: var(--accent);
-}
-.wrapped-year-milestone-name { flex: 1; min-width: 0; font-weight: var(--weight-medium); }
+/* The year's last line. It sat a hairline under whatever section ended the
+   screen; it is the screen signing off, so it gets the space a section break
+   gets (Alicja, 2026-08-25). */
 .wrapped-year-close {
-  text-align: center; color: var(--text-2); font-size: var(--text-sm);
+  text-align: center;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  margin-top: var(--space-7);
   padding-bottom: var(--space-7);
-  position: relative; z-index: 1;
 }
 
 /* ---------- On-this-day ----------
@@ -1052,14 +1054,118 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 
 
 /* ---------- Compare periods ---------- */
-.compare-picker { display: flex; flex-direction: column; }
-.compare-picker-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  text-align: left;
+/* The compare screen's two period pickers. They used to sit in
+   `.compare-wrap`, a two-up grid built for two photographs, which put two
+   date fields in half of a 390px screen. They stack now, and the two screens
+   share nothing but a word in their names. */
+.compare-picker {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  padding: var(--space-2) var(--space-4);
 }
+
+/* ---------- the date field ----------
+
+   A `<input type="date">` inherits `.input`, which is the app's text field,
+   so a date read as something to be typed rather than picked (Alicja,
+   2026-08-25: "the date renderer should be redesigned - looks like a
+   textbox"). A row of a list instead: the label on the left, the date on the
+   right in the display face, a drawn calendar icon after it, and the whole
+   row is the control.
+
+   The native picker is what opens, because Android's own is better than
+   anything drawn here and knows the reader's locale and their week start.
+   Getting the whole row to open it takes two steps: the input is stretched
+   invisibly over the row, and its picker indicator is stretched over the
+   input. Hiding the indicator instead left nothing reliable to press -
+   Chromium opens the picker from the indicator, not from the text - and
+   leaving it where it lands drew a second calendar glyph on top of the
+   label, because with the date text hidden the indicator moves to the start
+   of the field. */
+.date-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-target);
+  padding: var(--space-2) 0;
+}
+
+.date-row + .date-row::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: var(--hairline);
+}
+
+.date-row-label {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+/* Empty, the row says nothing here rather than repeating its own label back
+   at it: the label on the left already names the field, and "Start day ...
+   Start day" is one fact written twice. */
+.date-row-value {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-align: right;
+}
+
+.date-row-icon {
+  display: flex;
+  color: var(--text-2);
+}
+
+.date-row input[type='date'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: transparent;
+  cursor: pointer;
+}
+
+/* The value is painted by the row, so none of the field's own chrome is
+   wanted - except the indicator, which is what opens the picker, and which
+   is stretched over the whole row rather than sitting where Chromium puts
+   it. */
+.date-row input[type='date']::-webkit-datetime-edit,
+.date-row input[type='date']::-webkit-inner-spin-button,
+.date-row input[type='date']::-webkit-clear-button {
+  display: none;
+}
+
+.date-row input[type='date']::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.date-row input[type='date']:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+  border-radius: 10px;
+}
+
 .compare-metrics-row {
   display: grid;
   grid-template-columns: 1.2fr 1fr 1fr;
@@ -1069,6 +1175,7 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   border-bottom: 1px solid var(--border);
 }
 .compare-metrics-row:last-child { border-bottom: none; }
+.compare-metrics-row span { font-variant-numeric: tabular-nums; }
 .compare-metrics-header { font-size: var(--text-sm); color: var(--text-2); }
 .compare-period-label { font-weight: var(--weight-bold); }
 .compare-metrics-tags { align-items: start; }
@@ -1076,9 +1183,6 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 /* ---------- Stats ---------- */
 .chart-card { display: block; width: 100%; text-align: left; border: none; font: inherit; cursor: pointer; margin-bottom: var(--space-3); }
 .chart-title { font-weight: var(--weight-bold); }
-.chart-avg { font-size: var(--text-sm); color: var(--accent); font-weight: var(--weight-bold); }
-.insight-delta { font-weight: var(--weight-bold); color: var(--on-accent-soft); background: var(--accent-soft); border-radius: var(--radius-pill); padding: 3px 10px; font-size: var(--text-sm); }
-.insight-delta.is-neg { opacity: 0.75; }
 .value-list { display: flex; flex-direction: column; }
 .value-row {
   display: flex; align-items: center; gap: var(--space-3); justify-content: space-between;
@@ -1376,26 +1480,144 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
    reason .compare-side overrides .photo-thumb's sizing above. */
 .compare-side .voice-player { flex: none; width: 100%; }
 
-/* ---------- Timeline ---------- */
-.timeline { position: relative; padding-left: 22px; }
+/* ---------- Timeline ----------
+
+   Back to the shape that worked (Alicja, 2026-08-25: "it looks much better
+   before - what have you done? we want the vertical time axis on the left
+   just like before"). The axis is a continuous line down the left, every
+   milestone is a point on it, and the description sits beside the point.
+
+   What this ticket's own rebuild had got wrong: it kept the same parts and
+   loosened all of them. The rail was 32% of a stripe on a dark ground, so it
+   read as a suggestion; the dots sat outside a card with no card edge to
+   measure against; and the axis stopped and restarted around the gap and the
+   today marker, so there was no continuous line at all. The parts are the
+   old ones again, tightened rather than restyled: the axis runs the whole
+   height without a break, the dots are on it, and the only thing kept from
+   the rebuild is that it wears the flag instead of the accent - which is the
+   rule every other area of the app follows. */
+.timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+/* One line, top to bottom, behind everything - including the gap and the
+   today marker, which used to interrupt it. A timeline whose axis stops is
+   not an axis. */
 .timeline::before {
-  content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px;
-  width: 2px; background: var(--accent-border); border-radius: 1px;
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: color-mix(in oklab, var(--role-draw) 60%, var(--bg));
 }
-.tl-item { position: relative; margin-bottom: var(--space-4); }
+
+.tl-item {
+  position: relative;
+  margin-bottom: var(--space-4);
+}
+
+/* The point on the axis, centred on the line and cut out of it by a ring in
+   the page colour, so the line appears to pass behind rather than through. */
 .tl-dot {
-  position: absolute; left: -22px; top: 18px;
-  width: 16px; height: 16px; border-radius: 50%;
-  background: var(--accent); border: 3px solid var(--bg);
+  position: absolute;
+  left: -30px;
+  top: 18px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--role-draw);
+  box-shadow: 0 0 0 4px var(--bg);
 }
-.tl-item.is-future .tl-dot { background: var(--surface); border: 3px solid var(--accent); }
-.tl-dot.is-today { background: var(--accent-2); }
-.tl-today { margin: var(--space-5) 0; }
-.tl-today .tl-dot { top: 0; }
-.tl-name { font-weight: var(--weight-bold); }
-.tl-count { font-size: var(--text-xs); font-weight: var(--weight-bold); color: var(--on-accent-soft); background: var(--accent-soft); padding: 3px 10px; border-radius: var(--radius-pill); }
-.tl-gap { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-5) 0; color: var(--text-2); font-size: var(--text-xs); }
-.tl-gap-line { flex: 1; border-top: 2px dashed var(--border); }
+
+/* Ahead rather than behind: the same point, unfilled. */
+.tl-item.is-future .tl-dot {
+  background: var(--bg);
+  box-shadow: 0 0 0 4px var(--bg), inset 0 0 0 2px var(--role-draw);
+}
+
+/* Today is the one mark on the axis that is not a milestone, so it is the
+   one drawn in the text colour rather than the flag's. */
+.tl-today {
+  margin: var(--space-5) 0;
+  min-height: 20px;
+}
+
+.tl-today .tl-dot {
+  top: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 4px var(--bg);
+}
+
+.tl-here {
+  margin: 0;
+  padding-top: 1px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+
+.tl-body {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  padding: var(--space-4);
+}
+
+.tl-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tl-name {
+  font-weight: var(--weight-bold);
+  min-width: 0;
+}
+
+.tl-count {
+  flex: 0 0 auto;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--role-ink);
+  background: var(--role-tint);
+  border: var(--role-hairline);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.tl-date {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+.tl-photo { margin-top: var(--space-3); }
+
+/* The compressed stretch. It sits on the axis rather than replacing it: the
+   line runs behind, and this is a label with the page colour behind it so
+   the line does not cross the words. */
+.tl-gap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: var(--space-5) 0;
+  padding-left: 6px;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.tl-gap-label {
+  background: var(--bg);
+  padding: 2px 8px 2px 0;
+}
+
+.tl-gap-line { display: none; }
 
 /* ---------- desktop refinements ---------- */
 .mode-desktop .compare-wrap { max-width: 560px; margin: 0 auto; }
@@ -1408,3 +1630,159 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   .editor-savebar { bottom: var(--space-4); }
 }
 
+/* ---------- Stats hub (phase 5 UX ticket 23) ---------- */
+
+/* The journey anchor and the streak, which were a card each. One quiet line
+   under the range control: both are facts about where you are rather than
+   readings of the period, and neither is a hero metric (the slop audit). */
+.stats-caption {
+  margin: var(--space-3) var(--space-1) 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What a chart says it is leaving out, or declines to conclude. Not the
+   explanatory paragraph DIRECTION.md's chart rules refuse - that one tells
+   you what a reading means, and these two say that a hidden tag was hidden
+   and that folding a history by an interval does not make the interval
+   real. Under the card rather than inside it, because ChartCard has
+   deliberately nowhere to put a paragraph. */
+.stats-note {
+  margin: var(--space-2) var(--space-1) 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+}
+
+/* The one text action on the screen: every reading in the range, as
+   numbers. Right-aligned under the chart it belongs to, at the touch floor. */
+.stats-open {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+  margin-top: var(--space-1);
+  min-height: var(--touch-target);
+  padding-inline: var(--space-3);
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+:is(.stats-note, .stats-open) + :is(.kit-chart, .kit-list) {
+  margin-top: var(--space-4);
+}
+
+/* The "pick a start and end day" notice sat a hairline under the second
+   picker (Alicja, 2026-08-25). A card and the remark about it are two
+   things, and two things get the space two things get. */
+:is(.compare-picker, .compare-metrics) + .kit-notice,
+.kit-notice + .compare-metrics {
+  margin-top: var(--space-5);
+}
+
+/* The custom interval's length, as that chart's one control on the
+   heading's line - where the metric picker sits on the chart above it. It
+   was a labelled field in a block of its own, which is a form on a screen
+   that has no other form on it. The pill matches the picker's face; the
+   field itself carries the touch target. */
+.stats-interval {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.stats-interval-input {
+  width: 4.5em;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.stats-interval-input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The figures, as rows of a list card rather than a row of small tiles
+   (phase 5 UX ticket 23). What the list bought is the best-ever streak: it
+   sits under the period's own best as the thing that one is measured
+   against, where a fifth tile would have stated a number about a different
+   period with nothing to say it was a different period. */
+.wrapped-figure-value {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wrapped-figure-date {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Which tags the insight chart left out. The same paragraph the stats hub
+   carries under the same chart, and the same argument for it: a finding says
+   what a reading means, and this says what is not in the reading. */
+.wrapped-note {
+  margin: var(--space-2) var(--space-1) 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+}
+
+.wrapped-note + :is(.kit-chart, .kit-list) {
+  margin-top: var(--space-4);
+}
+
+/* The two dates a custom range needs, inside the range sheet. */
+.wrapped-range-dates {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+  text-align: left;
+}
+
+/* ---------- On this day (phase 5 UX ticket 23) ----------
+   The photos from the day that resurfaced, under the entries that mention
+   them. A wrapping row rather than a scroller: a single day's photos are a
+   handful, and a strip you have to drag hides some of them behind an edge. */
+.otd-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* ---------- The wrapped share card's screen ---------- */
+.share-stage { margin-top: var(--space-4); }
+
+.share-preview {
+  margin-top: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  padding: var(--space-4);
+}
+
+.share-note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}

@@ -16,11 +16,23 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/search')).toBe('calendar');
   });
 
-  it('lights stats for stats, recap, timeline and wrapped', () => {
+  it('lights stats for stats, timeline and every wrapped view', () => {
     expect(activeTabKey('/stats')).toBe('stats');
-    expect(activeTabKey('/recap')).toBe('stats');
     expect(activeTabKey('/timeline')).toBe('stats');
     expect(activeTabKey('/wrapped')).toBe('stats');
+    /* The arbitrary range recap used to own is a wrapped now (phase 5 UX
+       ticket 23, spec 07), so the tab it lights comes from the /wrapped
+       prefix rather than from a prefix of the deleted route's own. */
+    expect(activeTabKey('/wrapped/range')).toBe('stats');
+    expect(activeTabKey('/wrapped/month')).toBe('stats');
+  });
+
+  /* The route is gone. Nothing links to it, but a saved link or an old
+     notification can still open one, and a URL that matches no tab lights
+     none at all - which is the SH-001 regression this table exists to
+     stop. What it must do is fall back the way any unknown route does. */
+  it('leaves the deleted recap route to the fallback, like any unknown URL', () => {
+    expect(activeTabKey('/recap')).toBe(activeTabKey('/nothing-here'));
   });
 
   it('lights settings for settings and more', () => {
