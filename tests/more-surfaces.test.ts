@@ -43,7 +43,12 @@ describe('what the More hub is built from', () => {
     expect(more).not.toContain('readFlagRoles(');
   });
 
-  it('keeps every one of the 22 rows, with an unchanged icon, href and group', () => {
+  it('keeps every one of the 23 rows, with an unchanged icon, href and group', () => {
+    /* The spec (and its own acceptance box) says "22 rows in four groups";
+       the four groups actually sum to 23 (5 + 9 + 4 + 5), doubt included.
+       Pre-existing on main - row content and count are out of this
+       ticket's scope - so this test holds the real count rather than the
+       spec's, and says so instead of quietly matching the wrong number. */
     const EXPECTED: [string, string, string][] = [
       ['photos', 'image', '/settings/photos'],
       ['measurements', 'ruler', '/settings/measurements'],

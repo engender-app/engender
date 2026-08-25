@@ -30,11 +30,12 @@ describe('what Settings is built from', () => {
     expect(settings).toContain("from '$lib/components/kit/Notice.svelte'");
   });
 
-  it('keeps its own visible title, since Settings is reached as a row rather than as a tab', () => {
-    /* Unlike the More hub (DIRECTION.md 3d), nothing else on screen already
-       says "Settings", so the title is not hidden here. */
-    expect(withoutScript).toMatch(/<ScreenHeader\s[^>]*title=\{m\.nav_settings\(\)\}/);
-    expect(withoutScript).not.toMatch(/<ScreenHeader\b[^>]*titleHidden/);
+  it('hides its own title, the same call the More hub makes', () => {
+    /* Alicja, on the live build: a visible "Settings" sitting directly
+       above "Appearance" is the same two-headers-stacked problem
+       DIRECTION.md 3d names for the hub, even though this screen isn't
+       itself a tab. The title stays in the document for a screen reader. */
+    expect(withoutScript).toMatch(/<ScreenHeader\s[^>]*title=\{m\.nav_settings\(\)\}[^>]*titleHidden/);
   });
 
   it('keeps all three hand-written sections', () => {

@@ -107,7 +107,12 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.nav_settings()} />
+  <!-- Hidden on the live build (Alicja, 2026-08-25): a visible "Settings"
+       sitting directly above "Appearance" is the same two-headers-stacked
+       problem DIRECTION.md 3d names for the More hub, even though this
+       screen isn't itself a tab - the title stays in the document for a
+       screen reader and the outline, same as there. -->
+  <ScreenHeader title={m.nav_settings()} titleHidden />
 
   <SectionHeading text={m.settings_appearance()} />
   <ListCard>
@@ -220,7 +225,14 @@
   </ListCard>
 
   <SectionHeading text={m.settings_tracking()} />
-  <div data-settings-list>
+  <!-- Tracking is several cards, not one: the navigable rows, tag groups,
+       the four related toggles, and the metric picker each want a
+       different shape (DIRECTION.md 2b), but sitting flush against each
+       other with no heading between them read as one accidental slab
+       rather than four deliberate ones (Alicja, on the live build).
+       .stack-3 (components.css) already gives a run of siblings a gap
+       between each - reused rather than a one-off margin per card. -->
+  <div class="stack-3" data-settings-list>
     <ListCard>
       <ListRow
         key="preset"
