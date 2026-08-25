@@ -204,12 +204,16 @@
             <!-- What a scroll used to be for: the exact reading under the
                  finger. Dotted, so it reads as a measurement laid over the
                  chart rather than as another mark drawn on it. -->
+            <!-- From the baseline up to the reading and no further: a line
+                 that carries on past the value is a gridline, and it made the
+                 chart look like it had an axis it does not have (Alicja,
+                 2026-08-25). -->
             <line
               class="kit-area-scrub"
               x1={at.dot.x}
               x2={at.dot.x}
-              y1="0"
-              y2={HEIGHT - PAD * 2}
+              y1={HEIGHT - PAD * 2}
+              y2={at.dot.y}
             />
             <circle class="kit-area-scrub-dot" cx={at.dot.x} cy={at.dot.y} r="4.5" />
           {/if}

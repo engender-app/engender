@@ -383,11 +383,9 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    surface for - the head, the cover, and the photo strip - plus the figure
    values inside a list row. Everything below the first block belongs to one
    presentation or the other, never to both. */
-/* The cadence switcher's segments are links, not the buttons .segment was
-   written for, so they need the anchor's underline off and the text centred
-   inside the 44px minimum height rather than sitting at its top. */
-.wrapped-cadences { margin-bottom: var(--space-3); position: relative; }
-.wrapped-cadences .segment { display: inline-flex; align-items: center; text-decoration: none; }
+/* The cadence switcher is the shared segmented control in its link mode
+   now, and centring a link inside a segment is that control's own job
+   (components.css, a.segment) rather than this screen's. */
 
 /* Weekly and monthly. */
 .wrapped-head { padding: var(--space-4) 0 var(--space-5); text-align: center; }
