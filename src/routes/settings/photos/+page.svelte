@@ -1,4 +1,14 @@
 <script lang="ts">
+  /* All photos, then vs now, on the surface kit (phase 5 UX ticket 25).
+
+     The compare view's measurement summary was a `.card` holding a heading
+     and a `.list-group` of rows that could not be pressed - two containers
+     for one list. It is a heading over a list card now, with the rows
+     written out as `.kit-row.is-static`, which is what a row that states a
+     reading and goes nowhere is (the call WrappedCompact already makes).
+
+     The picking grid stays a grid. A photo is chosen by looking at it, so
+     the cell is the photograph; nothing about that was the old world's. */
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
@@ -13,9 +23,16 @@
   import type { Measurement } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* One query, not a union of a table and a column: entry photos and
      milestone photos are rows in the same table (ADR-0008), already dated and
@@ -92,41 +109,39 @@
       {/each}
     </div>
     {#if rangeSummaries.length}
-      <div class="card" style="margin-top:var(--space-4)">
-        <h3>{m.ph_measurements_title()}</h3>
-        <div class="list-group">
-          {#each rangeSummaries as s (s.type)}
-            <div class="list-row" data-range-measurement={s.type}>
-              <span class="row-text">
-                <span class="row-title">{vocabulary.measurementTypeName(s.type)}</span>
-                <span class="row-subtitle">
-                  {#if s.first.id === s.last.id}
-                    {s.first.value} {s.first.unit}
-                  {:else}
-                    {s.first.value} {s.first.unit} → {s.last.value} {s.last.unit}
-                  {/if}
-                </span>
+      <SectionHeading text={m.ph_measurements_title()} />
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each rangeSummaries as s (s.type)}
+          <div class="kit-row is-static" data-range-measurement={s.type}>
+            <span class="kit-row-text">
+              <span class="kit-row-title">{vocabulary.measurementTypeName(s.type)}</span>
+              <span class="kit-row-sub">
+                {#if s.first.id === s.last.id}
+                  {s.first.value} {s.first.unit}
+                {:else}
+                  {s.first.value} {s.first.unit} → {s.last.value} {s.last.unit}
+                {/if}
               </span>
-            </div>
-          {/each}
-        </div>
-      </div>
+            </span>
+          </div>
+        {/each}
+      </ListCard>
     {/if}
 
     <div style="margin-top:var(--space-6)">
-      <button class="btn btn-soft" onclick={() => { comparing = false; selected = []; }}>
+      <button class="btn btn-soft press" onclick={() => { comparing = false; selected = []; }}>
         <span>{m.ph_back_to_all()}</span>
       </button>
     </div>
   {:else}
-    <ScreenHeader title={m.progress_photos()} back="/settings" />
+    <ScreenHeader title={m.progress_photos()} back="/more" />
     {#if photosQuery.loading}
-      <Skeleton variant="card" count={2} />
+      <div out:crossfade><Skeleton variant="block" count={2} /></div>
     {:else if photos.length}
       {#if comparing && !pair}
         <p class="muted small" style="margin-bottom:var(--space-2)">{m.ph_compare_reset()}</p>
       {/if}
-      <p class="muted small" style="margin-bottom:var(--space-4)">
+      <p class="muted small" style="margin-bottom:var(--space-4)" in:crossfade>
         {orderedSelected.length === 0
           ? m.ph_pick_two()
           : orderedSelected.length === 1
@@ -145,22 +160,27 @@
         {/each}
       </div>
       <div style="margin-top:var(--space-4)">
-        <a class="btn btn-soft" href="/settings/photos/export" data-journey-export>
+        <a class="btn btn-soft press" href="/settings/photos/export" data-journey-export>
           <Icon name="image" size={20} /><span>{m.pj_open()}</span>
         </a>
       </div>
       {#if pair}
         <div class="editor-savebar">
-          <button class="btn btn-primary" data-compare onclick={() => (comparing = true)}>
+          <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
             <Icon name="columns" size={20} /><span>{m.ph_compare()}</span>
           </button>
         </div>
       {/if}
     {:else}
-      <EmptyState
-        title={m.ph_empty_title()}
-        text={m.ph_empty_body()}
-      />
+      <div in:crossfade>
+        <Notice
+          icon="image"
+          key="photos-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.ph_empty_title()}
+          text={m.ph_empty_body()}
+        />
+      </div>
     {/if}
   {/if}
 </div>
