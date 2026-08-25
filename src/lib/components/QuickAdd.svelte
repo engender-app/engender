@@ -499,7 +499,7 @@
             aria-label={moodName(value)}
             onclick={() => pickMood(value)}
           >
-            <MoodFace {value} size={34} />
+            <MoodFace step={value} size={34} blink />
             <span class="fan-mood-label">{moodName(value)}</span>
           </button>
         {/each}

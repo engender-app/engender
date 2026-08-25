@@ -510,38 +510,14 @@ a.kit-entry:active {
 
 /* ---------- mood's face ----------
 
-   The drawing an entry and a chip both carry. The ink is --text at the
-   opacity the picker has always drawn it at, which the ADR-0025 ramp is
-   built to carry at 4.5:1 whichever step is underneath. */
-.kit-face {
-  width: var(--face-size);
-  height: var(--face-size);
-  display: block;
-  flex: 0 0 auto;
-}
-
-.kit-face-disc {
-  fill: var(--face-mood);
-}
-
-.kit-face-eye {
-  fill: var(--text);
-  opacity: 0.75;
-}
-
-.kit-face-mouth {
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  opacity: 0.75;
-}
-
-/* On a chip the face sits on the mood's own fill with no disc of its own,
-   and the ink comes up to full strength: there is no circle under it doing
-   half the work of saying which step this is. */
-.kit-chip .kit-face-eye,
-.kit-chip .kit-face-mouth {
+   The drawing itself lives with the picker in components.css now that one
+   component serves every surface (phase 5 ticket 31). What is left here is
+   the one thing that is the chip's own: on a chip the face sits on the
+   mood's fill with no disc of its own, and the ink comes up to full
+   strength, because there is no circle under it doing half the work of
+   saying which step this is. */
+.kit-chip .mood-face-eye,
+.kit-chip .mood-face-mouth {
   opacity: 1;
 }
 

@@ -48,7 +48,11 @@ describe('the surfaces', () => {
       'ListCard.svelte',
       'ListRow.svelte',
       'MoodChips.svelte',
-      'MoodFace.svelte',
+      /* MoodFace is deliberately not here. Ticket 31 folded the kit's face
+         and the picker's into one component at src/lib/components, because
+         the two were one drawing with two sets of markup and the eyes could
+         not be changed without changing both. A chip and a day card ask it
+         for a size; the picker asks for a blink. */
       'Notice.svelte',
       'SectionHeading.svelte',
       'Tile.svelte',

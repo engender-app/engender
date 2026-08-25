@@ -32,7 +32,7 @@
      timeline (ADR-0029). Same concept, same handle, whichever surface it is
      drawn on. */
   import Icon from '../Icon.svelte';
-  import MoodFace from './MoodFace.svelte';
+  import MoodFace from '../MoodFace.svelte';
 
   let {
     time,
