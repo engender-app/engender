@@ -4,15 +4,30 @@
      running "ask at my next appointment" list. Carry-forward is a per-item
      toggle rather than a bulk end-of-visit action - nothing in the app
      detects when a visit ends (no such event exists), so the person decides
-     for themselves, item by item, what still needs asking. */
+     for themselves, item by item, what still needs asking.
+
+     On the surface kit (phase 5 UX ticket 25). A row genuinely carries
+     three controls here - tick it, flag it to carry forward, throw it away
+     - so what the redesign takes off it is the fourth thing: carrying
+     forward was drawn twice, once as a subtitle badge and once as the
+     flag's own pressed state, which put a second line under every flagged
+     item saying what the lit flag beside it already said. The controls
+     that remain each get a full touch target, which the 28px squares and
+     the buttons packed against them did not have. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import type { ChecklistItem } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   let checklistQuery = liveQuery(['checklist'], (j) => j.checklists.getStandaloneChecklist());
   let items = $derived(checklistQuery.value?.items ?? []);
@@ -50,39 +65,37 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.appointment_prep_title()} back="/settings">
+  <ScreenHeader title={m.appointment_prep_title()} back="/more" subtitle={m.appointment_prep_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.appointment_prep_add_aria()} onclick={openAddSheet}>
+      <button class="icon-btn press" data-add aria-label={m.appointment_prep_add_aria()} onclick={openAddSheet}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
   {#if checklistQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if items.length}
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.appointment_prep_intro()}</p>
-    <div class="list-group">
-      {#each items as item (item.id)}
-        <div class="list-row" style="cursor:default" data-appointment-item={item.id}>
-          <button
-            class="appointment-toggle"
-            role="checkbox"
-            aria-checked={item.checked}
-            aria-label={item.checked ? m.appointment_prep_uncheck_aria({ content: item.content }) : m.appointment_prep_check_aria({ content: item.content })}
-            onclick={() => toggleChecked(item)}
-          >
-            <span class="row-icon" class:ap-ticked={item.checked}>
-              {#if item.checked}<Icon name="check" size={20} />{/if}
-            </span>
-            <span class="row-text">
-              <span class="row-title" class:ap-done={item.checked}>{item.content}</span>
-              {#if item.carriedForward}<span class="row-subtitle">{m.appointment_prep_carried_forward_badge()}</span>{/if}
-            </span>
-          </button>
-          <span class="row-trailing">
+    <div in:crossfade>
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each items as item (item.id)}
+          <div class="kit-row is-split" data-appointment-item={item.id}>
             <button
-              class="icon-btn"
+              class="kit-row-main"
+              role="checkbox"
+              aria-checked={item.checked}
+              aria-label={item.checked ? m.appointment_prep_uncheck_aria({ content: item.content }) : m.appointment_prep_check_aria({ content: item.content })}
+              onclick={() => toggleChecked(item)}
+            >
+              <span class="ap-box" class:ap-ticked={item.checked}>
+                {#if item.checked}<Icon name="check" size={20} />{/if}
+              </span>
+              <span class="kit-row-text">
+                <span class="kit-row-title" class:ap-done={item.checked}>{item.content}</span>
+              </span>
+            </button>
+            <button
+              class="kit-row-act press"
               class:ap-flagged={item.carriedForward}
               data-carry-forward={item.id}
               aria-pressed={item.carriedForward}
@@ -92,23 +105,28 @@
               <Icon name="flag" size={18} />
             </button>
             <button
-              class="icon-btn"
+              class="kit-row-act press"
               data-delete-appointment-item={item.id}
               aria-label={m.appointment_prep_delete_aria({ content: item.content })}
               onclick={() => (deleteTarget = item)}
             >
               <Icon name="trash" size={18} />
             </button>
-          </span>
-        </div>
-      {/each}
+          </div>
+        {/each}
+      </ListCard>
     </div>
   {:else}
-    <EmptyState title={m.appointment_prep_empty_title()} text={m.appointment_prep_empty_body()}>
-      {#snippet action()}
-        <button class="btn btn-soft" onclick={openAddSheet}><span>{m.appointment_prep_empty_action()}</span></button>
-      {/snippet}
-    </EmptyState>
+    <div in:crossfade>
+      <Notice
+        icon="check"
+        key="appointment-prep-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.appointment_prep_empty_title()}
+        text={m.appointment_prep_empty_body()}
+        action={{ label: m.appointment_prep_empty_action(), primary: true, onclick: openAddSheet }}
+      />
+    </div>
   {/if}
 
   <Sheet open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
@@ -138,25 +156,10 @@
 </div>
 
 <style>
-  /* Same checkbox-square treatment roadmap.ts's page uses for its ticks, and
+  /* Same checkbox-square treatment roadmap's page uses for its ticks, and
      the same struck-through-when-done rule - a checked item is not hidden or
      removed, only marked handled. */
-  .appointment-toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    flex: 1;
-    min-width: 0;
-    background: none;
-    border: none;
-    padding: 0;
-    text-align: left;
-    font: inherit;
-    color: inherit;
-    cursor: pointer;
-  }
-
-  .row-icon {
+  .ap-box {
     border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     width: 28px;
@@ -165,11 +168,19 @@
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
+    /* Tier 1, response: the square is not the control - the row is - so
+       what answers the tap here is the tick landing rather than a press
+       depth. The border and the colour cross on --dur-fast, and the
+       reduced-motion path keeps both because a colour change is the
+       feedback rather than the movement. */
+    transition:
+      border-color var(--dur-fast) var(--ease-out),
+      color var(--dur-fast) var(--ease-out);
   }
 
   .ap-ticked {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--role-mark);
+    color: var(--role-mark);
   }
 
   .ap-done {
@@ -178,6 +189,6 @@
   }
 
   .ap-flagged {
-    color: var(--accent);
+    color: var(--role-mark);
   }
 </style>
