@@ -106,6 +106,13 @@
   min-height: var(--touch-target);
   padding: 0 var(--space-6);
   border-radius: var(--radius-pill);
+  /* A button that is a link is still a button. Nothing reset this, so every
+     `<a class="btn">` in the app - the journey export's own link, a day's
+     "add another", an empty state whose one action is a destination - drew a
+     browser underline through the middle of its label inside the pill. Found
+     on the rendered feature screens (phase 5 UX ticket 25), which is where
+     the first primary link-CTA landed. */
+  text-decoration: none;
   font-family: var(--font-body);
   font-size: var(--text-md);
   font-weight: var(--weight-bold);

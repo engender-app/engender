@@ -178,7 +178,12 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.effects_timeline()} back="/more" subtitle={m.effects_intro()}>
+  <!-- The intro stays in the body rather than becoming the header's
+       subtitle. At 420 characters it is by some way the longest of these
+       screens' intros, and in the header it is seven lines of lead before
+       a single change is named. A subtitle is a line; this is a paragraph,
+       and it belongs where a paragraph goes. -->
+  <ScreenHeader title={m.effects_timeline()} back="/more">
     {#snippet actions()}
       <button class="icon-btn press" data-manage-effects aria-label={m.effect_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
@@ -200,6 +205,7 @@
       />
     </div>
   {:else}
+    <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.effect_variability_notice()}</p>
 
     {#each DIRECTIONS as direction (direction)}

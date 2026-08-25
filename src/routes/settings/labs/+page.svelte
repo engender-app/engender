@@ -29,7 +29,7 @@
     type OcrReviewRow
   } from '$lib/data/labs/ocr';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { LabResult } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -372,12 +372,13 @@
               <span class="muted small" data-series-unit>{s.unit || m.labs_no_unit()}</span>
             {/snippet}
             {#if chart}
+              {@const ends = fmtRangeEnds(chart.from, chart.to)}
               <AreaChart
                 points={chart.points}
                 min={chart.min}
                 max={chart.max}
-                from={fmtDay(chart.from, { day: 'numeric', month: 'short' })}
-                to={fmtDay(chart.to, { day: 'numeric', month: 'short' })}
+                from={ends.from}
+                to={ends.to}
                 formatValue={(v) => `${Math.round(v * 100) / 100} ${s.unit || m.labs_no_unit()}`}
                 scrubLabel={(_point, index) => scrubLine(s.results[index])}
                 ariaLabel={m.values_title({ name: analyte })}
