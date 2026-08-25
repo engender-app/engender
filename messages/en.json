@@ -1285,8 +1285,13 @@
   "effects_direction_other": "Not tied to a direction",
   "effect_group_count": [
     {
-      "declarations": ["input count", "local countPlural = count: plural"],
-      "selectors": ["countPlural"],
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
       "match": {
         "countPlural=one": "{count} effect",
         "countPlural=other": "{count} effects"
@@ -2300,5 +2305,14 @@
   "journal_book_part_opening_page": "Opening page",
   "journal_book_part_dysphoria_euphoria_tags": "Dysphoria/euphoria tags",
   "journal_book_empty": "Nothing to print for this range.",
-  "journal_book_range": "{from} to {to}"
+  "journal_book_range": "{from} to {to}",
+  "stats_range_sub": "last {days} days",
+  "stats_day_by_day": "Day by day",
+  "stats_scales_now": "Each scale, this period",
+  "stats_mood_days": "Days at each mood",
+  "stats_values_open": "All values",
+  "stats_look_back": "Look back",
+  "wrapped_stat_streak_ever": "Best ever",
+  "wrapped_cadence_range": "Range",
+  "wrapped_range_title": "Any range"
 }

@@ -827,3 +827,82 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   .home-hero { font-size: 3rem; }
   .editor-savebar { bottom: var(--space-4); }
 }
+
+/* ---------- Stats hub (phase 5 UX ticket 23) ---------- */
+
+/* The journey anchor and the streak, which were a card each. One quiet line
+   under the range control: both are facts about where you are rather than
+   readings of the period, and neither is a hero metric (the slop audit). */
+.stats-caption {
+  margin: var(--space-3) var(--space-1) 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What a chart says it is leaving out, or declines to conclude. Not the
+   explanatory paragraph DIRECTION.md's chart rules refuse - that one tells
+   you what a reading means, and these two say that a hidden tag was hidden
+   and that folding a history by an interval does not make the interval
+   real. Under the card rather than inside it, because ChartCard has
+   deliberately nowhere to put a paragraph. */
+.stats-note {
+  margin: var(--space-2) var(--space-1) 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+}
+
+/* The one text action on the screen: every reading in the range, as
+   numbers. Right-aligned under the chart it belongs to, at the touch floor. */
+.stats-open {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+  margin-top: var(--space-1);
+  min-height: var(--touch-target);
+  padding-inline: var(--space-3);
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+:is(.stats-note, .stats-open) + :is(.kit-chart, .kit-list) {
+  margin-top: var(--space-4);
+}
+
+/* The custom interval's length, as that chart's one control on the
+   heading's line - where the metric picker sits on the chart above it. It
+   was a labelled field in a block of its own, which is a form on a screen
+   that has no other form on it. The pill matches the picker's face; the
+   field itself carries the touch target. */
+.stats-interval {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.stats-interval-input {
+  width: 4.5em;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.stats-interval-input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
