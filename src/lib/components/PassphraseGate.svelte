@@ -26,7 +26,6 @@
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import GateScreen from './GateScreen.svelte';
   import Icon from './Icon.svelte';
-  import Notice from './kit/Notice.svelte';
   import Sheet from './Sheet.svelte';
 
   let passphrase = $state('');
@@ -199,12 +198,20 @@
     </p>
 
     {#if canSkip}
-      <Notice
-        icon="info"
-        title={m.pp_modes_title()}
-        text={`${m.pp_mode_passphrase()} ${m.pp_mode_device()} ${m.pp_mode_pin()}`}
-        key="passphrase-modes"
-      />
+      <!-- The notice surface, written out rather than reached for, because
+           the kit's Notice carries one line of text and this is three whole
+           sentences that have to stay three lines: they are three ways to
+           unlock a journal, and running them together into a paragraph is
+           how a person picks the wrong one. -->
+      <div class="gate-modes" data-passphrase-modes>
+        <span class="gate-modes-ico"><Icon name="info" size={22} /></span>
+        <div>
+          <strong>{m.pp_modes_title()}</strong>
+          <p>{m.pp_mode_passphrase()}</p>
+          <p>{m.pp_mode_device()}</p>
+          <p>{m.pp_mode_pin()}</p>
+        </div>
+      </div>
     {/if}
 
     <form class="gate-form" onsubmit={submit}>

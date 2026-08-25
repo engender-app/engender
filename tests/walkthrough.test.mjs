@@ -1037,6 +1037,11 @@ try {
     (want) => document.documentElement.dataset.palette === want,
     startingPalette
   );
+  /* Out of the flow before the next case starts. `onboarded` lives in
+     SQLite and fresh() only clears localStorage, so a run left standing
+     mid-onboarding sends every screen after this one back to step one. */
+  await page.locator('[data-leave-setup]').click();
+  await page.waitForSelector('[data-home-hello]');
   ok('skipping the flag step restores the flag it was reached with');
 } catch (e) { fail('onboarding flag skip', e); }
 

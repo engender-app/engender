@@ -80,8 +80,11 @@ export function onboardingDestination(appLock: boolean): string {
 
 /** How small the sun starts. Large enough to be plainly the flag from the
     first frame, small enough that the growth over the flow is the thing
-    being watched rather than a detail. */
-const SUN_START = 0.28;
+    being watched rather than a detail. Raised from 0.28 after looking at
+    the welcome step: at 0.28 the first sun is a 49px sliver in the corner
+    of an otherwise empty screen, which reads as a stray graphic rather than
+    as something that is about to grow. */
+const SUN_START = 0.42;
 
 /** The sun's scale at a given step: the app's identity being assembled as
     the setup is (DIRECTION.md, tier 0's third authored moment).

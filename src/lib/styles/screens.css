@@ -426,8 +426,10 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    bottom of the screen; only the step between them crosses, on tier 2's
    shared axis, because the steps are a sequence and a sequence has a
    direction. The foot is pushed to the bottom of the viewport rather than
-   sitting under the content, so the primary button is in the same place on
-   all seven steps and a thumb can stay where it is.
+   sitting right under the content, so on the five steps that fit it is in
+   the same place and a thumb can stay where it is. On the two that do not -
+   the eight scales, the eight flags at 200% text - it sits at the end of
+   the content and is scrolled to, which is what a form does.
 
    The rail sits with the buttons and not under the sun. It is the one piece
    of furniture that had to move: the sun owns the top right corner of this
@@ -467,17 +469,37 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   transition: transform var(--dur-slow) var(--ease-out);
 }
 
-/* Clear of the sun's reach on a phone, which is what the height above
-   buys: the arrow sits in the top left corner and the flag never gets
-   near it. */
-.setup-head { min-height: var(--touch-target); padding-top: var(--space-2); }
+/* The sun's room, reserved on every step rather than grown with it. The
+   sun reaches 175px down from the window's top corner at full size, and a
+   title that started above that would be legible on the welcome step and
+   sitting inside a flag by the finish. Reserving the whole height from the
+   first step keeps the text where it is and gives the growth something to
+   happen in, which is the opposite of the alternative: content sliding
+   down the screen seven times while someone is reading it.
+
+   The back arrow lives in that space, at the top left, where the sun's
+   quarter never reaches. */
+.setup-head { min-height: 176px; padding-top: var(--space-2); }
 
 /* One grid cell holding every step, so the one arriving and the one
    leaving overlap instead of stacking and doubling the screen's height
    mid-transition. */
-.setup-stage { display: grid; padding-top: var(--space-6); }
+/* No clip of its own for the 24px the outgoing step travels: .app-main is
+   already overflow-x: hidden, so the travel never widens the page, and
+   clipping here as well would cut the focus ring off the outermost swatch
+   in the flag grid. */
+.setup-stage { display: grid; flex: 1; padding-top: var(--space-6); }
 .setup-stage > * { grid-area: 1 / 1; }
-.setup-step { display: flex; flex-direction: column; gap: var(--space-3); }
+/* Centred in whatever the stage has left over, rather than pinned under the
+   sun's reserve. The welcome, the name and the finish are two or three
+   blocks each, and top-aligning them left a third of the screen empty
+   between the last line and the buttons - the reserve above is the sun's
+   room, and the room below it is not. The steps that do not fit fill the
+   cell and scroll, where centring makes no difference. */
+.setup-step {
+  display: flex; flex-direction: column; justify-content: center;
+  gap: var(--space-3);
+}
 
 .setup-title {
   font-family: var(--font-display);
@@ -525,11 +547,13 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   transform-origin: left center;
   transition: transform var(--dur-slow) var(--ease-out);
 }
-/* The two ways past a step, side by side rather than stacked: they are
-   alternatives to each other, and a third full-width button under the
-   primary reads as a third thing to do. */
-.setup-outs { display: flex; gap: var(--space-2); }
-.setup-outs .btn { flex: 1; }
+/* The two ways past a step, stacked and full width. Side by side is what
+   they were, and it gave each of them half a phone: "Straight to the app"
+   wrapped to two lines and overflowed its own button, and Polish's "Od razu
+   do aplikacji" is a character longer. Both are ghost buttons, so a column
+   of them under the primary reads as two quiet alternatives rather than as
+   two more things to do. */
+.setup-outs { display: flex; flex-direction: column; gap: var(--space-1); }
 .recap-stage { max-width: 420px; margin: 0 auto; text-align: center; padding-top: var(--space-6); position: relative; z-index: 1; }
 .recap-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; margin: var(--space-5) 0 var(--space-3); }
 .recap-body { color: var(--text-2); margin-bottom: var(--space-6); }
@@ -1114,6 +1138,20 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    belongs to reads as a caption for the whole screen rather than as the
    name of that box. */
 .gate-form { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-4); text-align: left; }
+/* The notice surface at gate scale: one outline, an icon, and as many lines
+   as the thing being said actually needs. */
+.gate-modes {
+  display: flex; gap: var(--space-3);
+  text-align: left;
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-strong);
+  border-radius: var(--r-card);
+}
+.gate-modes-ico { color: var(--accent-ink); flex: none; }
+.gate-modes strong { display: block; margin-bottom: var(--space-2); }
+.gate-modes p { color: var(--text-2); font-size: var(--text-sm); margin: 0 0 var(--space-2); }
+.gate-modes p:last-child { margin-bottom: 0; }
 .gate-foot {
   margin-top: var(--space-7);
   padding-top: var(--space-5);
