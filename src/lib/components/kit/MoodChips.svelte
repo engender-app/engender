@@ -18,7 +18,7 @@
      What carries it now is the drawing rather than the area. Ticket 31 put
      2.2 units of mouth or a change of curve direction between neighbouring
      steps and gave the two ends of the ramp lids instead of dots, so a mood
-     is legible from its face alone at 22px - which is smaller than these.
+     is legible from its face alone at 22px - well under the 40 these are.
      The colour is no longer the only thing telling the five apart, which is
      what the tile was compensating for.
 

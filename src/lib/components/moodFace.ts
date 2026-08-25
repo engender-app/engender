@@ -8,11 +8,13 @@
    ## Why the eyes are part of it now
 
    The five mouths were five depths of one arc: 2.4 units of frown, 1.4, flat,
-   1.4 of smile, 2.4. A day card draws this face at 22px, where one user unit
+   1.4 of smile, 2.4. A day card drew this face at 22px, where one user unit
    is 0.92px - so step 1 and step 2 were a pixel apart and step 4 and step 5
    were the same pixel apart in the other direction. Side by side you could
    just about pick them out. On their own, which is how an entry in a day card
-   actually shows up, you could not.
+   actually shows up, you could not. An entry draws it at 28 now (Alicja,
+   2026-08-25: the marks on Home were too small), which is the smallest any
+   surface uses, and the drawing below was settled against the harder 22.
 
    Two things changed. The mouths are further apart: 3.6 units of curve at the
    extremes against 1.4 in the middle, so every neighbouring pair differs by

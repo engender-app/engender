@@ -1,8 +1,11 @@
 /* The five mood faces have to be telling apart at the smallest size any
    surface draws them (phase 5 ticket 31).
 
-   22px is that size - an entry inside a day card - and at 22px one user unit
-   of the 24 box is 0.92 of a pixel. That number is the whole reason this test
+   28px is that size now - an entry inside a day card - but the drawing was
+   settled against the 22 an entry drew at until Alicja called the marks on
+   Home too small, so the margin below is the one that harder size needed and
+   every shipped size clears it. At 22px one user unit of the 24 box is 0.92
+   of a pixel. That number is the whole reason this test
    exists: the five mouths used to be five depths of one arc, 1.0 to 1.4 units
    between neighbours, so steps 1 and 2 were about a pixel apart and so were
    4 and 5. Side by side you could nearly pick them out; alone on an entry,
@@ -62,7 +65,7 @@ describe('the five mood faces', () => {
       turned || Math.abs(to - from) >= 2,
       `steps ${a} and ${b} curve the same way and are only ${Math.abs(to - from).toFixed(
         2
-      )} units apart, which is ${(Math.abs(to - from) * 0.92).toFixed(2)}px at the 22px a day card draws`
+      )} units apart, which is ${(Math.abs(to - from) * 0.92).toFixed(2)}px at 22px, the size this drawing was settled against`
     ).toBe(true);
   });
 

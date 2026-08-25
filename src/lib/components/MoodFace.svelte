@@ -33,7 +33,7 @@
 
   let {
     step,
-    size = 22,
+    size = 28,
     blink = false
   }: {
     /** 1 to 5 on the mood ramp. */
