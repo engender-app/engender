@@ -1337,7 +1337,12 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
   opacity: 0;
   stroke-dasharray: var(--seg) var(--arc);
   stroke-dashoffset: 0;
-  animation: sun-sweep var(--dur-authored) var(--ease-out) var(--in-delay) 1;
+  /* Twice the authored duration. At 700ms the stroke crossed its quarter
+     before the eye had found it, which is the complaint a sweep that fast
+     always gets: it reads as a flicker at the edge rather than as something
+     travelling. Built out of the token rather than given a number of its
+     own, so it stays in the one language the motion system speaks. */
+  animation: sun-sweep calc(var(--dur-authored) * 2) var(--ease-out) var(--in-delay) 1;
 }
 @keyframes sun-sweep {
   from {

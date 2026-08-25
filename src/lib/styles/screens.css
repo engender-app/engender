@@ -536,22 +536,27 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 
    It rests where it ends, past its own edge and invisible, so the 1ms clamp
    has somewhere true to strand it. */
+/* Over the whole tile rather than a ring around the 44px preview, and on
+   the authored duration rather than --dur-slow. The first pass was a 2px
+   outline growing out of a small circle over 380ms, which is a thing you
+   have to already be looking at to catch - and the point of it is to answer
+   a tap you have just made somewhere else on the screen. It opens out of
+   the tile now, at the tile's own shape, and takes nearly twice as long
+   doing it. */
 .swatch-bloom {
   position: absolute;
-  left: calc(var(--space-3) + 22px);
-  top: 50%;
-  width: 44px; height: 44px;
-  margin: -22px 0 0 -22px;
-  border-radius: 50%;
+  inset: 0;
+  border-radius: var(--radius-md);
   border: 2px solid var(--accent);
+  background: var(--accent-soft);
   pointer-events: none;
-  transform: scale(2.6);
+  transform: scale(1.35);
   opacity: 0;
-  animation: swatch-bloom var(--dur-slow) var(--ease-out) 1;
+  animation: swatch-bloom var(--dur-authored) var(--ease-out) 1;
 }
 @keyframes swatch-bloom {
-  from { transform: scale(0.7); opacity: 0.6; }
-  to { transform: scale(2.6); opacity: 0; }
+  from { transform: scale(1); opacity: 0.85; }
+  to { transform: scale(1.35); opacity: 0; }
 }
 html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 @media (prefers-reduced-motion: reduce) {
@@ -678,11 +683,11 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
      band below is what replaces it - wide enough for two columns, capped so
      the flag stays beside the step on a very wide monitor rather than
      drifting off toward the window edge. */
-  .screen-setup { max-width: 1100px; margin: 0 auto; }
+  .screen-setup { max-width: none; margin: 0; }
   .setup {
     max-width: none;
     display: grid;
-    grid-template-columns: minmax(0, 460px) 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     /* Three rows that hug their content and centre as one block. `1fr` on
        the middle row stretched the stage to the full height and put 300px
        of nothing between the last control and the buttons. */
@@ -691,9 +696,18 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
     align-content: center;
     flex: 1 0 auto;
   }
+  /* Centred inside the left half rather than pinned to one edge of a band.
+     A fixed band left the composition floating in the middle of a wide
+     monitor with a quarter of the window empty on either side of it; half
+     and half fills whatever it is given, and the measure stays a measure
+     because the column caps itself rather than the window doing it. */
   .setup-head,
   .setup-stage,
-  .setup-foot { grid-column: 1; }
+  .setup-foot {
+    grid-column: 1;
+    width: min(460px, 100%);
+    margin-inline: auto;
+  }
   /* Nothing to reserve above the step any more: the flag is beside it
      rather than over it, so the head holds the back arrow and no more. */
   .setup-head { min-height: var(--touch-target); }
@@ -704,14 +718,18 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   .setup-outs { flex-direction: row; gap: var(--space-2); }
   .setup-outs .btn { flex: 1; }
 
+  /* The right half, edge to edge and top to bottom. The flag is a field
+     here rather than a mark in a corner: at 2.4 it was a badge floating in
+     the upper right of a large dark area with nothing relating it to the
+     step beside it. */
   .setup-sky {
     top: calc(-1 * var(--inset-top));
     bottom: 0;
-    left: 45%;
+    left: 50%;
     right: calc(-1 * var(--space-5));
     height: auto;
   }
-  .setup-sun { transform: scale(calc(var(--grow, 1) * 2.4)); }
+  .setup-sun { transform: scale(calc(var(--grow, 1) * 4.6)); }
 }
 .recap-stage { max-width: 420px; margin: 0 auto; text-align: center; padding-top: var(--space-6); position: relative; z-index: 1; }
 .recap-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; margin: var(--space-5) 0 var(--space-3); }
