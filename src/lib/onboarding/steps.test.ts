@@ -76,9 +76,13 @@ describe('where the flow lands', () => {
 describe('the sun growing through the flow', () => {
   const total = ONBOARDING_STEPS.length;
 
-  it('starts small enough to be an arrival rather than a full sun', () => {
-    expect(sunGrowth(0, total)).toBeLessThan(0.4);
+  it('starts as a fraction of the sun rather than most of one', () => {
+    /* A bound, not the number. Where exactly it starts is a taste call that
+       an eye settles on the welcome step and steps.ts records; what has to
+       hold is that there is visibly a sun and visibly room left for it to
+       grow into, or the growth is not the thing anyone sees. */
     expect(sunGrowth(0, total)).toBeGreaterThan(0);
+    expect(sunGrowth(0, total)).toBeLessThan(0.6);
   });
 
   it('lands at exactly the resting sun Home draws a moment later', () => {

@@ -1344,7 +1344,12 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
    Gone entirely under reduced motion rather than clamped: at 1ms the rail
    would empty instantly and then sit empty for the rest of a wait it is
    supposed to be describing, which is worse than not drawing it. */
-.pin-wait { height: 3px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; max-width: 200px; margin: 0 auto var(--space-3); }
+/* `width: 100%` beside the auto margins, and the same on the pad below. The
+   gate is a flex column, and `margin-inline: auto` on a flex item overrides
+   the container's stretch and sizes it to its content instead - which took
+   the pad from 280px to the width of three digits and this rail, whose only
+   child is 100% of it, to nothing at all. */
+.pin-wait { height: 3px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; width: 100%; max-width: 200px; margin: 0 auto var(--space-3); }
 .pin-wait i {
   display: block; height: 100%; background: var(--danger);
   transform-origin: left center;
@@ -1361,7 +1366,7 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 
 .pin-pad {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3);
-  max-width: 280px; margin: 0 auto;
+  width: 100%; max-width: 280px; margin: 0 auto;
 }
 /* Flat with an outline, not a plane with a shadow. DIRECTION.md's decision
    2 gives the whole app one shadow and it belongs to the floating nav bar;

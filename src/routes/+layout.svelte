@@ -364,7 +364,18 @@
        so it can be waited for: the walkthrough suite has to let a cold start
        finish before it clears storage, or it interrupts the very writes it
        then asserts against (tests/walkthrough.test.mjs). -->
-  <div class="app" data-app-root class:disguised={prefs.disguise} data-boot={bootState.status}>
+  <!-- is-chromeless is what tells the scroll region there is no bar floating
+       over it (phase 5 ticket 26). The clearance below the content is sized
+       for the bar, its float gap and the system inset, and on a screen with
+       no bar that is room held for nothing: it pushed a vertically-centred
+       gate up by most of a bar's height. -->
+  <div
+    class="app"
+    data-app-root
+    class:disguised={prefs.disguise}
+    class:is-chromeless={chromeless}
+    data-boot={bootState.status}
+  >
     {#if isErrorState(bootState)}
       <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
         <Icon name="alert" size={20} />

@@ -52,7 +52,7 @@
   } = $props();
 </script>
 
-<div class="screen">
+<div class="screen screen-gate">
   <div class="gate" class:is-alert={tone === 'alert'} {...rest}>
     <span class="gate-mark" aria-hidden="true"><Icon name={icon} size={26} /></span>
     <h1 class="gate-title">{title}</h1>
