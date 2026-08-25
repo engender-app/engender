@@ -89,7 +89,7 @@
 </script>
 
 <div class="demo-bar">
-  <span class="demo-title">Demo controls · R5</span>
+  <span class="demo-title">Demo controls · R7</span>
   <div class="demo-group" role="group" aria-label="Theme">
     <button class="demo-btn" class:is-active={prefs.theme === 'light'} onclick={() => setTheme('light')}>
       <Icon name="sun" size={15} /> Light
