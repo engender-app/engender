@@ -1,4 +1,13 @@
 <script lang="ts">
+  /* Staging against a published scale, and fixed-position photos, on the
+     surface kit (phase 5 UX ticket 25).
+
+     Three of this screen's four cards were saying something rather than
+     holding something - where the week count is measured from, that a
+     photo is due, and how to take one so two of them compare. All three
+     are notices now, which is the surface for a remark with at most one
+     action on it, and the protocol's dismiss is the notice's own rather
+     than an icon button wired into a header row. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -14,13 +23,25 @@
   import { pickPhotos } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
+
+  /* Two areas, two stripes: the staging and the photographs. The notices
+     that talk about the app rather than about the journal take no role at
+     all, which is the call Home's backup notice makes. */
+  const AREA_ROLE = { stages: 0, photos: 1 };
 
   const today = todayEpochDay();
 
@@ -183,97 +204,101 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.hair_progress()} back="/settings" subtitle={m.hair_intro()} />
+  <ScreenHeader title={m.hair_progress()} back="/more" subtitle={m.hair_intro()} />
 
   {#if dosesQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else}
-    <div class="card" data-anchor style="margin-bottom:var(--space-4)">
-      <p class="muted small">
-        {#if anchorEpochDay == null}
-          {m.hair_unanchored_note()}
-        {:else if anchorIsUserSet}
-          {m.hair_anchor_from_set({ date: dayLabel(anchorEpochDay) })}
-        {:else}
-          {m.hair_anchor_from_dose({ date: dayLabel(anchorEpochDay) })}
-        {/if}
-      </p>
-      <button class="btn btn-soft" data-set-hair-anchor onclick={openAnchorEditor}>
-        <span>{anchorIsUserSet ? m.hair_anchor_change_action() : m.hair_anchor_set_action()}</span>
-      </button>
+    <div in:crossfade data-anchor>
+      <Notice
+        icon="clock"
+        key="hair-anchor"
+        text={anchorEpochDay == null
+          ? m.hair_unanchored_note()
+          : anchorIsUserSet
+            ? m.hair_anchor_from_set({ date: dayLabel(anchorEpochDay) })
+            : m.hair_anchor_from_dose({ date: dayLabel(anchorEpochDay) })}
+        action={{
+          label: anchorIsUserSet ? m.hair_anchor_change_action() : m.hair_anchor_set_action(),
+          onclick: openAnchorEditor
+        }}
+      />
     </div>
 
-    <SectionTitle text={m.hair_stage_section_title()}>
-      {#snippet aside()}
-        <button class="icon-btn" data-add-stage aria-label={m.hair_stage_add_aria()} onclick={() => openStageEditor(null)}>
-          <Icon name="plus" size={18} />
+    <SectionHeading text={m.hair_stage_section_title()}>
+      {#snippet action()}
+        <button class="icon-btn press" data-add-stage aria-label={m.hair_stage_add_aria()} onclick={() => openStageEditor(null)}>
+          <Icon name="plus" size={20} />
         </button>
       {/snippet}
-    </SectionTitle>
+    </SectionHeading>
 
     {#if stagesQuery.loading}
-      <Skeleton variant="line" count={2} />
+      <div out:crossfade><Skeleton variant="line" count={2} /></div>
     {:else if stages.length}
-      {#each stageGroups as group (group.scale)}
-        <SectionTitle text={hairScaleName(group.scale)} />
-        <div class="list-group" data-scale-group={group.scale}>
-          {#each group.stages as s (s.id)}
-            {@const graded = isGradedScale(s.scale)}
-            <button
-              class="list-row"
-              data-hair-stage={s.id}
-              aria-label={graded
-                ? m.hair_stage_row_aria({
-                    stage: hairStageName(s.scale, s.stage),
-                    scale: hairScaleName(s.scale),
-                    date: dayLabel(s.epochDay)
-                  })
-                : m.hair_other_row_aria({ date: dayLabel(s.epochDay) })}
-              onclick={() => openStageEditor(s)}
-            >
-              <span class="row-text">
-                <span class="row-title"
-                  >{graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}</span
-                >
-                <span class="row-subtitle">{stageSubtitle(s.epochDay)}</span>
-              </span>
-              <Icon name="pencil" size={18} />
-            </button>
-          {/each}
-        </div>
-      {/each}
+      <div in:crossfade>
+        {#each stageGroups as group (group.scale)}
+          <!-- Each scale keeps its own card and its own name above it. A run
+               of subtitles across two scales reads as one series, which is
+               the thing ticket 33 split these groups apart to stop. -->
+          <p class="hair-scale-name" data-scale-group={group.scale}>{hairScaleName(group.scale)}</p>
+          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.stages)}>
+            {#each group.stages as s (s.id)}
+              {@const graded = isGradedScale(s.scale)}
+              <ListRow
+                key={s.id}
+                icon="comb"
+                title={graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}
+                subtitle={stageSubtitle(s.epochDay)}
+                chevron={false}
+                onclick={() => openStageEditor(s)}
+              />
+            {/each}
+          </ListCard>
+        {/each}
+      </div>
     {:else}
-      <EmptyState title={m.hair_stage_empty_title()} text={m.hair_stage_empty_body()}>
-        {#snippet action()}
-          <button class="btn btn-soft" onclick={() => openStageEditor(null)}><span>{m.hair_stage_empty_action()}</span></button>
-        {/snippet}
-      </EmptyState>
+      <div in:crossfade>
+        <Notice
+          icon="comb"
+          key="hair-stages-empty"
+          role={roleAt(activeFlag.roles, AREA_ROLE.stages)}
+          title={m.hair_stage_empty_title()}
+          text={m.hair_stage_empty_body()}
+          action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => openStageEditor(null) }}
+        />
+      </div>
     {/if}
 
     <p class="muted small" style="margin-top:var(--space-2)">{m.hair_scale_source()}</p>
 
-    <SectionTitle text={m.hair_photo_section_title()} />
+    <SectionHeading text={m.hair_photo_section_title()} />
 
     {#if photoDue}
-      <div class="card" data-photo-due style="margin-bottom:var(--space-3)">
-        <h3>{m.hair_photo_due_title()}</h3>
-        <p class="muted small">{m.hair_photo_due_body()}</p>
+      <div data-photo-due>
+        <Notice
+          icon="camera"
+          key="hair-photo-due"
+          role={roleAt(activeFlag.roles, AREA_ROLE.photos)}
+          title={m.hair_photo_due_title()}
+          text={m.hair_photo_due_body()}
+        />
       </div>
     {/if}
 
     {#if !prefs.hairPhotoProtocolDismissed}
-      <div class="card" data-protocol style="margin-bottom:var(--space-3)">
-        <div class="spread">
-          <h3>{m.hair_photo_protocol_title()}</h3>
-          <button class="icon-btn" aria-label={m.hair_photo_protocol_dismiss_aria()} onclick={dismissProtocol}>
-            <Icon name="x" size={18} />
-          </button>
-        </div>
-        <p class="muted small">{m.hair_photo_protocol_body()}</p>
+      <div data-protocol style="margin-top:var(--space-3)">
+        <Notice
+          icon="info"
+          key="hair-photo-protocol"
+          title={m.hair_photo_protocol_title()}
+          text={m.hair_photo_protocol_body()}
+          dismiss={{ label: m.hair_photo_protocol_dismiss_aria(), onclick: dismissProtocol }}
+        />
       </div>
     {/if}
 
-    <div class="photo-row" style="margin-bottom:var(--space-4)">
+    <div class="photo-row" style="margin:var(--space-4) 0">
       <button class="photo-add" aria-label={m.add_photo()} onclick={pickHairPhoto}>
         <Icon name="image" size={20} /><span>{m.add_photo()}</span>
       </button>
@@ -283,25 +308,40 @@
     </div>
 
     {#if photosQuery.loading}
-      <Skeleton variant="line" count={2} />
+      <div out:crossfade><Skeleton variant="line" count={2} /></div>
     {:else if photos.length}
-      <div class="list-group">
-        {#each [...photos].reverse() as p (p.id)}
-          {@const since = sinceStart(p.epochDay)}
-          <div class="list-row" data-hair-photo={p.id} aria-label={m.hair_photo_row_aria({ date: dayLabel(p.epochDay) })}>
-            <PhotoThumb photo={p} size={48} />
-            <span class="row-text">
-              <span class="row-title">{dayLabel(p.epochDay)}</span>
-              {#if since}<span class="row-subtitle">{since}</span>{/if}
-            </span>
-            <button class="icon-btn" aria-label={m.hair_photo_delete_sheet()} onclick={() => (photoDeleteTarget = p)}>
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
-        {/each}
+      <div in:crossfade>
+        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.photos)}>
+          {#each [...photos].reverse() as p (p.id)}
+            {@const since = sinceStart(p.epochDay)}
+            <div class="kit-row is-static" data-hair-photo={p.id}>
+              <PhotoThumb photo={p} size={48} />
+              <span class="kit-row-text">
+                <span class="kit-row-title">{dayLabel(p.epochDay)}</span>
+                {#if since}<span class="kit-row-sub">{since}</span>{/if}
+              </span>
+              <button
+                class="kit-row-act press"
+                data-delete-hair-photo={p.id}
+                aria-label={m.hair_photo_delete_sheet()}
+                onclick={() => (photoDeleteTarget = p)}
+              >
+                <Icon name="trash" size={18} />
+              </button>
+            </div>
+          {/each}
+        </ListCard>
       </div>
     {:else}
-      <EmptyState title={m.hair_photo_empty_title()} text={m.hair_photo_empty_body()} />
+      <div in:crossfade>
+        <Notice
+          icon="camera"
+          key="hair-photos-empty"
+          role={roleAt(activeFlag.roles, AREA_ROLE.photos)}
+          title={m.hair_photo_empty_title()}
+          text={m.hair_photo_empty_body()}
+        />
+      </div>
     {/if}
   {/if}
 
@@ -335,23 +375,27 @@
       </div>
       <div class="field">
         <span class="field-label" id="hair-scale-label">{m.hair_scale_label()}</span>
-        <div class="list-group" role="radiogroup" aria-labelledby="hair-scale-label">
-          {#each HAIR_SCALES as scale (scale)}
-            <button
-              class="list-row"
-              role="radio"
-              aria-checked={stageEditor.scale === scale}
-              data-pick-scale={scale}
-              onclick={() => pickScale(scale)}
-            >
-              <span class="row-text">
-                <span class="row-title">{hairScaleName(scale)}</span>
-                <span class="row-subtitle">{hairScaleSub(scale)}</span>
-              </span>
-              {#if stageEditor.scale === scale}<Icon name="check" size={20} />{/if}
-            </button>
-          {/each}
-        </div>
+        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.stages)}>
+          <div role="radiogroup" aria-labelledby="hair-scale-label">
+            {#each HAIR_SCALES as scale (scale)}
+              <button
+                class="kit-row"
+                role="radio"
+                aria-checked={stageEditor.scale === scale}
+                data-pick-scale={scale}
+                onclick={() => pickScale(scale)}
+              >
+                <span class="kit-row-text">
+                  <span class="kit-row-title">{hairScaleName(scale)}</span>
+                  <span class="kit-row-sub">{hairScaleSub(scale)}</span>
+                </span>
+                <span class="kit-row-trail">
+                  {#if stageEditor.scale === scale}<Icon name="check" size={20} />{/if}
+                </span>
+              </button>
+            {/each}
+          </div>
+        </ListCard>
       </div>
       {#if stageEditor.scale}
         {@const scale = stageEditor.scale}
@@ -418,3 +462,16 @@
     onCancel={hairPhotoReview.cancel}
   />
 </div>
+
+<style>
+  /* The scale's own name over its card. Not a SectionHeading: the area is
+     already named ("Staging") and these are the two scales inside it, so
+     giving each the screen-title size would make the area's own heading
+     the smaller of the two. */
+  .hair-scale-name {
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+  }
+</style>
