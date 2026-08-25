@@ -59,13 +59,17 @@
     };
   }
 
-  /* Linear on the way out, and that is deliberate rather than a missing
-     token: a thing going behind a wall keeps its speed until it is gone, and
-     --ease-out would have it slowing to a halt just as it disappeared. */
+  /* --ease-out on the way out as well as in (Alicja, 2026-08-25). It was
+     linear on the argument that a thing going behind a wall keeps its speed
+     until it is gone, which is true of the object and wrong about the screen:
+     over 150px-per-second-ish of travel and a 31px slot, the constant-speed
+     version reads as a jerk rather than as momentum, and the whole swap wants
+     one curve rather than two. */
   function labelOut(_node: Element) {
     if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     return {
       duration: LEAVE(),
+      easing: EASE_OUT,
       css: (_t: number, u: number) => `transform: translateY(${dir * u * 100}%)`
     };
   }
