@@ -1185,15 +1185,31 @@ try {
 
    Last, and after the reset in flow 18 has put the persona back, because it
    writes five backdated entries into last June. The persona only covers the
-   last 150 days, so without them the previous calendar year is below the
-   entry floor and the yearly presentation has nothing to render - which is
-   itself worth asserting first, since it is the floor doing its job. */
+   last 150 days plus a sparse backfill of the year before last (phase 5 UX
+   ticket 23 - without it the one period /wrapped/year covers was empty by
+   construction and the screen could not be reviewed at all). So the year has
+   entries and the flow adds a handful more to a known month.
+
+   The floor is asserted first, because it is worth proving before anything
+   is rendered on top of it - and against a period that is genuinely thin
+   rather than one that happens to be. A picked range can address any window,
+   so it addresses one nobody could have logged in: the floor applying to
+   those on the same terms as a completed cadence is one of spec 07's own
+   acceptance boxes. */
 try {
-  await fresh('/wrapped/year');
+  const emptyWindow = await page.evaluate(() => {
+    const day = (d) => new Date(d * 86400000).toISOString().slice(0, 10);
+    const start = Math.floor(Date.UTC(2019, 0, 1) / 86400000);
+    return { from: day(start), to: day(start + 40) };
+  });
+  await fresh(`/wrapped/range?named=custom&from=${emptyWindow.from}&to=${emptyWindow.to}`);
+  await page.waitForSelector('[data-wrapped-thin], [data-wrapped-stats]');
   if (!(await page.locator('[data-wrapped-thin]').count())) {
-    throw new Error('a year the persona never logged should be below the entry floor');
+    throw new Error('a window nobody logged in should be below the entry floor');
   }
-  if (await page.locator('[data-wrapped-cover]').count()) throw new Error('a suppressed year still drew its cover');
+  if (await page.locator('[data-wrapped-stats]').count()) {
+    throw new Error('a suppressed range still drew its figures');
+  }
 
   const lastJune = await page.evaluate(() => Math.floor(Date.UTC(new Date().getFullYear() - 1, 5, 10) / 86400000));
   for (let offset = 0; offset < 5; offset++) {
@@ -1208,16 +1224,38 @@ try {
   /* The yearly presentation: a cover, the year read month by month, and the
      figures as one run rather than the compact template's separate cards. */
   await fresh('/wrapped/year');
+  if (await page.locator('[data-wrapped-thin]').count()) {
+    throw new Error('the backfilled year should clear the entry floor');
+  }
   await page.waitForSelector('[data-wrapped-cover-year]');
   const coverYear = (await page.locator('[data-wrapped-cover-year]').textContent())?.trim();
   const previousYear = await page.evaluate(() => String(new Date().getFullYear() - 1));
   if (coverYear !== previousYear) throw new Error('yearly wrapped cover shows ' + coverYear);
-  const monthBars = page.locator('[data-chart-card="wrapped-months"] [data-bar-row]');
-  if ((await monthBars.count()) !== 12) {
+  /* Twelve months of days rather than twelve bars: the year is a cell per
+     day on mood's own ramp now, and a month is a block of them. A silent
+     month is still a block - a year with a quiet spring reads as one, and
+     dropping its row would close the gap up. */
+  const months = page.locator('[data-chart-card="wrapped-months"] [data-year-month]');
+  if ((await months.count()) !== 12) {
     throw new Error('the year should read as twelve months, silent ones included');
   }
-  const juneValue = (await monthBars.nth(5).locator('[data-bar-value]').textContent())?.trim();
-  if (!juneValue) throw new Error('the month the entries went into has no average');
+  const june = months.nth(5);
+  if ((await june.locator('[data-year-cell]').count()) !== 30) {
+    throw new Error('June should be thirty cells, one per day');
+  }
+  /* The five entries this flow wrote landed in June, and a day that carried a
+     mood draws the picker's own face rather than an empty outline. */
+  if ((await june.locator('[data-year-cell] svg').count()) < 5) {
+    throw new Error('the month the entries went into drew no moods');
+  }
+  const yearCells = page.locator('[data-chart-card="wrapped-months"] [data-year-cell]');
+  const dayCount = await page.evaluate(() => {
+    const year = new Date().getFullYear() - 1;
+    return (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365;
+  });
+  if ((await yearCells.count()) !== dayCount) {
+    throw new Error(`the year should be ${dayCount} cells, found ` + (await yearCells.count()));
+  }
   if (!(await page.locator('[data-wrapped-figure]').count())) throw new Error('the year has no figures');
   /* Structurally distinct, not the compact template scaled up: the stat
      tiles and per-question cards belong to the other presentation. */
