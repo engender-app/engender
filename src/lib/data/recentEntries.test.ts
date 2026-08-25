@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import type { Entry } from './types.ts';
-import { RECENT_ENTRY_CAP, recentDayGroups } from './recentEntries.ts';
+import { entryMarks, RECENT_ENTRY_CAP, recentDayGroups } from './recentEntries.ts';
 
 /** Only the three fields the grouping reads. */
 function entry(id: number, epochDay: number): Entry {
@@ -46,4 +46,15 @@ test('is empty for an empty read, and for a cap of nothing', () => {
 
 test('caps at five entries, which is the number Home draws', () => {
   assert.equal(RECENT_ENTRY_CAP, 5);
+});
+
+test('an entry\'s marks are the media it carries, in drawing order', () => {
+  // Only the lengths are read, so one stand-in per kind is the whole fixture.
+  const one = [{}] as unknown;
+  const media = (fields: Record<string, unknown>) =>
+    entryMarks({ ...entry(1, 20676), ...fields } as unknown as Entry);
+  assert.deepEqual(media({}), []);
+  assert.deepEqual(media({ photos: one }), ['image']);
+  assert.deepEqual(media({ recordings: one }), ['mic']);
+  assert.deepEqual(media({ photos: one, recordings: one, videos: one }), ['image', 'mic', 'video']);
 });

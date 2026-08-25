@@ -71,6 +71,13 @@
      olive to clear a floor it never owed, and a 15% tint of olive is mud. */
   --role-tint: color-mix(in oklab, var(--role-c) 15%, var(--surface));
   --role-wash: color-mix(in oklab, var(--role-c) 12%, var(--bg));
+  /* The edge a tinted shape needs to still be a shape. A fill owes no
+     contrast ratio, which is right - but a 15% tint of the flag's white band
+     on a light card is the card, so on the palettes whose area draws that
+     band an icon disc disappeared and left the glyph sitting on the row.
+     Drawn from --role-mark, the corrected version, so it is there whatever
+     band the area got. */
+  --role-hairline: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
 }
 
 /* ---------- section header ----------
@@ -167,14 +174,9 @@
   background: var(--role-wash);
 }
 
-/* The disc is the stripe as a fill, and a fill owes no contrast ratio - but
-   it does have to be a disc. A flag has a white band and a near-black one,
-   and a 15% tint of white on a light card is the card: on the palettes where
-   the rows draw that band, the icon lost its disc entirely and sat on the
-   row as a bare glyph (found on Home, phase 5 ticket 21 - ticket 20's
-   gallery only ever handed its list card a coloured role). The hairline is
-   drawn from --role-mark, which is the contrast-corrected version, so it is
-   there whatever band this area got. */
+/* Found on Home (phase 5 ticket 21): ticket 20's gallery only ever handed
+   its list card a coloured role, so the disc that vanishes on the white band
+   waited for a screen to draw it. */
 .kit-row-ico {
   flex: 0 0 auto;
   width: 36px;
@@ -184,7 +186,7 @@
   place-items: center;
   color: var(--role-mark);
   background: var(--role-tint);
-  border: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
+  border: var(--role-hairline);
 }
 
 .kit-row-text {
@@ -387,13 +389,15 @@ a.kit-entry:active {
   color: var(--text-2);
 }
 
-/* The section's own stripe, as a fill, which is the same tint the date bar
-   above these entries takes - so a day's tags read as part of that day
-   rather than as a second palette inside it. */
-.kit-entry-tag {
+/* The area's own stripe as a fill, which is the same tint the date bar above
+   these entries takes - so a day's tags read as part of that day rather than
+   as a second palette inside it. Shared with the milestone row's badge,
+   which is the same object doing the same job in the same colour. */
+.kit-pill {
   padding: 1px var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--role-tint);
+  border: var(--role-hairline);
   color: var(--role-ink);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
@@ -414,11 +418,21 @@ a.kit-entry:active {
   align-items: stretch;
 }
 
-/* Two-up is the shape, not the rule. At 200% zoom on a phone the CSS
+/* One tile is not half a pair. Where a grid's two destinations are each
+   gated on their own - Home's look back, where wrapped and on-this-day
+   qualify independently - the lone survivor sat in the left column with a
+   hole beside it, which reads as a tile that failed to load rather than as
+   the only offer there is. It takes the row.
+
+   Two-up is the shape, not the rule. At 200% zoom on a phone the CSS
    viewport is around 195px, which leaves a tile about 76px wide and turns
    its note into an ellipsis - the reading that is the reason to go there,
    truncated. Below that the pair stacks and each tile gets the whole width.
    The threshold is where the note stops fitting rather than a device size. */
+.kit-tiles > :only-child {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 320px) {
   .kit-tiles {
     grid-template-columns: minmax(0, 1fr);
@@ -653,9 +667,7 @@ a.kit-entry:active {
   place-items: center;
   color: var(--role-mark);
   background: var(--role-tint);
-  /* The hairline the row's disc takes, and for the same reason: a 15%
-     tint of the white band is the surface it sits on. */
-  border: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
+  border: var(--role-hairline);
 }
 
 .kit-notice-body {

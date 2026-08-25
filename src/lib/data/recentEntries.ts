@@ -55,3 +55,15 @@ export function recentDayGroups(entries: Entry[], cap: number): RecentDayGroup[]
   // A day the cap never reached is a heading with nothing under it.
   return groups.filter((group) => group.entries.length > 0);
 }
+
+/** Icon names for the media an entry carries, in the order a row draws them.
+
+    A summary of a day has to say that an entry is a photo and four tags,
+    or it makes that entry look like an empty one next to a note. */
+export function entryMarks(entry: Entry): string[] {
+  return [
+    entry.photos?.length ? 'image' : null,
+    entry.recordings?.length ? 'mic' : null,
+    entry.videos?.length ? 'video' : null
+  ].filter((name): name is string => name != null);
+}

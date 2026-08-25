@@ -56,7 +56,7 @@
     >
   </span>
   <span class="kit-row-trail">
-    {#if badge}<span class="milestone-badge">{badge}</span>{/if}
+    {#if badge}<span class="kit-pill">{badge}</span>{/if}
     <Icon name="chevronRight" size={20} />
   </span>
 </a>

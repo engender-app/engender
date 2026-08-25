@@ -44,11 +44,12 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import type { Entry, TallyKind } from '$lib/data/types';
+  import type { TallyKind } from '$lib/data/types';
   import { isPausedOn } from '$lib/data/journalingPause';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
-  import { RECENT_ENTRY_CAP, recentDayGroups } from '$lib/data/recentEntries';
+  import { RECENT_ENTRY_CAP, entryMarks, recentDayGroups } from '$lib/data/recentEntries';
+  import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
@@ -73,6 +74,17 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
+
+  /* Which stripe each area of the screen takes. Named rather than written as
+     a number at the call site, because one of them is not in reading order
+     and the reason lives up in the header comment: the week strip takes role
+     0, the only index guaranteed to be a colour on all 8 palettes, since it
+     is the one area here where the stripe is a value rather than a
+     decoration. The celebration shares the milestones' colour because it is
+     about a milestone; the backup notice takes none, because the flag
+     colours the areas of the journal and that one is the app talking about
+     itself. */
+  const AREA_ROLE = { week: 0, lookBack: 1, milestones: 2, days: 3 };
 
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
      read; the entry-shaped reads below are the ones that had to become
@@ -113,29 +125,6 @@
     ...vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))
   ]);
 
-  /* Resolved here rather than in the day card: which tags exist and what
-     they are called is the vocabulary's (ADR-0024), and a surface that
-     looked them up would be a second place asking. Four, then a count, the
-     same cap the entry card has always drawn. */
-  const TAG_CAP = 4;
-  function entryTags(entry: Entry): string[] {
-    const labels = entry.tags
-      .map((id) => vocabulary.tag(id))
-      .filter((t) => t != null)
-      .slice(0, TAG_CAP)
-      .map((t) => t.label);
-    const more = entry.tags.length - labels.length;
-    return more > 0 ? [...labels, `+${more}`] : labels;
-  }
-
-  function entryMarks(entry: Entry): string[] {
-    return [
-      entry.photos?.length ? 'image' : null,
-      entry.recordings?.length ? 'mic' : null,
-      entry.videos?.length ? 'video' : null
-    ].filter((name): name is string => name != null);
-  }
-
   function onQuickLog(v: number | null) {
     if (v == null) return;
     goto(`/entry/new/today?seedMood=${v}`);
@@ -146,7 +135,7 @@
      duration to zero, which is tier 3's substitute - an instant cut, not
      tier 2's crossfade, because a change inside a screen has no journey for
      a fade to stand in for. */
-  const swap = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* The tally widget's two buttons (phase 4 ticket 33) deep-link here with
      the kind as a query param, since neither button opens a route of its
@@ -206,7 +195,14 @@
          that decides whether the sun renders at all matches every other
          disguise gate in the app. -->
     {#if !prefs.disguise}<FlagSun />{/if}
-    <h1 class="home-hero" data-home-hero translate="no">{m.app_name()}</h1>
+    <!-- The same swap AppNav.svelte makes on the rail's wordmark, and for
+         the reason SCREENS.md gives: disguise changes the app's name and
+         icon app-wide, not per screen. The hero is the largest text on the
+         screen, so leaving it saying "Gender Diary" while the tab, the
+         launcher and the rail all say "Notes" undoes the rest of the
+         disguise in one line. Two sites in Settings still name the app under
+         disguise; those are ticket 24's screen. -->
+    <h1 class="home-hero" data-home-hero translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</h1>
     <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
   </header>
 
@@ -220,7 +216,7 @@
     <Notice
       icon="sparkle"
       key="celebration"
-      role={roleAt(activeFlag.roles, 2)}
+      role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}
       aria-live="polite"
       title={landing?.s.years
         ? m.home_anniv_years({
@@ -256,7 +252,7 @@
        exactly where it was. With neither qualifying the grid has no
        children and so no height, and the air around it belongs to its
        neighbours rather than to itself. -->
-  <TileGrid role={roleAt(activeFlag.roles, 1)}>
+  <TileGrid role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
     {#if prefs.wrappedEnabled}
       <WrappedHomeCard />
     {/if}
@@ -273,7 +269,7 @@
       <a class="kit-heading-action" href="/timeline">{m.timeline()}</a>
     {/snippet}
   </SectionHeading>
-  <ListCard role={roleAt(activeFlag.roles, 2)}>
+  <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}>
     {#if upcoming.length}
       {#each upcoming.slice(0, 4) as x (x.m.id)}
         <MilestoneCard milestone={x.m} s={x.s} />
@@ -299,7 +295,7 @@
       />
     {/snippet}
   </SectionHeading>
-  <WeekStrip metric={metricKey(prefs)} role={roleAt(activeFlag.roles, 0)} />
+  <WeekStrip metric={metricKey(prefs)} role={roleAt(activeFlag.roles, AREA_ROLE.week)} />
   <!-- The streak, as the caption on the week it describes. -->
   {#if streak > 1 && !pausedToday}
     <p class="home-week-caption" data-home-streak>{streak} {m.streak_row()}</p>
@@ -312,13 +308,13 @@
   </SectionHeading>
   <div class="home-swap">
     {#if recent.loading}
-      <div out:swap><Skeleton variant="card" count={3} /></div>
+      <div out:crossfade><Skeleton variant="card" count={3} /></div>
     {:else if dayGroups.length}
-      <div class="home-days" in:swap>
+      <div class="home-days" in:crossfade>
         {#each dayGroups as group (group.epochDay)}
           <DayCard
             key={String(group.epochDay)}
-            role={roleAt(activeFlag.roles, 3)}
+            role={roleAt(activeFlag.roles, AREA_ROLE.days)}
             date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
             aside={group.dayCount > 1 ? m.entry_day_count({ count: String(group.dayCount) }) : undefined}
           >
@@ -337,14 +333,19 @@
         {/each}
       </div>
     {:else}
-      <Notice
-        icon="book"
-        key="no-entries"
-        role={roleAt(activeFlag.roles, 3)}
-        title={m.empty_home_title()}
-        text={m.empty_home_body()}
-        action={{ label: m.new_entry(), onclick: () => (ui.chooserOpen = true) }}
-      />
+      <!-- Wrapped because a transition goes on an element, not a component,
+           and the empty state is the branch a first-run journal lands on -
+           it owes the same crossfade the day cards get. -->
+      <div in:crossfade>
+        <Notice
+          icon="book"
+          key="no-entries"
+          role={roleAt(activeFlag.roles, AREA_ROLE.days)}
+          title={m.empty_home_title()}
+          text={m.empty_home_body()}
+          action={{ label: m.new_entry(), onclick: () => (ui.chooserOpen = true) }}
+        />
+      </div>
     {/if}
   </div>
 

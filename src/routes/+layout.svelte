@@ -235,7 +235,7 @@
        and the section colours derived from them are read off the palette and
        the theme this block has just stamped, and anything that read them for
        itself would be racing that stamp (activeFlag.svelte.ts). */
-    refreshActiveFlag();
+    refreshActiveFlag(document, prefs.disguise);
   });
 
   /* First-run gate: onboarding is the entire first-run experience (F16).
