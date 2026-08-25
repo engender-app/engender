@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { MAGNIFIER_PEAK, MAGNIFIER_SPREAD, magnify } from './magnifier';
+import { MAGNIFIER_SPREAD, magnify } from './magnifier';
 
 describe('magnify', () => {
+  /* The literal rather than the module's own constant, which would have made
+     this tautological - it asserted that the peak equals the peak. 1.24 is
+     the number the row was designed around: .fan-card clips, so a face that
+     grew much further would lose its own top. */
   it('is at its peak for the face under the finger', () => {
-    expect(magnify(100, 100, 120)).toBeCloseTo(MAGNIFIER_PEAK, 5);
+    expect(magnify(100, 100, 120)).toBeCloseTo(1.24, 5);
   });
 
   it('leaves a face the finger is nowhere near alone', () => {

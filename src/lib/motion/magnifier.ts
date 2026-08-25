@@ -25,7 +25,7 @@
     next to its neighbours, and small enough that the face grows into the row
     above it rather than through the card - .fan-card clips, so a face that
     grew far enough would lose its own top. */
-export const MAGNIFIER_PEAK = 1.24;
+const PEAK = 1.24;
 
 /** How far the lift reaches, in mood cells. Under 2 on purpose: at 1.7 an
     immediate neighbour comes up about a third of the way and the face two
@@ -44,5 +44,5 @@ export function magnify(x: number, centre: number, spread: number): number {
   /* Squared rather than linear, so the curve is flat where the finger is.
      A finger holding still on a target still moves a pixel or two, and on a
      linear falloff that flutters the one face a person is looking at. */
-  return 1 + (MAGNIFIER_PEAK - 1) * (1 - away * away);
+  return 1 + (PEAK - 1) * (1 - away * away);
 }

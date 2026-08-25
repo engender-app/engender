@@ -28,10 +28,18 @@
    centroid computable at all, and it is why a filled glyph added later would
    need this file to grow an area term rather than being waved through.
 
-   0.75 units is 0.75px at the 24px the nav bar draws and 0.69px at the 22px
-   the rail does. Half a pixel is about where a mark starts to look like it
-   is leaning in its disc, so the tolerance sits just above the point of
-   visibility rather than at the point of measurability.
+   0.5 units is half a pixel at the 24px the nav bar draws and 0.46px at the
+   22px the rail does, which is about where a mark stops looking like it is
+   leaning in its disc.
+
+   It was 0.75 for one round, and the code review was right to call that a
+   description of the numbers rather than a rule: the worst glyph the sweep
+   had not touched, `share`, measured 0.74, so the test could not have failed
+   on anything already shipping. Tightening it put nine more marks through the
+   sweep - `share`, `key`, `backspace`, `fingerprint`, `book`, `flask`,
+   `moon`, `lock` and `home`, which was the fourth-worst in the set despite
+   being drawn from scratch in this ticket. The worst now measures 0.37, so
+   there is real margin between the rule and the set it judges.
 
    The safe-area check below is the other half of the sweep: a mark may be
    moved to satisfy the rule, and moving it must not push a 2-unit stroke off
@@ -43,7 +51,7 @@ import { measure } from './icon-ink';
 
 /** The rule, as one number. See this file's header for why it is this
     measure and this tolerance. */
-const TOLERANCE = 0.75;
+const TOLERANCE = 0.5;
 
 /** Half a 2-unit stroke, which is how much room the ink needs inside the 24
     box before a mark starts losing its edge to the viewBox. */
