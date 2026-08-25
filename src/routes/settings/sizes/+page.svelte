@@ -8,6 +8,7 @@
   import type { SizeRecord } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -62,17 +63,13 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.size_log()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.size_log()} back="/settings" subtitle={m.size_log_intro()}>
+    {#snippet actions()}
       <button class="icon-btn" data-add aria-label={m.size_log_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
-    </div>
-  </header>
-
-  <p class="muted small" style="margin-bottom:var(--space-3)">{m.size_log_intro()}</p>
+    {/snippet}
+  </ScreenHeader>
 
   <div class="field">
     <label class="field-label" for="size-log-category-filter">{m.size_log_category_label()}</label>

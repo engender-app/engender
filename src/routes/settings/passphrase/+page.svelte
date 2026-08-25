@@ -9,7 +9,7 @@
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { bootState, upgradeJournalToPassphrase } from '$lib/stores/boot.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
-  import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
 
   let current = $state('');
   let next = $state('');
@@ -51,11 +51,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{adding ? m.pp_add_title() : m.pp_change_title()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={adding ? m.pp_add_title() : m.pp_change_title()} back="/settings" />
 
   <div class="card">
     <p class="ob-text">{adding ? m.pp_add_body() : m.pp_change_body()}</p>

@@ -10,6 +10,8 @@
      episode with nothing else to update. `drug` only exists to break a
      tie when more than one episode is active at once for different drugs
      (regimenEpisode.ts). */
+  import { page } from '$app/state';
+  import { replaceState } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt, attributeDose } from '$lib/data/regimenEpisode';
@@ -44,6 +46,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -169,6 +172,25 @@
       several active episodes it is for - not for editing an old dose,
       whose own drug (if any) is shown but never forced. */
   let editorNeedsDrugPick = $derived(editor !== null && !editor.id && activeDrugChoices.length > 1);
+
+  /* Quick add's dose option (phase 5 ticket 18, spec 04): the log is the
+     surface that records a dose, and it supports seeding, so arriving from
+     the sheet opens the same editor its own add button opens rather than
+     leaving the person to find it. The param is cleared as it is read, so
+     going back or reloading never reopens the editor over an entry that was
+     just saved - the same shape Home uses for its own one-shot params.
+
+     Not a launch route: /doses is not in launch-routes.json (ADR-0028) and
+     this is reached from inside the app only. */
+  $effect(() => {
+    if (page.url.searchParams.get('add') !== '1') return;
+    openEditor(null);
+    /* replaceState rather than goto: this only has to take the param off the
+       URL, and a goto would start a second navigation on top of the one that
+       just landed here, which aborts it and leaves the shell's transition
+       promise rejecting for nothing. */
+    replaceState('/doses', {});
+  });
 
   function openEditor(dose: DoseEvent | null) {
     const now = Date.now();
@@ -313,16 +335,13 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings/regimen" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.doses()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.doses()} back="/settings/regimen" subtitle={m.doses_intro()}>
+    {#snippet actions()}
       <button class="icon-btn" data-add aria-label={m.doses_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
-    </div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.doses_intro()}</p>
+    {/snippet}
+  </ScreenHeader>
 
   <Segmented
     name={m.doses()}

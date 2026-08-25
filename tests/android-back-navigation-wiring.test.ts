@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { resolveAndroidBackAction } from '../src/lib/android/back-navigation';
@@ -24,6 +26,25 @@ describe('android back button routing', () => {
 
   it('falls back home when there is no history to walk, instead of exiting', () => {
     expect(resolveAndroidBackAction('/settings', 1)).toBe('go-home');
+  });
+});
+
+describe('android predictive back', () => {
+  it('opts the application in, so the system draws the gesture itself', () => {
+    /* The flag is the whole opt-in: without it the app stays on the legacy
+       path where nothing is drawn until the gesture has committed, and
+       DIRECTION.md's rule that back is driven by the gesture rather than
+       played as a fixed animation has nothing to be driven by.
+
+       Asserted on the manifest because that is where the decision lives.
+       What the app does with it - playing no back animation of its own on
+       Android - is screen-transition.ts's, and has its own tests. */
+    const manifest = readFileSync(
+      fileURLToPath(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url)),
+      'utf8'
+    );
+    const application = manifest.slice(manifest.indexOf('<application'), manifest.indexOf('<activity'));
+    expect(application).toMatch(/android:enableOnBackInvokedCallback="true"/);
   });
 });
 

@@ -16,6 +16,7 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -414,11 +415,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.exp_title()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={m.exp_title()} back="/settings" />
 
   <div class="card" style="margin-bottom:var(--space-4)">
     <div class="spread">

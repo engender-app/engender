@@ -1,6 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromDateInputValue } from '$lib/data/epochDay';
@@ -30,11 +31,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.resources_title()}</h1>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.resources_intro()}</p>
+  <ScreenHeader title={m.resources_title()} back="/settings" subtitle={m.resources_intro()} />
 
   {#each GROUPS as group (group.region)}
     <SectionTitle text={group.title()} />

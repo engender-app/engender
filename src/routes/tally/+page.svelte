@@ -2,8 +2,8 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
-  import Icon from '$lib/components/Icon.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
@@ -27,11 +27,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/stats" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.tally_trend_title()}</h1>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.tally_trend_sub()}</p>
+  <ScreenHeader title={m.tally_trend_title()} back="/stats" subtitle={m.tally_trend_sub()} />
 
   <div class="segmented" role="radiogroup" aria-label={m.stats_range_group()} style="margin-bottom:var(--space-4)">
     {#each RANGES as r (r)}

@@ -39,6 +39,7 @@
   import type { WrappedCardContent } from '$lib/data/wrappedCard';
   import Icon from '$lib/components/Icon.svelte';
   import JournalBookPhoto from '$lib/components/JournalBookPhoto.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -110,16 +111,13 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header no-print">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.journal_book_title()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.journal_book_title()} back="/settings" class="no-print" subtitle={m.journal_book_intro()}>
+    {#snippet actions()}
       <button class="icon-btn" aria-label={m.journal_book_print()} onclick={printBook}>
         <Icon name="share" size={22} />
       </button>
-    </div>
-  </header>
-  <p class="muted small no-print" style="margin-bottom:var(--space-4)">{m.journal_book_intro()}</p>
+    {/snippet}
+  </ScreenHeader>
 
   <div class="card no-print" style="margin-bottom:var(--space-4)">
     <div class="cd-endpoints">

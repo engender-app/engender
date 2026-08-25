@@ -17,6 +17,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import type { EntryPrompt, EntryTemplate, GenderDimension } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
@@ -299,25 +300,27 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" data-editor-back href={existing ? `/day/${day}` : '/'} aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{existing ? m.entry() : m.new_entry()}</h1>
-    <div class="header-action">
+  <ScreenHeader
+    title={existing ? m.entry() : m.new_entry()}
+    screen="entry"
+    back={existing ? `/day/${day}` : '/'}
+  >
+    {#snippet actions()}
       {#if existing}
         <button
-          class="icon-btn"
+          class="icon-btn press"
           aria-label={starred ? m.unstar_entry() : m.star_entry()}
           aria-pressed={starred}
           onclick={toggleStarred}
         >
           <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
         </button>
-        <button class="icon-btn" aria-label={m.delete_entry()} onclick={() => (deleteOpen = true)}>
+        <button class="icon-btn press" aria-label={m.delete_entry()} onclick={() => (deleteOpen = true)}>
           <Icon name="trash" size={20} />
         </button>
       {/if}
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
   <p class="editor-date">
     {isToday ? `${m.today()} · ` : ''}{fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
   </p>

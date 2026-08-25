@@ -15,8 +15,8 @@
   } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
-  import Icon from '$lib/components/Icon.svelte';
   import RiveSlot from '$lib/components/RiveSlot.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DayAverage } from '$lib/data/journal/stats';
@@ -248,11 +248,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/stats" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.recap()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={m.recap()} back="/stats" />
 
   <div class="segmented recap-periods" role="radiogroup" aria-label={m.recap_period_group()}>
     {#each PERIODS as p (p.key)}

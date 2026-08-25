@@ -38,10 +38,10 @@
    Both ends of the collapse are declared here rather than left to the
    shell that mounts the button. A material that animates between two
    states owns both of them, or the primitive is half a definition and
-   whoever applies it has to remember the other half. Nothing else in the
-   app reads --shadow-float yet; when ticket 18 builds the nav bar and its
-   button it will declare the resting shadow too, and this line becomes the
-   redundant half of an agreement rather than the only half of one.
+   whoever applies it has to remember the other half. Ticket 18 built the
+   bar this button sits in, and the bar declares --shadow-float for itself;
+   so the resting value below is now the agreeing half of a pair rather
+   than the only place the app's one shadow is named.
 
    On --ease-press like the scale, so the shadow overshoots and settles with
    it. One gesture, one curve. */

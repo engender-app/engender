@@ -12,6 +12,7 @@
   import { bootState } from '$lib/stores/boot.svelte';
   import { isAndroid } from '$lib/platform';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Switch from '$lib/components/Switch.svelte';
 
   /* Neither surface biometrics could apply to (ADR-0014: the boot gate for
@@ -23,11 +24,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.settings_security_row()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={m.settings_security_row()} back="/settings" />
 
   <div class="card">
     <p class="ob-text">{m.security_intro()}</p>

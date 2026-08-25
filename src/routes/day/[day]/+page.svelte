@@ -9,6 +9,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
   let epochDay = $derived(page.params.day === 'today' ? todayEpochDay() : Number(page.params.day));
@@ -21,11 +22,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/calendar')}><Icon name="arrowLeft" /></button>
-    <h1 class="screen-title">{isToday ? m.today() : fmtDay(epochDay, { weekday: 'long' })}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={isToday ? m.today() : fmtDay(epochDay, { weekday: 'long' })} back={() => smartBack('/calendar')} />
   <p class="editor-date">{fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 
   {#if dayEntries.loading}

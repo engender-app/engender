@@ -1,6 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
@@ -57,13 +58,18 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header"><h1 class="screen-title">{m.nav_more()}</h1></header>
+  <!-- DIRECTION.md 3d: the hub had "More" stacked directly above its first
+       group heading, which is two headers saying nearly the same thing, and
+       the tab that reaches this screen is already labelled More. The title
+       stays in the document for a screen reader and stops being a second
+       visible label. -->
+  <ScreenHeader title={m.nav_more()} titleHidden />
 
   {#each GROUPS as group (group.title())}
     <SectionTitle text={group.title()} />
     <div class="list-group">
       {#each group.rows as row (row.key)}
-        <a class="list-row" href={row.href}>
+        <a class="list-row" href={row.href} data-hub-row={row.key}>
           <span class="row-icon"><Icon name={row.icon} size={22} /></span>
           <span class="row-text">
             <span class="row-title">{row.title()}</span>
@@ -76,7 +82,7 @@
   {/each}
 
   <div class="list-group">
-    <a class="list-row" href="/settings">
+    <a class="list-row" href="/settings" data-hub-row="settings">
       <span class="row-icon"><Icon name="settings" size={22} /></span>
       <span class="row-text">
         <span class="row-title">{m.nav_settings()}</span>

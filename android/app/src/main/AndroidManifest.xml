@@ -1,8 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Predictive back (phase 5 ticket 18). Opting in is what lets the
+         system draw the back gesture itself: as the finger drags from the
+         edge, Android shows where the gesture is going and lets it be
+         cancelled by dragging back. Without this flag the app is on the
+         legacy path, where nothing appears until the gesture has already
+         committed.
+
+         It is also why the app plays no back animation of its own on
+         Android (src/lib/navigation/screen-transition.ts returns 'none'
+         there): a fixed animation on top of the system's preview is worse
+         than no animation, because the system has already started showing
+         the person the answer. The web keeps the reversed shared axis,
+         where there is no such gesture to defer to.
+
+         The back destination itself is unchanged and still decided by
+         resolveAndroidBackAction; this changes how the gesture is drawn,
+         not where it goes. -->
     <application
         android:allowBackup="true"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

@@ -9,6 +9,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -48,10 +49,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.doubt_title()}</h1>
-  </header>
+  <ScreenHeader title={m.doubt_title()} back="/" />
 
   <SectionTitle text={m.doubt_counterevidence_title()} />
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.doubt_counterevidence_sub()}</p>

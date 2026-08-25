@@ -29,6 +29,7 @@
   import { deliverBlob } from '$lib/data/archive/deliver';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import WrappedCard from '$lib/components/WrappedCard.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -114,11 +115,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/wrapped/{page.params.cadence}" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.wrapped_share_title()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={m.wrapped_share_title()} back="/wrapped/{page.params.cadence}" />
 
   {#if recapQuery.loading}
     <Skeleton variant="block" count={1} />

@@ -4,6 +4,7 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import type { Affirmation } from '$lib/data/types';
@@ -21,12 +22,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.affirmations_row_title()}</h1>
-    <div class="header-action"></div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.affirmations_intro()}</p>
+  <ScreenHeader title={m.affirmations_row_title()} back="/settings" subtitle={m.affirmations_intro()} />
 
   <section class="card" style="margin-bottom:var(--space-4)">
     <h2 class="editor-heading" style="margin-bottom:var(--space-3)">{m.affirmations_builtin_heading()}</h2>

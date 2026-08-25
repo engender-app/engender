@@ -9,6 +9,7 @@
   import type { DoseScheduleRecurrence, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -225,16 +226,13 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.regimen()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.regimen()} back="/settings" subtitle={m.regimen_intro()}>
+    {#snippet actions()}
       <button class="icon-btn" data-add aria-label={m.regimen_add_aria()} onclick={() => (templatePicker = true)}>
         <Icon name="plus" size={22} />
       </button>
-    </div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.regimen_intro()}</p>
+    {/snippet}
+  </ScreenHeader>
 
   <div class="list-group" style="margin-bottom:var(--space-4)">
     <a class="list-row" href="/doses">

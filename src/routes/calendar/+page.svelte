@@ -3,6 +3,7 @@
   import { fmtMonthYear } from '$lib/data/dates';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -35,12 +36,11 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <h1 class="screen-title">{m.nav_calendar()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.nav_calendar()} titleHidden>
+    {#snippet actions()}
       <a class="icon-btn" href="/search" aria-label={m.search()}><Icon name="search" size={22} /></a>
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
 
   <div class="cal-monthbar">
     <button class="icon-btn" aria-label={m.prev_month()} onclick={() => step(-1)}><Icon name="chevronLeft" size={22} /></button>

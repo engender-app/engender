@@ -326,13 +326,17 @@ describe('tier 1, response', () => {
   });
 
   /* Ticket 29 settled both shipped depths on a Pixel 10a, and they did not
-     land in the same place. The add button agrees with .press-add, so
-     ticket 18 applying the primitive to it changes the curve's owner and
-     nothing a hand can feel. .btn does not agree, on purpose: 0.97 was
-     chosen over tier 1's 0.94 by feel. Both halves are pinned here so the
-     disagreement stays a decision somebody made rather than something that
-     drifted, and so ticket 18 finds out from a failing test rather than
-     from the app changing under it. */
+     land in the same place. .btn does not agree with the primitive, on
+     purpose: 0.97 was chosen over tier 1's 0.94 by feel. Both halves are
+     pinned here so the disagreement stays a decision somebody made rather
+     than something that drifted.
+
+     The add button used to be the third number here, restated in app.css
+     as `.nav-fab:active { transform: scale(0.9) }` and asserted equal to
+     .press-add's. Ticket 18 rebuilt the bar and put the class on the button
+     instead, which is what this test was holding the line for: there is no
+     second copy of the depth left to drift, so what is checked now is that
+     the shell reaches for the primitive rather than writing its own. */
   it('presses each shipped control to the depth that was chosen for it', () => {
     const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
     const depthOf = (selector: string, css: string) =>
@@ -341,17 +345,34 @@ describe('tier 1, response', () => {
       )?.[1];
 
     const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
-    const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
 
-    expect(depthOf('.nav-fab:active', app), 'the add button presses to .press-add\'s depth').toBe(
-      depthOf('.press-add:active', press)
-    );
     expect(depthOf('.btn:active', components), '.btn was chosen at 0.97, against the primitive').toBe(
       'scale(0.97)'
     );
     expect(depthOf('.press:active', press), 'the primitive still says what DIRECTION asks for').toBe(
       'scale(0.94)'
     );
+    expect(depthOf('.press-add:active', press), 'the add button is the deeper of the two').toBe(
+      'scale(0.9)'
+    );
+  });
+
+  it('gives the two add controls the press primitive instead of their own depth', () => {
+    const nav = readFileSync(join(root, 'src/lib/components/AppNav.svelte'), 'utf8');
+    const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
+
+    for (const handle of ['data-nav-fab', 'data-rail-add']) {
+      const tag = nav.match(new RegExp(`<button[^>]*${handle}[^>]*>`, 's'))?.[0];
+      expect(tag, `${handle} exists`).toBeDefined();
+      expect(tag, `${handle} carries .press-add`).toContain('press-add');
+    }
+
+    /* The shell declaring a depth of its own is the state this replaced.
+       Any :active transform in app.css means a second owner is back. */
+    const restated = rules(app)
+      .filter((rule) => rule.prelude.includes(':active') && /transform:/.test(rule.body))
+      .map((rule) => rule.prelude);
+    expect(restated, 'the shell states no press depth of its own').toEqual([]);
   });
 
   it('is loaded by the app shell', () => {

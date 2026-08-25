@@ -4,18 +4,43 @@
    ============================================================ */
 
 /* ---------- text & primitives ---------- */
+/* ScreenHeader.svelte's own styles (phase 5 ticket 18); nothing else
+   should wear these class names.
+
+   The horizontal padding is gone. It used to be var(--space-5) on top of
+   the same value on .screen, so every screen title sat 40px in while the
+   content under it sat 20px in, and the two never lined up. Aligned to the
+   left, the title now starts a screen where its first card does. */
 .screen-header {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-5) var(--space-5) var(--space-3);
+  padding: var(--space-5) 0 var(--space-3);
   position: relative;
 }
+/* A hidden title is taken out of the flow, so the header's own padding
+   would otherwise be 32px of nothing above the screen's first group
+   heading - which is most of the gap the redundant title was leaving
+   behind in the first place. The heading below brings its own space.
+
+   Only when the title was the whole row, though: a screen can hide its
+   title and still have a back control or an action, and those still need
+   somewhere to sit. */
+.screen-header.is-collapsed { padding: 0; }
+.screen-header-row {
+  display: flex; align-items: center; gap: var(--space-3);
+}
 .screen-title {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-display);
   font-size: var(--text-2xl);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--display-track);
   line-height: var(--leading-display);
-  flex: 1;
   margin: 0;
+}
+.screen-subtitle {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  margin: var(--space-2) 0 0;
 }
 .header-action { display: flex; gap: var(--space-2); }
 
@@ -492,25 +517,297 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   opacity: 0; transition: opacity var(--dur-med) var(--ease-out);
 }
 .sheet-scrim.is-open { opacity: 1; }
+/* Carries the drag, so the sheet inside it keeps its transition's transform
+   to itself (Sheet.svelte). Sized to the sheet rather than to the scrim, or
+   it would swallow the backdrop taps that dismiss. */
+.sheet-drag {
+  width: 100%; max-width: 520px;
+  display: flex;
+  touch-action: pan-y;
+}
+/* Springing back from a drag that did not dismiss. Off while the finger is
+   down, or every frame of the drag would be chasing a 240ms tween. */
+.sheet-drag:not(.is-dragging) {
+  transition: transform var(--dur-med) var(--ease-out);
+}
 .sheet {
   background: var(--surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  padding: var(--space-3) var(--space-5) calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
-  width: 100%; max-width: 520px;
+  padding: var(--space-3) var(--space-5) calc(var(--space-6) + var(--inset-bottom));
+  width: 100%;
+  /* Percent of the scrim, which is the app frame - not dvh. The demo bar
+     and the phone-frame preview both make the app shorter than the
+     viewport, and a sheet measured against the viewport then runs off the
+     top of the frame it is inside. */
   max-height: 85%;
   overflow-y: auto;
   overscroll-behavior: contain;
-  transform: translateY(24px);
-  transition: transform var(--dur-med) var(--ease-out);
   box-shadow: var(--shadow-3);
 }
-.sheet-scrim.is-open .sheet { transform: translateY(0); }
 .sheet-handle { width: 40px; height: 4px; border-radius: var(--radius-pill); background: var(--border); margin: 0 auto var(--space-4); }
+
+/* Quick add's fan (phase 5 ticket 18, spec 04).
+
+   Anchored on the add control rather than floating in the middle of the
+   screen, because the gesture that reaches it starts there: the rows come
+   out from under the thumb and the thumb slides onto one. Everything here
+   is positioned against the same tokens the bar itself uses, so the fan and
+   the bar cannot drift apart the way a measured offset would.
+
+   The bar is lifted above the scrim while the fan is up. Dimming the
+   control the fan came out of would break the one thing the plus-to-cross
+   turn is saying, which is that this is still the same button. */
+/* Above the toasts (z-index 50), which is not an arbitrary choice: a toast
+   sits centred just above the bar, which is exactly where the fan opens, so
+   at any lower layer a toast still on screen would take the taps and swallow
+   the slide's hit testing. While the fan is up, the fan is what is being
+   used; the toast goes under the scrim with everything else. */
+.fan-scrim {
+  position: absolute; inset: 0; z-index: 54;
+}
+.app-nav.is-fan-open { z-index: 56; }
+
+.fan {
+  position: absolute;
+  z-index: 55;
+  /* The slide crosses these, so they must not start a scroll or a text
+     selection under the finger either. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--nav-clearance) + var(--space-2));
+  width: min(320px, calc(100% - 2 * var(--space-5)));
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-2);
+}
+
+/* A card per group, in the app's own list-surface language: one plane, a
+   hairline between rows, the icon in the accent. Six separate floating
+   pills read as a stack of identical rounded rectangles, which is the
+   generic shape decision 2b exists to avoid - and they gave the slide a
+   worse target, because the highlight jumped between objects instead of
+   moving inside one.
+
+   The fan's shadow is the bar's, and it is the same one: this is the other
+   half of the app's single floating element, so it casts what the bar
+   casts rather than picking a second elevation. */
+.fan-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-add);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+}
+/* One question asked twice: two halves of a row, split by the same hairline
+   that separates rows elsewhere. */
+.fan-card.is-pair { display: grid; grid-template-columns: 1fr 1fr; }
+.fan-card.is-pair .fan-item + .fan-item { border-left: 1px solid var(--border); }
+
+.fan-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-4);
+  border: none; background: none;
+  color: var(--text);
+  font: inherit; font-weight: var(--weight-medium);
+  text-align: left;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+.fan-item + .fan-item { border-top: 1px solid var(--border); }
+.fan-icon { display: grid; place-items: center; color: var(--accent); flex-shrink: 0; }
+.fan-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Armed: what happens if the finger comes up here. The same state a hover
+   or a keyboard focus shows, because it answers the same question. */
+.fan-item.is-armed,
+.fan-item:hover,
+.fan-item:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.fan-item.is-armed .fan-icon,
+.fan-item:hover .fan-icon,
+.fan-item:focus-visible .fan-icon { color: var(--on-accent); }
+
+/* A pair's halves stack their icon over the label, so the longer of two
+   labels that only mean anything together gets a second line rather than an
+   ellipsis: side by side at a phone's width there is about 90px of text
+   room per half, and "Correctly gendered" wants 145. */
+.fan-card.is-pair .fan-item {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-3) var(--space-2);
+  text-align: center;
+}
+.fan-card.is-pair .fan-label {
+  white-space: normal;
+  overflow: visible;
+  font-size: var(--text-sm);
+  line-height: 1.25;
+}
+
+/* The mood row is the bottom of the entry card, not a card of its own:
+   picking a mood is how today's entry starts, so it belongs to the surface
+   that makes entries. Nearest the thumb of everything in the fan, because
+   it is the one most often wanted. */
+.fan-moods {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+}
+.fan-mood {
+  display: grid; justify-items: center; align-content: center; gap: 2px;
+  min-width: 0; min-height: 56px;
+  padding: var(--space-2) 2px;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  font: inherit; font-size: var(--text-xs); font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+.fan-mood + .fan-mood { border-left: 1px solid var(--border); }
+.fan-mood-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fan-mood.is-armed,
+.fan-mood:hover,
+.fan-mood:focus-visible { background: var(--accent-soft); color: var(--on-accent-soft); }
+
+/* The mark travelling from the row you chose into the add control (phase 5
+   ticket 18, tier 3). Transform and opacity only, over the same
+   --dur-med/--ease-out every other tier-2 and tier-3 move in the app uses,
+   and it never takes a pointer event: the fan is already shut and the app
+   is already usable behind it. */
+.fan-flight {
+  position: absolute;
+  z-index: 55;
+  left: var(--flight-x);
+  top: var(--flight-y);
+  display: grid;
+  place-items: center;
+  width: 48px; height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-float);
+  pointer-events: none;
+  /* Delayed by exactly the fan's own exit, so it crosses an empty screen.
+     Stacked under the exit it was invisible - two things moving at once and
+     neither one read.
+
+     Two animations rather than one, because they want different curves and
+     a single declaration only has one. The travel decelerates on
+     --ease-out, which is what makes it read as an object being thrown; the
+     opacity runs linear, because --ease-out is steep enough at the front
+     that a fade sharing it is done inside the first fifth of the duration.
+     Measured, not guessed: on one curve the mark was fully opaque for about
+     30ms of a 240ms flight, which is a frame and a half.
+
+     --dur-slow, not --dur-med. This is tier 3, change within a screen, and
+     --dur-slow is that tier's duration - the earlier value was tier 2's,
+     borrowed from the navigation this is not. */
+  animation:
+    fan-flight-move var(--dur-slow) var(--ease-out) var(--dur-fast) both,
+    fan-flight-fade var(--dur-slow) linear var(--dur-fast) both;
+}
+@keyframes fan-flight-move {
+  from { transform: translate(0, 0) scale(0.7); }
+  to { transform: translate(var(--flight-dx), var(--flight-dy)) scale(0.55); }
+}
+@keyframes fan-flight-fade {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  72% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* And the catch. The button takes the mark in, which is the same shape as
+   it throwing the fan out, so the gesture ends where it started. The pulse
+   waits out the flight rather than playing under it - two things moving at
+   once would read as one thing wobbling. */
+.nav-add.is-catching,
+.rail-add.is-catching {
+  animation: add-catch var(--dur-slow) var(--ease-out) calc(var(--dur-fast) + var(--dur-slow)) both;
+}
+@keyframes add-catch {
+  0% { transform: scale(1); }
+  34% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* And the refusal. It starts at once rather than waiting out a flight that
+   is not coming: bad news should not arrive slower than good. Sideways
+   only - a vertical shake on a control sitting against the bottom of the
+   screen reads as the bar coming loose rather than as an answer. It damps
+   rather than repeating evenly, which is what stops it reading as an
+   attention-seeking loop. */
+.nav-add.is-refusing,
+.rail-add.is-refusing {
+  animation: add-refuse var(--dur-slow) var(--ease-out) both;
+}
+@keyframes add-refuse {
+  0% { transform: translateX(0); }
+  16% { transform: translateX(-7px); }
+  34% { transform: translateX(6px); }
+  52% { transform: translateX(-4px); }
+  70% { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+
+/* Substitute, never delete: nothing travels and nothing pulses, and the
+   tick still appears on the button for exactly as long. What goes is the
+   movement, not the news. */
+/* Substitute, never delete, and symmetrically: the tick and the alert both
+   still appear on the control for exactly as long. What goes is the
+   travelling, the pulse and the shake - the movement, never the news. */
+html[data-a11y-motion='reduce'] .fan-flight,
+html[data-a11y-motion='reduce'] .nav-add.is-catching,
+html[data-a11y-motion='reduce'] .rail-add.is-catching,
+html[data-a11y-motion='reduce'] .nav-add.is-refusing,
+html[data-a11y-motion='reduce'] .rail-add.is-refusing { animation: none; }
+html[data-a11y-motion='reduce'] .fan-flight { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .fan-flight,
+  .nav-add.is-catching,
+  .rail-add.is-catching,
+  .nav-add.is-refusing,
+  .rail-add.is-refusing { animation: none; }
+  .fan-flight { display: none; }
+}
+
+/* At the rail's width the fan comes off the rail's add button, which is
+   near the top left rather than at the bottom centre. Beside the rail
+   rather than over it: the rail is 220px wide, which truncates "Correctly
+   gendered" and every mood label, and covering the four tabs to show a menu
+   hides the navigation the menu sits inside. Ordered top down here, because
+   there is no thumb to be nearest to. */
+@container app (min-width: 1024px) {
+  .fan {
+    left: calc(var(--rail-width) + var(--inset-left) + var(--space-3));
+    right: auto;
+    transform: none;
+    bottom: auto;
+    top: calc(var(--inset-top) + var(--space-6));
+    width: 280px;
+    flex-direction: column;
+  }
+}
 .sheet h3 { font-family: var(--font-display); font-size: var(--text-xl); margin: 0 0 var(--space-4); }
 .mode-desktop .sheet { border-radius: var(--radius-xl); }
 
 .toast {
-  position: absolute; left: 50%; bottom: calc(var(--bottom-nav-height) + var(--space-4));
+  position: absolute; left: 50%; bottom: var(--nav-clearance);
   transform: translate(-50%, 10px);
   background: var(--text); color: var(--bg);
   border-radius: var(--radius-md);

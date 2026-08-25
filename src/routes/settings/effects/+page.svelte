@@ -9,6 +9,7 @@
   import type { PersonalEffectCatalogEntry } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -155,15 +156,13 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.effects_timeline()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.effects_timeline()} back="/settings">
+    {#snippet actions()}
       <button class="icon-btn" data-manage-effects aria-label={m.effect_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
       </button>
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
 
   {#if episodesQuery.loading || markersQuery.loading}
     <Skeleton variant="block" count={1} />

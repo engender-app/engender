@@ -142,13 +142,13 @@
 </script>
 
 <div class="screen">
-  <header class="home-header">
+  <header class="home-header" data-home-header>
     <!-- Home-only, and never under disguise (ADR-0035) - checked on
          prefs.disguise here rather than inside FlagSun, so the one place
          that decides whether the sun renders at all matches every other
          disguise gate in the app. -->
     {#if !prefs.disguise}<FlagSun />{/if}
-    <h1 class="home-hero" translate="no">{m.app_name()}</h1>
+    <h1 class="home-hero" data-home-hero translate="no">{m.app_name()}</h1>
     <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     {#if streak > 1 && !pausedToday}
       <p class="home-streak" data-home-streak><Icon name="sparkle" size={14} /> {streak} {m.streak_row()}</p>

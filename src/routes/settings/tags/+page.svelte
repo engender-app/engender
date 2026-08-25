@@ -2,6 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
@@ -23,12 +24,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.manage_tags()}</h1>
-    <div class="header-action"></div>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.tags_intro()}</p>
+  <ScreenHeader title={m.manage_tags()} back="/settings" subtitle={m.tags_intro()} />
 
   {#each vocabulary.tagGroups as g (g.key)}
     <section class="card" style="margin-bottom:var(--space-4)">

@@ -7,6 +7,7 @@
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
@@ -124,10 +125,8 @@
 </script>
 
 <div class="screen" data-screen>
-  <header class="screen-header">
-    <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/calendar')}><Icon name="arrowLeft" /></button>
-    <h1 class="screen-title">{m.search()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.search()} back={() => smartBack('/calendar')}>
+    {#snippet actions()}
       <a class="icon-btn" href="/search/starred" aria-label={m.starred_shelf_open()}>
         <Icon name="star" />
       </a>
@@ -140,8 +139,8 @@
       >
         <Icon name="tag" />
       </button>
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
 
   <div class="search-box">
     <Icon name="search" size={20} />

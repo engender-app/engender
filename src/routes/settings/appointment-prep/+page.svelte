@@ -10,6 +10,7 @@
   import type { ChecklistItem } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -49,15 +50,13 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.appointment_prep_title()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.appointment_prep_title()} back="/settings">
+    {#snippet actions()}
       <button class="icon-btn" data-add aria-label={m.appointment_prep_add_aria()} onclick={openAddSheet}>
         <Icon name="plus" size={22} />
       </button>
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
 
   {#if checklistQuery.loading}
     <Skeleton variant="block" count={1} />

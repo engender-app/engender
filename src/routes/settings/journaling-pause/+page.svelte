@@ -12,6 +12,7 @@
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { pauseCoversDay } from '$lib/data/journalingPause';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
 
   const today = todayEpochDay();
@@ -60,11 +61,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.journaling_pause_title()}</h1>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.journaling_pause_intro()}</p>
+  <ScreenHeader title={m.journaling_pause_title()} back="/settings" subtitle={m.journaling_pause_intro()} />
 
   <div class="card">
     {#if current}
