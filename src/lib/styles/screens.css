@@ -75,15 +75,69 @@
 .home > .kit-strip { margin-bottom: var(--space-2); }
 .home > :last-child { margin-bottom: 0; }
 
-/* The streak, as the caption on the week it describes rather than as a
-   hero metric of its own. No pill, no accent and no icon: those are what
-   made it read as a score, and DIRECTION.md's slop audit named the
-   big-number-plus-label-plus-accent template outright. */
-.home-week-caption {
-  padding: 0 var(--space-1);
+/* The streak, under the greeting. No pill, no accent, no icon and no
+   display size: those are what made it read as a score, and DIRECTION.md's
+   slop audit names the big-number-plus-label-plus-accent template outright.
+   What changed at review is where the line sits, not what it is. */
+.home-streak-wrap {
+  display: inline-grid;
+  justify-items: start;
+  margin-top: var(--space-3);
+}
+.home-streak {
+  margin: 0;
   font-size: var(--text-sm);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
+}
+
+/* The second authored moment: past a week's run, arriving on Home throws a
+   little confetti over the streak line, once. Over that line and nowhere
+   else - the band is a grid row above the text and exactly as wide as it,
+   which is what keeps this a mark on one fact rather than a screen effect.
+
+   It plays and stops. DIRECTION.md's tier 4 rules out a second ambient
+   *loop*, which is why the celebration card's infinite `cf-fall` was
+   deleted rather than moved here; a moment with an end is the same
+   category as the sun's entrance, and it spends the authored duration
+   twice over.
+
+   Only transform and opacity move, per the performance contract, and the
+   pieces are 5x8 rectangles so there is nothing to rasterize. */
+.home-cheer {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 22px;
+  pointer-events: none;
+}
+.home-cheer i {
+  position: absolute;
+  top: 0;
+  left: var(--x);
+  width: 5px;
+  height: 8px;
+  border-radius: 1px;
+  /* The resting state, which is also where the animation ends: past the
+     bottom of the band and invisible. Declared so the 1ms clamp has
+     somewhere true to strand it (tests/motion-system.test.ts). */
+  opacity: 0;
+  transform: translateY(22px) rotate(var(--r));
+  animation: cheer-fall calc(var(--dur-authored) * 2) linear var(--d) both;
+}
+.home-cheer i:nth-child(3n) { background: var(--accent); }
+.home-cheer i:nth-child(3n + 1) { background: var(--accent-2); }
+.home-cheer i:nth-child(3n + 2) { background: color-mix(in oklab, var(--accent) 50%, var(--accent-2)); }
+@keyframes cheer-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+  14% { opacity: 1; }
+  100% { transform: translateY(22px) rotate(var(--r)); opacity: 0; }
+}
+/* Substituted rather than clamped: at 1ms this is a flicker, and the moment
+   it stands for is "well done", which the line underneath already says. */
+html[data-a11y-motion='reduce'] .home-cheer i { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .home-cheer i { animation: none; }
 }
 
 /* Tier 3: the skeleton crossfades into the day cards. Both children sit in
@@ -94,10 +148,19 @@
 .home-swap > * { grid-area: 1 / 1; }
 .home-days { display: grid; gap: var(--space-3); align-content: start; }
 
-/* A milestone's photo stands in for the icon disc, at the disc's own size
-   so a list of milestones with and without photos still reads as one
-   column of rows. */
-.milestone-face { flex: 0 0 auto; display: flex; }
+/* A milestone's photo stands in for the icon disc, so it takes the disc's
+   size and the disc's shape. PhotoThumb draws a rounded square, which is
+   right where photos are a grid of photos and wrong here: in a column of
+   circles it was the one row that did not match, and a photo standing in
+   for an icon has to stand in for its shape too. Clipped rather than
+   restyled, so nothing changes for the screens that show photos as photos. */
+.milestone-face {
+  flex: 0 0 auto;
+  display: flex;
+  border-radius: 50%;
+  overflow: hidden;
+  border: var(--role-hairline);
+}
 /* Still the heading inside a card on the letters and roadmap screens, which
    are their own tickets' to redo. Home's own gradient .quicklog card went
    with the rebuild; this outlived it. */

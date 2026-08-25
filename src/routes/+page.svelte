@@ -115,6 +115,34 @@
   let pausesQuery = liveQuery(['journalingPause'], (j) => j.journalingPauses.getPauses());
   let pausedToday = $derived(isPausedOn(pausesQuery.value ?? [], today));
 
+  /* A second authored moment, and the only one besides the sun: past a
+     week's run, opening Home throws a little confetti over the streak line.
+     It plays once on arriving and stops - it is not a loop, which is the
+     line DIRECTION.md's tier 4 actually draws, and it is why the old
+     celebration card's infinite `cf-fall` had to go rather than move here.
+
+     Gated on the streak having run past a week so it stays an event. At
+     `streak > 1`, which is what puts the line on screen at all, it would
+     fire most mornings and stop meaning anything.
+
+     The pieces are a fixed table rather than a random scatter: a moment
+     that is different every time cannot be reviewed, and a screenshot of it
+     is not evidence of anything. Nine, because that is what fits across the
+     line's width without reading as a shower. */
+  const STREAK_CHEER_FLOOR = 7;
+  let cheering = $derived(streak > STREAK_CHEER_FLOOR && !pausedToday);
+  const CHEER = [
+    { i: 0, x: 4, d: 0, r: 200 },
+    { i: 1, x: 17, d: 0.16, r: -260 },
+    { i: 2, x: 29, d: 0.07, r: 300 },
+    { i: 3, x: 41, d: 0.26, r: -180 },
+    { i: 4, x: 52, d: 0.03, r: 240 },
+    { i: 5, x: 64, d: 0.2, r: -300 },
+    { i: 6, x: 76, d: 0.11, r: 260 },
+    { i: 7, x: 87, d: 0.3, r: -220 },
+    { i: 8, x: 95, d: 0.05, r: 180 }
+  ];
+
   /* Which reading shades the week. The kit's own picker rather than a sheet
      of its own: it is the heading's one control and it sits on the heading's
      line, which is where DIRECTION.md puts a section's switch. The choice is
@@ -204,6 +232,23 @@
          disguise; those are ticket 24's screen. -->
     <h1 class="home-hero" data-home-hero translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</h1>
     <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <!-- Under the greeting rather than under the week strip. Still not the
+         hero-metric template the craft floor names - no pill, no accent, no
+         display size - which is what "the streak is not a hero metric" is
+         about; where the line sits is a composition decision and this is
+         where it was asked for. -->
+    {#if streak > 1 && !pausedToday}
+      <div class="home-streak-wrap">
+        {#if cheering}
+          <span class="home-cheer" aria-hidden="true">
+            {#each CHEER as piece (piece.i)}
+              <i style={`--x: ${piece.x}%; --d: ${piece.d}s; --r: ${piece.r}deg`}></i>
+            {/each}
+          </span>
+        {/if}
+        <p class="home-streak" data-home-streak>{streak} {m.streak_row()}</p>
+      </div>
+    {/if}
   </header>
 
   <!-- The anniversary, as one line rather than a card with a confetti loop
