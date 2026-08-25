@@ -222,7 +222,7 @@
       key="celebration"
       role={roleAt(activeFlag.roles, 2)}
       aria-live="polite"
-      text={landing?.s.years
+      title={landing?.s.years
         ? m.home_anniv_years({
             name: landing.m.name,
             years: m.n_years({ n: landing.s.years ?? 0 })
