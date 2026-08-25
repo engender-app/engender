@@ -918,8 +918,8 @@ try {
   await page.waitForSelector('body[data-controls-ready]', { state: 'attached' });
 
   const TOUCH = 48;
-  /* Both axes for anything a finger lands on. `.btn`, `.slider` and the
-     fields run the width of the screen, so only their height is in
+  /* Both axes for anything a finger lands on. `.btn`, `.slider`, `.list-row`
+     and the fields run the width of the screen, so only their height is in
      question - a width assertion on them would measure the card. */
   const CONTROLS = [
     ['.btn', 'height'],
@@ -930,23 +930,58 @@ try {
     ['.slider', 'height'],
     ['.input', 'height']
   ];
+  /* Controls this ticket handed to the screen tickets rather than redesigning.
+     Measured anyway: "check the rest rather than assuming" asks for the
+     number, and an owner is not a number. A failure here is a finding for
+     whoever owns the control, not for this ticket to fix. */
+  const HANDED_ON = [
+    ['.list-row', 'height'],
+    ['.mood-btn', 'both'],
+    ['.tag-chip', 'both'],
+    ['.toast-action', 'both']
+  ];
 
+  /* A hit test rather than a rect. The rect is what the element occupies; the
+     target is what answers a finger, and the two differ wherever a control
+     extends its target past its own box - which is how the switch's 28px
+     track sits in a 48px target, and how the tag chip and the toast's action
+     reach the floor without the visible pill growing. So: take each control's
+     centre, probe a point half the floor away on each axis under test, and
+     require the control to be what is there. That also catches a target
+     something else is sitting on top of, which a rect cannot see at all. */
   const measured = await page.evaluate(
-    ({ controls }) =>
-      controls.map(([selector, axis]) => {
-        const boxes = [...document.querySelectorAll(selector)].map((el) => {
+    ({ controls, touch }) => {
+      const reach = touch / 2 - 1;
+      return controls.map(([selector, axis]) => {
+        const els = [...document.querySelectorAll(selector)];
+        const misses = [];
+        let smallest = null;
+        for (const el of els) {
+          /* elementFromPoint reads the viewport, and this page is several
+             screens tall, so a control has to be brought into it first. */
+          el.scrollIntoView({ block: 'center' });
           const r = el.getBoundingClientRect();
-          return { w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10 };
-        });
-        return {
-          selector,
-          axis,
-          count: boxes.length,
-          minW: Math.min(...boxes.map((b) => b.w)),
-          minH: Math.min(...boxes.map((b) => b.h))
-        };
-      }),
-    { controls: CONTROLS }
+          const size = `${Math.round(r.width * 10) / 10}x${Math.round(r.height * 10) / 10}`;
+          if (smallest === null || r.width * r.height < smallest.area) {
+            smallest = { area: r.width * r.height, size };
+          }
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          const points =
+            axis === 'both'
+              ? [[cx, cy - reach], [cx, cy + reach], [cx - reach, cy], [cx + reach, cy]]
+              : [[cx, cy - reach], [cx, cy + reach]];
+          for (const [x, y] of points) {
+            const hit = document.elementFromPoint(x, y);
+            if (!hit || (hit !== el && !el.contains(hit))) {
+              misses.push(`${size} at (${Math.round(x - cx)}, ${Math.round(y - cy)})`);
+            }
+          }
+        }
+        return { selector, axis, count: els.length, misses, smallest: smallest?.size };
+      });
+    },
+    { controls: [...CONTROLS, ...HANDED_ON], touch: TOUCH }
   );
 
   for (const m of measured) {
@@ -954,59 +989,113 @@ try {
       fail(`${m.selector} is on the page to be measured`, 'no elements matched');
       continue;
     }
-    const short = m.minH < TOUCH || (m.axis === 'both' && m.minW < TOUCH);
-    const where = m.axis === 'both' ? `${m.minW}x${m.minH}` : `${m.minH}px tall`;
-    if (!short) ok(`${m.selector} clears ${TOUCH}px on every instance (${m.count} of them, smallest ${where})`);
-    else fail(`${m.selector} clears ${TOUCH}px on every instance`, `smallest is ${where}`);
+    const owned = HANDED_ON.some(([selector]) => selector === m.selector);
+    const what = owned
+      ? `${m.selector} answers across ${TOUCH}px, though it belongs to a screen ticket`
+      : `${m.selector} answers across ${TOUCH}px on every instance`;
+    if (m.misses.length === 0) {
+      ok(`${what} (${m.count} of them, smallest box ${m.smallest})`);
+    } else {
+      fail(what, `${m.misses.length} probe(s) landed elsewhere: ${m.misses.slice(0, 3).join(', ')}`);
+    }
   }
 
   /* The press. .btn's transform is the one this ticket moved onto a token,
      and a token that resolves to nothing is a control with no press at all -
      which is the state ticket 29 found on Android and no test could see. */
-  const pressed = await page.evaluate(async () => {
+  const pressed = await page.evaluate(() => {
     const read = (el) => getComputedStyle(el).transform;
     const btn = document.querySelector('.btn');
     const rest = read(btn);
     const depth = getComputedStyle(document.documentElement).getPropertyValue('--press-depth-wide').trim();
     return { rest, depth };
   });
-  if (pressed.depth === '0.97') ok('the wide press depth resolves to a number the button can use (0.97)');
-  else fail('the wide press depth resolves', JSON.stringify(pressed.depth));
+  const declared = (await readFile(new URL('../../src/lib/motion/press.css', import.meta.url), 'utf8'))
+    .match(/--press-depth-wide:\s*([\d.]+)/)?.[1];
+  if (pressed.depth === declared)
+    ok(`the wide press depth resolves to what press.css declares (${declared})`);
+  else fail('the wide press depth resolves to what press.css declares', `${pressed.depth} vs ${declared}`);
   if (pressed.rest === 'none') ok('a button at rest carries no transform of its own');
   else fail('a button at rest carries no transform', pressed.rest);
 
-  /* Held, with a finger on the thumb: the readout has to actually leave the
-     right-hand edge, and the ring has to actually appear. Both were built as
-     transitions on state classes, and a state class nothing sets is a design
-     that only exists in the stylesheet. */
+  /* Held, with a finger on the thumb. All of it was built as transitions on a
+     state class, and a state class nothing sets is a design that exists only
+     in the stylesheet. */
   const thumb = page.locator('[data-case="slider-hundred"] .slider-thumb');
+  await thumb.scrollIntoViewIfNeeded();
   const box = await thumb.boundingBox();
   const readout = page.locator('[data-case="slider-hundred"] .dim-value');
+  const bubble = page.locator('[data-case="slider-hundred"] .slider-bubble');
   const parked = await readout.boundingBox();
+  const bubbleAtRest = await bubble.evaluate((el) => getComputedStyle(el).opacity);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  await page.waitForTimeout(400);
-  const held = await readout.boundingBox();
+  await page.waitForTimeout(500);
+  const stillThere = await readout.boundingBox();
+  const stepped = await readout.evaluate((el) => getComputedStyle(el).opacity);
+  const bubbleHeld = await bubble.evaluate((el) => ({
+    opacity: getComputedStyle(el).opacity,
+    text: el.textContent.trim()
+  }));
+  const bubbleBox = await bubble.boundingBox();
   const ring = await thumb.evaluate((el) => getComputedStyle(el).boxShadow);
   const holding = await page.locator('[data-case="slider-hundred"] .slider').evaluate((el) =>
     el.classList.contains('is-holding')
   );
   await page.mouse.up();
+  await page.waitForTimeout(400);
+  const bubbleAfter = await bubble.evaluate((el) => getComputedStyle(el).opacity);
 
   if (holding) ok('a finger on the thumb puts the whole control into its held state');
   else fail('a finger on the thumb puts the control into its held state', 'is-holding never appeared');
 
-  const travelled = parked.x - held.x;
-  if (travelled > 40)
-    ok(`the readout travels from the edge to the thumb while held (${Math.round(travelled)}px)`);
-  else fail('the readout travels to the thumb while held', `moved ${Math.round(travelled)}px`);
+  if (bubbleAtRest === '0' && bubbleHeld.opacity === '1' && bubbleAfter === '0')
+    ok('the bubble is the thumb\'s own: absent, up while held, and gone again on release');
+  else
+    fail(
+      'the bubble is absent, up while held, and gone again on release',
+      `${bubbleAtRest} then ${bubbleHeld.opacity} then ${bubbleAfter}`
+    );
 
-  const overThumb = Math.abs(held.x + held.width / 2 - (box.x + box.width / 2));
-  if (overThumb < 6) ok(`the readout lands centred over the thumb (${overThumb.toFixed(1)}px off)`);
-  else fail('the readout lands centred over the thumb', `${overThumb.toFixed(1)}px off`);
+  /* The readout the ticket's first build had travelling to the thumb. It does
+     not travel any more: the number you are already reading is not the one
+     that leaves, and the bubble above is a second number. It does step back
+     while a finger is down, because at the top of the scale the bubble lands
+     in its corner - which is a change of opacity, not of position. */
+  const drift = Math.abs(parked.x - stillThere.x) + Math.abs(parked.y - stillThere.y);
+  if (drift < 1) ok('the head row\'s readout stays exactly where it was while the control is held');
+  else fail('the head row\'s readout stays where it was', `moved ${drift.toFixed(1)}px`);
+
+  if (Number(stepped) > 0.2 && Number(stepped) < 0.5)
+    ok(`and steps back rather than out of the bubble's way (opacity ${stepped})`);
+  else fail("the readout steps back rather than out of the bubble's way", `opacity ${stepped}`);
+
+  const overThumb = Math.abs(bubbleBox.x + bubbleBox.width / 2 - (box.x + box.width / 2));
+  if (overThumb < 6) ok(`the bubble sits centred over the thumb (${overThumb.toFixed(1)}px off)`);
+  else fail('the bubble sits centred over the thumb', `${overThumb.toFixed(1)}px off`);
+
+  if (bubbleHeld.text === '65') ok('and it carries the value the thumb is standing on (65)');
+  else fail('the bubble carries the value the thumb is standing on', JSON.stringify(bubbleHeld.text));
 
   if (/0px 0px 0px 9px/.test(ring)) ok('the held thumb carries its ring rather than a scale');
   else fail('the held thumb carries its ring', ring);
+
+  /* The segmented control's pill is one element that crosses the set, and it
+     is measured in JavaScript because a segment is as wide as its word. A pill
+     that never moves is the failure this catches. */
+  const pill = page.locator('[data-case="segmented"] .segment-pill').first();
+  await pill.scrollIntoViewIfNeeded();
+  const pillBefore = await pill.boundingBox();
+  await page.locator('[data-case="segmented"] [data-segment="year"]').click();
+  await page.waitForTimeout(500);
+  const pillAfter = await pill.boundingBox();
+  const slid = pillAfter.x - pillBefore.x;
+  if (slid > 20) ok(`the segmented pill crosses to the chosen segment (${Math.round(slid)}px)`);
+  else fail('the segmented pill crosses to the chosen segment', `moved ${Math.round(slid)}px`);
+  const settled = await pill.evaluate((el) => getComputedStyle(el).scale);
+  if (settled === 'none' || settled === '1' || settled === '1 1')
+    ok(`and it settles back to its own width rather than staying stretched (${settled})`);
+  else fail('the pill settles back to its own width', settled);
 
   /* One ruler mark per stop, which is the claim the coarser step rests on. */
   const marks = await page.evaluate(() => ({
