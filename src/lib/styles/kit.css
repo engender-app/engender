@@ -261,6 +261,96 @@
   font-size: var(--text-sm);
 }
 
+/* A row that opens something and also carries one control of its own - a
+   letter that can be read or thrown away, a tryout that can be opened or
+   dropped (phase 5 UX ticket 25).
+
+   Eight of the feature screens had written this by hand as a `.list-row`
+   div holding a bare `<a>` for the text and an icon button beside it, and
+   the hand-written ones had drifted: some gave the link the row's padding
+   and some did not, so the tappable area stopped at the words on half of
+   them. It is one shape, so it belongs here.
+
+   The split is what makes it legal as well as legible: a button inside a
+   link is not markup a browser or a screen reader can resolve, so the row
+   itself is an unstyled container and the two real controls sit inside it
+   side by side. The main half takes the row's own press wash; the trailing
+   half is a control in its own right at the full touch target. */
+.kit-row.is-split {
+  padding: 0;
+  cursor: default;
+}
+
+.kit-row.is-split:active {
+  background: none;
+}
+
+.kit-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition-property: background-color;
+  transition-duration: var(--dur-fast);
+}
+
+.kit-row-main:active {
+  background: var(--role-wash);
+}
+
+.kit-row-act {
+  flex: 0 0 auto;
+  width: var(--touch-target);
+  align-self: stretch;
+  min-height: var(--touch-target);
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+/* ---------- the filter line ----------
+
+   A label and one control, sitting on the page rather than in a card:
+   which garment category the size log is showing, which measurement type
+   the chart plots, which area the hair-removal sessions came from.
+
+   The feature screens had this as a `.field` with a full-width `<select>`
+   in it, which is the shape a form uses for something being *entered*.
+   Nothing here is being entered - the control changes what the screen is
+   showing - and a form field the width of the screen sitting above a list
+   reads as the first row of that list.
+
+   Up against its own label rather than at the end of the line, which is
+   where the calendar's own metric picker ended up after a thumb kept
+   catching the chevron above it (ticket 22). Same reasoning, same shape;
+   `.cal-metric` is the instance that came first and this is the one every
+   screen after it uses. */
+.kit-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) 0 var(--space-4);
+}
+
+.kit-filter-label {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
 /* ---------- day card ----------
 
    Entries grouped under a tinted date bar. The tint is the section's own

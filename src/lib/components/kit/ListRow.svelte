@@ -38,6 +38,16 @@
     chevron?: boolean;
     /** Anything that sits before the chevron: a count, a date, a switch. */
     trailing?: Snippet;
+    /** One control of the row's own, beside what the row opens - throwing
+        a letter away, dropping a tryout (phase 5 UX ticket 25).
+
+        It changes the row's markup rather than sitting inside it: a button
+        nested in a link is not something a browser or a screen reader can
+        resolve, so the row becomes a plain container holding the two real
+        controls side by side. The label travels with the handler for the
+        same reason Notice's dismiss does - an icon button with no
+        accessible name cannot be reached by voice or announced at all. */
+    action?: { icon: string; label: string; onclick: () => void };
   } = $props();
 </script>
 
@@ -59,7 +69,24 @@
      rather than resolved through <svelte:element>: the two carry different
      keyboard behaviour and different announcements, and the tag has to be
      legible to the compiler for it to check either. -->
-{#if href}
+{#if action}
+  <div class="kit-row is-split" data-list-row={key}>
+    {#if href}
+      <a class="kit-row-main" {href} {onclick}>{@render body()}</a>
+    {:else}
+      <button type="button" class="kit-row-main" {onclick}>{@render body()}</button>
+    {/if}
+    <button
+      type="button"
+      class="kit-row-act press"
+      data-row-action={key}
+      aria-label={action.label}
+      onclick={action.onclick}
+    >
+      <Icon name={action.icon} size={18} />
+    </button>
+  </div>
+{:else if href}
   <a class="kit-row" data-list-row={key} {href} {onclick}>{@render body()}</a>
 {:else}
   <button type="button" class="kit-row" data-list-row={key} {onclick}>{@render body()}</button>
