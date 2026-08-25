@@ -327,7 +327,9 @@ try {
   const period = await page.locator('[data-screen-subtitle]').textContent();
   if (!period.includes('90')) throw new Error('period: ' + period);
   await page.locator('[data-values-open]').click();
-  await page.waitForSelector('[data-value-row]');
+  /* The sheet is the screen's own bar rows now: a row per day, the date
+     naming it and the value on it as text. */
+  await page.waitForSelector('[data-bar-row] [data-bar-value]');
   await page.locator('[data-sheet-scrim]').first().click();
   /* Tag insights name a built-in tag, so a blank label means the key never
      got resolved. */
@@ -1231,18 +1233,22 @@ try {
 
   /* All three cadences reachable without typing a URL: Home offers one, and
      the switcher is what makes the other two anything but orphans (SH-001). */
-  const tabs = page.locator('[data-wrapped-cadences] a');
+  const tabs = page.locator('[data-segmented="wrapped-cadences"] a');
   /* Four: the three completed cadences plus the arbitrary range wrapped
      absorbed from recap (ticket 23, spec 07). */
   if ((await tabs.count()) !== 4) throw new Error('the cadence switcher offers ' + (await tabs.count()));
   await tabs.nth(2).click();
   await page.waitForSelector('[data-wrapped-cover-year]', { timeout: 15000 });
-  const activeTab = await page.locator('[data-wrapped-cadences] [aria-current="page"]').getAttribute('href');
+  const activeTab = await page
+    .locator('[data-segmented="wrapped-cadences"] [aria-current="page"]')
+    .getAttribute('href');
   if (activeTab !== '/wrapped/year') throw new Error('the switcher marks ' + activeTab + ' as current');
 
   await fresh('/wrapped/nonsense');
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('an unknown cadence should say so');
-  if (await page.locator('[data-wrapped-cadences]').count()) throw new Error('an unknown cadence still drew a switcher');
+  if (await page.locator('[data-segmented="wrapped-cadences"]').count()) {
+    throw new Error('an unknown cadence still drew a switcher');
+  }
 
   /* Home offers exactly one card, for whichever cadence is freshest today,
      and it links to that cadence's screen. */
