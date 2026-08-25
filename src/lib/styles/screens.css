@@ -165,11 +165,11 @@
 .home-cheer i:nth-child(3n) { background: var(--accent); }
 .home-cheer i:nth-child(3n + 1) { background: var(--accent-2); }
 .home-cheer i:nth-child(3n + 2) { background: color-mix(in oklab, var(--accent) 50%, var(--accent-2)); }
+/* Same single interval, for the same reason. This one is linear, so position
+   and opacity both move steadily and tracking each other is all it takes. */
 @keyframes cheer-fall {
   0% { transform: translateY(-2px) rotate(0deg); opacity: 0; }
-  14% { opacity: 1; }
-  46% { opacity: 1; }
-  76% { opacity: 0.4; }
+  12% { opacity: 1; }
   100% { transform: translateY(46px) rotate(var(--r)); opacity: 0; }
 }
 
@@ -189,17 +189,20 @@
   transform: translate(var(--dx, 0), -11px) rotate(var(--r));
   animation: cheer-burst calc(var(--dur-authored) * 2) var(--ease-out) var(--d) both;
 }
-/* The fade starts at a third rather than at seven tenths, so the pieces are
-   already going out for most of the way up instead of holding full strength
-   and then dropping (Alicja, 2026-08-25: "the confetti also shouldn't
-   disappear so abruptly"). Two stops on the way down rather than one, which
-   is what keeps the tail from reading as a straight ramp: most of the
-   brightness goes early and the last of it lingers. */
+/* One fade interval, from just after the throw to the very end, and no stops
+   in between. That is what puts the opacity on the same curve as the
+   position, which is the thing that was wrong: a timing function eases each
+   keyframe interval separately, so holding opacity at 1 until a third of the
+   way through gave the transform - specified at 0% and 100% only, and so
+   eased across the whole duration - time to arrive and park before the fade
+   had started. The piece stopped, then disappeared (Alicja, 2026-08-25).
+
+   Sharing the interval means sharing the easing: the fade goes fast early and
+   slowly late, exactly as the travel does, so a piece is dimming the whole
+   way up and is nearly gone by the time it reaches the top. */
 @keyframes cheer-burst {
   0% { transform: translate(0, 2px) rotate(0deg); opacity: 0; }
-  12% { opacity: 1; }
-  34% { opacity: 1; }
-  68% { opacity: 0.42; }
+  10% { opacity: 1; }
   100% { transform: translate(var(--dx, 0), -11px) rotate(var(--r)); opacity: 0; }
 }
 /* Substituted rather than clamped: at 1ms this is a flicker, and the moment
