@@ -83,3 +83,44 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
     css: (_t, u) => `clip-path: inset(0 ${u === 0 ? '0' : `${Number((u * 100).toFixed(2))}%`} 0 0)`
   };
 }
+
+/**
+ * Tier 3, change within a screen: a group opening its own height.
+ *
+ * DIRECTION.md names this case by itself - "a list insertion opens its own
+ * height rather than making everything below it jump" - and it is the one
+ * place tier 3 is allowed a layout property. What is animated is the
+ * element's own height, so the rows under it travel with it rather than
+ * being teleported down the screen by a block appearing at full size.
+ *
+ * The cap is the same as the wipe's, and stricter in practice: one group at
+ * a time, and a group rather than a screen. A disclosure that opens half the
+ * document is a screen, and belongs to tier 2 as a navigation instead.
+ *
+ * Reduced motion is an instant cut, which is tier 3's substitute: a group
+ * opening inside a screen has no journey for a fade to stand in for, and the
+ * chevron beside it has already turned to say what happened.
+ *
+ * The `to` state is `height: auto` by way of `scaleY`-free arithmetic on the
+ * measured height, so the resting rule the element already has is what it
+ * lands on - the invariant DIRECTION.md's reduced-motion contract imposes on
+ * every animation in the app.
+ */
+export function disclose(node: Element): TransitionConfig {
+  if (isReducedMotion()) return { duration: 0 };
+
+  const style = getComputedStyle(node);
+  const height = parseFloat(style.height) || 0;
+  const paddingTop = parseFloat(style.paddingTop) || 0;
+  const paddingBottom = parseFloat(style.paddingBottom) || 0;
+
+  return {
+    duration: motionDuration('--dur-med', 240),
+    easing: EASE_OUT,
+    css: (t) =>
+      `overflow: hidden;` +
+      `height: ${t * height}px;` +
+      `padding-top: ${t * paddingTop}px;` +
+      `padding-bottom: ${t * paddingBottom}px;`
+  };
+}

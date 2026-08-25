@@ -1,4 +1,17 @@
 <script lang="ts">
+  /* When you first noticed each change, on the surface kit (phase 5 UX
+     ticket 25).
+
+     The groups keep their disclosure - a screen that opened every category
+     at once would be a page of timelines - and it finally has motion. A
+     group used to appear at full height, which shoved everything under it
+     down the screen in one frame; it opens its own height now
+     (DIRECTION.md tier 3, and the one place that tier spends a layout
+     property), so the rows below travel with it. Reduced motion is an
+     instant cut, and the chevron has already turned to say what happened.
+
+     The group is a list card rather than a `.card` holding a `.list-group`,
+     which was two containers deep for one list. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { earliestEpisode } from '$lib/data/regimenEpisode';
@@ -8,10 +21,19 @@
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { PersonalEffectCatalogEntry } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { disclose } from '$lib/motion/reveal';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
   import Switch from '$lib/components/Switch.svelte';
   import EffectsTimeline from '$lib/components/EffectsTimeline.svelte';
 
@@ -156,64 +178,68 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.effects_timeline()} back="/settings">
+  <ScreenHeader title={m.effects_timeline()} back="/more" subtitle={m.effects_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-manage-effects aria-label={m.effect_manage_types_aria()} onclick={() => (manageOpen = true)}>
+      <button class="icon-btn press" data-manage-effects aria-label={m.effect_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
       </button>
     {/snippet}
   </ScreenHeader>
 
   {#if episodesQuery.loading || markersQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if anchorEpochDay == null}
-    <EmptyState title={m.effects_no_regimen_title()} text={m.effects_no_regimen_body()}>
-      {#snippet action()}
-        <a class="btn btn-soft" href="/settings/regimen"><span>{m.effects_no_regimen_action()}</span></a>
-      {/snippet}
-    </EmptyState>
+    <div in:crossfade>
+      <Notice
+        icon="sparkle"
+        key="effects-no-regimen"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.effects_no_regimen_title()}
+        text={m.effects_no_regimen_body()}
+        action={{ label: m.effects_no_regimen_action(), primary: true, href: '/settings/regimen' }}
+      />
+    </div>
   {:else}
-    <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.effect_variability_notice()}</p>
 
     {#each DIRECTIONS as direction (direction)}
       {@const directionEffects = visibleEffects.filter((e) => directionOf(e) === direction)}
       {#if directionEffects.length}
-        <h2 class="direction-heading">{directionLabel(direction)}</h2>
-        {#each vocabulary.effectCategories as cat (cat.key)}
+        <SectionHeading text={directionLabel(direction)} />
+        {#each vocabulary.effectCategories as cat, i (cat.key)}
           {@const groupEffects = directionEffects.filter((e) => e.categoryKey === cat.key)}
           {#if groupEffects.length}
             {@const key = groupKey(direction, cat.key)}
             {@const expanded = expandedGroups.has(key)}
-            <div class="card effect-group" data-effect-group={key}>
-              <button class="spread effect-group-header" onclick={() => toggleGroup(key)} aria-expanded={expanded}>
-                <span>{cat.name}</span>
-                <span class="effect-group-header-right">
-                  <span class="muted small">{m.effect_group_count({ count: groupEffects.length })}</span>
-                  <Icon name={expanded ? 'chevronDown' : 'chevronRight'} size={18} />
-                </span>
-              </button>
-              {#if expanded}
-                <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
-                <div class="list-group" style="margin-top:var(--space-3)">
-                  {#each groupEffects as e (e.key)}
-                    {@const marker = markerFor(e.key)}
-                    <button class="list-row" onclick={() => openEditor(e)}>
-                      <span class="row-text">
-                        <span class="row-title">{e.name}</span>
-                        <span class="row-subtitle">
-                          {marker
-                            ? m.effect_first_noticed({
-                                date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                              })
-                            : m.effect_not_marked()}
-                        </span>
-                      </span>
-                      <Icon name="pencil" size={18} />
-                    </button>
-                  {/each}
-                </div>
-              {/if}
+            <div class="effect-group" data-effect-group={key}>
+              <ListCard role={roleAt(activeFlag.roles, i)}>
+                <button class="kit-row effect-group-header" onclick={() => toggleGroup(key)} aria-expanded={expanded}>
+                  <span class="kit-row-text"><span class="kit-row-title">{cat.name}</span></span>
+                  <span class="kit-row-trail">
+                    {m.effect_group_count({ count: groupEffects.length })}
+                    <Icon name={expanded ? 'chevronDown' : 'chevronRight'} size={20} />
+                  </span>
+                </button>
+                {#if expanded}
+                  <div class="effect-group-body" transition:disclose>
+                    <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
+                    {#each groupEffects as e (e.key)}
+                      {@const marker = markerFor(e.key)}
+                      <ListRow
+                        key={e.key}
+                        title={e.name}
+                        subtitle={marker
+                          ? m.effect_first_noticed({
+                              date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                            })
+                          : m.effect_not_marked()}
+                        chevron={false}
+                        onclick={() => openEditor(e)}
+                      />
+                    {/each}
+                  </div>
+                {/if}
+              </ListCard>
             </div>
           {/if}
         {/each}
@@ -221,35 +247,35 @@
         {#if uncategorized.length}
           {@const key = groupKey(direction, null)}
           {@const expanded = expandedGroups.has(key)}
-          <div class="card effect-group" data-effect-group={key}>
-            <button class="spread effect-group-header" onclick={() => toggleGroup(key)} aria-expanded={expanded}>
-              <span>{m.effect_type_category_none()}</span>
-              <span class="effect-group-header-right">
-                <span class="muted small">{m.effect_group_count({ count: uncategorized.length })}</span>
-                <Icon name={expanded ? 'chevronDown' : 'chevronRight'} size={18} />
-              </span>
-            </button>
-            {#if expanded}
-              <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />
-              <div class="list-group" style="margin-top:var(--space-3)">
-                {#each uncategorized as e (e.key)}
-                  {@const marker = markerFor(e.key)}
-                  <button class="list-row" onclick={() => openEditor(e)}>
-                    <span class="row-text">
-                      <span class="row-title">{e.name}</span>
-                      <span class="row-subtitle">
-                        {marker
-                          ? m.effect_first_noticed({
-                              date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                            })
-                          : m.effect_not_marked()}
-                      </span>
-                    </span>
-                    <Icon name="pencil" size={18} />
-                  </button>
-                {/each}
-              </div>
-            {/if}
+          <div class="effect-group" data-effect-group={key}>
+            <ListCard role={roleAt(activeFlag.roles, 0)}>
+              <button class="kit-row effect-group-header" onclick={() => toggleGroup(key)} aria-expanded={expanded}>
+                <span class="kit-row-text"><span class="kit-row-title">{m.effect_type_category_none()}</span></span>
+                <span class="kit-row-trail">
+                  {m.effect_group_count({ count: uncategorized.length })}
+                  <Icon name={expanded ? 'chevronDown' : 'chevronRight'} size={20} />
+                </span>
+              </button>
+              {#if expanded}
+                <div class="effect-group-body" transition:disclose>
+                  <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />
+                  {#each uncategorized as e (e.key)}
+                    {@const marker = markerFor(e.key)}
+                    <ListRow
+                      key={e.key}
+                      title={e.name}
+                      subtitle={marker
+                        ? m.effect_first_noticed({
+                            date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                          })
+                        : m.effect_not_marked()}
+                      chevron={false}
+                      onclick={() => openEditor(e)}
+                    />
+                  {/each}
+                </div>
+              {/if}
+            </ListCard>
           </div>
         {/if}
       {/if}
@@ -334,7 +360,7 @@
       <label class="field-label" for="new-effect-type-category">{m.effect_type_category_label()}</label>
       <select class="input" id="new-effect-type-category" bind:value={newEffectCategory}>
         <option value="">{m.effect_type_category_none()}</option>
-        {#each vocabulary.effectCategories as cat (cat.key)}
+        {#each vocabulary.effectCategories as cat, i (cat.key)}
           <option value={cat.key}>{cat.name}</option>
         {/each}
       </select>
@@ -344,23 +370,14 @@
 </div>
 
 <style>
-  .direction-heading {
-    font-size: var(--text-sm);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-2);
-    margin: var(--space-4) 0 var(--space-2);
-  }
   .effect-group {
     margin-bottom: var(--space-3);
   }
-  .effect-group-header {
-    width: 100%;
-    text-align: left;
-  }
-  .effect-group-header-right {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
+
+  /* The body is inside the card, under the header row, so it takes the
+     card's own inset rather than the row's - a timeline is a drawing and
+     wants the width, and the rows under it bring their own padding. */
+  .effect-group-body {
+    padding: var(--space-3) var(--space-3) 0;
   }
 </style>
