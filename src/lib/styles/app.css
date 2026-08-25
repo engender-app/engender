@@ -190,12 +190,80 @@ body {
    colour vision deficiency or on a screen turned all the way down. The
    indicator is a filled shape behind the whole tab - icon and label
    together, per DIRECTION.md - so the active state carries a second cue
-   that survives both. */
-.nav-item.is-active {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
+   that survives both.
+
+   The shape itself is .nav-pill below, one element for the whole bar, so
+   what is left on the tab is its colour. Positioned so the icon and the
+   label paint over the pill: the pill is a positioned element and would
+   otherwise sit on top of static siblings whatever the source order says. */
+.nav-item { position: relative; }
+.nav-item.is-active { color: var(--accent); }
 .nav-item:hover { color: var(--text); }
+
+/* One lit shape for the set, travelling to whichever tab is current, on both
+   shapes of the navigation - across the bar, down the rail (phase 5 ticket
+   31). AppNav.svelte measures the tab and writes the five custom properties;
+   the axis is the only thing that differs between the two, and it arrives
+   already folded into --pill-sx and --pill-sy.
+
+   Tier 2. The bar is how you move between the four areas of the app, and
+   this is that move made visible in the one piece of chrome that is on every
+   screen. It answers the same navigation the fade-through between the
+   screens does, and it spends the same --dur-med.
+
+   Only `translate` transitions. The four tabs are equal cells of a five
+   column grid and the rail's rows are all the width of the rail, so the size
+   is the same wherever the pill lands and there is nothing else to animate -
+   which keeps this inside DIRECTION.md's contract of transform and opacity
+   rather than beside it. Should a translation ever make one tab a different
+   size, the pill resizes at the start of the move instead of over it, which
+   is invisible under a travelling shape.
+
+   The stretch is a keyframe rather than a third transition, for the reason
+   .segment-pill already gives: a stretch is a there-and-back, and a
+   transition can go to a peak or come back from one, not both. It ends on
+   `scale: 1 1`, which the resting rule below also declares, so the
+   reduced-motion clamp to 1ms strands it at its true size rather than
+   stretched. */
+.nav-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--pill-w, 0);
+  height: var(--pill-h, 0);
+  translate: var(--pill-x, 0) var(--pill-y, 0);
+  scale: 1 1;
+  border-radius: var(--r-add);
+  background: var(--accent-soft);
+  opacity: 0;
+  pointer-events: none;
+  transition: translate var(--dur-med) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+/* Hidden until a tab is lit rather than absent from the DOM: seven routes
+   light no tab at all (active-tab.ts), and a pill that is removed and
+   remounted has no previous position to travel from when one of them leads
+   back into the four. */
+.nav-pill.is-shown { opacity: 1; }
+/* `scale: 1 1` restated on the sliding state and not only on the resting
+   rule, because the reduced-motion invariant is checked against the selector
+   the animation is declared on - and because it is true: this is where the
+   keyframe both starts and ends, so the 1ms clamp leaves the pill its own
+   size rather than stranding it mid-stretch. */
+.nav-pill.is-sliding {
+  scale: 1 1;
+  animation: nav-pill-slide var(--dur-med) var(--ease-out);
+}
+/* Longer along the way and a little thinner with it, the peak before halfway
+   because a thing stretches as it accelerates away and has recovered by the
+   time it lands. How much is a function of how far it went, which
+   indicator.ts computes: a hop between neighbouring tabs and the jump across
+   the add button from Calendar to Stats should not deform alike, or the
+   deformation is illustrating travel rather than answering to any. */
+@keyframes nav-pill-slide {
+  0% { scale: 1 1; }
+  40% { scale: var(--pill-sx, 1) var(--pill-sy, 1); }
+  100% { scale: 1 1; }
+}
 
 .nav-add,
 .rail-add {
@@ -353,6 +421,8 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   }
   .app-nav { display: none; }
   .app-rail {
+    /* The offsetParent its rows and its pill are both measured against. */
+    position: relative;
     display: flex; flex-direction: column; gap: var(--space-1);
     width: calc(var(--rail-width) + var(--inset-left)); flex-shrink: 0;
     padding: calc(var(--space-6) + var(--inset-top)) var(--space-4)
@@ -395,6 +465,7 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   cursor: pointer;
 }
 .rail-item {
+  position: relative;
   display: flex; align-items: center; gap: var(--space-3);
   padding: 10px var(--space-3); min-height: var(--touch-target);
   border-radius: var(--r-add);
@@ -404,7 +475,9 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   transition-timing-function: var(--ease-out);
 }
 .rail-item:hover { background: var(--surface-2); color: var(--text); }
-.rail-item.is-active { background: var(--accent-soft); color: var(--on-accent-soft); font-weight: var(--weight-bold); }
+/* The fill is .nav-pill's now, the same shape the bar uses, travelling down
+   instead of across. What stays here is the colour and the weight. */
+.rail-item.is-active { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 

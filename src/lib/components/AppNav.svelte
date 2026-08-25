@@ -19,6 +19,7 @@
   import { activeTabKey } from '$lib/navigation/active-tab';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
+  import { boxesMatch, squash, stretch, type Axis, type Box } from '$lib/motion/indicator';
   import Icon from './Icon.svelte';
 
   const NAV = [
@@ -79,6 +80,79 @@
     }
     ui.chooserOpen = !ui.chooserOpen;
   }
+
+  /* The lit tab, as one shape that travels rather than four backgrounds that
+     switch (phase 5 ticket 31). The arithmetic - when two measurements are
+     the same place, and how far the shape deforms on the way - is in
+     $lib/motion/indicator.ts with its own tests; what has to live here is
+     the measuring, because only the DOM knows where a tab actually is.
+
+     Measured rather than derived even on the bar, where the five cells are
+     equal by construction and the maths would be a division. The rail's rows
+     are as tall as their content, the bar's cells shrink with the viewport,
+     and a number this component worked out for itself is a number that can
+     disagree with the layout. Reading it off the element cannot. */
+  type Pill = { box: Box; sx: number; sy: number; shown: boolean };
+
+  const HIDDEN: Pill = { box: { x: 0, y: 0, w: 0, h: 0 }, sx: 1, sy: 1, shown: false };
+
+  let barPill = $state<Pill>(HIDDEN);
+  let railPill = $state<Pill>(HIDDEN);
+  let barSliding = $state(false);
+  let railSliding = $state(false);
+  let barNav = $state<HTMLElement>();
+  let barTabs = $state<Record<string, HTMLElement | undefined>>({});
+  let railTabs = $state<Record<string, HTMLElement | undefined>>({});
+
+  /* offsetLeft/offsetTop rather than getBoundingClientRect: both navs are
+     the offsetParent of their own tabs, so these already are the numbers the
+     pill's own `translate` wants, with no scroll position or transform of an
+     ancestor mixed in. A rect would have to be subtracted from the nav's own
+     rect to get back here, and the rail scrolls. */
+  function place(prev: Pill, el: HTMLElement | undefined, axis: Axis, animate: boolean) {
+    if (!el) return { next: prev.shown ? { ...prev, shown: false } : prev, moved: false };
+    const box = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+    if (prev.shown && boxesMatch(prev.box, box)) return { next: prev, moved: false };
+    /* Two placements that are not slides. The first one, because the app
+       does not slide the pill into the tab you opened it on - it starts
+       there. And a re-measure after the bar changed size, because a rotation
+       is not a navigation: the tab under the pill never changed, so replaying
+       the travel would be the app claiming something happened. */
+    if (!prev.shown || !animate) return { next: { box, sx: 1, sy: 1, shown: true }, moved: false };
+    const peak = stretch(prev.box, box, axis);
+    const thin = squash(peak);
+    const across = axis === 'x';
+    return {
+      next: { box, sx: across ? peak : thin, sy: across ? thin : peak, shown: true },
+      moved: true
+    };
+  }
+
+  $effect(() => {
+    const { next, moved } = place(barPill, barTabs[activeKey], 'x', true);
+    if (next !== barPill) barPill = next;
+    if (moved) barSliding = true;
+  });
+
+  $effect(() => {
+    const { next, moved } = place(railPill, railTabs[activeKey], 'y', true);
+    if (next !== railPill) railPill = next;
+    if (moved) railSliding = true;
+  });
+
+  /* The bar only. Its cells are a fraction of the viewport, so a rotation
+     moves every tab out from under the pill; the rail's rows are stacked
+     from the top and stay where they are whatever the window does. */
+  $effect(() => {
+    const nav = barNav;
+    if (!nav || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      const { next } = place(barPill, barTabs[activeKey], 'x', false);
+      if (next !== barPill) barPill = next;
+    });
+    observer.observe(nav);
+    return () => observer.disconnect();
+  });
 </script>
 
 <nav class="app-rail" data-app-rail aria-label={m.nav_main()}>
@@ -110,8 +184,22 @@
     </span>
     <span>{m.quick_add_title()}</span>
   </button>
+  <span
+    class="nav-pill"
+    class:is-shown={railPill.shown}
+    class:is-sliding={railSliding}
+    aria-hidden="true"
+    style:--pill-x="{railPill.box.x}px"
+    style:--pill-y="{railPill.box.y}px"
+    style:--pill-w="{railPill.box.w}px"
+    style:--pill-h="{railPill.box.h}px"
+    style:--pill-sx={railPill.sx}
+    style:--pill-sy={railPill.sy}
+    onanimationend={() => (railSliding = false)}
+  ></span>
   {#each NAV as item (item.key)}
     <a
+      bind:this={railTabs[item.key]}
       class="rail-item press"
       class:is-active={activeKey === item.key}
       data-rail-item={item.key}
@@ -129,6 +217,7 @@
      two elements rather than one tab. -->
 {#snippet tab(item: (typeof NAV)[number])}
   <a
+    bind:this={barTabs[item.key]}
     class="nav-item press"
     class:is-active={activeKey === item.key}
     data-nav-item={item.key}
@@ -140,7 +229,29 @@
   </a>
 {/snippet}
 
-<nav class="app-nav" class:is-fan-open={ui.chooserOpen} data-app-nav aria-label={m.nav_main()}>
+<nav
+  bind:this={barNav}
+  class="app-nav"
+  class:is-fan-open={ui.chooserOpen}
+  data-app-nav
+  aria-label={m.nav_main()}
+>
+  <!-- Behind the tabs in source order and in paint order, so a tab's icon and
+       label sit on top of the shape that lights them. -->
+  <span
+    class="nav-pill"
+    class:is-shown={barPill.shown}
+    class:is-sliding={barSliding}
+    aria-hidden="true"
+    data-nav-pill
+    style:--pill-x="{barPill.box.x}px"
+    style:--pill-y="{barPill.box.y}px"
+    style:--pill-w="{barPill.box.w}px"
+    style:--pill-h="{barPill.box.h}px"
+    style:--pill-sx={barPill.sx}
+    style:--pill-sy={barPill.sy}
+    onanimationend={() => (barSliding = false)}
+  ></span>
   {#each LEADING as item (item.key)}{@render tab(item)}{/each}
   <!-- The add action's own animation (spec 04), and it names its tier
        rather than inventing a curve. The button does not explode: it
