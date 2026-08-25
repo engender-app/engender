@@ -966,18 +966,26 @@ try {
   ok('app lock gates a cold start, throttles wrong PINs, opens on the right one');
 } catch (e) { fail('app lock', e); }
 
-/* 13. onboarding end-to-end via demo jump */
+/* 13. onboarding end-to-end via demo jump (phase 5 ticket 26: seven steps -
+   welcome, name, flag, scales, lock, check-in, finish) */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
   await page.selectOption('#demo-jump', 'first-run');
   await page.waitForSelector('[data-next]');
-  await page.locator('[data-next]').click();
+  await page.locator('[data-next]').click(); // welcome -> name
   await page.locator('#ob-name').fill('Ola');
-  await page.locator('[data-next]').click();
+  await page.locator('[data-next]').click(); // name -> flag
 
-  const presetButtons = page.locator('[data-preset]');
-  const presetNames = await presetButtons.locator('[data-row-title]').allTextContents();
+  /* The flag applies as it is picked, because the sun above it is what the
+     step is for. Asserted on <html> rather than on any drawn pixel: the
+     stamp is what every palette-aware surface in the app reads. */
+  await page.locator('[data-palette-pick="nonbinary"]').click();
+  await page.waitForFunction(() => document.documentElement.dataset.palette === 'nonbinary');
+  await page.locator('[data-next]').click(); // flag -> scales
+
+  const presetRows = page.locator('[data-list-row^="preset-"]');
+  const presetNames = await presetRows.allTextContents();
   const expectedPresetNames = [
     'Fem + masc',
     'Fem + masc + nonbinary',
@@ -988,21 +996,79 @@ try {
     'Femininity',
     'Masculinity'
   ];
-  if (JSON.stringify(presetNames) !== JSON.stringify(expectedPresetNames)) {
-    throw new Error('onboarding preset names: ' + JSON.stringify(presetNames));
-  }
-  if ((await presetButtons.count()) !== 8) throw new Error('onboarding preset count was not 8');
+  if (presetNames.length !== 8) throw new Error('onboarding preset count was not 8');
+  /* A row carries its subtitle in the same element as its title now that it
+     is a ListRow, so the name is what the row starts with rather than all
+     of what it says. */
+  expectedPresetNames.forEach((name, i) => {
+    if (!presetNames[i].trim().startsWith(name)) {
+      throw new Error(`onboarding preset ${i}: ${JSON.stringify(presetNames[i])}`);
+    }
+  });
   await expectNoHorizontalOverflow('[data-app-viewport]');
 
-  await page.locator('[data-preset="p-nb"]').click();
-  await page.locator('[data-next]').click();
-  await page.locator('[data-next]').click();
+  await page.locator('[data-list-row="preset-p-nb"]').click();
+  await page.locator('[data-next]').click(); // scales -> lock
+  await page.locator('[data-next]').click(); // lock -> check-in
+  await page.locator('[data-next]').click(); // check-in -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
   const greet = await page.locator('[data-home-hello]').textContent();
   if (!greet.includes('Ola')) throw new Error('greeting: ' + greet);
+  if (await page.evaluate(() => document.documentElement.dataset.palette) !== 'nonbinary') {
+    throw new Error('the flag picked during onboarding did not survive into the app');
+  }
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
+
+/* 13a. every step can be left, and leaving keeps what was chosen so far
+   (phase 5 ticket 26) */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.locator('#ob-name').fill('Sam');
+  /* Out from the second step, four steps short of the finish. The name that
+     had been typed is kept, because leaving is not the same as cancelling. */
+  await page.locator('[data-leave-setup]').click();
+  await page.waitForSelector('[data-home-hello]');
+  const leftGreet = await page.locator('[data-home-hello]').textContent();
+  if (!leftGreet.includes('Sam')) throw new Error('leaving early lost the name: ' + leftGreet);
+
+  // And it counted as onboarded: a reload lands on Home, not back on step one.
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-hello]');
+  if (await page.locator('[data-next]').count()) throw new Error('onboarding came back after leaving it');
+  ok('onboarding can be left from any step');
+} catch (e) { fail('onboarding leave', e); }
+
+/* 13b0. skipping the flag step puts back the flag that was showing when it
+   was reached, rather than keeping whatever was tapped on the way through */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+  const startingPalette = await page.evaluate(() => document.documentElement.dataset.palette);
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.locator('[data-next]').click(); // name -> flag
+  await page.locator('[data-palette-pick="lesbian"]').click();
+  await page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian');
+  await page.locator('[data-skip-step]').click(); // flag skipped
+  await page.waitForFunction(
+    (want) => document.documentElement.dataset.palette === want,
+    startingPalette
+  );
+  /* Out of the flow before the next case starts. `onboarded` lives in
+     SQLite and fresh() only clears localStorage, so a run left standing
+     mid-onboarding sends every screen after this one back to step one. */
+  await page.locator('[data-leave-setup]').click();
+  await page.waitForSelector('[data-home-hello]');
+  ok('skipping the flag step restores the flag it was reached with');
+} catch (e) { fail('onboarding flag skip', e); }
 
 /* 13b. settings preset picker lists all built-ins at 390px and each pick persists */
 try {
@@ -1051,15 +1117,17 @@ try {
   await fresh('/');
   await page.selectOption('#demo-jump', 'first-run');
   await page.waitForSelector('[data-next]');
-  await page.locator('[data-next]').click();
+  await page.locator('[data-next]').click(); // welcome -> name
   await page.locator('#ob-name').fill('Robin');
-  await page.locator('[data-next]').click();
+  await page.locator('[data-next]').click(); // name -> flag
+  await page.locator('[data-next]').click(); // flag -> scales
 
   if (await page.locator('[data-next]').isEnabled()) {
-    throw new Error('onboarding step 2 Continue was enabled before a preset was tapped');
+    throw new Error('the scales step\'s Continue was enabled before a preset was tapped');
   }
-  await page.getByRole('button', { name: 'Not now' }).click();
-  await page.locator('[data-next]').click();
+  await page.locator('[data-skip-step]').click(); // scales -> lock
+  await page.locator('[data-next]').click(); // lock -> check-in
+  await page.locator('[data-next]').click(); // check-in -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
 
