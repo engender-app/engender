@@ -57,9 +57,10 @@
   const ALL = Object.keys(PATHS);
 
   const MOODS = [1, 2, 3, 4, 5];
-  /* Every size a mood face ships at: the picker, quick add's fan, a chip, an
-     entry in a day card. 22 is the one the ticket's acceptance is about. */
-  const FACE_SIZES = [44, 34, 26, 22];
+  /* Every size a mood face ships at: the picker, Home's mood row, quick add's
+     fan, an entry in a day card. 28 is the smallest, and the drawing was
+     settled against the 22 an entry used to draw at. */
+  const FACE_SIZES = [44, 40, 34, 28];
 
   const centres = Object.fromEntries(ALL.map((name) => [name, measure(PATHS[name])]));
 
@@ -87,8 +88,9 @@
 <div class="page">
   <h2>The navigation set</h2>
   <p class="note">
-    Bar at 24, rail at 22. One 2-unit stroke, one 2-unit corner, all of it inside x and y of 4 to
-    20.
+    Bar at 24, rail at 22. One 2-unit stroke, one 2-unit corner, and each filling about 16 of the
+    box's 24 units. Not one shared rectangle: a mark whose weight is lopsided has to sit off the
+    middle of its box to look centred in it.
   </p>
   {#each NAV_SIZES as size (size)}
     <div class="row">
@@ -137,8 +139,9 @@
 
   <h2>Mood's five faces</h2>
   <p class="note">
-    Every size a face ships at. 22 is an entry in a day card, which is the size they have to be
-    telling apart at. The colour comes from the mood preset above, not the flag.
+    Every size a face ships at. 28 is an entry in a day card, the smallest of them; the drawing
+    was settled against the 22 an entry used to draw. The colour comes from the mood preset above,
+    not the flag.
   </p>
   {#each FACE_SIZES as size (size)}
     <div class="row">
