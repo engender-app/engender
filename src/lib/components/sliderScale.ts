@@ -20,8 +20,14 @@
 const MAX_STOPS = 21;
 
 /** Fine before coarse, so the first candidate that fits is the one taken and
-    a scale is never made blunter than it has to be. */
-const STEPS = [1, 2, 5, 10];
+    a scale is never made blunter than it has to be.
+
+    Two candidates because the app has two spans: gender dimensions are 0-10
+    or 0-100 (`settings/dimension` offers those and nothing else) and body
+    regions are 0-100 (`bodyMap.ts`). A third would be a guess about a scale
+    nobody has made. A span neither divides gets no ruler rather than a
+    wrong one. */
+const STEPS = [1, 5];
 
 export interface SliderScaleStops {
   /** What one arrow key, or one drag detent, moves the value by. */
@@ -67,9 +73,8 @@ export function snapToStop(value: number, min: number, max: number, step: number
 
     A slider's thumb has to rest somewhere, and an unset scale has no value to
     rest on, so it rests in the middle and the control is dimmed instead
-    (ticket 31). Shared because two components need the same answer: the
-    control positions its thumb by it, and the label above positions its
-    readout by it. */
+    (ticket 31). Its own function because two things ask it: the control
+    positions its thumb by it, and the bubble above the thumb shows it. */
 export function displayValue(value: number | null, min: number, max: number): number {
   return value ?? Math.round((min + max) / 2);
 }

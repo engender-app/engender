@@ -102,12 +102,15 @@
       <!-- The app's slider, not a native range: this was the one live
            input[type="range"] left, and it carried no thumb styling at all,
            so both engines drew their own control here. -->
-      <span class="field-label">{m.photo_review_compare_label()}</span>
+      <span class="field-label" id="photo-review-opacity-label">
+        {m.photo_review_compare_label()}
+      </span>
       <div class="onion-opacity" data-onion-opacity>
         <Slider
           value={opacity}
           onInput={(v) => (opacity = v)}
           label={m.photo_review_compare_label()}
+          labelledBy="photo-review-opacity-label"
         />
       </div>
     {/if}

@@ -22,6 +22,7 @@
     value,
     onInput,
     label,
+    labelledBy,
     unset = false,
     holding = $bindable(false),
   }: {
@@ -30,6 +31,13 @@
     value: number | null;
     onInput: (v: number) => void;
     label: string;
+    /** The id of visible text that already names this control. A `<label for>`
+        cannot name a div, so where the name is on the screen it is tied by
+        aria-labelledby instead - which keeps one string rather than repeating
+        the visible text into an aria-label beside it. `label` stays the
+        fallback and the accessible name where the two differ, as they do on a
+        dimension, whose spoken name carries both endpoints. */
+    labelledBy?: string;
     /** Dims the instrument without hiding it: there is a thumb position but
         no value behind it yet. */
     unset?: boolean;
@@ -98,7 +106,8 @@
   class:is-holding={holding}
   class:is-unset={unset}
   data-slider
-  aria-label={label}
+  aria-label={labelledBy ? undefined : label}
+  aria-labelledby={labelledBy}
   onpointerdowncapture={() => { pressing = true; holding = true; }}
   onfocus={onFocus}
   onblur={() => { if (!pressing) holding = false; }}
@@ -119,6 +128,12 @@
         {/each}
       </div>
     {/if}
+    <!-- The value, above the thumb, for as long as a finger is on it. The
+         readout in the head row never moves; this one is not that number
+         travelling, it is a second one that the thumb puts up and takes back
+         down. aria-hidden because the root already carries aria-valuenow and
+         a screen reader announcing the same number twice is noise. -->
+    <div class="slider-bubble" aria-hidden="true">{shown}</div>
     <div {...slider.thumb} class="slider-thumb" tabindex="-1"></div>
   </div>
 </div>

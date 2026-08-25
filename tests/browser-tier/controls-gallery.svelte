@@ -14,6 +14,7 @@
   import Switch from '$lib/components/Switch.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import MoodPicker from '$lib/components/MoodPicker.svelte';
 
   const PALETTES = [
     'trans',
@@ -56,6 +57,7 @@
   const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
 
   let note = $state('');
+  let mood = $state<number | null>(4);
 </script>
 
 <div class="gallery-controls">
@@ -133,8 +135,8 @@
     <Segmented
       name="Scale"
       options={[
-        { value: '10', label: '0–10' },
-        { value: '100', label: '0–100' }
+        { value: '10', label: '0 to 10' },
+        { value: '100', label: '0 to 100' }
       ]}
       value={scale}
       onChange={(v) => (scale = v)}
@@ -195,6 +197,25 @@
     </div>
   </div>
 
+  <h2 class="gallery-head">Handed to other tickets</h2>
+  <div class="card" data-case="handed-on">
+    <p class="gallery-note">
+      These are not this ticket's to redesign, and every one of them still answers a touch with
+      colour or with nothing. They are here to be measured rather than assumed, which is what the
+      48px box asks for.
+    </p>
+    <MoodPicker value={mood} onPick={(v) => (mood = v)} />
+    <div class="tag-row" style="margin-top: var(--space-4)">
+      <button class="tag-chip is-selected">Dysphoria</button>
+      <button class="tag-chip">Voice practice</button>
+      <button class="tag-chip">Out</button>
+    </div>
+    <div class="spread" style="margin-top: var(--space-4)">
+      <span class="small muted">A toast's action</span>
+      <button class="toast-action">Undo</button>
+    </div>
+  </div>
+
   <h2 class="gallery-head">The three depths</h2>
   <div class="card" data-case="depths">
     <p class="gallery-note">
@@ -206,7 +227,7 @@
       <span class="small muted">compact, up to about 64px</span>
     </div>
     <div class="depth-row">
-      <button class="btn btn-primary depth-wide"><span>0.97 — the width of the screen</span></button>
+      <button class="btn btn-primary depth-wide"><span>0.97, the width of the screen</span></button>
     </div>
     <div class="depth-row">
       <button class="press-add depth-add" aria-label="Add"><Icon name="plus" size={24} /></button>

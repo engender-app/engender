@@ -201,14 +201,27 @@ try {
   await fresh('/entry/new/today');
   const thumb = page.locator('[data-slider]').first();
   await thumb.focus();
-  await page.keyboard.press('ArrowRight');
   // A number, not "anything but the unset marker": comparing against the
   // marker's wording made this pass for free the moment that copy changed.
-  const out = await page.locator('[data-dim-value]').first().textContent();
-  if (!Number.isFinite(Number(out.trim()))) {
-    throw new Error('slider value did not update: ' + JSON.stringify(out));
-  }
-  ok('slider responds to keyboard');
+  // Two presses rather than one for the same reason - one press only proves
+  // the readout says something numeric, which it would whatever the step did
+  // (phase 5 ticket 30 changed the step from 1 to 5 on a 0-100 scale and this
+  // check could not have seen it).
+  const readValue = async () => {
+    const out = await page.locator('[data-dim-value]').first().textContent();
+    const n = Number(out.trim());
+    if (!Number.isFinite(n)) throw new Error('slider value is not a number: ' + JSON.stringify(out));
+    return n;
+  };
+  await page.keyboard.press('ArrowRight');
+  const first = await readValue();
+  await page.keyboard.press('ArrowRight');
+  const second = await readValue();
+  const step = second - first;
+  if (step <= 0) throw new Error(`arrow key did not advance the value: ${first} then ${second}`);
+  // And it lands on a stop rather than walking off the ruler.
+  if (first % step !== 0) throw new Error(`value ${first} is not on a stop of ${step}`);
+  ok(`slider steps by ${step} on the keyboard and lands on a stop`);
 } catch (e) { fail('slider', e); }
 
 /* 4. calendar → day → add another */

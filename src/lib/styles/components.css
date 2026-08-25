@@ -131,12 +131,22 @@
    it was traced. The add button escaped it by luck of ordering - its
    :active is written after its :hover.
 
+   And `:not(:active)`, because the hover query fixed half of it. A pointer
+   that *can* hover is hovering at the moment it presses, so this rule went on
+   winning there and the app's primary button did not move at all under a
+   mouse - which is how it was found, on the sign-off page, on a laptop. The
+   lift now stops for the duration of the press instead of outranking it.
+
    DIRECTION's tier 4 says no hover-dependent motion, so a pointer that
    cannot hover losing this is the intended reading, not a fallback. The
    other five hover transforms in these sheets have the same exposure and
    are ticket 18's, not this ticket's. */
 @media (hover: hover) {
-  .btn-primary:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); filter: saturate(1.15); }
+  .btn-primary:hover:not(:active) {
+    box-shadow: var(--shadow-2);
+    transform: translateY(-1px);
+    filter: saturate(1.15);
+  }
 }
 .btn-soft { background: var(--accent-soft); color: var(--on-accent-soft); }
 .btn-ghost { background: none; color: var(--accent); }
@@ -242,6 +252,7 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 
 /* ---------- segmented ---------- */
 .segmented {
+  position: relative;
   display: inline-flex; gap: var(--space-2);
   background: var(--surface-2);
   border-radius: var(--radius-pill);
@@ -270,7 +281,46 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
   transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out);
 }
 .segment:hover { color: var(--text); }
-.segment.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
+/* The pill behind it is .segment-pill now, one element for the whole control,
+   so what is left here is the text. Positioned so it paints over the pill:
+   the pill is a positioned element and would otherwise sit on top of static
+   siblings whatever the order. */
+.segment { position: relative; }
+.segment.is-active { color: var(--text); }
+
+/* One pill for the set, sliding to whichever segment was chosen. --seg-x and
+   --seg-w are measured by Segmented.svelte, because segments are as wide as
+   their words and CSS cannot ask how wide a word is.
+
+   Only translate and width transition, and the stretch is a keyframe rather
+   than a third transition, because a stretch is a there-and-back: a
+   transition can go to 1.1 or come back from it, not both. Ending at the
+   resting value keeps the reduced-motion clamp from stranding it stretched,
+   which is why `scale: 1 1` is declared on the sliding state too. */
+.segment-pill {
+  position: absolute;
+  top: 3px; bottom: 3px; left: 0;
+  width: var(--seg-w, 0);
+  translate: var(--seg-x, 0) 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  pointer-events: none;
+  transition: translate var(--dur-med) var(--ease-out), width var(--dur-med) var(--ease-out);
+}
+.segment-pill.is-sliding {
+  scale: 1 1;
+  animation: segment-slide var(--dur-med) var(--ease-out);
+}
+/* Wider along the way and a little shorter with it, so the pill reads as
+   something being carried rather than as a rectangle being repositioned. The
+   peak sits before halfway: a thing stretches as it accelerates away and has
+   recovered by the time it lands. */
+@keyframes segment-slide {
+  0% { scale: 1 1; }
+  40% { scale: 1.12 0.92; }
+  100% { scale: 1 1; }
+}
 /* The one control that answered a press with colour alone. A segment is a
    choice among peers, and the colour change is the answer to the choice
    rather than to the touch - the pressed segment and the already-active one
@@ -361,62 +411,45 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
    what stops the thumb hanging off the ends of its own track at 0 and at the
    maximum; the pointer still maps across the whole row, which is what a
    native range does too. */
-/* The lane both halves of the assembly measure from. The inset is half a
-   thumb, and it lives here rather than on .slider because the readout in the
-   head row is outside the control and lines up with the same lane. */
+/* The lane the thumb's centre travels: the row inset by half a thumb, so the
+   thumb never hangs off the ends of its own track. Declared on both because
+   the endpoint words below the control line up with the same lane and are not
+   inside it. */
 .dim-slider, .slider {
   --slider-thumb: 26px;
   --slider-inset: 13px;
 }
 .dim-slider { margin-bottom: var(--space-5); }
 
-/* The name sits in the card's text column. The readout does not: it lives in
-   its own layer over this row so it can leave the right-hand edge and go and
-   sit above the thumb, which is where you are looking while you drag. Both
-   halves of that travel are transforms - the layer carries the position
-   along the lane, the readout centres itself on it - so a drag composites
-   instead of laying out. */
-.dim-head { position: relative; display: flex; align-items: baseline; margin-bottom: var(--space-1); }
+/* The name at the left of the card's text column, the value at its right,
+   and neither moves. An earlier build had this number detach and travel to
+   the thumb while the control was held; the number you are reading should not
+   be the number that leaves. So there are two: this one, always there, and a
+   second one the thumb puts up while a finger is on it (.slider-bubble). */
+.dim-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-1); }
 .dim-name { font-weight: var(--weight-bold); }
-.dim-readout {
-  position: absolute;
-  left: var(--slider-inset); right: var(--slider-inset); bottom: 0;
-  height: 0;
-  pointer-events: none;
-  translate: 100% 0;
-  transition: translate var(--dur-med) var(--ease-out);
-}
 .dim-value {
-  position: absolute; left: 0; bottom: 0;
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
   font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600;
-  color: var(--accent);
+  color: var(--accent); min-width: 2.2ch; text-align: right;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  /* Parked, the digits line up with the endpoint word under the same end of
-     the lane rather than with the pill's edge, so the 10px the pill needs
-     while it is held does not push the resting number out of the column. */
-  translate: calc(-100% + 10px) 0;
-  /* Longhands, and every curve named: theme/base.css's note on --ease-press
-     applies to any shorthand carrying a token an old WebView cannot parse. */
-  transition-property: translate, scale, background-color, color, box-shadow;
-  transition-duration: var(--dur-med), var(--dur-med), var(--dur-fast), var(--dur-fast), var(--dur-fast);
-  transition-timing-function: var(--ease-out), var(--ease-out), var(--ease-out), var(--ease-out), var(--ease-out);
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
-/* Held, the readout becomes the head of the fill it is standing on: same
-   colour, lifted off the row, leaning 4px down towards the thumb. --slider-pct
-   is the same percentage the control positions its own thumb by, set by
-   DimensionSlider because a custom property does not travel back up the tree
-   from the control that owns it. */
-.dim-slider.is-holding .dim-readout { translate: var(--slider-pct) 0; }
-.dim-slider.is-holding .dim-value {
-  translate: -50% 4px;
-  scale: 1.08;
-  background: var(--accent);
-  color: var(--on-accent);
-  box-shadow: var(--shadow-1);
-}
+/* The one moment this number is not at full strength. At the top of the scale
+   the bubble above the thumb lands in exactly this corner - both are the same
+   number by then, and three digits of --text-xl is wider than the bubble, so
+   one of them has to give. Clamping the bubble short was tried and read as the
+   bubble coming unstuck from the thumb; growing the head row to clear it costs
+   16px of empty space on every slider, which the entry editor stacks five
+   deep. So this steps back instead, for as long as a finger is down, and the
+   reading you want is the one under your finger. It does not move and it does
+   not go away: at 0.3 it is still legible, and it is back before you have
+   lifted off.
+
+   :has() rather than a second state class threaded up from the control, which
+   is one less prop for one selector. A WebView too old to parse it drops the
+   rule and the number stays at full strength, which costs a clipped bubble at
+   the very top of the scale and nothing anywhere else. */
+.dim-slider:has(.slider.is-holding) .dim-value { opacity: 0.3; }
 .value-row, .chart-avg, .chip-value, .hm-num, .pin-dots { font-variant-numeric: tabular-nums; }
 
 .slider {
@@ -462,6 +495,10 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   transition: background-color var(--dur-fast) var(--ease-out), scale var(--dur-fast) var(--ease-out);
 }
 .slider-tick.is-major { height: 7px; background: var(--text-2); }
+/* Also tier 3, and the same reading: which mark the thumb is on is
+   information, so under reduced motion it cuts rather than disappears. The
+   scale is the resting rule for the mark that is active, which is what keeps
+   the clamp from leaving a mark half-grown. */
 .slider-tick.is-here { background: var(--accent); scale: 1 1.7; }
 /* Held, the whole instrument steps up a level of contrast. The ruler is
    reference furniture at rest and the thing being read while a finger is on
@@ -469,6 +506,58 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .slider.is-holding .slider-tick { background: var(--text-2); }
 .slider.is-holding .slider-tick.is-major { background: var(--text); }
 .slider.is-holding .slider-tick.is-here { background: var(--accent); }
+
+/* The value the thumb is holding, for as long as it is held. It is a second
+   number rather than the head row's one relocated: the readout you were
+   already reading stays where you were reading it, and this one is the thumb's
+   own, so nothing you are looking at moves out from under you.
+
+   It grows out of the thumb and drops back into it - origin at the bottom, so
+   the scale reads as coming from the thumb rather than from the middle of
+   nowhere - and it goes up on --ease-press, the same spring the presses use,
+   so it overshoots and settles. Coming back it is faster and has no spring:
+   an exit that lingers as long as an entrance reads as lag, and there is
+   nothing to bounce back from on the way out.
+
+   Both ends of the travel are declared, so the reduced-motion clamp leaves it
+   at one of them rather than stranded between. This is tier 3, a change
+   within a screen, so the substitute is the instant cut the clamp already
+   produces: the number still has to be there while a finger is on the thumb,
+   and what reduced motion drops is watching it arrive. */
+.slider-bubble {
+  position: absolute;
+  left: var(--percentage);
+  bottom: calc(100% - 4px);
+  padding: 1px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  transform-origin: bottom center;
+  opacity: 0;
+  translate: -50% 6px;
+  scale: 0.7;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    translate var(--dur-fast) var(--ease-out),
+    scale var(--dur-fast) var(--ease-out);
+}
+.slider.is-holding .slider-bubble {
+  opacity: 1;
+  translate: -50% 0;
+  scale: 1;
+  /* Longhands, because only two of the three are on --ease-press and a
+     shorthand naming that token strands the third on an old WebView. The
+     mechanism is at --ease-press in theme/base.css. */
+  transition-property: opacity, translate, scale;
+  transition-duration: var(--dur-fast), var(--dur-press), var(--dur-press);
+  transition-timing-function: var(--ease-out), var(--ease-press), var(--ease-press);
+}
+/* No value to put up, until the press that gives it one. */
+.slider.is-unset.is-holding .slider-bubble { opacity: 0; }
 
 /* The thumb neither shrinks nor grows, which is the one place this ticket
    parts with tier 1. A press on a button is the whole gesture; a press on a
@@ -529,7 +618,15 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .tag-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .tag-chip-wrap { display: inline-flex; align-items: center; }
 .tag-chip-wrap .tag-info-btn { margin-left: -6px; color: var(--text-2); }
+/* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while
+   checking the controls it does own. What is fixed here is the floor, not the
+   chip: the pill stays 36px because a chip is a 36px pill in every reference
+   there is, and the target is extended past it by a transparent overlay the
+   way Material extends its own. Nothing about how the chip looks changes, and
+   how it looks is ticket 22's to decide. Same treatment as SH-101 gave the
+   switch, whose 28px track sits inside a 48px hit area. */
 .tag-chip {
+  position: relative;
   display: inline-flex; align-items: center; gap: 5px;
   padding: 8px 14px; min-height: 36px;
   border-radius: var(--radius-pill);
@@ -539,6 +636,14 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+/* -6px each way over a 36px pill is 48px. The row's own gap is 8px, so two
+   stacked rows of chips extend towards each other without their targets
+   meeting. */
+.tag-chip::after {
+  content: '';
+  position: absolute;
+  inset: -6px 0;
 }
 .tag-chip:hover { border-color: var(--accent-border); }
 .tag-chip.is-selected {
@@ -1007,10 +1112,20 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   max-width: min(92vw, 420px);
 }
 .toast.is-open { opacity: 1; transform: translate(-50%, 0); }
+/* Measured at 48.3x32 by ticket 30, under the same floor and fixed the same
+   way. A toast is a single line and growing this to 48px would grow the toast
+   around it; the target grows instead. There is only ever one action in a
+   toast, so nothing neighbours it. */
 .toast-action {
+  position: relative;
   border: none; background: none; cursor: pointer;
   color: inherit; font: inherit; font-weight: var(--weight-bold);
   text-decoration: underline; padding: 4px;
+}
+.toast-action::after {
+  content: '';
+  position: absolute;
+  inset: -8px 0;
 }
 
 /* ---------- decorative motion stage (ticket 09: RiveSlot's CSS fallback is
