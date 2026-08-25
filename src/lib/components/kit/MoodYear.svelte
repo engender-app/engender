@@ -45,7 +45,7 @@
 <div class="kit-year" data-chart="mood-year">
   {#each grid.months as month (month)}
     <span class="kit-year-label" aria-hidden="true">{monthName(month)}</span>
-    <div class="kit-year-rows">
+    <div class="kit-year-rows" data-year-month={month}>
       {#each grid.cells.filter((cell) => cell.month === month) as cell (cell.epochDay)}
         {#if cell.step === null}
           <span class="kit-year-cell is-empty" data-year-cell={cell.epochDay} title={dayLabel(cell.epochDay, null)}
