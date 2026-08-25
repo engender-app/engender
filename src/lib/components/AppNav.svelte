@@ -100,7 +100,12 @@
   >
     <span class="nav-add-mark" class:is-open={ui.chooserOpen && mark === 'plus'}>
       {#each MARKS as name (name)}
-        <span class="nav-add-glyph" class:is-shown={mark === name}><Icon {name} size={20} /></span>
+        <span
+          class="nav-add-glyph"
+          class:is-shown={mark === name}
+          data-add-mark={name}
+          data-shown={mark === name ? '' : undefined}><Icon {name} size={20} /></span
+        >
       {/each}
     </span>
     <span>{m.quick_add_title()}</span>
@@ -158,7 +163,12 @@
   >
     <span class="nav-add-mark" class:is-open={ui.chooserOpen && mark === 'plus'}>
       {#each MARKS as name (name)}
-        <span class="nav-add-glyph" class:is-shown={mark === name}><Icon {name} size={26} /></span>
+        <span
+          class="nav-add-glyph"
+          class:is-shown={mark === name}
+          data-add-mark={name}
+          data-shown={mark === name ? '' : undefined}><Icon {name} size={26} /></span
+        >
       {/each}
     </span>
   </button>
