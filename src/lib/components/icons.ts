@@ -85,6 +85,20 @@ export const PATHS: Record<string, string> = {
   sparkle: '<path d="M10.2 2l1.9 5.1L17.2 9l-5.1 1.9L10.2 16l-1.9-5.1L3.2 9l5.1-1.9z"/><path d="M17.2 16l0.8 2.2L20.2 19l-2.2 0.8L17.2 22l-0.8-2.2L14.2 19l2.2-0.8z"/>',
   heart: '<path d="M19.5 6a5 5 0 0 0-7.5 0.7A5 5 0 0 0 4.5 6c-2 2-2 5.1 0 7.1L12 21l7.5-7.9c2-2 2-5.1 0-7.1z"/>',
   dots: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  /* The brand mark beside the rail's wordmark, which used to be a CSS
+     gradient of --motif-stripes and is now part of the set (phase 5 ticket
+     31). It quotes the app's own signature: Home's flag sun is one
+     concentric ring per stripe of the active flag, and this is that reduced
+     to a mark.
+
+     One colour, and that is the point rather than a simplification. The
+     stripe gradient it replaces was the pride motif, which ADR-0035 puts on
+     Home and nowhere else and never under disguise - and the rail is the one
+     piece of chrome that renders on every screen, disguised or not, so a
+     rainbow next to the word "Notes" was the motif showing exactly where the
+     ADR says it must not. Rings in --accent carry no flag: --accent is a
+     single hue the whole app is already drawn in. */
+  brand: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/>',
   grid: '<rect x="4.5" y="4.5" width="5.5" height="5.5" rx="2"/><rect x="14" y="4.5" width="5.5" height="5.5" rx="2"/><rect x="4.5" y="14" width="5.5" height="5.5" rx="2"/><rect x="14" y="14" width="5.5" height="5.5" rx="2"/>',
   fingerprint: '<path d="M12 11a3 3 0 0 0-3 3c0 2.5-.5 4.5-1.4 6"/><path d="M15 14.5c0 2-.3 4-1 5.5"/><path d="M17.8 12.3A6 6 0 0 0 6.7 9.2"/><path d="M5 13c-.2 1.5-.5 3-1.2 4.3"/><path d="M8.7 5.1A9 9 0 0 1 21 13.2"/><path d="M3.5 9A9 9 0 0 1 5 6.5"/>',
   alert: '<path d="M12 1.61 2 19.61h20z"/><path d="M12 8.61v4M12 16.11v0.5"/>',

@@ -446,9 +446,15 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   padding: 0 var(--space-3) var(--space-5);
   display: flex; align-items: center; gap: var(--space-2);
 }
+/* A drawn mark rather than a gradient square (phase 5 ticket 31). What it
+   replaced was a linear-gradient of --motif-stripes, which is the pride
+   motif - and the rail renders on every screen including a disguised one, so
+   it put a rainbow next to the word "Notes". ADR-0035 is specifically that
+   the motif is Home's and never shows under disguise. In --accent it carries
+   no flag: that is one hue the whole app is drawn in already. */
 .rail-brand .brand-mark {
-  width: 22px; height: 22px; border-radius: 7px;
-  background: linear-gradient(135deg, var(--motif-stripes));
+  display: grid; place-items: center;
+  color: var(--accent);
   flex-shrink: 0;
 }
 /* The bar's add button, laid on its side. Same fill, same corner, same
