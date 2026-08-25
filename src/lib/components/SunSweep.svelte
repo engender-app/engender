@@ -53,10 +53,24 @@
      Both numbers are in the SVG's own units, so they scale with the sun:
      the desktop layout multiplies the whole thing and the gap between the
      arcs grows with it rather than staying a phone-sized hairline. */
-  const CLEARANCE = 7;
-  const SPACING = 9;
+  const CLEARANCE = 9;
+  const SPACING = 22;
 
-  let rings = $derived(sunRings(activeFlag.stripes, activeFlag.dark));
+  /** Two, whatever the flag has. Seven arcs on agender read as a second sun
+      rather than as a mark on the first one, and at the offset below they
+      were still arriving while the step had moved on. Two is a gesture; the
+      count of stripes is the sun's job, not this one's. */
+  const STROKES = 2;
+
+  /** Seconds between the two. Far longer than the rings' own 0.11s: these
+      travel a whole quarter each and want to read as one after the other
+      rather than as a pair. */
+  const OFFSET = 0.5;
+
+  /* The outermost stripes, which are the two the sun leads with, so the
+     sweep is in the colours the eye has already taken from it. A flag with
+     one stripe would give one stroke rather than a repeat. */
+  let strokes = $derived(sunRings(activeFlag.stripes, activeFlag.dark).slice(0, STROKES));
 
   /* The quarter that shows. The sun's centre is the window's top right
      corner, so the visible quadrant is the one below and to the left of it:
@@ -79,13 +93,13 @@
     fill="none"
     aria-hidden="true"
   >
-    {#each rings as ring, i (i)}
+    {#each strokes as stroke, i (i)}
       {@const radius = CENTRE + CLEARANCE + i * SPACING}
       {@const arc = arcLength(radius)}
       <path
         d={quarter(radius)}
-        stroke={ring.color}
-        style={`--arc: ${arc}; --seg: ${arc * 0.18}; --seg-peak: ${arc * 0.34}; --in-delay: ${ring.inDelay}s`}
+        stroke={stroke.color}
+        style={`--arc: ${arc}; --seg: ${arc * 0.16}; --seg-peak: ${arc * 0.3}; --in-delay: ${i * OFFSET}s`}
       />
     {/each}
   </svg>
