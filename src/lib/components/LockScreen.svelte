@@ -19,7 +19,7 @@
   import { androidKeystore } from '$lib/lock/keystore-bridge';
   import { bioGateDecision } from '$lib/lock/bio-consent';
   import { isAndroid } from '$lib/platform';
-  import GateScreen from './GateScreen.svelte';
+  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -226,6 +226,12 @@
     }
   }
 
+  /* Hoisted out of the template with the title, so its length can decide
+     whether it is a line to centre or a paragraph to left-align. */
+  let body = $derived(
+    mode === 'setup' ? (confirming ? m.pin_confirm_body() : m.pin_setup_body()) : m.pin_unlock_body()
+  );
+
   let title = $derived(
     mode === 'setup'
       ? confirming
@@ -238,13 +244,7 @@
 </script>
 
 <GateScreen icon="lock" {title} data-applock>
-  <p class="gate-body">
-    {#if mode === 'setup'}
-      {#if confirming}{m.pin_confirm_body()}{:else}{m.pin_setup_body()}{/if}
-    {:else}
-      {m.pin_unlock_body()}
-    {/if}
-  </p>
+  <p class={gateBodyClass(body)}>{body}</p>
 
   <!-- Keyed on the refusal count so a wrong PIN gets a fresh row and the
        shake plays once per refusal rather than once per mount. -->
@@ -266,7 +266,7 @@
          shape. Keyed on the total so a second penalty restarts the drain
          rather than continuing the first one's. -->
     {#key waitTotalMs}
-      <div class="pin-wait" aria-hidden="true"><i style={`--wait:${waitTotalMs}ms`}></i></div>
+      <div class="rail pin-wait" aria-hidden="true"><i style={`--wait:${waitTotalMs}ms`}></i></div>
     {/key}
   {/if}
 

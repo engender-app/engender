@@ -1,3 +1,27 @@
+<script module lang="ts">
+  /* Where a gate's body stops being a line and starts being a paragraph.
+
+     A gate's frame is centred, and a centred line under a centred title is
+     right - "Enter your PIN to open your journal." is 36 characters and it
+     belongs on the axis the mark and the title sit on. Six centred lines are
+     not: both edges go ragged and the eye loses the start of each line,
+     which is the wrong thing to do to a passphrase screen that has to be
+     read once and understood. So the paragraphs left-align and the lines do
+     not.
+
+     Decided by length rather than by each gate remembering, because the
+     lengths are the copy's and the copy moves: `pp_setup_body` is 266
+     characters in English and Polish runs longer again, while
+     `pp_unlock_body` is 54 in both. Anything past 120 is at least two lines
+     on a 360px column at any text size this app supports. */
+  const PARAGRAPH = 120;
+
+  /** The body's class, given what it is about to say. */
+  export function gateBodyClass(text: string, extra = ''): string {
+    return `gate-body${text.length > PARAGRAPH ? ' is-long' : ''}${extra ? ` ${extra}` : ''}`;
+  }
+</script>
+
 <script lang="ts">
   /* The shell the five pre-unlock gates and the lock setup screen are built
      from (phase 5 ticket 26).

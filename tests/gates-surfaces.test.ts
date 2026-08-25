@@ -12,6 +12,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { onboardingSteps } from '../src/lib/onboarding/steps';
+
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 const stripScript = (source: string) => source.replace(/<script[\s\S]*?<\/script>/g, '');
@@ -34,7 +36,7 @@ const onboardingMarkup = stripScript(onboarding);
 describe('the gates are one object, not six copies of one', () => {
   it('builds every gate from the shared shell', () => {
     for (const path of GATES) {
-      expect(read(path), path).toContain("import GateScreen from './GateScreen.svelte'");
+      expect(read(path), path).toMatch(/import GateScreen(?:, \{[^}]*\})? from '\.\/GateScreen\.svelte'/);
       expect(stripScript(read(path)), path).toContain('<GateScreen');
     }
   });
@@ -142,6 +144,20 @@ describe('the first run', () => {
     expect(onboardingMarkup.indexOf('{#if !prefs.disguise}')).toBeLessThan(
       onboardingMarkup.indexOf('<FlagSun />')
     );
+  });
+
+  it('takes the flag step out of the flow under disguise, rather than hiding it', () => {
+    /* The step draws eight pride flags and names them, which is a stronger
+       tell than the sun the rule above covers. Read off the model rather
+       than off the markup: the route asks steps.ts what the flow is, so a
+       guard added to the swatches and forgotten on the progress rail, the
+       back arrow or the step count cannot pass this. */
+    expect(onboardingSteps(true)).not.toContain('flag');
+    expect(onboardingSteps(false)).toContain('flag');
+    expect(onboarding).toContain('onboardingSteps(prefs.disguise)');
+    /* And nothing in the route counts steps for itself, which is what makes
+       the shorter flow correct everywhere at once. */
+    expect(stripComments(onboarding)).not.toMatch(/ONBOARDING_STEPS|\b7\b/);
   });
 
   it('crosses its steps on the tier-2 axis rather than inventing a transition', () => {

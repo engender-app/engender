@@ -24,7 +24,7 @@
   import { bootState, submitPassphraseSetup, submitPassphraseUnlock, submitSkipSetup, resetApp } from '$lib/stores/boot.svelte';
   import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import GateScreen from './GateScreen.svelte';
+  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -52,6 +52,29 @@
       ? `${Math.round(bytes / (1024 * 1024))} MB`
       : `${Math.max(1, Math.round(bytes / 1024))} KB`;
   }
+
+  /* Hoisted out of the template so its length can decide whether it is a
+     line to centre or a paragraph to left-align (GateScreen). */
+  let formBody = $derived(
+    converting && mode === 'setup'
+      ? m.pp_convert_setup_body()
+      : converting
+        ? m.pp_convert_resume_body()
+        : mode === 'setup'
+          ? m.pp_setup_body()
+          : m.pp_unlock_body()
+  );
+
+  let refusalBody = $derived(
+    bootState.conversionRefusal?.reason === 'not-enough-space'
+      ? m.pp_convert_refused_space({
+          need: megabytes(bootState.conversionRefusal.needBytes),
+          free: megabytes(bootState.conversionRefusal.freeBytes)
+        })
+      : bootState.conversionRefusal?.reason === 'schema-too-new'
+        ? m.pp_convert_refused_schema()
+        : ''
+  );
 
   let progress = $derived(bootState.conversion?.progress ?? null);
   /** The photo stage, and only where there is something to divide by: the
@@ -140,16 +163,7 @@
 
 {#if screen === 'conversion-refused'}
   <GateScreen icon="alert" tone="alert" title={m.pp_convert_refused_title()}>
-    <p class="gate-body" data-conversion-refusal>
-      {#if bootState.conversionRefusal?.reason === 'not-enough-space'}
-        {m.pp_convert_refused_space({
-          need: megabytes(bootState.conversionRefusal.needBytes),
-          free: megabytes(bootState.conversionRefusal.freeBytes)
-        })}
-      {:else if bootState.conversionRefusal?.reason === 'schema-too-new'}
-        {m.pp_convert_refused_schema()}
-      {/if}
-    </p>
+    <p class={gateBodyClass(refusalBody)} data-conversion-refusal>{refusalBody}</p>
   </GateScreen>
 {:else if screen === 'converting'}
   <GateScreen icon="lock" title={m.pp_converting_title()}>
@@ -162,7 +176,7 @@
            on a sentence alone, on a screen that can hold someone for
            minutes; the bar is the same two numbers as a length. -->
       <div
-        class="gate-progress"
+        class="rail gate-progress"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={photoProgress.total}
@@ -190,12 +204,7 @@
           ? m.pp_setup_title()
           : m.pp_unlock_title()}
   >
-    <p class="gate-body">
-      {#if converting && mode === 'setup'}{m.pp_convert_setup_body()}
-      {:else if converting}{m.pp_convert_resume_body()}
-      {:else if mode === 'setup'}{m.pp_setup_body()}
-      {:else}{m.pp_unlock_body()}{/if}
-    </p>
+    <p class={gateBodyClass(formBody)}>{formBody}</p>
 
     {#if canSkip}
       <!-- The notice surface, written out rather than reached for, because

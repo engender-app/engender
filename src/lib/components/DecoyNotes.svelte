@@ -45,8 +45,19 @@
     <!-- The compose button every notes app has. Paint, like the search bar
          above it: the whole screen is one button and every tap goes back. It
          is here because its absence was the tell - a notes app with four
-         notes and no way to write a fifth is a screenshot of one. -->
-    <span class="decoy-compose">+</span>
+         notes and no way to write a fifth is a screenshot of one.
+
+         A drawn path rather than a `+` character, for the reason the craft
+         floor gives: a glyph standing in for an icon is a tell in itself.
+         Authored here rather than taken from the app's own set, because the
+         app's icons are the one thing on this screen that would identify
+         it. -->
+    <span class="decoy-compose">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+    </span>
   </span>
 </button>
 
@@ -123,8 +134,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.75rem;
-    line-height: 1;
     background: color-mix(in srgb, CanvasText 10%, Canvas);
     color: color-mix(in srgb, CanvasText 70%, Canvas);
   }

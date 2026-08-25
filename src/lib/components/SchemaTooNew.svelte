@@ -16,7 +16,7 @@
 
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, checkForNewerRelease } from '$lib/pwa/update';
-  import GateScreen from './GateScreen.svelte';
+  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
 
   let looking = $state(false);
   let nothingNewer = $state(false);
@@ -38,7 +38,7 @@
 </script>
 
 <GateScreen icon="alert" tone="alert" title={m.boot_schema_too_new_title()}>
-  <p class="gate-body" data-schema-too-new>{m.boot_schema_too_new_body()}</p>
+  <p class={gateBodyClass(m.boot_schema_too_new_body())} data-schema-too-new>{m.boot_schema_too_new_body()}</p>
   <div class="gate-actions">
     <button class="btn btn-primary" data-look-for-newer disabled={looking} onclick={lookForNewer}>
       <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>

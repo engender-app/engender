@@ -1303,21 +1303,44 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
   .sun i { animation: none; }
 }
 
+/* ---------- A rail ----------
+
+   One shape, three jobs: how far through the first run somebody is, how far
+   through re-encrypting its photos a conversion is, and how much of a PIN
+   throttle is left. They were three copies of the same eight declarations
+   differing in a pixel of height, which is what a primitive is for. The
+   fill's own colour and how it moves belong to the job, not to the shape:
+   the first two tween a transform they are handed, and the throttle's runs
+   itself down over a duration set when the wait starts. */
+.rail {
+  height: 4px; border-radius: var(--radius-pill);
+  background: var(--surface-2); overflow: hidden;
+}
+.rail i {
+  display: block; height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
 /* ---------- PIN pad ---------- */
 .pin-dots { display: flex; gap: var(--space-4); justify-content: center; margin: var(--space-6) 0 var(--space-4); }
-.pin-dot {
-  width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid var(--accent-border); background: none;
-  /* Longhands rather than a shorthand, because one of the three curves is
-     --ease-press: an unparseable linear() takes a whole shorthand with it
-     on an old WebView, and the colour change would go with it. See
-     --ease-press in theme/base.css.
+/* One rule for both, because it is one gesture: the digit lands on the
+   spring while the colour arrives flat, which is the difference between a
+   dot appearing and a dot being put there.
 
-     The digit lands on the spring while the colour arrives flat, which is
-     the difference between a dot appearing and a dot being put there. */
+   Longhands rather than a shorthand, because one of the three curves is
+   --ease-press: an unparseable linear() takes a whole shorthand with it on
+   an old WebView, and the colour change would go with it. See --ease-press
+   in theme/base.css. */
+.pin-dot, .pin-key {
   transition-property: background-color, border-color, transform;
   transition-duration: var(--dur-fast), var(--dur-fast), var(--dur-press);
   transition-timing-function: var(--ease-out), var(--ease-out), var(--ease-press);
+}
+.pin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--accent-border); background: none;
 }
 .pin-dot.is-filled { background: var(--accent); border-color: var(--accent); transform: scale(1.15); }
 
@@ -1349,10 +1372,12 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
    the container's stretch and sizes it to its content instead - which took
    the pad from 280px to the width of three digits and this rail, whose only
    child is 100% of it, to nothing at all. */
-.pin-wait { height: 3px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; width: 100%; max-width: 200px; margin: 0 auto var(--space-3); }
+.pin-wait { height: 3px; width: 100%; max-width: 200px; margin: 0 auto var(--space-3); }
 .pin-wait i {
-  display: block; height: 100%; background: var(--danger);
-  transform-origin: left center;
+  background: var(--danger);
+  /* Runs itself down rather than being handed a width per tick, so a
+     quarter-second interval does not show as four steps a second. */
+  transition: none;
   animation: pin-wait-drain var(--wait, 0ms) linear forwards;
 }
 @keyframes pin-wait-drain {
@@ -1378,9 +1403,6 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
   font-family: var(--font-display); font-size: var(--text-xl); font-variant-numeric: tabular-nums;
   letter-spacing: var(--display-track); color: var(--text);
   cursor: pointer;
-  transition-property: background-color, border-color, transform;
-  transition-duration: var(--dur-fast), var(--dur-fast), var(--dur-press);
-  transition-timing-function: var(--ease-out), var(--ease-out), var(--ease-press);
   display: flex; align-items: center; justify-content: center;
 }
 .pin-key:hover { background: var(--surface-2); }
