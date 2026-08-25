@@ -28,17 +28,7 @@
      and half of that being inert is a smaller target that also reads as an
      accident. */
   import { share } from '$lib/charts/geometry';
-
-  export interface BarRow {
-    key: string;
-    name: string;
-    /** Under the name: a count, a unit, a period. */
-    note?: string;
-    /** The reading, formatted by the caller. */
-    value: string;
-    /** What the bar's length is drawn from. */
-    amount: number;
-  }
+  import type { BarRow } from './barRow';
 
   let {
     rows,
@@ -80,7 +70,7 @@
         class="kit-bar is-open"
         data-bar-row={row.key}
         style={`--bar-index: ${i}`}
-        onclick={() => onPick?.(row.key)}>{@render bar(row)}</button
+        onclick={() => onPick(row.key)}>{@render bar(row)}</button
       >
     {:else}
       <div class="kit-bar" data-bar-row={row.key} style={`--bar-index: ${i}`}>{@render bar(row)}</div>
