@@ -1303,8 +1303,13 @@
   "effects_direction_other": "Bez przypisanego kierunku",
   "effect_group_count": [
     {
-      "declarations": ["input count", "local countPlural = count: plural"],
-      "selectors": ["countPlural"],
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
       "match": {
         "countPlural=one": "{count} efekt",
         "countPlural=few": "Efekty: {count}",
@@ -2334,5 +2339,14 @@
   "journal_book_part_opening_page": "Bilans na otwarcie",
   "journal_book_part_dysphoria_euphoria_tags": "Tagi dysforii i eufori",
   "journal_book_empty": "W tym zakresie nie ma nic do wydruku.",
-  "journal_book_range": "od {from} do {to}"
+  "journal_book_range": "od {from} do {to}",
+  "stats_range_sub": "ostatnie {days} dni",
+  "stats_day_by_day": "Dzień po dniu",
+  "stats_scales_now": "Każda skala w tym okresie",
+  "stats_mood_days": "Dni przy każdym nastroju",
+  "stats_values_open": "Wszystkie wartości",
+  "stats_look_back": "Spojrzenie wstecz",
+  "wrapped_stat_streak_ever": "Rekord",
+  "wrapped_cadence_range": "Zakres",
+  "wrapped_range_title": "Dowolny zakres"
 }

@@ -28,10 +28,20 @@ function markup(file: string): string {
 /** Just the rules that draw a chart's marks - the line, its fill, the
     bars, the distribution. The card around them and the picker on its
     heading are chrome, and chrome is allowed the app's own surface and
-    accent colours; the single-hue rule is about the marks. */
+    accent colours; the single-hue rule is about the marks.
+
+    A focus ring is chrome too, wherever it lands. It is one of the browser
+    surfaces the craft floor asks to be themed from the palette, every one
+    in the app is drawn in the accent, and a bar row that can be focused
+    (phase 5 UX ticket 23) is the first mark rule to carry one. Excluded by
+    the state rather than by the selector, so the rules that paint the bar
+    itself stay held to the hue. */
 const markCss = kitNoComments
   .split('}')
-  .filter((rule) => /\.kit-(area|bar|dist)[a-z-]*/.test(rule.split('{')[0] ?? ''))
+  .filter((rule) => {
+    const prelude = rule.split('{')[0] ?? '';
+    return /\.kit-(area|bar|dist)[a-z-]*/.test(prelude) && !prelude.includes(':focus-visible');
+  })
   .join('}');
 
 describe('the surfaces', () => {
@@ -123,9 +133,15 @@ describe('the charts', () => {
        with the leader at full strength and the rest one diluted step of the
        same colour. So the only colours a mark may name are the section's
        own ink, mood's own ramp, and the surface it is diluted into - never
-       a second accent and never a literal. */
+       a second accent and never a literal.
+
+       --role-wash joined the list with the pressable bar row (phase 5 UX
+       ticket 23, the Stats hub's tag insights). It is a press fill rather
+       than a mark - chrome, the same as the card and the picker - and it is
+       mixed from the same stripe as everything else here, so the rule this
+       check protects is not the one it touches. */
     const allowed =
-      /^(--role-ink|--role-mark|--dist-fill|--surface|--outline|--text-2?|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
+      /^(--role-ink|--role-mark|--role-wash|--dist-fill|--surface|--outline|--text-2?|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
     for (const [, token] of markCss.matchAll(/var\((--[a-z0-9-]+)/g)) {
       if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
       expect(token, `${token} in the chart rules`).toMatch(allowed);

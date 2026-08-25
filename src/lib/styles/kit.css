@@ -180,6 +180,17 @@
   background: var(--role-wash);
 }
 
+/* A row that states something and goes nowhere (the Stats hub's correlation
+   cards). It keeps the hairline and the padding and gives up the two things
+   that promise a destination: the pointer, and the press. */
+.kit-row.is-static {
+  cursor: default;
+}
+
+.kit-row.is-static:active {
+  background: none;
+}
+
 /* Found on Home (phase 5 ticket 21): ticket 20's gallery only ever handed
    its list card a coloured role, so the disc that vanishes on the white band
    waited for a screen to draw it. */
@@ -902,6 +913,18 @@ a.kit-entry:active {
   font-size: var(--text-sm);
 }
 
+/* Two surfaces with no heading between them.
+
+   A screen built entirely of named areas never needs this - the heading's
+   own padding is the space above every surface under it - but the Stats hub
+   stacks four charts and a list, and the areas there are named by the chart
+   headings themselves. So the rule is adjacency rather than a gap on the
+   screen: where a heading is present it still owns the space. */
+:is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods)
+  + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods) {
+  margin-top: var(--space-4);
+}
+
 /* --- area ---
 
    A timeline that scrolls rather than a range squashed into a card. The
@@ -995,6 +1018,39 @@ a.kit-entry:active {
   gap: var(--space-3);
 }
 
+/* A bar row that opens what is behind it (the Stats hub's tag insights).
+
+   Tier 1 answers with the fill and not with a scale, which is the rule
+   DIRECTION.md already writes for a row the width of the screen: this one
+   is the width of a card, and scaling it would move the card around it. The
+   wash is the same one a list row takes, so a pressable bar and a pressable
+   row feel like one control drawn two ways. */
+.kit-bar.is-open {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-2);
+  margin-inline: calc(var(--space-2) * -1);
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition-property: background-color;
+  transition-duration: var(--dur-fast);
+}
+
+.kit-bar.is-open:active {
+  background: var(--role-wash);
+}
+
+.kit-bar.is-open:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .kit-bar-label {
   display: flex;
   align-items: baseline;
@@ -1047,6 +1103,11 @@ a.kit-entry:active {
   to { transform: scaleX(1); }
 }
 
+@keyframes kit-dist-in {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
 .kit-bar-mark.is-leader {
   background: var(--role-mark);
 }
@@ -1087,6 +1148,15 @@ a.kit-entry:active {
   border-radius: 6px 6px 2px 2px;
   border: 1px solid var(--outline);
   background: var(--dist-fill, var(--role-mark));
+  /* The set rises as it arrives, left to right, on the horizontal bars' own
+     entrance and stagger - a distribution is a set of bars, and one of the
+     two rising while the other appeared would read as an oversight in
+     whichever was still. Scale rather than height, so only a transform
+     animates; the keyframe ends where this rule already rests. */
+  transform: scaleY(1);
+  transform-origin: bottom center;
+  animation: kit-dist-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--bar-index, 0) * var(--stagger-step));
   transition-property: height;
   transition-duration: var(--dur-slow);
   transition-timing-function: var(--ease-out);

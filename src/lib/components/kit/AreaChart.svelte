@@ -16,10 +16,27 @@
      ($lib/charts/geometry), which is what makes a week and a year
      interpolable pairwise at all. Under reduced motion the tween is an
      instant cut - tier 3's substitute, not tier 2's crossfade: a change
-     inside a screen has no journey for a fade to stand in for. */
+     inside a screen has no journey for a fade to stand in for.
+
+     The first draw has nothing to tween from, and that is the one moment
+     this chart is allowed to arrive rather than simply be there: the plot
+     uncovers from its left edge, oldest reading to newest, so a timeline is
+     revealed in the direction time runs in and the ring on the latest
+     reading is the last thing to appear. It is the wipe primitive
+     ($lib/motion/reveal), which exists for exactly this - "the content was
+     already composed and is being revealed", which is the truer of the two
+     readings on a screen showing you your own history - and it plays once
+     per arrival and stops. Switching metric or range does not replay it:
+     the element stays mounted and the tween is what carries that change.
+
+     Still tier 3 rather than a third authored moment. The chart already
+     animates between datasets; this is the same gesture with an empty
+     dataset on the near side. Asked for by the user (2026-08-25) with the
+     line's entrance named specifically. */
   import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { areaPath, bucket, lerpSamples, resample, type Point } from '$lib/charts/geometry';
+  import { wipe } from '$lib/motion/reveal';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
 
   let {
@@ -115,7 +132,7 @@
 </script>
 
 {#if path.last}
-  <div class="kit-area" data-chart="area">
+  <div class="kit-area" data-chart="area" in:wipe>
     <!-- The value gutter, outside the scroller on purpose. -->
     <div class="kit-area-scale" aria-hidden="true">
       <span>{formatValue(max)}</span>
