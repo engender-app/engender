@@ -459,10 +459,10 @@
             <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
           </div>
           {#if schedule.doseAmounts.length}
-            <div class="list-group">
+            <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.episodes)}>
               {#each schedule.doseAmounts as amount, index (index)}
-                <div class="list-row">
-                  <span class="row-text cd-endpoints">
+                <div class="kit-row is-static">
+                  <span class="kit-row-text cd-endpoints">
                     <span class="field">
                       <input
                         class="input"
@@ -483,7 +483,7 @@
                     </span>
                   </span>
                   <button
-                    class="icon-btn"
+                    class="kit-row-act press"
                     data-delete-amount={index}
                     aria-label={m.regimen_schedule_amount_delete_aria({ index: index + 1 })}
                     onclick={() => removeDoseAmount(index)}
@@ -492,9 +492,9 @@
                   </button>
                 </div>
               {/each}
-            </div>
+            </ListCard>
           {/if}
-          <button class="btn btn-ghost" data-add-amount onclick={addDoseAmount}>
+          <button class="btn btn-ghost press" data-add-amount onclick={addDoseAmount}>
             <span>{m.regimen_schedule_amount_add()}</span>
           </button>
 
@@ -514,20 +514,20 @@
           <p class="muted small">{m.regimen_pauses_hint()}</p>
         </div>
         {#if editorPauses.length}
-          <div class="list-group">
+          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.episodes)}>
             {#each editorPauses as pause (pause.id)}
-              <div class="list-row">
-                <span class="row-text">
-                  <span class="row-title">
+              <div class="kit-row is-split">
+                <span class="kit-row-main">
+                  <span class="kit-row-title">
                     {fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
                     {pause.endEpochDay === null
                       ? `· ${m.regimen_pause_ongoing()}`
                       : `– ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`}
                   </span>
-                  <span class="row-subtitle">{pauseReasonLabel(pause.reason)}</span>
+                  <span class="kit-row-sub">{pauseReasonLabel(pause.reason)}</span>
                 </span>
                 <button
-                  class="icon-btn"
+                  class="kit-row-act press"
                   data-delete-pause={pause.id}
                   aria-label={m.regimen_pause_delete_aria({
                     from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
@@ -538,7 +538,7 @@
                 </button>
               </div>
             {/each}
-          </div>
+          </ListCard>
         {/if}
         {#if newPause}
           <div class="cd-endpoints">

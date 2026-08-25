@@ -1,4 +1,17 @@
 <script lang="ts">
+  /* Procedures, dates and your own recovery log, on the surface kit (phase
+     5 UX ticket 25).
+
+     Five areas below the procedure list, each of which was a SectionTitle
+     over a `.list-group` and one of them over a `.card` holding a single
+     line - so the recovery log read as five settings groups rather than as
+     one procedure's record. Same conversion throughout: the kit's heading
+     over the kit's list card, and the one card that held a line and a
+     button is a notice, which is the surface for exactly that.
+
+     The checklist here is appointment prep's checklist and gets the same
+     treatment: three controls on the row, and the carried-forward badge
+     dropped because the flag's own pressed state was already saying it. */
   /* The surgery journey module (phase 5 ticket 07, CONTEXT: "Procedure").
      One screen for every procedure someone is tracking, with the selected
      one's recovery log opened below the list rather than on a route of its
@@ -22,13 +35,22 @@
   import { photoReview } from '$lib/stores/photoReview.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
+
+  /* The procedures, and the record kept against whichever one is open. */
+  const AREA_ROLE = { procedures: 0, recovery: 1 };
 
   const today = todayEpochDay();
 
@@ -206,86 +228,101 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.surgery_journey_title()} back="/settings">
+  <ScreenHeader title={m.surgery_journey_title()} back="/more" subtitle={m.surgery_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.surgery_add()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.surgery_add()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
   {#if proceduresQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if procedures.length}
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_intro()}</p>
-
-    <div class="list-group">
-      {#each procedures as procedure (procedure.id)}
-        <div class="list-row" style="cursor:default" data-procedure={procedure.id}>
-          <button
-            class="procedure-open"
-            aria-expanded={selectedId === procedure.id}
-            aria-label={m.surgery_row_aria({ name: procedure.name })}
-            onclick={() => select(procedure)}
-          >
-            <span class="row-text">
-              <span class="row-title">{procedure.name}</span>
-              <span class="row-subtitle">
-                {procedure.surgeryEpochDay === null ? m.surgery_date_none() : dayLabel(procedure.surgeryEpochDay)} · {recoveryText(procedure)}
+    <div in:crossfade>
+      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.procedures)}>
+        {#each procedures as procedure (procedure.id)}
+          <div class="kit-row is-split" data-procedure={procedure.id}>
+            <button
+              class="kit-row-main"
+              aria-expanded={selectedId === procedure.id}
+              aria-label={m.surgery_row_aria({ name: procedure.name })}
+              onclick={() => select(procedure)}
+            >
+              <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
+              <span class="kit-row-text">
+                <span class="kit-row-title">{procedure.name}</span>
+                <span class="kit-row-sub">
+                  {procedure.surgeryEpochDay === null ? m.surgery_date_none() : dayLabel(procedure.surgeryEpochDay)} · {recoveryText(procedure)}
+                </span>
               </span>
-            </span>
-          </button>
-          <button class="icon-btn" data-edit-procedure={procedure.id} aria-label={m.surgery_edit_sheet()} onclick={() => openEditor(procedure)}>
-            <Icon name="pencil" size={18} />
-          </button>
-        </div>
-      {/each}
+            </button>
+            <button
+              class="kit-row-act press"
+              data-edit-procedure={procedure.id}
+              aria-label={m.surgery_edit_sheet()}
+              onclick={() => openEditor(procedure)}
+            >
+              <Icon name="pencil" size={18} />
+            </button>
+          </div>
+        {/each}
+      </ListCard>
     </div>
   {:else}
-    <EmptyState title={m.surgery_empty_title()} text={m.surgery_empty_body()}>
-      {#snippet action()}
-        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.surgery_add()}</span></button>
-      {/snippet}
-    </EmptyState>
+    <div in:crossfade>
+      <Notice
+        icon="flag"
+        key="surgery-empty"
+        role={roleAt(activeFlag.roles, AREA_ROLE.procedures)}
+        title={m.surgery_empty_title()}
+        text={m.surgery_empty_body()}
+        action={{ label: m.surgery_add(), primary: true, onclick: () => openEditor(null) }}
+      />
+    </div>
   {/if}
 
   {#if selected}
     <div class="recovery" data-recovery-log={selected.id}>
-      <SectionTitle text={m.surgery_date_label()} />
-      <div class="card" style="margin-bottom:var(--space-4)">
-        <p class="row-title" style="margin-bottom:var(--space-1)">{recoveryText(selected)}</p>
-        {#if selected.surgeryEpochDay !== null}
-          <button class="btn btn-soft" data-add-as-milestone onclick={() => addAsMilestone(selected)}>
-            <span>{m.surgery_milestone_add()}</span>
-          </button>
-        {/if}
-      </div>
+      <SectionHeading text={m.surgery_date_label()} />
+      <Notice
+        icon="clock"
+        key="surgery-recovery"
+        role={roleAt(activeFlag.roles, AREA_ROLE.recovery)}
+        title={recoveryText(selected)}
+        action={selected.surgeryEpochDay === null
+          ? undefined
+          : { label: m.surgery_milestone_add(), onclick: () => addAsMilestone(selected) }}
+        data-add-as-milestone-notice
+      />
 
-      <SectionTitle text={m.surgery_consults_title()} />
+      <SectionHeading text={m.surgery_consults_title()} />
       {#if selected.consults.length}
-        <div class="list-group" style="margin-bottom:var(--space-3)">
-          {#each selected.consults as consult (consult.id)}
-            <div class="list-row" data-consult={consult.id}>
-              <span class="row-text"><span class="row-title">{dayLabel(consult.epochDay)}</span></span>
-              <button
-                class="icon-btn"
-                data-delete-consult={consult.id}
-                aria-label={m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) })}
-                onclick={() => journal.procedures.deleteConsult(consult.id)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
-          {/each}
+        <div style="margin-bottom:var(--space-3)">
+          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.recovery)}>
+            {#each selected.consults as consult (consult.id)}
+              <div class="kit-row is-static" data-consult={consult.id}>
+                <span class="kit-row-text"><span class="kit-row-title">{dayLabel(consult.epochDay)}</span></span>
+                <button
+                  class="kit-row-act press"
+                  data-delete-consult={consult.id}
+                  aria-label={m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) })}
+                  onclick={() => journal.procedures.deleteConsult(consult.id)}
+                >
+                  <Icon name="trash" size={18} />
+                </button>
+              </div>
+            {/each}
+          </ListCard>
         </div>
       {:else}
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consults_empty()}</p>
       {/if}
-      <button class="btn btn-soft" data-add-consult style="margin-bottom:var(--space-4)" onclick={openConsultSheet}>
+      <button class="btn btn-soft press" data-add-consult style="margin-bottom:var(--space-4)" onclick={openConsultSheet}>
         <span>{m.surgery_consult_add()}</span>
       </button>
 
-      <SectionTitle text={m.surgery_notes_title()} />
+      <SectionHeading text={m.surgery_notes_title()} />
       <div class="field">
         <textarea
           class="input"
@@ -296,60 +333,61 @@
           bind:value={notesDraft}
         ></textarea>
       </div>
-      <button class="btn btn-soft" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
+      <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
         <span>{m.surgery_notes_save()}</span>
       </button>
 
-      <SectionTitle text={m.surgery_photos_title()} />
+      <SectionHeading text={m.surgery_photos_title()} />
       {#if photosQuery.loading}
         <Skeleton variant="line" count={1} />
       {:else if photos.length}
-        <div class="list-group" style="margin-bottom:var(--space-3)">
-          {#each photos as photo (photo.id)}
-            <div class="list-row" data-procedure-photo={photo.id}>
-              <PhotoThumb photo={photo} size={48} />
-              <span class="row-text"><span class="row-subtitle">{dayLabel(photo.epochDay)}</span></span>
-              <button
-                class="icon-btn"
-                data-delete-procedure-photo={photo.id}
-                aria-label={m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
-                onclick={() => (photoDeleteTarget = photo)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
-          {/each}
+        <div style="margin-bottom:var(--space-3)">
+          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.recovery)}>
+            {#each photos as photo (photo.id)}
+              <div class="kit-row is-static" data-procedure-photo={photo.id}>
+                <PhotoThumb photo={photo} size={48} />
+                <span class="kit-row-text"><span class="kit-row-sub">{dayLabel(photo.epochDay)}</span></span>
+                <button
+                  class="kit-row-act press"
+                  data-delete-procedure-photo={photo.id}
+                  aria-label={m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
+                  onclick={() => (photoDeleteTarget = photo)}
+                >
+                  <Icon name="trash" size={18} />
+                </button>
+              </div>
+            {/each}
+          </ListCard>
         </div>
       {:else}
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_photos_empty()}</p>
       {/if}
-      <button class="btn btn-soft" data-add-procedure-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
+      <button class="btn btn-soft press" data-add-procedure-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
         <span>{m.add_photo()}</span>
       </button>
 
-      <SectionTitle text={m.surgery_checklist_title()} />
+      <SectionHeading text={m.surgery_checklist_title()} />
       {#if checklistItems.length}
-        <div class="list-group" style="margin-bottom:var(--space-3)">
+        <div style="margin-bottom:var(--space-3)">
+          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.recovery)}>
           {#each checklistItems as item (item.id)}
-            <div class="list-row" style="cursor:default" data-procedure-item={item.id}>
+            <div class="kit-row is-split" data-procedure-item={item.id}>
               <button
-                class="item-toggle"
+                class="kit-row-main"
                 role="checkbox"
                 aria-checked={item.checked}
                 aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
                 onclick={() => journal.checklists.setItemChecked(item.id, !item.checked)}
               >
-                <span class="row-icon" class:sj-ticked={item.checked}>
+                <span class="sj-box" class:sj-ticked={item.checked}>
                   {#if item.checked}<Icon name="check" size={20} />{/if}
                 </span>
-                <span class="row-text">
-                  <span class="row-title" class:sj-done={item.checked}>{item.content}</span>
-                  {#if item.carriedForward}<span class="row-subtitle">{m.surgery_checklist_carried_badge()}</span>{/if}
+                <span class="kit-row-text">
+                  <span class="kit-row-title" class:sj-done={item.checked}>{item.content}</span>
                 </span>
               </button>
-              <span class="row-trailing">
                 <button
-                  class="icon-btn"
+                  class="kit-row-act press"
                   class:sj-flagged={item.carriedForward}
                   data-carry-forward={item.id}
                   aria-pressed={item.carriedForward}
@@ -359,21 +397,21 @@
                   <Icon name="flag" size={18} />
                 </button>
                 <button
-                  class="icon-btn"
+                  class="kit-row-act press"
                   data-delete-procedure-item={item.id}
                   aria-label={m.surgery_checklist_delete_aria({ content: item.content })}
                   onclick={() => (itemDeleteTarget = item)}
                 >
                   <Icon name="trash" size={18} />
                 </button>
-              </span>
             </div>
           {/each}
+          </ListCard>
         </div>
       {:else}
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_checklist_empty()}</p>
       {/if}
-      <button class="btn btn-soft" data-add-procedure-item aria-label={m.surgery_checklist_add_aria()} onclick={openItemSheet}>
+      <button class="btn btn-soft press" data-add-procedure-item aria-label={m.surgery_checklist_add_aria()} onclick={openItemSheet}>
         <span>{m.surgery_checklist_add()}</span>
       </button>
     </div>
@@ -495,27 +533,10 @@
     margin-top: var(--space-4);
   }
 
-  /* Both are a whole row made tappable: one opens a procedure's recovery
-     log, the other ticks a checklist item. The checkbox square and the
-     struck-through-when-done rule below are the appointment prep list's,
-     where a ticked item is marked handled rather than hidden. */
-  .procedure-open,
-  .item-toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    flex: 1;
-    min-width: 0;
-    background: none;
-    border: none;
-    padding: 0;
-    text-align: left;
-    font: inherit;
-    color: inherit;
-    cursor: pointer;
-  }
-
-  .row-icon {
+  /* The checkbox square and the struck-through-when-done rule are the
+     appointment prep list's, where a ticked item is marked handled rather
+     than hidden. What made the row tappable is the kit's split row now. */
+  .sj-box {
     border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     width: 28px;
@@ -527,8 +548,8 @@
   }
 
   .sj-ticked {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--role-mark);
+    color: var(--role-mark);
   }
 
   .sj-done {
@@ -537,6 +558,6 @@
   }
 
   .sj-flagged {
-    color: var(--accent);
+    color: var(--role-mark);
   }
 </style>
