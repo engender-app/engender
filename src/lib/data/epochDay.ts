@@ -259,3 +259,15 @@ export function customInclusiveRange(
   if (startEpochDay > endEpochDay) return null;
   return { start: startEpochDay, end: endEpochDay };
 }
+
+/** Whether two epoch days fall in different calendar years, locally.
+
+    The question a chart's gutter asks before it decides whether to write
+    the year on its ends: "22 Jun" on the left and "17 Jun" on the right is
+    a chart that appears to run backwards when the two are a year apart.
+    Here rather than in dates.ts because it is arithmetic on a local date
+    and nothing about how a date is written, so it is testable under the
+    Node tier - dates.ts imports paraglide and is not (ADR-0016). */
+export function crossesCalendarYear(fromEpochDay: number, toEpochDay: number): boolean {
+  return localDateFromEpochDay(fromEpochDay).getFullYear() !== localDateFromEpochDay(toEpochDay).getFullYear();
+}

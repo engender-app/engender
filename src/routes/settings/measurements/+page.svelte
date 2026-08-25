@@ -17,7 +17,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import type { MeasurementSeries } from '$lib/data/journal/measurements';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Measurement } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -209,12 +209,13 @@
           role={roleAt(activeFlag.roles, AREA_ROLE.chart)}
         >
           {#if chart}
+            {@const ends = fmtRangeEnds(chart.from, chart.to)}
             <AreaChart
               points={chart.points}
               min={chart.min}
               max={chart.max}
-              from={fmtDay(chart.from, { day: 'numeric', month: 'short' })}
-              to={fmtDay(chart.to, { day: 'numeric', month: 'short' })}
+              from={ends.from}
+              to={ends.to}
               formatValue={(v) => `${Math.round(v * 10) / 10} ${s.unit}`}
               scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
               ariaLabel={m.measurement_row_aria({

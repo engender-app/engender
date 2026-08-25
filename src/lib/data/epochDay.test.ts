@@ -17,6 +17,7 @@ import {
   epochDayFromDateInputValue,
   dateInputValueFromEpochDay,
   calendarDuration,
+  crossesCalendarYear,
   anniversaryYears,
   customInclusiveRange,
   epochDayMonthsAgo,
@@ -331,4 +332,27 @@ test(`customInclusiveRange rejects reversed boundaries under TZ=${tz}`, () => {
   const start = epochDayFromLocalDate(new Date(2026, 7, 13));
   const end = epochDayFromLocalDate(new Date(2026, 7, 1));
   expect(customInclusiveRange(start, end)).toBeNull();
+});
+
+/* A chart's gutter writes the year on its ends only where the range crosses
+   one (phase 5 UX ticket 25). The lab results screen is what found this:
+   its range is however long somebody has been having blood drawn, so a
+   series running 22 June 2025 to 17 June 2026 drew "22 Jun" beside "17 Jun"
+   and read as a chart running backwards. */
+test(`crossesCalendarYear is false inside one year under TZ=${tz}`, () => {
+  const from = epochDayFromLocalDate(new Date(2026, 0, 1));
+  const to = epochDayFromLocalDate(new Date(2026, 11, 31));
+  expect(crossesCalendarYear(from, to)).toBe(false);
+});
+
+test(`crossesCalendarYear is true across new year, even one day apart, under TZ=${tz}`, () => {
+  const from = epochDayFromLocalDate(new Date(2025, 11, 31));
+  const to = epochDayFromLocalDate(new Date(2026, 0, 1));
+  expect(crossesCalendarYear(from, to)).toBe(true);
+});
+
+test(`crossesCalendarYear is true for the lab range that found it under TZ=${tz}`, () => {
+  const from = epochDayFromLocalDate(new Date(2025, 5, 22));
+  const to = epochDayFromLocalDate(new Date(2026, 5, 17));
+  expect(crossesCalendarYear(from, to)).toBe(true);
 });
