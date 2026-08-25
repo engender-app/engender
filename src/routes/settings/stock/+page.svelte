@@ -11,13 +11,27 @@
   import { RUN_OUT_LEAD_DAYS } from '$lib/data/stockProjection';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   let rowsQuery = liveQuery(['stock', 'dose'], (j) => j.stock.getProjections(todayEpochDay()));
   let rows = $derived(rowsQuery.value ?? []);
+
+  /* The excluded-dose caveat is about every projection on the screen - its
+     own wording says "every projection above" - and it was being rendered
+     as a third line inside each row, which said the same thing once per
+     drug and made the row three lines deep. One statement, under the list,
+     summing what was left out. */
+  let excludedDoses = $derived(rows.reduce((total, row) => total + row.projection.excludedDoses, 0));
 
   function runOutText(row: StockProjectionRow): string {
     const { remaining, runOutEpochDay } = row.projection;
@@ -78,55 +92,59 @@
 <div class="screen">
   <ScreenHeader title={m.stock_title()} back="/settings/regimen" subtitle={m.stock_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.stock_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.stock_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
   {#if rowsQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if rows.length}
-    <div class="list-group">
-      {#each rows as row (row.entry.id)}
-        <button
-          class="list-row"
-          data-stock={row.entry.id}
-          aria-label={m.stock_row_aria({ drug: row.entry.drug })}
-          onclick={() => openEditor(row)}
-        >
-          <span class="row-text">
-            <span class="row-title">
-              {row.entry.drug}
-              {#if isApproaching(row) || row.projection.remaining <= 0}
-                <span class="notice-warn" style="padding:2px 8px;border-radius:var(--radius-pill);font-size:var(--text-xs)">
-                  {runOutText(row)}
-                </span>
-              {/if}
-            </span>
-            <span class="row-subtitle">
-              {m.stock_remaining({ count: row.projection.remaining, unit: row.entry.unit })}
-              {#if !isApproaching(row) && row.projection.remaining > 0}
-                · {runOutText(row)}
-              {/if}
-              · {m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}
-            </span>
-            {#if row.projection.excludedDoses > 0}
-              <span class="row-subtitle muted small">
-                {m.stock_excluded_note({ count: String(row.projection.excludedDoses) })}
+    <div in:crossfade>
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each rows as row (row.entry.id)}
+          <ListRow
+            key={row.entry.id}
+            icon="package"
+            title={row.entry.drug}
+            subtitle={`${m.stock_remaining({ count: row.projection.remaining, unit: row.entry.unit })} · ${m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}`}
+            chevron={false}
+            onclick={() => openEditor(row)}
+          >
+            {#snippet trailing()}
+              <!-- The projection is the reason to be on this screen, so it
+                   sits at the end of the row where a count or a date does
+                   rather than as a pill wedged into the title. It takes the
+                   warning colour only where there is something to be warned
+                   about; otherwise it is a reading like any other. -->
+              <span
+                class="stock-run-out"
+                class:notice-warn={isApproaching(row) || row.projection.remaining <= 0}
+              >
+                {runOutText(row)}
               </span>
-            {/if}
-          </span>
-          <Icon name="pencil" size={18} />
-        </button>
-      {/each}
+            {/snippet}
+          </ListRow>
+        {/each}
+      </ListCard>
+      {#if excludedDoses > 0}
+        <div style="margin-top:var(--space-4)">
+          <Notice icon="info" key="stock-excluded" text={m.stock_excluded_note({ count: String(excludedDoses) })} />
+        </div>
+      {/if}
     </div>
   {:else}
-    <EmptyState title={m.stock_empty_title()} text={m.stock_empty_body()}>
-      {#snippet action()}
-        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.stock_empty_action()}</span></button>
-      {/snippet}
-    </EmptyState>
+    <div in:crossfade>
+      <Notice
+        icon="package"
+        key="stock-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.stock_empty_title()}
+        text={m.stock_empty_body()}
+        action={{ label: m.stock_empty_action(), primary: true, onclick: () => openEditor(null) }}
+      />
+    </div>
   {/if}
 
   <Sheet open={editor !== null} title={editor?.id ? m.stock_edit_sheet() : m.stock_new_sheet()} onClose={() => (editor = null)}>
@@ -170,3 +188,24 @@
     {/if}
   </Sheet>
 </div>
+
+<style>
+  /* The row's trailing reading. It wraps rather than truncating, because
+     the run-out is a sentence and a sentence cut off mid-word says less
+     than no sentence at all; the row grows to fit it. */
+  .stock-run-out {
+    text-align: right;
+    max-width: 11rem;
+    line-height: 1.25;
+  }
+
+  /* Where there is something to be warned about it takes the app's own
+     warn pair, which palette-contrast.test.ts already holds to 4.5:1 across
+     all 8 palettes and both themes. Everywhere else it is a reading in the
+     row's own colour, because most of the time it is not a warning. */
+  .stock-run-out.notice-warn {
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-medium);
+  }
+</style>
