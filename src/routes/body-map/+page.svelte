@@ -30,7 +30,6 @@
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
-  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
   let range = $state(30);
@@ -76,18 +75,6 @@
   <ScreenHeader title={m.body_map_title()} subtitle={m.body_map_sub()} screen="body-map" back="/stats" />
 
   {#if regions.length}
-    <SectionHeading text={regionName}>
-      {#snippet action()}
-        <ChartPicker
-          key="body-region"
-          label={m.body_regions_group()}
-          value={region}
-          options={regions.map((r) => ({ value: r.id, label: r.name }))}
-          onPick={(value) => (region = value)}
-        />
-      {/snippet}
-    </SectionHeading>
-
     <Segmented
       name={m.stats_range_group()}
       options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
@@ -100,11 +87,27 @@
     {#if dysphoriaQuery.loading || euphoriaQuery.loading}
       <Skeleton variant="block" count={2} />
     {:else}
+      <!-- The region picker is this screen's one control and it sits on the
+           first card's heading line. It was a section heading naming the
+           region with the picker beside it, which put "face and jaw" on the
+           screen twice a centimetre apart; the control that changes the
+           region is the honest place for its name. The second card carries
+           no picker, because one preference gets one control
+           (DIRECTION.md). -->
       <ChartCard
         heading={m.body_region_axis_dysphoria()}
         kind="body-dysphoria"
         role={roleAt(activeFlag.roles, 0)}
       >
+        {#snippet control()}
+          <ChartPicker
+            key="body-region"
+            label={m.body_regions_group()}
+            value={region}
+            options={regions.map((r) => ({ value: r.id, label: r.name }))}
+            onPick={(value) => (region = value)}
+          />
+        {/snippet}
         <AreaChart
           scrubLabel={grainLabel(plottedDysphoria.grain)}
           points={plottedDysphoria.points}

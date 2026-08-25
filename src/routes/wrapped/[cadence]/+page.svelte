@@ -432,7 +432,8 @@
             {@const shown = shownDate(field.value)}
             <div class="date-row">
               <label class="date-row-label" for={field.id}>{field.label}</label>
-              <span class="date-row-value" class:is-empty={!shown}>{shown ?? field.label}</span>
+              <span class="date-row-value">{shown ?? ''}</span>
+              <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
               <input
                 id={field.id}
                 type="date"

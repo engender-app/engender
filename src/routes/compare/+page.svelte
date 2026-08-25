@@ -27,6 +27,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleStyle } from '$lib/components/kit/role';
+  import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -127,7 +128,8 @@
     {@const shown = shownDate(value)}
     <div class="date-row">
       <label class="date-row-label" for={id}>{label}</label>
-      <span class="date-row-value" class:is-empty={!shown}>{shown ?? label}</span>
+      <span class="date-row-value">{shown ?? ''}</span>
+      <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
       <input
         {id}
         type="date"
