@@ -392,11 +392,21 @@ describe('tier 1, response', () => {
     expect(depthOf('.press-add:active', press), 'the add button is the deeper of the three').toBe(
       'scale(var(--press-depth-add))'
     );
-    for (const selector of ['.pin-key:active', '.segment:active']) {
-      expect(depthOf(selector, components), `${selector} presses to the compact depth`).toBe(
-        'scale(var(--press-depth))'
-      );
-    }
+    expect(depthOf('.pin-key:active', components), '.pin-key presses to the compact depth').toBe(
+      'scale(var(--press-depth))'
+    );
+
+    /* .segment left this list in phase 5 UX ticket 23. It is the third
+       control that answers a press without shrinking, and DIRECTION.md's
+       tier 1 says every one of those has to say why: the pill crossing the
+       set is already the response, and scaling the label as well is two
+       answers to one press. What is pinned instead is that it still answers
+       at all - a control that does nothing under the finger is the thing
+       tier 1 exists to prevent. */
+    const segment = rules(components).find((rule) => rule.prelude === '.segment:active' && !isReduceContext(rule));
+    expect(segment, '.segment still answers a press').toBeDefined();
+    expect(segment?.body, '.segment answers with colour, not with a transform').not.toMatch(/transform|scale:/);
+    expect(segment?.body, '.segment answers with something').toMatch(/color:/);
   });
 
   it('gives the two add controls the press primitive instead of their own depth', () => {

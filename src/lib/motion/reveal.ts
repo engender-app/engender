@@ -54,10 +54,19 @@ function canClip(): boolean {
  * That is a weaker version of the same idea rather than a broken one, which
  * is what a degradation path has to be.
  */
-export function wipe(_node: Element): TransitionConfig {
+export function wipe(_node: Element, params?: { authored?: boolean }): TransitionConfig {
   if (isReducedMotion()) return { duration: 0 };
 
-  const duration = motionDuration('--dur-slow', 380);
+  /* `authored` is the longer of the two durations, for a wipe that is the
+     one moment a surface arrives rather than one state replacing another.
+     The area chart's first draw asked for it: at --dur-slow the uncovering
+     read as a flicker rather than as a drawing (Alicja, 2026-08-25, "a
+     little slower and not linear"). The easing is --ease-out either way,
+     which is the "not linear" half - a wipe that arrives at a constant rate
+     reads as a wipe rather than as something being revealed. */
+  const duration = params?.authored
+    ? motionDuration('--dur-authored', 700)
+    : motionDuration('--dur-slow', 380);
   if (!canClip()) return fadeOnly(duration);
 
   return {
@@ -71,6 +80,6 @@ export function wipe(_node: Element): TransitionConfig {
        stylesheet would write it, rather than a value that only normalises to
        it. tests/motion-system.test.ts has to do that normalising for CSS; a
        transition can just not need it. */
-    css: (_t, u) => `clip-path: inset(0 ${u === 0 ? '0' : `${Math.round(u * 100)}%`} 0 0)`
+    css: (_t, u) => `clip-path: inset(0 ${u === 0 ? '0' : `${Number((u * 100).toFixed(2))}%`} 0 0)`
   };
 }

@@ -1,24 +1,55 @@
 <script lang="ts">
-  /* The weekly and monthly wrapped (phase 4 features ticket 01): one screen
-     you scroll once, glance at, and leave. Both cadences share it because
-     the questions a week and a month answer are the same size - how much did
-     I log, how did it move, what did I tag - and the only difference between
-     them is the heading, which arrives as a prop.
+  /* The weekly, monthly and picked-range wrapped (phase 4 features ticket
+     01, rebuilt on the kit by phase 5 UX ticket 23). One screen you scroll
+     once, glance at, and leave. The three share it because the questions a
+     week, a month and an arbitrary window answer are the same size - how
+     much did I log, how did it move, what did I tag - and the only
+     difference between them is the heading, which arrives as a prop.
 
      A year does not share it. WrappedYear.svelte is a separate presentation
      rather than this one with more sections, because twelve months of data
      supports a shape a week's worth cannot fill.
 
+     What changed in the rebuild. The figures were four small tiles in a row
+     and are a list card, which is what let the best-streak-ever figure
+     arrive as the line under the streak it sits against rather than as a
+     fifth tile saying a number about a different period. The mood arc is the
+     kit's area chart, so it carries a value scale and a mark per day and
+     re-tweens rather than being redrawn. Tag insights and the tally are the
+     kit's horizontal bars. The rest - milestones, photos, the tags you used
+     - is the same content on the kit's own surfaces.
+
      Sections with nothing in them are left out rather than rendered saying
      "none". That is the same call the entry floor makes about the period as
      a whole, applied one card down: a wrapped is worth opening or it is not
-     shown, and a card is worth reading or it is not there. */
+     shown, and a card is worth reading or it is not there. Every one of the
+     four sections spec 06 adds arrives already answered - null for "no
+     section" - from $lib/data/wrappedSections. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
+  import { atGrain, type Grain } from '$lib/charts/grain';
+  import { MOOD_RANGE } from '$lib/data/metricRange';
+  import { metricKey } from '$lib/data/prefs/catalogue';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import {
+    WRAPPED_AREA_ROLE,
+    nativeValue,
+    signedValue,
+    tagInsightRows,
+    tallyRows
+  } from '$lib/data/wrappedDisplay';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
+  import type { RecapDimChange } from '$lib/data/recapDisplay';
+  import type { WrappedStreaks, WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
   import Icon from './Icon.svelte';
-  import LineChart from './LineChart.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
+  import AreaChart from './kit/AreaChart.svelte';
+  import BarRows from './kit/BarRows.svelte';
+  import ChartCard from './kit/ChartCard.svelte';
+  import ListCard from './kit/ListCard.svelte';
+  import SectionHeading from './kit/SectionHeading.svelte';
 
   let {
     title,
@@ -27,22 +58,56 @@
     moodTrend,
     dimChange,
     topTags,
-    anchorDuration = null
+    anchorDuration = null,
+    insights = [],
+    tally = null,
+    streaks = null
   }: {
     title: string;
     subtitle: string;
     recap: Recap;
     moodTrend: DayAverage[];
     /** The gender dimension that moved furthest, already named - the screens
-        say "scale" for it (CONTEXT: Gender dimension). */
-    dimChange: { name: string; from: number; to: number } | null;
+        say "scale" for it (CONTEXT: Gender dimension). Carries the signed
+        movement as well as the two endpoints (spec 06). */
+    dimChange: RecapDimChange | null;
     topTags: { label: string; count: number }[];
     /** The journey anchor's duration (phase 5 ticket 25), already named and
-        formatted. Optional and null by default so on-this-day, which reuses
-        this template without an anchor concept of its own, does not have to
-        pass one. */
+        formatted. Optional and null by default so a caller with no anchor
+        concept of its own does not have to pass one. */
     anchorDuration?: { name: string; duration: string } | null;
+    /** Which tags went with better or worse days, already named. Empty
+        where the period has nothing to say (spec 06). */
+    insights?: (WrappedTagInsight & { label: string })[];
+    tally?: WrappedTallyCounts | null;
+    streaks?: WrappedStreaks | null;
   } = $props();
+
+  /* Which stripe each area takes, and the two ways this app writes a
+     number, both from $lib/data/wrappedDisplay - shared with the year so the
+     two presentations cannot drift into colouring or formatting the same
+     reading differently. */
+  const AREA_ROLE = WRAPPED_AREA_ROLE;
+
+  const fmtNative = (v: number) => nativeValue(metricKey(prefs), v);
+
+  let plotted = $derived(
+    atGrain(
+      moodTrend.map((p) => ({ x: p.day, y: p.value })),
+      Math.max(1, moodTrend[moodTrend.length - 1].day - moodTrend[0].day + 1)
+    )
+  );
+
+  const GRAIN_WEEK_SPAN = 6;
+  const grainLabel = (grain: Grain) => (point: { x: number }) => {
+    const short = { day: 'numeric', month: 'short' } as const;
+    if (grain === 'day') return fmtDay(point.x, { weekday: 'short', ...short });
+    if (grain === 'month') return fmtDay(point.x, { month: 'long', year: 'numeric' });
+    return `${fmtDay(point.x, short)} - ${fmtDay(point.x + GRAIN_WEEK_SPAN, short)}`;
+  };
+
+  let insightRows = $derived(tagInsightRows(insights, metricKey(prefs)));
+  let tally_rows = $derived(tallyRows(tally));
 </script>
 
 <header class="wrapped-head">
@@ -50,85 +115,130 @@
   <p class="wrapped-sub">{subtitle}</p>
 </header>
 
-<div class="wrapped-stats" data-wrapped-stats>
-  <div class="wrapped-stat" data-wrapped-stat>
-    <strong>{recap.entryCount}</strong>
-    <span>{m.wrapped_stat_entries()}</span>
+<!-- The figures. A list rather than a row of small tiles, which is what let
+     the best-ever streak sit under the period's own best as the thing it is
+     measured against instead of becoming a fifth tile stating a number about
+     a different period. -->
+<div class="wrapped-figure-list" data-wrapped-stats>
+<ListCard role={roleAt(activeFlag.roles, AREA_ROLE.figures)}>
+  <div class="kit-row is-static" data-wrapped-stat>
+    <span class="kit-row-text"><span class="kit-row-title">{m.wrapped_stat_entries()}</span></span>
+    <span class="kit-row-trail"><b class="wrapped-figure-value">{recap.entryCount}</b></span>
   </div>
-  <div class="wrapped-stat" data-wrapped-stat>
-    <strong>{recap.bestStreak}</strong>
-    <span>{m.wrapped_stat_streak()}</span>
-  </div>
+  {#if streaks}
+    <div class="kit-row is-static" data-wrapped-stat>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.wrapped_stat_streak()}</span>
+        <!-- The period's best against the best there has ever been. Never a
+             verdict on the pair: the label says which is which and the
+             numbers say the rest. -->
+        <span class="kit-row-sub">
+          {m.wrapped_stat_streak_ever()}: {m.n_days({ n: streaks.ever })}
+        </span>
+      </span>
+      <span class="kit-row-trail"><b class="wrapped-figure-value">{m.n_days({ n: streaks.inPeriod })}</b></span>
+    </div>
+  {/if}
   {#if recap.averageMood !== null}
-    <div class="wrapped-stat" data-wrapped-stat>
-      <strong>{recap.averageMood.toFixed(1)}</strong>
-      <span>{m.wrapped_stat_mood()}</span>
+    <div class="kit-row is-static" data-wrapped-stat>
+      <span class="kit-row-text"><span class="kit-row-title">{m.wrapped_stat_mood()}</span></span>
+      <span class="kit-row-trail"><b class="wrapped-figure-value">{recap.averageMood.toFixed(1)}</b></span>
     </div>
   {/if}
   {#if anchorDuration}
-    <div class="wrapped-stat" data-wrapped-stat>
-      <strong>{anchorDuration.duration}</strong>
-      <span>{m.journey_anchor_since({ name: anchorDuration.name })}</span>
+    <div class="kit-row is-static" data-wrapped-stat>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.journey_anchor_since({ name: anchorDuration.name })}</span>
+      </span>
+      <span class="kit-row-trail"><b class="wrapped-figure-value">{anchorDuration.duration}</b></span>
     </div>
   {/if}
+  {#if dimChange}
+    <!-- The scale that moved furthest, with the movement itself and not only
+         its two endpoints (spec 06). Signed, because which way a gender
+         dimension went is not better or worse (F15), only different. -->
+    <div class="kit-row is-static" data-wrapped-stat data-wrapped-dim-change>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.wrapped_scale_arc()}</span>
+        <span class="kit-row-sub">
+          {m.wrapped_scale_arc_body({
+            name: dimChange.name,
+            from: String(Math.round(dimChange.from)),
+            to: String(Math.round(dimChange.to))
+          })}
+        </span>
+      </span>
+      <span class="kit-row-trail">
+        <b class="wrapped-figure-value">{signedValue(dimChange.change, (n) => String(Math.round(n)))}</b>
+      </span>
+    </div>
+  {/if}
+</ListCard>
 </div>
 
-<!-- Two points is what a line needs to be a line; below that the chart
-     component draws its own "not enough data" state, and a wrapped would
+<!-- Two points is what a line needs to be a line; below that a wrapped would
      rather not have the card at all. -->
 {#if moodTrend.length >= 2}
-  <div class="card wrapped-block">
-    <span class="row-title">{m.wrapped_mood_arc()}</span>
-    <LineChart points={moodTrend} min={1} max={5} />
-  </div>
+  <ChartCard heading={m.wrapped_mood_arc()} kind="wrapped-mood" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+    <AreaChart
+      points={plotted.points}
+      scrubLabel={grainLabel(plotted.grain)}
+      min={MOOD_RANGE.min}
+      max={MOOD_RANGE.max}
+      from={fmtDay(moodTrend[0].day, { day: 'numeric', month: 'short' })}
+      to={fmtDay(moodTrend[moodTrend.length - 1].day, { day: 'numeric', month: 'short' })}
+      formatValue={(v) => v.toFixed(1)}
+      ariaLabel={m.wrapped_mood_arc()}
+    />
+  </ChartCard>
 {/if}
 
-{#if dimChange}
-  <div class="card wrapped-block">
-    <span class="row-title">{m.wrapped_scale_arc()}</span>
-    <p class="row-subtitle" style="margin-top:var(--space-1)">
-      {m.wrapped_scale_arc_body({
-        name: dimChange.name,
-        from: String(Math.round(dimChange.from)),
-        to: String(Math.round(dimChange.to))
-      })}
-    </p>
-  </div>
+{#if insightRows.length}
+  <ChartCard heading={m.tag_insights()} kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+    <BarRows rows={insightRows} />
+  </ChartCard>
+  <p class="wrapped-note">{m.insights_note()}</p>
 {/if}
 
+{#if tally_rows.length}
+  <ChartCard heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+    <BarRows rows={tally_rows} />
+  </ChartCard>
+{/if}
+
+<!-- The tags you used, as the chip row: flush to the page with no container
+     at all, which is the surface DIRECTION.md 2b gives a set of small
+     labels. A different question from the insights above - how often, not
+     which days - so the two are not one card said twice. -->
 {#if topTags.length}
-  <div class="card wrapped-block">
-    <span class="row-title">{m.wrapped_tags()}</span>
-    <div class="tag-row" style="margin-top:var(--space-2)">
-      {#each topTags as t (t.label)}
-        <span class="tag-chip is-mini">{m.recap_tag_count({ label: t.label, count: String(t.count) })}</span>
-      {/each}
-    </div>
+  <SectionHeading text={m.wrapped_tags()} />
+  <div class="tag-row" data-wrapped-tags>
+    {#each topTags as t (t.label)}
+      <span class="tag-chip is-mini">{m.recap_tag_count({ label: t.label, count: String(t.count) })}</span>
+    {/each}
   </div>
 {/if}
 
 {#if recap.milestones.length}
-  <div class="card wrapped-block">
-    <span class="row-title">{m.wrapped_milestones()}</span>
-    <div class="wrapped-milestones">
-      {#each recap.milestones as ms (ms.id)}
-        <div class="wrapped-milestone">
-          <Icon name="flag" size={16} />
-          <span>{ms.name}</span>
-          <span class="muted small">{fmtDay(ms.epochDay, { day: 'numeric', month: 'short' })}</span>
-        </div>
-      {/each}
-    </div>
-  </div>
+  <SectionHeading text={m.wrapped_milestones()} />
+  <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}>
+    {#each recap.milestones as ms (ms.id)}
+      <div class="kit-row is-static" data-wrapped-milestone>
+        <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
+        <span class="kit-row-text"><span class="kit-row-title">{ms.name}</span></span>
+        <span class="kit-row-trail">
+          <span class="wrapped-figure-date">{fmtDay(ms.epochDay, { day: 'numeric', month: 'short' })}</span>
+        </span>
+      </div>
+    {/each}
+  </ListCard>
 {/if}
 
 {#if recap.photoHighlights.length}
-  <div class="card wrapped-block">
-    <span class="row-title">{m.wrapped_photos()}</span>
-    <div class="wrapped-photos">
-      {#each recap.photoHighlights as photo (photo.id)}
-        <PhotoThumb {photo} size={72} label={fmtDay(photo.epochDay, { day: 'numeric', month: 'short' })} />
-      {/each}
-    </div>
+  <SectionHeading text={m.wrapped_photos()} />
+  <div class="wrapped-photos" data-wrapped-photos>
+    {#each recap.photoHighlights as photo (photo.id)}
+      <PhotoThumb {photo} size={72} label={fmtDay(photo.epochDay, { day: 'numeric', month: 'short' })} />
+    {/each}
   </div>
 {/if}
