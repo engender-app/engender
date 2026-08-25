@@ -73,7 +73,7 @@
     {#if tags?.length || marks?.length}
       <span class="kit-entry-meta">
         {#each marks ?? [] as mark (mark)}<Icon name={mark} size={14} />{/each}
-        {#each tags ?? [] as tag (tag)}<span class="kit-entry-tag">{tag}</span>{/each}
+        {#each tags ?? [] as tag (tag)}<span class="kit-pill">{tag}</span>{/each}
       </span>
     {/if}
   </div>

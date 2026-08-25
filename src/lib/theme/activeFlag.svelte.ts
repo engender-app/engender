@@ -24,10 +24,22 @@
    refresh() as the last thing in the effect that stamps the two attributes,
    which makes the order impossible to get wrong rather than merely right
    today, and a screen or a component that wants the flag reads it from here
-   and needs to know nothing about when the palette settled. */
+   and needs to know nothing about when the palette settled.
+
+   And it is where disguise is answered, once. ADR-0035 gates the sun on
+   `prefs.disguise` because "a blurred wash was deniable at a glance, a crisp
+   flag is not". The section roles are the same argument a step further on:
+   they are the flag's stripes in the flag's own order, painted down a whole
+   screen - the week's cells, the day bars, the tiles, the icon discs. On the
+   trans palette that is a blue strip over pink tiles over blue day bars,
+   which is not a notes app. Under disguise there is no flag to publish, so
+   every surface falls back to --accent and the screen looks the way every
+   screen in the app looked before the roles existed: one colour, not a
+   sequence. Home still gates the sun on the preference itself, which is
+   belt and braces on a safety feature rather than a duplicate check. */
 
 import { parseMotifStripes } from '$lib/motion/flagSun';
-import { flagFill, flagRoles, type Role } from './roles';
+import { readFlagFill, readFlagRoles, type Role } from './roles';
 
 export const activeFlag = $state<{
   /** `--motif-stripes` in stripe order, exactly as the palette writes it. */
@@ -42,22 +54,26 @@ export const activeFlag = $state<{
 }>({ stripes: [], dark: true, roles: [], fill: 'none' });
 
 /** Re-read the flag from the document. Called from the shell, right after the
-    palette and the theme land on <html>. */
-export function refreshActiveFlag(doc: Document = document): void {
-  const style = getComputedStyle(doc.documentElement);
-  const read = (token: string) => style.getPropertyValue(token).trim();
-  const stripes = parseMotifStripes(read('--motif-stripes'));
+    palette and the theme land on <html>.
 
-  activeFlag.stripes = stripes;
+    `disguised` empties it rather than dimming it: the reading is the same one
+    ADR-0035 makes about the sun, and someone who has turned disguise on has
+    already said what they want. */
+export function refreshActiveFlag(doc: Document = document, disguised = false): void {
+  if (disguised) {
+    activeFlag.stripes = [];
+    activeFlag.roles = [];
+    activeFlag.fill = 'none';
+    activeFlag.dark = doc.documentElement.dataset.theme === 'dark';
+    return;
+  }
+
+  activeFlag.stripes = parseMotifStripes(
+    getComputedStyle(doc.documentElement).getPropertyValue('--motif-stripes')
+  );
   activeFlag.dark = doc.documentElement.dataset.theme === 'dark';
-  /* Every ground a role can land on: the page and both card surfaces. The
-     same list readFlagRoles() uses - passed explicitly here because the
-     stripes have already been read and reading them twice would be the one
-     thing this module exists to stop. */
-  activeFlag.roles = flagRoles(stripes, read('--text'), [
-    read('--bg'),
-    read('--surface'),
-    read('--surface-2')
-  ]);
-  activeFlag.fill = flagFill(stripes);
+  // readFlagRoles/readFlagFill own the ground list and the stripe read; a
+  // second copy of either here is a second thing to keep in step.
+  activeFlag.roles = readFlagRoles(doc);
+  activeFlag.fill = readFlagFill(doc);
 }
