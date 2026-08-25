@@ -1,25 +1,24 @@
 <script lang="ts">
-  /* A year of moods, a day at a time: two rows per month, a drawn face per
+  /* A year of moods, a day at a time: three rows per month, a drawn face per
      day.
 
      It replaced twelve bars, one per month. Those said where the shape went;
      this says what the year was, and a month is still its own block so the
      shape is still legible.
 
-     Three sizes in, and the reason each one moved. Fifty-three week columns
-     overflowed a 390px card at 5px a cell. Twelve rows of 31 fitted at 11px,
-     which is enough area for a colour and not enough for a face - and a
-     coloured square is the thing ADR-0025 warns about, since the ramp\'s
+     How big a face gets is decided by how many share a row, because a cell
+     is square and the card\'s width is what it has. Eleven a row puts it at
+     27px, which is inside the size ticket 31 tuned the faces to be read at;
+     sixteen capped it at 17px however much room the month labels gave back,
+     and 31 was 11px, which is enough area for a colour and not for a face -
+     and a coloured square is the thing ADR-0025 warns about, since the ramp\'s
      steps are literal hexes chosen to be sat on and on the dark theme they
-     are all dark. Two rows a month halves the columns to sixteen, which puts
-     the cell near 17px: enough for the face the picker draws, so a day is
-     read from its expression and not from a shade of teal (Alicja,
-     2026-08-25).
+     are all dark (Alicja, 2026-08-25, twice).
 
-     The legend is here for the same reason. Five faces with their names, once,
-     under the grid - the chart rules refuse a legend that says which line is
-     which, and this is not that: it is the scale itself, which the mood ramp
-     has and no axis on this chart shows.
+     No legend. One was tried and taken out again: the faces are the picker's
+     own, they are the same five a person chooses a mood from every day, and
+     naming them under the grid was explaining the app to the reader
+     (Alicja, 2026-08-25).
 
      A day that carried no mood is an empty outline. A day nobody logged is
      not a day at the bottom of the scale. */
@@ -29,8 +28,7 @@
   let {
     grid,
     monthName,
-    dayLabel,
-    steps
+    dayLabel
   }: {
     grid: MoodYear;
     /** Month names come from the caller: dates are written against the
@@ -39,12 +37,9 @@
     monthName: (month: number) => string;
     /** A cell\'s own name, for what a long press or a hover shows. */
     dayLabel: (epochDay: number, step: number | null) => string;
-    /** The five steps and their names, for the legend. The wording is the
-        vocabulary\'s, so this component ships none. */
-    steps: { step: number; name: string }[];
   } = $props();
 
-  const CELL = 17;
+  const CELL = 26;
 </script>
 
 <div class="kit-year" data-chart="mood-year">
@@ -65,11 +60,3 @@
   {/each}
 </div>
 
-<div class="kit-year-key" data-chart-key>
-  {#each steps as step (step.step)}
-    <span class="kit-year-key-item">
-      <MoodFace step={step.step} size={18} />
-      <span>{step.name}</span>
-    </span>
-  {/each}
-</div>
