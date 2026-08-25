@@ -435,7 +435,19 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    of furniture that had to move: the sun owns the top right corner of this
    screen the way it owns Home's, and text laid over a flag's white band on
    a light theme is text nobody can read. */
-.screen-setup { display: flex; flex-direction: column; }
+/* How much bigger the sun is than the 350px it is drawn at. One number,
+   because the head's reserve is the sun's own radius and the two must not
+   be able to disagree: a sun grown without the room under it grown too is
+   a flag with a title inside it.
+
+   Declared here rather than on .setup, which is where it was first written
+   and where it did nothing: the sun lives in .setup-sky, and .setup-sky is
+   .setup's sibling rather than its child. A custom property that never
+   reaches its reader is not a default, it is an invalid value - the whole
+   `calc()` around it fails, the `transform` with it, and the sun draws at
+   full size wherever it happens to be anchored. The fallback below is the
+   belt to that braces. */
+.screen-setup { display: flex; flex-direction: column; --sun-mult: 1; }
 .setup {
   flex: 1 0 auto;
   display: flex; flex-direction: column;
@@ -469,7 +481,7 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    --grow is set per step by the route. */
 .setup-sun {
   position: absolute; top: 0; right: 0; width: 0; height: 0;
-  transform: scale(var(--grow, 1));
+  transform: scale(calc(var(--grow, 1) * var(--sun-mult, 1)));
   transition: transform var(--dur-slow) var(--ease-out);
 }
 
@@ -483,7 +495,7 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 
    The back arrow lives in that space, at the top left, where the sun's
    quarter never reaches. */
-.setup-head { min-height: 176px; padding-top: var(--space-2); }
+.setup-head { min-height: calc(176px * var(--sun-mult, 1)); padding-top: var(--space-2); }
 
 /* One grid cell holding every step, so the one arriving and the one
    leaving overlap instead of stacking and doubling the screen's height
@@ -652,85 +664,86 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 
 /* ---------- the first run, wide ----------
 
-   Every other screen in the app answers a wide window by growing a
-   navigation rail beside a centred column. The first run is chromeless, so
-   it has no rail to grow, and the phone layout at 1400px is a 420px column
-   adrift in the middle of the window with the flag in a corner nobody has
-   any reason to be looking at. The composition runs down the screen when
-   the screen is wider than it is tall.
+   Nothing of its own. app.css already centres every screen in a 640px
+   column at desktop width, and the first run is a screen: the same column,
+   the same measure, the sun in its own top right corner exactly the way
+   Home draws it. That is what "looks like the rest of the app" means here.
 
-   So: two columns. The step at a comfortable measure on the left, the flag
-   on the right at more than twice the size, and the whole thing centred in
-   the window rather than pinned to the top of it.
+   What stood here was a two-column split - the step centred in the left
+   half, the flag filling the right. It answered the first complaint (a
+   narrow column adrift in a wide window with the flag in a far corner) and
+   created two worse ones. The block was centred in half a window rather
+   than in the window, so it read as pushed to one side on every screen but
+   a laptop's. And the three rows hugged their content and re-centred as a
+   block, so every step change moved the whole composition vertically -
+   which is what "glitches as if it was loading twice" actually was.
 
-   The sun stays in the top right corner rather than moving somewhere more
-   convenient, because that is where Home draws it a second later and the
-   handover being one object at one place is the whole reason it is a sun
-   rather than a picture. What changes at this width is how much of it there
-   is: a quarter of a 350px circle is a field on a phone and a detail in the
-   corner of a desktop window, so it is multiplied up rather than moved. The
-   multiplier rides on --grow instead of replacing it, so the growth through
-   the flow is the same seven steps at a different size.
+   The phone layout has neither problem, because its frame is fixed: the
+   head reserves the sun's room at the top, the foot sits at the bottom, and
+   the stage between them fills whatever is left and centres its own
+   content. Only the step moves. Letting the desktop have that same frame
+   inside the app's own column is both fixes and no new code.
 
-   Bound to the app container rather than the viewport, like every other
-   width rule here: the demo bar's phone frame works by constraining that
-   container, and a viewport query would ignore it. */
-@container app (min-width: 900px) {
-  /* Out of the app's desktop content cap. app.css centres every screen in
-     640px at this width, which is right for a journal you read and wrong
-     for the one screen with no chrome around it: it left the flag a 240px
-     sliver at the edge of a column instead of half the composition. The
-     band below is what replaces it - wide enough for two columns, capped so
-     the flag stays beside the step on a very wide monitor rather than
-     drifting off toward the window edge. */
-  .screen-setup { max-width: none; margin: 0; }
+   What the width does buy is where the sun hangs from. On a phone it hooks
+   round the top right corner, which is Home's own treatment and the only
+   place a 350px circle fits. A desktop window has room, and hooking it
+   round a corner there wastes three quarters of the drawing on the far side
+   of two edges. So its centre comes off the corner and sits on the top edge
+   instead, inside the window rather than past it: only the upper half is
+   cut, and the whole lower half of the flag shows as concentric arcs
+   hanging into the page. Half again as big, with the head's reserve growing
+   by the same number, so the step's first line still starts underneath it
+   rather than inside it.
+
+   The layer has to escape the column to do that - app.css caps .screen at
+   640px and centres it, and the sun belongs to the window rather than to
+   the measure. 100cqw rather than 100vw: the demo bar's phone frame works
+   by constraining the app container, and a viewport unit would walk
+   straight through it. */
+@container app (min-width: 1024px) {
+  /* Bigger than the phone's, and no bigger than that. The sun hangs 192px
+     into the page at the finish; a step centred in a 900px window starts
+     around 240px down, so the flag stops above the first line rather than
+     behind it. Growing it further is what puts a title inside a flag on a
+     short window, and there is no height query to catch that: the app
+     container is declared inline-size, so a rule cannot ask how tall the
+     window is. */
+  .screen-setup { --sun-mult: 1.1; }
   .setup {
-    max-width: none;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    /* Three rows that hug their content and centre as one block. `1fr` on
-       the middle row stretched the stage to the full height and put 300px
-       of nothing between the last control and the buttons. */
-    grid-template-rows: auto auto auto;
-    column-gap: var(--space-10);
-    align-content: center;
-    flex: 1 0 auto;
+    /* Centred in the window, which is the whole of the complaint this
+       answers. The step used to sit under a 264px reserve with its buttons
+       pinned to the bottom edge, so the content was pushed low and the
+       empty space was all in one place. */
+    justify-content: center;
   }
-  /* Centred inside the left half rather than pinned to one edge of a band.
-     A fixed band left the composition floating in the middle of a wide
-     monitor with a quarter of the window empty on either side of it; half
-     and half fills whatever it is given, and the measure stays a measure
-     because the column caps itself rather than the window doing it. */
-  .setup-head,
-  .setup-stage,
-  .setup-foot {
-    grid-column: 1;
-    width: min(460px, 100%);
-    margin-inline: auto;
+  /* Out of the flow, so what gets centred is the step and its buttons
+     rather than the step, its buttons and the sun's empty room. The arrow
+     stays where it is on a phone: top left, clear of the flag. */
+  .setup-head {
+    position: absolute;
+    top: var(--space-2);
+    left: 0;
+    min-height: 0;
+    z-index: 2;
   }
-  /* Nothing to reserve above the step any more: the flag is beside it
-     rather than over it, so the head holds the back arrow and no more. */
-  .setup-head { min-height: var(--touch-target); }
-  .setup-stage { padding-top: var(--space-4); }
-  .setup-foot { padding-top: var(--space-6); margin-top: 0; }
-  /* Two ghost buttons side by side again, which is what the phone layout
-     could not afford: there is room here for both labels on one line. */
-  .setup-outs { flex-direction: row; gap: var(--space-2); }
-  .setup-outs .btn { flex: 1; }
+  .setup-stage { flex: 0 0 auto; }
+  .setup-foot { margin-top: var(--space-8); }
 
-  /* The right half, edge to edge and top to bottom. The flag is a field
-     here rather than a mark in a corner: at 2.4 it was a badge floating in
-     the upper right of a large dark area with nothing relating it to the
-     step beside it. */
   .setup-sky {
-    top: calc(-1 * var(--inset-top));
-    bottom: 0;
     left: 50%;
-    right: calc(-1 * var(--space-5));
-    height: auto;
+    right: auto;
+    width: 100cqw;
+    margin-left: -50cqw;
+    height: calc(300px + var(--inset-top));
   }
-  .setup-sun { transform: scale(calc(var(--grow, 1) * 4.6)); }
+  /* Off the corner and onto the top edge, and left of where a corner would
+     have put it: the arcs close on both sides instead of running off the
+     window, and the flag sits over the column it belongs to rather than
+     away in the margin. Its lowest point is a quarter of the way down a
+     laptop screen, which is above where the centred step starts. */
+  .setup-sun { top: 0; right: auto; left: 62%; }
 }
+
 .recap-stage { max-width: 420px; margin: 0 auto; text-align: center; padding-top: var(--space-6); position: relative; z-index: 1; }
 .recap-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; margin: var(--space-5) 0 var(--space-3); }
 .recap-body { color: var(--text-2); margin-bottom: var(--space-6); }
