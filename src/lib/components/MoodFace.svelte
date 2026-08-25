@@ -34,17 +34,11 @@
   let {
     step,
     size = 22,
-    disc = true,
     blink = false
   }: {
     /** 1 to 5 on the mood ramp. */
     step: number;
     size?: number;
-    /** Off where the surface behind the face is already the mood's own
-        colour - a chip is a filled tile, so a filled circle on it would be
-        invisible. What is left is the ink, which the ADR-0025 ramp carries
-        at 4.5:1 whichever step is underneath. */
-    disc?: boolean;
     blink?: boolean;
   } = $props();
 
@@ -58,7 +52,7 @@
   style={`--face-size: ${size}px; --face-mood: var(--mood-${step}); --blink-delay: ${(step - 1) * 0.6}s`}
   aria-hidden="true"
 >
-  {#if disc}<circle cx="12" cy="12" r="10" class="mood-face-disc" />{/if}
+  <circle cx="12" cy="12" r="10" class="mood-face-disc" />
   {#if face.lids}
     <path d={face.lids} class="mood-face-eye is-lids" />
   {:else}

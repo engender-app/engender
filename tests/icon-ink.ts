@@ -25,6 +25,10 @@ function numbers(source: string): number[] {
     flags are the reason this cannot simply split on letters and spaces
     later: `a2 2 0 1 1` packs two single-digit flags with no separator, so
     arguments are consumed positionally, per command, in `polylines` below. */
+/* Q and T are deliberately absent below and fall through to the throw: no
+   glyph in the set uses a quadratic, and a parser that silently handles
+   commands nothing writes is fifteen lines defending against nobody. If one
+   ever appears, it fails loudly here rather than measuring wrong quietly. */
 function tokenize(d: string): { cmd: string; args: number[] }[] {
   const out: { cmd: string; args: number[] }[] = [];
   for (const [, cmd, rest] of d.matchAll(/([MmLlHhVvCcSsQqTtAaZz])([^MmLlHhVvCcSsQqTtAaZz]*)/g)) {
@@ -167,20 +171,6 @@ function pathPolylines(d: string): Point[][] {
         for (const p of cubic(point, p1, p2, p3)) current.push(p);
         point = p3;
         lastControl = p2;
-      } else if (op === 'Q' || op === 'T') {
-        const q: Point =
-          op === 'Q'
-            ? { x: base.x + args[i++], y: base.y + args[i++] }
-            : lastControl && (lastCmd === 'Q' || lastCmd === 'T')
-              ? { x: 2 * point.x - lastControl.x, y: 2 * point.y - lastControl.y }
-              : { ...point };
-        const p3 = { x: base.x + args[i++], y: base.y + args[i++] };
-        /* Raised to a cubic rather than given its own sampler. */
-        const c1 = { x: point.x + (2 / 3) * (q.x - point.x), y: point.y + (2 / 3) * (q.y - point.y) };
-        const c2 = { x: p3.x + (2 / 3) * (q.x - p3.x), y: p3.y + (2 / 3) * (q.y - p3.y) };
-        for (const p of cubic(point, c1, c2, p3)) current.push(p);
-        point = p3;
-        lastControl = q;
       } else if (op === 'A') {
         const rx = args[i++];
         const ry = args[i++];

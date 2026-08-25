@@ -34,6 +34,12 @@
 
   let palette = $state('trans');
   let theme = $state('dark');
+  /* The axis that actually moves the faces. ADR-0025 gives mood its own
+     colour scale, keyed on [data-mood-preset] rather than on the flag, so
+     eight palettes leave the five discs identical and it is these four that
+     change them. The palette still matters to everything around them. */
+  const PRESETS = ['amber', 'teal', 'plum', 'moss'];
+  let preset = $state('amber');
   /* Off by default: the crosshair is for checking one mark's centring, and
      with 54 of them on at once it is the overlay being reviewed rather than
      the drawings. The measured number under each tile says the same thing
@@ -60,6 +66,7 @@
   $effect(() => {
     document.documentElement.dataset.palette = palette;
     document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.moodPreset = preset;
   });
 </script>
 
@@ -70,6 +77,9 @@
   <select bind:value={theme} aria-label="Theme">
     <option value="dark">dark</option>
     <option value="light">light</option>
+  </select>
+  <select bind:value={preset} aria-label="Mood preset">
+    {#each PRESETS as p (p)}<option value={p}>{p}</option>{/each}
   </select>
   <label><input type="checkbox" bind:checked={crosshairs} /> centres</label>
 </div>
@@ -128,7 +138,7 @@
   <h2>Mood's five faces</h2>
   <p class="note">
     Every size a face ships at. 22 is an entry in a day card, which is the size they have to be
-    telling apart at.
+    telling apart at. The colour comes from the mood preset above, not the flag.
   </p>
   {#each FACE_SIZES as size (size)}
     <div class="row">
@@ -138,17 +148,6 @@
       {/each}
     </div>
   {/each}
-
-  <h2>The faces with no disc</h2>
-  <p class="note">On a chip the fill is the chip's, so what is left is the ink.</p>
-  <div class="row">
-    <span class="row-label">26px</span>
-    {#each MOODS as step (step)}
-      <span class="cell chip" style={`background: var(--mood-${step})`}>
-        <MoodFace {step} size={26} disc={false} />
-      </span>
-    {/each}
-  </div>
 
   <h2>Every other mark</h2>
   <p class="note">
@@ -231,9 +230,6 @@
   .cell.is-add {
     background: var(--accent);
     color: var(--on-accent);
-    border-color: transparent;
-  }
-  .cell.chip {
     border-color: transparent;
   }
   /* The measured optical centre, and the box the mark is centred in. Drawn

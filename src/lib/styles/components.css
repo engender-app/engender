@@ -936,14 +936,16 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
    scale is re-aimed on every pointermove, so the easing reads as a filter on
    a moving finger rather than as a delay behind it.
 
-    and  rather than one , because the picker's
-   own states use  on this same element and a shorthand here would
-   be a second author of the same property on a different surface.
+   The `scale` and `translate` properties rather than one `transform`, because
+   the picker's own states use `transform` on this same element and a
+   shorthand here would be a second author of the same property on a
+   different surface.
 
-   Nothing is declared for reduced motion: the magnifier never runs there at
-   all, because QuickAdd does not write --mood-mag, and the armed colour above
-   is the whole answer. That is the substitution rather than a deletion - what
-   goes is the movement, not the cue. */
+   Nothing is declared for reduced motion, and nothing needs to be: QuickAdd
+   leaves --mood-mag at 1 there rather than not writing it, so there is no
+   scale to undo, and the armed colour above is the whole answer. That is the
+   substitution rather than a deletion - what goes is the movement, not the
+   cue. */
 .fan-mood .mood-face {
   scale: var(--mood-mag, 1);
   translate: 0 calc((1 - var(--mood-mag, 1)) * 20px);
