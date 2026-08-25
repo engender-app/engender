@@ -872,56 +872,105 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    reason .compare-side overrides .photo-thumb's sizing above. */
 .compare-side .voice-player { flex: none; width: 100%; }
 
-/* ---------- Timeline (phase 5 UX ticket 23) ----------
-   A rail down the milestones, which is the same idiom the day card draws
-   down a day's entries - a shape you can read before a word of it. It takes
-   the flag's own stripe rather than the accent, the way every other area of
-   the app does, and the mark for a milestone still ahead is the same mark
-   drawn hollow. */
-.timeline { position: relative; padding-left: 26px; }
+/* ---------- Timeline ----------
+
+   Back to the shape that worked (Alicja, 2026-08-25: "it looks much better
+   before - what have you done? we want the vertical time axis on the left
+   just like before"). The axis is a continuous line down the left, every
+   milestone is a point on it, and the description sits beside the point.
+
+   What this ticket's own rebuild had got wrong: it kept the same parts and
+   loosened all of them. The rail was 32% of a stripe on a dark ground, so it
+   read as a suggestion; the dots sat outside a card with no card edge to
+   measure against; and the axis stopped and restarted around the gap and the
+   today marker, so there was no continuous line at all. The parts are the
+   old ones again, tightened rather than restyled: the axis runs the whole
+   height without a break, the dots are on it, and the only thing kept from
+   the rebuild is that it wears the flag instead of the accent - which is the
+   rule every other area of the app follows. */
+.timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+/* One line, top to bottom, behind everything - including the gap and the
+   today marker, which used to interrupt it. A timeline whose axis stops is
+   not an axis. */
 .timeline::before {
   content: '';
   position: absolute;
-  left: 8px;
-  top: 10px;
-  bottom: 10px;
+  left: 5px;
+  top: 6px;
+  bottom: 6px;
   width: 2px;
   border-radius: 1px;
-  /* Strong enough to read as a rail on both grounds. At 32% on the dark
-     theme it was a suggestion of a line. */
-  background: color-mix(in oklab, var(--role-mark) 55%, var(--bg));
+  background: color-mix(in oklab, var(--role-draw) 60%, var(--bg));
 }
-.tl-item { position: relative; margin-bottom: var(--space-4); }
+
+.tl-item {
+  position: relative;
+  margin-bottom: var(--space-4);
+}
+
+/* The point on the axis, centred on the line and cut out of it by a ring in
+   the page colour, so the line appears to pass behind rather than through. */
 .tl-dot {
   position: absolute;
-  left: -26px;
-  top: 16px;
-  width: 16px;
-  height: 16px;
+  left: -30px;
+  top: 18px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--role-mark);
-  border: 3px solid var(--bg);
+  background: var(--role-draw);
+  box-shadow: 0 0 0 4px var(--bg);
 }
-/* Ahead rather than behind: the same mark, unfilled. */
+
+/* Ahead rather than behind: the same point, unfilled. */
 .tl-item.is-future .tl-dot {
   background: var(--bg);
-  border: 3px solid var(--role-mark);
+  box-shadow: 0 0 0 4px var(--bg), inset 0 0 0 2px var(--role-draw);
 }
-.tl-dot.is-today {
-  background: var(--bg);
-  border: 3px solid var(--text);
+
+/* Today is the one mark on the axis that is not a milestone, so it is the
+   one drawn in the text colour rather than the flag's. */
+.tl-today {
+  margin: var(--space-5) 0;
+  min-height: 20px;
 }
-.tl-today { margin: var(--space-5) 0; }
-.tl-today .tl-dot { top: 2px; }
-.tl-here { margin: 0; font-size: var(--text-sm); color: var(--text-2); }
+
+.tl-today .tl-dot {
+  top: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 4px var(--bg);
+}
+
+.tl-here {
+  margin: 0;
+  padding-top: 1px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+
 .tl-body {
   background: var(--surface);
   border: 1px solid var(--outline);
   border-radius: var(--r-card);
   padding: var(--space-4);
 }
-.tl-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
-.tl-name { font-weight: var(--weight-bold); min-width: 0; }
+
+.tl-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tl-name {
+  font-weight: var(--weight-bold);
+  min-width: 0;
+}
+
 .tl-count {
   flex: 0 0 auto;
   font-size: var(--text-xs);
@@ -932,10 +981,35 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   padding: 3px 10px;
   border-radius: var(--radius-pill);
 }
-.tl-date { display: block; margin-top: var(--space-1); font-size: var(--text-sm); color: var(--text-2); }
+
+.tl-date {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
 .tl-photo { margin-top: var(--space-3); }
-.tl-gap { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-5) 0; color: var(--text-2); font-size: var(--text-xs); }
-.tl-gap-line { flex: 1; border-top: 1px dashed var(--outline-strong, var(--outline)); }
+
+/* The compressed stretch. It sits on the axis rather than replacing it: the
+   line runs behind, and this is a label with the page colour behind it so
+   the line does not cross the words. */
+.tl-gap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: var(--space-5) 0;
+  padding-left: 6px;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.tl-gap-label {
+  background: var(--bg);
+  padding: 2px 8px 2px 0;
+}
+
+.tl-gap-line { display: none; }
 
 /* ---------- desktop refinements ---------- */
 .mode-desktop .compare-wrap { max-width: 560px; margin: 0 auto; }

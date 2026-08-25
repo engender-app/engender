@@ -53,6 +53,8 @@
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Distribution from '$lib/components/kit/Distribution.svelte';
+  import PairedDots from '$lib/components/kit/PairedDots.svelte';
+  import type { PairedRow } from '$lib/components/kit/pairedRow';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -241,34 +243,34 @@
       ? m.correlation_card_dose_day()
       : (vocabulary.tag(card.occurrence.id)?.label ?? card.occurrence.id);
 
-  /* One bar per card. The note names the scale, because unlike the tag
-     insights above these span several - a card can be about mood and the
-     next one about a dimension - and without it two rows would state two
-     unrelated numbers in the same column.
-
-     And the bar's length is that movement as a share of the metric's own
-     range, never the raw number, for the same reason the scales card above
-     normalises: mood moves 1.6 on a scale four wide and a dimension moves 21
-     on one a hundred wide, and drawn from the raw figures the mood rows were
-     8% stubs beside one full-width bar. The number beside each bar stays
-     native (ADR-0012). */
-  const metricSpan = (key: string) => {
+  /* One paired-dot row per card: where the days it happened sat, where the
+     rest sat, and the distance between them. Not bars - a bar answers "how
+     much" and measures every row against the longest one, which is what made
+     six of them read as busy and as a third copy of the same shape. Each
+     row's track is its own metric's range, so a mood card and a dimension
+     card need nothing in common to sit next to each other. */
+  const metricBounds = (key: string) => {
     const dimension = vocabulary.metricDimension(key);
-    return dimension ? Math.max(1, dimension.max - dimension.min) : 4;
+    return dimension ? { min: dimension.min, max: dimension.max } : { min: 1, max: 5 };
   };
 
-  let correlationRows = $derived<BarRow[]>(
-    correlationCards.map((card) => ({
-      key: `${card.occurrence.kind}-${card.occurrence.kind === 'tag' ? card.occurrence.id : 'dose'}-${card.metric}`,
-      name: occurrenceLabel(card),
-      note: `${metricName(card.metric)} · ${m.insight_row_sub({
-        count: String(card.count),
-        with: fmtNativeValue(card.metric, card.withAvg),
-        without: fmtNativeValue(card.metric, card.withoutAvg)
-      })}`,
-      value: signedValue(card.withAvg - card.withoutAvg, (v) => fmtNativeValue(card.metric, v)),
-      amount: Math.abs(card.withAvg - card.withoutAvg) / metricSpan(card.metric)
-    }))
+  let correlationRows = $derived<PairedRow[]>(
+    correlationCards.map((card) => {
+      const bounds = metricBounds(card.metric);
+      return {
+        key: `${card.occurrence.kind}-${card.occurrence.kind === 'tag' ? card.occurrence.id : 'dose'}-${card.metric}`,
+        name: occurrenceLabel(card),
+        with: card.withAvg,
+        without: card.withoutAvg,
+        ...bounds,
+        gap: signedValue(card.withAvg - card.withoutAvg, (v) => fmtNativeValue(card.metric, v)),
+        note: `${metricName(card.metric)} · ${m.insight_row_sub({
+          count: String(card.count),
+          with: fmtNativeValue(card.metric, card.withAvg),
+          without: fmtNativeValue(card.metric, card.withoutAvg)
+        })}`
+      };
+    })
   );
 
   /* A position on a cycle is not a day, so the two pattern charts label
@@ -417,7 +419,7 @@
     {#if correlationCardsQuery.loading}
       <Skeleton variant="line" count={3} />
     {:else if correlationRows.length}
-      <BarRows rows={correlationRows} />
+      <PairedDots rows={correlationRows} />
     {:else}
       <p class="kit-chart-empty">{m.correlation_cards_empty()}</p>
     {/if}

@@ -59,6 +59,7 @@
   import type { DayAverage } from '$lib/data/journal/stats';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -237,7 +238,12 @@
   );
 
   let title = $derived.by(() => {
-    if (isRange) return m.recap_range_title({ period: rangeName });
+    /* The range names itself, and once: the row above the wrapped is the
+       control that shows which range is on, so a heading reading "Your Last
+       30 days" over a row reading "Last 30 days" said one thing twice a
+       centimetre apart (Alicja, 2026-08-25). No "Your" either - the screen
+       is already yours. */
+    if (isRange) return rangeName;
     if (!period) return m.wrapped();
     if (period.cadence === 'week') return m.wrapped_week_title();
     if (period.cadence === 'month')
@@ -246,14 +252,8 @@
   });
 
   let subtitle = $derived.by(() => {
-    if (isRange) {
-      return range
-        ? m.wrapped_week_range({
-            from: fmtDay(range.start, { day: 'numeric', month: 'short' }),
-            to: fmtDay(range.end, { day: 'numeric', month: 'short' })
-          })
-        : m.recap_open_range();
-    }
+    // The row above already carries the two dates.
+    if (isRange) return range ? m.recap_open_range() : m.recap_custom_range_required();
     if (!period) return '';
     if (period.cadence === 'week') {
       return m.wrapped_week_range({
@@ -298,19 +298,17 @@
   </ScreenHeader>
 
   {#if on && (cadence || isRange)}
-    <!-- Links rather than buttons, and a nav rather than a radiogroup: each
-         view is its own screen at its own URL, so switching between them is
-         navigation and belongs in history. -->
-    <nav class="segmented wrapped-cadences" data-wrapped-cadences aria-label={m.wrapped_cadence_group()}>
-      {#each VIEW_TABS as tab (tab.key)}
-        <a
-          class="segment"
-          class:is-active={view === tab.key}
-          aria-current={view === tab.key ? 'page' : undefined}
-          href="/wrapped/{tab.key}">{tab.label()}</a
-        >
-      {/each}
-    </nav>
+    <!-- The same control the Stats hub's range switch is, in its link mode:
+         each view is its own screen at its own URL, so switching between them
+         is navigation and belongs in history. It used to be a hand-written
+         copy of the same classes with no pill on it, so one gesture looked
+         like two different controls one tab apart. -->
+    <Segmented
+      key="wrapped-cadences"
+      name={m.wrapped_cadence_group()}
+      options={VIEW_TABS.map((tab) => ({ value: tab.key, label: tab.label(), href: `/wrapped/${tab.key}` }))}
+      value={view}
+    />
   {/if}
 
   {#if !on}
@@ -331,16 +329,19 @@
            filters (DIRECTION.md, the calendar's own lesson), so the choices
            are a sheet and this row is the visible record of what is on. -->
       <ListCard>
+        <!-- The row is the control, so it carries the dates the range covers
+             rather than repeating the name the heading under it already
+             gives. -->
         <ListRow
           key="range-picker"
           icon="curve"
-          title={RANGE_LABEL[picked.choice]()}
-          subtitle={picked.range
+          title={picked.range
             ? m.wrapped_week_range({
                 from: fmtDay(picked.range.start, { day: 'numeric', month: 'short' }),
                 to: fmtDay(picked.range.end, { day: 'numeric', month: 'short' })
               })
             : m.recap_custom_range_required()}
+          subtitle={m.cd_range_label()}
           onclick={() => (rangePicker = true)}
         />
       </ListCard>

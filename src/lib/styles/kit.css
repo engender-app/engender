@@ -75,7 +75,22 @@
      tinted disc and a shaded week cell carry no information and sit under
      nothing that has to be read, so nothing about them owes a ratio. This
      is where the palette was going wrong - nonbinary's yellow darkened to
-     olive to clear a floor it never owed, and a 15% tint of olive is mud. */
+     olive to clear a floor it never owed, and a 15% tint of olive is mud.
+
+     A chart mark is one of those. --role-draw is the stripe as it is, and it
+     is what every drawn shape in a chart uses - the line, its fill, a bar, a
+     column, a dot, the timeline's rail. Alicja, 2026-08-25, twice and in
+     capitals: "THE COLORS OF THE FLAG MUST BE UNCHANGED! WE DONT WANT
+     OLIVE". Ticket 20's handoff had put a bar in the marks column, held to
+     3:1, and on nonbinary's light theme that is olive - the exact colour the
+     round which produced that rule was reacting to.
+
+     --role-mark survives for what actually needs a floor: a glyph inside a
+     tinted disc, where the stripe is drawn on 15% of itself and a white band
+     on a white tint would be nothing at all. That is a small shape on a
+     ground derived from the same colour, which is a different problem from a
+     26px bar on a card. */
+  --role-draw: var(--role-c);
   --role-tint: color-mix(in oklab, var(--role-c) 15%, var(--surface));
   --role-wash: color-mix(in oklab, var(--role-c) 12%, var(--bg));
   /* The edge a tinted shape needs to still be a shape. A fill owes no
@@ -914,18 +929,41 @@ a.kit-entry:active {
   margin-top: var(--space-3);
 }
 
+/* Nothing logged in this range. It sits in the space the marks would have
+   taken rather than as a line where a chart's top edge would be, so a card
+   with no data is the same height as a card with some and a screen of them
+   does not concertina as the range changes. */
 .kit-chart-empty {
-  margin: var(--space-3) 0 0;
+  display: grid;
+  place-items: center;
+  min-height: 88px;
+  margin: 0;
+  padding: var(--space-4) var(--space-2);
   color: var(--text-2);
   font-size: var(--text-sm);
+  text-align: center;
+  text-wrap: balance;
 }
 
-/* A control above a surface. The segmented range switch and the chart under
-   it sat a hairline apart, because the adjacency rule below only knows about
-   two surfaces (Alicja, 2026-08-25: "bigger gap between the switcher and
-   dysphoria"). */
-.segmented + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-day, .wrapped-figure-list) {
+/* Anything that is not a surface, sitting above one: a control, a caption, a
+   note, a chip row. They all used to meet the surface below them at a
+   hairline, because the adjacency rule under this one only knows about two
+   surfaces, and every screen in the look-back group has one of them
+   somewhere (Alicja, 2026-08-25, three separate notes about gaps).
+
+   --space-5 rather than --space-4, which is what two surfaces get: a control
+   and the thing it controls are further apart than two cards, or the control
+   reads as part of the card. */
+:is(.segmented, .stats-caption, .stats-note, .wrapped-note, .tag-row, .wrapped-photos, .otd-photos)
+  + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-day, .kit-moods, .wrapped-figure-list) {
   margin-top: var(--space-5);
+}
+
+/* And the other way round: a surface with a chip row or a photo strip under
+   it. The heading above those carries their top space, so what is missing is
+   the space beneath. */
+:is(.kit-chart, .kit-list, .kit-day, .wrapped-figure-list) + :is(.tag-row, .wrapped-photos, .otd-photos) {
+  margin-top: var(--space-4);
 }
 
 /* Two surfaces with no heading between them.
@@ -987,12 +1025,12 @@ a.kit-entry:active {
 }
 
 .kit-area-fill {
-  fill: color-mix(in oklab, var(--role-mark) 16%, transparent);
+  fill: color-mix(in oklab, var(--role-draw) 16%, transparent);
 }
 
 .kit-area-line {
   fill: none;
-  stroke: var(--role-mark);
+  stroke: var(--role-draw);
   stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -1003,12 +1041,12 @@ a.kit-entry:active {
    show through it. */
 .kit-area-ring {
   fill: var(--surface);
-  stroke: var(--role-mark);
+  stroke: var(--role-draw);
   stroke-width: 2.5;
 }
 
 .kit-area-dot {
-  fill: var(--role-mark);
+  fill: var(--role-draw);
   opacity: 0.55;
 }
 
@@ -1022,7 +1060,7 @@ a.kit-entry:active {
 }
 
 .kit-area-scrub-dot {
-  fill: var(--role-mark);
+  fill: var(--role-draw);
   stroke: var(--surface);
   stroke-width: 2;
 }
@@ -1157,7 +1195,7 @@ a.kit-entry:active {
   border-radius: 8px;
   width: calc(var(--bar-share) * 1%);
   min-width: 2px;
-  background: color-mix(in oklab, var(--role-mark) 62%, var(--surface));
+  background: color-mix(in oklab, var(--role-draw) 62%, var(--surface));
   transform: scaleX(1);
   transform-origin: left center;
   animation: kit-bar-in var(--dur-slow) var(--ease-out) both;
@@ -1178,7 +1216,142 @@ a.kit-entry:active {
 }
 
 .kit-bar-mark.is-leader {
-  background: var(--role-mark);
+  background: var(--role-draw);
+}
+
+/* --- a year of moods ---
+
+   A row per month, a column per day of the month. Drawn as 53 week-columns
+   first, which overflowed a 390px card at 5px a cell - and 5px is well under
+   what mood's ramp needs to read as five colours, since its steps are chosen
+   to be sat on rather than to be dots and on the dark theme they are all
+   dark. Twelve rows of 31 puts the cell near 11px on the same card. */
+.kit-year {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 3px var(--space-2);
+}
+
+.kit-year-label {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.kit-year-row {
+  display: grid;
+  /* Short months have fewer cells and stop short, which is true of February
+     and not a gap to fill. */
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  gap: 2px;
+}
+
+.kit-year-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--cell-fill);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 12%, transparent);
+}
+
+/* A day nobody logged is not a day at the bottom of the scale. */
+.kit-year-cell.is-empty {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* --- paired dots ---
+
+   The correlation cards' own mark. Two positions on one scale with the gap
+   between them drawn: a bar answers "how much" and these answer "these days
+   sat here, the other days sat there", which is a different question and
+   wanted a different shape. Each row's track is its own metric's range, so
+   nothing here is measured against the row above it - which a bar chart
+   cannot help doing, since every bar is measured against the longest. */
+.kit-paired {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.kit-paired-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.kit-paired-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kit-paired-gap {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.kit-paired-track {
+  position: relative;
+  height: 18px;
+  margin-top: 6px;
+  /* The scale itself, as the faintest line the theme has. Not a gridline and
+     not an axis: there are no ticks on it and nothing is written along it. */
+  background:
+    linear-gradient(var(--hairline), var(--hairline)) center / 100% 2px no-repeat;
+  border-radius: 1px;
+}
+
+/* The distance between the two readings, which is the reading. */
+.kit-paired-span {
+  position: absolute;
+  top: 50%;
+  left: var(--from);
+  width: max(calc(var(--to) - var(--from)), 2px);
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--role-draw);
+}
+
+.kit-paired-dot {
+  position: absolute;
+  top: 50%;
+  left: var(--at);
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+}
+
+/* Filled is the days it happened, hollow is the rest - on every row,
+   whichever way the gap runs. Colour says which set, never which way
+   (ADR-0012). */
+.kit-paired-dot.is-with {
+  background: var(--role-draw);
+}
+
+.kit-paired-dot.is-without {
+  background: var(--surface);
+  border: 2px solid var(--role-draw);
+}
+
+.kit-paired-note {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- vertical distribution ---
@@ -1229,7 +1402,7 @@ a.kit-entry:active {
   min-height: 6px;
   border-radius: 6px 6px 2px 2px;
   border: 1px solid var(--outline);
-  background: var(--dist-fill, var(--role-mark));
+  background: var(--dist-fill, var(--role-draw));
   /* The set rises as it arrives, left to right, on the horizontal bars' own
      entrance and stagger - a distribution is a set of bars, and one of the
      two rising while the other appeared would read as an oversight in
