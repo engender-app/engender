@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { resetApp } from '$lib/stores/boot.svelte';
-  import GateScreen from './GateScreen.svelte';
+  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -23,7 +23,7 @@
 </script>
 
 <GateScreen icon="alert" tone="alert" title={m.dbr_title()}>
-  <p class="gate-body" data-device-bound-recovery>{m.dbr_body()}</p>
+  <p class={gateBodyClass(m.dbr_body())} data-device-bound-recovery>{m.dbr_body()}</p>
   <div class="gate-actions">
     <button class="btn btn-danger" data-open-device-reset onclick={() => (resetOpen = true)}>
       <span>{m.dbr_open_reset()}</span>

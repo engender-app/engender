@@ -534,19 +534,8 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 }
 /* Progress as a length rather than as seven dots. Seven dots at 8px is a
    row of punctuation; a rail says how far along the flow is at a glance and
-   grows on the same easing the sun above it does. */
-.setup-rail {
-  height: 4px; border-radius: var(--radius-pill);
-  background: var(--surface-2);
-  overflow: hidden;
-  margin-bottom: var(--space-2);
-}
-.setup-rail i {
-  display: block; height: 100%;
-  background: var(--accent);
-  transform-origin: left center;
-  transition: transform var(--dur-slow) var(--ease-out);
-}
+   grows on the same easing the sun above it does. Also .rail. */
+.setup-rail { margin-bottom: var(--space-2); }
 /* The two ways past a step, stacked and full width. Side by side is what
    they were, and it gave each of them half a phone: "Straight to the app"
    wrapped to two lines and overflowed its own button, and Polish's "Od razu
@@ -1129,6 +1118,11 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 .gate-body { color: var(--text-2); margin: 0 0 var(--space-4); }
 .gate-body:last-child { margin-bottom: 0; }
 .gate-body.is-small { font-size: var(--text-sm); }
+/* A paragraph rather than a line, which GateScreen decides by length. Both
+   edges go ragged on centred prose and the eye loses the start of each
+   line; these are the screens whose whole point is being read once and
+   understood. */
+.gate-body.is-long { text-align: left; }
 /* The gate's own controls, and then, under a line, the way out that is not
    a way in: forget the PIN, reset the app, give up on this journal. The
    line is there so the destructive option is never the next thing a thumb
@@ -1162,19 +1156,9 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 /* Determinate where there is a number to be determinate about. The
    conversion knows how many photos it has re-encrypted and how many are
    left, and that was being spent on a sentence alone while the screen it
-   sits on can hold someone for minutes. Tier 3, so reduced motion cuts
-   straight to the new width rather than tweening to it. */
-.gate-progress {
-  height: 4px; border-radius: var(--radius-pill);
-  background: var(--surface-2); overflow: hidden;
-  margin: var(--space-4) 0 0;
-}
-.gate-progress i {
-  display: block; height: 100%;
-  background: var(--accent);
-  transform-origin: left center;
-  transition: transform var(--dur-slow) var(--ease-out);
-}
+   sits on can hold someone for minutes. The shape is .rail's; what this
+   adds is where it sits. */
+.gate-progress { margin: var(--space-4) 0 0; }
 
 /* ---------- Progress photos ---------- */
 .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-3); }

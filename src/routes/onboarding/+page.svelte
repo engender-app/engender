@@ -35,9 +35,9 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { sharedAxisX } from '$lib/motion/navigation';
   import {
-    ONBOARDING_STEPS,
     isSkippable,
     onboardingDestination,
+    onboardingSteps,
     stepAfter,
     stepBefore,
     stepIndex,
@@ -86,11 +86,15 @@
      visit would otherwise "restore" the pick made on the first. */
   const paletteOnEntry = prefs.palette;
 
-  let index = $derived(stepIndex(step));
-  let growth = $derived(sunGrowth(index, ONBOARDING_STEPS.length));
+  /* One step shorter under disguise: the flag step is a wall of pride flags
+     with their names under them, which is the most identifying thing in the
+     app. steps.ts carries the whole reasoning. */
+  let steps = $derived(onboardingSteps(prefs.disguise));
+  let index = $derived(stepIndex(steps, step));
+  let growth = $derived(sunGrowth(index, steps.length));
 
   function go(to: OnboardingStep) {
-    back = stepIndex(to) < index;
+    back = stepIndex(steps, to) < index;
     step = to;
   }
 
@@ -102,7 +106,7 @@
       appLock = false;
       lockOnLeave = false;
     } else if (step === 'checkin') checkIn = false;
-    go(stepAfter(step));
+    go(stepAfter(steps, step));
   }
 
   /* One way out, whichever control was pressed. "Straight to the app" from
@@ -118,7 +122,14 @@
      alternative is a switch that was turned on and did nothing. That screen
      carries its own Not now, so changing your mind there costs one tap. */
   function complete() {
-    prefs.name = name.trim();
+    /* Guarded like the other four, and for the same reason: skipping a step
+       leaves the stored value alone rather than overwriting it with
+       nothing. An empty field wrote an empty name, so skipping the name
+       step erased one that was already there - which a first run never has,
+       and a first run reached a second time does. Clearing a name is
+       Settings' job, where the field is the stored value rather than a
+       draft of it. */
+    if (name.trim()) prefs.name = name.trim();
     if (preset) prefs.activePreset = preset;
     if (lockOnLeave) prefs.lockOnLeave = true;
     if (checkIn) {
@@ -156,7 +167,7 @@
       {#if step !== 'welcome'}
         <!-- NAV-006: onboarding had no way back between steps at all, so a
              typo in the name could only be finished past. -->
-        <button class="icon-btn press" data-back aria-label={m.back()} onclick={() => go(stepBefore(step))}>
+        <button class="icon-btn press" data-back aria-label={m.back()} onclick={() => go(stepBefore(steps, step))}>
           <Icon name="arrowLeft" />
         </button>
       {/if}
@@ -287,20 +298,20 @@
 
     <div class="setup-foot">
       <div
-        class="setup-rail"
+        class="rail setup-rail"
         role="progressbar"
         aria-valuemin={1}
-        aria-valuemax={ONBOARDING_STEPS.length}
+        aria-valuemax={steps.length}
         aria-valuenow={index + 1}
-        aria-label={m.ob_step_of({ step: String(index + 1), total: String(ONBOARDING_STEPS.length) })}
+        aria-label={m.ob_step_of({ step: String(index + 1), total: String(steps.length) })}
       >
-        <i style={`transform: scaleX(${(index + 1) / ONBOARDING_STEPS.length})`}></i>
+        <i style={`transform: scaleX(${(index + 1) / steps.length})`}></i>
       </div>
 
       {#if step === 'done'}
         <button class="btn btn-primary" data-finish onclick={complete}><span>{m.start_journey()}</span></button>
       {:else if step === 'welcome'}
-        <button class="btn btn-primary" data-next onclick={() => go(stepAfter(step))}>
+        <button class="btn btn-primary" data-next onclick={() => go(stepAfter(steps, step))}>
           <span>{m.ob_start_setup()}</span>
         </button>
       {:else}
@@ -308,7 +319,7 @@
           class="btn btn-primary"
           data-next
           disabled={step === 'scales' && preset === null}
-          onclick={() => go(stepAfter(step))}
+          onclick={() => go(stepAfter(steps, step))}
         >
           <span>{m.continue()}</span>
         </button>

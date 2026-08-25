@@ -207,7 +207,19 @@ const base = `http://localhost:${address.port}`;
   await settle('/');
   await page.selectOption('#demo-jump', 'first-run');
   await page.waitForSelector('[data-next]');
-  await shoot(page, 'setup-0-welcome-disguised');
+
+  /* Every step, not one. The spec says "verify with prefs.disguise set, on
+     every one of them", and shooting only the welcome is what let the flag
+     step - eight pride flags with their names under them - through the
+     first time. Six steps rather than seven: the flag step is not hidden
+     under disguise, it is not in the flow. */
+  const disguisedSteps = ['welcome', 'name', 'scales', 'lock', 'checkin', 'done'];
+  for (const [i, step] of disguisedSteps.entries()) {
+    await page.waitForTimeout(600);
+    await shoot(page, `setup-disguised-${i}-${step}`);
+    if (step === 'scales') await page.locator('[data-list-row="preset-p-nb"]').click();
+    if (step !== 'done') await page.locator('[data-next]').click();
+  }
 
   await page.close();
 }

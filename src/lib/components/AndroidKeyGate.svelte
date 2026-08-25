@@ -28,7 +28,7 @@
   import { bootState, openAndroidJournal, resetApp } from '$lib/stores/boot.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bioGateDecision } from '$lib/lock/bio-consent';
-  import GateScreen from './GateScreen.svelte';
+  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -108,7 +108,7 @@
        header says why the platform does this). A risk screen: the whole
        consequence, then the single action there is. -->
   <GateScreen icon="alert" tone="alert" title={m.ak_invalidated_title()}>
-    <p class="gate-body" data-key-invalidated>{m.ak_invalidated_body()}</p>
+    <p class={gateBodyClass(m.ak_invalidated_body())} data-key-invalidated>{m.ak_invalidated_body()}</p>
     <div class="gate-actions">
       <button class="btn btn-danger" data-open-reset onclick={() => (resetOpen = true)}>
         <span>{m.reset_confirm()}</span>
@@ -120,7 +120,7 @@
        to. The only screen here that asks for something outside the app, and
        the only one whose action is "look again". -->
   <GateScreen icon="lock" title={m.ak_no_lock_title()}>
-    <p class="gate-body" data-needs-device-lock>{m.ak_no_lock_body()}</p>
+    <p class={gateBodyClass(m.ak_no_lock_body())} data-needs-device-lock>{m.ak_no_lock_body()}</p>
     <div class="gate-actions">
       <button class="btn btn-primary" data-check-again disabled={busy} onclick={() => authenticate(false)}>
         <span>{busy ? m.ak_unlocking() : m.ak_check_again()}</span>
@@ -135,7 +135,7 @@
     <!-- Polite rather than an alert: the prompt is Android's own dialog and
          takes the focus, so this line is what is waiting underneath when it
          goes, not something that interrupts. -->
-    <p class="gate-body" aria-live="polite" data-key-status>{explanation}</p>
+    <p class={gateBodyClass(explanation)} aria-live="polite" data-key-status>{explanation}</p>
 
     <div class="gate-actions">
       {#if refusal === null || refusal.wayForward === 'retry'}

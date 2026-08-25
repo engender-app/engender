@@ -28,7 +28,7 @@ export type OnboardingStep = 'welcome' | 'name' | 'flag' | 'scales' | 'lock' | '
    Five settings, five steps, plus a welcome and a finish. Everything else
    the app has a preference for is either already right by default or is
    something a person goes looking for once they know the app. */
-export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
+const ALL_STEPS: readonly OnboardingStep[] = [
   'welcome',
   'name',
   'flag',
@@ -38,18 +38,42 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   'done'
 ];
 
-export function stepIndex(step: OnboardingStep): number {
-  return ONBOARDING_STEPS.indexOf(step);
+/** The flow, which is one step shorter under disguise.
+
+    The flag step draws eight pride flags and names them, which is the most
+    identifying thing on any screen in the app - more so than the sun, which
+    is one flag rather than a wall of them. ADR-0035 gates the motif on
+    `prefs.disguise`, and ticket 26 states the rule for these screens without
+    qualification: nothing that identifies the app, on any of them, while
+    disguise is on. Hiding the previews and keeping the names would not help;
+    the names are the giveaway.
+
+    So the step is not hidden, it is not in the flow: no gap in the progress
+    rail, no back arrow landing on a blank screen, nothing to explain. The
+    choice is still in Settings, which is a screen somebody opens on purpose
+    rather than one the app puts in front of them. */
+export function onboardingSteps(disguised: boolean): readonly OnboardingStep[] {
+  return disguised ? ALL_STEPS.filter((step) => step !== 'flag') : ALL_STEPS;
+}
+
+export function stepIndex(steps: readonly OnboardingStep[], step: OnboardingStep): number {
+  return steps.indexOf(step);
 }
 
 /** The next step, or this one at the end. Clamping rather than wrapping:
     the finish is where the flow stops, and there is nothing after it. */
-export function stepAfter(step: OnboardingStep): OnboardingStep {
-  return ONBOARDING_STEPS[Math.min(stepIndex(step) + 1, ONBOARDING_STEPS.length - 1)];
+export function stepAfter(
+  steps: readonly OnboardingStep[],
+  step: OnboardingStep
+): OnboardingStep {
+  return steps[Math.min(stepIndex(steps, step) + 1, steps.length - 1)];
 }
 
-export function stepBefore(step: OnboardingStep): OnboardingStep {
-  return ONBOARDING_STEPS[Math.max(stepIndex(step) - 1, 0)];
+export function stepBefore(
+  steps: readonly OnboardingStep[],
+  step: OnboardingStep
+): OnboardingStep {
+  return steps[Math.max(stepIndex(steps, step) - 1, 0)];
 }
 
 /** Whether the step carries its own Skip.

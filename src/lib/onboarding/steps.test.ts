@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  ONBOARDING_STEPS,
   isSkippable,
   onboardingDestination,
+  onboardingSteps,
   stepAfter,
   stepBefore,
   stepIndex,
   sunGrowth
 } from './steps';
+
+const ONBOARDING_STEPS = onboardingSteps(false);
 
 describe('the step list', () => {
   it('opens on the welcome and ends on the finish', () => {
@@ -33,14 +35,42 @@ describe('the step list', () => {
   });
 
   it('walks forward and back, and stops at both ends', () => {
-    expect(stepAfter('welcome')).toBe('name');
-    expect(stepBefore('name')).toBe('welcome');
-    expect(stepAfter('done')).toBe('done');
-    expect(stepBefore('welcome')).toBe('welcome');
+    const steps = ONBOARDING_STEPS;
+    expect(stepAfter(steps, 'welcome')).toBe('name');
+    expect(stepBefore(steps, 'name')).toBe('welcome');
+    expect(stepAfter(steps, 'done')).toBe('done');
+    expect(stepBefore(steps, 'welcome')).toBe('welcome');
   });
 
   it('indexes each step by its place in the list', () => {
-    ONBOARDING_STEPS.forEach((step, i) => expect(stepIndex(step)).toBe(i));
+    ONBOARDING_STEPS.forEach((step, i) => expect(stepIndex(ONBOARDING_STEPS, step)).toBe(i));
+  });
+});
+
+describe('under disguise', () => {
+  /* Ticket 26: nothing identifies the app on any of these screens while
+     disguise is on. The flag step draws eight pride flags and names them,
+     which is a stronger tell than the sun ADR-0035 already gates - so it
+     leaves the flow rather than being hidden inside it, and the walk either
+     side of it closes up with no gap to explain. */
+  const disguised = onboardingSteps(true);
+
+  it('drops the flag step entirely', () => {
+    expect(disguised).not.toContain('flag');
+    expect(disguised).toEqual(['welcome', 'name', 'scales', 'lock', 'checkin', 'done']);
+  });
+
+  it('keeps every other step, in the same order', () => {
+    expect(disguised).toEqual(ONBOARDING_STEPS.filter((step) => step !== 'flag'));
+  });
+
+  it('walks straight from the name to the scales, with nothing in between', () => {
+    expect(stepAfter(disguised, 'name')).toBe('scales');
+    expect(stepBefore(disguised, 'scales')).toBe('name');
+  });
+
+  it('still ends on a full sun, one step earlier', () => {
+    expect(sunGrowth(disguised.length - 1, disguised.length)).toBe(1);
   });
 });
 
