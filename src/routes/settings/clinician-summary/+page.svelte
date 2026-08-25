@@ -1,4 +1,18 @@
 <script lang="ts">
+  /* Doses, lab results and side effects for a chosen range, ready to print,
+     on the surface kit (phase 5 UX ticket 25).
+
+     Every section's rows move onto the kit's list card, and every one of
+     them is deliberately handed no role. This is the one screen in the app
+     whose output is read by somebody else, on paper, and a flag stripe
+     behind an icon disc is neither what that reader needs nor what the
+     person handing it over chose to disclose. The screen keeps the app's
+     two surfaces and none of its colour.
+
+     Checked on paper as well as on screen: the print block in app.css sets
+     --text to black and --surface to white, and the kit's outline and
+     hairline are mixes of --text, so a card's edge resolves to grey on the
+     page rather than to whatever the dark theme was showing. */
   /* The clinician visit summary (phase 4 ticket 12): a one-shot, printable
      assembly of everything the registered sections already read for a chosen
      range (journal.clinicianSummary.getSummary). Nothing here is computed
@@ -36,7 +50,9 @@
   import type { Snippet } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
   const today = todayEpochDay();
@@ -52,6 +68,8 @@
     range ? j.clinicianSummary.getSummary(range.start, range.end) : Promise.resolve(null)
   );
   let summary = $derived(summaryQuery.value);
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const dayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -95,17 +113,18 @@
 
 {#snippet regimenRows(s: ClinicianSummary)}
   {#if s.regimenEpisodes.length}
-    <div class="list-group section-block">
+    <div class="section-block"><ListCard>
       {#each s.regimenEpisodes as episode (episode.id)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">{episode.drug}</span>
-            <span class="row-subtitle">
+        <div class="kit-row is-static">
+          <span class="kit-row-text">
+            <span class="kit-row-title">{episode.drug}</span>
+            <span class="kit-row-sub">
               {episode.dose} {episode.doseUnit} · {episode.route} · {episode.interval} · {episodeRangeLabel(episode.endEpochDay, episode.startEpochDay)}
             </span>
           </span>
         </div>
       {/each}
+      </ListCard>
     </div>
   {:else}
     <p class="muted small section-block">{m.clinician_summary_regimen_episodes_empty()}</p>
@@ -114,16 +133,16 @@
 
 {#snippet doseRows(s: ClinicianSummary)}
   {#if s.doses.length}
-    <div class="list-group section-block">
+    <div class="section-block"><ListCard>
       {#each s.doses as dose (dose.id)}
         {@const site = siteOf(dose)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">
+        <div class="kit-row is-static">
+          <span class="kit-row-text">
+            <span class="kit-row-title">
               {dose.dose} {dose.doseUnit} · {routeLabel(dose.route)}
               {#if dose.status !== 'taken'}· {statusLabel(dose.status)}{/if}
             </span>
-            <span class="row-subtitle">
+            <span class="kit-row-sub">
               {whenOf(dose)}
               {#if site}· {site}{/if}
               {#if isInjectionDose(dose) && dose.vehicle}· {vehicleLabel(dose.vehicle)}{/if}
@@ -131,6 +150,7 @@
           </span>
         </div>
       {/each}
+      </ListCard>
     </div>
   {:else}
     <p class="muted small section-block">{m.clinician_summary_doses_empty()}</p>
@@ -139,19 +159,20 @@
 
 {#snippet labResultRows(s: ClinicianSummary)}
   {#if s.labResults.length}
-    <div class="list-group section-block">
+    <div class="section-block"><ListCard>
       {#each s.labResults as result (result.id)}
         {@const context = labContextLine(result)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">{result.analyte}: {result.value} <span class="muted small">{result.unit}</span></span>
-            <span class="row-subtitle">
+        <div class="kit-row is-static">
+          <span class="kit-row-text">
+            <span class="kit-row-title">{result.analyte}: {result.value} <span class="muted small">{result.unit}</span></span>
+            <span class="kit-row-sub">
               {dayLong(result.epochDay)}{result.note ? ' · ' + result.note : ''}
             </span>
-            {#if context}<span class="row-subtitle">{context}</span>{/if}
+            {#if context}<span class="kit-row-sub">{context}</span>{/if}
           </span>
         </div>
       {/each}
+      </ListCard>
     </div>
   {:else}
     <p class="muted small section-block">{m.clinician_summary_labs_empty()}</p>
@@ -161,50 +182,53 @@
 <!-- Three counters under one heading (phase 4 ticket 05), each with its own
      sub-heading: they are one section because they are one area's read. -->
 {#snippet exposureRows(s: ClinicianSummary)}
-  <SectionTitle text={m.exposure_dose_totals_title()} />
+  <p class="sub-heading">{m.exposure_dose_totals_title()}</p>
   {#if s.exposure.doseTotals.length}
-    <div class="list-group section-block">
+    <div class="section-block"><ListCard>
       {#each s.exposure.doseTotals as t (`${t.drug}-${t.route}-${t.doseUnit}`)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">{t.drug}</span>
-            <span class="row-subtitle">
+        <div class="kit-row is-static">
+          <span class="kit-row-text">
+            <span class="kit-row-title">{t.drug}</span>
+            <span class="kit-row-sub">
               {m.exposure_dose_total_sub({ route: routeLabel(t.route), total: String(t.total), unit: t.doseUnit })}
             </span>
           </span>
         </div>
       {/each}
+      </ListCard>
     </div>
   {:else}
     <p class="muted small section-block">{m.exposure_dose_totals_empty()}</p>
   {/if}
 
-  <SectionTitle text={m.exposure_route_days_title()} />
+  <p class="sub-heading">{m.exposure_route_days_title()}</p>
   {#if s.exposure.routeDays.length}
-    <div class="list-group section-block">
+    <div class="section-block"><ListCard>
       {#each s.exposure.routeDays as r (r.route)}
-        <div class="list-row">
-          <span class="row-text"><span class="row-title">{r.route}</span></span>
-          <span class="muted small">{m.exposure_days_count({ days: String(r.days) })}</span>
+        <div class="kit-row is-static">
+          <span class="kit-row-text"><span class="kit-row-title">{r.route}</span></span>
+          <span class="kit-row-trail">{m.exposure_days_count({ days: String(r.days) })}</span>
         </div>
       {/each}
+      </ListCard>
     </div>
   {:else}
     <p class="muted small section-block">{m.exposure_route_days_empty()}</p>
   {/if}
 
-  <SectionTitle text={m.exposure_regimen_days_title()} />
+  <p class="sub-heading">{m.exposure_regimen_days_title()}</p>
   {#if s.exposure.regimenDays.length}
-    <div class="list-group section-block">
+    <div class="section-block"><ListCard>
       {#each s.exposure.regimenDays as rd (rd.episodeId)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">{rd.drug}</span>
-            <span class="row-subtitle">{m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}</span>
+        <div class="kit-row is-static">
+          <span class="kit-row-text">
+            <span class="kit-row-title">{rd.drug}</span>
+            <span class="kit-row-sub">{m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}</span>
           </span>
-          <span class="muted small">{m.exposure_days_count({ days: String(rd.days) })}</span>
+          <span class="kit-row-trail">{m.exposure_days_count({ days: String(rd.days) })}</span>
         </div>
       {/each}
+      </ListCard>
     </div>
   {:else}
     <p class="muted small section-block">{m.exposure_regimen_days_empty()}</p>
@@ -213,15 +237,16 @@
 
 {#snippet sideEffectRows(s: ClinicianSummary)}
   {#if s.sideEffects.length}
-    <div class="list-group section-block">
+    <div class="section-block"><ListCard>
       {#each s.sideEffects as effect (effect.id)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">{effect.name}</span>
-            <span class="row-subtitle">{dayLong(effect.epochDay)} · {severityName(effect.severity)}</span>
+        <div class="kit-row is-static">
+          <span class="kit-row-text">
+            <span class="kit-row-title">{effect.name}</span>
+            <span class="kit-row-sub">{dayLong(effect.epochDay)} · {severityName(effect.severity)}</span>
           </span>
         </div>
       {/each}
+      </ListCard>
     </div>
   {:else}
     <p class="muted small section-block">{m.clinician_summary_side_effects_empty()}</p>
@@ -236,37 +261,38 @@
      computes nothing (ADR-0031). -->
 {#snippet procedureRows(s: ClinicianSummary)}
   {#if s.procedures.length}
-    <div class="list-group section-block">
+    <div class="section-block"><ListCard>
       {#each s.procedures as procedure (procedure.id)}
         {@const day = recoveryDay(procedure.surgeryEpochDay, today)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">{procedure.name}</span>
-            <span class="row-subtitle">
+        <div class="kit-row is-static">
+          <span class="kit-row-text">
+            <span class="kit-row-title">{procedure.name}</span>
+            <span class="kit-row-sub">
               {procedure.surgeryEpochDay === null ? m.surgery_date_none() : dayLong(procedure.surgeryEpochDay)}
               {#if day.type === 'since'}· {m.surgery_day_since({ days: m.n_days({ n: day.days }) })}{/if}
               {#if day.type === 'upcoming'}· {m.surgery_day_upcoming({ days: m.n_days({ n: day.days }) })}{/if}
               {#if day.type === 'surgeryDay'}· {m.surgery_day_of()}{/if}
             </span>
             {#if procedure.consults.length}
-              <span class="row-subtitle">
+              <span class="kit-row-sub">
                 {m.surgery_consults_title()}: {procedure.consults.map((c) => dayShort(c.epochDay)).join(', ')}
               </span>
             {/if}
             {#if procedure.photoEpochDays.length}
-              <span class="row-subtitle">
+              <span class="kit-row-sub">
                 {m.surgery_photos_title()}: {procedure.photoEpochDays.map((epochDay) => dayShort(epochDay)).join(', ')}
               </span>
             {/if}
-            {#if procedure.notes.trim()}<span class="row-subtitle">{procedure.notes}</span>{/if}
+            {#if procedure.notes.trim()}<span class="kit-row-sub">{procedure.notes}</span>{/if}
             {#each procedure.checklistItems as item (item.id)}
-              <span class="row-subtitle" style={item.checked ? 'text-decoration:line-through' : ''}>
+              <span class="kit-row-sub" style={item.checked ? 'text-decoration:line-through' : ''}>
                 {item.content}{item.carriedForward ? ' · ' + m.surgery_checklist_carried_badge() : ''}
               </span>
             {/each}
           </span>
         </div>
       {/each}
+      </ListCard>
     </div>
   {:else}
     <p class="muted small section-block">{m.clinician_summary_procedures_empty()}</p>
@@ -277,15 +303,16 @@
      range, since a question to ask has no date of its own (ticket 11). -->
 {#snippet appointmentPrepRows(s: ClinicianSummary)}
   {#if s.appointmentPrepItems.length}
-    <div class="list-group section-block">
+    <div class="section-block"><ListCard>
       {#each s.appointmentPrepItems as item (item.id)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title" style={item.checked ? 'text-decoration:line-through' : ''}>{item.content}</span>
-            {#if item.carriedForward}<span class="row-subtitle">{m.appointment_prep_carried_forward_badge()}</span>{/if}
+        <div class="kit-row is-static">
+          <span class="kit-row-text">
+            <span class="kit-row-title" style={item.checked ? 'text-decoration:line-through' : ''}>{item.content}</span>
+            {#if item.carriedForward}<span class="kit-row-sub">{m.appointment_prep_carried_forward_badge()}</span>{/if}
           </span>
         </div>
       {/each}
+      </ListCard>
     </div>
   {:else}
     <p class="muted small section-block">{m.clinician_summary_appointment_prep_empty()}</p>
@@ -293,29 +320,31 @@
 {/snippet}
 
 <div class="screen">
-  <ScreenHeader title={m.clinician_summary_title()} back="/settings" class="no-print" subtitle={m.clinician_summary_intro()}>
+  <ScreenHeader title={m.clinician_summary_title()} back="/more" class="no-print" subtitle={m.clinician_summary_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" aria-label={m.clinician_summary_print()} onclick={printSummary}>
+      <button class="icon-btn press" aria-label={m.clinician_summary_print()} onclick={printSummary}>
         <Icon name="share" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
-  <div class="card no-print" style="margin-bottom:var(--space-4)">
-    <div class="cd-endpoints">
-      <div class="field">
-        <label class="field-label" for="clinician-summary-start">{m.clinician_summary_range_start_label()}</label>
-        <input class="input" id="clinician-summary-start" type="date" bind:value={startInput} max={endInput || todayInput} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="clinician-summary-end">{m.clinician_summary_range_end_label()}</label>
-        <input class="input" id="clinician-summary-end" type="date" bind:value={endInput} min={startInput || undefined} max={todayInput} />
-      </div>
+  <!-- The range says what the page is showing rather than entering a
+       value, so it is the kit's filter line and not a card of fields. It
+       never prints: what the range was is written into the print heading
+       below, where a reader on paper needs it. -->
+  <div class="kit-filter cd-endpoints no-print">
+    <div class="field">
+      <label class="field-label" for="clinician-summary-start">{m.clinician_summary_range_start_label()}</label>
+      <input class="input" id="clinician-summary-start" type="date" bind:value={startInput} max={endInput || todayInput} />
     </div>
-    {#if range === null}
-      <p class="muted small" style="margin-top:var(--space-2)">{m.clinician_summary_range_required()}</p>
-    {/if}
+    <div class="field">
+      <label class="field-label" for="clinician-summary-end">{m.clinician_summary_range_end_label()}</label>
+      <input class="input" id="clinician-summary-end" type="date" bind:value={endInput} min={startInput || undefined} max={todayInput} />
+    </div>
   </div>
+  {#if range === null}
+    <p class="muted small no-print">{m.clinician_summary_range_required()}</p>
+  {/if}
 
   {#if range}
     <div class="print-heading">
@@ -328,12 +357,14 @@
   {#if range === null}
     <!-- Nothing to assemble until both boundaries are picked; the hint above already says so. -->
   {:else if summaryQuery.loading || !summary}
-    <Skeleton variant="block" count={4} />
+    <div out:crossfade><Skeleton variant="block" count={4} /></div>
   {:else}
-    {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
-      <SectionTitle text={clinicianSummarySectionTitle(key)} />
-      {@render SECTION_ROWS[key](summary)}
-    {/each}
+    <div in:crossfade>
+      {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
+        <SectionHeading text={clinicianSummarySectionTitle(key)} />
+        {@render SECTION_ROWS[key](summary)}
+      {/each}
+    </div>
 
     <p class="muted small no-print" style="margin-top:var(--space-4)">{m.clinician_summary_disclaimer()}</p>
     <p class="disclaimer-print">{m.clinician_summary_disclaimer()}</p>
@@ -341,6 +372,17 @@
 </div>
 
 <style>
+  /* The three exposure counters sit inside one section, so their own names
+     are a label under the section's heading rather than three more headings
+     at the screen-title size (DIRECTION.md 3c is about naming a screen's
+     areas; these are one area's three reads). */
+  .sub-heading {
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+  }
+
   /* Every section's rows are followed by the next section's heading, and
      which one comes last is the registry's business rather than this file's,
      so the gap is uniform instead of dropped on the final block. */

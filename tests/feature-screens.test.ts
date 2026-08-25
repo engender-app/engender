@@ -180,9 +180,25 @@ describe('what the worker is still fetching', () => {
 describe('the two print surfaces', () => {
   it('keeps the clinician summary printable', () => {
     const source = sourceOf.get('settings/clinician-summary')!;
+    // Its own print rule: the disclaimer that only appears on paper.
     expect(source).toMatch(/@media print/);
-    // What print hides is the app around the page, not the page.
-    expect(source).toMatch(/\.screen-header/);
+    /* And what print hides is the app around the page, not the page. The
+       header, the range picker and the on-screen copy of the disclaimer
+       all carry `no-print`, which app.css's print block hides; the print
+       heading that replaces the header carries the range in words. */
+    expect(source).toMatch(/<ScreenHeader[^>]*class="no-print"/);
+    expect(source).toMatch(/class="kit-filter cd-endpoints no-print"/);
+    expect(source).toContain('print-heading');
+  });
+
+  it('spends no flag colour on the page somebody else reads', () => {
+    /* The one screen in the app whose output leaves it, on paper. A stripe
+       behind an icon disc is neither what a clinician needs nor what the
+       person handing the page over chose to disclose, so every list card
+       here is handed no role. */
+    const source = sourceOf.get('settings/clinician-summary')!;
+    expect(source).not.toContain('roleAt(');
+    expect(markupOf.get('settings/clinician-summary')).not.toMatch(/<ListCard\b[^>]*role=/);
   });
 
   it('shares its seam with the journal book rather than forking it', () => {
