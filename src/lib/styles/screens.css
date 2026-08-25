@@ -244,24 +244,79 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    with the rebuild; this outlived it. */
 .quicklog-title { font-weight: var(--weight-bold); margin-bottom: var(--space-3); }
 
-.metric-chip {
-  border: none; background: none; cursor: pointer;
-  font: inherit; font-size: var(--text-sm); color: var(--text-2);
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 8px; border-radius: var(--radius-pill);
-}
-.metric-chip:hover { background: var(--surface-2); }
-.metric-chip strong { color: var(--accent); }
 /* ---------- Entry editor ---------- */
-.editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); padding: 0 var(--space-1); }
+.editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
+/* Still here for the settings screens that carry a form in a card - the
+   milestone editor, labs, the dimension editor and three more. The entry
+   editor stopped using either in phase 5 ticket 22: eight of these stacked
+   was one card repeated down a screen, which is what DIRECTION.md 2b exists
+   to stop, and its areas are kit section headings with the fields flush to
+   the page underneath them. */
 .editor-section { margin-bottom: var(--space-4); }
 .editor-heading { font-size: var(--text-md); font-weight: var(--weight-bold); margin: 0 0 var(--space-3); font-family: var(--font-body); }
+
+/* The line under a heading that needs one. A hint is the area's own second
+   sentence rather than a caption on a field, so it sits at the page's
+   left edge with the controls under it, and it is the same --text-2 the
+   date line above uses. */
+.editor-hint {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  margin: 0 0 var(--space-3);
+  }
+/* Under a slider rather than under a heading: it belongs to the control
+   above it, so it closes up against it. */
+.editor-hint-tight { margin: calc(-1 * var(--space-2)) 0 var(--space-3); }
+
+.editor-note {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font-body);
+}
+
+/* Everything an entry carries besides its words, on one surface (phase 5
+   ticket 22). Three headed cards in a row were half the editor's length and
+   said the same thing three times; this is one area with three labelled
+   groups, separated by the same hairline a list card puts between its rows.
+
+   Uncoloured on purpose. Every other area of every other screen takes a
+   flag stripe, and this one is full of photographs and waveforms that bring
+   their own colour - a tinted ground behind a photo grid is a tint behind a
+   photograph. */
+.editor-media {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.editor-media-group { padding: var(--space-4); }
+.editor-media-group + .editor-media-group { border-top: 1px solid var(--outline); }
+.editor-media-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  margin: 0 0 var(--space-3);
+}
 /* Sticky against the scroll port, whose bottom edge is the window's - the
    scroll region's own bottom padding sits inside the scrollable area and
    does not move this. So it clears the floating bar by naming the same
    clearance the scroll region uses (app.css). */
 .editor-savebar {
-  position: sticky; bottom: var(--nav-clearance);
+  /* On the bar rather than floating above it (Alicja, 2026-08-25: "too
+     high"). It cleared the bar by 140px, and the reason is that a sticky
+     offset is measured from the scroll port's *padding* edge, not its border
+     edge - and `.app-main` already reserves --nav-clearance of bottom padding
+     for the bar (app.css). Asking for --nav-clearance on top of that counted
+     the bar twice.
+
+     That padding edge sits --space-5 above the bar, because --nav-clearance
+     is what the bar occupies plus a breath so a scrolling column's last row
+     does not stop dead against its shadow. A footer that means to sit *on*
+     the bar wants to give that breath back and keep a hairline, which is a
+     negative offset - the one case where a sticky element is asked to sit
+     below the edge it sticks to. */
+  position: sticky; bottom: calc(var(--space-2) - var(--space-5));
   z-index: 20; display: flex; margin-top: var(--space-5);
 }
 .editor-savebar .btn { width: 100%; box-shadow: var(--shadow-2); }
@@ -500,12 +555,49 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 }
 
 /* ---------- Calendar & day detail ---------- */
-.cal-monthbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
-/* The clip the month is covered by. One grid cell holding both labels, so
-   the outgoing and incoming month occupy the same place rather than pushing
-   each other, and overflow hidden is what makes the leaving one disappear
-   behind an edge instead of fading in mid-air. min-width so a long month in
-   Polish shortens the slot rather than the buttons either side of it. */
+/* ---------- Calendar (phase 5 ticket 22) ----------
+
+   The month is not in a card. It is the one thing on the screen, and a box
+   drawn around the only thing on a screen is the card habit DIRECTION.md 2b
+   names; the grid sits on the page with its legend under it.
+
+   The shading is the active flag's stripe on the heat ramp's five steps, so
+   a cell here and a cell of Home's week strip shade one reading the same way
+   (HeatMap.svelte). Both the fill and the ink of a cell arrive as inline
+   values, because the ink is computed per step - see roles.ts. */
+.cal-monthbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.cal-month {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  /* Centred between its two steps, and given the room to stay centred when
+     the month's name is long: without this the flex box sizes to the text
+     and September pushes the chevrons apart. */
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+
+/* The slot the month name changes inside (ticket 31). One grid cell holding
+   both labels, so the outgoing and the incoming month occupy the same place
+   rather than pushing each other, and `overflow: hidden` is the pair of walls
+   the effect is built on: one whose top is level with the text's bottom, one
+   whose bottom is level with the text's top. The clip is what hides a label,
+   which is why neither half of the transition touches opacity - a piece of
+   text that dissolves while it travels reads as two effects rather than as
+   one object going behind something.
+
+   It sits inside the <h2> rather than around it, which is this ticket's one
+   change to ticket 31's markup. Keying the heading itself meant two <h2>s in
+   the document outline for the length of the swap, and it put the live region
+   on the element being replaced - see the calendar's own note on why that
+   announces twice. */
 .cal-month-slot {
   display: grid;
   overflow: hidden;
@@ -513,27 +605,87 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   text-align: center;
 }
 .cal-month-slot > * { grid-area: 1 / 1; }
-.cal-month { margin: 0; font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; }
 
-/* The metric picker, on its own line under the month rather than inside a
-   sentence with a link in it, and up against its own label rather than at the
-   end of the line.
+/* The picker on its own line rather than in the month bar. The bar already
+   carries two controls, and DIRECTION.md puts a section's switch on the
+   heading's line - which here is the line under it, because the heading is
+   the month and the month is not what the picker changes.
 
-   The end of the line is where a section's switch goes on Home, and it is the
-   wrong place here: the next-month chevron sits directly above it, and both
-   are 48px targets, so a thumb reaching for one lands on the other. Found by
-   doing it - a tap aimed at the chevron opened the metric picker (Alicja,
-   2026-08-25: "it's easy to click the right arrow on accident"). Nothing is
+   And up against its own label rather than at the end of the line, which is
+   ticket 31's finding and worth keeping: the end of the line is where a
+   section's switch goes on Home, and here the next-month chevron sits
+   directly above it. Both are 48px targets, so a thumb reaching for the
+   chevron lands on the picker instead - found by doing it (Alicja,
+   2026-08-25: "it's easy to click the right arrow on accident"). Nothing sits
    above the label, so that is where the control goes. */
 .cal-metric {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  padding: var(--space-3) 0 var(--space-4);
 }
-.day-entry-row { display: grid; grid-template-columns: 64px 1fr; gap: var(--space-2); align-items: start; }
-.day-entry-time { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--text-2); padding-top: var(--space-4); text-align: right; }
+.cal-metric-label { font-size: var(--text-sm); color: var(--text-2); }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-dow {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  font-weight: var(--weight-bold);
+}
+.cal-cell {
+  aspect-ratio: 1;
+  border-radius: var(--radius-xs);
+  background: var(--heat-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  text-decoration: none;
+  /* The empty cells carry the same edge the shaded ones get from their fill,
+     so a month reads as a grid rather than as scattered colour - and so a
+     day with nothing logged is still a day. */
+  border: 1px solid var(--outline);
+}
+.cal-cell.is-blank { background: none; border-color: transparent; }
+/* Today, marked by an outline rather than by a fill, because the fill is
+   already saying something else. */
+.cal-cell.is-today { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cal-num { font-size: var(--text-xs); color: inherit; font-weight: var(--weight-medium); }
+/* An unshaded cell has no ink of its own to inherit. */
+.cal-cell:not(.has-entries) .cal-num { color: var(--text-2); }
+
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  margin-top: var(--space-4);
+  }
+.cal-legend-scale { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend-none { display: inline-flex; align-items: center; gap: 5px; }
+.cal-legend-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  display: inline-block;
+  border: 1px solid var(--outline);
+}
+.cal-legend-end { max-width: 9ch; }
+.cal-hint {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  margin: var(--space-4) 0 0;
+  }
+
+/* ---------- One day ----------
+   The entries are the kit's day card now, so the hand-built time gutter that
+   used to sit beside an EntryCard here is gone - the rail inside the card is
+   what draws a day's shape. */
+.day-add { margin-top: var(--space-5); }
+.day-add .btn { width: 100%; }
 
 /* ---------- Search ---------- */
 .search-box {
@@ -549,6 +701,46 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   flex: 1; border: none; background: none; font: inherit; color: var(--text);
   min-height: 48px; outline: none;
 }
+
+/* The chips are the only place the state of the query is visible once the
+   filters moved into a sheet (phase 5 ticket 22), so they sit directly under
+   the field rather than under the count. */
+.search-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+}
+.search-count {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin: var(--space-3) 0 var(--space-3);
+  }
+.search-hint {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin: var(--space-3) 0 0;
+  }
+/* One run of day cards, whichever screen is drawing it (EntryDays.svelte). */
+.entry-days { display: grid; gap: var(--space-3); }
+/* Not infinite scroll (SCREENS.md): a page is asked for, and the control
+   that asks says how many are coming. */
+.search-more { width: 100%; margin-top: var(--space-4); }
+.search-filter-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  margin: var(--space-4) 0 var(--space-2);
+}
+.search-filter-dates {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+  text-align: left;
+  margin-top: var(--space-3);
+}
+
 
 /* ---------- Compare periods ---------- */
 /* The compare screen's two period pickers. They used to sit in
@@ -690,8 +882,24 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 .value-row:last-child { border-bottom: none; }
 
 /* ---------- Settings ---------- */
+/* Phase 5 ticket 24: this section moved onto the kit's ListCard for its
+   container, and picked up two motion fixes on the way, since redesigning
+   the screen that owns them is what made them this ticket's to fix.
+
+   The hover scale-and-rotate on the preview circle was DIRECTION.md tier
+   4's "no hover-dependent motion" broken outright - a leftover from before
+   the tiers existed. And the swatch never answered a touch at all: ticket
+   30's control inventory covers sliders, switches, segments and keys but
+   never named this control, so it is the one thing on this screen still
+   answering a press with nothing. `.press` is the compact-control class
+   ticket 30 already settled (--press-depth, 0.94) - a swatch is well under
+   its 64px ceiling, so it names the class rather than a number. */
 .palette-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
 .mood-preset-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
+/* A generic padded slot for content that is not a row of the list card it
+   sits in - the appearance block's swatches and segments, here, rather than
+   the list card growing a padding variant it holds nothing else needs. */
+.settings-pad { padding: var(--space-4); }
 .palette-swatch {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   border: none; background: none; cursor: pointer;
@@ -699,13 +907,11 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   font: inherit;
   min-width: 0;
 }
-.palette-swatch:hover .swatch-preview { transform: scale(1.12) rotate(8deg); }
 .palette-swatch:hover { background: var(--surface-2); }
 .palette-swatch.is-active { background: var(--accent-soft); }
 .swatch-preview {
   width: 40px; height: 40px; border-radius: 50%;
-  box-shadow: var(--shadow-1); border: 2px solid var(--surface);
-  transition: transform var(--dur-med) var(--ease-out);
+  border: 2px solid var(--surface);
 }
 .palette-swatch.is-active .swatch-preview { outline: 2px solid var(--accent); outline-offset: 2px; }
 .swatch-name {

@@ -10,14 +10,21 @@
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
-  import { startRecording, type ActiveRecording } from '$lib/stores/voiceRecording';
-  import { startVideoRecording, type ActiveVideoRecording } from '$lib/stores/videoRecording';
+  import { pickRecording, startRecording, type ActiveRecording } from '$lib/stores/voiceRecording';
+  import { pickVideo, startVideoRecording, type ActiveVideoRecording } from '$lib/stores/videoRecording';
   import { VIDEO_MAX_DURATION_MS } from '$lib/data/videoNotes/limits';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import type { EntryPrompt, EntryTemplate, GenderDimension } from '$lib/data/types';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+  import { entryContainerName } from '$lib/motion/container.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
@@ -31,6 +38,15 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let { epochDay, entryId, seedMood }: { epochDay?: number; entryId?: number; seedMood?: number | null } = $props();
+
+  /* The editor is a writing surface rather than a set of areas to look at,
+     so it spends almost none of the flag: what colour it does take goes on
+     the two things that are not fields - the guided prompt, and the template
+     list inside its sheet. Role 0, the only index guaranteed to be a colour
+     on all 8 palettes, since there is no reading order to follow with one
+     role in play. The attachments surface below is deliberately uncoloured;
+     everything inside it is a photograph or a waveform bringing its own. */
+  let role = $derived(roleAt(activeFlag.roles, 0));
 
   /* An entry to edit is a round trip away now, so the draft cannot be built
      during initialisation the way it was over the synchronous store. The
@@ -184,6 +200,20 @@
     activeRecording = await startRecording();
   }
 
+  /* Picking one that already exists, rather than making one here. Photos
+     offered a gallery from the start and these two did not, which is what
+     Alicja asked for on 2026-08-25 against the built screen: a recording of
+     her own voice from a year ago is the same kind of thing as a photo from
+     a year ago, and the editor could take one and not the other.
+
+     The store owns whether the file is admissible - the wrong kind, too
+     long, too large to store - and reports its own refusals, so there is
+     nothing to branch on here beyond "did anything come back". */
+  async function addRecordingFile() {
+    const bytes = await pickRecording();
+    if (bytes) entryDraft.addRecording(bytes);
+  }
+
   /* Video notes (ticket 22). Three pieces of state where a voice recording
      needs one: the live capture for the preview, the countdown, and a flag
      for the wait while an oversized capture is compressed - that step runs in
@@ -200,6 +230,20 @@
     compressingVideo = true;
     try {
       const bytes = await active.stop();
+      if (bytes) entryDraft.addVideo(bytes);
+    } finally {
+      compressingVideo = false;
+    }
+  }
+
+  /* The same, for a video, and it borrows the compressing flag: an oversized
+     pick goes through the same real-time re-encode a capture does, so a
+     30-second file takes another 30 seconds and a silent editor would look
+     broken. */
+  async function addVideoFile() {
+    compressingVideo = true;
+    try {
+      const bytes = await pickVideo();
       if (bytes) entryDraft.addVideo(bytes);
     } finally {
       compressingVideo = false;
@@ -299,7 +343,15 @@
   }
 </script>
 
-<div class="screen">
+<!-- The destination half of the app's one container transform (DIRECTION.md
+     tier 2, deferred to this ticket by ticket 18): the tapped entry row is
+     the box this screen grows out of. Named off the `entryId` prop rather
+     than off the loaded entry, and that is the whole trick - the browser
+     photographs the new screen as soon as the navigation settles, and the
+     entry itself is a worker round trip behind that, so a name waiting on
+     `existing` would arrive after the picture was taken. The route knows
+     which entry this is without asking anybody. -->
+<div class="screen editor" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}>
   <ScreenHeader
     title={existing ? m.entry() : m.new_entry()}
     screen="entry"
@@ -326,15 +378,14 @@
   </p>
 
   {#if prompt && !promptDismissed}
-    <div class="notice notice-info" role="status">
-      <Icon name="sparkle" size={18} />
-      <div class="notice-body">
-        <span>{prompt.text}</span>
-      </div>
-      <button class="icon-btn" aria-label={m.dismiss()} onclick={() => (promptDismissed = true)}>
-        <Icon name="x" size={18} />
-      </button>
-    </div>
+    <Notice
+      icon="sparkle"
+      key="entry-prompt"
+      {role}
+      text={prompt.text}
+      dismiss={{ label: m.dismiss(), onclick: () => (promptDismissed = true) }}
+      aria-live="polite"
+    />
   {/if}
 
   {#if entryId == null}
@@ -349,150 +400,170 @@
   {#if loaded.loading}
     <Skeleton variant="block" count={3} />
   {:else}
-  <section class="card editor-section">
-    <h2 class="editor-heading">{m.mood()}</h2>
-    <MoodPicker value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
-  </section>
+  <SectionHeading text={m.mood()} />
+  <MoodPicker value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
 
-  <section class="card editor-section">
-    <div class="spread">
-      <h2 class="editor-heading">{m.gender_label()}</h2>
-      <a class="small" style="color:var(--accent);text-decoration:none" href="/settings">{m.preset_prefix()} {preset.name}</a>
-    </div>
-    <p class="muted small" style="margin-bottom:var(--space-4)">{m.gender_hint()}</p>
-    {#each dims as { dim, inPreset } (dim.key)}
-      <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
-      {#if !inPreset}
-        <p class="muted small" style="margin-top:calc(var(--space-2) * -1);margin-bottom:var(--space-3)">
-          {m.not_in_preset()}
-        </p>
-      {/if}
-    {/each}
-  </section>
+  <SectionHeading text={m.gender_label()}>
+    {#snippet action()}
+      <a class="kit-heading-action" href="/settings">{m.preset_prefix()} {preset.name}</a>
+    {/snippet}
+  </SectionHeading>
+  <p class="editor-hint">{m.gender_hint()}</p>
+  {#each dims as { dim, inPreset } (dim.key)}
+    <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
+    {#if !inPreset}
+      <p class="editor-hint editor-hint-tight">{m.not_in_preset()}</p>
+    {/if}
+  {/each}
 
-  <section class="card editor-section">
-    <h2 class="editor-heading">{m.tags_label()}</h2>
-    <TagPicker
-      groups={vocabulary.visibleTagGroups}
-      selected={entryDraft.tags}
-      onToggle={(id) => entryDraft.toggleTag(id)}
-    />
-  </section>
+  <SectionHeading text={m.tags_label()} />
+  <TagPicker
+    groups={vocabulary.visibleTagGroups}
+    selected={entryDraft.tags}
+    onToggle={(id) => entryDraft.toggleTag(id)}
+  />
 
-  <section class="card editor-section">
-    <h2 class="editor-heading">{m.body_map_label()}</h2>
-    <p class="muted small" style="margin-bottom:var(--space-4)">{m.body_map_hint()}</p>
-    <BodyRegionPicker
-      regions={vocabulary.visibleBodyRegions}
-      values={entryDraft.bodyRegions}
-      onToggle={(key) => entryDraft.toggleBodyRegion(key)}
-      onAxisInput={(key, axis, v) => entryDraft.setBodyRegionAxis(key, axis, v)}
-    />
-  </section>
+  <SectionHeading text={m.note_label()} />
+  <textarea
+    class="input editor-note"
+    id="ed-note"
+    name="note"
+    rows="4"
+    placeholder={m.note_placeholder()}
+    bind:value={entryDraft.note}
+  ></textarea>
 
-  <section class="card editor-section">
-    <h2 class="editor-heading">{m.note_label()}</h2>
-    <textarea class="input" id="ed-note" name="note" rows="4" placeholder={m.note_placeholder()} bind:value={entryDraft.note}
-    ></textarea>
-  </section>
+  <SectionHeading text={m.body_map_label()} />
+  <p class="editor-hint">{m.body_map_hint()}</p>
+  <BodyRegionPicker
+    regions={vocabulary.visibleBodyRegions}
+    values={entryDraft.bodyRegions}
+    onToggle={(key) => entryDraft.toggleBodyRegion(key)}
+    onAxisInput={(key, axis, v) => entryDraft.setBodyRegionAxis(key, axis, v)}
+  />
 
-  <section class="card editor-section">
-    <h2 class="editor-heading">{m.photos_label()}</h2>
-    <div class="photo-row">
-      {#each entryDraft.photos as p, i (p)}
-        <div class="photo-wrap">
-          {#if p.kind === 'stored'}
-            <PhotoThumb photo={p.photo} size={72} />
-            <button
-              class="photo-star"
-              class:is-starred={p.photo.starred}
-              aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
-              aria-pressed={p.photo.starred}
-              onclick={() => togglePhotoStarred(i)}
-            >
-              <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
+  <!-- One area for everything an entry carries besides its words, rather
+       than three headed cards in a row. A photo, a voice note and a video
+       note are the same act - attaching something to today - and the three
+       of them were half the editor's length. They keep their own labels
+       inside it, because "Record" on two buttons side by side does not say
+       which one is which, and the label is what disambiguates them. -->
+  <SectionHeading text={m.attachments_label()} />
+  <div class="editor-media" data-editor-media>
+    <section class="editor-media-group">
+      <h3 class="editor-media-label">{m.photos_label()}</h3>
+      <div class="photo-row">
+        {#each entryDraft.photos as p, i (p)}
+          <div class="photo-wrap">
+            {#if p.kind === 'stored'}
+              <PhotoThumb photo={p.photo} size={72} />
+              <button
+                class="photo-star"
+                class:is-starred={p.photo.starred}
+                aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
+                aria-pressed={p.photo.starred}
+                onclick={() => togglePhotoStarred(i)}
+              >
+                <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
+              </button>
+            {:else}
+              <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
+            {/if}
+            <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
+              <Icon name="x" size={14} />
             </button>
-          {:else}
-            <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
-          {/if}
-          <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
-            <Icon name="x" size={14} />
-          </button>
+          </div>
+        {/each}
+        <button class="photo-add press" aria-label={m.add_photo()} onclick={addPhoto}>
+          <Icon name="image" size={22} /><span>{m.add_photo()}</span>
+        </button>
+        <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={entryPhotoReview.capture}>
+          <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="editor-media-group">
+      <h3 class="editor-media-label">{m.recordings_label()}</h3>
+      {#if entryDraft.recordings.length > 0}
+        <div class="recording-list">
+          {#each entryDraft.recordings as r, i (r)}
+            <div class="recording-row">
+              {#if r.kind === 'stored'}
+                <VoicePlayer fileName={r.recording.fileName} />
+              {:else}
+                <VoicePlayer bytes={r.bytes} />
+              {/if}
+              <button class="recording-remove press" aria-label={m.recording_remove()} onclick={() => entryDraft.removeRecording(i)}>
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+          {/each}
         </div>
-      {/each}
-      <button class="photo-add" aria-label={m.add_photo()} onclick={addPhoto}>
-        <Icon name="image" size={22} /><span>{m.add_photo()}</span>
-      </button>
-      <button class="photo-add" aria-label={m.add_photo_camera()} onclick={entryPhotoReview.capture}>
-        <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
-      </button>
-    </div>
-  </section>
+      {/if}
+      <div class="photo-row">
+        <button class="photo-add press" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={toggleRecording}>
+          <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
+          <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
+        </button>
+        <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={addRecordingFile}>
+          <Icon name="image" size={22} /><span>{m.add_recording_file()}</span>
+        </button>
+      </div>
+    </section>
 
-  <section class="card editor-section">
-    <h2 class="editor-heading">{m.recordings_label()}</h2>
-    {#if entryDraft.recordings.length > 0}
-      <div class="recording-list">
-        {#each entryDraft.recordings as r, i (r)}
-          <div class="recording-row">
-            {#if r.kind === 'stored'}
-              <VoicePlayer fileName={r.recording.fileName} />
-            {:else}
-              <VoicePlayer bytes={r.bytes} />
-            {/if}
-            <button class="recording-remove" aria-label={m.recording_remove()} onclick={() => entryDraft.removeRecording(i)}>
-              <Icon name="x" size={16} />
-            </button>
-          </div>
-        {/each}
+    <section class="editor-media-group">
+      <h3 class="editor-media-label">{m.videos_label()}</h3>
+      {#if entryDraft.videos.length > 0}
+        <div class="recording-list">
+          {#each entryDraft.videos as v, i (v)}
+            <div class="video-row">
+              {#if v.kind === 'stored'}
+                <VideoNotePlayer fileName={v.video.fileName} />
+              {:else}
+                <VideoNotePlayer bytes={v.bytes} />
+              {/if}
+              <button class="recording-remove press" aria-label={m.video_remove()} onclick={() => entryDraft.removeVideo(i)}>
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+      {#if activeVideo}
+        <div class="video-preview">
+          <!-- Muted: routing the microphone back to the speaker would howl. -->
+          <!-- svelte-ignore a11y_media_has_caption -->
+          <video use:previewStream={activeVideo.stream} muted autoplay playsinline></video>
+          <span class="video-countdown">0:{videoSecondsLeft.toString().padStart(2, '0')}</span>
+        </div>
+      {:else if compressingVideo}
+        <p class="video-hint">{m.video_compressing()}</p>
+      {:else}
+        <p class="video-hint">{m.video_recording_hint()}</p>
+      {/if}
+      <div class="photo-row">
+        <button
+          class="photo-add press"
+          disabled={compressingVideo}
+          aria-label={activeVideo ? m.stop_video() : m.add_video()}
+          onclick={toggleVideo}
+        >
+          <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
+          <span>{activeVideo ? m.stop_video() : m.add_video()}</span>
+        </button>
+        <button
+          class="photo-add press"
+          data-add-video-file
+          disabled={compressingVideo || !!activeVideo}
+          aria-label={m.add_video_file()}
+          onclick={addVideoFile}
+        >
+          <Icon name="image" size={22} /><span>{m.add_video_file()}</span>
+        </button>
       </div>
-    {/if}
-    <button class="photo-add" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={toggleRecording}>
-      <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
-      <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
-    </button>
-  </section>
-
-  <section class="card editor-section">
-    <h2 class="editor-heading">{m.videos_label()}</h2>
-    {#if entryDraft.videos.length > 0}
-      <div class="recording-list">
-        {#each entryDraft.videos as v, i (v)}
-          <div class="video-row">
-            {#if v.kind === 'stored'}
-              <VideoNotePlayer fileName={v.video.fileName} />
-            {:else}
-              <VideoNotePlayer bytes={v.bytes} />
-            {/if}
-            <button class="recording-remove" aria-label={m.video_remove()} onclick={() => entryDraft.removeVideo(i)}>
-              <Icon name="x" size={16} />
-            </button>
-          </div>
-        {/each}
-      </div>
-    {/if}
-    {#if activeVideo}
-      <div class="video-preview">
-        <!-- Muted: routing the microphone back to the speaker would howl. -->
-        <!-- svelte-ignore a11y_media_has_caption -->
-        <video use:previewStream={activeVideo.stream} muted autoplay playsinline></video>
-        <span class="video-countdown">0:{videoSecondsLeft.toString().padStart(2, '0')}</span>
-      </div>
-    {:else if compressingVideo}
-      <p class="video-hint">{m.video_compressing()}</p>
-    {:else}
-      <p class="video-hint">{m.video_recording_hint()}</p>
-    {/if}
-    <button
-      class="photo-add"
-      disabled={compressingVideo}
-      aria-label={activeVideo ? m.stop_video() : m.add_video()}
-      onclick={toggleVideo}
-    >
-      <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
-      <span>{activeVideo ? m.stop_video() : m.add_video()}</span>
-    </button>
-  </section>
+    </section>
+  </div>
 
   <div class="editor-savebar">
     <button class="btn btn-primary" data-save disabled={saving} onclick={saveEntry}>
@@ -502,16 +573,17 @@
   {/if}
 
   <Sheet bind:open={templateSheetOpen} title={m.use_template()}>
-    <div class="stack-3">
+    <SectionHeading text={m.use_template()} />
+    <ListCard {role}>
       {#each vocabulary.entryTemplates as tpl (tpl.key)}
-        <button class="list-row" onclick={() => applyTemplate(tpl)}>{tpl.name}</button>
+        <ListRow key={tpl.key} title={tpl.name} chevron={false} onclick={() => applyTemplate(tpl)} />
       {/each}
-    </div>
+    </ListCard>
   </Sheet>
 
   <Sheet bind:open={deleteOpen} title={m.delete_entry_q()}>
-    <h3>{m.delete_entry_q()}</h3>
-    <p class="muted small" style="margin-bottom:var(--space-4)">{m.delete_entry_hint()}</p>
+    <SectionHeading text={m.delete_entry_q()} />
+    <p class="editor-hint">{m.delete_entry_hint()}</p>
     <div class="stack-3">
       <button class="btn btn-danger" onclick={confirmDelete}><span>{m.delete_entry()}</span></button>
       <button class="btn btn-ghost" onclick={() => (deleteOpen = false)}><span>{m.keep_it()}</span></button>

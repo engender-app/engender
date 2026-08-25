@@ -30,9 +30,17 @@
      `data-entry-note` for its note - rather than a second vocabulary for
      the thing EntryCard already carries on search, on a day and on the
      timeline (ADR-0029). Same concept, same handle, whichever surface it is
-     drawn on. */
+     drawn on.
+
+     Where it opens, it is also the source half of the app's one container
+     transform (DIRECTION.md tier 2, wired by ticket 22): the row the finger
+     lands on is the box the editor grows out of. Whether that runs at all
+     belongs to the navigation and to $lib/motion/container.svelte, not here
+     - this only says which row was tapped, and only while it has somewhere
+     to go. */
   import Icon from '../Icon.svelte';
   import MoodFace from '../MoodFace.svelte';
+  import { entryContainerName, opensHere, openEntryContainer } from '$lib/motion/container.svelte';
 
   let {
     time,
@@ -80,7 +88,13 @@
 {/snippet}
 
 {#if href}
-  <a class="kit-entry" data-entry-card={key} {href}>{@render body()}</a>
+  <a
+    class="kit-entry"
+    data-entry-card={key}
+    {href}
+    style:view-transition-name={entryContainerName(key)}
+    onclick={(event) => { if (key && opensHere(event)) openEntryContainer(key); }}>{@render body()}</a
+  >
 {:else}
   <article class="kit-entry" data-entry-card={key}>{@render body()}</article>
 {/if}

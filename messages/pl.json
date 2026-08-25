@@ -44,18 +44,26 @@
   "add_photo_camera": "Aparat",
   "recordings_label": "Nagrania głosowe",
   "add_recording": "Nagraj",
+  "add_recording_file": "Dodaj",
   "stop_recording": "Zatrzymaj",
   "recording_remove": "Usuń nagranie",
   "recording_mic_failed": "Nie udało się otworzyć mikrofonu.",
   "recording_unsupported": "Ta przeglądarka nie obsługuje nagrywania głosu.",
+  "recording_not_audio": "To nie jest plik audio.",
+  "recording_too_large": "To nagranie jest za duże, żeby je zapisać. Maksymalnie 10 MB.",
   "videos_label": "Nagrania wideo",
+  "attachments_label": "Załączniki",
   "add_video": "Nagraj",
+  "add_video_file": "Dodaj",
   "stop_video": "Zatrzymaj",
   "video_remove": "Usuń nagranie wideo",
   "video_recording_hint": "Najwyżej 30 sekund.",
   "video_compressing": "Kompresowanie…",
   "video_camera_failed": "Nie udało się otworzyć kamery.",
   "video_unsupported": "Ta przeglądarka nie obsługuje nagrywania wideo.",
+  "video_not_a_video": "To nie jest plik wideo.",
+  "video_too_long": "Notatka wideo trwa maksymalnie 30 sekund. Wybierz krótszą albo nagraj ją tutaj.",
+  "video_too_large": "To wideo jest za duże, żeby je zapisać, i nie udało się go zmniejszyć.",
   "gender_label": "Płeć",
   "gender_hint": "Tak, jak czujesz to teraz. Nie ma złych odpowiedzi.",
   "preset_prefix": "zestaw:",
@@ -141,6 +149,23 @@
   "search": "Szukaj",
   "search_placeholder": "Szukaj w notatkach i tagach…",
   "search_hint": "Notatki i tagi, z polskimi znakami lub bez. „lozko” znajdzie „łóżko”.",
+  "search_more": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Pokaż jeszcze {count}",
+        "countPlural=few": "Pokaż kolejne {count}",
+        "countPlural=many": "Pokaż kolejne {count}",
+        "countPlural=other": "Pokaż kolejne {count}"
+      }
+    }
+  ],
   "search_try": "Spróbuj „euforia”, „kawa” albo tagu „terapia”.",
   "search_filters": "Filtry",
   "search_filter_moods_aria": "Filtry nastroju",
@@ -1671,7 +1696,7 @@
   ],
   "heat_legend_aria": "{metric}: od {low} do {high}",
   "slider_aria": "{name}: od {low} do {high}",
-  "slider_unset": "bez wartości",
+  "slider_unset": "-",
   "entry_save_failed": "Nie udało się zapisać tego wpisu.",
   "ms_status_next_in": "następna za {days}",
   "photo_placeholder": "Miejsce na zdjęcie",
