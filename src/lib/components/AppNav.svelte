@@ -161,7 +161,9 @@
        out loud, so it follows the preference like every other surface that
        does. -->
   <div class="rail-brand">
-    <span class="brand-mark"></span><span translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</span>
+    <span class="brand-mark"><Icon name="brand" size={22} /></span><span translate="no"
+      >{prefs.disguise ? 'Notes' : m.app_name()}</span
+    >
   </div>
   <button
     class="rail-add press-add"
