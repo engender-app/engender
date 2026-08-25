@@ -27,10 +27,17 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import CycleEventChart from '$lib/components/CycleEventChart.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   const KINDS: CycleEventKind[] = ['period_occurred', 'spotting', 'nothing_this_month'];
 
@@ -94,21 +101,25 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.cycle_events()} back="/settings">
+  <ScreenHeader title={m.cycle_events()} back="/more" subtitle={m.cycle_events_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.cycle_event_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.cycle_event_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
   {#if eventsQuery.loading || episodesQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if events.length}
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.cycle_events_intro()}</p>
-
-    <div class="card" style="margin-bottom:var(--space-4)">
-      <div class="cd-endpoints">
+    <div in:crossfade>
+      <!-- The chart is not in a card. It is the only thing in this area of
+           the screen, and a box drawn around the one thing on a screen is
+           what DIRECTION.md 2b names as making a screen read as generic -
+           the same call the calendar's month grid made. The endpoints sit
+           above it on the kit's filter line, because they say what the
+           chart is showing rather than entering a value. -->
+      <div class="kit-filter cd-endpoints">
         <div class="field">
           <label class="field-label" for="cycle-event-range-start">{m.cycle_event_range_start_label()}</label>
           <input class="input" id="cycle-event-range-start" type="date" bind:value={startInput} max={endInput || undefined} />
@@ -119,36 +130,40 @@
         </div>
       </div>
       {#if range === null}
-        <p class="muted small" style="margin-top:var(--space-2)">{m.cycle_event_range_required()}</p>
+        <p class="muted small">{m.cycle_event_range_required()}</p>
       {:else}
-        <div style="margin-top:var(--space-3)">
-          <CycleEventChart fromEpochDay={range.start} toEpochDay={range.end} {bands} events={chartEvents} />
-        </div>
+        <CycleEventChart fromEpochDay={range.start} toEpochDay={range.end} {bands} events={chartEvents} />
       {/if}
-    </div>
 
-    <div class="list-group">
-      {#each [...events].reverse() as event (event.id)}
-        <button
-          class="list-row"
-          data-cycle-event={event.id}
-          aria-label={m.cycle_event_row_aria({ kind: cycleEventKindName(event.kind), date: fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-          onclick={() => openEditor(event)}
-        >
-          <span class="row-text">
-            <span class="row-title">{cycleEventKindName(event.kind)}</span>
-            <span class="row-subtitle">{fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-          </span>
-          <Icon name="pencil" size={18} />
-        </button>
-      {/each}
+      <!-- No heading over the list. The screen is called Cycle and the
+           only wording the catalogue has for this area is that same word,
+           which would be two headers stacked (DIRECTION.md 3d). The chart
+           sits on the page and the list sits in a card, which is what
+           separates them; a name for the list is a copy ticket's to write. -->
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each [...events].reverse() as event (event.id)}
+          <ListRow
+            key={event.id}
+            icon="calendar"
+            title={cycleEventKindName(event.kind)}
+            subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+            chevron={false}
+            onclick={() => openEditor(event)}
+          />
+        {/each}
+      </ListCard>
     </div>
   {:else}
-    <EmptyState title={m.cycle_event_empty_title()} text={m.cycle_event_empty_body()}>
-      {#snippet action()}
-        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.cycle_event_empty_action()}</span></button>
-      {/snippet}
-    </EmptyState>
+    <div in:crossfade>
+      <Notice
+        icon="calendar"
+        key="cycle-events-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.cycle_event_empty_title()}
+        text={m.cycle_event_empty_body()}
+        action={{ label: m.cycle_event_empty_action(), primary: true, onclick: () => openEditor(null) }}
+      />
+    </div>
   {/if}
 
   <Sheet open={editor !== null} title={editor?.id ? m.cycle_event_edit_sheet() : m.cycle_event_new_sheet()} onClose={() => (editor = null)}>
