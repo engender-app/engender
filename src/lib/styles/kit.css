@@ -414,6 +414,17 @@ a.kit-entry:active {
   align-items: stretch;
 }
 
+/* Two-up is the shape, not the rule. At 200% zoom on a phone the CSS
+   viewport is around 195px, which leaves a tile about 76px wide and turns
+   its note into an ellipsis - the reading that is the reason to go there,
+   truncated. Below that the pair stacks and each tile gets the whole width.
+   The threshold is where the note stops fitting rather than a device size. */
+@media (max-width: 320px) {
+  .kit-tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .kit-tile {
   display: grid;
   gap: var(--space-2);
@@ -642,6 +653,9 @@ a.kit-entry:active {
   place-items: center;
   color: var(--role-mark);
   background: var(--role-tint);
+  /* The hairline the row's disc takes, and for the same reason: a 15%
+     tint of the white band is the surface it sits on. */
+  border: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
 }
 
 .kit-notice-body {

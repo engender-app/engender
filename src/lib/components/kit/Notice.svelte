@@ -20,6 +20,14 @@
      different keyboard behaviour and different announcements, and "back up
      now" is a destination however it is drawn.
 
+     Title and text are both optional, and a notice with only a title is the
+     shape a one-line statement wants: the text is --text-2 by design,
+     because a notice usually has a bold thing to say and a quieter
+     explanation under it, and an anniversary that reads "that day matters"
+     in the quiet half is the wrong emphasis. At least one of the two, which
+     the types below say by making the pair a union rather than by asking a
+     caller to remember.
+
      Anything else the caller puts on the notice lands on its root, which is
      how a screen stamps its own walkthrough handle without the kit learning
      what a backup is - `data-notice` names the surface and the handle beside
@@ -38,8 +46,10 @@
     dismiss,
     ...rest
   }: {
+    /** One of these, or both. A title alone is a statement; a text alone is
+        a remark; the two together are a notice with a heading. */
     title?: string;
-    text: string;
+    text?: string;
     icon?: string;
     role?: Role;
     key?: string;
@@ -60,7 +70,7 @@
   <span class="kit-notice-ico"><Icon name={icon} size={20} /></span>
   <div class="kit-notice-body">
     {#if title}<strong class="kit-notice-title">{title}</strong>{/if}
-    <p class="kit-notice-text">{text}</p>
+    {#if text}<p class="kit-notice-text">{text}</p>{/if}
   </div>
   {#if dismiss}
     <button
