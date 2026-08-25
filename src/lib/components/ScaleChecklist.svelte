@@ -68,6 +68,9 @@
     />
   {/each}
   {#if addHref}
-    <ListRow key="scale-add" icon="plus" title={m.add_custom()} subtitle={m.add_custom_sub()} href={addHref} />
+    <!-- Keyed outside the `scale-` family on purpose: it is a way off this
+         screen, not a scale, and a handle that reads as one puts it in
+         every locator that counts the scales. -->
+    <ListRow key="add-custom-scale" icon="plus" title={m.add_custom()} subtitle={m.add_custom_sub()} href={addHref} />
   {/if}
 </ListCard>

@@ -63,7 +63,7 @@
   let reminders = liveQuery(['reminder'], (j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.value ?? []).filter((r) => r.enabled).length);
 
-  let presetSheet = $state(false);
+  let scalesSheet = $state(false);
 
   /* Written straight through rather than held and applied on close: the
      sheet has no confirm and never has, so a tick is the change. Assigned
@@ -256,7 +256,7 @@
         title={m.gender_scales()}
         subtitle={tickedNames || m.scales_none_ticked()}
         chevron={false}
-        onclick={() => (presetSheet = true)}
+        onclick={() => (scalesSheet = true)}
       >
         <!-- SH-103: chevronDown ("opens in place") rather than chevronRight
              ("navigates away"), so a sheet-opening row no longer looks
@@ -481,7 +481,7 @@
     <span translate="no">{m.app_name()}</span> · {m.footer_note()}
   </p>
 
-  <Sheet bind:open={presetSheet} title={m.gender_scales()}>
+  <Sheet bind:open={scalesSheet} title={m.gender_scales()}>
     <h3>{m.gender_scales()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.scales_note()}</p>
     <!-- The same list the first run draws, built once. This one carries the
