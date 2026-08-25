@@ -29,7 +29,7 @@
        `key` stays 'settings' - it is what the walkthrough's data-nav-item
        selector and active-tab.ts's own table already key off, and Settings
        is still what this tab leads to, one hop further in. */
-    { href: '/more', key: 'settings', icon: 'dots', label: () => m.nav_more() }
+    { href: '/more', key: 'settings', icon: 'grid', label: () => m.nav_more() }
   ];
 
   /* The bar splits its four tabs around the add button, so the button sits
