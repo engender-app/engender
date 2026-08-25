@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" data-palette="trans" data-mood-preset="teal" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>A year of moods</title>
+  </head>
+  <body>
+    <div id="app" style="padding: 20px; max-width: 390px"></div>
+    <script type="module">
+      /* The year grid has no screen to be looked at on: the demo persona
+         seeds 150 days, so the previous calendar year - which is the only
+         period /wrapped/year covers - is empty by construction. This mounts
+         it against a seeded year so the drawing can be reviewed at all. */
+      import '../../src/lib/theme/base.css';
+      import '../../src/lib/theme/palettes.css';
+      import '../../src/lib/theme/fonts.css';
+      import '../../src/lib/styles/app.css';
+      import '../../src/lib/styles/components.css';
+      import '../../src/lib/styles/kit.css';
+      import { mount } from 'svelte';
+      import MoodYear from '../../src/lib/components/kit/MoodYear.svelte';
+      import { moodYear } from '../../src/lib/charts/moodYear';
+      import { epochDayFromLocalDate } from '../../src/lib/data/epochDay';
+
+      const YEAR = 2025;
+      const start = epochDayFromLocalDate(new Date(YEAR, 0, 1));
+      const days = [];
+      let seed = 7;
+      const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+      for (let i = 0; i < 365; i++) {
+        // A believable year: mostly logged, quieter in the spring, drifting up.
+        const month = new Date(YEAR, 0, 1 + i).getMonth();
+        if (month >= 3 && month <= 4 && rnd() < 0.75) continue;
+        if (rnd() < 0.18) continue;
+        days.push({ day: start + i, value: Math.max(1, Math.min(5, 2.4 + i / 150 + (rnd() - 0.5) * 1.8)) });
+      }
+
+      const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const card = document.createElement('section');
+      card.className = 'kit-chart';
+      card.innerHTML = '<div class="kit-chart-head"><h3>Month by month</h3></div><div class="kit-chart-body" id="slot"></div>';
+      document.getElementById('app').append(card);
+      mount(MoodYear, {
+        target: document.getElementById('slot'),
+        props: {
+          grid: moodYear(YEAR, days),
+          monthName: (m) => MONTHS[m],
+          dayLabel: (d, step) => `${d} ${step ?? 'none'}`
+        }
+      });
+      document.body.dataset.ready = '1';
+    </script>
+  </body>
+</html>

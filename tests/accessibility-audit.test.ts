@@ -15,11 +15,19 @@ describe('phase 2 accessibility seams', () => {
   });
 
   it('keeps chart values available as text in stats', () => {
+    /* The chart carries a value gutter and a mark per reading (phase 5 UX
+       ticket 23), and neither is a number a screen reader can report. The
+       sheet is the text of the same series, and it is the reason the
+       "All values" control exists at all rather than being a convenience. */
     const stats = read('src/routes/stats/+page.svelte');
-    expect(stats).toContain('data-chart-card');
-    expect(stats).toContain('Sheet open={valueSheet !== null}');
-    expect(stats).toContain('data-value-row');
-    expect(stats).toContain('m.values_title');
+    expect(stats).toContain('data-values-open');
+    expect(stats).toContain('Sheet open={valueSheet}');
+    /* The sheet is the screen's own bar rows now, and a bar carries its
+       value as text - which is the property this check is about. It used to
+       be three columns of text per row, which is a table with one column
+       that matters. */
+    expect(stats).toContain('valueRows');
+    expect(stats).toContain('<BarRows rows={valueRows} />');
   });
 
   /* Ticket 17: --touch-target was 44px, which is the iOS number. The app
@@ -82,12 +90,26 @@ describe('phase 2 accessibility seams', () => {
     expect(layout).toContain("root.dataset.a11yMotion");
   });
 
-  it('keeps recap range selection and trend summary labelled', () => {
-    const recap = read('src/routes/recap/+page.svelte');
-    expect(recap).toContain('aria-label={m.recap_period_group()}');
-    expect(recap).toContain('aria-label={m.recap_custom_start_label()}');
-    expect(recap).toContain('aria-label={m.recap_custom_end_label()}');
-    expect(recap).toContain('LineChart points={moodTrend} min={1} max={5}');
-    expect(recap).toContain('m.recap_change_summary_title()');
+  /* The range picker this used to check belonged to `/recap`, which phase 5
+     UX ticket 23 deleted (spec 07). The capability moved rather than went,
+     so the check follows it onto wrapped: both date fields are named, and
+     the sheet holding them is too.
+
+     Named by a `<label for>` rather than an aria-label. The recap screen
+     carried both, which is one accessible name written twice; what has to
+     hold is that each input has a label bound to its own id. */
+  it('keeps the wrapped range picker and its two date fields labelled', () => {
+    const wrapped = read('src/routes/wrapped/[cadence]/+page.svelte');
+    /* Both fields come out of one table, so what has to hold is that the
+       table carries both ids and that the label is bound to the field's own
+       one rather than to a literal that could drift from it. */
+    for (const id of ['wrapped-range-start', 'wrapped-range-end']) {
+      expect(wrapped, id).toContain(`id: '${id}'`);
+    }
+    expect(wrapped).toContain('for={field.id}');
+    expect(wrapped).toContain('id={field.id}');
+    expect(wrapped).toContain('m.recap_custom_start_label()');
+    expect(wrapped).toContain('m.recap_custom_end_label()');
+    expect(wrapped).toContain('title={m.wrapped_cadence_group()}');
   });
 });
