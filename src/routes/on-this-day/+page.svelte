@@ -1,32 +1,53 @@
 <script lang="ts">
-  /* On-this-day (phase 4 features ticket 03). One screen, however many of
-     the three lookbacks - a month, six months, a year - clear the good-day
-     bar today; a lookback that does not clear it is left out entirely
-     rather than shown with a caveat (CONTEXT: Good day is an absolute
-     rule, not a suggestion).
+  /* On-this-day (phase 4 features ticket 03, rebuilt by phase 5 UX ticket
+     23, which closes spec 05). One screen, however many of the three
+     lookbacks - a month, six months, a year - clear the good-day bar today;
+     a lookback that does not clear it is left out entirely rather than shown
+     with a caveat (CONTEXT: Good day is an absolute rule, not a suggestion).
 
-     Presentation is WrappedCompact (ticket 01), reused rather than
-     duplicated: `recap(day, day)` and `dayAverages('mood', day, day)` are
-     the same seam a wrapped week reads, just over a range that happens to
-     be one day wide. A day's stats are naturally thinner than a week's -
-     `bestStreak` rarely rises past 1, `dimChange` needs two dimension-
-     carrying entries the same day to say anything - and WrappedCompact
-     already leaves an empty section out rather than rendering it hollow,
-     which is exactly the right behaviour here too. */
+     It shows what was written. `CONTEXT.md` defines on-this-day as offering
+     what was logged a month, six months or a year before today, and the
+     screen this replaces showed three stat tiles and a mood chart and never
+     a word anyone wrote. That was not a missing feature so much as an
+     implementation that drifted from the recorded domain model, which makes
+     the glossary the specification.
+
+     What went, and why each. The mood chart needed two points and had a
+     one-day range, so it could never draw. The three tiles - an entry count,
+     a best streak, an average mood - restated over one day that a day
+     exists, and an entry count sitting above a list of that many entries is
+     noise. The recap read behind all four is gone with them: `entriesForDay`
+     is what a day's entries come from, and it is the read the day screen and
+     Home already use.
+
+     The photos stay, because a photo from that day is exactly the kind of
+     thing worth resurfacing. They come off the entries rather than out of
+     the recap's own highlight query, so what is shown is every photo from
+     that day rather than a spread across a range one day wide.
+
+     The good-day rule is untouched. This screen changed what a resurfaced
+     day shows, not which days resurface. So is the `?lookback=` deep link,
+     which a notification uses (ADR-0028). */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtTime } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
-  import { recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
+  import { entryMarks } from '$lib/data/recentEntries';
+  import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
-  import type { DayAverage, Recap } from '$lib/data/journal/stats';
-  import Icon from '$lib/components/Icon.svelte';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+  import type { Entry } from '$lib/data/types';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
-  import WrappedCompact from '$lib/components/WrappedCompact.svelte';
+  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import DayCard from '$lib/components/kit/DayCard.svelte';
+  import DayEntry from '$lib/components/kit/DayEntry.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
   const today = todayEpochDay();
   const candidates = onThisDayCandidates(today);
@@ -40,43 +61,42 @@
   interface QualifyingDay {
     key: OnThisDayLookback;
     epochDay: number;
-    recap: Recap;
-    moodTrend: DayAverage[];
+    entries: Entry[];
   }
 
-  /* The preference is read inside the query, before the first await, so
-     that turning on-this-day off stops the reads themselves rather than
-     just hiding what they returned (same rule wrapped's own route
-     follows). */
-  let daysQuery = liveQuery(['entry', 'tag', 'milestone', 'dimension', 'photo'], async (j) => {
+  /* The preference is read inside the query, before the first await, so that
+     turning on-this-day off stops the reads themselves rather than just
+     hiding what they returned (same rule wrapped's own route follows).
+
+     Up to three good-day checks and up to three per-day entry reads, where
+     this used to run three aggregate recaps. Both are bounded by the day
+     rather than by the journal's length, and the day read only happens for a
+     day that already qualified. */
+  let daysQuery = liveQuery(['entry', 'tag', 'photo'], async (j) => {
     if (!prefs.onThisDayEnabled) return [];
     const results = await Promise.all(
       candidates.map(async (c): Promise<QualifyingDay | null> => {
         if (!(await j.stats.isGoodDay(c.epochDay))) return null;
-        const [recap, moodTrend] = await Promise.all([
-          j.stats.recap(c.epochDay, c.epochDay),
-          j.stats.dayAverages('mood', c.epochDay, c.epochDay)
-        ]);
-        return { key: c.key, epochDay: c.epochDay, recap, moodTrend };
+        return { key: c.key, epochDay: c.epochDay, entries: await j.entries.entriesForDay(c.epochDay) };
       })
     );
     return results.filter((d): d is QualifyingDay => d !== null);
   });
 
-  /* recapDimChange/recapTopTags are the same transform the wrapped route
-     applies to its own recap - one per period there, one per day here. */
   let days = $derived(
     (daysQuery.value ?? []).map((d) => ({
       ...d,
       title: LOOKBACK_TITLE[d.key](),
-      subtitle: fmtDay(d.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }),
-      dimChange: recapDimChange(d.recap),
-      topTags: recapTopTags(d.recap)
+      date: fmtDay(d.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }),
+      /* Every photo from that day, oldest entry first, rather than the
+         recap's spread-across-the-range pick: over one day there is no range
+         to spread across. */
+      photos: d.entries.flatMap((entry) => entry.photos)
     }))
   );
 
   /* A wrapped/on-this-day notification (phase 4 features ticket 04) deep-links
-     here with ?lookback= naming the card that triggered it, since this route
+     here with ?lookback= naming the day that triggered it, since this route
      otherwise has no way to point at one of several qualifying lookbacks.
      Scrolled to rather than the only thing shown - the other qualifying
      lookbacks stay on the page, the same as opening this route any other way. */
@@ -92,34 +112,59 @@
   <ScreenHeader title={m.on_this_day()} screen="on-this-day" back={() => smartBack('/')} />
 
   {#if !prefs.onThisDayEnabled}
-    <div class="notice notice-info" role="status">
-      <Icon name="info" size={20} />
-      <div class="notice-body">
-        <span class="notice-title" data-notice-title>{m.on_this_day_off_title()}</span>
-        {m.on_this_day_off_body()} <a href="/settings">{m.nav_settings()}</a>
-      </div>
-    </div>
+    <Notice
+      icon="info"
+      key="on-this-day-off"
+      title={m.on_this_day_off_title()}
+      text={m.on_this_day_off_body()}
+      action={{ label: m.nav_settings(), href: '/settings' }}
+      aria-live="polite"
+    />
   {:else if daysQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <Skeleton variant="card" count={2} />
   {:else if !days.length}
-    <div class="notice notice-info" role="status">
-      <Icon name="info" size={20} />
-      <div class="notice-body">
-        <span class="notice-title" data-notice-title>{m.on_this_day_none_title()}</span>
-        {m.on_this_day_none_body()}
-      </div>
-    </div>
+    <Notice
+      icon="info"
+      key="on-this-day-none"
+      title={m.on_this_day_none_title()}
+      text={m.on_this_day_none_body()}
+    />
   {:else}
-    {#each days as d (d.key)}
-      <section class="on-this-day-day" id="on-this-day-{d.key}">
-        <WrappedCompact
-          title={d.title}
-          subtitle={d.subtitle}
-          recap={d.recap}
-          moodTrend={d.moodTrend}
-          dimChange={d.dimChange}
-          topTags={d.topTags}
-        />
+    {#each days as d, i (d.key)}
+      <!-- Two headings, saying two different things: how long ago it was,
+           which is what this screen is about, and which day it actually was,
+           which is the day card's own bar. -->
+      <section id="on-this-day-{d.key}" data-lookback={d.key}>
+        <SectionHeading text={d.title} />
+        <DayCard
+          key={String(d.epochDay)}
+          role={roleAt(activeFlag.roles, i)}
+          date={d.date}
+          aside={d.entries.length > 1 ? m.entry_day_count({ count: String(d.entries.length) }) : undefined}
+        >
+          {#each d.entries as entry (entry.id)}
+            <!-- It opens, the same way an entry opens everywhere else it is
+                 drawn. A day you are being shown and cannot read back is a
+                 dead end. -->
+            <DayEntry
+              key={String(entry.id)}
+              href={`/entry/${entry.id}`}
+              time={fmtTime(entry.timestamp)}
+              mood={entry.mood}
+              note={entry.note ?? undefined}
+              tags={entryTags(entry)}
+              marks={entryMarks(entry)}
+            />
+          {/each}
+        </DayCard>
+
+        {#if d.photos.length}
+          <div class="otd-photos" data-lookback-photos>
+            {#each d.photos as photo (photo.id)}
+              <PhotoThumb {photo} size={88} />
+            {/each}
+          </div>
+        {/if}
       </section>
     {/each}
   {/if}
