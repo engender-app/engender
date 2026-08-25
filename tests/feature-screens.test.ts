@@ -193,8 +193,14 @@ describe('the two print surfaces', () => {
 
 describe('no medical framing and no interpreted values', () => {
   it('keeps the hormone curve saying it is modelled or illustrative', () => {
+    /* Three places say it, and the screen renders all three: the lead
+       paragraph, the band's own legend, and the pill on the heading of
+       every curve the research does not support a fit for. The scope line
+       is explicit that this screen must keep saying so. */
     const source = sourceOf.get('settings/hormone-curve')!;
-    expect(source).toMatch(/curve_(disclaimer|illustrative|model)/);
+    for (const key of ['curve_intro', 'curve_legend_band', 'curve_qual_notice']) {
+      expect(source, key).toContain(`m.${key}()`);
+    }
   });
 
   it('gives no chart card a place to say what a reading means', () => {
