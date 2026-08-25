@@ -454,7 +454,11 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   top: calc(-1 * var(--inset-top));
   left: calc(-1 * var(--space-5));
   right: calc(-1 * var(--space-5));
-  height: calc(210px + var(--inset-top));
+  /* Taller than the sun itself needs, because the sweep's arcs run outside
+     its outer edge and this is the room they travel in. Costs nothing: the
+     layer is absolutely positioned, so what holds the step's text clear of
+     the flag is .setup-head's reserve and not this. */
+  height: calc(280px + var(--inset-top));
   overflow: hidden;
   z-index: 0;
   pointer-events: none;
@@ -500,6 +504,90 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   display: flex; flex-direction: column; justify-content: center;
   gap: var(--space-3);
 }
+
+/* The flag step's own grid. Settings runs the same swatches four across,
+   which leaves about 80px under each name and cut "Genderfluid" and
+   "Transgender" to an ellipsis - on the one screen where choosing between
+   them is the whole task, and where a flag nobody can read the name of is
+   not a choice. Two across, the name on the swatch's own line rather than
+   under it, and nothing clipped at any text size. */
+/* Both classes, because .palette-grid's four columns are declared further
+   down this file and would otherwise win the tie on source order. */
+.palette-grid.setup-flags { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.setup-flags .palette-swatch {
+  flex-direction: row; align-items: center; justify-content: flex-start;
+  gap: var(--space-3); padding: var(--space-3);
+  position: relative;
+  border: 1px solid var(--outline);
+}
+.setup-flags .swatch-preview { width: 44px; height: 44px; flex: none; }
+.setup-flags .swatch-name {
+  font-size: var(--text-sm);
+  white-space: normal; overflow: visible; text-overflow: clip;
+  text-align: left; line-height: 1.25;
+}
+.setup-flags .palette-swatch.is-active { border-color: var(--accent); }
+
+/* The bloom. Picking a flag is the one tap on this screen that changes the
+   whole app, and a ring opening out of the swatch is what says so - it is
+   the same gesture the sun above answers with, at the size of the control
+   that caused it. One place, once per tap: the craft floor's line about a
+   moment rather than an effect.
+
+   It rests where it ends, past its own edge and invisible, so the 1ms clamp
+   has somewhere true to strand it. */
+.swatch-bloom {
+  position: absolute;
+  left: calc(var(--space-3) + 22px);
+  top: 50%;
+  width: 44px; height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+  transform: scale(2.6);
+  opacity: 0;
+  animation: swatch-bloom var(--dur-slow) var(--ease-out) 1;
+}
+@keyframes swatch-bloom {
+  from { transform: scale(0.7); opacity: 0.6; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .swatch-bloom { animation: none; }
+}
+
+/* The scales step. Eight preset cards rather than eight list rows: what a
+   preset actually is, is the set of scales it puts in front of you when you
+   log, and a row's subtitle was spending that on a comma list that ran past
+   its own width. The scales are chips now - the kit's own mini chip, which
+   the tag rows already use for exactly this - so the shape of a preset is
+   read rather than parsed. No count beside the name: "3 scales" needs
+   Polish's three plural forms to be honest, and the chips are the count
+   anyway. */
+.setup-presets { display: flex; flex-direction: column; gap: var(--space-2); }
+.setup-preset {
+  display: block; width: 100%; text-align: left;
+  padding: var(--space-4);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition-property: background-color, border-color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+.setup-preset:hover { border-color: var(--accent-border); }
+.setup-preset.is-picked { border-color: var(--accent); background: var(--accent-soft); }
+.setup-preset-name {
+  font-family: var(--font-display); font-size: var(--text-lg);
+  font-weight: var(--weight-medium); letter-spacing: var(--display-track);
+}
+.setup-preset.is-picked .setup-preset-name { color: var(--on-accent-soft); }
+.setup-preset-scales { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-3); }
 
 .setup-title {
   font-family: var(--font-display);
@@ -556,6 +644,75 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    of them under the primary reads as two quiet alternatives rather than as
    two more things to do. */
 .setup-outs { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* ---------- the first run, wide ----------
+
+   Every other screen in the app answers a wide window by growing a
+   navigation rail beside a centred column. The first run is chromeless, so
+   it has no rail to grow, and the phone layout at 1400px is a 420px column
+   adrift in the middle of the window with the flag in a corner nobody has
+   any reason to be looking at. The composition runs down the screen when
+   the screen is wider than it is tall.
+
+   So: two columns. The step at a comfortable measure on the left, the flag
+   on the right at more than twice the size, and the whole thing centred in
+   the window rather than pinned to the top of it.
+
+   The sun stays in the top right corner rather than moving somewhere more
+   convenient, because that is where Home draws it a second later and the
+   handover being one object at one place is the whole reason it is a sun
+   rather than a picture. What changes at this width is how much of it there
+   is: a quarter of a 350px circle is a field on a phone and a detail in the
+   corner of a desktop window, so it is multiplied up rather than moved. The
+   multiplier rides on --grow instead of replacing it, so the growth through
+   the flow is the same seven steps at a different size.
+
+   Bound to the app container rather than the viewport, like every other
+   width rule here: the demo bar's phone frame works by constraining that
+   container, and a viewport query would ignore it. */
+@container app (min-width: 900px) {
+  /* Out of the app's desktop content cap. app.css centres every screen in
+     640px at this width, which is right for a journal you read and wrong
+     for the one screen with no chrome around it: it left the flag a 240px
+     sliver at the edge of a column instead of half the composition. The
+     band below is what replaces it - wide enough for two columns, capped so
+     the flag stays beside the step on a very wide monitor rather than
+     drifting off toward the window edge. */
+  .screen-setup { max-width: 1100px; margin: 0 auto; }
+  .setup {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 460px) 1fr;
+    /* Three rows that hug their content and centre as one block. `1fr` on
+       the middle row stretched the stage to the full height and put 300px
+       of nothing between the last control and the buttons. */
+    grid-template-rows: auto auto auto;
+    column-gap: var(--space-10);
+    align-content: center;
+    flex: 1 0 auto;
+  }
+  .setup-head,
+  .setup-stage,
+  .setup-foot { grid-column: 1; }
+  /* Nothing to reserve above the step any more: the flag is beside it
+     rather than over it, so the head holds the back arrow and no more. */
+  .setup-head { min-height: var(--touch-target); }
+  .setup-stage { padding-top: var(--space-4); }
+  .setup-foot { padding-top: var(--space-6); margin-top: 0; }
+  /* Two ghost buttons side by side again, which is what the phone layout
+     could not afford: there is room here for both labels on one line. */
+  .setup-outs { flex-direction: row; gap: var(--space-2); }
+  .setup-outs .btn { flex: 1; }
+
+  .setup-sky {
+    top: calc(-1 * var(--inset-top));
+    bottom: 0;
+    left: 45%;
+    right: calc(-1 * var(--space-5));
+    height: auto;
+  }
+  .setup-sun { transform: scale(calc(var(--grow, 1) * 2.4)); }
+}
 .recap-stage { max-width: 420px; margin: 0 auto; text-align: center; padding-top: var(--space-6); position: relative; z-index: 1; }
 .recap-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; margin: var(--space-5) 0 var(--space-3); }
 .recap-body { color: var(--text-2); margin-bottom: var(--space-6); }
