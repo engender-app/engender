@@ -112,12 +112,31 @@ describe('what spec 08 took off Home', () => {
   });
 
   it('keeps the streak off the hero-metric template', () => {
-    /* DIRECTION.md's slop audit: a big accent number with a small label and
-       a supporting line. It is the caption on the week strip now, which also
-       removed a surface. */
-    expect(markup).toContain('home-week-caption');
-    expect(markup).not.toContain('home-streak"');
-    expect(read('src/lib/styles/screens.css')).not.toContain('.home-streak');
+    /* DIRECTION.md's slop audit names the template rather than a position: a
+       big accent number, a small label, a supporting line, on a surface of
+       its own. So this checks the shape and not where the line sits, which
+       moved to the greeting at review and could move again. */
+    const rule = read('src/lib/styles/screens.css').match(/\.home-streak \{[^}]*\}/s)?.[0];
+    expect(rule, 'the streak has a rule of its own').toBeDefined();
+    expect(rule).toContain('var(--text-sm)');
+    expect(rule).toContain('var(--text-2)');
+    expect(rule, 'no pill behind it').not.toMatch(/background|border-radius/);
+    expect(rule, 'no accent on it').not.toMatch(/--accent/);
+  });
+
+  it('throws its one extra moment once, and only past a week', () => {
+    /* The second authored moment (review, 2026-08-25). Tier 4 rules out a
+       second ambient *loop*, not a second moment - so what matters is that
+       this one ends, and that it stays an event rather than a most-mornings
+       thing. */
+    expect(home).toContain('const STREAK_CHEER_FLOOR = 7');
+    expect(home).toMatch(/streak > STREAK_CHEER_FLOOR/);
+    const css = read('src/lib/styles/screens.css');
+    expect(css).toMatch(/animation: cheer-fall[^;]*;/);
+    expect(css.match(/animation: cheer-fall[^;]*;/)?.[0], 'plays once').not.toMatch(/infinite/);
+    // Substituted, not clamped, under both reduced-motion paths.
+    expect(css).toContain("html[data-a11y-motion='reduce'] .home-cheer i { animation: none; }");
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.home-cheer i \{ animation: none; \}/);
   });
 });
 

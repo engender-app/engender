@@ -654,14 +654,22 @@ a.kit-entry:active {
   font-size: var(--text-sm);
 }
 
-/* The icon takes the same disc a list row's does. At 20px on bare card it
-   read as something that had failed to load rather than as a mark, and the
-   disc is the vocabulary the kit already has for exactly this. */
+/* The icon takes the disc a list row's does, one size up, and it centres on
+   the whole notice rather than on its first row. A notice that asks for
+   something has two rows - what it says, and the one thing to do about it -
+   and a disc pinned to row 1 sat above the middle of the box it is the mark
+   for. Spanning both rows is what makes `align-items: center` mean the
+   notice rather than the sentence.
+
+   44px rather than a row's 36. A row's disc is one of five down a card and
+   answers to the column they make; a notice has exactly one, on a wider
+   surface, and at 36 it read as a bullet rather than as the notice's mark. */
 .kit-notice-ico {
   grid-column: 1;
-  grid-row: 1;
-  width: 36px;
-  height: 36px;
+  grid-row: 1 / -1;
+  align-self: center;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -676,9 +684,13 @@ a.kit-entry:active {
   min-width: 0;
 }
 
+/* An explicit line height, because the dismiss is positioned against it:
+   inherited from the body it would move with a screen's own leading, and
+   the two would stop being level for no reason anyone could see. */
 .kit-notice-title {
   display: block;
   font-size: var(--text-md);
+  line-height: 1.3;
   font-weight: var(--weight-bold);
   color: var(--text);
 }
@@ -731,10 +743,15 @@ a.kit-entry:active {
 .kit-notice-x {
   grid-column: 3;
   grid-row: 1;
-  align-self: start;
   width: var(--touch-target);
   height: var(--touch-target);
-  margin: -10px -10px 0 0;
+  /* Level with the title's first line, not with the top of the notice. The
+     control is 48px because a finger needs 48px, and the mark inside it is a
+     20px glyph - so what has to line up is the box's centre and that line's
+     centre, which is what this pulls it up by. Hard-coded at -10px before,
+     which was near enough on one font size and drifted on every other. */
+  align-self: start;
+  margin: calc((var(--text-md) * 1.3 - var(--touch-target)) / 2) -10px 0 0;
   display: grid;
   place-items: center;
   border: 0;
