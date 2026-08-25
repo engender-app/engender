@@ -407,13 +407,19 @@
       <a class="kit-heading-action" href="/settings">{m.scales_change()}</a>
     {/snippet}
   </SectionHeading>
-  <p class="editor-hint">{m.gender_hint()}</p>
   <!-- Nothing ticked and nothing kept from this entry is a resting state,
        not a gap: somebody can reach it by unticking five boxes, and a mood,
        tags, a note and a photo are still an entry. The section says what it
-       is rather than leaving a heading over nothing (phase 5 ticket 35). -->
+       is rather than leaving a heading over nothing (phase 5 ticket 35).
+
+       One line or the other, never both. "However it feels right now, there
+       are no wrong answers" is reassurance about answering the sliders, and
+       with no sliders under it it was reassurance about nothing, stacked on
+       top of the line explaining why they are missing. -->
   {#if dims.length === 0}
-    <p class="editor-hint editor-hint-tight" data-no-scales>{m.editor_no_scales()}</p>
+    <p class="editor-hint" data-no-scales>{m.editor_no_scales()}</p>
+  {:else}
+    <p class="editor-hint">{m.gender_hint()}</p>
   {/if}
   {#each dims as { dim, ticked } (dim.key)}
     <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />

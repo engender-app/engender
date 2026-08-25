@@ -494,7 +494,13 @@
     <h3>{m.home_cal_colour()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.metric_note()}</p>
     <div class="list-group" style="box-shadow:none">
-      {#each [{ key: null, name: m.mood() }, ...vocabulary.dimensions] as d (d.key ?? 'mood')}
+      <!-- The ticked scales, which is what Home's and the calendar's own
+           pickers offer. It listed every scale, so this was the one place a
+           metric could be set to something no other picker would show and
+           `reference.activeMetric` now resolves straight back to mood - a
+           choice that looked like it did nothing. A picker offers what the
+           app can honour (phase 5 ticket 35). -->
+      {#each [{ key: null, name: m.mood() }, ...vocabulary.activeDimensions] as d (d.key ?? 'mood')}
         <button
           class="list-row"
           onclick={() => {
@@ -503,7 +509,7 @@
           }}
         >
           <span class="row-text"><span class="row-title">{d.name}</span></span>
-          {#if prefs.metricDimension === d.key}<Icon name="check" size={20} />{/if}
+          {#if vocabulary.activeMetric === (d.key ?? 'mood')}<Icon name="check" size={20} />{/if}
         </button>
       {/each}
     </div>
