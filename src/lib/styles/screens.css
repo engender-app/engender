@@ -887,7 +887,9 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   bottom: 10px;
   width: 2px;
   border-radius: 1px;
-  background: color-mix(in oklab, var(--role-mark) 32%, var(--bg));
+  /* Strong enough to read as a rail on both grounds. At 32% on the dark
+     theme it was a suggestion of a line. */
+  background: color-mix(in oklab, var(--role-mark) 55%, var(--bg));
 }
 .tl-item { position: relative; margin-bottom: var(--space-4); }
 .tl-dot {

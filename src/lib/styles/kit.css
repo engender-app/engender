@@ -60,7 +60,14 @@
 .kit-tile,
 .kit-strip,
 .kit-chart,
-.kit-notice {
+.kit-notice,
+/* The timeline is not a kit surface - it is a rail, and the kit has no rail
+   - but it wears a stripe the same way, so it derives the same three values
+   here rather than a fourth set of its own. Without this it was handed
+   --role and --role-mark-in and never the --role-mark they are for, so its
+   dots and its rail drew in an undefined colour, which is no colour at all
+   (phase 5 UX ticket 23). */
+.timeline {
   --role-c: var(--role, var(--accent));
   --role-ink: var(--role-ink-in, color-mix(in oklab, var(--role-c) 30%, var(--text)));
   --role-mark: var(--role-mark-in, var(--role-ink));
@@ -917,7 +924,7 @@ a.kit-entry:active {
    it sat a hairline apart, because the adjacency rule below only knows about
    two surfaces (Alicja, 2026-08-25: "bigger gap between the switcher and
    dysphoria"). */
-.segmented + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-day) {
+.segmented + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-day, .wrapped-figure-list) {
   margin-top: var(--space-5);
 }
 
@@ -928,8 +935,12 @@ a.kit-entry:active {
    stacks four charts and a list, and the areas there are named by the chart
    headings themselves. So the rule is adjacency rather than a gap on the
    screen: where a heading is present it still owns the space. */
-:is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods)
-  + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods) {
+/* The wrapped figures are a list card inside a wrapper that carries the
+   handle four walkthrough flows grip, so the wrapper is what sits beside the
+   next surface and has to be in this set: without it the figures and the
+   mood chart met with no gap at all. */
+:is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods, .wrapped-figure-list)
+  + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods, .wrapped-figure-list) {
   margin-top: var(--space-4);
 }
 
