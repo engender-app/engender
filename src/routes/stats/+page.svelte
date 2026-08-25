@@ -64,13 +64,25 @@
       the shortest ones are a stub each and the card is a list again. */
   const INSIGHT_BARS = 6;
 
-  /* Which stripe each area of the screen takes, in reading order
-     (DIRECTION.md, "flag colour reaches the whole app, categorically"). The
-     mood distribution takes none: it is drawn on mood's own ramp
-     (ADR-0025), which is the one colour system here that is not the flag's,
-     and giving the card a stripe as well would put two scales on one
-     surface. */
-  const AREA_ROLE = { trend: 0, scales: 1, tags: 2, patterns: 3, lookBack: 4 };
+  /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
+     reaches the whole app, categorically").
+
+     Every chart shares role 0, and that is the brief's own exception rather
+     than a shortcut: "colour that carries a value takes role 0", because
+     roles run a flag's colours before its shades and index 0 is the only one
+     guaranteed to be a colour on all 8 palettes. Read in reading order, the
+     tag insights landed on trans's white band, and a chart of white bars on
+     a dark card reads as a set of disabled bars rather than as the flag.
+     Home's week strip took the same exception for the same reason.
+
+     The lists take the stripes after it, where an achromatic band is not a
+     problem: a tinted disc and a row wash carry no reading, and ticket 20
+     already gave every tinted shape a hairline so it stays a shape.
+
+     The mood distribution takes no role at all: it is drawn on mood's own
+     ramp (ADR-0025), the one colour system here that is not the flag's, and
+     a stripe on that card would put two scales on one surface. */
+  const AREA_ROLE = { charts: 0, patterns: 1, lookBack: 2 };
 
   let range = $state(30);
 
@@ -267,7 +279,7 @@
   <ChartCard
     heading={m.stats_day_by_day()}
     kind="day-by-day"
-    role={roleAt(activeFlag.roles, AREA_ROLE.trend)}
+    role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
   >
     {#snippet control()}
       <ChartPicker
@@ -303,7 +315,7 @@
   <ChartCard
     heading={m.stats_scales_now()}
     kind="scales"
-    role={roleAt(activeFlag.roles, AREA_ROLE.scales)}
+    role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
   >
     {#if seriesQuery.loading}
       <Skeleton variant="line" count={3} />
@@ -320,7 +332,7 @@
     {/if}
   </ChartCard>
 
-  <ChartCard heading={m.tag_insights()} kind="tag-insights" role={roleAt(activeFlag.roles, AREA_ROLE.tags)}>
+  <ChartCard heading={m.tag_insights()} kind="tag-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     {#if insightsQuery.loading}
       <Skeleton variant="line" count={3} />
     {:else if insightRows.length}

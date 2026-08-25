@@ -104,7 +104,7 @@
         />
       </ChartCard>
 
-      <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={roleAt(activeFlag.roles, 1)}>
+      <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={roleAt(activeFlag.roles, 0)}>
         <AreaChart
           points={points(euphoria)}
           min={BODY_REGION_INTENSITY_MIN}

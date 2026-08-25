@@ -76,7 +76,7 @@
     <ChartCard
       heading={m.tally_correctly_gendered()}
       kind="tally-correctly-gendered"
-      role={roleAt(activeFlag.roles, 1)}
+      role={roleAt(activeFlag.roles, 0)}
     >
       <AreaChart
         points={points(correctlyGendered)}
