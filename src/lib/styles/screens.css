@@ -29,36 +29,156 @@
   overflow: hidden;
   min-height: calc(175px + var(--inset-top));
 }
+/* Flat, and clear of the sun.
+
+   It was a gradient clipped to the letterforms, which DIRECTION.md's
+   decision 2 rules out outright - colour arrives as flat fill and as
+   coloured text, never as a gradient - and which on the nonbinary palette
+   ran the word "Diary" through olive on its way from purple to yellow.
+   The accent at 38px answers to the 3:1 large-text floor, which is what
+   --accent is already held to.
+
+   The width cap is the other half of it. The sun is 350px across and
+   centred on the top right corner, so anything running past about two
+   thirds of the screen disappears under it - which is what was happening to
+   the last two letters of the app's own name. DIRECTION.md says the
+   greeting sits clear beneath the sun; the title has to sit clear of it
+   too, and the way to do that is to stop the text rather than to move the
+   flag. */
 .home-hero {
   font-family: var(--font-display);
   font-size: 2.4rem; font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.01em;
-  background: linear-gradient(105deg, var(--accent) 20%, var(--accent-2) 60%, var(--accent));
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent;
+  color: var(--accent);
+  max-width: 62%;
 }
-.home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
-.home-streak {
-  display: inline-flex; align-items: center; gap: 5px;
-  margin-top: var(--space-3);
-  font-size: var(--text-sm); font-weight: var(--weight-bold);
-  color: var(--on-accent-2-soft);
-  background: var(--accent-2-soft);
-  padding: 3px 12px; border-radius: var(--radius-pill);
-}
-.quicklog {
+.home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); max-width: 78%; }
+
+/* Home's vertical rhythm (phase 5 ticket 21). Written as a margin below
+   each surface rather than as a flex gap on the column, because one of
+   those surfaces renders empty on most days: the look-back grid holds two
+   tiles that each gate themselves, and a gap would charge for the space
+   twice - once before the empty grid and once after it - where a margin the
+   grid does not have costs nothing at all. So the tiles' air belongs to the
+   chip row above them and to the next heading's own padding below, and on a
+   day with neither tile the column closes up with nothing to notice.
+
+   --space-3 is the gap DIRECTION.md's decision 3 asks for: 10 to 12 rather
+   than the 16 the screens used to run at. */
+.home > * { margin-bottom: var(--space-3); }
+/* Both of these carry their own space and would otherwise be paid twice. */
+.home > .kit-heading,
+.home > .kit-tiles { margin-bottom: 0; }
+/* The chip row is flush to the page with no container of its own, so the
+   only thing separating it from what follows is this. At the column's usual
+   12px the look-back tiles sat directly under the moods and the two read as
+   one block. */
+.home > .kit-chips { margin-bottom: var(--space-5); }
+/* The caption belongs to the strip above it, so it sits closer than a
+   section does to the next section. */
+.home > .kit-strip { margin-bottom: var(--space-2); }
+.home > :last-child { margin-bottom: 0; }
+
+/* The streak, under the greeting. No pill, no accent, no icon and no
+   display size: those are what made it read as a score, and DIRECTION.md's
+   slop audit names the big-number-plus-label-plus-accent template outright.
+   What changed at review is where the line sits, not what it is. */
+.home-streak-wrap {
+  display: inline-grid;
+  justify-items: start;
+  position: relative;
   margin-top: var(--space-2);
-  background: linear-gradient(150deg, var(--accent-2-soft), var(--surface) 45%);
 }
+.home-streak {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The second authored moment: past a week's run, arriving on Home throws a
+   little confetti over the streak line, once. Over that line and nowhere
+   else - the band is a grid row above the text and exactly as wide as it,
+   which is what keeps this a mark on one fact rather than a screen effect.
+
+   It plays and stops. DIRECTION.md's tier 4 rules out a second ambient
+   *loop*, which is why the celebration card's infinite `cf-fall` was
+   deleted rather than moved here; a moment with an end is the same
+   category as the sun's entrance, and it spends the authored duration
+   twice over.
+
+   Out of the flow, which is what lets the streak sit close under the
+   greeting. In flow the band's own height was 22px of permanent gap between
+   the two lines, on every day the confetti fires and none of the days it
+   does not - a moment cannot be allowed to decide the resting layout. The
+   pieces fall through the space above the line instead.
+
+   Only transform and opacity move, per the performance contract, and the
+   pieces are 5x8 rectangles so there is nothing to rasterize. */
+.home-cheer {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 100%;
+  height: 18px;
+  pointer-events: none;
+}
+.home-cheer i {
+  position: absolute;
+  top: 0;
+  left: var(--x);
+  width: 5px;
+  height: 8px;
+  border-radius: 1px;
+  /* The resting state, which is also where the animation ends: past the
+     bottom of the band and invisible. Declared so the 1ms clamp has
+     somewhere true to strand it (tests/motion-system.test.ts). */
+  opacity: 0;
+  transform: translateY(18px) rotate(var(--r));
+  animation: cheer-fall calc(var(--dur-authored) * 2) linear var(--d) both;
+}
+.home-cheer i:nth-child(3n) { background: var(--accent); }
+.home-cheer i:nth-child(3n + 1) { background: var(--accent-2); }
+.home-cheer i:nth-child(3n + 2) { background: color-mix(in oklab, var(--accent) 50%, var(--accent-2)); }
+@keyframes cheer-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+  14% { opacity: 1; }
+  100% { transform: translateY(18px) rotate(var(--r)); opacity: 0; }
+}
+/* Substituted rather than clamped: at 1ms this is a flicker, and the moment
+   it stands for is "well done", which the line underneath already says. */
+html[data-a11y-motion='reduce'] .home-cheer i { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .home-cheer i { animation: none; }
+}
+
+/* Tier 3: the skeleton crossfades into the day cards. Both children sit in
+   one grid cell so they overlap for the length of the fade - side by side
+   in the flow, the outgoing skeleton would push the content it is handing
+   over to down the page. */
+.home-swap { display: grid; }
+.home-swap > * { grid-area: 1 / 1; }
+.home-days { display: grid; gap: var(--space-3); align-content: start; }
+
+/* A milestone's photo stands in for the icon disc, so it takes the disc's
+   size and the disc's shape. PhotoThumb draws a rounded square, which is
+   right where photos are a grid of photos and wrong here: in a column of
+   circles it was the one row that did not match, and a photo standing in
+   for an icon has to stand in for its shape too. Clipped rather than
+   restyled, so nothing changes for the screens that show photos as photos. */
+.milestone-face {
+  flex: 0 0 auto;
+  display: flex;
+  border-radius: 50%;
+  overflow: hidden;
+  border: var(--role-hairline);
+}
+/* Still the heading inside a card on the letters and roadmap screens, which
+   are their own tickets' to redo. Home's own gradient .quicklog card went
+   with the rebuild; this outlived it. */
 .quicklog-title { font-weight: var(--weight-bold); margin-bottom: var(--space-3); }
-.tally-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
-.milestone-scroller {
-  display: flex; gap: var(--space-3);
-  overflow-x: auto; padding-bottom: var(--space-2);
-  scrollbar-width: none;
-  margin: 0 calc(-1 * var(--space-5)); padding-left: var(--space-5); padding-right: var(--space-5);
-}
+
 .metric-chip {
   border: none; background: none; cursor: pointer;
   font: inherit; font-size: var(--text-sm); color: var(--text-2);
@@ -67,9 +187,6 @@
 }
 .metric-chip:hover { background: var(--surface-2); }
 .metric-chip strong { color: var(--accent); }
-.celebration { margin-bottom: var(--space-4); }
-.celebration-text { margin-top: var(--space-3); font-size: var(--text-sm); }
-
 /* ---------- Entry editor ---------- */
 .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); padding: 0 var(--space-1); }
 .editor-section { margin-bottom: var(--space-4); }
@@ -197,12 +314,6 @@
    uses; the yearly one is a cover plus full-width sections, so a year does
    not read as a longer week. Everything below the first block belongs to one
    or the other, never to both. */
-.wrapped-home-card {
-  color: var(--text); text-decoration: none;
-  margin-bottom: var(--space-4);
-  background: linear-gradient(150deg, var(--accent-soft), var(--surface) 55%);
-}
-.wrapped-home-mark { color: var(--accent); display: flex; }
 /* The cadence switcher's segments are links, not the buttons .segment was
    written for, so they need the anchor's underline off and the text centred
    inside the 44px minimum height rather than sitting at its top. */
@@ -337,12 +448,6 @@
    only the icon tells them apart at a glance. The body below the header is
    WrappedCompact's own `.wrapped-*` styling, reused rather than duplicated;
    this file only adds the divider between more than one qualifying day. */
-.on-this-day-home-card {
-  color: var(--text); text-decoration: none;
-  margin-bottom: var(--space-4);
-  background: linear-gradient(150deg, var(--accent-soft), var(--surface) 55%);
-}
-.on-this-day-home-mark { color: var(--accent); display: flex; }
 .on-this-day-day + .on-this-day-day {
   margin-top: var(--space-7); padding-top: var(--space-7);
   border-top: 1px solid var(--border);

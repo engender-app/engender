@@ -168,20 +168,28 @@ try {
   await cold.click('[data-passphrase-submit]');
   await cold.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
 
-  /* A production build has no persona in it, so a cold start is the first-run
+  /* Gripped by handle rather than by class (ADR-0029). These were
+     `.home-hello`, `.quicklog .mood-btn` and `.entry-card`, and phase 5
+     ticket 21 rebuilt Home out of the surface kit - none of the three
+     survived, and each would have failed here as an anonymous 30s timeout
+     rather than as a name. The rule the walkthrough keeps applies to every
+     suite that drives a real screen; only walkthrough-locators.test.ts was
+     watching, and it watches one file.
+
+     A production build has no persona in it, so a cold start is the first-run
      gate. Walking it is what puts a journal on the device, and the quick log
      after it is the entry the offline start has to read back. Five steps then
      finish, the same six screens walkthrough.test.mjs flow 13 walks. */
   for (let i = 0; i < 5; i++) await cold.locator('[data-next]').click();
   await cold.locator('[data-finish]').click();
-  await cold.waitForSelector('.home-hello');
-  await cold.locator('.quicklog .mood-btn[data-mood="4"]').click();
+  await cold.waitForSelector('[data-home-hello]');
+  await cold.locator('[data-mood="4"]').click();
   // Quick Log now seeds the editor route; save once to create the entry
   // this offline-start check is meant to read back.
   await cold.waitForSelector('#ed-note');
   await cold.locator('[data-save]').click();
-  await cold.waitForSelector('.home-hello');
-  await cold.waitForSelector('.entry-card');
+  await cold.waitForSelector('[data-home-hello]');
+  await cold.waitForSelector('[data-entry-card]');
 
   const cdp = await installed.newCDPSession(cold);
   const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors');
@@ -351,10 +359,10 @@ try {
   await restarted.fill('#journal-passphrase', 'verify-build passphrase');
   await restarted.click('[data-passphrase-submit]');
   await restarted.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
-  await restarted.waitForSelector('.entry-card');
+  await restarted.waitForSelector('[data-entry-card]');
 
-  const entries = await restarted.locator('.entry-card').count();
-  const home = await restarted.locator('.home-hello').count();
+  const entries = await restarted.locator('[data-entry-card]').count();
+  const home = await restarted.locator('[data-home-hello]').count();
   if (home === 1 && entries >= 1)
     ok(`with the network off the app opens the Journal and reads what is in it (${entries} entry card)`);
   else fail('with the network off the app opens the Journal and reads existing entries', `home: ${home}, entries: ${entries}`);

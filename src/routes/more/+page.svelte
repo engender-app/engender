@@ -43,6 +43,19 @@
   ];
 
   const PRACTICE_ROWS: HubRow[] = [
+    /* Home's permanent doubt card, moved here (spec 08, closed by phase 5
+       ticket 21). On Home it was unconditional and always visible, asking
+       "feeling like you're not trans enough?" every single day whether or
+       not that was where the person was - a permanent prompt about doubt is
+       not neutral, because it keeps offering a frame to someone who may not
+       be in it. As a row it is one tap from the tab bar and silent until
+       asked for. The screen behind it is unchanged; ticket 16 is what
+       changes what it does (ADR-0037), independently of this move.
+
+       The subtitle is the counterevidence wording rather than the old
+       card's "write it down", which ADR-0037 is in the process of making
+       untrue. */
+    { key: 'doubt', icon: 'heart', title: () => m.doubt_title(), subtitle: () => m.doubt_counterevidence_sub(), href: '/doubt' },
     { key: 'voice', icon: 'mic', title: () => m.recordings_label(), subtitle: () => m.voice_compare_sub(), href: '/settings/voice' },
     { key: 'wear', icon: 'clock', title: () => m.wear_log(), subtitle: () => m.wear_log_sub(), href: '/settings/wear' },
     { key: 'effects', icon: 'sparkle', title: () => m.effects_timeline(), subtitle: () => m.effects_timeline_sub(), href: '/settings/effects' },

@@ -36,6 +36,7 @@
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { screenTransition } from '$lib/navigation/screen-transition';
+  import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import QuickAdd from '$lib/components/QuickAdd.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
@@ -230,6 +231,11 @@
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);
+    /* Last, and inside this effect rather than beside it: the flag's stripes
+       and the section colours derived from them are read off the palette and
+       the theme this block has just stamped, and anything that read them for
+       itself would be racing that stamp (activeFlag.svelte.ts). */
+    refreshActiveFlag(document, prefs.disguise);
   });
 
   /* First-run gate: onboarding is the entire first-run experience (F16).
