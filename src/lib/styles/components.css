@@ -777,7 +777,26 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .sheet {
   background: var(--surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  padding: var(--space-3) var(--space-5) calc(var(--space-6) + var(--inset-bottom));
+  /* The bottom padding clears the floating bar, not just the system inset.
+     Found on ticket 35's renders: a sheet's last row sat under the bar at
+     every scroll position, so the end of a long sheet was a row nobody
+     could see the bottom of - and on the scales sheet that row is the way
+     to add a custom scale. Not new, and not this sheet's: the eight-preset
+     sheet it replaces ran under the bar the same way, and so does any sheet
+     with enough in it.
+
+     It has to be the sheet's own padding rather than the scrim's. The scrim
+     is absolutely positioned inside `.app-main`, which scrolls, so it is
+     sized to the scrolled content rather than to the app frame - padding it
+     grows the scroll area and moves nothing. That mismatch is also why
+     `max-height: 85%` is 85% of the content height rather than of the frame
+     the comment below believes it is measuring; worth a shell ticket, and
+     too wide to take here.
+
+     `--nav-clearance` is the token the scroll region and the editor's save
+     bar already agree on, so the three cannot drift, and it drops to the
+     no-bar value on a chromeless screen by itself. */
+  padding: var(--space-3) var(--space-5) var(--nav-clearance);
   width: 100%;
   /* Percent of the scrim, which is the app frame - not dvh. The demo bar
      and the phone-frame preview both make the app shorter than the
