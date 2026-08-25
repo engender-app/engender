@@ -1,8 +1,24 @@
 <script lang="ts">
+  /* The bundled directory, on the surface kit (phase 5 UX ticket 25).
+
+     Reference data, not the journal's: the list is compiled in, so there is
+     nothing to wait for and nothing that can be empty. What changes here is
+     the container - a grey letterspaced label above a `.list-group` becomes
+     the kit's heading above a list card, and each region takes its own
+     stripe of the flag so the two groups read as two areas rather than as
+     one long column.
+
+     The rows stay presentational and keep growing to fit four stacked
+     things, which is why they are `.kit-row.is-static` rather than
+     ListRows: a resource is not a destination, it is a name with two ways
+     to reach it, and the two are separate links inside the row. */
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { RESOURCES_REVIEWED_ON, resourcesFor, type ResourceRegion } from '$lib/resources/directory';
@@ -31,16 +47,16 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.resources_title()} back="/settings" subtitle={m.resources_intro()} />
+  <ScreenHeader title={m.resources_title()} back="/more" subtitle={m.resources_intro()} />
 
-  {#each GROUPS as group (group.region)}
-    <SectionTitle text={group.title()} />
-    <div class="list-group">
+  {#each GROUPS as group, i (group.region)}
+    <SectionHeading text={group.title()} />
+    <ListCard role={roleAt(activeFlag.roles, i)}>
       {#each resourcesFor(group.region) as resource (resource.key)}
-        <div class="list-row resource-row">
-          <span class="row-text">
-            <span class="row-title">{resource.name}</span>
-            <span class="row-subtitle">{resourceDescription(resource.key)}</span>
+        <div class="kit-row is-static resource-row" data-resource={resource.key}>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{resource.name}</span>
+            <span class="kit-row-sub">{resourceDescription(resource.key)}</span>
             <span class="resource-links">
               {#if resource.phone}
                 <!-- No icon: icons.ts has no phone glyph, and the nearest
@@ -74,7 +90,7 @@
           </span>
         </div>
       {/each}
-    </div>
+    </ListCard>
   {/each}
 
   <p class="muted small" style="margin-top:var(--space-4)">{m.resources_reviewed({ date: reviewedOn })}</p>
@@ -83,10 +99,9 @@
 
 <style>
   /* The row holds four stacked things rather than the usual title and
-     subtitle, so it grows instead of centring in 56px. */
+     subtitle, so it grows instead of centring in one touch target. */
   .resource-row {
     align-items: flex-start;
-    cursor: default;
     padding-top: var(--space-3);
     padding-bottom: var(--space-3);
   }
@@ -103,8 +118,8 @@
     gap: var(--space-2);
     /* 44px of target on a phone, which the 16px icon and the label alone
        would not reach. */
-    min-height: 44px;
-    color: var(--accent);
+    min-height: var(--touch-target);
+    color: var(--role-ink);
     text-decoration: none;
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);

@@ -21,7 +21,8 @@
     onclick,
     key,
     chevron = true,
-    trailing
+    trailing,
+    action
   }: {
     title: string;
     subtitle?: string;
