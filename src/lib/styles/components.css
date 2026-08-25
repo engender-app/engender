@@ -97,18 +97,17 @@
   transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
   transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out), ease;
 }
-/* 0.97 and not tier 1's 0.94, decided on a Pixel 10a after the stuck-hover
-   bug below was fixed. The first comparison was run against a button whose
-   press was being cancelled, so it was working against broken rather than
-   one depth against another; with both honest, 0.97 was the one chosen.
+/* The wide depth, which is the 0.97 chosen on a Pixel 10a by ticket 29 after
+   the stuck-hover bug below was fixed. The first comparison there was run
+   against a button whose press was being cancelled, so it was working against
+   broken rather than one depth against another; with both honest, 0.97 was
+   the one chosen.
 
-   This is a deliberate disagreement with .press in $lib/motion/press.css,
-   which declares 0.94 because DIRECTION asks for it. When ticket 18 applies
-   .press to these buttons the depth will go to 0.94 unless that primitive
-   is revisited, so this is a decision to carry forward, not a value that
-   drifted. The add button keeps the deeper 0.90 and does still agree with
-   .press-add. The test below pins both halves of that. */
-.btn:active { transform: scale(0.97); }
+   Ticket 30 kept the number and took the choice away: .btn is the widest
+   control in the app, --press-depth-wide is the depth for that size class,
+   and press.css is where all three depths are written. A .btn cannot press
+   to a fourth number any more, which is what this used to be. */
+.btn:active { transform: scale(var(--press-depth-wide)); }
 .btn-primary { background: var(--grad-accent); color: var(--on-accent); box-shadow: var(--shadow-1); }
 /* Behind a hover query because this rule sits after .btn:active and carries
    the same specificity, so on a touch screen it wins. Chromium applies
@@ -214,10 +213,23 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--text-2);
   white-space: nowrap;
-  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  /* Longhands rather than a shorthand: this rule transitions three things
+     and only the press is on --ease-press, and a shorthand naming that token
+     strands the other two on an old WebView. The mechanism is at
+     --ease-press in theme/base.css. */
+  transition-property: transform, background, color;
+  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out);
 }
 .segment:hover { color: var(--text); }
 .segment.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
+/* The one control that answered a press with colour alone. A segment is a
+   choice among peers, and the colour change is the answer to the choice
+   rather than to the touch - the pressed segment and the already-active one
+   looked identical mid-tap, so a mistap on the active segment read as
+   nothing happening at all. It presses to the compact depth like every other
+   control its size, and it presses whether or not it is the active one. */
+.segment:active { transform: scale(var(--press-depth)); }
 
 /* ---------- inputs ---------- */
 .field { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
@@ -298,36 +310,16 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   font-variant-numeric: tabular-nums;
 }
 .value-row, .chart-avg, .chip-value, .hm-num, .pin-dots { font-variant-numeric: tabular-nums; }
-.dim-slider input[type="range"] {
-  -webkit-appearance: none; appearance: none;
-  width: 100%; height: var(--touch-target);
-  background: none; cursor: pointer;
-  --fill: 50%;
-}
-.dim-slider input[type="range"]::-webkit-slider-runnable-track {
-  height: 10px; border-radius: var(--radius-pill);
-  background: linear-gradient(to right, var(--accent) var(--fill), var(--surface-2) var(--fill));
-}
-.dim-slider input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 26px; height: 26px; margin-top: -8px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 3px solid var(--accent);
-  box-shadow: var(--shadow-1);
-  transition: transform var(--dur-press) var(--ease-press);
-}
-.dim-slider input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.15); }
-.dim-slider input[type="range"]::-moz-range-track {
-  height: 10px; border-radius: var(--radius-pill); background: var(--surface-2);
-}
-.dim-slider input[type="range"]::-moz-range-progress {
-  height: 10px; border-radius: var(--radius-pill); background: var(--accent);
-}
-.dim-slider input[type="range"]::-moz-range-thumb {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--surface); border: 3px solid var(--accent); box-shadow: var(--shadow-1);
-}
+/* No native range input is left in the app, which is how the two engines
+   stopped drawing two different sliders. What was here styled
+   input[type="range"] for both: a 26px ::-webkit-slider-thumb with a press
+   transition, and a 20px ::-moz-range-thumb with neither, on a track that
+   Chromium faked with a gradient and Gecko drew with ::-moz-range-progress.
+   Nobody chose either of those; they are what the engines default to after
+   partial styling. The markup that wore them had already moved to the custom
+   slider below, so the rules were dead as well as inconsistent. The photo
+   review's onion-skin control was the one live native range and it moved to
+   the same component. */
 .dim-ends { display: flex; justify-content: space-between; font-size: var(--text-xs); color: var(--text-2); margin-top: -4px; }
 
 /* ---------- tags ---------- */
@@ -1043,7 +1035,10 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
   display: flex; align-items: center; justify-content: center;
 }
 .pin-key:hover { background: var(--surface-2); }
-.pin-key:active { transform: scale(0.96); }
+/* A 64px key is a compact control, so it takes the primitive's depth rather
+   than the 0.96 it was given before anyone had written down what the number
+   meant. */
+.pin-key:active { transform: scale(var(--press-depth)); }
 .pin-key.is-ghost { background: none; box-shadow: none; }
 .pin-key:disabled { cursor: default; opacity: 0.45; }
 .pin-key:disabled:active { transform: none; }

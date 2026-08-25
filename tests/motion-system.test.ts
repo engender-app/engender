@@ -223,19 +223,55 @@ describe('tier 1, response', () => {
     const press = readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8');
     expect(press).toContain('var(--ease-press)');
     expect(press).toContain('var(--dur-press)');
-    expect(press).toMatch(/\.press:active\s*\{\s*transform:\s*scale\(0\.94\)/);
-    expect(press).toMatch(/\.press-add:active\s*\{\s*transform:\s*scale\(0\.9\)/);
+    expect(press).toMatch(/\.press:active\s*\{\s*transform:\s*scale\(var\(--press-depth\)\)/);
+    expect(press).toMatch(/\.press-add:active\s*\{\s*transform:\s*scale\(var\(--press-depth-add\)\)/);
   });
 
-  it('drops the transform and keeps the rest under both reduced-motion paths', () => {
+  /* Phase 5 ticket 30. The depths used to be literals in four places, and
+     .btn's 0.97 and the primitive's 0.94 disagreed with nothing to say which
+     was right. They are three tokens now, one per size class, declared in
+     press.css and nowhere else - so a control names the class it belongs to
+     and cannot invent a fifth number. */
+  it('writes the three depths once, in press.css', () => {
     const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
-    const reduced = rules(press).filter(isReduceContext);
-    const covered = new Set(
-      reduced
-        .filter((rule) => /transform:\s*none/.test(rule.body))
-        .flatMap((rule) => rule.prelude.split(',').map((s) => s.trim().replace(/^html\[data-a11y-motion='reduce'\]\s*/, '')))
-    );
-    expect([...covered].sort()).toEqual(['.press-add:active', '.press:active']);
+    const declared = rules(press).find((rule) => rule.prelude === ':root' && !isReduceContext(rule));
+    expect(declarations(declared?.body ?? '')).toMatchObject({
+      '--press-depth': '0.94',
+      '--press-depth-wide': '0.97',
+      '--press-depth-add': '0.9'
+    });
+  });
+
+  it('leaves no press depth written as a literal anywhere else', () => {
+    const literals: string[] = [];
+    for (const { path, css } of [...sheets, ...svelteStyleBlocks()]) {
+      if (path.endsWith('motion/press.css')) continue;
+      for (const rule of rules(css)) {
+        if (!rule.prelude.includes(':active')) continue;
+        const scale = rule.body.match(/(?:transform:\s*scale|scale:)\s*([^;}]+)/)?.[1];
+        if (scale && /[0-9]/.test(scale) && !scale.includes('--press-depth')) {
+          literals.push(`${path}: ${rule.prelude} { ${scale.trim()} }`);
+        }
+      }
+    }
+    expect(literals).toEqual([]);
+  });
+
+  /* Reduced motion substitutes rather than deletes, and it does it by taking
+     the depth to 1 rather than by naming every pressable selector. A control
+     added later inherits the substitute instead of having to remember it,
+     which is the failure the enumerated version invited. */
+  it('takes every depth to 1 under both reduced-motion paths', () => {
+    const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
+    const reduced = rules(press).filter(isReduceContext).filter((rule) => /--press-depth/.test(rule.body));
+    expect(reduced.length, 'both reduced-motion paths are covered').toBe(2);
+    for (const rule of reduced) {
+      expect(declarations(rule.body)).toMatchObject({
+        '--press-depth': '1',
+        '--press-depth-wide': '1',
+        '--press-depth-add': '1'
+      });
+    }
   });
 
   /* Phase 5 ticket 28: the press also collapses the one floating control's
@@ -325,11 +361,12 @@ describe('tier 1, response', () => {
     expect(mixed, 'an unparseable linear() takes the whole shorthand with it, not just its own half').toEqual([]);
   });
 
-  /* Ticket 29 settled both shipped depths on a Pixel 10a, and they did not
-     land in the same place. .btn does not agree with the primitive, on
-     purpose: 0.97 was chosen over tier 1's 0.94 by feel. Both halves are
-     pinned here so the disagreement stays a decision somebody made rather
-     than something that drifted.
+  /* Ticket 29 settled two depths on a Pixel 10a and they did not land in the
+     same place; ticket 30 found the reason and turned it into a rule. Scale
+     is a fraction, so one fraction moves a 320px button's edge several times
+     as far as a 48px key's. The three depths are three size classes of one
+     law - the bigger the control, the shallower the fraction - and what is
+     pinned here is that every shipped control names one of them.
 
      The add button used to be the third number here, restated in app.css
      as `.nav-fab:active { transform: scale(0.9) }` and asserted equal to
@@ -341,20 +378,25 @@ describe('tier 1, response', () => {
     const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
     const depthOf = (selector: string, css: string) =>
       rules(css).find((rule) => rule.prelude === selector && !isReduceContext(rule))?.body.match(
-        /transform:\s*(scale\([^)]*\))/
+        /transform:\s*(scale\([^;]*\))/
       )?.[1];
 
     const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
 
-    expect(depthOf('.btn:active', components), '.btn was chosen at 0.97, against the primitive').toBe(
-      'scale(0.97)'
+    expect(depthOf('.btn:active', components), '.btn is the wide class, not a number of its own').toBe(
+      'scale(var(--press-depth-wide))'
     );
-    expect(depthOf('.press:active', press), 'the primitive still says what DIRECTION asks for').toBe(
-      'scale(0.94)'
+    expect(depthOf('.press:active', press), 'the primitive is the compact class').toBe(
+      'scale(var(--press-depth))'
     );
-    expect(depthOf('.press-add:active', press), 'the add button is the deeper of the two').toBe(
-      'scale(0.9)'
+    expect(depthOf('.press-add:active', press), 'the add button is the deeper of the three').toBe(
+      'scale(var(--press-depth-add))'
     );
+    for (const selector of ['.pin-key:active', '.segment:active']) {
+      expect(depthOf(selector, components), `${selector} presses to the compact depth`).toBe(
+        'scale(var(--press-depth))'
+      );
+    }
   });
 
   it('gives the two add controls the press primitive instead of their own depth', () => {

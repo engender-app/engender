@@ -16,12 +16,39 @@
    whatever colour or outline change the control also carries stays. The
    scale is the only part of a press that moves anything. */
 
+/* The three depths, and the only place in the app any of them is written.
+
+   Scale is a fraction, and a fraction is the wrong unit for this gesture:
+   0.94 moves a 48px key's edge 1.4px and a 320px button's edge 9.6px, so
+   one number applied everywhere presses the small controls faintly and
+   throws the large ones around. Phase 5 ticket 29 hit that on a Pixel 10a
+   and settled .btn at 0.97 by feel without naming the reason; the reason is
+   size, so there are three size classes and no fourth.
+
+     --press-depth       compact controls, up to about 64px: icon buttons,
+                         PIN keys, segments, chips. 1.4px at 48px.
+     --press-depth-wide  a control as wide as the screen: .btn. 4.8px at
+                         320px, which is the number ticket 29 chose.
+     --press-depth-add   the add button, deliberately deeper than its 56px
+                         asks for. It is the app's most-tapped control and
+                         its only floating one, and the shadow below goes
+                         with it.
+
+   Travel therefore grows with the control but far slower than
+   proportionally, and stays inside a few pixels at every size. A control
+   names its class; it does not pick a number. */
+:root {
+  --press-depth: 0.94;
+  --press-depth-wide: 0.97;
+  --press-depth-add: 0.9;
+}
+
 .press {
   transition: transform var(--dur-press) var(--ease-press);
 }
 
 .press:active {
-  transform: scale(0.94);
+  transform: scale(var(--press-depth));
 }
 
 /* The add button is the app's one floating control and takes the deeper
@@ -53,27 +80,35 @@
 }
 
 .press-add:active {
-  transform: scale(0.9);
+  transform: scale(var(--press-depth-add));
   box-shadow: var(--shadow-float-pressed);
 }
 
-/* The shadow goes back with the scale rather than collapsing on its own: an
+/* Reduced motion takes the depth to 1 rather than naming every pressable
+   selector. Same substitute as before - the transform stops moving anything
+   and whatever colour or outline change the control carries is what answers
+   the press - but a control added later inherits it instead of having to
+   remember it. Enumerating the selectors is what let .segment ship with no
+   reduced-motion path at all for four tickets.
+
+   The shadow goes back with the scale rather than collapsing on its own: an
    elevation change with no movement to explain it reads as a flicker, not as
-   a press. What stays is whatever colour or outline change the control
-   carries, which is the substitute. */
-html[data-a11y-motion='reduce'] .press:active {
-  transform: none;
+   a press. */
+html[data-a11y-motion='reduce'] {
+  --press-depth: 1;
+  --press-depth-wide: 1;
+  --press-depth-add: 1;
 }
 html[data-a11y-motion='reduce'] .press-add:active {
-  transform: none;
   box-shadow: var(--shadow-float);
 }
 @media (prefers-reduced-motion: reduce) {
-  .press:active {
-    transform: none;
+  :root {
+    --press-depth: 1;
+    --press-depth-wide: 1;
+    --press-depth-add: 1;
   }
   .press-add:active {
-    transform: none;
     box-shadow: var(--shadow-float);
   }
 }
