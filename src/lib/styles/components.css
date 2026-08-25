@@ -421,35 +421,54 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 }
 .dim-slider { margin-bottom: var(--space-5); }
 
-/* The name at the left of the card's text column, the value at its right,
-   and neither moves. An earlier build had this number detach and travel to
-   the thumb while the control was held; the number you are reading should not
-   be the number that leaves. So there are two: this one, always there, and a
-   second one the thumb puts up while a finger is on it (.slider-bubble). */
-.dim-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-1); }
+/* The name sits in the card's text column. The readout does not: it lives in
+   its own layer over this row so it can leave the right-hand edge and go and
+   sit above the thumb, which is where you are looking while you drag. Both
+   halves of that travel are transforms - the layer carries the position
+   along the lane, the readout centres itself on it - so a drag composites
+   instead of laying out. */
+.dim-head { position: relative; display: flex; align-items: baseline; margin-bottom: var(--space-1); }
 .dim-name { font-weight: var(--weight-bold); }
-.dim-value {
-  font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600;
-  color: var(--accent); min-width: 2.2ch; text-align: right;
-  font-variant-numeric: tabular-nums;
-  transition: opacity var(--dur-fast) var(--ease-out);
+.dim-readout {
+  position: absolute;
+  left: var(--slider-inset); right: var(--slider-inset); bottom: 0;
+  height: 0;
+  pointer-events: none;
+  translate: 100% 0;
+  transition: translate var(--dur-med) var(--ease-out);
 }
-/* The one moment this number is not at full strength. At the top of the scale
-   the bubble above the thumb lands in exactly this corner - both are the same
-   number by then, and three digits of --text-xl is wider than the bubble, so
-   one of them has to give. Clamping the bubble short was tried and read as the
-   bubble coming unstuck from the thumb; growing the head row to clear it costs
-   16px of empty space on every slider, which the entry editor stacks five
-   deep. So this steps back instead, for as long as a finger is down, and the
-   reading you want is the one under your finger. It does not move and it does
-   not go away: at 0.3 it is still legible, and it is back before you have
-   lifted off.
+.dim-value {
+  position: absolute; left: 0; bottom: 0;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  /* Parked, the digits line up with the endpoint word under the same end of
+     the lane rather than with the pill's edge, so the 10px the pill needs
+     while it is held does not push the resting number out of the column. */
+  translate: calc(-100% + 10px) 0;
+  /* Longhands, and every curve named: theme/base.css's note on --ease-press
+     applies to any shorthand carrying a token an old WebView cannot parse. */
+  transition-property: translate, scale, background-color, color, box-shadow;
+  transition-duration: var(--dur-med), var(--dur-med), var(--dur-fast), var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-out), var(--ease-out), var(--ease-out), var(--ease-out), var(--ease-out);
+}
+/* Held, the readout becomes the head of the fill it is standing on: same
+   colour, lifted off the row, leaning 4px down towards the thumb. --slider-pct
+   is the same percentage the control positions its own thumb by, set by
+   DimensionSlider because a custom property does not travel back up the tree
+   from the control that owns it. */
+.dim-slider.is-holding .dim-readout { translate: var(--slider-pct) 0; }
+.dim-slider.is-holding .dim-value {
+  translate: -50% 4px;
+  scale: 1.08;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-1);
+}
 
-   :has() rather than a second state class threaded up from the control, which
-   is one less prop for one selector. A WebView too old to parse it drops the
-   rule and the number stays at full strength, which costs a clipped bubble at
-   the very top of the scale and nothing anywhere else. */
-.dim-slider:has(.slider.is-holding) .dim-value { opacity: 0.3; }
 .value-row, .chart-avg, .chip-value, .hm-num, .pin-dots { font-variant-numeric: tabular-nums; }
 
 .slider {
@@ -506,58 +525,6 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
 .slider.is-holding .slider-tick { background: var(--text-2); }
 .slider.is-holding .slider-tick.is-major { background: var(--text); }
 .slider.is-holding .slider-tick.is-here { background: var(--accent); }
-
-/* The value the thumb is holding, for as long as it is held. It is a second
-   number rather than the head row's one relocated: the readout you were
-   already reading stays where you were reading it, and this one is the thumb's
-   own, so nothing you are looking at moves out from under you.
-
-   It grows out of the thumb and drops back into it - origin at the bottom, so
-   the scale reads as coming from the thumb rather than from the middle of
-   nowhere - and it goes up on --ease-press, the same spring the presses use,
-   so it overshoots and settles. Coming back it is faster and has no spring:
-   an exit that lingers as long as an entrance reads as lag, and there is
-   nothing to bounce back from on the way out.
-
-   Both ends of the travel are declared, so the reduced-motion clamp leaves it
-   at one of them rather than stranded between. This is tier 3, a change
-   within a screen, so the substitute is the instant cut the clamp already
-   produces: the number still has to be there while a finger is on the thumb,
-   and what reduced motion drops is watching it arrive. */
-.slider-bubble {
-  position: absolute;
-  left: var(--percentage);
-  bottom: calc(100% - 4px);
-  padding: 1px 9px;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  pointer-events: none;
-  transform-origin: bottom center;
-  opacity: 0;
-  translate: -50% 6px;
-  scale: 0.7;
-  transition:
-    opacity var(--dur-fast) var(--ease-out),
-    translate var(--dur-fast) var(--ease-out),
-    scale var(--dur-fast) var(--ease-out);
-}
-.slider.is-holding .slider-bubble {
-  opacity: 1;
-  translate: -50% 0;
-  scale: 1;
-  /* Longhands, because only two of the three are on --ease-press and a
-     shorthand naming that token strands the third on an old WebView. The
-     mechanism is at --ease-press in theme/base.css. */
-  transition-property: opacity, translate, scale;
-  transition-duration: var(--dur-fast), var(--dur-press), var(--dur-press);
-  transition-timing-function: var(--ease-out), var(--ease-press), var(--ease-press);
-}
-/* No value to put up, until the press that gives it one. */
-.slider.is-unset.is-holding .slider-bubble { opacity: 0; }
 
 /* The thumb neither shrinks nor grows, which is the one place this ticket
    parts with tier 1. A press on a button is the whole gesture; a press on a

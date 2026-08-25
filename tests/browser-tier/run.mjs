@@ -1025,57 +1025,34 @@ try {
   await thumb.scrollIntoViewIfNeeded();
   const box = await thumb.boundingBox();
   const readout = page.locator('[data-case="slider-hundred"] .dim-value');
-  const bubble = page.locator('[data-case="slider-hundred"] .slider-bubble');
   const parked = await readout.boundingBox();
-  const bubbleAtRest = await bubble.evaluate((el) => getComputedStyle(el).opacity);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(500);
-  const stillThere = await readout.boundingBox();
-  const stepped = await readout.evaluate((el) => getComputedStyle(el).opacity);
-  const bubbleHeld = await bubble.evaluate((el) => ({
-    opacity: getComputedStyle(el).opacity,
-    text: el.textContent.trim()
-  }));
-  const bubbleBox = await bubble.boundingBox();
+  const held = await readout.boundingBox();
   const ring = await thumb.evaluate((el) => getComputedStyle(el).boxShadow);
   const holding = await page.locator('[data-case="slider-hundred"] .slider').evaluate((el) =>
     el.classList.contains('is-holding')
   );
   await page.mouse.up();
-  await page.waitForTimeout(400);
-  const bubbleAfter = await bubble.evaluate((el) => getComputedStyle(el).opacity);
+  await page.waitForTimeout(500);
+  const home = await readout.boundingBox();
 
   if (holding) ok('a finger on the thumb puts the whole control into its held state');
   else fail('a finger on the thumb puts the control into its held state', 'is-holding never appeared');
 
-  if (bubbleAtRest === '0' && bubbleHeld.opacity === '1' && bubbleAfter === '0')
-    ok('the bubble is the thumb\'s own: absent, up while held, and gone again on release');
-  else
-    fail(
-      'the bubble is absent, up while held, and gone again on release',
-      `${bubbleAtRest} then ${bubbleHeld.opacity} then ${bubbleAfter}`
-    );
+  const travelled = parked.x - held.x;
+  if (travelled > 40)
+    ok(`the readout travels from the edge to the thumb while held (${Math.round(travelled)}px)`);
+  else fail('the readout travels to the thumb while held', `moved ${Math.round(travelled)}px`);
 
-  /* The readout the ticket's first build had travelling to the thumb. It does
-     not travel any more: the number you are already reading is not the one
-     that leaves, and the bubble above is a second number. It does step back
-     while a finger is down, because at the top of the scale the bubble lands
-     in its corner - which is a change of opacity, not of position. */
-  const drift = Math.abs(parked.x - stillThere.x) + Math.abs(parked.y - stillThere.y);
-  if (drift < 1) ok('the head row\'s readout stays exactly where it was while the control is held');
-  else fail('the head row\'s readout stays where it was', `moved ${drift.toFixed(1)}px`);
+  const overThumb = Math.abs(held.x + held.width / 2 - (box.x + box.width / 2));
+  if (overThumb < 6) ok(`the readout lands centred over the thumb (${overThumb.toFixed(1)}px off)`);
+  else fail('the readout lands centred over the thumb', `${overThumb.toFixed(1)}px off`);
 
-  if (Number(stepped) > 0.2 && Number(stepped) < 0.5)
-    ok(`and steps back rather than out of the bubble's way (opacity ${stepped})`);
-  else fail("the readout steps back rather than out of the bubble's way", `opacity ${stepped}`);
-
-  const overThumb = Math.abs(bubbleBox.x + bubbleBox.width / 2 - (box.x + box.width / 2));
-  if (overThumb < 6) ok(`the bubble sits centred over the thumb (${overThumb.toFixed(1)}px off)`);
-  else fail('the bubble sits centred over the thumb', `${overThumb.toFixed(1)}px off`);
-
-  if (bubbleHeld.text === '65') ok('and it carries the value the thumb is standing on (65)');
-  else fail('the bubble carries the value the thumb is standing on', JSON.stringify(bubbleHeld.text));
+  /* And goes home on release, which is the half a one-way check would miss. */
+  if (Math.abs(home.x - parked.x) < 1) ok('and goes back to the edge when the finger comes off');
+  else fail('the readout goes back to the edge on release', `${(home.x - parked.x).toFixed(1)}px off`);
 
   if (/0px 0px 0px 9px/.test(ring)) ok('the held thumb carries its ring rather than a scale');
   else fail('the held thumb carries its ring', ring);
