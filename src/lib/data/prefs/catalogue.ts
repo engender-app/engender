@@ -189,7 +189,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   metricDimension: null,
   theme: 'system',
   palette: 'trans',
-  moodPreset: 'amber',
+  moodPreset: 'teal',
   language: 'system',
   a11yTextSizeBoost: false,
   a11yLegibilityBoost: false,
