@@ -388,7 +388,11 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    (components.css, a.segment) rather than this screen's. */
 
 /* Weekly and monthly. */
-.wrapped-head { padding: var(--space-4) 0 var(--space-5); text-align: center; }
+/* The period's name, with room either side of it. It is the one line on the
+   screen that says which period every figure below belongs to, and it sat
+   close enough to the switcher above and the figures below to read as part of
+   one of them (Alicja, 2026-08-25). */
+.wrapped-head { padding: var(--space-6) 0 var(--space-6); text-align: center; }
 .wrapped-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; line-height: var(--leading-display); }
 .wrapped-sub { color: var(--text-2); font-size: var(--text-sm); margin-top: var(--space-2); }
 .wrapped-stats {
@@ -473,10 +477,15 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   scrollbar-width: none;
   margin: 0 calc(-1 * var(--space-5)); padding-left: var(--space-5); padding-right: var(--space-5);
 }
+/* The year's last line. It sat a hairline under whatever section ended the
+   screen; it is the screen signing off, so it gets the space a section break
+   gets (Alicja, 2026-08-25). */
 .wrapped-year-close {
-  text-align: center; color: var(--text-2); font-size: var(--text-sm);
+  text-align: center;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  margin-top: var(--space-7);
   padding-bottom: var(--space-7);
-  position: relative; z-index: 1;
 }
 
 /* ---------- On-this-day ----------
