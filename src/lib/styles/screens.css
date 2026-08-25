@@ -607,8 +607,24 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 .value-row:last-child { border-bottom: none; }
 
 /* ---------- Settings ---------- */
+/* Phase 5 ticket 24: this section moved onto the kit's ListCard for its
+   container, and picked up two motion fixes on the way, since redesigning
+   the screen that owns them is what made them this ticket's to fix.
+
+   The hover scale-and-rotate on the preview circle was DIRECTION.md tier
+   4's "no hover-dependent motion" broken outright - a leftover from before
+   the tiers existed. And the swatch never answered a touch at all: ticket
+   30's control inventory covers sliders, switches, segments and keys but
+   never named this control, so it is the one thing on this screen still
+   answering a press with nothing. `.press` is the compact-control class
+   ticket 30 already settled (--press-depth, 0.94) - a swatch is well under
+   its 64px ceiling, so it names the class rather than a number. */
 .palette-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
 .mood-preset-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
+/* A generic padded slot for content that is not a row of the list card it
+   sits in - the appearance block's swatches and segments, here, rather than
+   the list card growing a padding variant it holds nothing else needs. */
+.settings-pad { padding: var(--space-4); }
 .palette-swatch {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   border: none; background: none; cursor: pointer;
@@ -616,13 +632,11 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   font: inherit;
   min-width: 0;
 }
-.palette-swatch:hover .swatch-preview { transform: scale(1.12) rotate(8deg); }
 .palette-swatch:hover { background: var(--surface-2); }
 .palette-swatch.is-active { background: var(--accent-soft); }
 .swatch-preview {
   width: 40px; height: 40px; border-radius: 50%;
-  box-shadow: var(--shadow-1); border: 2px solid var(--surface);
-  transition: transform var(--dur-med) var(--ease-out);
+  border: 2px solid var(--surface);
 }
 .palette-swatch.is-active .swatch-preview { outline: 2px solid var(--accent); outline-offset: 2px; }
 .swatch-name {
