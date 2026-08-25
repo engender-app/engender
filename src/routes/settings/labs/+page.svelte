@@ -1,4 +1,19 @@
 <script lang="ts">
+  /* Your numbers, your trend, on the surface and chart kits (phase 5 UX
+     ticket 25).
+
+     The first thing on the screen was a card of unit preferences - a
+     heading, an explanation and one select per analyte - so a screen about
+     lab results opened on a settings form. It is a sheet off the header
+     now, beside the import control, which is where every other feature
+     screen keeps the thing it configures rather than the thing it shows.
+
+     The charts are the kit's area chart. What that changes beyond the
+     drawing is how an exact number is read: tapping a dot used to open a
+     panel under the line that stayed until it was dismissed, and dragging
+     across the plot now names each reading as the finger passes it. The
+     draw's context - the timing figure and the lab - rides on the scrub's
+     own label, so it is still the same three facts as before. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { normalizeUnit, type LabSeries } from '$lib/data/journal/labs';
@@ -20,10 +35,23 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import LineChart from '$lib/components/LineChart.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import AreaChart from '$lib/components/kit/AreaChart.svelte';
+  import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
+
+  /* Colour that carries a value takes role 0 (DIRECTION.md). The results
+     list takes the stripe after it. */
+  const AREA_ROLE = { chart: 0, results: 1 };
+
+  let unitsOpen = $state(false);
 
   /* No hormone assumed: the screen opens on whatever the journal actually
      has, and stays empty until getMostRecentAnalyte resolves (ticket 37). */
@@ -67,27 +95,25 @@
     const min = Math.min(...values);
     const max = Math.max(...values);
     const pad = (max - min) * 0.2 || 10;
-    return { points: s.results.map((r) => ({ day: r.epochDay, value: r.value })), min: min - pad, max: max + pad };
+    return {
+      points: s.results.map((r) => ({ x: r.epochDay, y: r.value })),
+      min: min - pad,
+      max: max + pad,
+      from: s.results[0].epochDay,
+      to: s.results[s.results.length - 1].epochDay
+    };
   }
 
-  /* Which point is picked out on which chart, keyed by the series unit, so
-     each line keeps its own selection instead of the charts fighting over one
-     index they number differently. Null is "none", the absence LineChart's
-     `selected` is spelled with; tapping the picked point again clears it. */
-  let picked = $state<Record<string, number | null>>({});
-
-  function pickPoint(unit: string, index: number | null) {
-    picked = { ...picked, [unit]: picked[unit] === index ? null : index };
-  }
-
-  /** What a point's readout says: the value, when it was drawn, and the
-      context it was drawn in. The same three facts the list rows carry. */
-  const pointAria = (r: LabResult) =>
-    m.labs_point_aria({
-      value: String(r.value),
-      unit: r.unit || m.labs_no_unit(),
-      date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-    });
+  /** What the scrub says above a reading: when it was drawn, and the
+      context it was drawn in. The value itself is on the other half of the
+      readout, which is why it is not repeated here - the same three facts
+      the list rows carry, split the way the chart card splits them. */
+  const scrubLine = (r: LabResult | undefined) => {
+    if (!r) return '';
+    const date = fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+    const context = contextLine(r);
+    return context ? `${date} · ${context}` : date;
+  };
 
   /** The context beside a value, wherever it appears: the timing figure and
       the lab, whichever of the two is known. Blank when neither is. */
@@ -306,139 +332,135 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.lab_results()} back="/settings">
+  <ScreenHeader title={m.lab_results()} back="/more" subtitle={m.labs_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-import-lab aria-label={m.labs_ocr_import_aria()} onclick={openOcrImport}>
+      <button class="icon-btn press" data-preferred-units aria-label={m.labs_preferred_units_title()} onclick={() => (unitsOpen = true)}>
+        <Icon name="settings" size={20} />
+      </button>
+      <button class="icon-btn press" data-import-lab aria-label={m.labs_ocr_import_aria()} onclick={openOcrImport}>
         <Icon name="camera" size={20} />
       </button>
-      <button class="icon-btn" data-add aria-label={m.labs_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.labs_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
-  <div class="card" style="margin-bottom:var(--space-4)">
-    <h3>{m.labs_preferred_units_title()}</h3>
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.labs_preferred_units_intro()}</p>
-    <div class="stack-3">
-      {#each PREFERRED_UNIT_ANALYTES as analyteName (analyteName)}
-        <div class="field">
-          <label class="field-label" for={`preferred-unit-${analyteName}`}>{analyteName}</label>
-          <select
-            class="input"
-            id={`preferred-unit-${analyteName}`}
-            value={preferredUnitForAnalyte(analyteName, prefs.preferredLabUnits) ?? ''}
-            onchange={(e) => setPreferredUnit(analyteName, (e.target as HTMLSelectElement).value)}
-          >
-            <option value="">{m.labs_preferred_units_source_default()}</option>
-            {#each ALLOWED_PREFERRED_UNITS[analyteName] as unit (unit)}
-              <option value={unit}>{unit}</option>
-            {/each}
-          </select>
-        </div>
-      {/each}
-    </div>
-  </div>
 
   {#if usedQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if analytes.length}
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.labs_intro()}</p>
-    <Segmented name={m.labs_analyte_group()} options={analytes.map((a) => ({ value: a, label: a }))} value={analyte} onChange={(v) => (analyte = v)} />
+    <div in:crossfade>
+      <Segmented
+        name={m.labs_analyte_group()}
+        options={analytes.map((a) => ({ value: a, label: a }))}
+        value={analyte}
+        onChange={(v) => (analyte = v)}
+        key="labs-analyte"
+      />
 
-    {#each series as s (s.unit)}
-      {@const chart = chartFor(s)}
-      {@const mixed = comparabilityLabels(seriesComparability(s.results))}
-      {@const pickedIndex = picked[s.unit] ?? null}
-      {@const point = pickedIndex === null ? undefined : s.results[pickedIndex]}
-      <div class="card" data-lab-series={s.unit} style="margin-top:var(--space-4)">
-        <div class="spread" style="margin-bottom:var(--space-2)">
-          <span class="chart-title">{analyte}</span>
-          <span class="muted small series-unit" data-series-unit>{s.unit || m.labs_no_unit()}</span>
-        </div>
-        {#if chart}
-          <LineChart
-            points={chart.points}
-            min={chart.min}
-            max={chart.max}
-            showDots
-            selected={pickedIndex}
-            onSelect={(i) => pickPoint(s.unit, i)}
-            pointLabel={(i) => pointAria(s.results[i])}
-          />
-          <!-- The chart's tooltip. A panel under the line rather than a
-               floating bubble: on a 390px screen a bubble over the point
-               covers the neighbours you are comparing it against, and it has
-               nowhere to go at either edge. -->
-          <!-- aria-live, because the readout appears somewhere other than the
-               point that was activated: without it a screen reader announces
-               nothing after the press. -->
-          {#if point}
-            <div class="lab-point" data-lab-point={point.id} aria-live="polite">
-              <div class="spread">
-                <span class="row-title">{point.value} <span class="muted small">{point.unit}</span></span>
-                <button class="icon-btn" aria-label={m.labs_point_clear()} onclick={() => pickPoint(s.unit, null)}>
-                  <Icon name="x" size={18} />
-                </button>
-              </div>
-              <span class="muted small">{fmtDay(point.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-              {#if contextLine(point)}
-                <span class="muted small lab-context">{contextLine(point)}</span>
-              {/if}
-            </div>
-          {/if}
-        {:else}
-          <div class="chart-too-little">{m.labs_too_little()}</div>
-        {/if}
-        <!-- Stated, not warned about: the series is drawn whole, and this
-             says what it is made of (ticket 03). -->
-        {#if mixed.length}
-          <div class="notice notice-info" data-lab-mixed={s.unit} style="margin-top:var(--space-3)">
-            <Icon name="info" size={20} />
-            <div class="notice-body">
-              <span class="notice-title">{m.labs_mixed_title()}</span>
-              {m.labs_mixed_body()}
-              <ul class="lab-mixed-list">
-                {#each mixed as reason (reason)}<li>{reason}</li>{/each}
-              </ul>
-            </div>
-          </div>
-        {/if}
-      </div>
-    {/each}
-
-    <div class="list-group" style="margin-top:var(--space-4)">
-      {#each [...results].reverse() as r (r.id)}
-        <button class="list-row" data-lab-result={r.id} aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })} onclick={() => openEditor(r)}>
-          <span class="row-text">
-            <span class="row-title">{r.value} <span class="muted small">{r.unit}</span></span>
-            <span class="row-subtitle">
-              {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
-            </span>
-            <!-- The context on its own line, not appended to the date: it is
-                 two more facts about the draw, and three of them run together
-                 stop being readable at 390px. -->
-            {#if contextLine(r)}
-              <span class="row-subtitle lab-context">{contextLine(r)}</span>
+      {#each series as s (s.unit)}
+        {@const chart = chartFor(s)}
+        {@const mixed = comparabilityLabels(seriesComparability(s.results))}
+        <div data-lab-series={s.unit}>
+          <ChartCard heading={analyte} kind="labs-{s.unit}" role={roleAt(activeFlag.roles, AREA_ROLE.chart)}>
+            {#snippet control()}
+              <!-- The unit on the heading's line, which is the one thing
+                   about this chart that is not the analyte above it. A
+                   series exists per unit precisely because a value in
+                   ng/dL and one in nmol/L differ by a factor of about 29. -->
+              <span class="muted small" data-series-unit>{s.unit || m.labs_no_unit()}</span>
+            {/snippet}
+            {#if chart}
+              <AreaChart
+                points={chart.points}
+                min={chart.min}
+                max={chart.max}
+                from={fmtDay(chart.from, { day: 'numeric', month: 'short' })}
+                to={fmtDay(chart.to, { day: 'numeric', month: 'short' })}
+                formatValue={(v) => `${Math.round(v * 100) / 100} ${s.unit || m.labs_no_unit()}`}
+                scrubLabel={(_point, index) => scrubLine(s.results[index])}
+                ariaLabel={m.values_title({ name: analyte })}
+              />
+            {:else}
+              <p class="kit-chart-empty">{m.labs_too_little()}</p>
             {/if}
-          </span>
-          <Icon name="pencil" size={18} />
-        </button>
+          </ChartCard>
+          <!-- Stated, not warned about: the series is drawn whole, and this
+               says what it is made of (ticket 03). -->
+          {#if mixed.length}
+            <Notice
+              icon="info"
+              key="lab-mixed"
+              data-lab-mixed={s.unit}
+              title={m.labs_mixed_title()}
+              text={m.labs_mixed_body()}
+            />
+            <ul class="lab-mixed-list">
+              {#each mixed as reason (reason)}<li>{reason}</li>{/each}
+            </ul>
+          {/if}
+        </div>
       {/each}
+
+      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.results)}>
+        {#each [...results].reverse() as r (r.id)}
+          <button
+            class="kit-row"
+            data-lab-result={r.id}
+            aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+            onclick={() => openEditor(r)}
+          >
+            <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
+            <span class="kit-row-text">
+              <span class="kit-row-title">{r.value} {r.unit}</span>
+              <span class="kit-row-sub">
+                {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
+              </span>
+              <!-- The context on its own line, not appended to the date: it is
+                   two more facts about the draw, and three of them run together
+                   stop being readable at 390px. -->
+              {#if contextLine(r)}
+                <span class="kit-row-sub lab-context">{contextLine(r)}</span>
+              {/if}
+            </span>
+          </button>
+        {/each}
+      </ListCard>
     </div>
   {:else}
-    <EmptyState
-      title={m.labs_empty_title()}
-      text={m.labs_empty_body()}
-    >
-      {#snippet action()}
-        <div class="stack-3">
-          <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.labs_empty_action()}</span></button>
-          <button class="btn btn-soft" onclick={openOcrImport}><span>{m.labs_ocr_import_aria()}</span></button>
-        </div>
-      {/snippet}
-    </EmptyState>
+    <div in:crossfade>
+      <Notice
+        icon="flask"
+        key="labs-empty"
+        role={roleAt(activeFlag.roles, AREA_ROLE.results)}
+        title={m.labs_empty_title()}
+        text={m.labs_empty_body()}
+        action={{ label: m.labs_empty_action(), primary: true, onclick: () => openEditor(null) }}
+      />
+    </div>
   {/if}
+
+  <Sheet open={unitsOpen} title={m.labs_preferred_units_title()} onClose={() => (unitsOpen = false)}>
+    <h3>{m.labs_preferred_units_title()}</h3>
+    <p class="muted small" style="margin-bottom:var(--space-3)">{m.labs_preferred_units_intro()}</p>
+    {#each PREFERRED_UNIT_ANALYTES as analyteName (analyteName)}
+      <div class="field">
+        <label class="field-label" for={`preferred-unit-${analyteName}`}>{analyteName}</label>
+        <select
+          class="input"
+          id={`preferred-unit-${analyteName}`}
+          value={preferredUnitForAnalyte(analyteName, prefs.preferredLabUnits) ?? ''}
+          onchange={(e) => setPreferredUnit(analyteName, (e.target as HTMLSelectElement).value)}
+        >
+          <option value="">{m.labs_preferred_units_source_default()}</option>
+          {#each ALLOWED_PREFERRED_UNITS[analyteName] as unit (unit)}
+            <option value={unit}>{unit}</option>
+          {/each}
+        </select>
+      </div>
+    {/each}
+  </Sheet>
 
   <Sheet open={editor !== null} title={editor?.id ? m.labs_edit_sheet() : m.labs_new_sheet()} onClose={() => (editor = null)}>
     {#if editor}
