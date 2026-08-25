@@ -56,9 +56,13 @@
 {#snippet bar(row: BarRow)}
   <div class="kit-bar-label">
     <span class="kit-bar-name" data-bar-name>{row.name}</span>
-    {#if row.note}<span class="kit-bar-value">{row.note}</span>{/if}
     <span class="kit-bar-value" data-bar-value>{row.value}</span>
   </div>
+  <!-- On its own line rather than between the name and the value. Inline, a
+       note as long as "7 entries · avg 4.4 with · 3.3 without" took the
+       whole row and ellipsised the name down to "social eu..." - the label
+       is the one part of a bar that cannot be guessed from the drawing. -->
+  {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
   <div class="kit-bar-track">
     <span
       class="kit-bar-mark"

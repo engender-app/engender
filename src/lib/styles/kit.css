@@ -1073,6 +1073,18 @@ a.kit-entry:active {
   font-weight: var(--weight-bold);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A line under the name, for the counts a reading is drawn from. Wraps
+   freely: it is the one part of a bar row that is a sentence. */
+.kit-bar-note {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .kit-bar-track {
@@ -1128,13 +1140,26 @@ a.kit-entry:active {
 
 .kit-dist-step {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 1fr auto;
   gap: var(--space-2);
-  justify-items: center;
+  justify-items: stretch;
   height: 100%;
 }
 
+/* The count rides on top of its own column. Bottom-aligned, so a short bar
+   carries its number down with it instead of leaving it stranded at the top
+   of the card with every other count. */
+.kit-dist-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 100%;
+  min-height: 0;
+}
+
 .kit-dist-count {
+  text-align: center;
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }

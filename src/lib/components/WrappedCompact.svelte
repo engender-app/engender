@@ -74,9 +74,17 @@
     streaks?: WrappedStreaks | null;
   } = $props();
 
-  /* Which stripe each area takes, in reading order (DIRECTION.md, "flag
-     colour reaches the whole app, categorically"). */
-  const AREA_ROLE = { figures: 0, mood: 1, tags: 2, tally: 3, milestones: 4, photos: 5 };
+  /* Which stripe each area takes (DIRECTION.md, "flag colour reaches the
+     whole app, categorically"). Every chart shares role 0, which is the
+     brief's own exception rather than a shortcut: "colour that carries a
+     value takes role 0", because roles run a flag's colours before its
+     shades and index 0 is the only one guaranteed to be a colour on all 8
+     palettes. Taken in reading order instead, a chart landed on trans's
+     white band, and white bars on a dark card read as a set of disabled
+     bars rather than as the flag. The lists take the stripes after it, where
+     an achromatic band costs nothing - a tinted disc and a row wash carry no
+     reading. The reason is written out in full on the Stats hub. */
+  const AREA_ROLE = { charts: 0, figures: 1, milestones: 2 };
 
   const MOOD_MIN = 1;
   const MOOD_MAX = 5;
@@ -194,7 +202,7 @@
 <!-- Two points is what a line needs to be a line; below that a wrapped would
      rather not have the card at all. -->
 {#if moodTrend.length >= 2}
-  <ChartCard heading={m.wrapped_mood_arc()} kind="wrapped-mood" role={roleAt(activeFlag.roles, AREA_ROLE.mood)}>
+  <ChartCard heading={m.wrapped_mood_arc()} kind="wrapped-mood" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <AreaChart
       points={moodTrend.map((p) => ({ x: p.day, y: p.value }))}
       min={MOOD_MIN}
@@ -208,14 +216,14 @@
 {/if}
 
 {#if insightRows.length}
-  <ChartCard heading={m.tag_insights()} kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.tags)}>
+  <ChartCard heading={m.tag_insights()} kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={insightRows} />
   </ChartCard>
   <p class="wrapped-note">{m.insights_note()}</p>
 {/if}
 
 {#if tallyRows.length}
-  <ChartCard heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.tally)}>
+  <ChartCard heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={tallyRows} />
   </ChartCard>
 {/if}

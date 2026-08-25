@@ -36,11 +36,17 @@
 <div class="kit-dist" data-chart="distribution">
   {#each steps as step, i (step.step)}
     <div class="kit-dist-step" data-dist-step={step.step} style={`--bar-index: ${i}`}>
-      <b class="kit-dist-count">{step.count}</b>
-      <span
-        class="kit-dist-mark"
-        style={`--bar-share: ${share(step.count, top)}; --dist-fill: var(--mood-${step.step})`}
-      ></span>
+      <!-- The count and its column in one cell, bottom-aligned, so the
+           number sits on the bar it belongs to. In a grid row of its own
+           every count lined up along the top of the card instead, which read
+           as a detached row of figures above a chart. -->
+      <span class="kit-dist-stack">
+        <b class="kit-dist-count">{step.count}</b>
+        <span
+          class="kit-dist-mark"
+          style={`--bar-share: ${share(step.count, top)}; --dist-fill: var(--mood-${step.step})`}
+        ></span>
+      </span>
       <span class="kit-dist-name">{step.name}</span>
     </div>
   {/each}
