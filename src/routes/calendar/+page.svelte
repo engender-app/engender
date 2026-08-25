@@ -36,7 +36,6 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { metricKey } from '$lib/data/prefs/catalogue';
   import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -169,7 +168,7 @@
       key="calendar-metric"
       id="calendar-metric"
       labelledBy="calendar-metric"
-      value={metricKey(prefs)}
+      value={vocabulary.activeMetric}
       options={metricOptions}
       onPick={(value) => selectMetric(value === 'mood' ? null : value)}
     />

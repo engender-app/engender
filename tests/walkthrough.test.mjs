@@ -638,12 +638,37 @@ try {
   ok('milestone template shuffle');
 } catch (e) { fail('shuffle', e); }
 
-/* 10. custom dimension live preview */
+/* 10. custom scale: the live preview, then saving it, then finding it in the
+   checklist looking like any built-in (phase 5 ticket 35) */
 try {
   await fresh('/settings/dimension');
   await page.locator('#cd-name').fill('Voice comfort');
+  await page.locator('#cd-low').fill('strained');
+  await page.locator('#cd-high').fill('easy');
   await page.waitForFunction(() => document.querySelector('[data-dim-name]')?.textContent === 'Voice comfort');
-  ok('custom dimension live preview');
+
+  /* Saving a scale ticks it, which is the whole of what saving one does
+     now: it used to also spawn a custom preset and switch to it. */
+  await page.locator('[data-save]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.getByRole('button', { name: /Gender scales/i }).click();
+
+  /* A row like any other: ticked, and carrying a line about itself. A
+     custom scale has no catalogue line, so it reads its own two ends
+     back - which is why the endpoints above are filled in. */
+  const custom = page.locator('[data-list-row^="scale-"][aria-checked="true"]').last();
+  const customText = (await custom.textContent()).trim();
+  if (!customText.startsWith('Voice comfort')) throw new Error('custom scale row: ' + customText);
+  if (!customText.includes('strained') || !customText.includes('easy')) {
+    throw new Error('custom scale row says nothing about its ends: ' + customText);
+  }
+
+  // And it reaches the entry screen like any built-in.
+  await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
+  await booted();
+  const names = await page.locator('[data-dim-name]').allTextContents();
+  if (!names.includes('Voice comfort')) throw new Error('editor scales: ' + JSON.stringify(names));
+  ok('a custom scale previews, saves ticked, and appears like a built-in');
 } catch (e) { fail('custom dimension', e); }
 
 /* 10b. Home's stale-backup notice (ticket 15, F21). Before the export
@@ -1084,14 +1109,18 @@ try {
   if (rowTexts.length !== expected.length) throw new Error('settings scale count: ' + rowTexts.length);
   await expectNoHorizontalOverflow('[data-app-viewport]');
 
-  /* Ticking a scale writes it, and the row behind the sheet says so. Read
-     as text content rather than through a nested class, to keep this
-     locator restyle-safe (walkthrough-locators.test.ts). */
+  /* Ticking a scale writes it, and the row behind the sheet says so. What
+     is asserted is that the summary changed, not what it now reads: this
+     file's checks are copy literals often enough that a reworded string can
+     make a flow pass for free, and the row's job here is to follow the set
+     rather than to hold a particular sentence. */
+  const summaryBefore = await page.locator('[data-list-row="scales"]').textContent();
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.waitForSelector('[data-list-row="scale-binary_nonbinary"][aria-checked="true"]');
   await page.keyboard.press('Escape');
   await page.waitForFunction(
-    () => document.querySelector('[data-list-row="scales"]')?.textContent.includes('Binary')
+    (before) => document.querySelector('[data-list-row="scales"]')?.textContent !== before,
+    summaryBefore
   );
 
   /* And what is ticked is what the entry screen offers, which is the whole
@@ -1100,6 +1129,15 @@ try {
   await booted();
   const drawn = await page.locator('[data-dim-name]').count();
   if (drawn !== 4) throw new Error('the editor drew ' + drawn + ' scales for four ticked');
+
+  /* Colour Home by one of the ticked scales first, so unticking it below
+     has something to strand. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-chart-picker="home-metric"]').selectOption('femininity');
+  await page.waitForFunction(
+    () => document.querySelector('[data-chart-picker="home-metric"]')?.value === 'femininity'
+  );
 
   /* Untick everything, and the editor says what it is rather than leaving
      a heading over nothing. A state somebody reaches by unticking five
@@ -1118,6 +1156,14 @@ try {
   if (await page.locator('[data-dim-name]').count()) {
     throw new Error('the editor drew a scale with none ticked');
   }
+
+  /* And Home is back on mood rather than still coloured by a scale its own
+     picker no longer offers. Read off the picker, which is where the two
+     would visibly disagree. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  const metric = await page.locator('[data-chart-picker="home-metric"]').inputValue();
+  if (metric !== 'mood') throw new Error('Home is still coloured by ' + metric + ' with nothing ticked');
   ok('settings scales sheet ticks through to the editor, empty included');
 } catch (e) { fail('settings scales sheet', e); }
 

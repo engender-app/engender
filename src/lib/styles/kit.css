@@ -231,7 +231,7 @@
 /* ---------- the box on a tickable row ----------
 
    Phase 5 ticket 35. The box carries the row's state; the row does not
-   change under it, for the reason Tick.svelte gives.
+   change under it, for the reason Check.svelte gives.
 
    The size is the icon size the rest of a row is drawn at, so the box lines
    up with the chevrons and discs on the rows around it rather than being a

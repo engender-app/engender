@@ -31,7 +31,6 @@
 
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { sharedAxisX } from '$lib/motion/navigation';
   import {
