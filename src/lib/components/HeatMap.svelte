@@ -33,7 +33,6 @@
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { metricKey } from '$lib/data/prefs/catalogue';
   import { heatLevel } from '$lib/data/metricRange';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { HEAT_STEPS, type Role } from '$lib/theme/roles';
@@ -75,7 +74,7 @@
      different questions: the swatch comes from the metric's average, while
      whether a day is a link comes from whether anything was logged at all -
      a day of entries carrying no mood is still a day with entries. */
-  let averages = liveQuery(['entry'], (j) => j.stats.dayAverages(metricKey(prefs), bounds.first, bounds.last));
+  let averages = liveQuery(['entry'], (j) => j.stats.dayAverages(vocabulary.activeMetric, bounds.first, bounds.last));
   let counts = liveQuery(['entry'], (j) => j.stats.entryCountsByDay(bounds.first, bounds.last));
 
   /* Both reads are one worker round trip, and the grid draws at its full
@@ -90,7 +89,7 @@
   let cells = $derived.by(() => {
     // The day's value stays native; only the swatch it picks is normalized,
     // so a 0-10 dimension and mood shade comparably (ADR-0012).
-    const range = vocabulary.rangeOf(metricKey(prefs));
+    const range = vocabulary.rangeOf(vocabulary.activeMetric);
     const valueByDay = new Map((averages.value ?? []).map((point) => [point.day, point.value]));
     const countByDay = new Map((counts.value ?? []).map((point) => [point.day, point.count]));
     const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();

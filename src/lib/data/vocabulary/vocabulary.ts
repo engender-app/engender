@@ -269,10 +269,17 @@ export const vocabulary = {
   metricDimension(metric: string): GenderDimension | null {
     return this.dimensions.find((d) => d.key === metric) ?? null;
   },
+  /** What Home, the calendar and stats colour by (`reference.activeMetric`):
+      the stored metric, or mood when it names a scale that is not ticked.
+      Screens read this rather than `metricKey(prefs)` so none of them can
+      colour by a scale its own picker does not offer. */
+  get activeMetric(): string {
+    return reference.activeMetric;
+  },
   /** What the metric is called on screen: mood, or the chosen gender
       dimension. Four screens derived this identically before. */
   get metricName(): string {
-    return this.metricDimension(metricKey(prefs))?.name ?? m.mood();
+    return this.metricDimension(this.activeMetric)?.name ?? m.mood();
   },
   /** A metric's own range, for turning a native value into colour
       intensity (metricRange.ts). Mood's range is not a stored row. */
@@ -286,7 +293,7 @@ export const vocabulary = {
       must not say otherwise (ADR-0012, F15). Mood is the one metric with a
       worst-to-best legend, and it uses the mood names rather than 1 and 5. */
   get metricLegend(): { low: string; high: string } {
-    const d = this.metricDimension(metricKey(prefs));
+    const d = this.metricDimension(this.activeMetric);
     return d ? { low: d.low, high: d.high } : { low: moodName(1), high: moodName(5) };
   },
   tag(id: string): Tag | null {

@@ -4,7 +4,6 @@
   import { calendarDuration, localDateFromEpochDay, todayEpochDay, previousCalendarMonthRange, previousCalendarYearRange } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { metricKey } from '$lib/data/prefs/catalogue';
   import Icon from '$lib/components/Icon.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -55,7 +54,7 @@
   });
   let seriesFor = $derived((key: string): DayAverage[] => seriesQuery.value?.get(key) ?? []);
 
-  let insightsQuery = liveQuery(['entry', 'tag'], (j) => j.stats.tagInsights(metricKey(prefs), from, today));
+  let insightsQuery = liveQuery(['entry', 'tag'], (j) => j.stats.tagInsights(vocabulary.activeMetric, from, today));
   let insights = $derived(insightsQuery.value ?? []);
 
   let lastMonthName = $derived.by(() => {

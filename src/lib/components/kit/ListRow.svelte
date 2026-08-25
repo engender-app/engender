@@ -48,6 +48,12 @@
     /** Anything that sits before the chevron: a count, a date, a switch. */
     trailing?: Snippet;
   } = $props();
+
+  /* Passing `checked` at all is what makes the row a checkbox; its value is
+     then what the box shows. Two facts in one prop, so the discriminator is
+     named once here rather than being re-derived at each of the two places
+     that ask. */
+  let isCheckbox = $derived(checked !== undefined);
 </script>
 
 {#snippet body()}
@@ -60,7 +66,7 @@
   </span>
   <span class="kit-row-trail">
     {#if trailing}{@render trailing()}{/if}
-    {#if checked !== undefined}<Check checked={checked} />{/if}
+    {#if isCheckbox}<Check checked={checked ?? false} />{/if}
     {#if chevron}<Icon name="chevronRight" size={22} />{/if}
   </span>
 {/snippet}
@@ -71,7 +77,7 @@
      legible to the compiler for it to check either. -->
 {#if href}
   <a class="kit-row" data-list-row={key} {href} {onclick}>{@render body()}</a>
-{:else if checked !== undefined}
+{:else if isCheckbox}
   <!-- role="checkbox" on the button rather than a real input, which is the
        same contract Switch.svelte already carries for role="switch": the
        state is a prop, the announcement is aria-checked, and there is no

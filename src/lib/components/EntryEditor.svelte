@@ -155,16 +155,16 @@
     );
     templateSheetOpen = false;
   }
-  /* The union of the active preset's dimensions and the entry's own: an
-     old entry logged under a wider preset keeps its extra dimensions on screen
-     (marked below), instead of silently dropping their history on save. */
+  /* The union of the ticked scales and the entry's own: an entry logged
+     when more was ticked keeps its extra scales on screen (marked below),
+     instead of silently dropping their history on save. */
   let dims = $derived.by(() => {
     const active = vocabulary.activeDimensions;
     const extras = Object.keys(entryDraft.dims)
       .filter((key) => !active.some((d) => d.key === key))
       .map((key) => vocabulary.dimensions.find((d) => d.key === key))
       .filter((d): d is GenderDimension => !!d);
-    return [...active.map((dim) => ({ dim, inPreset: true })), ...extras.map((dim) => ({ dim, inPreset: false }))];
+    return [...active.map((dim) => ({ dim, ticked: true })), ...extras.map((dim) => ({ dim, ticked: false }))];
   });
   let isToday = $derived(day === todayEpochDay());
 
@@ -415,9 +415,9 @@
   {#if dims.length === 0}
     <p class="editor-hint editor-hint-tight" data-no-scales>{m.editor_no_scales()}</p>
   {/if}
-  {#each dims as { dim, inPreset } (dim.key)}
+  {#each dims as { dim, ticked } (dim.key)}
     <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
-    {#if !inPreset}
+    {#if !ticked}
       <p class="editor-hint editor-hint-tight">{m.not_in_preset()}</p>
     {/if}
   {/each}
