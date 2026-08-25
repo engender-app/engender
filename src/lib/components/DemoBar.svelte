@@ -64,6 +64,14 @@
     return () => document.body.classList.remove('demo-phone-frame');
   });
 
+  let failMisgendered = $state(false);
+  $effect(() => {
+    const root = document.documentElement;
+    if (failMisgendered) root.dataset.demoFail = 'tally-misgendered';
+    else delete root.dataset.demoFail;
+    return () => delete root.dataset.demoFail;
+  });
+
   /* Written onto <html> as inline custom properties, which outrank the
      env() defaults in theme/base.css without the stylesheet knowing this
      control exists. Removing them puts the app back on the real device's
@@ -93,6 +101,18 @@
   <div class="demo-group" role="group" aria-label="Viewport">
     <button class="demo-btn" class:is-active={frame.mode === 'phone'} onclick={() => (frame.mode = 'phone')}>Phone</button>
     <button class="demo-btn" class:is-active={frame.mode === 'responsive'} onclick={() => (frame.mode = 'responsive')}>Web</button>
+  </div>
+  <!-- Forces quick add's misgendered row to fail, so the landed and the
+       failed confirmations can be watched one after the other. Review only:
+       QuickAdd reads it behind `__DEMO__`, and this bar is dropped from a
+       production build. -->
+  <div class="demo-group" role="group" aria-label="Quick add">
+    <button
+      class="demo-btn"
+      aria-pressed={failMisgendered}
+      class:is-active={failMisgendered}
+      onclick={() => (failMisgendered = !failMisgendered)}>Fail misgendered</button
+    >
   </div>
   <div class="demo-group" role="group" aria-label="Safe area">
     <button
