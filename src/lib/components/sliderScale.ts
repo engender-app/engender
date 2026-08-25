@@ -74,7 +74,18 @@ export function snapToStop(value: number, min: number, max: number, step: number
     A slider's thumb has to rest somewhere, and an unset scale has no value to
     rest on, so it rests in the middle and the control is dimmed instead
     (ticket 31). Its own function because two things ask it: the control
-    positions its thumb by it, and the bubble above the thumb shows it. */
+    positions its thumb by it, and the readout above it travels by it. */
 export function displayValue(value: number | null, min: number, max: number): number {
   return value ?? Math.round((min + max) / 2);
+}
+
+/** How far along the scale a value sits, as a CSS percentage.
+
+    The control gets this from melt, which computes it to position its own
+    thumb. The readout above the control needs the same number and cannot read
+    melt's - a custom property set on the control does not travel back up the
+    tree - so this is the one place the arithmetic is written on our side of
+    that line, rather than inline in the component that happens to need it. */
+export function percentAlong(value: number | null, min: number, max: number): string {
+  return `${((displayValue(value, min, max) - min) / (max - min)) * 100}%`;
 }

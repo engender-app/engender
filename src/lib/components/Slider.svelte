@@ -128,12 +128,6 @@
         {/each}
       </div>
     {/if}
-    <!-- The value, above the thumb, for as long as a finger is on it. The
-         readout in the head row never moves; this one is not that number
-         travelling, it is a second one that the thumb puts up and takes back
-         down. aria-hidden because the root already carries aria-valuenow and
-         a screen reader announcing the same number twice is noise. -->
-    <div class="slider-bubble" aria-hidden="true">{shown}</div>
     <div {...slider.thumb} class="slider-thumb" tabindex="-1"></div>
   </div>
 </div>

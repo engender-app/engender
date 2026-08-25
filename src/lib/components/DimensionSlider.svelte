@@ -4,6 +4,7 @@
      is the name, the readout that travels to the thumb while the control is
      being held, and the two endpoint words. */
   import Slider from './Slider.svelte';
+  import { percentAlong } from './sliderScale';
   import { m } from '$lib/paraglide/messages';
 
   /** A gender dimension satisfies this structurally; so does anything else
@@ -24,14 +25,28 @@
     onInput,
   }: { dim: SliderScale; value?: number | null; onInput: (v: number) => void } = $props();
 
+  let holding = $state(false);
+
+  /* The same fraction the control positions its thumb by. The readout lives
+     above the control rather than inside it, and a custom property set on the
+     control does not reach it. */
+  const percent = $derived(percentAlong(value, dim.min, dim.max));
 </script>
 
-<div class="dim-slider" class:is-unset={value == null}>
+<div
+  class="dim-slider"
+  class:is-unset={value == null}
+  class:is-holding={holding}
+  style:--slider-pct={percent}
+>
   <div class="dim-head">
     <span class="dim-name" data-dim-name>{dim.name}</span>
-    <output class="dim-value" data-dim-value>{value ?? m.slider_unset()}</output>
+    <div class="dim-readout">
+      <output class="dim-value" data-dim-value>{value ?? m.slider_unset()}</output>
+    </div>
   </div>
   <Slider
+    bind:holding
     min={dim.min}
     max={dim.max}
     {value}
