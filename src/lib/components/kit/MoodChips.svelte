@@ -28,7 +28,7 @@
      given screen happened to use. */
   import { m } from '$lib/paraglide/messages';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import MoodFace from './MoodFace.svelte';
+  import MoodFace from '../MoodFace.svelte';
 
   let {
     value = null,

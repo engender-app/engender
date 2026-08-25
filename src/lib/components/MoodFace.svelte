@@ -1,35 +1,70 @@
 <script lang="ts">
-  /* One mood's face, drawn once (phase 5 ticket 18).
+  /* One mood's face, drawn once, for every surface that shows one (phase 5
+     ticket 31).
 
-     It came out of MoodPicker when quick add needed the same five faces in
-     its fan. The alternative was a flat coloured dot there, which is the
-     thing DIRECTION.md warns about under "the mood ramp is built to be sat
-     on, not to be a dot": the ramp's steps are chosen so --text clears
-     4.5:1 on top of them, and on the dark theme they are all dark, so as
-     small dots on a dark panel they have almost no separation from each
-     other. The face carries the value; the fill only tints it.
+     ## The two components are now one
 
-     The mouths come from the kit's own table (ticket 20, kit/moodFace.ts),
-     which landed on main while this was being built. Two faces now exist on
-     purpose and they are not the same drawing: the kit's is for a day card
-     and a chip, sized small with an optional disc, while this one wears the
-     picker's classes and so keeps its blink, its hover lift and its
-     selected pop. What they must not have is two copies of the geometry,
-     and after the merge they do not. Whether the two should converge is the
-     kit's call rather than this ticket's. */
-  import { MOOD_MOUTHS } from './kit/moodFace';
+     Ticket 18 built this for quick add's fan; ticket 20's surface kit landed
+     its own `kit/MoodFace.svelte` for a day card and a chip. The two shared
+     `moodFace.ts` and nothing else: one carried the picker's classes and its
+     blink, the other was still and took a `disc` prop, and ticket 18's own
+     comment left the question of whether they should converge to the kit.
 
-  let { value, size = 44 }: { value: number; size?: number } = $props();
+     They converge. The reason is the eyes: the moment the drawing changed at
+     all, the same change had to be made twice, in two files, in two shapes -
+     which is the drift the shared mouth table existed to prevent and did not.
+     What actually differed between them was a size, a disc and whether the
+     eyes blink, and all three are props. What is left is one drawing, one set
+     of classes, and one place in the stylesheet.
+
+     `blink` is off by default, which is the important half of that. A day
+     card can carry six entries, and six blinking faces on one screen is an
+     ambient loop - the app spends its one loop on the flag sun and nowhere
+     else (DIRECTION.md, tier 0). The two surfaces that ask for it are the
+     ones where five faces are being chosen between rather than read: the
+     picker in the entry editor, and quick add's fan.
+
+     The blink's stagger comes from the step rather than from the element's
+     position in its parent, which is what lets any surface have it. It used
+     to be four `:nth-child` rules under `.mood-btn`, so the fan's five faces
+     blinked in unison and anything else that ever showed a row of them would
+     have too. */
+  import { MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from './moodFace';
+
+  let {
+    step,
+    size = 22,
+    disc = true,
+    blink = false
+  }: {
+    /** 1 to 5 on the mood ramp. */
+    step: number;
+    size?: number;
+    /** Off where the surface behind the face is already the mood's own
+        colour - a chip is a filled tile, so a filled circle on it would be
+        invisible. What is left is the ink, which the ADR-0025 ramp carries
+        at 4.5:1 whichever step is underneath. */
+    disc?: boolean;
+    blink?: boolean;
+  } = $props();
+
+  let face = $derived(MOOD_FACES[step]);
 </script>
 
 <svg
-  viewBox="0 0 24 24"
   class="mood-face"
-  style={`width:${size}px;height:${size}px`}
+  class:is-alive={blink}
+  viewBox="0 0 24 24"
+  style={`--face-size: ${size}px; --face-mood: var(--mood-${step}); --blink-delay: ${(step - 1) * 0.6}s`}
   aria-hidden="true"
 >
-  <circle cx="12" cy="12" r="10" class="mood-face-bg" style="fill:var(--mood-{value})" />
-  <circle cx="8.6" cy="9.5" r="1.25" class="mood-face-ink" />
-  <circle cx="15.4" cy="9.5" r="1.25" class="mood-face-ink" />
-  <path d={MOOD_MOUTHS[value]} class="mood-face-mouth" />
+  {#if disc}<circle cx="12" cy="12" r="10" class="mood-face-disc" />{/if}
+  {#if face.lids}
+    <path d={face.lids} class="mood-face-eye is-lids" />
+  {:else}
+    {#each MOOD_EYES as eye (eye.cx)}
+      <circle cx={eye.cx} cy={eye.cy} r={MOOD_EYE_RADIUS} class="mood-face-eye" />
+    {/each}
+  {/if}
+  <path d={face.mouth} class="mood-face-mouth" />
 </svg>
