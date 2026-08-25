@@ -695,18 +695,41 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   top: var(--flight-y);
   display: grid;
   place-items: center;
-  width: 40px; height: 40px;
-  margin: -20px 0 0 -20px;
+  width: 48px; height: 48px;
+  margin: -24px 0 0 -24px;
   border-radius: 50%;
   background: var(--accent);
   color: var(--on-accent);
   box-shadow: var(--shadow-float);
   pointer-events: none;
-  animation: fan-flight var(--dur-med) var(--ease-out) forwards;
+  /* Delayed by exactly the fan's own exit, so it crosses an empty screen.
+     Stacked under the exit it was invisible - two things moving at once and
+     neither one read.
+
+     Two animations rather than one, because they want different curves and
+     a single declaration only has one. The travel decelerates on
+     --ease-out, which is what makes it read as an object being thrown; the
+     opacity runs linear, because --ease-out is steep enough at the front
+     that a fade sharing it is done inside the first fifth of the duration.
+     Measured, not guessed: on one curve the mark was fully opaque for about
+     30ms of a 240ms flight, which is a frame and a half.
+
+     --dur-slow, not --dur-med. This is tier 3, change within a screen, and
+     --dur-slow is that tier's duration - the earlier value was tier 2's,
+     borrowed from the navigation this is not. */
+  animation:
+    fan-flight-move var(--dur-slow) var(--ease-out) var(--dur-fast) both,
+    fan-flight-fade var(--dur-slow) linear var(--dur-fast) both;
 }
-@keyframes fan-flight {
-  from { transform: translate(0, 0) scale(1); opacity: 1; }
-  to { transform: translate(var(--flight-dx), var(--flight-dy)) scale(0.45); opacity: 0; }
+@keyframes fan-flight-move {
+  from { transform: translate(0, 0) scale(0.7); }
+  to { transform: translate(var(--flight-dx), var(--flight-dy)) scale(0.55); }
+}
+@keyframes fan-flight-fade {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  72% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* And the catch. The button takes the mark in, which is the same shape as
@@ -715,11 +738,11 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
    once would read as one thing wobbling. */
 .nav-add.is-catching,
 .rail-add.is-catching {
-  animation: add-catch var(--dur-slow) var(--ease-out) var(--dur-med) both;
+  animation: add-catch var(--dur-slow) var(--ease-out) calc(var(--dur-fast) + var(--dur-slow)) both;
 }
 @keyframes add-catch {
   0% { transform: scale(1); }
-  38% { transform: scale(1.12); }
+  34% { transform: scale(1.18); }
   100% { transform: scale(1); }
 }
 

@@ -87,8 +87,8 @@
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
-    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserConfirming}>
-      <Icon name={ui.chooserConfirming ? 'check' : 'plus'} size={20} />
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserCaught}>
+      <Icon name={ui.chooserCaught ? 'check' : 'plus'} size={20} />
     </span>
     <span>{m.quick_add_title()}</span>
   </button>
@@ -142,8 +142,8 @@
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
-    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserConfirming}>
-      <Icon name={ui.chooserConfirming ? 'check' : 'plus'} size={26} />
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserCaught}>
+      <Icon name={ui.chooserCaught ? 'check' : 'plus'} size={26} />
     </span>
   </button>
   {#each TRAILING as item (item.key)}{@render tab(item)}{/each}

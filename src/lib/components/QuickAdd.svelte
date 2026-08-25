@@ -101,7 +101,19 @@
      Under reduced motion nothing travels and the tick still appears, for
      the same duration. The toast stays either way: it is role="status", so
      it is the half of this a screen reader gets. */
-  const CATCH_MS = 520;
+  /* The beats, and why they are sequenced rather than stacked. The first
+     version started the flight the instant the write came back, which was
+     while the fan was still on its way out - so two things moved at once
+     and neither one read. Watching it back frame by frame, the tick was
+     already on the button before the eye had finished with the fan.
+
+     Now the fan clears first, then the mark flies across an empty screen,
+     then the control takes it. Each beat has the screen to itself, which is
+     what makes a 40px disc legible at all. The durations are the same
+     tokens as everything else; only the order changed. */
+  const flightDelay = () => motionDuration('--dur-fast', 150);
+  const flightMs = () => motionDuration('--dur-slow', 380);
+  const HOLD_MS = 700;
 
   let flight = $state<{ x: number; y: number; dx: number; dy: number } | null>(null);
   let flightTimer: ReturnType<typeof setTimeout> | null = null;
@@ -131,9 +143,18 @@
   async function confirmed(
     from: ReturnType<typeof flightFrom>,
     write: () => Promise<unknown>,
-    kind: string
+    kind: string,
+    target: string
   ) {
     try {
+      /* Review only, and it cannot ship: `__DEMO__` is a literal Rollup
+         folds away, and the flag it reads is set by the demo bar, which a
+         production build drops entirely. It exists because the failed path
+         is otherwise only reachable by breaking the journal, and both paths
+         have to be watchable side by side to be judged. */
+      if (__DEMO__ && document.documentElement.dataset.demoFail === target) {
+        throw new Error(`demo: ${target} is set to fail`);
+      }
       await write();
     } catch (error) {
       console.error(`quick add: ${kind} was not written`, error);
@@ -144,15 +165,24 @@
     toast(m.quick_saved(), { kind });
   }
 
+  let caughtTimer: ReturnType<typeof setTimeout> | null = null;
+
   function land(from: ReturnType<typeof flightFrom>) {
     if (flightTimer) clearTimeout(flightTimer);
+    if (caughtTimer) clearTimeout(caughtTimer);
     flight = from;
     ui.chooserConfirming = true;
+    ui.chooserCaught = false;
+    caughtTimer = setTimeout(() => {
+      ui.chooserCaught = true;
+      caughtTimer = null;
+    }, flightDelay() + flightMs());
     flightTimer = setTimeout(() => {
       flight = null;
       ui.chooserConfirming = false;
+      ui.chooserCaught = false;
       flightTimer = null;
-    }, CATCH_MS);
+    }, flightDelay() + flightMs() + HOLD_MS);
   }
 
   /* The same route Home's quick log and the Android widget already use, so
@@ -202,7 +232,12 @@
     /* Read here rather than captured when the component mounted: the app
        survives backgrounding, so a value taken at init logs to yesterday
        for anyone who leaves it open across midnight. */
-    await confirmed(from, () => journal.tally.log({ epochDay: todayEpochDay(), kind }), 'tally');
+    await confirmed(
+      from,
+      () => journal.tally.log({ epochDay: todayEpochDay(), kind }),
+      'tally',
+      `tally-${kind}`
+    );
   }
 
   /* The wear session, and the reason it earns a slot the others would not
@@ -265,6 +300,7 @@
               note: session.note
             })
           : journal.wearSessions.upsertSession({ startTimestamp: Date.now(), durationMs: null }),
+      'wear',
       'wear'
     );
   }

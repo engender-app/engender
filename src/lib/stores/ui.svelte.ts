@@ -13,5 +13,8 @@ export const ui = $state({
      control is reporting it. Lives here rather than in quick add because
      the two halves are in different components: the fan measures the flight
      and the control catches it. */
-  chooserConfirming: false
+  chooserConfirming: false,
+  /* The moment the flight arrives, which is later than the moment it
+     starts: the control only wears the tick once something has reached it. */
+  chooserCaught: false
 });
