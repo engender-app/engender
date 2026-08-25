@@ -34,12 +34,19 @@
          every language, and check-copy counts bare text as untranslated. -->
     <span class="decoy-brand" translate="no">{'Notes'}</span>
     <span class="decoy-search">{m.decoy_search()}</span>
-    {#each notes as note (note.title)}
-      <span class="decoy-note">
-        <span class="decoy-note-title">{note.title()}</span>
-        <span class="decoy-note-body">{note.body()}</span>
-      </span>
-    {/each}
+    <span class="decoy-list">
+      {#each notes as note (note.title)}
+        <span class="decoy-note">
+          <span class="decoy-note-title">{note.title()}</span>
+          <span class="decoy-note-body">{note.body()}</span>
+        </span>
+      {/each}
+    </span>
+    <!-- The compose button every notes app has. Paint, like the search bar
+         above it: the whole screen is one button and every tap goes back. It
+         is here because its absence was the tell - a notes app with four
+         notes and no way to write a fifth is a screenshot of one. -->
+    <span class="decoy-compose">+</span>
   </span>
 </button>
 
@@ -79,18 +86,46 @@
     background: color-mix(in srgb, CanvasText 8%, Canvas);
     color: color-mix(in srgb, CanvasText 55%, Canvas);
   }
+  /* Cards rather than a run of hairline rows. A hairline list is what a
+     settings screen looks like; every notes app on a phone draws its notes
+     as separate pieces of paper, and the disguise is only worth having if a
+     glance over a shoulder lands on the thing it claims to be. */
+  .decoy-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.625rem;
+  }
   .decoy-note {
     display: block;
-    padding: 0.75rem 0.25rem;
-    border-bottom: 1px solid color-mix(in srgb, CanvasText 12%, Canvas);
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, CanvasText 5%, Canvas);
+    border: 1px solid color-mix(in srgb, CanvasText 10%, Canvas);
   }
   .decoy-note-title {
     display: block;
     font-weight: 600;
+    margin-bottom: 0.25rem;
   }
   .decoy-note-body {
     display: block;
     font-size: 0.875rem;
+    line-height: 1.4;
     color: color-mix(in srgb, CanvasText 60%, Canvas);
+  }
+  .decoy-compose {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.5rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 1.125rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    line-height: 1;
+    background: color-mix(in srgb, CanvasText 10%, Canvas);
+    color: color-mix(in srgb, CanvasText 70%, Canvas);
   }
 </style>

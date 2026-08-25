@@ -406,14 +406,130 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   font-size: 0.8rem; font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Onboarding & recap ---------- */
-.onboarding { max-width: 420px; margin: 0 auto; padding-top: var(--space-7); position: relative; z-index: 1; }
-.onboarding-progress, .recap-progress { display: flex; gap: 6px; justify-content: center; margin-bottom: var(--space-7); }
+/* ---------- Recap ----------
+   The onboarding classes this block used to share with recap are gone
+   (phase 5 ticket 26): the first run has its own frame now, and .ob-title
+   and .onboarding-progress went with the screens that used them. The three
+   that stayed - the dot, the body line and the stacked action column - are
+   still recap's and two settings screens', so they keep the names those
+   screens already call them by. */
+.recap-progress { display: flex; gap: 6px; justify-content: center; margin-bottom: var(--space-7); }
 .ob-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-2); transition: background var(--dur-med); }
 .ob-dot.is-done { background: var(--accent); }
-.ob-title { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 600; margin: var(--space-5) 0 var(--space-3); line-height: var(--leading-display); }
 .ob-text { color: var(--text-2); margin-bottom: var(--space-5); }
 .ob-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-5); }
+
+/* ---------- The first run (phase 5 ticket 26) ----------
+
+   A chromeless column with a fixed frame and one moving part. The back
+   arrow, the progress rail and the buttons hold still at the top and the
+   bottom of the screen; only the step between them crosses, on tier 2's
+   shared axis, because the steps are a sequence and a sequence has a
+   direction. The foot is pushed to the bottom of the viewport rather than
+   sitting under the content, so the primary button is in the same place on
+   all seven steps and a thumb can stay where it is.
+
+   The rail sits with the buttons and not under the sun. It is the one piece
+   of furniture that had to move: the sun owns the top right corner of this
+   screen the way it owns Home's, and text laid over a flag's white band on
+   a light theme is text nobody can read. */
+.screen-setup { display: flex; flex-direction: column; }
+.setup {
+  flex: 1 0 auto;
+  display: flex; flex-direction: column;
+  width: 100%; max-width: 420px; margin: 0 auto;
+  position: relative; z-index: 1;
+}
+
+/* The sun's layer, and the app's one deliberate bleed past the safe area
+   besides Home's header. The scroll region pads every screen clear of the
+   display cutout; this pulls itself back up by exactly that inset and out
+   past .screen's own side padding, so the sun's centre lands on the
+   window's true top right corner and the quarter it draws is a quarter of a
+   circle rather than of a padded box. */
+.setup-sky {
+  position: absolute;
+  top: calc(-1 * var(--inset-top));
+  left: calc(-1 * var(--space-5));
+  right: calc(-1 * var(--space-5));
+  height: calc(210px + var(--inset-top));
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+/* Tier 0: the sun grows one step's worth per step and arrives at scale 1,
+   which is the resting size Home draws a moment later - so the handover
+   between the two screens is one object at one size rather than two suns.
+   --grow is set per step by the route. */
+.setup-sun {
+  position: absolute; top: 0; right: 0; width: 0; height: 0;
+  transform: scale(var(--grow, 1));
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+/* Clear of the sun's reach on a phone, which is what the height above
+   buys: the arrow sits in the top left corner and the flag never gets
+   near it. */
+.setup-head { min-height: var(--touch-target); padding-top: var(--space-2); }
+
+/* One grid cell holding every step, so the one arriving and the one
+   leaving overlap instead of stacking and doubling the screen's height
+   mid-transition. */
+.setup-stage { display: grid; padding-top: var(--space-6); }
+.setup-stage > * { grid-area: 1 / 1; }
+.setup-step { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.setup-title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--display-track);
+  line-height: var(--leading-display);
+  text-wrap: balance;
+  margin: 0;
+}
+.setup-body { color: var(--text-2); margin: 0; }
+.setup-step .input { margin-top: var(--space-2); }
+.setup-time { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.setup-time .input { width: 118px; margin: 0; }
+
+/* Tier 3, a change within the screen: the row that depends on a switch
+   opens its own height rather than making the foot of the screen jump. A
+   grid track rather than a JS height tween, so the reduced-motion clamp in
+   base.css reaches it like any other CSS transition. */
+.setup-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-med) var(--ease-out);
+}
+.setup-reveal > * { overflow: hidden; }
+.setup-reveal.is-open { grid-template-rows: 1fr; }
+
+.setup-foot {
+  margin-top: auto;
+  padding: var(--space-7) 0 var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+/* Progress as a length rather than as seven dots. Seven dots at 8px is a
+   row of punctuation; a rail says how far along the flow is at a glance and
+   grows on the same easing the sun above it does. */
+.setup-rail {
+  height: 4px; border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+.setup-rail i {
+  display: block; height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+/* The two ways past a step, side by side rather than stacked: they are
+   alternatives to each other, and a third full-width button under the
+   primary reads as a third thing to do. */
+.setup-outs { display: flex; gap: var(--space-2); }
+.setup-outs .btn { flex: 1; }
 .recap-stage { max-width: 420px; margin: 0 auto; text-align: center; padding-top: var(--space-6); position: relative; z-index: 1; }
 .recap-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; margin: var(--space-5) 0 var(--space-3); }
 .recap-body { color: var(--text-2); margin-bottom: var(--space-6); }
@@ -938,13 +1054,88 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 /* ---------- Custom dimension ---------- */
 .cd-endpoints { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 
-/* ---------- App lock ---------- */
-.applock { max-width: 360px; margin: 0 auto; padding-top: var(--space-8); position: relative; z-index: 1; }
-.applock-badge {
-  width: 64px; height: 64px; border-radius: 50%;
+/* ---------- The gates (phase 5 ticket 26) ----------
+
+   The five pre-unlock screens and the lock setup, all built from
+   GateScreen.svelte. They used to be .applock, a top-aligned 360px column
+   with a badge, and the six copies had drifted from each other; the shell
+   owns the frame now and this is the frame.
+
+   Centred in the viewport rather than pinned under the status bar. A gate
+   is the only thing on the screen and there is nothing above or below it to
+   line up with, so the top of the window is an arbitrary place to start
+   from - and on a tall phone it left a lock screen's pad floating in the
+   upper third with a third of the screen empty beneath it. */
+.screen-gate { display: flex; flex-direction: column; }
+.gate {
+  flex: 1 0 auto;
+  display: flex; flex-direction: column; justify-content: center;
+  width: 100%; max-width: 360px; margin: 0 auto;
+  padding: var(--space-7) 0 var(--space-8);
+  text-align: center;
+  position: relative; z-index: 1;
+}
+/* A tinted shape needs a hairline (DIRECTION.md's token note): --accent-soft
+   at a low tint on a light card is the card, and the mark disappeared,
+   leaving the glyph sitting on the page. */
+.gate-mark {
+  width: 60px; height: 60px; border-radius: 50%;
   background: var(--accent-soft); color: var(--on-accent-soft);
+  border: 1px solid var(--accent-border);
   display: flex; align-items: center; justify-content: center;
-  margin: 0 auto var(--space-4);
+  margin: 0 auto var(--space-5);
+}
+/* Alert colours the mark and stops there. The gates say what happened in
+   words, and a red disc is not one of them - it is the difference between
+   "type your PIN" and "this journal cannot be opened here any more", which
+   the person needs before they read the first sentence, not instead of it. */
+.gate.is-alert .gate-mark {
+  background: var(--danger-soft); color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 30%, transparent);
+}
+.gate-title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--display-track);
+  line-height: var(--leading-display);
+  text-wrap: balance;
+  margin: 0 0 var(--space-3);
+}
+.gate-body { color: var(--text-2); margin: 0 0 var(--space-4); }
+.gate-body:last-child { margin-bottom: 0; }
+.gate-body.is-small { font-size: var(--text-sm); }
+/* The gate's own controls, and then, under a line, the way out that is not
+   a way in: forget the PIN, reset the app, give up on this journal. The
+   line is there so the destructive option is never the next thing a thumb
+   lands on after the primary one. */
+.gate-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
+/* Left, inside a centred gate. A label sitting centred over a field it
+   belongs to reads as a caption for the whole screen rather than as the
+   name of that box. */
+.gate-form { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-4); text-align: left; }
+.gate-foot {
+  margin-top: var(--space-7);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hairline);
+}
+.gate-note { color: var(--text-2); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
+
+/* Determinate where there is a number to be determinate about. The
+   conversion knows how many photos it has re-encrypted and how many are
+   left, and that was being spent on a sentence alone while the screen it
+   sits on can hold someone for minutes. Tier 3, so reduced motion cuts
+   straight to the new width rather than tweening to it. */
+.gate-progress {
+  height: 4px; border-radius: var(--radius-pill);
+  background: var(--surface-2); overflow: hidden;
+  margin: var(--space-4) 0 0;
+}
+.gate-progress i {
+  display: block; height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
 /* ---------- Progress photos ---------- */
