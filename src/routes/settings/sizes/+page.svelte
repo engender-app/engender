@@ -1,4 +1,15 @@
 <script lang="ts">
+  /* The size log, on the surface kit (phase 5 UX ticket 25).
+
+     What it was: a full-width `<select>` in a `.field` above a
+     `.list-group`, which is the shape a form uses for a value being
+     entered. Nothing on that line is being entered - it says which
+     category the list below is showing - and a screen-width field sitting
+     directly on top of a list reads as the first row of it. It is the
+     kit's filter line now.
+
+     The rows keep doing exactly what they did: tapping one opens the
+     record in the editor sheet, where its delete lives. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { garmentCategoryName } from '$lib/data/vocabulary/labels';
@@ -7,12 +18,23 @@
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { SizeRecord } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* Tier 3, change within a screen: the skeleton crossfades into the list
+     rather than being swapped for it. Reduced motion is an instant cut -
+     the token is clamped by the theme and motionDuration reads the token. */
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* The trend view's own grouping: one category filtered at a time, the
      same reasoning the measurements screen's type picker gives - there is
@@ -63,50 +85,54 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.size_log()} back="/settings" subtitle={m.size_log_intro()}>
+  <ScreenHeader title={m.size_log()} back="/more" subtitle={m.size_log_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.size_log_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.size_log_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
-  <div class="field">
-    <label class="field-label" for="size-log-category-filter">{m.size_log_category_label()}</label>
-    <select class="input" id="size-log-category-filter" bind:value={category}>
-      {#each GARMENT_CATEGORIES as c (c)}
-        <option value={c}>{garmentCategoryName(c)}</option>
-      {/each}
-    </select>
+  <div class="kit-filter">
+    <label class="kit-filter-label" for="size-log-category-filter">{m.size_log_category_label()}</label>
+    <ChartPicker
+      key="size-category"
+      id="size-log-category-filter"
+      labelledBy="size-log-category-filter"
+      value={category}
+      options={GARMENT_CATEGORIES.map((c) => ({ value: c, label: garmentCategoryName(c) }))}
+      onPick={(v) => (category = v)}
+    />
   </div>
 
   {#if recordsQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if records.length}
-    <div class="list-group" style="margin-top:var(--space-4)">
-      {#each [...records].reverse() as r (r.id)}
-        <button
-          class="list-row"
-          data-size-record={r.id}
-          aria-label={m.size_log_row_aria({ category: garmentCategoryName(r.category), date: dayLabel(r.epochDay) })}
-          onclick={() => openEditor(r)}
-        >
-          <span class="row-text">
-            <span class="row-title">{r.size}{#if r.brand} <span class="muted small">{r.brand}</span>{/if}</span>
-            <span class="row-subtitle">
-              {dayLabel(r.epochDay)}{#if r.fitNote} · {r.fitNote}{/if}
-            </span>
-          </span>
-          <Icon name="pencil" size={18} />
-        </button>
-      {/each}
+    <div in:crossfade>
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each [...records].reverse() as r (r.id)}
+          <ListRow
+            key={r.id}
+            icon="package"
+            title={r.brand ? `${r.size} · ${r.brand}` : r.size}
+            subtitle={r.fitNote ? `${dayLabel(r.epochDay)} · ${r.fitNote}` : dayLabel(r.epochDay)}
+            chevron={false}
+            onclick={() => openEditor(r)}
+          />
+        {/each}
+      </ListCard>
     </div>
   {:else}
-    <EmptyState title={m.size_log_empty_title()} text={m.size_log_empty_body()}>
-      {#snippet action()}
-        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.size_log_empty_action()}</span></button>
-      {/snippet}
-    </EmptyState>
+    <div in:crossfade>
+      <Notice
+        icon="package"
+        key="sizes-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.size_log_empty_title()}
+        text={m.size_log_empty_body()}
+        action={{ label: m.size_log_empty_action(), primary: true, onclick: () => openEditor(null) }}
+      />
+    </div>
   {/if}
 
   <Sheet open={editor !== null} title={editor?.id ? m.size_log_edit_sheet() : m.size_log_new_sheet()} onClose={() => (editor = null)}>

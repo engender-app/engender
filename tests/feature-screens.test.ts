@@ -151,9 +151,12 @@ describe('what a first-run journal sees', () => {
 
 describe('what the worker is still fetching', () => {
   /** Reference data is held in memory and read synchronously (CONTEXT.md),
-      so a screen reading only that owes no loading state. Milestones is
-      the one here: the milestone catalogue is vocabulary. */
-  const ENTRY_DATA = ROUTES.filter((route) => route !== 'settings/milestones');
+      so a screen reading only that owes no loading state. Two here:
+      milestones reads the milestone catalogue, and resources reads a
+      directory compiled into the bundle. */
+  const ENTRY_DATA = ROUTES.filter(
+    (route) => !['settings/milestones', 'settings/resources'].includes(route)
+  );
 
   it('keeps a loading state on every screen that reads the journal', () => {
     for (const route of ENTRY_DATA) {

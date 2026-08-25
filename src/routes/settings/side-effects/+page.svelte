@@ -1,4 +1,14 @@
 <script lang="ts">
+  /* What you are noticing, on the surface kit (phase 5 UX ticket 25).
+
+     One list, so one role and no section heading: a heading above the only
+     area of a screen names nothing the screen title has not already said
+     (DIRECTION.md 3c is about a screen reading as several named areas).
+
+     The intro line moved above the list from below the header, because it
+     was only rendered when there was something to introduce - a first-run
+     journal got the empty state and never saw it. It is the notice's own
+     text there instead. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { severityName } from '$lib/data/vocabulary/labels';
@@ -9,9 +19,18 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  /* Tier 3: the skeleton crossfades into the list rather than being
+     swapped for it. Reduced motion clamps the token to an instant cut. */
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   const SEVERITIES = [1, 2, 3, 4, 5];
 
@@ -65,42 +84,42 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.side_effects()} back="/settings">
+  <ScreenHeader title={m.side_effects()} back="/more" subtitle={m.side_effects_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.side_effect_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.side_effect_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
   {#if effectsQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if effects.length}
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.side_effects_intro()}</p>
-    <div class="list-group">
-      {#each [...effects].reverse() as effect (effect.id)}
-        <button
-          class="list-row"
-          data-side-effect={effect.id}
-          aria-label={m.side_effect_row_aria({ name: effect.name, date: fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-          onclick={() => openEditor(effect)}
-        >
-          <span class="row-text">
-            <span class="row-title">{effect.name}</span>
-            <span class="row-subtitle">
-              {fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })} · {severityName(effect.severity)}
-            </span>
-          </span>
-          <Icon name="pencil" size={18} />
-        </button>
-      {/each}
+    <div in:crossfade>
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each [...effects].reverse() as effect (effect.id)}
+          <ListRow
+            key={effect.id}
+            icon="zap"
+            title={effect.name}
+            subtitle={`${fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })} · ${severityName(effect.severity)}`}
+            chevron={false}
+            onclick={() => openEditor(effect)}
+          />
+        {/each}
+      </ListCard>
     </div>
   {:else}
-    <EmptyState title={m.side_effect_empty_title()} text={m.side_effect_empty_body()}>
-      {#snippet action()}
-        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.side_effect_empty_action()}</span></button>
-      {/snippet}
-    </EmptyState>
+    <div in:crossfade>
+      <Notice
+        icon="zap"
+        key="side-effects-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.side_effect_empty_title()}
+        text={m.side_effect_empty_body()}
+        action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => openEditor(null) }}
+      />
+    </div>
   {/if}
 
   <Sheet open={editor !== null} title={editor?.id ? m.side_effect_edit_sheet() : m.side_effect_new_sheet()} onClose={() => (editor = null)}>
