@@ -906,6 +906,138 @@ try {
   fail('phase 5 ticket 18 wrapped share card', e.message ?? String(e));
 }
 
+// --- Phase 5 ticket 30: the control kit, measured rather than assumed ------
+/* The 48px floor is the one thing in this ticket that cannot be read off a
+   stylesheet: min-height on a class says nothing about what the element it
+   ends up on actually measures, which is exactly how the switch shipped 48px
+   tall and 44px wide, and how the Gecko slider thumb ended up at 20px. So
+   every control on the fixture page gets its rendered box read, and the
+   pressed and held states get driven with a real pointer. */
+try {
+  await page.goto(`http://localhost:${port}/controls.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-controls-ready]', { state: 'attached' });
+
+  const TOUCH = 48;
+  /* Both axes for anything a finger lands on. `.btn`, `.slider` and the
+     fields run the width of the screen, so only their height is in
+     question - a width assertion on them would measure the card. */
+  const CONTROLS = [
+    ['.btn', 'height'],
+    ['.icon-btn', 'both'],
+    ['.switch', 'both'],
+    ['.segment', 'both'],
+    ['.pin-key', 'both'],
+    ['.slider', 'height'],
+    ['.input', 'height']
+  ];
+
+  const measured = await page.evaluate(
+    ({ controls }) =>
+      controls.map(([selector, axis]) => {
+        const boxes = [...document.querySelectorAll(selector)].map((el) => {
+          const r = el.getBoundingClientRect();
+          return { w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10 };
+        });
+        return {
+          selector,
+          axis,
+          count: boxes.length,
+          minW: Math.min(...boxes.map((b) => b.w)),
+          minH: Math.min(...boxes.map((b) => b.h))
+        };
+      }),
+    { controls: CONTROLS }
+  );
+
+  for (const m of measured) {
+    if (m.count === 0) {
+      fail(`${m.selector} is on the page to be measured`, 'no elements matched');
+      continue;
+    }
+    const short = m.minH < TOUCH || (m.axis === 'both' && m.minW < TOUCH);
+    const where = m.axis === 'both' ? `${m.minW}x${m.minH}` : `${m.minH}px tall`;
+    if (!short) ok(`${m.selector} clears ${TOUCH}px on every instance (${m.count} of them, smallest ${where})`);
+    else fail(`${m.selector} clears ${TOUCH}px on every instance`, `smallest is ${where}`);
+  }
+
+  /* The press. .btn's transform is the one this ticket moved onto a token,
+     and a token that resolves to nothing is a control with no press at all -
+     which is the state ticket 29 found on Android and no test could see. */
+  const pressed = await page.evaluate(async () => {
+    const read = (el) => getComputedStyle(el).transform;
+    const btn = document.querySelector('.btn');
+    const rest = read(btn);
+    const depth = getComputedStyle(document.documentElement).getPropertyValue('--press-depth-wide').trim();
+    return { rest, depth };
+  });
+  if (pressed.depth === '0.97') ok('the wide press depth resolves to a number the button can use (0.97)');
+  else fail('the wide press depth resolves', JSON.stringify(pressed.depth));
+  if (pressed.rest === 'none') ok('a button at rest carries no transform of its own');
+  else fail('a button at rest carries no transform', pressed.rest);
+
+  /* Held, with a finger on the thumb: the readout has to actually leave the
+     right-hand edge, and the ring has to actually appear. Both were built as
+     transitions on state classes, and a state class nothing sets is a design
+     that only exists in the stylesheet. */
+  const thumb = page.locator('[data-case="slider-hundred"] .slider-thumb');
+  const box = await thumb.boundingBox();
+  const readout = page.locator('[data-case="slider-hundred"] .dim-value');
+  const parked = await readout.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(400);
+  const held = await readout.boundingBox();
+  const ring = await thumb.evaluate((el) => getComputedStyle(el).boxShadow);
+  const holding = await page.locator('[data-case="slider-hundred"] .slider').evaluate((el) =>
+    el.classList.contains('is-holding')
+  );
+  await page.mouse.up();
+
+  if (holding) ok('a finger on the thumb puts the whole control into its held state');
+  else fail('a finger on the thumb puts the control into its held state', 'is-holding never appeared');
+
+  const travelled = parked.x - held.x;
+  if (travelled > 40)
+    ok(`the readout travels from the edge to the thumb while held (${Math.round(travelled)}px)`);
+  else fail('the readout travels to the thumb while held', `moved ${Math.round(travelled)}px`);
+
+  const overThumb = Math.abs(held.x + held.width / 2 - (box.x + box.width / 2));
+  if (overThumb < 6) ok(`the readout lands centred over the thumb (${overThumb.toFixed(1)}px off)`);
+  else fail('the readout lands centred over the thumb', `${overThumb.toFixed(1)}px off`);
+
+  if (/0px 0px 0px 9px/.test(ring)) ok('the held thumb carries its ring rather than a scale');
+  else fail('the held thumb carries its ring', ring);
+
+  /* One ruler mark per stop, which is the claim the coarser step rests on. */
+  const marks = await page.evaluate(() => ({
+    hundred: document.querySelectorAll('[data-case="slider-hundred"] .slider-tick').length,
+    ten: document.querySelectorAll('[data-case="slider-ten"] .slider-tick').length,
+    here: document.querySelectorAll('[data-case="slider-hundred"] .slider-tick.is-here').length
+  }));
+  if (marks.hundred === 21 && marks.ten === 11)
+    ok('the ruler draws one mark per stop (21 on 0-100, 11 on 0-10)');
+  else fail('the ruler draws one mark per stop', JSON.stringify(marks));
+  if (marks.here === 1) ok('exactly one mark is the one the thumb is standing on');
+  else fail('exactly one mark is the one the thumb is standing on', `${marks.here} of them`);
+
+  /* And the reduced-motion substitute, which is a token rather than a list of
+     selectors precisely so that this can be one assertion. */
+  const reduced = await page.evaluate(() => {
+    document.documentElement.dataset.a11yMotion = 'reduce';
+    const cs = getComputedStyle(document.documentElement);
+    const depths = ['--press-depth', '--press-depth-wide', '--press-depth-add'].map((t) =>
+      cs.getPropertyValue(t).trim()
+    );
+    delete document.documentElement.dataset.a11yMotion;
+    return depths;
+  });
+  if (reduced.every((d) => d === '1'))
+    ok('reduced motion takes all three press depths to 1, so no control moves');
+  else fail('reduced motion takes all three press depths to 1', JSON.stringify(reduced));
+} catch (e) {
+  fail('phase 5 ticket 30 control kit', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 
