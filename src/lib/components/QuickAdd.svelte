@@ -61,6 +61,7 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import type { TallyKind, WearSession } from '$lib/data/types';
   import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
+  import { MAGNIFIER_SPREAD, magnify } from '$lib/motion/magnifier';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
   import MoodFace from './MoodFace.svelte';
@@ -77,6 +78,7 @@
   function close() {
     ui.chooserOpen = false;
     armed = null;
+    moodScale = RESTING;
   }
 
   /* Telling you it landed, for the two things that never leave the screen
@@ -401,8 +403,39 @@
       ?.closest<HTMLElement>('[data-fan-target]')?.dataset.fanTarget;
   }
 
+  /* The mood row's magnifier (phase 5 ticket 31). The falloff is in
+     $lib/motion/magnifier.ts with its own tests; what is here is the
+     measuring, and the two decisions that need the fan in front of them.
+
+     The row's rectangle is read per move rather than cached when the fan
+     opens. It is one rect for five faces, so the cost is a rounding error
+     next to the elementFromPoint hit test this already does on the same
+     event - and it is the only way to be right during the entrance, when the
+     row is still arriving under a transform and a cached layout position
+     would put the lift a few cells off where the finger actually is.
+
+     Vertically it reaches past the row by half a cell, so the faces begin to
+     rise as the finger comes down onto them rather than snapping to full size
+     the moment it crosses the hairline. Approach is part of the gesture. */
+  let moodScale = $state<number[]>(MOODS.map(() => 1));
+
+  const RESTING = MOODS.map(() => 1);
+
+  function magnifyMoods(e: PointerEvent) {
+    if (isReducedMotion()) return;
+    const row = document.querySelector('[data-fan-moods]')?.getBoundingClientRect();
+    const cell = row ? row.width / MOODS.length : 0;
+    if (!row || !cell || e.clientY < row.top - cell / 2 || e.clientY > row.bottom + cell / 2) {
+      if (moodScale.some((scale) => scale !== 1)) moodScale = RESTING;
+      return;
+    }
+    const spread = cell * MAGNIFIER_SPREAD;
+    moodScale = MOODS.map((_, i) => magnify(e.clientX, row.left + cell * (i + 0.5), spread));
+  }
+
   function slideMove(e: PointerEvent) {
     if (!ui.chooserPressing) return;
+    magnifyMoods(e);
     const target = targetAt(e);
     if (target) {
       armed = target;
@@ -440,6 +473,7 @@
   function slideEnd() {
     if (!ui.chooserPressing) return;
     ui.chooserPressing = false;
+    moodScale = RESTING;
     const key = armed;
     armed = null;
     if (key) runTarget(key);
@@ -457,6 +491,7 @@
   onpointercancel={() => {
     ui.chooserPressing = false;
     armed = null;
+    moodScale = RESTING;
   }}
 />
 
@@ -490,13 +525,14 @@
         <span class="fan-icon"><Icon name="calendar" size={22} /></span>
         <span class="fan-label">{m.another_day()}</span>
       </button>
-      <div class="fan-moods">
-        {#each MOODS as value (value)}
+      <div class="fan-moods" data-fan-moods>
+        {#each MOODS as value, i (value)}
           <button
             class="fan-mood"
             class:is-armed={armed === MOOD_TARGET + value}
             data-fan-target={MOOD_TARGET + value}
             aria-label={moodName(value)}
+            style:--mood-mag={moodScale[i]}
             onclick={() => pickMood(value)}
           >
             <MoodFace step={value} size={34} blink />
