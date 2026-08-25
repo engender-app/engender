@@ -1,4 +1,9 @@
 <script lang="ts">
+  /* Electrolysis and laser sessions, on the surface kit (phase 5 UX
+     ticket 25). Two lists on the screen and a third inside the editor,
+     all of them `.list-group` before this; the recency figures and the
+     session photos state something and go nowhere, so they are static
+     rows, and the sessions themselves open the editor. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { hairRemovalAreaName, hairRemovalMethodName, severityName } from '$lib/data/vocabulary/labels';
@@ -15,12 +20,23 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
+
+  /* Two areas: how long since each area was last worked on, and the
+     sessions themselves. */
+  const AREA_ROLE = { recency: 0, sessions: 1 };
 
   const PAIN_RATINGS = [1, 2, 3, 4, 5];
 
@@ -117,58 +133,58 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.hair_removal()} back="/settings">
+  <ScreenHeader title={m.hair_removal()} back="/more" subtitle={m.hair_removal_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.hair_removal_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.hair_removal_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
   {#if sessionsQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if sessions.length}
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.hair_removal_intro()}</p>
-
-    <SectionTitle text={m.hair_removal_recency_title()} />
-    <div class="list-group" style="margin-bottom:var(--space-4)">
-      {#each HAIR_REMOVAL_AREAS as area (area)}
-        {@const days = recency[area]}
-        <div class="list-row" data-recency={area}>
-          <span class="row-text">
-            <span class="row-title">{hairRemovalAreaName(area)}</span>
-            <span class="row-subtitle">
-              {days === null ? m.hair_removal_area_never_used() : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
+    <div in:crossfade>
+      <SectionHeading text={m.hair_removal_recency_title()} />
+      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.recency)}>
+        {#each HAIR_REMOVAL_AREAS as area (area)}
+          {@const days = recency[area]}
+          <div class="kit-row is-static" data-recency={area}>
+            <span class="kit-row-text">
+              <span class="kit-row-title">{hairRemovalAreaName(area)}</span>
+              <span class="kit-row-sub">
+                {days === null ? m.hair_removal_area_never_used() : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
+              </span>
             </span>
-          </span>
-        </div>
-      {/each}
-    </div>
+          </div>
+        {/each}
+      </ListCard>
 
-    <div class="list-group">
-      {#each [...sessions].reverse() as session (session.id)}
-        <button
-          class="list-row"
-          data-hair-removal-session={session.id}
-          aria-label={m.hair_removal_row_aria({ area: hairRemovalAreaName(session.area), date: dayLabel(session.epochDay) })}
-          onclick={() => openEditor(session)}
-        >
-          <span class="row-text">
-            <span class="row-title">{hairRemovalAreaName(session.area)}</span>
-            <span class="row-subtitle">
-              {dayLabel(session.epochDay)} · {hairRemovalMethodName(session.method)} · {severityName(session.painRating)}
-            </span>
-          </span>
-          <Icon name="pencil" size={18} />
-        </button>
-      {/each}
+      <SectionHeading text={m.hair_removal()} />
+      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}>
+        {#each [...sessions].reverse() as session (session.id)}
+          <ListRow
+            key={session.id}
+            icon="shuffle"
+            title={hairRemovalAreaName(session.area)}
+            subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
+            chevron={false}
+            onclick={() => openEditor(session)}
+          />
+        {/each}
+      </ListCard>
     </div>
   {:else}
-    <EmptyState title={m.hair_removal_empty_title()} text={m.hair_removal_empty_body()}>
-      {#snippet action()}
-        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.hair_removal_empty_action()}</span></button>
-      {/snippet}
-    </EmptyState>
+    <div in:crossfade>
+      <Notice
+        icon="shuffle"
+        key="hair-removal-empty"
+        role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}
+        title={m.hair_removal_empty_title()}
+        text={m.hair_removal_empty_body()}
+        action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => openEditor(null) }}
+      />
+    </div>
   {/if}
 
   <Sheet
@@ -229,7 +245,7 @@
         />
       </div>
 
-      <SectionTitle text={m.hair_removal_photo_section_title()} />
+      <SectionHeading text={m.hair_removal_photo_section_title()} />
       {#if !editor.id}
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.hair_removal_photo_hint()}</p>
       {:else}
@@ -245,18 +261,31 @@
         {#if photosQuery.loading}
           <Skeleton variant="line" count={1} />
         {:else if photos.length}
-          <div class="list-group" style="margin-bottom:var(--space-3)">
-            {#each photos as p (p.id)}
-              <div class="list-row" data-hair-removal-photo={p.id}>
-                <PhotoThumb photo={p} size={48} />
-                <button class="icon-btn" aria-label={m.hair_removal_photo_delete_sheet()} onclick={() => (photoDeleteTarget = p)}>
-                  <Icon name="trash" size={18} />
-                </button>
-              </div>
-            {/each}
+          <div style="margin-bottom:var(--space-3)">
+            <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}>
+              {#each photos as p (p.id)}
+                <div class="kit-row is-static" data-hair-removal-photo={p.id}>
+                  <PhotoThumb photo={p} size={48} />
+                  <span class="kit-row-text"></span>
+                  <button
+                    class="kit-row-act press"
+                    data-delete-hair-removal-photo={p.id}
+                    aria-label={m.hair_removal_photo_delete_sheet()}
+                    onclick={() => (photoDeleteTarget = p)}
+                  >
+                    <Icon name="trash" size={18} />
+                  </button>
+                </div>
+              {/each}
+            </ListCard>
           </div>
         {:else}
-          <EmptyState title={m.hair_removal_photo_empty_title()} text={m.hair_removal_photo_empty_body()} />
+          <Notice
+            icon="camera"
+            key="hair-removal-photos-empty"
+            title={m.hair_removal_photo_empty_title()}
+            text={m.hair_removal_photo_empty_body()}
+          />
         {/if}
       {/if}
 
