@@ -27,6 +27,7 @@
      section" - from $lib/data/wrappedSections. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
+  import { atGrain, type Grain } from '$lib/charts/grain';
   import { MOOD_RANGE } from '$lib/data/metricRange';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -89,6 +90,21 @@
   const AREA_ROLE = WRAPPED_AREA_ROLE;
 
   const fmtNative = (v: number) => nativeValue(metricKey(prefs), v);
+
+  let plotted = $derived(
+    atGrain(
+      moodTrend.map((p) => ({ x: p.day, y: p.value })),
+      Math.max(1, moodTrend[moodTrend.length - 1].day - moodTrend[0].day + 1)
+    )
+  );
+
+  const GRAIN_WEEK_SPAN = 6;
+  const grainLabel = (grain: Grain) => (point: { x: number }) => {
+    const short = { day: 'numeric', month: 'short' } as const;
+    if (grain === 'day') return fmtDay(point.x, { weekday: 'short', ...short });
+    if (grain === 'month') return fmtDay(point.x, { month: 'long', year: 'numeric' });
+    return `${fmtDay(point.x, short)} - ${fmtDay(point.x + GRAIN_WEEK_SPAN, short)}`;
+  };
 
   let insightRows = $derived(tagInsightRows(insights, metricKey(prefs)));
   let tally_rows = $derived(tallyRows(tally));
@@ -165,7 +181,8 @@
 {#if moodTrend.length >= 2}
   <ChartCard heading={m.wrapped_mood_arc()} kind="wrapped-mood" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <AreaChart
-      points={moodTrend.map((p) => ({ x: p.day, y: p.value }))}
+      points={plotted.points}
+      scrubLabel={grainLabel(plotted.grain)}
       min={MOOD_RANGE.min}
       max={MOOD_RANGE.max}
       from={fmtDay(moodTrend[0].day, { day: 'numeric', month: 'short' })}

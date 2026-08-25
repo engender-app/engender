@@ -29,7 +29,12 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtDuration, fmtMonthName } from '$lib/data/dates';
-  import { calendarDuration, dateInputValueFromEpochDay, todayEpochDay } from '$lib/data/epochDay';
+  import {
+    calendarDuration,
+    dateInputValueFromEpochDay,
+    epochDayFromDateInputValue,
+    todayEpochDay
+  } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
@@ -113,6 +118,15 @@
     d90: () => m.recap_period_90d(),
     ytd: () => m.recap_period_ytd(),
     custom: () => m.recap_period_custom()
+  };
+
+  /* What a date field shows when it holds a date. The row paints it; the
+     input over the row is the press target and opens the platform picker. */
+  const shownDate = (value: string) => {
+    const day = epochDayFromDateInputValue(value);
+    return day === null || !Number.isFinite(day)
+      ? null
+      : fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   let rangePicker = $state(false);
@@ -406,29 +420,34 @@
       </ListCard>
 
       {#if picked.choice === 'custom'}
-        <!-- A `<label for>` each, and no aria-label beside it: the label is
-             the accessible name, and a duplicate that says the same words
-             only gives two places for them to drift apart. -->
+        <!-- The same date rows the compare screen draws: a date is picked,
+             not typed, so it reads as a row of a list with the value in the
+             display face and Android's own picker behind it rather than as a
+             text box (Alicja, 2026-08-25). -->
         <div class="wrapped-range-dates">
-          <label for="wrapped-range-start">{m.recap_custom_start_label()}</label>
-          <input
-            class="input"
-            id="wrapped-range-start"
-            type="date"
-            bind:value={customStart}
-            max={todayInput}
-            onchange={() => chooseRange('custom')}
-          />
-          <label for="wrapped-range-end">{m.recap_custom_end_label()}</label>
-          <input
-            class="input"
-            id="wrapped-range-end"
-            type="date"
-            bind:value={customEnd}
-            min={customStart || undefined}
-            max={todayInput}
-            onchange={() => chooseRange('custom')}
-          />
+          {#each [
+            { id: 'wrapped-range-start', label: m.recap_custom_start_label(), value: customStart, min: undefined },
+            { id: 'wrapped-range-end', label: m.recap_custom_end_label(), value: customEnd, min: customStart || undefined }
+          ] as field (field.id)}
+            {@const shown = shownDate(field.value)}
+            <div class="date-row">
+              <label class="date-row-label" for={field.id}>{field.label}</label>
+              <span class="date-row-value" class:is-empty={!shown}>{shown ?? field.label}</span>
+              <input
+                id={field.id}
+                type="date"
+                value={field.value}
+                min={field.min}
+                max={todayInput}
+                oninput={(event) => {
+                  const next = (event.currentTarget as HTMLInputElement).value;
+                  if (field.id === 'wrapped-range-start') customStart = next;
+                  else customEnd = next;
+                }}
+                onchange={() => chooseRange('custom')}
+              />
+            </div>
+          {/each}
         </div>
       {/if}
     </div>

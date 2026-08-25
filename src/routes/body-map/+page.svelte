@@ -19,6 +19,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { atGrain, type Grain } from '$lib/charts/grain';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -52,7 +53,19 @@
   let dysphoria = $derived(dysphoriaQuery.value ?? []);
   let euphoria = $derived(euphoriaQuery.value ?? []);
 
-  const points = (series: { day: number; value: number }[]) => series.map((p) => ({ x: p.day, y: p.value }));
+  let plottedDysphoria = $derived(atGrain(dysphoria.map((p) => ({ x: p.day, y: p.value })), range));
+  let plottedEuphoria = $derived(atGrain(euphoria.map((p) => ({ x: p.day, y: p.value })), range));
+
+  /* The chart fits the card, so what changes with the range is the grain
+     ($lib/charts/grain): 30 days day by day, a year week by week. */
+  const GRAIN_WEEK_SPAN = 6;
+  const grainLabel = (grain: Grain) => (point: { x: number }) => {
+    const short = { day: 'numeric', month: 'short' } as const;
+    if (grain === 'day') return fmtDay(point.x, { weekday: 'short', ...short });
+    if (grain === 'month') return fmtDay(point.x, { month: 'long', year: 'numeric' });
+    return `${fmtDay(point.x, short)} - ${fmtDay(point.x + GRAIN_WEEK_SPAN, short)}`;
+  };
+
   let rangeEnds = $derived({
     from: fmtDay(from, { day: 'numeric', month: 'short' }),
     to: fmtDay(today, { day: 'numeric', month: 'short' })
@@ -80,6 +93,8 @@
       options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
       value={String(range)}
       onChange={(v) => (range = Number(v))}
+      compact
+      key="body-map-range"
     />
 
     {#if dysphoriaQuery.loading || euphoriaQuery.loading}
@@ -91,7 +106,8 @@
         role={roleAt(activeFlag.roles, 0)}
       >
         <AreaChart
-          points={points(dysphoria)}
+          scrubLabel={grainLabel(plottedDysphoria.grain)}
+          points={plottedDysphoria.points}
           min={BODY_REGION_INTENSITY_MIN}
           max={BODY_REGION_INTENSITY_MAX}
           from={rangeEnds.from}
@@ -106,7 +122,8 @@
 
       <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={roleAt(activeFlag.roles, 0)}>
         <AreaChart
-          points={points(euphoria)}
+          scrubLabel={grainLabel(plottedEuphoria.grain)}
+          points={plottedEuphoria.points}
           min={BODY_REGION_INTENSITY_MIN}
           max={BODY_REGION_INTENSITY_MAX}
           from={rangeEnds.from}
