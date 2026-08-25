@@ -165,6 +165,7 @@
         {#each [...sessions].reverse() as session (session.id)}
           <ListRow
             key={session.id}
+            data-hair-removal-session={session.id}
             icon="shuffle"
             title={hairRemovalAreaName(session.area)}
             subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}

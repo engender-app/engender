@@ -144,6 +144,7 @@
         {#each [...events].reverse() as event (event.id)}
           <ListRow
             key={event.id}
+            data-cycle-event={event.id}
             icon="calendar"
             title={cycleEventKindName(event.kind)}
             subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}

@@ -523,7 +523,10 @@ try {
 /* 6c. lab result CRUD and per-analyte chart */
 try {
   await fresh('/settings/labs');
-  if (!(await page.locator('[data-line-chart]').count())) throw new Error('the selected analyte has no trend chart');
+  /* The kit's area chart, not LineChart: phase 5 UX ticket 25 moved the four
+     charted feature screens onto the chart kit, and the handle moved with
+     the component the way ticket 24's list-row handles did. */
+  if (!(await page.locator('[data-chart="area"]').count())) throw new Error('the selected analyte has no trend chart');
 
   await page.locator('[data-add]').click();
   await page.locator('#lab-analyte').selectOption('custom');
@@ -585,7 +588,7 @@ try {
   if (JSON.stringify(units) !== JSON.stringify(['pg/mL', 'pmol/L'])) throw new Error('series units: ' + JSON.stringify(units));
   /* One line, not two: the pmol/L series has a single result so far, and the
      pg/mL line still runs over its own five. */
-  if ((await page.locator('[data-line-chart]').count()) !== 1) throw new Error('the new unit was drawn into an existing line');
+  if ((await page.locator('[data-chart="area"]').count()) !== 1) throw new Error('the new unit was drawn into an existing line');
   if ((await page.locator('[data-lab-result]').count()) !== resultsBefore + 1) throw new Error('the list dropped a result');
 
   await page.locator('[data-lab-result]').first().click();
@@ -653,6 +656,11 @@ try {
 /* 9. milestone shuffle */
 try {
   await fresh('/settings/milestones');
+  /* The templates are a sheet off the header now (phase 5 UX ticket 25):
+     the screen opened on a picker for a fifteenth milestone rather than on
+     the milestones. The shuffle went with them. */
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('[data-shuffle]');
   const first = await page.locator('[data-template]').allTextContents();
   let changed = false;
   for (let i = 0; i < 6 && !changed; i++) {

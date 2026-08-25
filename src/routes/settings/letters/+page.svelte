@@ -91,6 +91,7 @@
           {@const sealed = isLetterSealed(letter, today)}
           <ListRow
             key={letter.id}
+            data-letter={letter.id}
             icon={sealed ? 'lock' : 'book'}
             title={sealed ? m.letters_sealed_title() : dayLabel(letter.epochDay)}
             subtitle={sealed

@@ -232,6 +232,7 @@
         {#each [...measurements].reverse() as r (r.id)}
           <ListRow
             key={r.id}
+            data-measurement={r.id}
             icon="ruler"
             title={`${r.value} ${r.unit}`}
             subtitle={fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
