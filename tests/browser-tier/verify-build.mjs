@@ -333,7 +333,9 @@ try {
      builds under a GENDER_DIARY_VERSION nobody derives and insists on seeing
      exactly that string - and the rules live in tests/app-version.test.ts. */
   await cold.locator('a[href="/settings"]:visible').first().click();
-  await cold.locator('[data-about-open]').click();
+  /* Phase 5 ticket 24: the About row is a ListRow now, whose own handle is
+     data-list-row="about" rather than a settings-specific attribute. */
+  await cold.locator('[data-list-row="about"]').click();
   const shownVersion = (await cold.locator('[data-app-version]').innerText()).trim();
   const builtVersion = appVersion();
   if (shownVersion === builtVersion) ok(`the About screen shows the version this build resolved (${builtVersion})`);
