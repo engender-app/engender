@@ -136,12 +136,11 @@
            which is the day card's own bar. -->
       <section id="on-this-day-{d.key}" data-lookback={d.key}>
         <SectionHeading text={d.title} />
-        <DayCard
-          key={String(d.epochDay)}
-          role={roleAt(activeFlag.roles, i)}
-          date={d.date}
-          aside={d.entries.length > 1 ? m.entry_day_count({ count: String(d.entries.length) }) : undefined}
-        >
+        <!-- No count on the bar. Spec 05 is explicit that "an entry count
+             above a list of that many entries is noise", and it is the same
+             argument that took the three stat tiles off this screen - the
+             entries are right there to be counted. -->
+        <DayCard key={String(d.epochDay)} role={roleAt(activeFlag.roles, i)} date={d.date}>
           {#each d.entries as entry (entry.id)}
             <!-- It opens, the same way an entry opens everywhere else it is
                  drawn. A day you are being shown and cannot read back is a

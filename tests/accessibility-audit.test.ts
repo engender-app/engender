@@ -88,12 +88,20 @@ describe('phase 2 accessibility seams', () => {
 
   /* The range picker this used to check belonged to `/recap`, which phase 5
      UX ticket 23 deleted (spec 07). The capability moved rather than went,
-     so the check follows it onto wrapped: the two date fields still carry
-     their own labels, and the sheet holding them is named. */
+     so the check follows it onto wrapped: both date fields are named, and
+     the sheet holding them is too.
+
+     Named by a `<label for>` rather than an aria-label. The recap screen
+     carried both, which is one accessible name written twice; what has to
+     hold is that each input has a label bound to its own id. */
   it('keeps the wrapped range picker and its two date fields labelled', () => {
     const wrapped = read('src/routes/wrapped/[cadence]/+page.svelte');
-    expect(wrapped).toContain('aria-label={m.recap_custom_start_label()}');
-    expect(wrapped).toContain('aria-label={m.recap_custom_end_label()}');
+    for (const id of ['wrapped-range-start', 'wrapped-range-end']) {
+      expect(wrapped, id).toContain(`<label for="${id}">`);
+      expect(wrapped, id).toContain(`id="${id}"`);
+    }
+    expect(wrapped).toContain('m.recap_custom_start_label()');
+    expect(wrapped).toContain('m.recap_custom_end_label()');
     expect(wrapped).toContain('title={m.wrapped_cadence_group()}');
   });
 });

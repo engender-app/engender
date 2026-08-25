@@ -392,8 +392,8 @@ try {
      dropped, because "nothing links to the deleted route" is the half of
      that spec a unit test cannot see. */
   await fresh('/wrapped/range');
-  await page.waitForSelector('[data-list-row="wrapped-range"]');
-  await page.locator('[data-list-row="wrapped-range"]').click();
+  await page.waitForSelector('[data-list-row="range-picker"]');
+  await page.locator('[data-list-row="range-picker"]').click();
   await page.waitForSelector('[data-list-row="range-d90"]');
   await page.locator('[data-list-row="range-d90"]').click();
   await page.waitForFunction(() => location.search.includes('named=d90'));

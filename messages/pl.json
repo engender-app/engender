@@ -103,8 +103,6 @@
     }
   ],
   "streak_row": "dni z rzędu",
-  "streak_with_entry": "dni z rzędu z wpisem",
-  "streak_sub": "cicha regularność wygrywa z perfekcją",
   "backup_stale_title": "Ostatnia kopia zapasowa: {days} dni temu",
   "backup_stale_body": "Twój dziennik istnieje tylko na tym urządzeniu.",
   "backup_now": "Zrób kopię teraz",
@@ -115,7 +113,6 @@
   "home_milestones_empty_body": "Dodaj datę coming outu, początku terapii albo coś innego, co warto zapamiętać.",
   "colour_days_by": "Koloruj dni według",
   "metric_note": "Ten sam wybór koloruje mapę w kalendarzu.",
-  "change_metric": "zmień",
   "prev_month": "Poprzedni miesiąc",
   "next_month": "Następny miesiąc",
   "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dni z kilkoma wpisami pokazują średnią. Dotknij wypełnionego dnia, żeby zobaczyć wpisy.",
@@ -186,16 +183,12 @@
   "unstar_entry": "Usuń oznaczenie wpisu",
   "star_photo": "Oznacz zdjęcie gwiazdką",
   "unstar_photo": "Usuń oznaczenie zdjęcia",
-  "stats_title": "Statystyki · ostatnie {days} dni",
   "range_days": "{days} dni",
   "not_enough_data": "Za mało danych w tym zakresie.",
-  "avg_label": "śr. {value}",
   "tag_insights": "Tagi w liczbach",
-  "insights_sub": "śr. {metric} z tagiem i bez",
   "insights_note": "Obserwacje, nie wnioski. Tagi z mniej niż 3 wpisami w zakresie są ukryte.",
   "insights_empty": "Za mało otagowanych wpisów w tym zakresie.",
   "correlation_cards_title": "Co pojawia się razem",
-  "correlation_cards_sub": "Wzorce w twoich danych, nie wnioski",
   "correlation_cards_empty": "Na razie zbyt mało wpisów, żeby pokazać wzorzec.",
   "correlation_card_dose_day": "dzień z dawką",
   "correlation_card_tends": "częściej pojawia się razem z {metric}, tego samego dnia",
@@ -213,12 +206,8 @@
   "custom_interval_chart_aria": "Nastrój podzielony na odstępy {days}-dniowe, punkty: {count}, od dnia {from} do dnia {to}.",
   "values_title": "{name}: wartości",
   "avg_of": "śr. z {count}",
-  "recap": "Podsumowanie",
-  "recap_your": "Twój {month}",
-  "recap_sub": "spojrzenie na miniony miesiąc",
   "body_map_title": "Mapa ciała",
   "body_map_sub": "przebieg dysforii i euforii w jednym miejscu na ciele",
-  "next": "Dalej",
   "back": "Wstecz",
   "done": "Gotowe",
   "settings_appearance": "Wygląd",
@@ -1633,69 +1622,8 @@
   "tl_empty_action": "Dodaj kamień milowy",
   "home_anniv_years": "{name}, {years} temu. Tamten dzień był ważny. Ten też jest.",
   "home_anniv_today": "{name} jest dziś. Ten dzień jest ważny.",
-  "recap_year_title": "Twój {year}",
-  "recap_open_month": "Miesiąc zapisany twoimi słowami.",
-  "recap_open_year": "Rok zapisany twoimi słowami.",
-  "recap_entries_title": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "{count} wpis",
-        "countPlural=few": "Wpisy: {count}",
-        "countPlural=many": "Wpisy: {count}",
-        "countPlural=other": "Wpisy: {count}"
-      }
-    }
-  ],
-  "recap_entries_body": "Wpis po wpisie, raz za razem. W niektóre dni były dwa. Płeć się rusza, a tutaj został ślad tego ruchu.",
-  "recap_entries_quiet_month": "Spokojny miesiąc. Spokój też się liczy.",
-  "recap_entries_quiet_year": "Spokojny rok. Spokój też się liczy.",
-  "recap_mood_title": "Nastrój: {value} na 5",
-  "recap_mood_body_month": "Średnia z miesiąca. To nie ocena, tylko zapis tego, jak było.",
-  "recap_mood_body_year": "Średnia z roku. To nie ocena, tylko zapis tego, jak było.",
-  "recap_mood_none_month": "W tym miesiącu bez zapisanych nastrojów.",
-  "recap_mood_none_year": "W tym roku bez zapisanych nastrojów.",
-  "recap_streak_title": "Najdłuższa seria: {days}",
-  "recap_streak_body": "Najdłuższy ciąg dni z rzędu z jakimś wpisem. Regularność to przysługa dla siebie z przyszłości.",
   "recap_tags_title": "Najczęstsze tagi",
-  "recap_tags_none_month": "W tym miesiącu bez tagów.",
-  "recap_tags_none_year": "W tym roku bez tagów.",
   "recap_tag_count": "{label} ({count})",
-  "recap_ms_title": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "{count} kamień milowy",
-        "countPlural=few": "Kamienie milowe: {count}",
-        "countPlural=many": "Kamienie milowe: {count}",
-        "countPlural=other": "Kamienie milowe: {count}"
-      }
-    }
-  ],
-  "recap_ms_none_month": "W tym miesiącu bez kamieni milowych.",
-  "recap_ms_none_year": "W tym roku bez kamieni milowych.",
-  "recap_scale_title": "{name}: {change}",
-  "recap_scales_title": "Twoje skale",
-  "recap_scale_body_month": "Skala, która ruszyła się najbardziej w tym miesiącu, od pierwszego wpisu do ostatniego. W którąkolwiek stronę poszła, jest twoja.",
-  "recap_scale_body_year": "Skala, która ruszyła się najbardziej w tym roku, od pierwszego wpisu do ostatniego. W którąkolwiek stronę poszła, jest twoja.",
-  "recap_scale_none_month": "W tym miesiącu za mało zapisów na jednej skali, żeby pokazać zmianę.",
-  "recap_scale_none_year": "W tym roku za mało zapisów na jednej skali, żeby pokazać zmianę.",
-  "recap_end_title": "To był {period}",
-  "recap_end_body": "Dzięki, że prowadzisz swój własny zapis. Do zobaczenia jutro.",
-  "recap_year_sub": "Spojrzenie na zapisany rok.",
-  "recap_period_group": "Zakres podsumowania",
   "recap_period_previous_month": "Poprzedni miesiąc",
   "recap_period_previous_year": "Poprzedni rok",
   "recap_period_7d": "Ostatnie 7 dni (zakres bieżący)",
@@ -1708,17 +1636,7 @@
   "recap_custom_range_required": "Wybierz dzień początkowy i końcowy, żeby odczytać ten zakres.",
   "recap_range_title": "Twój zakres: {period}",
   "recap_open_range": "Bieżący zakres zapisany twoimi słowami.",
-  "recap_entries_quiet_range": "Spokojny zakres. Spokój też się liczy.",
-  "recap_mood_body_range": "Średnia z tego zakresu. To nie ocena, tylko zapis tego, jak było.",
-  "recap_mood_none_range": "W tym zakresie bez zapisanych nastrojów.",
   "recap_tags_none_range": "W tym zakresie bez tagów.",
-  "recap_ms_none_range": "W tym zakresie bez kamieni milowych.",
-  "recap_scale_body_range": "Skala, która ruszyła się najbardziej w tym zakresie, od pierwszego wpisu do ostatniego. W którąkolwiek stronę poszła, jest twoja.",
-  "recap_scale_none_range": "W tym zakresie za mało zapisów na jednej skali, żeby pokazać zmianę.",
-  "recap_trend_title": "Trend nastroju",
-  "recap_change_summary_title": "Podsumowanie zmiany",
-  "recap_change_summary_body": "Od {from} do {to} ({change}) w tym zakresie.",
-  "recap_change_summary_not_enough": "W tym zakresie jest jeszcze za mało punktów nastroju, żeby podsumować zmianę.",
   "compare_title": "Porównanie okresów",
   "compare_sub": "dwa zakresy dat obok siebie",
   "compare_period_a_label": "Okres A",

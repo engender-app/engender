@@ -189,8 +189,12 @@
     return { misgendered, correctlyGendered };
   });
 
+  /* Gated on the range as well as the preference, like every read above it:
+     the unknown-cadence and half-finished-range states draw no figures, and
+     a whole-history streak query behind a screen that shows none is the
+     thing the branch exists to prevent. */
   let bestEverQuery = liveQuery(['entry'], (j) =>
-    on ? j.stats.bestStreakEver(today) : Promise.resolve(0)
+    on && range ? j.stats.bestStreakEver(today) : Promise.resolve(0)
   );
 
   let insights = $derived(nameTagInsights(wrappedTagInsights(insightsQuery.value ?? []) ?? []));
@@ -314,7 +318,7 @@
            are a sheet and this row is the visible record of what is on. -->
       <ListCard>
         <ListRow
-          key="wrapped-range"
+          key="range-picker"
           icon="curve"
           title={RANGE_LABEL[picked.choice]()}
           subtitle={picked.range
@@ -381,20 +385,30 @@
     <div class="stack-3">
       <ListCard>
         {#each WRAPPED_RANGE_CHOICES as choice (choice)}
+          {@const goesToCadence = wrappedRangeCadence(choice) !== null}
+          <!-- Two of the seven go to a screen of their own rather than
+               setting this one's range, so they carry a chevron and never a
+               check: a tick on a row that navigates away is a state the
+               screen can never be in. -->
           <ListRow
             key={`range-${choice}`}
             title={RANGE_LABEL[choice]()}
-            chevron={false}
+            chevron={goesToCadence}
             onclick={() => chooseRange(choice)}
           >
             {#snippet trailing()}
-              {#if isRange && picked.choice === choice}<Icon name="check" size={20} />{/if}
+              {#if !goesToCadence && isRange && picked.choice === choice}
+                <Icon name="check" size={20} />
+              {/if}
             {/snippet}
           </ListRow>
         {/each}
       </ListCard>
 
       {#if picked.choice === 'custom'}
+        <!-- A `<label for>` each, and no aria-label beside it: the label is
+             the accessible name, and a duplicate that says the same words
+             only gives two places for them to drift apart. -->
         <div class="wrapped-range-dates">
           <label for="wrapped-range-start">{m.recap_custom_start_label()}</label>
           <input
@@ -403,7 +417,6 @@
             type="date"
             bind:value={customStart}
             max={todayInput}
-            aria-label={m.recap_custom_start_label()}
             onchange={() => chooseRange('custom')}
           />
           <label for="wrapped-range-end">{m.recap_custom_end_label()}</label>
@@ -414,7 +427,6 @@
             bind:value={customEnd}
             min={customStart || undefined}
             max={todayInput}
-            aria-label={m.recap_custom_end_label()}
             onchange={() => chooseRange('custom')}
           />
         </div>

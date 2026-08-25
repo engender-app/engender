@@ -27,8 +27,16 @@
      section" - from $lib/data/wrappedSections. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
+  import { MOOD_RANGE } from '$lib/data/metricRange';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import {
+    WRAPPED_AREA_ROLE,
+    nativeValue,
+    signedValue,
+    tagInsightRows,
+    tallyRows
+  } from '$lib/data/wrappedDisplay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
@@ -37,7 +45,7 @@
   import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
   import AreaChart from './kit/AreaChart.svelte';
-  import BarRows, { type BarRow } from './kit/BarRows.svelte';
+  import BarRows from './kit/BarRows.svelte';
   import ChartCard from './kit/ChartCard.svelte';
   import ListCard from './kit/ListCard.svelte';
   import SectionHeading from './kit/SectionHeading.svelte';
@@ -74,63 +82,16 @@
     streaks?: WrappedStreaks | null;
   } = $props();
 
-  /* Which stripe each area takes (DIRECTION.md, "flag colour reaches the
-     whole app, categorically"). Every chart shares role 0, which is the
-     brief's own exception rather than a shortcut: "colour that carries a
-     value takes role 0", because roles run a flag's colours before its
-     shades and index 0 is the only one guaranteed to be a colour on all 8
-     palettes. Taken in reading order instead, a chart landed on trans's
-     white band, and white bars on a dark card read as a set of disabled
-     bars rather than as the flag. The lists take the stripes after it, where
-     an achromatic band costs nothing - a tinted disc and a row wash carry no
-     reading. The reason is written out in full on the Stats hub. */
-  const AREA_ROLE = { charts: 0, figures: 1, milestones: 2 };
+  /* Which stripe each area takes, and the two ways this app writes a
+     number, both from $lib/data/wrappedDisplay - shared with the year so the
+     two presentations cannot drift into colouring or formatting the same
+     reading differently. */
+  const AREA_ROLE = WRAPPED_AREA_ROLE;
 
-  const MOOD_MIN = 1;
-  const MOOD_MAX = 5;
+  const fmtNative = (v: number) => nativeValue(metricKey(prefs), v);
 
-  const fmtNative = (v: number) => (metricKey(prefs) === 'mood' ? v.toFixed(1) : String(Math.round(v)));
-  const signed = (v: number, fmt: (n: number) => string) => `${v >= 0 ? '+' : '−'}${fmt(Math.abs(v))}`;
-
-  /* Bars from the size of the movement and never from its direction: the two
-     ends of a scale are not better and worse, so a tag that went with lower
-     days draws the same length as one that went with higher and says which
-     way in its own number. */
-  let insightRows = $derived<BarRow[]>(
-    insights.map((insight) => ({
-      key: insight.id,
-      name: insight.label,
-      note: m.insight_row_sub({
-        count: String(insight.count),
-        with: fmtNative(insight.withAvg),
-        without: fmtNative(insight.withoutAvg)
-      }),
-      value: signed(insight.delta, fmtNative),
-      amount: Math.abs(insight.delta)
-    }))
-  );
-
-  /* Two counts, side by side, with no ratio between them and no direction
-     named: the two counters never combine into a score (stats.ts, ticket
-     10), and a retrospective is where that rule is most tempting to break. */
-  let tallyRows = $derived<BarRow[]>(
-    tally
-      ? [
-          {
-            key: 'misgendered',
-            name: m.tally_misgendered(),
-            value: String(tally.misgendered),
-            amount: tally.misgendered
-          },
-          {
-            key: 'correctly_gendered',
-            name: m.tally_correctly_gendered(),
-            value: String(tally.correctlyGendered),
-            amount: tally.correctlyGendered
-          }
-        ]
-      : []
-  );
+  let insightRows = $derived(tagInsightRows(insights, metricKey(prefs)));
+  let tally_rows = $derived(tallyRows(tally));
 </script>
 
 <header class="wrapped-head">
@@ -192,7 +153,7 @@
         </span>
       </span>
       <span class="kit-row-trail">
-        <b class="wrapped-figure-value">{signed(dimChange.change, (n) => String(Math.round(n)))}</b>
+        <b class="wrapped-figure-value">{signedValue(dimChange.change, (n) => String(Math.round(n)))}</b>
       </span>
     </div>
   {/if}
@@ -205,8 +166,8 @@
   <ChartCard heading={m.wrapped_mood_arc()} kind="wrapped-mood" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <AreaChart
       points={moodTrend.map((p) => ({ x: p.day, y: p.value }))}
-      min={MOOD_MIN}
-      max={MOOD_MAX}
+      min={MOOD_RANGE.min}
+      max={MOOD_RANGE.max}
       from={fmtDay(moodTrend[0].day, { day: 'numeric', month: 'short' })}
       to={fmtDay(moodTrend[moodTrend.length - 1].day, { day: 'numeric', month: 'short' })}
       formatValue={(v) => v.toFixed(1)}
@@ -222,9 +183,9 @@
   <p class="wrapped-note">{m.insights_note()}</p>
 {/if}
 
-{#if tallyRows.length}
+{#if tally_rows.length}
   <ChartCard heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-    <BarRows rows={tallyRows} />
+    <BarRows rows={tally_rows} />
   </ChartCard>
 {/if}
 

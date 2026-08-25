@@ -74,11 +74,13 @@ describe('the best streak against the best ever', () => {
   });
 
   it('pairs the period\'s own best with the history\'s', () => {
-    expect(wrappedStreaks({ bestStreak: 6 }, 31)).toEqual({ inPeriod: 6, ever: 31, isBestEver: false });
+    expect(wrappedStreaks({ bestStreak: 6 }, 31)).toEqual({ inPeriod: 6, ever: 31 });
   });
 
-  it('marks the period that set the record', () => {
-    expect(wrappedStreaks({ bestStreak: 31 }, 31)).toEqual({ inPeriod: 31, ever: 31, isBestEver: true });
+  /* The two figures are drawn as a pair and never compared: which is larger
+     is visible, and the app saying so would be the verdict it never gives. */
+  it('says nothing about which of the two is larger', () => {
+    expect(wrappedStreaks({ bestStreak: 31 }, 31)).toEqual({ inPeriod: 31, ever: 31 });
   });
 
   /* The ever figure is read with today as its anchor and excludes future
@@ -86,6 +88,6 @@ describe('the best streak against the best ever', () => {
      history it is part of. Reporting a best-ever smaller than the number
      beside it would read as an error rather than as an edge. */
   it('never reports a best ever shorter than the period beside it', () => {
-    expect(wrappedStreaks({ bestStreak: 9 }, 4)).toEqual({ inPeriod: 9, ever: 9, isBestEver: true });
+    expect(wrappedStreaks({ bestStreak: 9 }, 4)).toEqual({ inPeriod: 9, ever: 9 });
   });
 });

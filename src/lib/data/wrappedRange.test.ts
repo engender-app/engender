@@ -25,8 +25,10 @@ describe('the named ranges wrapped absorbed from recap', () => {
     expect(wrappedRangeCadence('prevYear')).toBe('year');
     for (const choice of ['d7', 'd30', 'd90', 'ytd', 'custom'] as const) {
       expect(wrappedRangeCadence(choice), choice).toBeNull();
-      expect(resolveWrappedRange('prevMonth', TODAY)).toBeNull();
     }
+    /* And neither resolves to a range, because a navigation is not one. */
+    expect(resolveWrappedRange('prevMonth', TODAY)).toBeNull();
+    expect(resolveWrappedRange('prevYear', TODAY)).toBeNull();
   });
 
   it('counts a rolling window inclusively, ending today', () => {

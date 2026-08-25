@@ -36,7 +36,8 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { isPausedOn } from '$lib/data/journalingPause';
-  import { metricStandings, moodDistribution, seriesAverage } from '$lib/data/statsCharts';
+  import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
+  import { nativeValue, tagInsightRows } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -46,7 +47,8 @@
   import EntryCard from '$lib/components/EntryCard.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
-  import BarRows, { type BarRow } from '$lib/components/kit/BarRows.svelte';
+  import BarRows from '$lib/components/kit/BarRows.svelte';
+  import type { BarRow } from '$lib/components/kit/barRow';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Distribution from '$lib/components/kit/Distribution.svelte';
@@ -137,13 +139,11 @@
   let valueSheet = $state(false);
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
-  // Native units both ways (ADR-0012): mood arrives on 1 to 5 and only
-  // needs a decimal place, a dimension arrives in its own range. Keyed off a
-  // metric key rather than hard-wired to the selected preference, so a
+  // Native units both ways (ADR-0012), from $lib/data/wrappedDisplay so this
+  // screen and the two wrapped presentations write a number the same way.
+  // Keyed off a metric key rather than the selected preference, so a
   // correlation card spanning several metrics can call it too.
-  const fmtNativeValue = (metric: string, v: number) => (metric === 'mood' ? v.toFixed(1) : String(Math.round(v)));
-  const fmtMetric = (v: number) => fmtNativeValue(metricKey(prefs), v);
-  const signed = (metric: string, v: number) => `${v >= 0 ? '+' : '−'}${fmtNativeValue(metric, Math.abs(v))}`;
+  const fmtNativeValue = nativeValue;
 
   /* Where each scale sat over the period. The bar's length is where the
      average lands inside that metric's own range and the number beside it is
@@ -159,7 +159,11 @@
         key: standing.key,
         name: metric?.name ?? standing.key,
         note: m.n_days({ n: standing.days }),
-        value: standing.value === null ? '—' : fmtNativeValue(standing.key, standing.value),
+        /* A scale nothing was logged against says so in its note ("0
+           days") and leaves the value empty. A dash here would be a glyph
+           standing in for a sentence, and docs/ui-copy.md has no dashes in
+           it. */
+        value: standing.value === null ? '' : fmtNativeValue(standing.key, standing.value),
         amount: standing.share
       };
     })
@@ -169,22 +173,21 @@
     moodDistribution(seriesFor('mood')).map((step) => ({ ...step, name: moodName(step.step) }))
   );
 
-  let insightRows = $derived<BarRow[]>(
-    insights.slice(0, INSIGHT_BARS).map((insight) => ({
-      key: insight.id,
-      name: vocabulary.tag(insight.id)?.label ?? insight.id,
-      note: m.insight_row_sub({
-        count: String(insight.count),
-        with: fmtMetric(insight.withAvg),
-        without: fmtMetric(insight.withoutAvg)
-      }),
-      value: signed(metricKey(prefs), insight.withAvg - insight.withoutAvg),
-      /* Length from the size of the movement, not from its direction: the
-         two ends of a scale are not better and worse, so a tag that went
-         with lower days draws the same length as one that went with higher
-         and says which way in its own number. */
-      amount: Math.abs(insight.withAvg - insight.withoutAvg)
-    }))
+  /* The same rows wrapped draws, from the same module: length from the size
+     of the movement and never from its direction, since the two ends of a
+     scale are not better and worse. */
+  let insightRows = $derived(
+    tagInsightRows(
+      insights.slice(0, INSIGHT_BARS).map((insight) => ({
+        id: insight.id,
+        label: vocabulary.tag(insight.id)?.label ?? insight.id,
+        count: insight.count,
+        withAvg: insight.withAvg,
+        withoutAvg: insight.withoutAvg,
+        delta: insight.withAvg - insight.withoutAvg
+      })),
+      metricKey(prefs)
+    )
   );
 
   let insightEntriesQuery = liveQuery(['entry', 'tag'], (j) => {

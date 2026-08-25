@@ -1028,9 +1028,10 @@ a.kit-entry:active {
 .kit-bar.is-open {
   display: block;
   width: 100%;
-  margin: 0;
+  /* Out to the card's own padding and back, so the press fill covers the
+     whole reading rather than stopping short of the bar's ends. */
+  margin: 0 calc(var(--space-2) * -1);
   padding: var(--space-2);
-  margin-inline: calc(var(--space-2) * -1);
   border: 0;
   border-radius: 10px;
   background: none;
@@ -1176,8 +1177,11 @@ a.kit-entry:active {
   /* The set rises as it arrives, left to right, on the horizontal bars' own
      entrance and stagger - a distribution is a set of bars, and one of the
      two rising while the other appeared would read as an oversight in
-     whichever was still. Scale rather than height, so only a transform
-     animates; the keyframe ends where this rule already rests. */
+     whichever was still. The entrance scales rather than growing, so the
+     keyframe touches only a transform and ends where this rule already
+     rests. The height transition below is a different movement and predates
+     it: it carries a column from one dataset's value to the next, which is
+     the same job the area chart's re-tween does. */
   transform: scaleY(1);
   transform-origin: bottom center;
   animation: kit-dist-in var(--dur-slow) var(--ease-out) both;

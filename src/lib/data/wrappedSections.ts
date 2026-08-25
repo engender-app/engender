@@ -96,10 +96,6 @@ export interface WrappedStreaks {
   inPeriod: number;
   /** The longest run in the journal's whole history. */
   ever: number;
-  /** Whether the period's own best is also the best there has ever been.
-      Stated rather than left to the screen to compare, so the two numbers
-      cannot be drawn as a pair that quietly says one beat the other. */
-  isBestEver: boolean;
 }
 
 /** The period's best streak against the best ever, or null with nothing to
@@ -111,9 +107,5 @@ export interface WrappedStreaks {
     about this period. */
 export function wrappedStreaks(recap: Pick<Recap, 'bestStreak'>, bestEver: number): WrappedStreaks | null {
   if (recap.bestStreak <= 0) return null;
-  return {
-    inPeriod: recap.bestStreak,
-    ever: Math.max(bestEver, recap.bestStreak),
-    isBestEver: recap.bestStreak >= bestEver
-  };
+  return { inPeriod: recap.bestStreak, ever: Math.max(bestEver, recap.bestStreak) };
 }
