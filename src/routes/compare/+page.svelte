@@ -100,61 +100,84 @@
     periodB ? sideStats(j, periodB) : Promise.resolve(null)
   );
 
-  const fmtMood = (v: number | null) => (v == null ? '—' : v.toFixed(1));
-  const fmtDimension = (v: number | null) => (v == null ? '—' : String(Math.round(v)));
+  /* An empty cell says nothing rather than drawing a glyph that stands in
+     for a sentence: docs/ui-copy.md has no dashes in it. */
+  const fmtMood = (v: number | null) => (v == null ? '' : v.toFixed(1));
+  const fmtDimension = (v: number | null) => (v == null ? '' : String(Math.round(v)));
+
+  /* What the field shows when it has a date, and what it says when it does
+     not. The value is painted by the row; the input over it is the press
+     target and the thing that opens Android's own picker. */
+  const shownDate = (value: string) => {
+    const day = epochDayFromDateInputValue(value);
+    return day === null || !Number.isFinite(day) ? null : fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' });
+  };
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.compare_title()} subtitle={m.compare_sub()} screen="compare" back="/stats" />
 
-  <SectionHeading text={m.compare_period_a_label()} />
-  <div class="compare-picker" style={roleStyle(roleAt(activeFlag.roles, 0))}>
-    <div class="compare-picker-grid">
-      <label for="compare-a-start">{m.recap_custom_start_label()}</label>
+  <!-- One snippet for the four fields. A date is a row of a list here, not
+       a text box: the label on the left, the date in the display face on the
+       right, and a native `<input type="date">` stretched invisibly over the
+       whole row as the press target. Android's own picker is what opens,
+       which knows the reader's locale and their week start better than
+       anything drawn here would. -->
+  {#snippet dateRow(id: string, label: string, name: string, value: string, bind: (v: string) => void, min: string | undefined)}
+    {@const shown = shownDate(value)}
+    <div class="date-row">
+      <label class="date-row-label" for={id}>{label}</label>
+      <span class="date-row-value" class:is-empty={!shown}>{shown ?? label}</span>
       <input
-        class="input"
-        id="compare-a-start"
+        {id}
         type="date"
-        bind:value={aStart}
+        {value}
+        {min}
         max={todayInput}
-        aria-label={m.compare_start_label({ period: m.compare_period_a_label() })}
-      />
-      <label for="compare-a-end">{m.recap_custom_end_label()}</label>
-      <input
-        class="input"
-        id="compare-a-end"
-        type="date"
-        bind:value={aEnd}
-        min={aStart || undefined}
-        max={todayInput}
-        aria-label={m.compare_end_label({ period: m.compare_period_a_label() })}
+        aria-label={name}
+        oninput={(event) => bind((event.currentTarget as HTMLInputElement).value)}
       />
     </div>
+  {/snippet}
+
+  <SectionHeading text={m.compare_period_a_label()} />
+  <div class="compare-picker" style={roleStyle(roleAt(activeFlag.roles, 0))}>
+    {@render dateRow(
+      'compare-a-start',
+      m.recap_custom_start_label(),
+      m.compare_start_label({ period: m.compare_period_a_label() }),
+      aStart,
+      (v) => (aStart = v),
+      undefined
+    )}
+    {@render dateRow(
+      'compare-a-end',
+      m.recap_custom_end_label(),
+      m.compare_end_label({ period: m.compare_period_a_label() }),
+      aEnd,
+      (v) => (aEnd = v),
+      aStart || undefined
+    )}
   </div>
 
   <SectionHeading text={m.compare_period_b_label()} />
   <div class="compare-picker" style={roleStyle(roleAt(activeFlag.roles, 1))}>
-    <div class="compare-picker-grid">
-      <label for="compare-b-start">{m.recap_custom_start_label()}</label>
-      <input
-        class="input"
-        id="compare-b-start"
-        type="date"
-        bind:value={bStart}
-        max={todayInput}
-        aria-label={m.compare_start_label({ period: m.compare_period_b_label() })}
-      />
-      <label for="compare-b-end">{m.recap_custom_end_label()}</label>
-      <input
-        class="input"
-        id="compare-b-end"
-        type="date"
-        bind:value={bEnd}
-        min={bStart || undefined}
-        max={todayInput}
-        aria-label={m.compare_end_label({ period: m.compare_period_b_label() })}
-      />
-    </div>
+    {@render dateRow(
+      'compare-b-start',
+      m.recap_custom_start_label(),
+      m.compare_start_label({ period: m.compare_period_b_label() }),
+      bStart,
+      (v) => (bStart = v),
+      undefined
+    )}
+    {@render dateRow(
+      'compare-b-end',
+      m.recap_custom_end_label(),
+      m.compare_end_label({ period: m.compare_period_b_label() }),
+      bEnd,
+      (v) => (bEnd = v),
+      bStart || undefined
+    )}
   </div>
 
   {#if !periodA || !periodB}

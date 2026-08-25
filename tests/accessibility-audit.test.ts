@@ -96,10 +96,14 @@ describe('phase 2 accessibility seams', () => {
      hold is that each input has a label bound to its own id. */
   it('keeps the wrapped range picker and its two date fields labelled', () => {
     const wrapped = read('src/routes/wrapped/[cadence]/+page.svelte');
+    /* Both fields come out of one table, so what has to hold is that the
+       table carries both ids and that the label is bound to the field's own
+       one rather than to a literal that could drift from it. */
     for (const id of ['wrapped-range-start', 'wrapped-range-end']) {
-      expect(wrapped, id).toContain(`<label for="${id}">`);
-      expect(wrapped, id).toContain(`id="${id}"`);
+      expect(wrapped, id).toContain(`id: '${id}'`);
     }
+    expect(wrapped).toContain('for={field.id}');
+    expect(wrapped).toContain('id={field.id}');
     expect(wrapped).toContain('m.recap_custom_start_label()');
     expect(wrapped).toContain('m.recap_custom_end_label()');
     expect(wrapped).toContain('title={m.wrapped_cadence_group()}');

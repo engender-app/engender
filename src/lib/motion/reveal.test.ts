@@ -35,6 +35,24 @@ describe('tier 3, the wipe', () => {
     expect(frame(css!, 1)).toBe('clip-path: inset(0 0 0 0)');
   });
 
+  /* Phase 5 UX ticket 23: a wipe that is a surface arriving, rather than one
+     state replacing another, takes the authored duration. At --dur-slow the
+     area chart's first draw read as a flicker rather than as a drawing. */
+  it('takes the authored duration where the wipe is an arrival', () => {
+    expect(wipe(node, { authored: true }).duration).toBe(700);
+    expect(wipe(node).duration).toBe(380);
+  });
+
+  /* Rounded to whole percents the uncovering moved in a hundred visible
+     steps across a 340px card, which reads as a stutter rather than as a
+     sweep. Two decimals is under a tenth of a pixel there, and a round
+     value still writes as a round value. */
+  it('steps finely enough not to stutter, without changing a round frame', () => {
+    const { css } = wipe(node);
+    expect(frame(css!, 0.5)).toMatch(/inset\(0 \d+(\.\d+)?% 0 0\)/);
+    expect(frame(css!, 0)).not.toContain('.00');
+  });
+
   /* The same rule tests/motion-system.test.ts holds every CSS animation to,
      restated for a transition the stylesheet cannot reach: an animation that
      ends anywhere but its element's resting state strands it there. */

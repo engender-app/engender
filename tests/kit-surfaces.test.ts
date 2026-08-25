@@ -135,13 +135,14 @@ describe('the charts', () => {
        own ink, mood's own ramp, and the surface it is diluted into - never
        a second accent and never a literal.
 
-       --role-wash joined the list with the pressable bar row (phase 5 UX
-       ticket 23, the Stats hub's tag insights). It is a press fill rather
-       than a mark - chrome, the same as the card and the picker - and it is
-       mixed from the same stripe as everything else here, so the rule this
-       check protects is not the one it touches. */
+       --role-wash and --surface-2 joined the list with two things phase 5 UX
+       ticket 23 added inside the marks' own selectors: the pressable bar
+       row's fill, and the scrub readout's pill. Both are chrome - the same
+       as the card and the picker - and neither introduces a hue: the wash is
+       mixed from the same stripe as the bar above it, and the pill is one of
+       the app's own two surfaces. */
     const allowed =
-      /^(--role-ink|--role-mark|--role-wash|--dist-fill|--surface|--outline|--text-2?|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
+      /^(--role-ink|--role-mark|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text-2?|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
     for (const [, token] of markCss.matchAll(/var\((--[a-z0-9-]+)/g)) {
       if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
       expect(token, `${token} in the chart rules`).toMatch(allowed);

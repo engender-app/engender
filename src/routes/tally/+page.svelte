@@ -13,6 +13,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { atGrain, type Grain } from '$lib/charts/grain';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -39,7 +40,19 @@
     Math.max(1, ...misgendered.map((p) => p.value), ...correctlyGendered.map((p) => p.value))
   );
 
-  const points = (series: { day: number; value: number }[]) => series.map((p) => ({ x: p.day, y: p.value }));
+  let plottedMis = $derived(atGrain(misgendered.map((p) => ({ x: p.day, y: p.value })), range));
+  let plottedCorrect = $derived(atGrain(correctlyGendered.map((p) => ({ x: p.day, y: p.value })), range));
+
+  /* The chart fits the card, so what changes with the range is the grain
+     ($lib/charts/grain): 30 days day by day, a year week by week. */
+  const GRAIN_WEEK_SPAN = 6;
+  const grainLabel = (grain: Grain) => (point: { x: number }) => {
+    const short = { day: 'numeric', month: 'short' } as const;
+    if (grain === 'day') return fmtDay(point.x, { weekday: 'short', ...short });
+    if (grain === 'month') return fmtDay(point.x, { month: 'long', year: 'numeric' });
+    return `${fmtDay(point.x, short)} - ${fmtDay(point.x + GRAIN_WEEK_SPAN, short)}`;
+  };
+
   let rangeEnds = $derived({
     from: fmtDay(from, { day: 'numeric', month: 'short' }),
     to: fmtDay(today, { day: 'numeric', month: 'short' })
@@ -56,6 +69,8 @@
     options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
     value={String(range)}
     onChange={(v) => (range = Number(v))}
+    compact
+    key="tally-range"
   />
 
   {#if misgenderedQuery.loading || correctlyGenderedQuery.loading}
@@ -63,7 +78,8 @@
   {:else}
     <ChartCard heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
       <AreaChart
-        points={points(misgendered)}
+        scrubLabel={grainLabel(plottedMis.grain)}
+        points={plottedMis.points}
         min={0}
         max={maxCount}
         from={rangeEnds.from}
@@ -79,7 +95,8 @@
       role={roleAt(activeFlag.roles, 0)}
     >
       <AreaChart
-        points={points(correctlyGendered)}
+        scrubLabel={grainLabel(plottedCorrect.grain)}
+        points={plottedCorrect.points}
         min={0}
         max={maxCount}
         from={rangeEnds.from}

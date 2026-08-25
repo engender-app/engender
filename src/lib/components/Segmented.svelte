@@ -13,11 +13,23 @@
     options,
     value,
     onChange,
+    compact = false,
+    key
   }: {
     name: string;
     options: { value: string; label: string }[];
     value: string;
     onChange: (v: string) => void;
+    /** For a set of short labels - a range in days, a number of steps. The
+        buttons keep their 48dp press height and the pill is drawn shorter
+        inside it, so what slides reads as a pill crossing the set rather
+        than as a dot moving between dots. Six segments reading "7d" to
+        "365d" were 52px wide and 42px tall, which is a circle, and a circle
+        sliding says nothing about the set it is crossing (Alicja,
+        2026-08-25). */
+    compact?: boolean;
+    /** The group's own identity for the walkthrough's handle (ADR-0029). */
+    key?: string;
   } = $props();
 
   let buttons = $state<(HTMLButtonElement | undefined)[]>([]);
@@ -41,6 +53,8 @@
 
 <div
   class="segmented"
+  class:is-compact={compact}
+  data-segmented={key}
   role="radiogroup"
   aria-label={name}
   style:--seg-x="{pill.x}px"

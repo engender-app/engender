@@ -36,8 +36,9 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { isPausedOn } from '$lib/data/journalingPause';
+  import { atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
-  import { nativeValue, tagInsightRows } from '$lib/data/wrappedDisplay';
+  import { nativeValue, signedValue, tagInsightRows } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -240,17 +241,62 @@
       ? m.correlation_card_dose_day()
       : (vocabulary.tag(card.occurrence.id)?.label ?? card.occurrence.id);
 
-  const metricPhrase = (card: CorrelationCard) => {
-    const metric = metricName(card.metric);
-    if (card.withAvg > card.withoutAvg) return m.correlation_metric_higher({ metric });
-    if (card.withAvg < card.withoutAvg) return m.correlation_metric_lower({ metric });
-    return m.correlation_metric_different({ metric });
+  /* One bar per card. The note names the scale, because unlike the tag
+     insights above these span several - a card can be about mood and the
+     next one about a dimension - and without it two rows would state two
+     unrelated numbers in the same column.
+
+     And the bar's length is that movement as a share of the metric's own
+     range, never the raw number, for the same reason the scales card above
+     normalises: mood moves 1.6 on a scale four wide and a dimension moves 21
+     on one a hundred wide, and drawn from the raw figures the mood rows were
+     8% stubs beside one full-width bar. The number beside each bar stays
+     native (ADR-0012). */
+  const metricSpan = (key: string) => {
+    const dimension = vocabulary.metricDimension(key);
+    return dimension ? Math.max(1, dimension.max - dimension.min) : 4;
   };
 
+  let correlationRows = $derived<BarRow[]>(
+    correlationCards.map((card) => ({
+      key: `${card.occurrence.kind}-${card.occurrence.kind === 'tag' ? card.occurrence.id : 'dose'}-${card.metric}`,
+      name: occurrenceLabel(card),
+      note: `${metricName(card.metric)} · ${m.insight_row_sub({
+        count: String(card.count),
+        with: fmtNativeValue(card.metric, card.withAvg),
+        without: fmtNativeValue(card.metric, card.withoutAvg)
+      })}`,
+      value: signedValue(card.withAvg - card.withoutAvg, (v) => fmtNativeValue(card.metric, v)),
+      amount: Math.abs(card.withAvg - card.withoutAvg) / metricSpan(card.metric)
+    }))
+  );
+
   /* A position on a cycle is not a day, so the two pattern charts label
-     their ends with the position rather than with a date. */
+     their ends with the position rather than with a date, and they are
+     already one point per position - there is nothing to bucket. */
   const positionPoints = (pattern: { position: number; value: number }[]) =>
     pattern.map((p) => ({ x: p.position, y: p.value }));
+  const positionLabel = (point: { x: number }) => m.range_days({ days: String(point.x) });
+
+  /* The day-by-day chart fits the card, so what changes with the range is
+     how coarsely it reads: 30 days day by day, a year week by week
+     ($lib/charts/grain). The grain decides how the scrubbed position is
+     named too - a week's reading is a week, and dating it to its Monday
+     alone would be a day standing in for seven. */
+  let plotted = $derived(
+    atGrain(
+      seriesFor(shown.key).map((p) => ({ x: p.day, y: p.value })),
+      range
+    )
+  );
+
+  const GRAIN_SPAN: Record<Grain, number> = { day: 0, week: 6, month: 27 };
+  const grainLabel = (grain: Grain) => (point: { x: number }) => {
+    const short = { day: 'numeric', month: 'short' } as const;
+    if (grain === 'day') return fmtDay(point.x, { weekday: 'short', ...short });
+    if (grain === 'month') return fmtDay(point.x, { month: 'long', year: 'numeric' });
+    return `${fmtDay(point.x, short)} - ${fmtDay(point.x + GRAIN_SPAN.week, short)}`;
+  };
 </script>
 
 <div class="screen">
@@ -261,6 +307,8 @@
     options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
     value={String(range)}
     onChange={(v) => (range = Number(v))}
+    compact
+    key="stats-range"
   />
 
   <!-- The two facts that used to be a card each: how long since the day the
@@ -297,12 +345,13 @@
       <Skeleton variant="block" />
     {:else}
       <AreaChart
-        points={seriesFor(shown.key).map((p) => ({ x: p.day, y: p.value }))}
+        points={plotted.points}
         min={shown.min}
         max={shown.max}
         from={fmtDay(from, { day: 'numeric', month: 'short' })}
         to={fmtDay(today, { day: 'numeric', month: 'short' })}
         formatValue={(v) => fmtNativeValue(shown.key, v)}
+        scrubLabel={grainLabel(plotted.grain)}
         ariaLabel={m.values_title({ name: shown.name })}
       />
     {/if}
@@ -352,33 +401,27 @@
     <p class="stats-note">{m.insights_note()}</p>
   {/if}
 
-  <SectionHeading text={m.correlation_cards_title()} />
-  {#if correlationCardsQuery.loading}
-    <Skeleton variant="line" count={3} />
-  {:else if correlationCards.length}
-    <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.patterns)}>
-      {#each correlationCards as c (`${c.occurrence.kind}-${c.occurrence.kind === 'tag' ? c.occurrence.id : ''}-${c.metric}`)}
-        <!-- A row that states something and goes nowhere, so it is neither a
-             link nor a button: ListRow renders one of the two, and a chevron
-             here would promise a screen that does not exist. -->
-        <div class="kit-row is-static">
-          <span class="kit-row-text">
-            <span class="kit-row-title" data-row-title>{occurrenceLabel(c)}</span>
-            <span class="kit-row-sub">{m.correlation_card_tends({ metric: metricPhrase(c) })}</span>
-            <span class="kit-row-sub">
-              {m.insight_row_sub({
-                count: String(c.count),
-                with: fmtNativeValue(c.metric, c.withAvg),
-                without: fmtNativeValue(c.metric, c.withoutAvg)
-              })}
-            </span>
-          </span>
-        </div>
-      {/each}
-    </ListCard>
-  {:else}
-    <p class="stats-note">{m.correlation_cards_empty()}</p>
-  {/if}
+  <!-- The correlation cards, as bars. They were rows of three stacked lines
+       each - a name, "tends to appear with higher Mood on the same day", and
+       the two averages - which read as busy and unfinished at six of them
+       (Alicja, 2026-08-25), and the middle line was the app interpreting a
+       reading, which PRODUCT.md says it never does. The bar carries the
+       movement, the note carries which scale and how many entries, and the
+       sentence is gone: "+1.6" says what "tends to appear with higher" said,
+       without a verdict on top of it. -->
+  <ChartCard
+    heading={m.correlation_cards_title()}
+    kind="correlations"
+    role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
+  >
+    {#if correlationCardsQuery.loading}
+      <Skeleton variant="line" count={3} />
+    {:else if correlationRows.length}
+      <BarRows rows={correlationRows} />
+    {:else}
+      <p class="kit-chart-empty">{m.correlation_cards_empty()}</p>
+    {/if}
+  </ChartCard>
 
   <ChartCard
     heading={m.interval_mood_title()}
@@ -393,6 +436,7 @@
         min={1}
         max={5}
         formatValue={(v) => v.toFixed(1)}
+        scrubLabel={positionLabel}
         ariaLabel={m.interval_mood_chart_aria({
           count: String(intervalMoodPattern.length),
           from: String(intervalMoodPattern[0].position),
@@ -432,6 +476,7 @@
         min={1}
         max={5}
         formatValue={(v) => v.toFixed(1)}
+        scrubLabel={positionLabel}
         ariaLabel={m.custom_interval_chart_aria({
           days: String(safeCustomIntervalLength),
           count: String(customIntervalPattern.length),

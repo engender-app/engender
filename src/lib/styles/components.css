@@ -308,6 +308,16 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
   pointer-events: none;
   transition: translate var(--dur-med) var(--ease-out), width var(--dur-med) var(--ease-out);
 }
+/* A set of short labels - a range in days, a count of steps. The buttons
+   keep the 48dp press height Android asks for and the pill is drawn shorter
+   inside it, so the thing that slides is a pill crossing the set rather than
+   a dot moving between dots: six segments reading "7d" through "365d" are
+   about as wide as they are tall, and at that ratio --radius-pill draws a
+   circle. Phase 5 UX ticket 23. */
+.segmented.is-compact { display: flex; width: 100%; }
+.segmented.is-compact .segment { flex: 1; min-width: 0; padding-inline: var(--space-1); }
+.segmented.is-compact .segment-pill { top: 9px; bottom: 9px; }
+
 .segment-pill.is-sliding {
   scale: 1 1;
   animation: segment-slide var(--dur-med) var(--ease-out);
