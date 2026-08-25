@@ -237,6 +237,24 @@ body {
   transition: transform var(--dur-med) var(--ease-out);
 }
 .nav-add-mark.is-open { transform: rotate(45deg); }
+
+/* The three marks share one cell, so one can leave while the next arrives.
+   Swapping the icon outright was a cut - the alert vanished and the plus was
+   simply there, the one moment in the sequence with no motion in it. */
+.nav-add-glyph {
+  grid-area: 1 / 1;
+  display: grid; place-items: center;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity var(--dur-med) var(--ease-out),
+    transform var(--dur-med) var(--ease-out);
+}
+.nav-add-glyph.is-shown { opacity: 1; transform: scale(1); }
+html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-add-glyph { transform: none; }
+}
 /* ============================================================
    Tier 2: one screen becoming another (phase 5 ticket 18).
 
