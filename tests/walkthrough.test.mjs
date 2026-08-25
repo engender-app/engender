@@ -2142,7 +2142,9 @@ try {
       const main = document.querySelector('[data-app-scroll-region]');
       main.scrollTop = main.scrollHeight;
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const rows = document.querySelectorAll('[data-hub-row]');
+      /* Phase 5 ticket 24: the hub's rows are ListRow now, whose own handle
+         is data-list-row rather than a hub-specific attribute. */
+      const rows = document.querySelectorAll('[data-list-row]');
       return rows[rows.length - 1].getBoundingClientRect().bottom;
     });
     const barTop = await page
