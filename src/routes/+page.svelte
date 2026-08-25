@@ -131,16 +131,20 @@
      line's width without reading as a shower. */
   const STREAK_CHEER_FLOOR = 7;
   let cheering = $derived(streak > STREAK_CHEER_FLOOR && !pausedToday);
+  /* `dx` is how far the piece drifts sideways, and it only means anything to
+     the streak's burst: the nine fan outward from the middle of the line as
+     they go up, which is what makes it read as thrown rather than dropped.
+     The milestone's fall ignores it. */
   const CHEER = [
-    { i: 0, x: 4, d: 0, r: 200 },
-    { i: 1, x: 17, d: 0.16, r: -260 },
-    { i: 2, x: 29, d: 0.07, r: 300 },
-    { i: 3, x: 41, d: 0.26, r: -180 },
-    { i: 4, x: 52, d: 0.03, r: 240 },
-    { i: 5, x: 64, d: 0.2, r: -300 },
-    { i: 6, x: 76, d: 0.11, r: 260 },
-    { i: 7, x: 87, d: 0.3, r: -220 },
-    { i: 8, x: 95, d: 0.05, r: 180 }
+    { i: 0, x: 4, d: 0, r: 200, dx: -13 },
+    { i: 1, x: 17, d: 0.16, r: -260, dx: -9 },
+    { i: 2, x: 29, d: 0.07, r: 300, dx: -6 },
+    { i: 3, x: 41, d: 0.26, r: -180, dx: -2 },
+    { i: 4, x: 52, d: 0.03, r: 240, dx: 0 },
+    { i: 5, x: 64, d: 0.2, r: -300, dx: 2 },
+    { i: 6, x: 76, d: 0.11, r: 260, dx: 6 },
+    { i: 7, x: 87, d: 0.3, r: -220, dx: 9 },
+    { i: 8, x: 95, d: 0.05, r: 180, dx: 13 }
   ];
 
   /* Which reading shades the week. The kit's own picker rather than a sheet
@@ -216,6 +220,19 @@
   }
 </script>
 
+<!-- The nine pieces, once, because the streak's moment and a milestone's are
+     the same moment about two different facts, and two copies of the table is
+     how they would stop being. -->
+{#snippet cheer(burst = false)}
+  <span class="home-cheer" class:is-burst={burst} aria-hidden="true">
+    {#each CHEER as piece (piece.i)}
+      <i
+        style={`--x: ${piece.x}%; --d: ${piece.d}s; --r: ${piece.r}deg; --dx: ${piece.dx}px`}
+      ></i>
+    {/each}
+  </span>
+{/snippet}
+
 <div class="screen home">
   <header class="home-header" data-home-header>
     <!-- Home-only, and never under disguise (ADR-0035) - checked on
@@ -239,13 +256,7 @@
          where it was asked for. -->
     {#if streak > 1 && !pausedToday}
       <div class="home-streak-wrap">
-        {#if cheering}
-          <span class="home-cheer" aria-hidden="true">
-            {#each CHEER as piece (piece.i)}
-              <i style={`--x: ${piece.x}%; --d: ${piece.d}s; --r: ${piece.r}deg`}></i>
-            {/each}
-          </span>
-        {/if}
+        {#if cheering}{@render cheer(true)}{/if}
         <p class="home-streak" data-home-streak>{streak} {m.streak_row()}</p>
       </div>
     {/if}
@@ -258,18 +269,27 @@
        (DIRECTION.md, tiers 0 and 4). It takes the milestones' own colour,
        since that is what it is about. -->
   {#if celebrate}
-    <Notice
-      icon="sparkle"
-      key="celebration"
-      role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}
-      aria-live="polite"
-      title={landing?.s.years
-        ? m.home_anniv_years({
-            name: landing.m.name,
-            years: m.n_years({ n: landing.s.years ?? 0 })
-          })
-        : m.home_anniv_today({ name: landing?.m.name ?? m.ms_default_name() })}
-    />
+    <!-- The same nine pieces the streak throws, over the notice that says
+         which milestone it is (Alicja, 2026-08-25: "we want the same confetti
+         animation when it's a milestone day"). It is the streak's own
+         argument applied to a rarer fact - a moment that plays once and stops
+         costs nothing after it stops - and this one fires on the day a
+         milestone lands rather than on most mornings. -->
+    <div class="home-celebrate">
+      {@render cheer()}
+      <Notice
+        icon="sparkle"
+        key="celebration"
+        role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}
+        aria-live="polite"
+        title={landing?.s.years
+          ? m.home_anniv_years({
+              name: landing.m.name,
+              years: m.n_years({ n: landing.s.years ?? 0 })
+            })
+          : m.home_anniv_today({ name: landing?.m.name ?? m.ms_default_name() })}
+      />
+    </div>
   {/if}
 
   <!-- No coloured side border, and no role: the flag colours the areas of
