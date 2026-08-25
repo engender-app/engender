@@ -13,18 +13,21 @@ const TAB_ROUTES: TabRoute[] = [
   { key: 'home', prefixes: ['/doubt'] },
   { key: 'calendar', prefixes: ['/calendar', '/day', '/search', '/entry'] },
   /* SH-001: Timeline used to light no tab at all, which read as having left
-     the app's structure. It groups with Stats/Recap as a look-back view
-     over the same journal, rather than getting IA a new tab. A wrapped
-     joins that group for the same reason, even though Home is where it is
-     offered from. Body map, tally and compare are the same kind of
-     look-back, linked from Stats' own recap cards. On-this-day joins for
-     the same reason as wrapped, not body-map/tally/compare - it too is
-     offered from Home (OnThisDayHomeCard), not from Stats, but it reuses
-     WrappedCompact's presentation the same way a wrapped week does
-     (ticket 09). */
+     the app's structure. It groups with Stats as a look-back view over the
+     same journal, rather than getting IA a new tab. A wrapped joins that
+     group for the same reason, even though Home is where it is offered
+     from. Body map, tally and compare are the same kind of look-back,
+     linked from Stats' own list. On-this-day joins for the same reason as
+     wrapped - it too is offered from Home (OnThisDayHomeCard) rather than
+     from Stats (ticket 09).
+
+     `/recap` was in this list until phase 5 UX ticket 23 deleted the route
+     (spec 07). Its period picker is a wrapped now, so every URL that used
+     to land here still lights this tab - under /wrapped rather than under
+     a prefix of its own. */
   {
     key: 'stats',
-    prefixes: ['/stats', '/recap', '/timeline', '/wrapped', '/body-map', '/tally', '/compare', '/on-this-day']
+    prefixes: ['/stats', '/timeline', '/wrapped', '/body-map', '/tally', '/compare', '/on-this-day']
   },
   /* Doses sits outside /settings, but it is reached from More's health
      group (regimen, hormone-curve) and joins that group's tab too
