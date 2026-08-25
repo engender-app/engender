@@ -7,6 +7,7 @@
   import type { Letter } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -44,11 +45,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.letters_title()}</h1>
-  </header>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.letters_intro()}</p>
+  <ScreenHeader title={m.letters_title()} back="/settings" subtitle={m.letters_intro()} />
 
   <div class="card">
     <p class="quicklog-title">{m.letters_compose_title()}</p>

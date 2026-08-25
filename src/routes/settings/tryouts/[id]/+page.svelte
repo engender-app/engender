@@ -11,6 +11,7 @@
   import { pickPhotos } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
@@ -138,11 +139,7 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings/tryouts" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{isNew ? m.tryout_new_title() : m.tryout_edit_title()}</h1>
-    <div class="header-action"></div>
-  </header>
+  <ScreenHeader title={isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/settings/tryouts" />
 
   <div class="card editor-section">
     <div class="field">

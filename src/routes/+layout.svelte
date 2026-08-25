@@ -19,10 +19,10 @@
 
   import { page } from '$app/state';
   import { assets } from '$app/paths';
-  import { goto } from '$app/navigation';
+  import { goto, onNavigate } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { journal, onTablesWritten } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -35,9 +35,11 @@
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
+  import { screenTransition } from '$lib/navigation/screen-transition';
+  import AppNav from '$lib/components/AppNav.svelte';
+  import QuickAdd from '$lib/components/QuickAdd.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
-  import { activeTabKey } from '$lib/navigation/active-tab';
   import { androidReminders } from '$lib/reminders/android-bridge';
   import { affirmationLines } from '$lib/reminders/affirmations';
   import { androidDisguise } from '$lib/disguise/android-bridge';
@@ -48,7 +50,6 @@
   import LockScreen from '$lib/components/LockScreen.svelte';
   import PassphraseGate from '$lib/components/PassphraseGate.svelte';
   import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
   import UpdateNotice from '$lib/components/UpdateNotice.svelte';
   import { startAutoExportScheduler, stopAutoExportScheduler } from '$lib/data/archive/auto-export-scheduler';
@@ -68,17 +69,6 @@
      effect below stamps them on <html>. From an effect it would land one
      step too late and briefly undo what app.html's pre-paint script did. */
   startBoot();
-
-  const NAV = [
-    { href: '/', key: 'home', icon: 'home', label: () => m.nav_home() },
-    { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_calendar() },
-    { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_stats() },
-    /* ADR-0036: the tab now opens the More hub, not Settings directly, but
-       `key` stays 'settings' - it's what the walkthrough's data-nav-item
-       selector and activeKey below already key off, and Settings is still
-       what this tab leads to, one hop further in. */
-    { href: '/more', key: 'settings', icon: 'dots', label: () => m.nav_more() },
-  ];
 
   /* The gate (F13). It is asked here rather than in a route guard because
      a guard runs after navigation: `locked` has to decide what renders,
@@ -116,16 +106,76 @@
   let schemaTooNew = $derived(gate === 'schema-too-new');
 
   let path = $derived(page.url.pathname);
+  /* The routes that render without chrome whoever is looking at them, as
+     opposed to the gate states below, which depend on how boot went. Split
+     out because the tier-2 transition has to ask the question about a route
+     it has not arrived at yet. */
+  const chromelessPath = (p: string) => p.startsWith('/onboarding') || p === '/settings/lock';
   let chromeless = $derived(
     locked ||
       needsPassphrase ||
       needsAuthentication ||
       needsDeviceRecovery ||
       schemaTooNew ||
-      path.startsWith('/onboarding') ||
-      path === '/settings/lock'
+      chromelessPath(path)
   );
-  let activeKey = $derived(activeTabKey(path));
+
+  /* Tier 2 (phase 5 ticket 18): one screen becoming another.
+
+     Driven by the View Transitions API rather than by a keyed block with
+     Svelte transitions on it. A keyed block is the usual way to get an
+     outgoing and an incoming screen on screen together, and it would have
+     cost a remount of every page component on every navigation - including
+     the ones SvelteKit deliberately reuses across a parameter change. The
+     view transition captures the old frame as an image instead, so nothing
+     unmounts, nothing re-queries, and the whole pair composites off the
+     main thread, which is the performance contract on a mid-range phone.
+
+     Where the API is missing the guard below returns immediately and the
+     navigation is an instant cut, which is a fair substitute and the same
+     one reduced motion asks for.
+
+     The pattern itself is chosen by screen-transition.ts and lands on
+     <html> as a data attribute for app.css to read - the decision is a
+     table, and this is only the wiring. */
+  onNavigate((navigation) => {
+    /* The bar sits above quick add's scrim so the add control stays sharp
+       while the fan is up, which leaves the four tabs pressable behind it.
+       Rather than making them inert - which would need the button to escape
+       the bar's own stacking context - any navigation closes the fan. That
+       is the right answer for every other way out of it too: a deep link, a
+       notification, the back button. */
+    ui.chooserOpen = false;
+
+    if (!document.startViewTransition || !navigation.to) return;
+    const pattern = screenTransition({
+      from: navigation.from?.url.pathname ?? null,
+      to: navigation.to.url.pathname,
+      type: navigation.type,
+      delta: navigation.delta,
+      isAndroid: isAndroid(),
+      isChromeless: chromeless || chromelessPath(navigation.to.url.pathname)
+    });
+    if (pattern === 'none') return;
+
+    return new Promise((resolve) => {
+      document.documentElement.dataset.nav = pattern;
+      const transition = document.startViewTransition(async () => {
+        resolve();
+        /* Both of these reject rather than resolve when a navigation is
+           superseded - a redirect landing on top of it, a second tap, a
+           screen that rewrites its own URL as it mounts - and neither
+           rejection means anything went wrong. Swallowed here rather than
+           left to the window: an unhandled rejection per aborted navigation
+           is noise that buries a real one, and the walkthrough fails the
+           whole run on it. */
+        await navigation.complete.catch(() => {});
+      });
+      void transition.finished
+        .catch(() => {})
+        .finally(() => delete document.documentElement.dataset.nav);
+    });
+  });
 
   /* Theme, palette, disguise → document. */
   let systemDark = $state(false);
@@ -222,20 +272,6 @@
       restoring = false;
       restoreFailed = true;
     }
-  }
-
-  /* New-entry chooser (F1). */
-  let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
-
-  function chooseToday() {
-    ui.chooserOpen = false;
-    goto(`/entry/new/${todayEpochDay()}`);
-  }
-  function chooseDate() {
-    const day = epochDayFromDateInputValue(backdate);
-    if (day == null) return;
-    ui.chooserOpen = false;
-    goto(`/entry/new/${day}`);
   }
 
   /* Every Android-only effect that used to live here one at a time -
@@ -346,29 +382,16 @@
     {/if}
     <!-- SH-004: without this, a keyboard user tabbed through the whole rail
          before reaching content on desktop. -->
-    <a href="#app-main" class="skip-link">{m.skip_to_content()}</a>
+    <a href="#app-main" class="skip-link" data-skip-link>{m.skip_to_content()}</a>
+    <!-- Before <main>, which is what puts the rail to the left of the
+         content at desktop width without an `order` (order moves boxes and
+         leaves tab order where it was, so the two would disagree). On a
+         phone the same markup is the floating bar, absolutely positioned,
+         so its place in the document does not decide where it sits - only
+         that a keyboard reaches the tabs before the screen, which is what
+         the skip link above exists to answer. -->
     {#if !chromeless}
-      <nav class="app-rail" aria-label={m.nav_main()}>
-        <div class="rail-brand">
-          <span class="brand-mark"></span><span translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</span>
-        </div>
-        <div class="rail-new">
-          <button class="btn btn-primary" style="width:100%" onclick={() => (ui.chooserOpen = true)}>
-            <Icon name="plus" size={20} /><span>{m.new_entry()}</span>
-          </button>
-        </div>
-        {#each NAV as item (item.key)}
-          <a
-            class="rail-item"
-            class:is-active={activeKey === item.key}
-            data-rail-item={item.key}
-            href={item.href}
-            aria-current={activeKey === item.key ? 'page' : undefined}
-          >
-            <Icon name={item.icon} size={22} /><span>{item.label()}</span>
-          </a>
-        {/each}
-      </nav>
+      <AppNav />
     {/if}
 
     <main class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
@@ -389,61 +412,7 @@
       {/if}
     </main>
 
-    {#if !chromeless}
-      <nav class="app-nav" data-app-nav aria-label={m.nav_main()}>
-        {#each NAV.slice(0, 2) as item (item.key)}
-          <a
-            class="nav-item"
-            class:is-active={activeKey === item.key}
-            data-nav-item={item.key}
-            href={item.href}
-            aria-current={activeKey === item.key ? 'page' : undefined}
-          >
-            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label" data-nav-label>{item.label()}</span>
-          </a>
-        {/each}
-        <div class="nav-fab-slot">
-          <button class="nav-fab" data-nav-fab aria-label={m.new_entry()} onclick={() => (ui.chooserOpen = true)}>
-            <Icon name="plus" size={26} />
-          </button>
-        </div>
-        {#each NAV.slice(2) as item (item.key)}
-          <a
-            class="nav-item"
-            class:is-active={activeKey === item.key}
-            data-nav-item={item.key}
-            href={item.href}
-            aria-current={activeKey === item.key ? 'page' : undefined}
-          >
-            <span class="nav-icon"><Icon name={item.icon} size={24} /></span><span class="nav-label" data-nav-label>{item.label()}</span>
-          </a>
-        {/each}
-      </nav>
-    {/if}
-
-    <Sheet bind:open={ui.chooserOpen} title={m.new_entry()}>
-      <h3>{m.new_entry()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.new_entry_when()}</p>
-      <div class="stack-3">
-        <button class="btn btn-primary" data-choose="today" onclick={chooseToday}>
-          <Icon name="sun" size={20} /><span>{m.today()}</span>
-        </button>
-        <div class="card" style="box-shadow:none;background:var(--surface-2)">
-          <label class="field-label" for="backdate">{m.another_day()}</label>
-          <div class="spread" style="margin-top:var(--space-2)">
-            <input
-              class="input"
-              type="date"
-              id="backdate"
-              name="backdate"
-              max={dateInputValueFromEpochDay(todayEpochDay())}
-              bind:value={backdate}
-            />
-            <button class="btn btn-soft" data-choose="date" onclick={chooseDate}>{m.go()}</button>
-          </div>
-        </div>
-      </div>
-    </Sheet>
+    <QuickAdd />
 
     <Toasts />
   </div>

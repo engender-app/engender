@@ -4,6 +4,7 @@
   import { reminderScheduleLabel, reminderTypeLabel } from '$lib/data/vocabulary/reminderLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import { isAndroid } from '$lib/platform';
@@ -56,15 +57,13 @@
 </script>
 
 <div class="screen" data-screen>
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.reminders()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.reminders()} back="/settings">
+    {#snippet actions()}
       {#if !isWeb}
         <a class="icon-btn" href="/settings/reminders/new" aria-label={m.rem_add_aria()}><Icon name="plus" size={22} /></a>
       {/if}
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
 
   {#if isWeb}
     <EmptyState

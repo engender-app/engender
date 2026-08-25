@@ -150,10 +150,11 @@
      phone is ticket 27's measurement, taken over real screens. This value is
      what the material is designed at, not a number anyone has yet proved.
 
-     Deliberately separate from the nav bar's own blur in app.css, which
-     happens to be 12px too: that one is a translucent chrome surface and
-     this one is a legibility withdrawal. Same number now, different jobs, and
-     nothing should make them move together. */
+     This used to sit next to a second blur - the nav bar was a translucent
+     surface over a 12px backdrop-filter, the same number doing a different
+     job. Phase 5 ticket 18 made the bar an opaque floating plane, so blur
+     is now the app's one material and means one thing: the screen behind a
+     sheet is still there and is not what is being read. */
   --blur-withdraw: 12px;
 
   /* The tint that rides with the blur. Thinner than --scrim on purpose: the
@@ -165,6 +166,22 @@
   --scrim-withdraw: color-mix(in oklab, var(--scrim) 55%, transparent);
 
   /* --- Layout --- */
+  /* The window insets, read from the platform once and consumed from here
+     (phase 5 ticket 18). Named as tokens rather than written as env() at
+     each use site for two reasons. env() cannot be overridden, so a token
+     is the only way the demo bar can simulate a cutout in a desktop
+     browser, where every inset is genuinely 0 and the defect is therefore
+     invisible; and a token is a thing a test can set and then assert the
+     layout moved, which a bare env() is not.
+
+     All four, not only top and bottom. viewport-fit=cover extends the page
+     under the cutout on every side at once, so honouring two of them would
+     trade a portrait defect for a landscape one. */
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-right: env(safe-area-inset-right, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+  --inset-left: env(safe-area-inset-left, 0px);
+
   --touch-target: 48px;   /* Android's floor, which is the stricter of the two platforms this ships on */
   --content-max: 640px;      /* centred column at desktop width */
   --rail-width: 220px;       /* desktop navigation rail */

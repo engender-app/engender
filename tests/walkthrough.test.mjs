@@ -87,7 +87,7 @@ try {
   await page.locator('[data-mood="4"]').click();
   await page.waitForSelector('#ed-note');
   await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
-  await page.locator('[data-editor-back]').click();
+  await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-entry-card]');
   const afterCards = await page.locator('[data-entry-card]').count();
   if (afterCards !== beforeCards) throw new Error(`home entry count changed: ${beforeCards} -> ${afterCards}`);
@@ -98,7 +98,12 @@ try {
 try {
   await fresh('/');
   await page.locator('[data-nav-fab]').click();
-  await page.locator('[data-choose="today"]').click();
+  /* Today's entry is a mood now: "Today" was a row of its own until phase 5
+     ticket 18 merged it into the mood row, because an entry cannot be saved
+     without a mood and a blank one was a mood picker with an extra tap in
+     front of it. Each of these flows sets its own mood in the editor
+     afterwards, so what they prove is unchanged. */
+  await page.locator('[data-fan-target="mood-3"]').click();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-mood="5"]').click();
   await page.locator('[data-tag="g-soc-eu"]').click();
@@ -135,8 +140,16 @@ try {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
 
-  await page.locator('[data-nav-fab]').click();
-  await page.locator('[data-choose="today"]').click();
+  /* Straight to the unseeded editor, which is the state this flow is about.
+     It used to get here through quick add's "Today", and phase 5 ticket 18
+     merged that row into the mood row - so every entry quick add starts now
+     carries a seedMood, and a seedMood is precisely what makes the editor
+     offer the scale sheet *instead of* this nudge (EntryEditor.svelte). The
+     flow's own note above already says its remaining domain is a mood-only
+     save started from the full editor; this is that, with the one step that
+     no longer produces it removed. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-mood="2"]').click();
   await page.locator('[data-save]').click();
@@ -156,8 +169,16 @@ try {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
 
-  await page.locator('[data-nav-fab]').click();
-  await page.locator('[data-choose="today"]').click();
+  /* Straight to the unseeded editor, which is the state this flow is about.
+     It used to get here through quick add's "Today", and phase 5 ticket 18
+     merged that row into the mood row - so every entry quick add starts now
+     carries a seedMood, and a seedMood is precisely what makes the editor
+     offer the scale sheet *instead of* this nudge (EntryEditor.svelte). The
+     flow's own note above already says its remaining domain is a mood-only
+     save started from the full editor; this is that, with the one step that
+     no longer produces it removed. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-mood="3"]').click();
   await page.locator('[data-save]').click();
@@ -1791,6 +1812,335 @@ try {
 } catch (e) {
   fail('More hub route characterization', e);
 }
+
+/* Quick add, rebuilt (phase 5 ticket 18, closing spec 04).
+
+   The old sheet offered two choices that both led to the same screen. What
+   is checked here is the widening - every option reaching the surface that
+   records that thing - and, separately, that both gestures reach the same
+   targets: tap the add button and tap a row, or press the button and slide
+   onto a row without ever letting go.
+
+   The two gestures are worth testing separately because they resolve
+   through different code paths in the browser even though they resolve
+   through one rule in the component: a tap ends in a click on the row, and
+   a slide ends in a pointerup the row never sees.
+
+   The tally is asserted through its toast rather than through a count on a
+   screen, and that is not the weaker check it looks like: the toast is
+   awaited behind journal.tally.log(), so it cannot appear until the write
+   has come back from the worker. */
+async function openQuickAdd(path = '/') {
+  await fresh(path);
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-fan-target="mood-3"]');
+}
+
+/** Press the add button, slide onto a target, let go - one pointer, never
+    lifted, which is the gesture the fan exists for. */
+async function slideToTarget(selector) {
+  const from = await page.locator('[data-nav-fab]').boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.waitForSelector('[data-fan]');
+  /* The fan is in the DOM before it has finished arriving, and it arrives by
+     travelling: measuring it mid-transition reads a box up to
+     --motion-distance-md away from where it settles, which is enough to aim
+     the drag into the gap between two cards. */
+  await page.waitForTimeout(500);
+  const to = await page.locator(selector).boundingBox();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
+  await page.waitForSelector(`${selector}[class*="is-armed"]`, { timeout: 4000 });
+  await page.mouse.up();
+}
+
+try {
+  await openQuickAdd();
+  await page.locator('[data-fan-target="mood-4"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
+  ok('quick add: a mood opens the editor seeded with it');
+} catch (e) { fail('quick add mood', e); }
+
+try {
+  await openQuickAdd();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.waitForSelector('[data-mood="3"][aria-checked="true"]');
+  ok("quick add: a mood is how today's entry starts, seeded with it");
+} catch (e) { fail('quick add today', e); }
+
+try {
+  await openQuickAdd();
+  await page.locator('[data-choose="another-day"]').click();
+  await page.waitForSelector('#backdate');
+  const wanted = await page.locator('#backdate').inputValue();
+  if (!wanted) throw new Error('the backdate field was empty');
+  await page.locator('[data-choose="date"]').click();
+  await page.waitForSelector('#ed-note');
+  if (!page.url().includes('/entry/new/')) throw new Error(`backdate went to ${page.url()}`);
+  ok('quick add: a backdated entry still opens the editor on that day');
+} catch (e) { fail('quick add backdate', e); }
+
+for (const kind of ['misgendered', 'correctly_gendered']) {
+  try {
+    /* From a screen with nothing to do with the tally, which is the whole
+       reason it is in this fan. */
+    await openQuickAdd('/stats');
+    await page.locator(`[data-choose="tally-${kind}"]`).click();
+    /* The write landing is a thing you can see: the row flies into the add
+       control and the control catches it with a tick. Asserted because it
+       is the only confirmation an in-place action has that is anywhere near
+       the thumb that pressed it, and because it plays when the write comes
+       back rather than when the finger lifts - so its absence would mean
+       the write never returned, not merely that an animation was dropped. */
+    await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
+    /* And the half of the confirmation a screen reader gets. Checked for
+       being non-empty rather than for what it says, so this is a live
+       region that speaks, not an assertion about wording. */
+    await page.waitForFunction(
+      () => (document.querySelector('[data-quick-add-status]')?.textContent ?? '').trim().length > 0,
+      null,
+      { timeout: 8000 }
+    );
+    if (!page.url().includes('/stats')) throw new Error(`logging a tally left for ${page.url()}`);
+    await page.waitForSelector('[data-fan-flight]', { state: 'detached', timeout: 8000 });
+    ok(`quick add: ${kind} logs from wherever you are, without leaving it`);
+  } catch (e) { fail(`quick add tally ${kind}`, e); }
+}
+
+try {
+  /* A write that did not land must not borrow the animation of one that
+     did. Forced through the demo build's own switch rather than by breaking
+     the journal, so this checks the branch and not the wreckage: no mark
+     flies, the control never wears a tick, and it says so instead. */
+  await fresh('/stats');
+  await page.evaluate(() => (document.documentElement.dataset.demoFail = 'tally-misgendered'));
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-fan]');
+  await page.locator('[data-choose="tally-misgendered"]').click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-nav-fab]')?.className.includes('is-refusing'),
+    null,
+    { timeout: 8000 }
+  );
+  if (await page.locator('[data-fan-flight]').count()) {
+    throw new Error('a failed write sent the mark flying anyway');
+  }
+  /* A failure is announced too, and it is the same region rather than a
+     second one: a screen reader user gets told either way. */
+  const spoken = await page.locator('[data-quick-add-status]').textContent();
+  if (!spoken?.trim()) throw new Error('a failed write said nothing to a screen reader');
+  const refused = await page.locator('[data-nav-fab]').evaluate((node) => ({
+    shaking: node.className.includes('is-refusing'),
+    catching: node.className.includes('is-catching')
+  }));
+  if (!refused.shaking) throw new Error('the add control did not answer the failure');
+  if (refused.catching) throw new Error('the add control played the landed animation on a failure');
+  if (await page.locator('[data-nav-fab] [data-add-mark="check"][data-shown]').count()) {
+    throw new Error('a failed write wore the landed mark');
+  }
+  if (!(await page.locator('[data-nav-fab] [data-add-mark="alert"][data-shown]').count())) {
+    throw new Error('a failed write did not wear the refused mark');
+  }
+  await page.evaluate(() => delete document.documentElement.dataset.demoFail);
+  ok('quick add: a write that fails says so, and borrows none of the landed animation');
+} catch (e) { fail('quick add failed write', e); }
+
+try {
+  await openQuickAdd();
+  await page.locator('[data-choose="dose"]').click();
+  await page.waitForSelector('[data-save-dose]');
+  ok('quick add: a dose reaches the dose log with its editor already open');
+} catch (e) { fail('quick add dose', e); }
+
+try {
+  /* The wear session is the one target that reads the journal before it
+     draws itself, because it is two things: nothing running, so this
+     starts; something running, so this stops it. Both resolve in place, and
+     the whole point of it being here is that a session started late is a
+     session recorded wrong - so this checks it never leaves the screen, and
+     that the row comes back saying the other thing. */
+  await openQuickAdd('/stats');
+  const startLabel = (await page.locator('[data-choose="wear"]').textContent()).trim();
+  if (await page.locator('[data-choose="wear"][data-wear-running]').count()) {
+    throw new Error('a session was already running on a fresh journal');
+  }
+  await page.locator('[data-choose="wear"]').click();
+  await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
+  if (!page.url().includes('/stats')) throw new Error(`starting a session left for ${page.url()}`);
+
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-choose="wear"][data-wear-running]', { timeout: 8000 });
+  const stopLabel = (await page.locator('[data-choose="wear"]').textContent()).trim();
+  if (stopLabel === startLabel) throw new Error(`the row still says "${stopLabel}" with a session running`);
+  await page.locator('[data-choose="wear"]').click();
+  await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
+
+  await page.goto(BASE + '/settings/wear', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+  if (!(await page.getByRole('heading', { level: 1 }).count())) throw new Error('the wear log did not render');
+  ok('quick add: a wear session starts and stops in place, and the row says which');
+} catch (e) { fail('quick add wear session', e); }
+
+try {
+  await fresh('/');
+  await slideToTarget('[data-choose="another-day"]');
+  await page.waitForSelector('#backdate');
+  ok('quick add: pressing and sliding onto a row runs it, with no second tap');
+} catch (e) { fail('quick add slide to a row', e); }
+
+try {
+  await fresh('/');
+  await slideToTarget('[data-fan-target="mood-2"]');
+  await page.waitForSelector('#ed-note');
+  await page.waitForSelector('[data-mood="2"][aria-checked="true"]');
+  ok('quick add: the slide crosses the mood row too, and picks off it');
+} catch (e) { fail('quick add slide to a mood', e); }
+
+try {
+  /* Letting go over the button itself chooses nothing, which is what makes
+     one rule serve both gestures: the fan stays up to be tapped. */
+  await fresh('/');
+  const fab = await page.locator('[data-nav-fab]').boundingBox();
+  await page.mouse.move(fab.x + fab.width / 2, fab.y + fab.height / 2);
+  await page.mouse.down();
+  await page.waitForSelector('[data-fan]');
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  if (!(await page.locator('[data-fan-target="mood-3"]').count())) {
+    throw new Error('releasing on the button chose something, or closed the fan');
+  }
+  ok('quick add: releasing without going anywhere leaves the fan up to tap');
+} catch (e) { fail('quick add press without a slide', e); }
+
+/* The shell's window insets (phase 5 ticket 18).
+
+   A headless desktop Chromium reports every safe-area inset as 0, so
+   env(safe-area-inset-*) can never exercise the defect here - which is why
+   the shell reads --inset-* tokens the layout can be told to change. This
+   flow sets them to a phone's numbers and then asserts against the real
+   rendered geometry rather than against the stylesheet: where content
+   actually starts, and where the bar actually ends.
+
+   The device check the acceptance list asks for is a separate thing and
+   this does not stand in for it. What this catches is a regression - a
+   screen or a control that stops consuming the insets, on every run,
+   without anyone plugging a phone in. */
+const CUTOUT = { top: 48, right: 0, bottom: 24, left: 0 };
+
+async function withSimulatedInsets(fn) {
+  await page.evaluate((cutout) => {
+    for (const [side, px] of Object.entries(cutout)) {
+      document.documentElement.style.setProperty(`--inset-${side}`, `${px}px`);
+    }
+  }, CUTOUT);
+  try {
+    return await fn();
+  } finally {
+    await page.evaluate(() => {
+      for (const side of ['top', 'right', 'bottom', 'left']) {
+        document.documentElement.style.removeProperty(`--inset-${side}`);
+      }
+    });
+  }
+}
+
+/* Every measurement below is taken against the app frame, never against the
+   window. The two are not the same thing here: this suite runs the demo
+   build, whose review bar sits above the app and pushes it down the page, so
+   a check written as "content starts at least 48px down" passes on the bar's
+   own height while the inset it claims to be testing is ignored. That is not
+   a hypothetical - it is what the first version of these four checks did,
+   and three of them passed that way. */
+async function appFrame() {
+  return page.evaluate(() => {
+    const { top, bottom } = document.querySelector('[data-app-root]').getBoundingClientRect();
+    return { top, bottom };
+  });
+}
+
+try {
+  await fresh('/more');
+  await withSimulatedInsets(async () => {
+    const app = await appFrame();
+    /* The hub's own first content, not a wrapper's padding: whatever a
+       screen is built from has to start below the cutout. */
+    const contentTop = await page
+      .getByRole('heading', { level: 2 })
+      .first()
+      .evaluate((node) => node.getBoundingClientRect().top);
+    const safeFrom = app.top + CUTOUT.top;
+    if (contentTop < safeFrom) {
+      throw new Error(`More hub content starts ${safeFrom - contentTop}px inside a ${CUTOUT.top}px cutout`);
+    }
+    ok('a screen renders clear of the top inset');
+  });
+} catch (e) { fail('top inset clears content', e); }
+
+try {
+  await fresh('/more');
+  await withSimulatedInsets(async () => {
+    const app = await appFrame();
+    const barBottom = await page
+      .locator('[data-app-nav]')
+      .evaluate((node) => node.getBoundingClientRect().bottom);
+    const safeTo = app.bottom - CUTOUT.bottom;
+    if (barBottom > safeTo) {
+      throw new Error(`the bar ends ${barBottom - safeTo}px inside the ${CUTOUT.bottom}px bottom inset`);
+    }
+    ok('the bar floats clear of the bottom inset');
+  });
+} catch (e) { fail('bottom inset clears the bar', e); }
+
+try {
+  await fresh('/more');
+  await withSimulatedInsets(async () => {
+    /* The scroll region reserves the bar's whole footprint, so the last
+       thing on a screen is reachable rather than sitting under it. Measured
+       after scrolling to the end, because padding being declared is not the
+       same claim as content clearing. */
+    const lastRowBottom = await page.evaluate(async () => {
+      const main = document.querySelector('[data-app-scroll-region]');
+      main.scrollTop = main.scrollHeight;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const rows = document.querySelectorAll('[data-hub-row]');
+      return rows[rows.length - 1].getBoundingClientRect().bottom;
+    });
+    const barTop = await page
+      .locator('[data-app-nav]')
+      .evaluate((node) => node.getBoundingClientRect().top);
+    if (lastRowBottom > barTop) {
+      throw new Error(`the last row ends ${lastRowBottom - barTop}px under the bar`);
+    }
+    ok('scrolled to the end, the last row still clears the bar');
+  });
+} catch (e) { fail('bar clearance survives a full scroll', e); }
+
+try {
+  await fresh('/');
+  await withSimulatedInsets(async () => {
+    const app = await appFrame();
+    /* Home's flag sun is the one deliberate bleed, and it is worth its own
+       check: if it ever stopped crossing the inset, the sun's centre would
+       drift off the window corner and every ring would show as more than a
+       quarter. Decoration crosses the inset, the greeting under it does
+       not. */
+    const { headerTop, greetingTop } = await page.evaluate(() => ({
+      headerTop: document.querySelector('[data-home-header]').getBoundingClientRect().top,
+      greetingTop: document.querySelector('[data-home-hero]').getBoundingClientRect().top
+    }));
+    const safeFrom = app.top + CUTOUT.top;
+    if (headerTop >= safeFrom) {
+      throw new Error(`the flag sun's header stops ${headerTop - safeFrom}px short of the corner`);
+    }
+    if (greetingTop < safeFrom) {
+      throw new Error(`the greeting sits ${safeFrom - greetingTop}px inside the cutout`);
+    }
+    ok('the flag sun bleeds into the inset and the greeting under it does not');
+  });
+} catch (e) { fail('Home bleeds decoration only', e); }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 

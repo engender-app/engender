@@ -16,10 +16,18 @@
    $lib/motion/flagSun.ts). */
 .home-header {
   position: relative; z-index: 1;
-  padding: var(--space-7) var(--space-5) var(--space-4);
-  margin: 0 calc(-1 * var(--space-5));
+  padding: calc(var(--space-7) + var(--inset-top)) var(--space-5) var(--space-4);
+  /* The one deliberate bleed past the safe area (phase 5 ticket 18). The
+     scroll region pads every screen clear of the display cutout; this
+     header pulls itself back up by exactly that inset, so the sun's centre
+     lands on the window's true top right corner - which is what
+     DIRECTION.md asks for - and then pads its own text back down by the
+     same amount, so the greeting is as clear of the status bar as any
+     other screen's first line. Decoration crosses the inset; nothing
+     readable does. */
+  margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
   overflow: hidden;
-  min-height: 175px;
+  min-height: calc(175px + var(--inset-top));
 }
 .home-hero {
   font-family: var(--font-display);
@@ -66,8 +74,12 @@
 .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); padding: 0 var(--space-1); }
 .editor-section { margin-bottom: var(--space-4); }
 .editor-heading { font-size: var(--text-md); font-weight: var(--weight-bold); margin: 0 0 var(--space-3); font-family: var(--font-body); }
+/* Sticky against the scroll port, whose bottom edge is the window's - the
+   scroll region's own bottom padding sits inside the scrollable area and
+   does not move this. So it clears the floating bar by naming the same
+   clearance the scroll region uses (app.css). */
 .editor-savebar {
-  position: sticky; bottom: calc(var(--bottom-nav-height) + var(--space-3));
+  position: sticky; bottom: var(--nav-clearance);
   z-index: 20; display: flex; margin-top: var(--space-5);
 }
 .editor-savebar .btn { width: 100%; box-shadow: var(--shadow-2); }

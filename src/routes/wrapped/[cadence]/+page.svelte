@@ -32,6 +32,7 @@
   } from '$lib/data/wrapped';
   import type { DayAverage } from '$lib/data/journal/stats';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import WrappedCompact from '$lib/components/WrappedCompact.svelte';
   import WrappedYear from '$lib/components/WrappedYear.svelte';
@@ -121,17 +122,15 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <button class="icon-btn" aria-label={m.back()} onclick={() => smartBack('/')}><Icon name="arrowLeft" /></button>
-    <h1 class="screen-title">{m.wrapped()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.wrapped()} back={() => smartBack('/')}>
+    {#snippet actions()}
       {#if canShare}
         <a class="icon-btn" href="/wrapped/{cadence}/share" aria-label={m.wrapped_share_open()}>
           <Icon name="share" size={22} />
         </a>
       {/if}
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
 
   {#if prefs.wrappedEnabled && cadence}
     <!-- Links rather than buttons, and a nav rather than a radiogroup: each

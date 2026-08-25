@@ -2,7 +2,14 @@
 <html lang="%paraglide.locale%" data-palette="trans" data-mood-preset="amber" data-theme="light" data-a11y-text-size="normal" data-a11y-legibility="normal" data-a11y-motion="normal">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- viewport-fit=cover is what makes env(safe-area-inset-*) report anything
+         but 0. Without it the browser letterboxes the page inside the display
+         cutout and the insets read as zero everywhere, so the layout below has
+         nothing to consume - which is the shell defect SCREENS.md records
+         (phase 5 ticket 18). It also means the page now extends under the
+         status and navigation bars on all four sides, so app.css pads the
+         scroll region back off every one of them rather than only the bottom. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#F4F8FB" />
     <!-- Both above the script below, which swaps them for their neutral
          counterparts when the app is disguised (F24). The order matters: the

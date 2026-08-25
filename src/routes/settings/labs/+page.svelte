@@ -18,6 +18,7 @@
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { LabResult } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -305,18 +306,16 @@
 </script>
 
 <div class="screen">
-  <header class="screen-header">
-    <a class="icon-btn" href="/settings" aria-label={m.back()}><Icon name="arrowLeft" /></a>
-    <h1 class="screen-title">{m.lab_results()}</h1>
-    <div class="header-action">
+  <ScreenHeader title={m.lab_results()} back="/settings">
+    {#snippet actions()}
       <button class="icon-btn" data-import-lab aria-label={m.labs_ocr_import_aria()} onclick={openOcrImport}>
         <Icon name="camera" size={20} />
       </button>
       <button class="icon-btn" data-add aria-label={m.labs_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
-    </div>
-  </header>
+    {/snippet}
+  </ScreenHeader>
 
   <div class="card" style="margin-bottom:var(--space-4)">
     <h3>{m.labs_preferred_units_title()}</h3>
