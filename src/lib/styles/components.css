@@ -925,6 +925,31 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .fan-mood:hover,
 .fan-mood:focus-visible { background: var(--accent-soft); color: var(--on-accent-soft); }
 
+/* The magnifier (phase 5 ticket 31). --mood-mag is written per face by
+   QuickAdd.svelte from the pointer's distance to that face, so this rule is
+   only the shape of the response: bigger, and lifted by enough that the
+   growth goes upward into the row above rather than down through the label.
+   At the 1.24 peak on a 34px face that is 8px of growth against 5px of lift,
+   so the bottom of the face stays where it is and the top rises.
+
+   Tier 1, so --dur-fast, and the transition is doing a second job here: the
+   scale is re-aimed on every pointermove, so the easing reads as a filter on
+   a moving finger rather than as a delay behind it.
+
+    and  rather than one , because the picker's
+   own states use  on this same element and a shorthand here would
+   be a second author of the same property on a different surface.
+
+   Nothing is declared for reduced motion: the magnifier never runs there at
+   all, because QuickAdd does not write --mood-mag, and the armed colour above
+   is the whole answer. That is the substitution rather than a deletion - what
+   goes is the movement, not the cue. */
+.fan-mood .mood-face {
+  scale: var(--mood-mag, 1);
+  translate: 0 calc((1 - var(--mood-mag, 1)) * 20px);
+  transition: scale var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
+}
+
 /* The mark travelling from the row you chose into the add control (phase 5
    ticket 18, tier 3). Transform and opacity only, over the same
    --dur-med/--ease-out every other tier-2 and tier-3 move in the app uses,
