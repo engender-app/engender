@@ -1,4 +1,20 @@
 <script lang="ts">
+  /* One upcoming milestone, as a row of Home's list card (phase 5 ticket
+     21). It was a card in a horizontal scroller, which is the surface
+     DIRECTION.md's decision 2b argues against: four near-identical cards
+     side by side, none of them readable without swiping to it.
+
+     Not `ListRow` itself, for the same reason `DayEntry` is not: the row
+     carries a photo where the milestone has one, and a photo is not an
+     icon disc. It writes the row's own inner classes instead, which is the
+     kit's markup rather than a second version of it.
+
+     The anniversary offer is a row of its own under the milestone's, rather
+     than a button inside it. A button nested in a link is invalid markup
+     and unreachable to a keyboard, and the felt-sense offer is a second
+     destination rather than a control on the first - so the list card
+     already has a shape for it, complete with the hairline that separates
+     them (CONTEXT: "Felt-sense entry" - offered, never required). */
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -20,10 +36,6 @@
   });
   let badge = $derived(s.type === 'today' ? m.ms_status_today() : s.isAnnivToday ? m.ms_status_anniversary() : null);
 
-  /* Offered, never required, each time this card shows the anniversary
-     badge (CONTEXT: "Felt-sense entry") - a separate button rather than
-     nesting one inside the card's own link, which invalid HTML and a
-     screen reader would both trip over. */
   let offering = $state(false);
   async function saveOffer(input: { mood: number; note: string | null }) {
     await journal.feltSense.add({ milestoneId: milestone.id }, { epochDay: todayEpochDay(), ...input });
@@ -31,27 +43,33 @@
   }
 </script>
 
-<div class="milestone-card" data-milestone-card>
-  <a class="milestone-card-link" {href}>
-    {#if milestone.photo}
-      <PhotoThumb photo={milestone.photo} size={44} />
-    {:else}
-      <span class="milestone-icon"><Icon name="flag" size={20} /></span>
-    {/if}
-    <span class="milestone-text">
-      <span class="milestone-name">{milestone.name}</span>
-      <span class="milestone-status">{fmtDay(milestone.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · {status}</span>
-      {#if badge}<span class="milestone-today"><Icon name="sparkle" size={14} /> {badge}</span>{/if}
-    </span>
-  </a>
-  {#if s.isAnnivToday}
-    <button class="icon-btn" aria-label={m.ms_feeling_anniv_title()} data-anniv-feeling onclick={() => (offering = true)}>
-      <Icon name="heart" size={18} />
-    </button>
+<a class="kit-row" data-milestone-card={milestone.id} {href}>
+  {#if milestone.photo}
+    <span class="milestone-face"><PhotoThumb photo={milestone.photo} size={36} /></span>
+  {:else}
+    <span class="kit-row-ico"><Icon name="flag" size={20} /></span>
   {/if}
-</div>
+  <span class="kit-row-text">
+    <span class="kit-row-title">{milestone.name}</span>
+    <span class="kit-row-sub"
+      >{fmtDay(milestone.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · {status}</span
+    >
+  </span>
+  <span class="kit-row-trail">
+    {#if badge}<span class="milestone-badge">{badge}</span>{/if}
+    <Icon name="chevronRight" size={20} />
+  </span>
+</a>
 
 {#if s.isAnnivToday}
+  <button type="button" class="kit-row" data-anniv-feeling={milestone.id} onclick={() => (offering = true)}>
+    <span class="kit-row-ico"><Icon name="heart" size={20} /></span>
+    <span class="kit-row-text">
+      <span class="kit-row-title">{m.ms_feeling_anniv_title()}</span>
+    </span>
+    <span class="kit-row-trail"><Icon name="chevronRight" size={20} /></span>
+  </button>
+
   <FeltSenseOfferSheet
     open={offering}
     title={m.ms_feeling_anniv_title()}
