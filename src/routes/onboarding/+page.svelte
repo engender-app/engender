@@ -45,6 +45,7 @@
     type OnboardingStep
   } from '$lib/onboarding/steps';
   import FlagSun from '$lib/components/FlagSun.svelte';
+  import SunSweep from '$lib/components/SunSweep.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -70,6 +71,9 @@
       the two directions are the same pair of steps, and only the control
       that was pressed knows which of them happened. */
   let back = $state(false);
+  /** Bumped on every flag tap so the bloom is a fresh element and plays
+      once per tap rather than once per mount. */
+  let bloomPass = $state(0);
 
   let name = $state('');
   let preset = $state<string | null>(null);
@@ -158,6 +162,11 @@
         {#key prefs.palette}
           <FlagSun />
         {/key}
+        <!-- Replayed on a step and on a flag alike: a step change on its
+             own is answered by a size, and a flag tap by a redraw, and the
+             sweep is what makes either read as the sun doing something
+             rather than as the screen having changed. -->
+        <SunSweep pass={`${index}-${prefs.palette}`} />
       </div>
     </div>
   {/if}
@@ -197,7 +206,7 @@
           {:else if step === 'flag'}
             <h1 class="setup-title">{m.ob_flag_title()}</h1>
             <p class="setup-body">{m.ob_flag_body()}</p>
-            <div class="palette-grid" role="radiogroup" aria-label={m.colour_palette()}>
+            <div class="palette-grid setup-flags" role="radiogroup" aria-label={m.colour_palette()}>
               {#each PALETTES as [key, label] (key)}
                 <button
                   class="palette-swatch press"
@@ -205,8 +214,14 @@
                   role="radio"
                   aria-checked={prefs.palette === key}
                   data-palette-pick={key}
-                  onclick={() => (prefs.palette = key)}
+                  onclick={() => {
+                    prefs.palette = key;
+                    bloomPass++;
+                  }}
                 >
+                  {#if prefs.palette === key}
+                    {#key bloomPass}<span class="swatch-bloom" aria-hidden="true"></span>{/key}
+                  {/if}
                   <span class="swatch-preview" data-swatch={key}></span>
                   <span class="swatch-name">{label()}</span>
                 </button>
@@ -215,21 +230,29 @@
           {:else if step === 'scales'}
             <h1 class="setup-title">{m.ob_track_title()}</h1>
             <p class="setup-body">{m.ob_track_body()}</p>
-            <ListCard>
+            <!-- What a preset is, is the set of scales it puts in front of
+                 you when you log. A row's subtitle was spending that on a
+                 comma list that ran past its own width; the chips are the
+                 same fact, read rather than parsed. -->
+            <div class="setup-presets" role="radiogroup" aria-label={m.ob_track_title()}>
               {#each vocabulary.presets as p (p.id)}
-                <ListRow
-                  key={`preset-${p.id}`}
-                  title={p.name}
-                  subtitle={vocabulary.presetDimensionNames(p.dims)}
-                  chevron={false}
+                <button
+                  class="setup-preset press"
+                  class:is-picked={preset === p.id}
+                  role="radio"
+                  aria-checked={preset === p.id}
+                  data-list-row={`preset-${p.id}`}
                   onclick={() => (preset = p.id)}
                 >
-                  {#snippet trailing()}
-                    {#if preset === p.id}<Icon name="check" size={20} />{/if}
-                  {/snippet}
-                </ListRow>
+                  <span class="setup-preset-name">{p.name}</span>
+                  <span class="setup-preset-scales">
+                    {#each p.dims as dim (dim)}
+                      <span class="tag-chip is-mini">{vocabulary.presetDimensionNames([dim])}</span>
+                    {/each}
+                  </span>
+                </button>
               {/each}
-            </ListCard>
+            </div>
           {:else if step === 'lock'}
             <h1 class="setup-title">{m.ob_lock_title()}</h1>
             <p class="setup-body">{m.ob_lock_body()}</p>
