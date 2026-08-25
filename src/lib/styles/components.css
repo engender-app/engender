@@ -15,6 +15,14 @@
   padding: var(--space-5) 0 var(--space-3);
   position: relative;
 }
+.screen-back {
+  grid-column: 1 / -1;
+  justify-self: start;
+  /* The glyph sits 13px inside a 48px target, so the button's own box has to
+     start left of the content edge for the arrow to look aligned with the
+     title under it. The target keeps its full width; only the box moves. */
+  margin-left: calc(-1 * var(--space-3));
+}
 /* A hidden title is taken out of the flow, so the header's own padding
    would otherwise be 32px of nothing above the screen's first group
    heading - which is most of the gap the redundant title was leaving
@@ -24,8 +32,15 @@
    title and still have a back control or an action, and those still need
    somewhere to sit. */
 .screen-header.is-collapsed { padding: 0; }
+/* Two rows: the back control on its own, then the title with whatever actions
+   the screen carries. A grid rather than the flex row this was, so the title
+   starts at the screen's own content edge instead of 48px inside it, and the
+   actions still sit on the title's line however long the title is. */
 .screen-header-row {
-  display: flex; align-items: center; gap: var(--space-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
 }
 .screen-title {
   flex: 1;
@@ -490,12 +505,22 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   box-shadow: var(--shadow-1);
 }
 
-.value-row, .chart-avg, .chip-value, .hm-num, .pin-dots { font-variant-numeric: tabular-nums; }
+.value-row, .chart-avg, .chip-value, .cal-num, .pin-dots { font-variant-numeric: tabular-nums; }
 
 .slider {
   position: relative;
   height: var(--touch-target);
   cursor: pointer;
+  /* A drag across a control must not start a text selection or a tap
+     highlight under the finger - the same two lines .fan carries, for the
+     same reason. This is a div with role="slider" rather than a button, so
+     app.css's own reset (which lists the real interactive elements) never
+     reached it, and app.css ships no ::selection rule either, so what showed
+     was the browser's default selection blue. Reported on 2026-08-25 as a
+     brief blue flash on click. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .slider:focus-visible { outline: none; }
 .slider-track {
@@ -678,33 +703,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .entry-tags { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 
 /* ---------- heat-map ---------- */
-.heatmap {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
-}
-.hm-dow { text-align: center; font-size: var(--text-xs); color: var(--text-2); font-weight: var(--weight-bold); }
-.hm-cell {
-  aspect-ratio: 1; border-radius: var(--radius-xs);
-  background: var(--heat-0);
-  display: flex; align-items: center; justify-content: center;
-  position: relative; text-decoration: none;
-}
-.hm-cell.is-blank { background: none; }
-.hm-num { font-size: var(--text-xs); color: var(--text-2); font-weight: var(--weight-medium); }
-/* COL-002: an explicit --on-heat-N token per ramp step (palettes.css) reads
-   as currentColor here, replacing a mix-blend-mode + [style*="--heat-3"]
-   substring hack that approximated contrast rather than computing it. */
-.hm-cell.has-entries .hm-num { color: inherit; font-weight: var(--weight-bold); }
-.hm-cell.has-entries { cursor: pointer; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast); }
-.hm-cell.has-entries:hover { transform: scale(1.08); box-shadow: var(--shadow-1); z-index: 1; }
-.hm-cell.is-today { outline: 2.5px solid var(--focus-ring); outline-offset: 1.5px; }
-
-.heat-legend {
-  display: flex; align-items: center; gap: 6px;
-  font-size: var(--text-xs); color: var(--text-2);
-  margin-top: var(--space-4); flex-wrap: wrap;
-}
+/* The heat map's own squares moved to screens.css with the calendar
+   (phase 5 ticket 22), which is where the month grid now lives; .legend-swatch
+   stayed here because three charts still draw one. */
 .legend-swatch { width: 16px; height: 16px; border-radius: 5px; display: inline-block; }
-.legend-none { display: inline-flex; align-items: center; gap: 5px; margin-left: var(--space-3); }
 
 /* Which line is which on a two-series LineChart (ticket 31). Swatches are
    line segments rather than the heat legend's squares, because that is what

@@ -17,9 +17,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromaOf, colorMixOklab, contrast, lightnessOf, toRgb } from '../src/lib/theme/colour';
 import {
+  HEAT_STEPS,
   ROLE_TINT_PCT,
   ROLE_WASH_PCT,
   flagRoles,
+  heatRamp,
   legibleInk,
   roleAt,
   stripeRoles
@@ -253,6 +255,82 @@ describe("kit.css's fallback ink", () => {
               `${palette}/${theme} stripe ${stripe} on ${ground}`
             ).toBeGreaterThanOrEqual(4.5);
           }
+        }
+      });
+    }
+  }
+});
+
+/* The heat ramp in a role's hue (phase 5 ticket 22). The week strip already
+   shades in the flag; the calendar's cells are the same reading on the same
+   scale, and they carry a day number, which is the whole difficulty. The
+   accent ramp got its on-colours by hand, one --on-heat-N per palette and
+   sometimes per theme; a role-hued ramp multiplies that table by however
+   many stripes each flag has, so this is the test that stands in for the
+   eyeballing nobody could do at that size. */
+describe('the heat ramp in a role\'s own hue', () => {
+  const grounds = (t: Record<string, string>) => [t.bg, t.surface, t['surface-2']];
+
+  it('is the same five steps palettes.css writes for the accent ramp', () => {
+    /* Read out of the stylesheet rather than repeated here: a cell on the
+       week and a cell on the calendar have to shade one day's reading
+       identically, and the only difference between them is the hue. */
+    const accent = [0, ...[1, 2, 3].map((n) => {
+      const raw = new RegExp(
+        String.raw`--heat-${n}:\s*color-mix\(in oklab,\s*var\(--accent\)\s*(\d+)%`
+      ).exec(palettes);
+      if (!raw) throw new Error(`palettes.css no longer mixes --heat-${n} from --accent`);
+      return Number(raw[1]);
+    }), 100];
+    expect(HEAT_STEPS).toEqual(accent);
+  });
+
+  it('leaves the empty step as the surface it sits on, and the deepest as the flag', () => {
+    const ramp = heatRamp('#FCF434', '#131019', '#EFEAF6');
+    expect(ramp[0].fill).toBe('#EFEAF6');
+    // Undiluted by any floor: this is the fill that turned olive when it was
+    // run through one.
+    expect(ramp[4].fill).toBe('#FCF434');
+    expect(ramp).toHaveLength(HEAT_STEPS.length);
+  });
+
+  for (const palette of PALETTES) {
+    for (const theme of THEMES) {
+      it(`writes a legible day number on every step, ${palette} ${theme}`, () => {
+        const tokens = tokensOf(palette, theme);
+        for (const role of flagRoles(
+          stripesOf(palette),
+          tokens.text,
+          grounds(tokens),
+          tokens['surface-2']
+        )) {
+          for (const [level, step] of role.heat.entries()) {
+            expect(
+              contrast(step.ink, step.fill),
+              `${palette}/${theme} ${role.stripe} level ${level}: ${step.ink} on ${step.fill}`
+            ).toBeGreaterThanOrEqual(4.5);
+          }
+        }
+      });
+
+      it(`keeps the ramp reading as a ramp, ${palette} ${theme}`, () => {
+        /* Single-hue intensity, never diverging (ADR-0012), which on a mix
+           into one ground means the lightness has to move one way the whole
+           length of the ramp. A ramp that goes light, dark, light is two
+           ends and no order. */
+        const tokens = tokensOf(palette, theme);
+        for (const role of flagRoles(
+          stripesOf(palette),
+          tokens.text,
+          grounds(tokens),
+          tokens['surface-2']
+        )) {
+          const steps = role.heat.map((s) => lightnessOf(s.fill));
+          const rising = steps.every((l, i) => i === 0 || l >= steps[i - 1] - 0.001);
+          const falling = steps.every((l, i) => i === 0 || l <= steps[i - 1] + 0.001);
+          expect(rising || falling, `${palette}/${theme} ${role.stripe}: ${steps.join(', ')}`).toBe(
+            true
+          );
         }
       });
     }

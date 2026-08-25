@@ -86,15 +86,25 @@ body {
   --nav-bar-pad: 5px;
 }
 
+/* No entrance of its own. It had one - fade in, slide 6px - and suppressing
+   it during a navigation did not work the way suppression looks like it
+   should: `animation: none` does not cancel an animation, it withholds it, so
+   when the attribute the override hung off was removed at the end of the
+   transition the animation applied afresh and played *then*. The screen
+   arrived with the transition and then faded in again behind it, which is
+   Alicja's "loads once and then disappears and loads again" (2026-08-25).
+
+   Removed rather than timed around, because the brief already says so. Tier 2
+   owns a screen arriving, and DIRECTION.md's slop audit names "one identical
+   entrance animation on every section of every screen" as one of the five
+   things it took out. This was that, one level up: the same entrance on every
+   screen in the app, on top of whichever tier-2 pattern the navigation had
+   already chosen. A cold start has no transition and now simply shows the
+   screen, which is tier 4's "content is simply there". */
 .screen {
   padding: 0 var(--space-5);
-  animation: screen-in var(--dur-med) var(--ease-out);
   position: relative;
   min-height: 100%;
-}
-@keyframes screen-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
 }
 
 /* staggered list entrance, pure CSS. Delays are multiples of the same
@@ -266,7 +276,11 @@ body {
 }
 
 .nav-add,
+/* The rail's add button, for the reason .nav-add gives: its pill travels the
+   column and must pass behind this rather than in front of it. */
 .rail-add {
+  position: relative;
+  z-index: 1;
   /* Why the press-and-slide did nothing on a phone. app.css gives every
      button `touch-action: manipulation`, which still lets the browser claim
      a vertical drag as a pan - so the moment the finger moved off the
@@ -283,6 +297,14 @@ body {
 }
 .nav-add {
   justify-self: center;
+  /* The pill travels under this, not over it (Alicja, 2026-08-25). The pill is
+     positioned and the add button was not, and a positioned element beats a
+     static sibling however the source is ordered - so the highlight crossed
+     the bar's centre in front of its most prominent control. One stacking
+     position is the whole fix; the pill keeps its place behind the tabs, which
+     it already had by source order. */
+  position: relative;
+  z-index: 1;
   width: 56px; height: 56px;
   border-radius: var(--r-add);
   border: none;
@@ -340,6 +362,37 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
    ============================================================ */
 .app-main { view-transition-name: screen; }
 
+/* The floating bar is its own group, above the screen's (Alicja, 2026-08-25:
+   "during the transition the new tab is rendering above the nav for a
+   second"). That is exactly what was happening, and it is how view
+   transitions work rather than a bug in the bar.
+
+   A view transition paints its groups in an overlay above the whole page, so
+   the bar's own z-index stops applying for the length of it: everything not
+   carrying a name goes into the root group, the named screen goes into its
+   own, and the screen's group paints after root because that is the order the
+   names are first encountered. The bar was therefore under the incoming
+   screen's snapshot for the whole transition and popped back in front when it
+   ended, which is the flick.
+
+   Naming the bar gives it a group of its own, and an explicit z-index puts
+   that group on top - DOM order would not, since the bar comes before <main>
+   so its name is encountered first. Its own group also crossfades the old and
+   new bar against each other, which is what an active tab indicator moving
+   should do, and is what the root group was already doing for it. */
+.app-nav { view-transition-name: nav; }
+::view-transition-group(screen) { z-index: 1; }
+::view-transition-group(nav) { z-index: 2; }
+/* The bar does not move between two tabs, so there is nothing for it to
+   animate; it holds still while the screens cross behind it. Where a
+   navigation does hide it - into a gate, out of one - the pair is absent on
+   one side and the browser falls back to a plain fade of the group. */
+::view-transition-old(nav),
+::view-transition-new(nav) {
+  animation-duration: var(--dur-fast);
+  animation-timing-function: var(--ease-out);
+}
+
 /* The outgoing screen leaves faster than the incoming one arrives. An exit
    that takes as long as an entrance reads as the app hesitating before it
    answers, and Material's own fade-through is asymmetric for the same
@@ -387,6 +440,51 @@ html[data-nav='shared-axis-back']::view-transition-new(screen) {
 @keyframes screen-axis-in { from { opacity: 0; transform: translateX(var(--motion-distance-md)); } }
 @keyframes screen-axis-back-out { to { opacity: 0; transform: translateX(var(--motion-distance-md)); } }
 @keyframes screen-axis-back-in { from { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
+
+/* Into the entry editor: container transform, the one place in the app
+   where the thing tapped becomes the thing that opens (DIRECTION.md tier 2,
+   deferred from ticket 18 to ticket 22 because it is the only pattern that
+   needs the two surfaces to agree on a key rather than only the navigation).
+
+   Two groups animate rather than one. The tapped card and the editor share
+   a name ($lib/motion/container.svelte.ts), so the browser pulls that pair
+   out of the screen snapshot and tweens the box between them; what is left
+   of the screen crossfades under it, which is what keeps the eye on the one
+   thing that is moving.
+
+   --dur-slow, and it is the only pattern that gets it. This is the only one
+   carrying a box across the screen and resizing it on the way, and at
+   --dur-med the card arrives before the eye has followed it, which loses
+   the one thing the pattern exists to show.
+
+   height:100% with object-fit:cover on both halves, because the default is
+   `fill` against a box that is changing size: a 60px row stretched into a
+   full screen is a smear, and the same two frames cropped are a card
+   opening. */
+html[data-nav='container']::view-transition-old(screen),
+html[data-nav='container']::view-transition-new(screen) {
+  animation-name: screen-crossfade;
+}
+html[data-nav='container']::view-transition-old(screen) {
+  animation-direction: reverse;
+}
+
+/* The container transform is the one pattern that also cared about this: a
+   transform on a named element moves the geometry the browser measured for the
+   morph. With `.screen` carrying no animation at all there is nothing left to
+   suppress. */
+
+::view-transition-group(entry-open) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-out);
+}
+::view-transition-old(entry-open),
+::view-transition-new(entry-open) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-out);
+  height: 100%;
+  object-fit: cover;
+}
 
 /* Substitute, never delete: the movement goes and the crossfade stays, over
    --dur-crossfade, which the 1ms clamp deliberately does not reach. A screen
@@ -596,3 +694,22 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
     animation: none;
   }
 }
+
+/* An icon button that reads as a control rather than as a glyph on the page
+   (Alicja, 2026-08-25: the calendar's search "should have a border around it -
+   just like the mood icons in the home screen"). The mood chips carry a ring
+   outside their own body - `outline` with an offset rather than a border, so
+   the circle's size is untouched and nothing reflows when it lights up - and
+   this is that ring at rest. A modifier rather than a change to `.icon-btn`,
+   because most header actions in the app are still bare and which of them earn
+   an outline is each screen's ticket to decide.
+
+   It is the outline and not a border for the same reason the chips use one:
+   `.icon-btn` is exactly --touch-target square, and a border would eat 2px of
+   that on every side. */
+.icon-btn.is-outlined {
+  outline: 1.5px solid var(--outline);
+  outline-offset: -1.5px;
+  border-radius: var(--radius-pill);
+}
+.icon-btn.is-outlined:hover { outline-color: var(--outline-strong); }

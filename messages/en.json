@@ -44,18 +44,26 @@
   "add_photo_camera": "Camera",
   "recordings_label": "Voice recordings",
   "add_recording": "Record",
+  "add_recording_file": "Add",
   "stop_recording": "Stop",
   "recording_remove": "Remove recording",
   "recording_mic_failed": "Couldn't open the microphone.",
   "recording_unsupported": "Voice recording isn't supported in this browser.",
+  "recording_not_audio": "That file isn’t audio.",
+  "recording_too_large": "That recording is too large to store. Up to 10 MB.",
   "videos_label": "Video notes",
+  "attachments_label": "Attachments",
   "add_video": "Record",
+  "add_video_file": "Add",
   "stop_video": "Stop",
   "video_remove": "Remove video note",
   "video_recording_hint": "Up to 30 seconds.",
   "video_compressing": "Compressing…",
   "video_camera_failed": "Couldn't open the camera.",
   "video_unsupported": "Video recording isn't supported in this browser.",
+  "video_not_a_video": "That file isn’t a video.",
+  "video_too_long": "A video note is up to 30 seconds. Pick a shorter one, or record it here.",
+  "video_too_large": "That video is too large to store, and it couldn’t be made smaller.",
   "gender_label": "Gender",
   "gender_hint": "However it feels right now. There are no wrong answers.",
   "preset_prefix": "preset:",
@@ -113,7 +121,6 @@
   "home_milestones_empty_body": "Add a coming-out date, a start date, or anything else worth marking.",
   "colour_days_by": "Colour days by",
   "metric_note": "The same colour choice drives the calendar heat-map.",
-  "change_metric": "change it",
   "prev_month": "Previous month",
   "next_month": "Next month",
   "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. Days with several entries show the day’s average. Tap a filled day to see its entries.",
@@ -140,6 +147,7 @@
   "search": "Search",
   "search_placeholder": "Search notes and tags…",
   "search_hint": "Notes and tags, with or without diacritics. “lozko” finds “łóżko”.",
+  "search_more": "Show {count} more",
   "search_try": "Try “euphoria”, “coffee”, or a tag like “therapy”.",
   "search_filters": "Filters",
   "search_filter_moods_aria": "Mood filters",
@@ -1285,8 +1293,13 @@
   "effects_direction_other": "Not tied to a direction",
   "effect_group_count": [
     {
-      "declarations": ["input count", "local countPlural = count: plural"],
-      "selectors": ["countPlural"],
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
       "match": {
         "countPlural=one": "{count} effect",
         "countPlural=other": "{count} effects"
@@ -1722,7 +1735,7 @@
   ],
   "heat_legend_aria": "{metric}: {low} to {high}",
   "slider_aria": "{name}: {low} to {high}",
-  "slider_unset": "not set",
+  "slider_unset": "-",
   "entry_save_failed": "Couldn’t save this entry.",
   "ms_status_next_in": "next in {days}",
   "photo_placeholder": "Photo placeholder",

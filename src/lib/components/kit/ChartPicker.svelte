@@ -25,14 +25,25 @@
     options,
     onPick,
     label,
+    labelledBy,
+    id,
     key
   }: {
     value: string;
     options: { value: string; label: string }[];
     onPick: (value: string) => void;
-    /** Names the control for a screen reader: the heading beside it says
-        what the chart shows, not what this changes. */
-    label: string;
+    /** Names the control for a screen reader where nothing on the screen
+        does: on a heading's line, the heading says what the chart shows and
+        not what this changes. One of this and `labelledBy` is required. */
+    label?: string;
+    /** The id of visible words that already name it. Unlike the slider's
+        root, this really is a `<select>`, so a `<label for>` can name it -
+        and where a screen writes the words out (the calendar's "Colour days
+        by") that label is the name rather than a second copy of it. Same
+        contract as Slider.svelte's. */
+    labelledBy?: string;
+    /** The select's own id, for a visible `<label for>` to point at. */
+    id?: string;
     key?: string;
   } = $props();
 
@@ -44,7 +55,9 @@
        sibling selector rather than from :has(), which the oldest WebView
        the app supports does not know. -->
   <select
-    aria-label={label}
+    {id}
+    aria-label={labelledBy ? undefined : label}
+    aria-labelledby={labelledBy}
     data-chart-picker={key}
     {value}
     onchange={(event) => onPick((event.currentTarget as HTMLSelectElement).value)}

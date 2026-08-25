@@ -224,11 +224,116 @@ try {
   ok(`slider steps by ${step} on the keyboard and lands on a stop`);
 } catch (e) { fail('slider', e); }
 
+/* 3b. a slider you have let go of stays where you left it.
+
+   Melt registers its window pointermove/pointerup pair inside its `root`
+   getter, and read only from a template spread that pair is torn down and
+   re-attached on every value change. A release landing before Svelte's next
+   flush found no pointerup listener, melt's mouse-down flag is a plain field
+   so nothing else ever cleared it, and the control then committed on every
+   window pointermove for the rest of the screen's life. Measured on
+   2026-08-25: one slider walked 20, 85, 90 with the button up, and two that
+   had both been touched landed on one value. Slider.svelte reads the getter
+   once, untracked, so the pair outlives the re-renders.
+
+   Driven with the mouse rather than the keyboard on purpose - the flow above
+   already covers the keyboard, and this defect only exists on the pointer
+   path. */
+try {
+  await fresh('/entry/new/today');
+  await page.waitForSelector('[data-slider]');
+  const values = () =>
+    page.locator('[data-slider]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-valuenow')));
+  const drag = async (index, fraction) => {
+    const box = await page.locator('[data-slider]').nth(index).boundingBox();
+    await page.mouse.move(box.x + box.width * fraction, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * fraction, box.y + box.height / 2, { steps: 4 });
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+  };
+
+  const count = await page.locator('[data-slider]').count();
+  if (count < 1) throw new Error('the editor drew no sliders');
+
+  await drag(0, 0.2);
+  const afterFirst = await values();
+
+  // The button is up. Nothing on the screen may follow the pointer.
+  const box = await page.locator('[data-slider]').first().boundingBox();
+  await page.mouse.move(box.x + 20, box.y - 220);
+  await page.mouse.move(box.x + 320, box.y - 220, { steps: 8 });
+  await page.waitForTimeout(200);
+  const afterWander = await values();
+  if (JSON.stringify(afterFirst) !== JSON.stringify(afterWander)) {
+    throw new Error(`a released slider followed the pointer: ${afterFirst} became ${afterWander}`);
+  }
+
+  if (count > 1) {
+    await drag(1, 0.8);
+    const both = await values();
+    if (both[0] !== afterFirst[0]) {
+      throw new Error(`dragging the second slider moved the first: ${afterFirst[0]} became ${both[0]}`);
+    }
+    if (both[0] === both[1]) throw new Error(`both sliders read ${both[0]}, so they are locked together`);
+  }
+  ok('a released slider stays put, and two sliders keep their own values');
+} catch (e) { fail('sliders do not lock together', e); }
+
+/* 3c. one entry straight to another, on the same route.
+
+   /entry/[id] wraps the editor in {#key page.params.id} because SvelteKit
+   reuses a route's component across a navigation between two parameter
+   values, so anything read once from page.params keeps the first id it saw.
+   The way that wrapper goes missing is somebody tidying it away as redundant
+   structure, and no unit test can see its absence - only a client-side
+   navigation from one entry to another can.
+
+   The app offers no link from one entry to another, so the link is put there
+   for the click. That is not a shortcut past the check: the bug lives in
+   SvelteKit's interception of an <a> to the same route, which is exactly what
+   this makes it do. A page.goto would be a reload and would prove nothing. */
+try {
+  await fresh('/search');
+  await page.locator('[data-filter-toggle]').click();
+  await page.waitForSelector('[data-sheet]');
+  await page.locator('[data-filter-has-note]').click();
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  await page.waitForSelector('[data-entry-card]');
+  const hrefs = (
+    await page.locator('[data-entry-card]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('href')))
+  ).filter(Boolean);
+  if (hrefs.length < 2) throw new Error(`only ${hrefs.length} entry link(s) to navigate between`);
+
+  await page.goto(BASE + hrefs[0], { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('#ed-note');
+  const first = await page.locator('#ed-note').inputValue();
+
+  await page.locator('[data-screen-header]').evaluate((header, href) => {
+    const a = document.createElement('a');
+    a.href = href;
+    a.textContent = 'next entry';
+    a.setAttribute('data-probe-next-entry', '');
+    header.append(a);
+  }, hrefs[1]);
+  await page.locator('[data-probe-next-entry]').click();
+  await page.waitForFunction((want) => location.pathname === want, hrefs[1], { timeout: 10000 });
+  await page.waitForSelector('#ed-note');
+  await page.waitForTimeout(600);
+  const second = await page.locator('#ed-note').inputValue();
+  if (first === second) {
+    throw new Error(`entry to entry showed the same note twice: "${first.slice(0, 40)}"`);
+  }
+  ok('entry to entry remounts the editor rather than reusing stale params');
+} catch (e) { fail('entry to entry', e); }
+
 /* 4. calendar → day → add another */
 try {
   await fresh('/calendar');
   await page.locator('[data-hm-cell-filled]').first().click();
-  await page.waitForSelector('[data-day-entry-row]');
+  await page.waitForSelector('[data-entry-card]');
   await page.locator('[data-add]').click();
   await page.waitForSelector('#ed-note');
   ok('calendar → day detail → add another');
@@ -251,7 +356,7 @@ try {
 
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
-  const notes = await page.locator('[data-day-entry-row] [data-entry-note]').allTextContents();
+  const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
   if (!notes.includes('Day detail proof A') || !notes.includes('Day detail proof B')) {
     throw new Error('day detail did not keep separate entries');
   }
@@ -285,18 +390,28 @@ try {
   await page.waitForSelector('[data-entry-card]');
 
   await fresh('/search');
-  await page.locator('[data-filter-toggle]').click();
-  await page.locator('[data-filter-has-note]').click();
+  /* The filters are a sheet since ticket 22, so setting one and reading the
+     results are two moments rather than one: the panel used to push the hits
+     off the screen, and now it covers them. Each pass opens it, changes one
+     thing, and closes it before asserting on what came back. */
+  const filter = async (handle) => {
+    await page.locator('[data-filter-toggle]').click();
+    await page.waitForSelector('[data-sheet]');
+    for (const one of [].concat(handle)) await page.locator(one).click();
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  };
+
+  await filter('[data-filter-has-note]');
   await page.waitForSelector('[data-active-filter-chip]');
   await page.waitForSelector('[data-entry-card]');
 
   await page.locator('#q').fill('ticket06');
   await page.waitForSelector('[data-entry-card]');
-  await page.locator('[data-filter-mood="1"]').click();
+  await filter('[data-filter-mood="1"]');
   await page.waitForTimeout(200);
   if ((await page.locator('[data-entry-card]').count()) !== 0) throw new Error('mood mismatch still showed results');
-  await page.locator('[data-filter-mood="1"]').click();
-  await page.locator('[data-filter-mood="5"]').click();
+  await filter(['[data-filter-mood="1"]', '[data-filter-mood="5"]']);
   await page.waitForSelector('[data-entry-card]');
   const pageText = (await page.locator('[data-screen]').innerText()).toLowerCase();
   if (!pageText.includes('ticket06-high-marker')) throw new Error('mood match did not restore the expected result');
@@ -598,8 +713,8 @@ try {
   const todayRows = async () => {
     await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
     await booted();
-    await page.waitForSelector('[data-day-entry-row]');
-    return page.locator('[data-day-entry-row]').count();
+    await page.waitForSelector('[data-entry-card]');
+    return page.locator('[data-entry-card]').count();
   };
 
   await fresh('/');

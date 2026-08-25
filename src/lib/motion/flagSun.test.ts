@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { SUN_OUTER, parseMotifStripes, ringColour, sunRings } from './flagSun';
+import { SUN_OUTER, parseMotifStripes, sunRings } from './flagSun';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -67,58 +67,35 @@ describe('sunRings', () => {
   });
 });
 
-describe('ringColour', () => {
-  it('nudges near-black stripes toward grey on dark, and leaves them on light', () => {
-    for (const black of ['#000000', '#1A1A1A', '#2C2C2C', '#2F2F2F']) {
-      expect(ringColour(black, true), black).toBe('#524C5E');
-      expect(ringColour(black, false), black).toBe(black);
-    }
-  });
+describe('the flag is the flag', () => {
+  /* The rule, stated twice and without qualification (Alicja, 2026-08-25):
+     every colour drawn as the flag is the flag's own hex. There used to be a
+     per-theme nudge in this file - a near-black band lifted on the dark theme,
+     white and the two yellows dulled on the light one - so that a band which
+     nearly matches the page would still read. It is gone, and this is what
+     keeps it gone: a substitution reintroduced anywhere in the ring path fails
+     here rather than being noticed on a screenshot months later.
 
-  it('nudges white toward grey on light, and leaves it on dark', () => {
-    expect(ringColour('#FFFFFF', false)).toBe('#DAD4DF');
-    expect(ringColour('#FFFFFF', true)).toBe('#FFFFFF');
-  });
-
-  it('nudges both yellows on light, and leaves them on dark', () => {
-    for (const yellow of ['#FCF434', '#FFED00']) {
-      expect(ringColour(yellow, false), yellow).toBe('#E3D300');
-      expect(ringColour(yellow, true), yellow).toBe(yellow);
-    }
-  });
-
-  it('is case-insensitive', () => {
-    expect(ringColour('#ffffff', false)).toBe('#DAD4DF');
-  });
-
-  it('leaves every other stripe exactly as the flag has it', () => {
-    expect(ringColour('#5BCEFA', true)).toBe('#5BCEFA');
-    expect(ringColour('#F5A9B8', false)).toBe('#F5A9B8');
-  });
-
-  it('nudges every near-black or near-white stripe the 8 real palettes actually use', () => {
-    for (const [name, stripes] of Object.entries(palettes)) {
-      for (const dark of [false, true]) {
-        const rings = sunRings(stripes, dark);
-        rings.forEach((ring, i) => {
-          const hex = stripes[i].toUpperCase();
-          const invisible =
-            (dark && ['#000000', '#1A1A1A', '#2C2C2C', '#2F2F2F'].includes(hex)) ||
-            (!dark && hex === '#FFFFFF');
-          if (invisible) expect(ring.color, `${name}[${i}] on ${dark ? 'dark' : 'light'}`).not.toBe(hex);
-        });
+     Held against `--motif-stripes` itself rather than a list written out here,
+     so the assertion is "the sun draws what palettes.css says" and cannot
+     drift from the flags the app actually ships. */
+  for (const theme of [true, false]) {
+    it(`draws every stripe of all 8 palettes at its exact hex, ${theme ? 'dark' : 'light'}`, () => {
+      for (const [name, stripes] of Object.entries(palettes)) {
+        const drawn = sunRings(stripes, theme).map((ring) => ring.color);
+        expect(drawn, name).toEqual(stripes);
       }
+    });
+  }
+
+  it('is the same set of colours whichever theme is showing', () => {
+    // The pair that made the nudge tempting: trans's white on light, agender's
+    // black on dark. Neither moves now.
+    for (const [name, stripes] of Object.entries(palettes)) {
+      expect(sunRings(stripes, true).map((r) => r.color), name).toEqual(
+        sunRings(stripes, false).map((r) => r.color)
+      );
     }
-  });
-});
-
-describe('parseMotifStripes', () => {
-  it('splits and trims a bare comma list', () => {
-    expect(parseMotifStripes(' #FFFFFF,  #000000 ,#123456')).toEqual(['#FFFFFF', '#000000', '#123456']);
-  });
-
-  it('drops empty entries from a trailing comma or blank value', () => {
-    expect(parseMotifStripes('#FFFFFF,,')).toEqual(['#FFFFFF']);
-    expect(parseMotifStripes('')).toEqual([]);
+    expect(palettes.trans).toContain('#FFFFFF');
   });
 });

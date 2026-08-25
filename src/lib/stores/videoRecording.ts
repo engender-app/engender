@@ -21,11 +21,13 @@
    varies where audio/opus does not, and a WebView at this app's floor
    (capacitor.config.ts's minWebViewVersion) may have VP8 without VP9. */
 
+import { chooseFiles } from '$lib/data/fileDialog';
 import { m } from '$lib/paraglide/messages';
 import { reencodeVideo } from '$lib/data/videoNotes/reencode';
 import {
   VIDEO_CAPTURE_BITS,
   VIDEO_MAX_DURATION_MS,
+  VIDEO_SIZE_CEILING,
   reencodeTarget,
   videoCaptureConstraints
 } from '$lib/data/videoNotes/limits';
@@ -133,4 +135,69 @@ export async function startVideoRecording(): Promise<ActiveVideoRecording | null
       return new Uint8Array(await stored.arrayBuffer());
     }
   };
+}
+
+/** How long a picked file runs, in milliseconds, or null where the browser
+    will not say.
+
+    Asked of the file rather than assumed, unlike a capture: limits.ts notes
+    that WebM out of MediaRecorder carries no duration, so this store times
+    its own recordings by the wall clock. A file from a camera roll is not
+    that - an mp4 carries its duration in the container - and the duration is
+    what decides whether this is a video note at all. */
+async function durationOf(file: File): Promise<number | null> {
+  const url = URL.createObjectURL(file);
+  try {
+    return await new Promise<number | null>((resolve) => {
+      const probe = document.createElement('video');
+      probe.preload = 'metadata';
+      probe.muted = true;
+      probe.onloadedmetadata = () =>
+        resolve(Number.isFinite(probe.duration) ? probe.duration * 1000 : null);
+      probe.onerror = () => resolve(null);
+      probe.src = url;
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** A video the person already has, chosen from wherever the device keeps
+    them, rather than recorded here (asked for 2026-08-25).
+
+    It answers to the same two caps a recording does, and for the reason
+    limits.ts gives: the caps exist to keep the archive exportable, so where
+    they came from makes no difference. Over 30 seconds is refused rather
+    than trimmed - trimming is an editor, and a video note is not one - and
+    over the size ceiling goes through the same re-encode a capture does. A
+    re-encode this browser cannot do is a refusal too, because the
+    alternative is putting a file into a backup that the ceiling exists to
+    keep out of it.
+
+    The half-second of slack is for a file recorded elsewhere at exactly
+    thirty seconds: a container that rounds up should not be told it is too
+    long. */
+export async function pickVideo(): Promise<Uint8Array | null> {
+  const [file] = await chooseFiles('video/*');
+  if (!file) return null;
+  if (!file.type.startsWith('video/')) {
+    toast(m.video_not_a_video());
+    return null;
+  }
+
+  const durationMs = await durationOf(file);
+  if (durationMs != null && durationMs > VIDEO_MAX_DURATION_MS + 500) {
+    toast(m.video_too_long());
+    return null;
+  }
+  if (file.size <= VIDEO_SIZE_CEILING) return new Uint8Array(await file.arrayBuffer());
+
+  const mimeType = supportedMimeType();
+  const target = reencodeTarget(file.size, durationMs ?? VIDEO_MAX_DURATION_MS);
+  const smaller = mimeType && target ? await reencodeVideo(file, target, mimeType) : null;
+  if (!smaller) {
+    toast(m.video_too_large());
+    return null;
+  }
+  return new Uint8Array(await smaller.arrayBuffer());
 }
