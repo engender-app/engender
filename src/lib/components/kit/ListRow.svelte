@@ -21,6 +21,7 @@
     onclick,
     key,
     chevron = true,
+    leading,
     trailing,
     action
   }: {
@@ -37,6 +38,11 @@
         row carrying a switch, say, where a chevron would promise a screen
         that is not there. */
     chevron?: boolean;
+    /** What sits where the icon disc would: a milestone's own photograph,
+        a thumbnail. The disc is the default because most rows have no
+        picture of themselves; a row that does should show it rather than a
+        glyph standing in for it. */
+    leading?: Snippet;
     /** Anything that sits before the chevron: a count, a date, a switch. */
     trailing?: Snippet;
     /** One control of the row's own, beside what the row opens - throwing
@@ -53,7 +59,9 @@
 </script>
 
 {#snippet body()}
-  {#if icon}
+  {#if leading}
+    {@render leading()}
+  {:else if icon}
     <span class="kit-row-ico"><Icon name={icon} size={22} /></span>
   {/if}
   <span class="kit-row-text">
