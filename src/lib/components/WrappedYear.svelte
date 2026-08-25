@@ -10,18 +10,21 @@
      The compact template's card-per-question layout is the right answer for
      a week and the wrong one here.
 
-     Two things changed in the rebuild. The month strip was twelve
-     hand-drawn bars with their own CSS and is the kit's horizontal bars,
-     which is what that surface is: a label and a value on a line above a
-     bar running the full width of the card. And the cover dropped the
+     The month strip was twelve hand-drawn bars with their own CSS, then the
+     kit's horizontal bars, and is now a grid of every day of the year on
+     mood's own ramp: twelve bars say where the shape went, and a year of
+     cells says what the year was. And the cover dropped the
      decorative bloom - an infinite ring animation - because the flag sun on
      Home is the whole of the app's ambient motion budget and a second loop
-     spends it twice (DIRECTION.md, tiers 0 and 4). What carries the cover
-     now is the year at display size over the flag's own bands, which is the
-     same treatment the kit's tile gives a number that matters. */
+     spends it twice - and Alicja put it back: a yearly wrapped is opened
+     deliberately, once, and it is the one screen allowed to be an occasion.
+     What the cover also gained is the year at display size over the flag's
+     own bands, which is the same treatment the kit's tile gives a number
+     that matters, in place of the gradient text the craft floor refuses. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtMonthName } from '$lib/data/dates';
-  import { localDateFromEpochDay } from '$lib/data/epochDay';
+  import { moodYear } from '$lib/charts/moodYear';
+  import { moodName } from '$lib/data/vocabulary/labels';
   import { MOOD_RANGE } from '$lib/data/metricRange';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -39,8 +42,10 @@
   import type { WrappedStreaks, WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
   import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
+  import RiveSlot from './RiveSlot.svelte';
   import BarRows from './kit/BarRows.svelte';
   import type { BarRow } from './kit/barRow';
+  import MoodYear from './kit/MoodYear.svelte';
   import ChartCard from './kit/ChartCard.svelte';
   import ListCard from './kit/ListCard.svelte';
   import SectionHeading from './kit/SectionHeading.svelte';
@@ -84,30 +89,16 @@
      rather than one stripe of it. */
   const AREA_ROLE = WRAPPED_AREA_ROLE;
 
-  /* Twelve rows, always, including the months that hold nothing: a year with
-     a silent spring reads as a year with a silent spring, and dropping those
-     rows would quietly close the gap up. Averaged over the days that carried
-     a mood rather than over all 28-31, so a month with four entries is not
-     dragged toward the floor by the days nobody logged. */
-  let monthRows = $derived.by((): BarRow[] => {
-    const sums = Array.from({ length: 12 }, () => ({ total: 0, days: 0 }));
-    for (const point of moodTrend) {
-      const month = localDateFromEpochDay(point.day).getMonth();
-      sums[month].total += point.value;
-      sums[month].days += 1;
-    }
-    return sums.map((sum, month) => {
-      const average = sum.days ? sum.total / sum.days : null;
-      return {
-        key: String(month),
-        name: fmtMonthName(year, month),
-        value: average === null ? '' : average.toFixed(1),
-        /* A share of the mood range rather than the raw average, so a month
-           at 1.0 still draws a visible sliver instead of nothing at all. */
-        amount: average === null ? 0 : (average - MOOD_RANGE.min) / (MOOD_RANGE.max - MOOD_RANGE.min)
-      };
-    });
-  });
+  /* The year, a day at a time. It was twelve bars, one per month: those said
+     where the shape went and this says what the year was, which is what a
+     yearly retrospective is for - and a month is still legible in it as a
+     block of columns (Alicja, 2026-08-25). */
+  let grid = $derived(moodYear(year, moodTrend.map((p) => ({ day: p.day, value: p.value }))));
+
+  const dayLabel = (epochDay: number, step: number | null) => {
+    const day = fmtDay(epochDay, { weekday: 'short', day: 'numeric', month: 'short' });
+    return step === null ? day : `${day} · ${moodName(step)}`;
+  };
 
   let insightRows = $derived(tagInsightRows(insights, metricKey(prefs)));
   let tally_rows = $derived(tallyRows(tally));
@@ -167,6 +158,12 @@
 </script>
 
 <div class="wrapped-cover" data-wrapped-cover>
+  <!-- Kept, at Alicja's call (2026-08-25). This ticket had taken it off,
+       reading DIRECTION's "the sun is the whole of the app's ambient budget"
+       as covering it; a yearly retrospective is opened deliberately, once,
+       and it is the one screen in the app that is allowed to be a bit of an
+       occasion. -->
+  <RiveSlot height={140} variant="bloom" />
   <p class="wrapped-cover-label">{m.wrapped()}</p>
   <h2 class="wrapped-cover-year" data-wrapped-cover-year>{year}</h2>
   {#if flagFill}
@@ -176,7 +173,7 @@
 </div>
 
 <ChartCard heading={m.wrapped_year_months()} kind="wrapped-months" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-  <BarRows rows={monthRows} />
+  <MoodYear {grid} monthName={(month) => fmtMonthName(year, month)} {dayLabel} />
 </ChartCard>
 
 <SectionHeading text={m.wrapped_year_figures()} />

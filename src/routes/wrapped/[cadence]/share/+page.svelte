@@ -181,17 +181,23 @@
         </div>
       </div>
     {:else}
+      <!-- The reason the button is off sits under the switches it is about,
+           not under the card at the bottom of the screen (Alicja,
+           2026-08-25). -->
+      {#if nothingPicked}
+        <p class="share-note">{m.wrapped_share_none_selected()}</p>
+      {/if}
       <div class="share-stage" bind:this={cardHost}>
         <WrappedCard {content} />
       </div>
-      <div class="editor-savebar" style="margin-top:var(--space-4)">
+      <!-- On the navigation bar rather than in the page: this is the screen's
+           one commitment, it is the same bar the entry editor's save sits on,
+           and a button that scrolls away is a button you go looking for. -->
+      <div class="editor-savebar">
         <button class="btn btn-primary" data-generate disabled={running || nothingPicked} onclick={make}>
           <span>{m.pj_generate()}</span>
         </button>
       </div>
-      {#if nothingPicked}
-        <p class="share-note">{m.wrapped_share_none_selected()}</p>
-      {/if}
     {/if}
   {/if}
 </div>

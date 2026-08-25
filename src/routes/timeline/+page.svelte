@@ -70,10 +70,11 @@
           </div>
         {:else if item.kind === 'gap'}
           {@const label = gapLabel(item.fromEpochDay, item.toEpochDay)}
+          <!-- The axis runs behind this rather than being interrupted by it,
+               so the label is the only thing here: two dashed rules either
+               side of it were what broke the line into pieces. -->
           <div class="tl-gap" data-tl-gap aria-label={m.tl_gap_aria({ duration: label })}>
-            <span class="tl-gap-line"></span>
             <span class="tl-gap-label">{m.tl_gap_label({ duration: label })}</span>
-            <span class="tl-gap-line"></span>
           </div>
         {:else}
           <div class="tl-item" class:is-future={item.future} data-tl-item={item.milestone.id}>
