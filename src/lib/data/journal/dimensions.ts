@@ -6,7 +6,16 @@
 
    Presets and dimensions are addressed by key (dimensions carry a NOT
    NULL key even when custom - the minted uuid doubles as one); preset ids
-   are the seeded key or the minted uuid (ADR-0002). */
+   are the seeded key or the minted uuid (ADR-0002).
+
+   No screen picks or builds a preset any more. Phase 5 ticket 35 replaced
+   the eight presets with a list of ticked scales held in the preferences,
+   and took the mirror's preset slice with it. `getPresets` and `addPreset`
+   stay because the rows do: reconcile still seeds the built-ins, an archive
+   still carries every preset it finds, and somebody who built a custom one
+   before that ticket still has it and still has to be able to export and
+   restore it. They are the read and write halves of a shape the journal
+   keeps for portability rather than for a picker. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { GenderDimension, GenderPreset } from '../types';

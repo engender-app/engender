@@ -19,7 +19,6 @@ import type {
   BuiltInEffectCategoryKey,
   BuiltInMeasurementTypeKey,
   BuiltInPersonalEffectKey,
-  BuiltInPresetKey,
   BuiltInTagGroupKey,
   BuiltInTagKey,
   EntryPromptKey,
@@ -329,16 +328,6 @@ const CYCLE_EVENT_KIND_NAME: Record<CycleEventKind, Message> = {
 /** The name of a cycle event kind. */
 export const cycleEventKindName = (kind: CycleEventKind): string => CYCLE_EVENT_KIND_NAME[kind]();
 
-const PRESET_NAME: Record<BuiltInPresetKey, Message> = {
-  'p-btw': m.preset_p_btw,
-  'p-masc': m.preset_p_masc,
-  'p-fem-masc': m.preset_p_fem_masc,
-  'p-fluid': m.preset_p_fluid,
-  'p-agender': m.preset_p_agender,
-  'p-demi-fem': m.preset_p_demi_fem,
-  'p-demi-masc': m.preset_p_demi_masc,
-  'p-nb': m.preset_p_nb
-};
 
 const TAG_GROUP_NAME: Record<BuiltInTagGroupKey, Message> = {
   gender: m.taggroup_gender,
@@ -470,7 +459,6 @@ function lookup<K extends string>(map: Record<K, Message>, key: string): string 
 export const dimensionName = (key: string) => lookup(DIMENSION_NAME, key);
 export const dimensionLow = (key: string) => lookup(DIMENSION_LOW, key);
 export const dimensionHigh = (key: string) => lookup(DIMENSION_HIGH, key);
-export const presetName = (key: string) => lookup(PRESET_NAME, key);
 export const tagGroupName = (key: string) => lookup(TAG_GROUP_NAME, key);
 export const tagLabel = (key: string) => lookup(TAG_LABEL, key);
 /** The longer explanation a dysphoria type tag carries, or null for every

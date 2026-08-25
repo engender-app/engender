@@ -1,9 +1,10 @@
-/* The mirrored half of ADR-0004: gender dimensions, presets, tag groups and
-   milestones, held in reactive state and read synchronously.
+/* The mirrored half of ADR-0004: gender dimensions, tag groups, milestones
+   and the rest of the vocabulary, held in reactive state and read
+   synchronously.
 
-   All four are bounded at tens of rows, are never paginated, and are needed
-   by nearly every component - the entry editor wants the active preset's
-   dimensions and the visible tag groups, every entry card wants tag labels,
+   All of them are bounded at tens of rows, are never paginated, and are
+   needed by nearly every component - the entry editor wants the ticked
+   scales and the visible tag groups, every entry card wants tag labels,
    Home wants milestones. Querying them asynchronously would put a loading
    state on the whole app rather than on the four screens that read entry
    data.
@@ -30,7 +31,6 @@ import type {
   BodyRegion,
   EffectCategory,
   GenderDimension,
-  GenderPreset,
   MeasurementType,
   Milestone,
   PersonalEffectCatalogEntry,
@@ -43,7 +43,6 @@ import type { TableName } from './writes';
 
 const mirror = $state<{
   dimensions: GenderDimension[];
-  presets: GenderPreset[];
   tagGroups: TagGroup[];
   milestones: Milestone[];
   affirmations: Affirmation[];
@@ -53,7 +52,6 @@ const mirror = $state<{
   personalEffectTypes: PersonalEffectCatalogEntry[];
 }>({
   dimensions: [],
-  presets: [],
   tagGroups: [],
   milestones: [],
   affirmations: [],
@@ -65,7 +63,6 @@ const mirror = $state<{
 
 type MirrorSlice =
   | 'dimensions'
-  | 'presets'
   | 'tagGroups'
   | 'milestones'
   | 'affirmations'
@@ -78,8 +75,7 @@ type MirrorSlice =
     milestone carries its photo on the mirrored row, so attaching one changes
     what the timeline should draw. */
 const AFFECTED: Partial<Record<TableName, MirrorSlice[]>> = {
-  dimension: ['dimensions', 'presets'],
-  preset: ['presets'],
+  dimension: ['dimensions'],
   tag: ['tagGroups'],
   milestone: ['milestones'],
   photo: ['milestones'],
@@ -96,10 +92,9 @@ let registered = false;
     it: fills the mirror before the first screen renders, so nothing has to
     cope with an app whose vocabulary is briefly empty. */
 export async function hydrateReference(journal: Journal): Promise<void> {
-  const [dimensions, presets, tagGroups, milestones, affirmations, bodyRegions, measurementTypes, effectCategories, personalEffectTypes] =
+  const [dimensions, tagGroups, milestones, affirmations, bodyRegions, measurementTypes, effectCategories, personalEffectTypes] =
     await Promise.all([
       journal.dimensions.getDimensions(),
-      journal.dimensions.getPresets(),
       journal.tags.getTagGroups(),
       journal.milestones.getMilestones(),
       journal.affirmations.getAffirmations(),
@@ -109,7 +104,6 @@ export async function hydrateReference(journal: Journal): Promise<void> {
       journal.personalEffects.getEffectTypes()
     ]);
   mirror.dimensions = dimensions;
-  mirror.presets = presets;
   mirror.tagGroups = tagGroups;
   mirror.milestones = milestones;
   mirror.affirmations = affirmations;
@@ -130,7 +124,6 @@ export async function hydrateReference(journal: Journal): Promise<void> {
 async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
   try {
     if (slices.has('dimensions')) mirror.dimensions = await journal.dimensions.getDimensions();
-    if (slices.has('presets')) mirror.presets = await journal.dimensions.getPresets();
     if (slices.has('tagGroups')) mirror.tagGroups = await journal.tags.getTagGroups();
     if (slices.has('milestones')) mirror.milestones = await journal.milestones.getMilestones();
     if (slices.has('affirmations')) mirror.affirmations = await journal.affirmations.getAffirmations();
@@ -151,9 +144,6 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
 export const reference = {
   get dimensions(): GenderDimension[] {
     return mirror.dimensions;
-  },
-  get presets(): GenderPreset[] {
-    return mirror.presets;
   },
   get tagGroups(): TagGroup[] {
     return mirror.tagGroups;
@@ -224,28 +214,32 @@ export const reference = {
     );
   },
 
-  /** The preset the preferences point at, falling back to the first one: a
-      preference naming a preset this install does not have must not leave the
-      editor with no scales at all. */
-  get activePreset(): GenderPreset {
-    return mirror.presets.find((p) => p.id === prefs.activePreset) ?? mirror.presets[0] ?? EMPTY_PRESET;
-  },
-
   /** The milestone the journey anchor preference points at (phase 5 ticket
       25), or null when no anchor is set or it names a milestone this install
-      no longer has. No fallback to another milestone the way `activePreset`
-      falls back to the first preset: unset is a legitimate resting state
-      here, not a gap to paper over. */
+      no longer has. Unset is a legitimate resting state here, not a gap to
+      paper over - the same answer `activeDimensions` gives an empty tick
+      list. */
   get journeyAnchor(): Milestone | null {
     return mirror.milestones.find((mi) => mi.id === prefs.journeyAnchorMilestoneId) ?? null;
   },
 
-  /** The active preset's dimensions, in the preset's order, skipping keys no
-      dimension carries. */
+  /** The scales the entry screen offers: the ticked ones (phase 5 ticket
+      35), in catalogue order, skipping keys no dimension carries.
+
+      Filtered from the catalogue rather than mapped over the stored list, so
+      the order sliders appear in is the order the scales are defined in and
+      not the order somebody happened to tick their boxes. Every built-in
+      preset already listed its dimensions in catalogue order, so no install
+      that upgrades finds its sliders rearranged.
+
+      Nothing ticked gives nothing back, and that is a state rather than a
+      fault: a mood, tags, a note and a photo are still an entry. The preset
+      this replaced could not express it, so it fell back to the first preset
+      whenever the stored key named nothing; there is no key to fail to
+      resolve any more. */
   get activeDimensions(): GenderDimension[] {
-    return this.activePreset.dims
-      .map((key) => mirror.dimensions.find((d) => d.key === key))
-      .filter((d): d is GenderDimension => !!d);
+    const ticked = new Set(prefs.activeScales);
+    return mirror.dimensions.filter((d) => ticked.has(d.key));
   },
 
   /** Groups a user picks tags from: enabled groups, hidden tags removed, and
@@ -269,8 +263,3 @@ export const reference = {
     return this.tags.find((t) => t.id === id) ?? null;
   }
 };
-
-/* Only ever reached before the mirror is filled - the built-ins reconcile on
-   every boot, so a real install always has presets. It exists so the editor's
-   `preset.name` is a string rather than a crash during that window. */
-const EMPTY_PRESET: GenderPreset = { id: '', name: '', builtIn: false, dims: [] };

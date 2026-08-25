@@ -2,7 +2,7 @@
    (ADR-0030, CONTEXT: "Lean"). */
 
 import { test, expect } from 'vitest';
-import { presetLean, rankByLean } from './lean.ts';
+import { scaleLean, rankByLean } from './lean.ts';
 import { BUILT_IN_PRESETS } from './vocabulary/builtins.ts';
 
 test('every built-in preset derives the lean ticket 43 expects', () => {
@@ -18,16 +18,16 @@ test('every built-in preset derives the lean ticket 43 expects', () => {
   };
 
   for (const preset of BUILT_IN_PRESETS) {
-    expect(presetLean(preset.dims)).toBe(expected[preset.key]);
+    expect(scaleLean(preset.dims)).toBe(expected[preset.key]);
   }
 });
 
 test('a custom preset with both femininity and masculinity has no lean', () => {
-  expect(presetLean(['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary'])).toBeNull();
+  expect(scaleLean(['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary'])).toBeNull();
 });
 
 test('a custom preset with neither femininity nor masculinity has no lean', () => {
-  expect(presetLean(['euphoria_dysphoria', 'agender_gendered'])).toBeNull();
+  expect(scaleLean(['euphoria_dysphoria', 'agender_gendered'])).toBeNull();
 });
 
 test('rankByLean sorts matching items first, keeping each group in its own order', () => {

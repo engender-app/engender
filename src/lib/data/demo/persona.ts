@@ -132,7 +132,7 @@ export function demoPreferences(): Partial<PreferenceValues> {
   return {
     onboarded: true,
     name: 'Alice',
-    activePreset: 'p-btw',
+    activeScales: ['euphoria_dysphoria', 'femininity'],
     metricKind: 'mood',
     checkInEnabled: true,
     lastBackupAt: startOfDayTimestamp(todayEpochDay() - 34),

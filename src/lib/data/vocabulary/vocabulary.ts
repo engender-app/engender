@@ -14,7 +14,7 @@ import { MOOD_RANGE, type MetricRange } from '../metricRange';
 import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
-import { presetLean, rankByLean } from '../lean';
+import { rankByLean, scaleLean } from '../lean';
 import { entryPromptRows, entryTemplateRows, milestoneTemplateRows, regimenTemplateRows } from './builtins';
 import type {
   Affirmation,
@@ -23,7 +23,6 @@ import type {
   EntryPrompt,
   EntryTemplate,
   GenderDimension,
-  GenderPreset,
   MeasurementType,
   Milestone,
   MilestoneTemplate,
@@ -45,7 +44,6 @@ import {
   milestoneTemplateName,
   moodName,
   personalEffectName,
-  presetName,
   tagDescription,
   tagGroupName,
   tagLabel
@@ -74,10 +72,6 @@ function localizeTag(t: Tag): Tag {
 
 function localizeGroup(g: TagGroup): TagGroup {
   return { ...g, name: g.builtIn ? tagGroupName(g.key) : g.name, tags: g.tags.map(localizeTag) };
-}
-
-function localizePreset(p: GenderPreset): GenderPreset {
-  return p.builtIn ? { ...p, name: presetName(p.id) } : p;
 }
 
 function localizeMeasurementType(t: MeasurementType): MeasurementType {
@@ -143,19 +137,17 @@ export const vocabulary = {
   get visibleDimensions(): GenderDimension[] {
     return this.dimensions.filter((d) => !d.hidden);
   },
-  get presets(): GenderPreset[] {
-    return reference.presets.map(localizePreset);
-  },
-  get activePreset(): GenderPreset {
-    return localizePreset(reference.activePreset);
-  },
-  /** The active preset's own lean (phase 5 ticket 43, ADR-0030) - `null`
-      when it has both `femininity` and `masculinity`, or neither, and every
-      lean-tagged picker should render unranked. Shared by every picker that
-      ranks by lean, so the derivation is computed once rather than at each
-      call site. */
+  /** The lean the ticked scales carry (phase 5 ticket 43, ADR-0030) -
+      `null` when both `femininity` and `masculinity` are ticked, or neither,
+      and every lean-tagged picker should render unranked. Shared by every
+      picker that ranks by lean, so the derivation is computed once rather
+      than at each call site.
+
+      Read off the scales actually drawn rather than off the stored list, so
+      a ticked scale this install no longer has cannot lean a picker
+      (ticket 35 replaced the preset the lean used to come from). */
   get activeLean(): 'femme' | 'masc' | null {
-    return presetLean(this.activePreset.dims);
+    return scaleLean(this.activeDimensions.map((d) => d.key));
   },
   get tagGroups(): TagGroup[] {
     return reference.tagGroups.map(localizeGroup);
@@ -183,7 +175,7 @@ export const vocabulary = {
   /** What a measurement type is called, hidden or not - a chart or a row
       for a type since hidden still needs its name. Falls back to the key
       itself for a type this install has never heard of, the same
-      defensive fallback `presetDimensionNames` gives a dimension key. */
+      defensive fallback every `lookup` in labels.ts gives a key. */
   measurementTypeName(key: string): string {
     return this.measurementTypes.find((t) => t.key === key)?.name ?? key;
   },
@@ -286,13 +278,6 @@ export const vocabulary = {
   tag(id: string): Tag | null {
     const found = reference.tag(id);
     return found && localizeTag(found);
-  },
-  /** PR-001: names the dimensions a preset turns on, in place of a scale
-      count - "3 scales" said less than the identity-flavoured preset name
-      already did. Shared by the Settings and onboarding preset pickers. */
-  presetDimensionNames(dims: readonly string[]): string {
-    const byKey = new Map(this.dimensions.map((d) => [d.key, d.name]));
-    return dims.map((k) => byKey.get(k) ?? k).join(', ');
   },
   /** A few templates to offer, picked at random so the suggestions differ
       between visits and the shuffle button has something to do (PRD F6).
