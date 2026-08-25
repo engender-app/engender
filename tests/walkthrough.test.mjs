@@ -469,12 +469,16 @@ try {
 try {
   await fresh('/settings');
   const before = await page.evaluate(() => document.documentElement.dataset.moodPreset);
-  if (before !== 'amber') throw new Error('default mood preset is not amber: ' + before);
-  await page.locator('[data-mood-preset-pick="teal"]').click();
-  await page.waitForFunction(() => document.documentElement.dataset.moodPreset === 'teal');
+  if (before !== 'teal') throw new Error('default mood preset is not teal: ' + before);
+  /* Switches to plum, not teal. The default was amber and this flow moved it
+     to teal; the default is teal now (phase 5 ticket 31), and leaving the
+     target alone would have had it clicking the preset it already had - the
+     flow would pass whether or not the control worked. */
+  await page.locator('[data-mood-preset-pick="plum"]').click();
+  await page.waitForFunction(() => document.documentElement.dataset.moodPreset === 'plum');
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
-  if ((await page.evaluate(() => document.documentElement.dataset.moodPreset)) !== 'teal') {
+  if ((await page.evaluate(() => document.documentElement.dataset.moodPreset)) !== 'plum') {
     throw new Error('mood preset did not survive a reload');
   }
   ok('mood preset switch persists independently of the palette');
