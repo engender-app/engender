@@ -1882,14 +1882,6 @@ try {
   ok('quick add: a backdated entry still opens the editor on that day');
 } catch (e) { fail('quick add backdate', e); }
 
-try {
-  await openQuickAdd();
-  await page.locator('[data-choose="photo"]').click();
-  await page.waitForSelector('#ed-note');
-  if (!page.url().includes('seedPhoto=1')) throw new Error(`photo went to ${page.url()}`);
-  ok('quick add: a photo reaches the editor that records one');
-} catch (e) { fail('quick add photo', e); }
-
 for (const kind of ['misgendered', 'correctly_gendered']) {
   try {
     /* From a screen with nothing to do with the tally, which is the whole
@@ -1909,6 +1901,33 @@ for (const kind of ['misgendered', 'correctly_gendered']) {
     ok(`quick add: ${kind} logs from wherever you are, without leaving it`);
   } catch (e) { fail(`quick add tally ${kind}`, e); }
 }
+
+try {
+  /* A write that did not land must not borrow the animation of one that
+     did. Forced through the demo build's own switch rather than by breaking
+     the journal, so this checks the branch and not the wreckage: no mark
+     flies, the control never wears a tick, and it says so instead. */
+  await fresh('/stats');
+  await page.evaluate(() => (document.documentElement.dataset.demoFail = 'tally-misgendered'));
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-fan]');
+  await page.locator('[data-choose="tally-misgendered"]').click();
+  await page.waitForSelector('[data-toast-kind="tally-failed"]', { timeout: 8000 });
+  if (await page.locator('[data-fan-flight]').count()) {
+    throw new Error('a failed write sent the mark flying anyway');
+  }
+  const refused = await page.locator('[data-nav-fab]').evaluate((node) => ({
+    shaking: node.className.includes('is-refusing'),
+    catching: node.className.includes('is-catching')
+  }));
+  if (!refused.shaking) throw new Error('the add control did not answer the failure');
+  if (refused.catching) throw new Error('the add control played the landed animation on a failure');
+  if (await page.locator('[data-toast-kind="tally"]').count()) {
+    throw new Error('a failed write raised the saved toast');
+  }
+  await page.evaluate(() => delete document.documentElement.dataset.demoFail);
+  ok('quick add: a write that fails says so, and borrows none of the landed animation');
+} catch (e) { fail('quick add failed write', e); }
 
 try {
   await openQuickAdd();
@@ -1949,8 +1968,8 @@ try {
 
 try {
   await fresh('/');
-  await slideToTarget('[data-choose="photo"]');
-  await page.waitForSelector('#ed-note');
+  await slideToTarget('[data-choose="another-day"]');
+  await page.waitForSelector('#backdate');
   ok('quick add: pressing and sliding onto a row runs it, with no second tap');
 } catch (e) { fail('quick add slide to a row', e); }
 

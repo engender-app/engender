@@ -746,17 +746,43 @@ html[data-a11y-motion='reduce'] .mood-face-ink { animation: none; }
   100% { transform: scale(1); }
 }
 
+/* And the refusal. It starts at once rather than waiting out a flight that
+   is not coming: bad news should not arrive slower than good. Sideways
+   only - a vertical shake on a control sitting against the bottom of the
+   screen reads as the bar coming loose rather than as an answer. It damps
+   rather than repeating evenly, which is what stops it reading as an
+   attention-seeking loop. */
+.nav-add.is-refusing,
+.rail-add.is-refusing {
+  animation: add-refuse var(--dur-slow) var(--ease-out) both;
+}
+@keyframes add-refuse {
+  0% { transform: translateX(0); }
+  16% { transform: translateX(-7px); }
+  34% { transform: translateX(6px); }
+  52% { transform: translateX(-4px); }
+  70% { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+
 /* Substitute, never delete: nothing travels and nothing pulses, and the
    tick still appears on the button for exactly as long. What goes is the
    movement, not the news. */
+/* Substitute, never delete, and symmetrically: the tick and the alert both
+   still appear on the control for exactly as long. What goes is the
+   travelling, the pulse and the shake - the movement, never the news. */
 html[data-a11y-motion='reduce'] .fan-flight,
 html[data-a11y-motion='reduce'] .nav-add.is-catching,
-html[data-a11y-motion='reduce'] .rail-add.is-catching { animation: none; }
+html[data-a11y-motion='reduce'] .rail-add.is-catching,
+html[data-a11y-motion='reduce'] .nav-add.is-refusing,
+html[data-a11y-motion='reduce'] .rail-add.is-refusing { animation: none; }
 html[data-a11y-motion='reduce'] .fan-flight { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .fan-flight,
   .nav-add.is-catching,
-  .rail-add.is-catching { animation: none; }
+  .rail-add.is-catching,
+  .nav-add.is-refusing,
+  .rail-add.is-refusing { animation: none; }
   .fan-flight { display: none; }
 }
 
