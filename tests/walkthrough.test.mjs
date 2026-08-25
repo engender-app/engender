@@ -1005,7 +1005,14 @@ try {
 
   for (const [key, label] of expected) {
     await page.locator(`[data-pick-preset="${key}"]`).click();
-    await page.waitForSelector(`[data-active-preset-name]:text-is("${label}")`);
+    /* Phase 5 ticket 24: the preset row is a ListRow now, so the picked
+       name shows up in its own text rather than under a bespoke attribute -
+       read as text content, not a nested class selector, to keep this
+       locator restyle-safe (walkthrough-locators.test.ts). */
+    await page.waitForFunction(
+      (want) => document.querySelector('[data-list-row="preset"]')?.textContent.includes(want),
+      label
+    );
     await page.getByRole('button', { name: /Gender preset/i }).click();
     await page.waitForSelector(`[data-pick-preset="${key}"][data-selected="true"]`);
   }
@@ -1264,7 +1271,9 @@ try {
    where the version is the real one resolved from the checkout. */
 try {
   await fresh('/settings');
-  await page.locator('[data-about-open]').click();
+  /* Phase 5 ticket 24: the About row is a ListRow now, whose own handle is
+     data-list-row="about" rather than a settings-specific attribute. */
+  await page.locator('[data-list-row="about"]').click();
   const shown = (await page.locator('[data-app-version]').innerText()).trim();
   if (shown !== '9.9.9-walkthrough') throw new Error(`About shows "${shown}"`);
   ok('About shows the exact version the build was given');
@@ -2257,7 +2266,9 @@ try {
       const main = document.querySelector('[data-app-scroll-region]');
       main.scrollTop = main.scrollHeight;
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const rows = document.querySelectorAll('[data-hub-row]');
+      /* Phase 5 ticket 24: the hub's rows are ListRow now, whose own handle
+         is data-list-row rather than a hub-specific attribute. */
+      const rows = document.querySelectorAll('[data-list-row]');
       return rows[rows.length - 1].getBoundingClientRect().bottom;
     });
     const barTop = await page

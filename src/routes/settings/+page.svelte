@@ -1,4 +1,18 @@
 <script lang="ts">
+  /* Settings, on the surface kit (phase 5 ticket 24). The three sections
+     stay hand-written, per this ticket's own scope line - what changes is
+     the container each sits in, same as the More hub next to it.
+
+     Appearance's swatches, segments and switches are heterogeneous content
+     with no row shape to them, so they sit in one ListCard's padded slot
+     (.settings-pad) rather than being forced through ListRow. Tracking and
+     Privacy's navigable rows are genuinely list-card material and go
+     through ListRow properly; the handful of rows that carry a Switch
+     instead of a chevron stay hand-written in the kit's own row classes,
+     because ListRow always renders as an interactive <a> or <button> and a
+     button wrapping a switch's own button is a nested control - so a row
+     with nothing for the row itself to do is a plain element wearing
+     .kit-row, the same move Home's milestone-empty state already makes. */
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
@@ -6,7 +20,10 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -90,375 +107,360 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.nav_settings()} />
+  <!-- Hidden on the live build (Alicja, 2026-08-25): a visible "Settings"
+       sitting directly above "Appearance" is the same two-headers-stacked
+       problem DIRECTION.md 3d names for the More hub, even though this
+       screen isn't itself a tab - the title stays in the document for a
+       screen reader and the outline, same as there. -->
+  <ScreenHeader title={m.nav_settings()} titleHidden />
 
-  <SectionTitle text={m.settings_appearance()} />
-  <div class="card">
-    <p class="field-label" style="margin-bottom:var(--space-3)">{m.colour_palette()}</p>
-    <div class="palette-grid" role="radiogroup" aria-label={m.colour_palette()}>
-      {#each PALETTES as [key, label] (key)}
-        <button
-          class="palette-swatch"
-          class:is-active={prefs.palette === key}
-          role="radio"
-          aria-checked={prefs.palette === key}
-          data-palette-pick={key}
-          onclick={() => pickPalette(key)}
-        >
-          <span class="swatch-preview" data-swatch={key}></span>
-          <span class="swatch-name">{label()}</span>
-        </button>
-      {/each}
-    </div>
-    <div class="hr"></div>
-    <p class="field-label" style="margin-bottom:var(--space-3)">{m.mood_colours()}</p>
-    <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.mood_colours_note()}</p>
-    <div class="mood-preset-grid" role="radiogroup" aria-label={m.mood_colours()}>
-      {#each MOOD_PRESETS as [key, label] (key)}
-        <button
-          class="palette-swatch"
-          class:is-active={prefs.moodPreset === key}
-          role="radio"
-          aria-checked={prefs.moodPreset === key}
-          data-mood-preset-pick={key}
-          onclick={() => pickMoodPreset(key)}
-        >
-          <span class="swatch-preview" data-mood-swatch={key}></span>
-          <span class="swatch-name">{label()}</span>
-        </button>
-      {/each}
-    </div>
-    <div class="hr"></div>
-    <div class="pref-row">
-      <span class="row-title">{m.theme()}</span>
-      <Segmented
-        name={m.theme()}
-        options={[
-          { value: 'system', label: m.theme_system() },
-          { value: 'light', label: m.theme_light() },
-          { value: 'dark', label: m.theme_dark() },
-        ]}
-        value={prefs.theme}
-        onChange={(v) => {
-          prefs.theme = v as typeof prefs.theme;
-        }}
-      />
-    </div>
-    <div class="pref-row">
-      <span class="row-title">{m.language()}</span>
-      <Segmented
-        name={m.language()}
-        options={[
-          { value: 'system', label: m.theme_system() },
-          { value: 'en', label: 'English' },
-          { value: 'pl', label: 'Polski' },
-        ]}
-        value={prefs.language}
-        onChange={setLanguage}
-      />
-    </div>
-    <div class="hr"></div>
-    <p class="field-label" style="margin-bottom:var(--space-3)">{m.settings_accessibility_pack()}</p>
-    <div class="pref-row">
-      <span class="row-text">
-        <span class="row-title">{m.a11y_text_size_boost()}</span>
-        <span class="row-subtitle">{m.a11y_text_size_boost_sub()}</span>
-      </span>
-      <Switch
-        checked={prefs.a11yTextSizeBoost}
-        label={m.a11y_text_size_boost()}
-        onChange={(v) => {
-          prefs.a11yTextSizeBoost = v;
-        }}
-      />
-    </div>
-    <div class="pref-row">
-      <span class="row-text">
-        <span class="row-title">{m.a11y_legibility_boost()}</span>
-        <span class="row-subtitle">{m.a11y_legibility_boost_sub()}</span>
-      </span>
-      <Switch
-        checked={prefs.a11yLegibilityBoost}
-        label={m.a11y_legibility_boost()}
-        onChange={(v) => {
-          prefs.a11yLegibilityBoost = v;
-        }}
-      />
-    </div>
-    <div class="pref-row">
-      <span class="row-text">
-        <span class="row-title">{m.a11y_motion_reduce_override()}</span>
-        <span class="row-subtitle">{m.a11y_motion_reduce_override_sub()}</span>
-      </span>
-      <Switch
-        checked={prefs.a11yMotionReduce}
-        label={m.a11y_motion_reduce_override()}
-        onChange={(v) => {
-          prefs.a11yMotionReduce = v;
-        }}
-      />
-    </div>
-  </div>
-
-  <SectionTitle text={m.settings_tracking()} />
-  <div class="list-group" data-settings-list>
-    <button class="list-row" onclick={() => (presetSheet = true)}>
-      <span class="row-icon"><Icon name="heart" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.gender_preset()}</span>
-        <span class="row-subtitle" data-active-preset-name>{preset.name}</span>
-      </span>
-      <!-- SH-103: chevronDown ("opens in place") rather than chevronRight
-           ("navigates away"), so a sheet-opening row no longer looks
-           identical to the <a> rows around it. -->
-      <span class="row-trailing"><Icon name="chevronDown" size={20} /></span>
-    </button>
-    <a class="list-row" href="/settings/dimension">
-      <span class="row-icon"><Icon name="stats" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.custom_dimension()}</span>
-        <span class="row-subtitle">{m.custom_dimension_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <a class="list-row" href="/settings/reminders">
-      <span class="row-icon"><Icon name="bell" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.reminders()}</span>
-        <span class="row-subtitle">
-          {isWeb ? m.reminders_web_sub() : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() })}
-        </span>
-      </span>
-      <span class="row-trailing"><Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} /></span>
-    </a>
-    <a class="list-row" href="/settings/journey-anchor">
-      <span class="row-icon"><Icon name="flag" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.journey_anchor_title()}</span>
-        <span class="row-subtitle">
-          {vocabulary.journeyAnchor ? m.journey_anchor_row_sub_set({ name: vocabulary.journeyAnchor.name }) : m.journey_anchor_row_sub_unset()}
-        </span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <a class="list-row" href="/settings/affirmations">
-      <span class="row-icon"><Icon name="sparkle" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.affirmations_row_title()}</span>
-        <span class="row-subtitle">{m.affirmations_row_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <a class="list-row" href="/settings/body-regions">
-      <span class="row-icon"><Icon name="heart" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.body_regions_row_title()}</span>
-        <span class="row-subtitle">{m.body_regions_row_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <a class="list-row" href="/settings/streak-goal">
-      <span class="row-icon"><Icon name="sparkle" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.streak_goal_title()}</span>
-        <span class="row-subtitle">{m.streak_goal_row_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <a class="list-row" href="/settings/journaling-pause">
-      <span class="row-icon"><Icon name="moon" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.journaling_pause_title()}</span>
-        <span class="row-subtitle">{m.journaling_pause_row_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <div class="list-row" style="cursor:default">
-      <span class="row-icon"><Icon name="tag" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.tag_groups()}</span>
-        <span class="row-subtitle">{m.tag_groups_sub()}</span>
-      </span>
-    </div>
-    <div class="taggroup-toggles">
-      {#each vocabulary.tagGroups as g (g.key)}
-        <div class="spread taggroup-row">
-          <span>{g.name}</span>
-          <Switch checked={g.enabled} label={m.settings_taggroup_switch({ group: g.name })} onChange={(v) => journal.tags.setGroupEnabled(g.key, v)} />
-        </div>
-      {/each}
-      <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
-    </div>
-    <div class="card" style="margin-top:var(--space-3)">
-      <div class="spread" data-entry-nudges>
-        <span class="row-text">
-          <span class="row-title">{m.entry_nudges()}</span>
-          <span class="row-subtitle">{m.entry_nudges_sub()}</span>
+  <SectionHeading text={m.settings_appearance()} />
+  <ListCard>
+    <div class="settings-pad">
+      <p class="field-label" style="margin-bottom:var(--space-3)">{m.colour_palette()}</p>
+      <div class="palette-grid" role="radiogroup" aria-label={m.colour_palette()}>
+        {#each PALETTES as [key, label] (key)}
+          <button
+            class="palette-swatch press"
+            class:is-active={prefs.palette === key}
+            role="radio"
+            aria-checked={prefs.palette === key}
+            data-palette-pick={key}
+            onclick={() => pickPalette(key)}
+          >
+            <span class="swatch-preview" data-swatch={key}></span>
+            <span class="swatch-name">{label()}</span>
+          </button>
+        {/each}
+      </div>
+      <div class="hr"></div>
+      <p class="field-label" style="margin-bottom:var(--space-3)">{m.mood_colours()}</p>
+      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.mood_colours_note()}</p>
+      <div class="mood-preset-grid" role="radiogroup" aria-label={m.mood_colours()}>
+        {#each MOOD_PRESETS as [key, label] (key)}
+          <button
+            class="palette-swatch press"
+            class:is-active={prefs.moodPreset === key}
+            role="radio"
+            aria-checked={prefs.moodPreset === key}
+            data-mood-preset-pick={key}
+            onclick={() => pickMoodPreset(key)}
+          >
+            <span class="swatch-preview" data-mood-swatch={key}></span>
+            <span class="swatch-name">{label()}</span>
+          </button>
+        {/each}
+      </div>
+      <div class="hr"></div>
+      <div class="pref-row">
+        <span class="kit-row-title">{m.theme()}</span>
+        <Segmented
+          name={m.theme()}
+          options={[
+            { value: 'system', label: m.theme_system() },
+            { value: 'light', label: m.theme_light() },
+            { value: 'dark', label: m.theme_dark() },
+          ]}
+          value={prefs.theme}
+          onChange={(v) => {
+            prefs.theme = v as typeof prefs.theme;
+          }}
+        />
+      </div>
+      <div class="pref-row">
+        <span class="kit-row-title">{m.language()}</span>
+        <Segmented
+          name={m.language()}
+          options={[
+            { value: 'system', label: m.theme_system() },
+            { value: 'en', label: 'English' },
+            { value: 'pl', label: 'Polski' },
+          ]}
+          value={prefs.language}
+          onChange={setLanguage}
+        />
+      </div>
+      <div class="hr"></div>
+      <p class="field-label" style="margin-bottom:var(--space-3)">{m.settings_accessibility_pack()}</p>
+      <div class="pref-row">
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.a11y_text_size_boost()}</span>
+          <span class="kit-row-sub">{m.a11y_text_size_boost_sub()}</span>
         </span>
         <Switch
-          checked={prefs.entryNudges}
-          label={m.entry_nudges()}
+          checked={prefs.a11yTextSizeBoost}
+          label={m.a11y_text_size_boost()}
           onChange={(v) => {
-            prefs.entryNudges = v;
+            prefs.a11yTextSizeBoost = v;
+          }}
+        />
+      </div>
+      <div class="pref-row">
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.a11y_legibility_boost()}</span>
+          <span class="kit-row-sub">{m.a11y_legibility_boost_sub()}</span>
+        </span>
+        <Switch
+          checked={prefs.a11yLegibilityBoost}
+          label={m.a11y_legibility_boost()}
+          onChange={(v) => {
+            prefs.a11yLegibilityBoost = v;
+          }}
+        />
+      </div>
+      <div class="pref-row">
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.a11y_motion_reduce_override()}</span>
+          <span class="kit-row-sub">{m.a11y_motion_reduce_override_sub()}</span>
+        </span>
+        <Switch
+          checked={prefs.a11yMotionReduce}
+          label={m.a11y_motion_reduce_override()}
+          onChange={(v) => {
+            prefs.a11yMotionReduce = v;
           }}
         />
       </div>
     </div>
-    <div class="card" style="margin-top:var(--space-3)">
-      <div class="spread" data-guided-prompts>
-        <span class="row-text">
-          <span class="row-title">{m.guided_prompts()}</span>
-          <span class="row-subtitle">{m.guided_prompts_sub()}</span>
+  </ListCard>
+
+  <SectionHeading text={m.settings_tracking()} />
+  <!-- Tracking is several cards, not one: the navigable rows, tag groups,
+       the four related toggles, and the metric picker each want a
+       different shape (DIRECTION.md 2b), but sitting flush against each
+       other with no heading between them read as one accidental slab
+       rather than four deliberate ones (Alicja, on the live build).
+       .stack-3 (components.css) already gives a run of siblings a gap
+       between each - reused rather than a one-off margin per card. -->
+  <div class="stack-3" data-settings-list>
+    <ListCard>
+      <ListRow
+        key="preset"
+        icon="heart"
+        title={m.gender_preset()}
+        subtitle={preset.name}
+        chevron={false}
+        onclick={() => (presetSheet = true)}
+      >
+        <!-- SH-103: chevronDown ("opens in place") rather than chevronRight
+             ("navigates away"), so a sheet-opening row no longer looks
+             identical to the href rows around it. -->
+        {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+      </ListRow>
+      <ListRow key="dimension" icon="stats" title={m.custom_dimension()} subtitle={m.custom_dimension_sub()} href="/settings/dimension" />
+      <ListRow
+        key="reminders"
+        icon="bell"
+        title={m.reminders()}
+        subtitle={isWeb
+          ? m.reminders_web_sub()
+          : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() })}
+        href="/settings/reminders"
+        chevron={false}
+      >
+        {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
+      </ListRow>
+      <ListRow
+        key="journey-anchor"
+        icon="flag"
+        title={m.journey_anchor_title()}
+        subtitle={vocabulary.journeyAnchor
+          ? m.journey_anchor_row_sub_set({ name: vocabulary.journeyAnchor.name })
+          : m.journey_anchor_row_sub_unset()}
+        href="/settings/journey-anchor"
+      />
+      <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
+      <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
+      <ListRow key="streak-goal" icon="sparkle" title={m.streak_goal_title()} subtitle={m.streak_goal_row_sub()} href="/settings/streak-goal" />
+      <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
+    </ListCard>
+
+    <ListCard>
+      <div class="kit-row" style="cursor:default">
+        <span class="kit-row-ico"><Icon name="tag" size={22} /></span>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.tag_groups()}</span>
+          <span class="kit-row-sub">{m.tag_groups_sub()}</span>
         </span>
-        <Switch
-          checked={prefs.guidedPromptsEnabled}
-          label={m.guided_prompts()}
-          onChange={(v) => {
-            prefs.guidedPromptsEnabled = v;
-          }}
-        />
       </div>
-    </div>
-    <div class="card" style="margin-top:var(--space-3)">
-      <div class="spread" data-wrapped-toggle>
-        <span class="row-text">
-          <span class="row-title">{m.wrapped()}</span>
-          <span class="row-subtitle">{m.wrapped_settings_sub()}</span>
+      <div class="taggroup-toggles">
+        {#each vocabulary.tagGroups as g (g.key)}
+          <div class="spread taggroup-row">
+            <span>{g.name}</span>
+            <Switch checked={g.enabled} label={m.settings_taggroup_switch({ group: g.name })} onChange={(v) => journal.tags.setGroupEnabled(g.key, v)} />
+          </div>
+        {/each}
+        <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
+      </div>
+    </ListCard>
+
+    <!-- Four related toggles as one card with hairlines between, rather
+         than four boxes stacked with a margin apart - DIRECTION.md's
+         decision 3: "tighter, not airier", and the shape One rounded card
+         repeated is the thing 2b calls generic; a run of the same-shaped
+         row is not that, it is one surface with several related facts on
+         it. Each stays a plain div rather than a ListRow: the row itself
+         does nothing when tapped, the switch inside it does, and a row
+         that acted too would make the switch a button inside a button. -->
+    <ListCard>
+      <div class="kit-row" data-entry-nudges>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.entry_nudges()}</span>
+          <span class="kit-row-sub">{m.entry_nudges_sub()}</span>
         </span>
-        <Switch
-          checked={prefs.wrappedEnabled}
-          label={m.wrapped()}
-          onChange={(v) => {
-            prefs.wrappedEnabled = v;
-            // Cascading disablement (ticket 04): the notification toggle
-            // below is not just hidden when wrapped is off, it is turned
-            // off too, so there is no second switch left on to remember.
-            if (!v) prefs.wrappedNotificationsEnabled = false;
-          }}
-        />
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs.entryNudges}
+            label={m.entry_nudges()}
+            onChange={(v) => {
+              prefs.entryNudges = v;
+            }}
+          />
+        </span>
+      </div>
+      <div class="kit-row" data-guided-prompts>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.guided_prompts()}</span>
+          <span class="kit-row-sub">{m.guided_prompts_sub()}</span>
+        </span>
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs.guidedPromptsEnabled}
+            label={m.guided_prompts()}
+            onChange={(v) => {
+              prefs.guidedPromptsEnabled = v;
+            }}
+          />
+        </span>
+      </div>
+      <div class="kit-row" data-wrapped-toggle>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.wrapped()}</span>
+          <span class="kit-row-sub">{m.wrapped_settings_sub()}</span>
+        </span>
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs.wrappedEnabled}
+            label={m.wrapped()}
+            onChange={(v) => {
+              prefs.wrappedEnabled = v;
+              // Cascading disablement (ticket 04): the notification toggle
+              // below is not just hidden when wrapped is off, it is turned
+              // off too, so there is no second switch left on to remember.
+              if (!v) prefs.wrappedNotificationsEnabled = false;
+            }}
+          />
+        </span>
       </div>
       {#if !isWeb && prefs.wrappedEnabled}
-        <div class="spread" style="margin-top:var(--space-3)" data-wrapped-notify-toggle>
-          <span class="row-text">
-            <span class="row-title">{m.retro_notify_title()}</span>
-            <span class="row-subtitle">{m.wrapped_notify_sub()}</span>
+        <div class="kit-row" data-wrapped-notify-toggle>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.retro_notify_title()}</span>
+            <span class="kit-row-sub">{m.wrapped_notify_sub()}</span>
           </span>
-          <Switch
-            checked={prefs.wrappedNotificationsEnabled}
-            label={m.retro_notify_title()}
-            onChange={(v) => {
-              prefs.wrappedNotificationsEnabled = v;
-            }}
-          />
+          <span class="kit-row-trail">
+            <Switch
+              checked={prefs.wrappedNotificationsEnabled}
+              label={m.retro_notify_title()}
+              onChange={(v) => {
+                prefs.wrappedNotificationsEnabled = v;
+              }}
+            />
+          </span>
         </div>
       {/if}
-    </div>
-    <div class="card" style="margin-top:var(--space-3)">
-      <div class="spread" data-on-this-day-toggle>
-        <span class="row-text">
-          <span class="row-title">{m.on_this_day()}</span>
-          <span class="row-subtitle">{m.on_this_day_settings_sub()}</span>
+      <div class="kit-row" data-on-this-day-toggle>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.on_this_day()}</span>
+          <span class="kit-row-sub">{m.on_this_day_settings_sub()}</span>
         </span>
-        <Switch
-          checked={prefs.onThisDayEnabled}
-          label={m.on_this_day()}
-          onChange={(v) => {
-            prefs.onThisDayEnabled = v;
-            if (!v) prefs.onThisDayNotificationsEnabled = false;
-          }}
-        />
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs.onThisDayEnabled}
+            label={m.on_this_day()}
+            onChange={(v) => {
+              prefs.onThisDayEnabled = v;
+              if (!v) prefs.onThisDayNotificationsEnabled = false;
+            }}
+          />
+        </span>
       </div>
       {#if !isWeb && prefs.onThisDayEnabled}
-        <div class="spread" style="margin-top:var(--space-3)" data-on-this-day-notify-toggle>
-          <span class="row-text">
-            <span class="row-title">{m.retro_notify_title()}</span>
-            <span class="row-subtitle">{m.on_this_day_notify_sub()}</span>
+        <div class="kit-row" data-on-this-day-notify-toggle>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.retro_notify_title()}</span>
+            <span class="kit-row-sub">{m.on_this_day_notify_sub()}</span>
           </span>
-          <Switch
-            checked={prefs.onThisDayNotificationsEnabled}
-            label={m.retro_notify_title()}
-            onChange={(v) => {
-              prefs.onThisDayNotificationsEnabled = v;
-            }}
-          />
+          <span class="kit-row-trail">
+            <Switch
+              checked={prefs.onThisDayNotificationsEnabled}
+              label={m.retro_notify_title()}
+              onChange={(v) => {
+                prefs.onThisDayNotificationsEnabled = v;
+              }}
+            />
+          </span>
         </div>
       {/if}
-    </div>
+    </ListCard>
+
     {#if !isWeb && (prefs.wrappedNotificationsEnabled || prefs.onThisDayNotificationsEnabled) && retroNotifyStatus.notifications === 'denied'}
-      <div class="notice notice-warning" style="margin-top:var(--space-3)">
-        <Icon name="alert" size={20} />
-        <div class="notice-body">
-          <span class="notice-title">{m.retro_notify_capabilities_title()}</span>
-          {m.retro_notify_capabilities_body()}
-          <button class="btn btn-soft" style="margin-top:var(--space-2)" onclick={requestRetroNotifications}>
-            {m.rem_allow_notifications()}
-          </button>
-        </div>
-      </div>
+      <Notice
+        icon="alert"
+        key="retro-notify-denied"
+        title={m.retro_notify_capabilities_title()}
+        text={m.retro_notify_capabilities_body()}
+        action={{ label: m.rem_allow_notifications(), onclick: requestRetroNotifications }}
+      />
     {/if}
-    <button class="list-row" onclick={() => (metricSheet = true)}>
-      <span class="row-icon"><Icon name="palette" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.home_cal_colour()}</span>
-        <span class="row-subtitle">{m.coloured_by()} {metricName}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronDown" size={20} /></span>
-    </button>
+
+    <ListCard>
+      <ListRow
+        key="metric"
+        icon="palette"
+        title={m.home_cal_colour()}
+        subtitle={`${m.coloured_by()} ${metricName}`}
+        chevron={false}
+        onclick={() => (metricSheet = true)}
+      >
+        {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+      </ListRow>
+    </ListCard>
   </div>
 
-  <SectionTitle text={m.settings_privacy()} />
-  <div class="list-group">
-    <a class="list-row" href="/settings/security">
-      <span class="row-icon"><Icon name="shield" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.settings_security_row()}</span>
-        <span class="row-subtitle">{m.settings_security_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <button class="list-row" onclick={() => (disguiseSheet = true)}>
-      <span class="row-icon"><Icon name="shield" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.disguise_row()}</span>
-        <span class="row-subtitle">{prefs.disguise ? m.settings_disguise_on() : m.off()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronDown" size={20} /></span>
-    </button>
-    <a class="list-row" href="/settings/export">
-      <span class="row-icon"><Icon name="download" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.export_import()}</span>
-        <span class="row-subtitle">
-          {backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()}
-        </span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <a class="list-row" href="/settings/journal-book">
-      <span class="row-icon"><Icon name="book" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.journal_book_row()}</span>
-        <span class="row-subtitle">{m.journal_book_row_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <a class="list-row" href="/settings/trash">
-      <span class="row-icon"><Icon name="trash" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.trash_title()}</span>
-        <span class="row-subtitle">{m.trash_row_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <button class="list-row" data-about-open onclick={() => (aboutSheet = true)}>
-      <span class="row-icon"><Icon name="info" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.about()}</span>
-        <span class="row-subtitle">{m.settings_about_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronDown" size={20} /></span>
-    </button>
-  </div>
+  <SectionHeading text={m.settings_privacy()} />
+  <ListCard>
+    <ListRow key="security" icon="shield" title={m.settings_security_row()} subtitle={m.settings_security_sub()} href="/settings/security" />
+    <ListRow
+      key="disguise"
+      icon="shield"
+      title={m.disguise_row()}
+      subtitle={prefs.disguise ? m.settings_disguise_on() : m.off()}
+      chevron={false}
+      onclick={() => (disguiseSheet = true)}
+    >
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
+    <ListRow
+      key="export"
+      icon="download"
+      title={m.export_import()}
+      subtitle={backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()}
+      href="/settings/export"
+    />
+    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} subtitle={m.journal_book_row_sub()} href="/settings/journal-book" />
+    <ListRow key="trash" icon="trash" title={m.trash_title()} subtitle={m.trash_row_sub()} href="/settings/trash" />
+    <ListRow
+      key="about"
+      icon="info"
+      title={m.about()}
+      subtitle={m.settings_about_sub()}
+      chevron={false}
+      onclick={() => (aboutSheet = true)}
+    >
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
+  </ListCard>
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
     <span translate="no">{m.app_name()}</span> · {m.footer_note()}
   </p>
