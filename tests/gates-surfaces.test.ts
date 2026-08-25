@@ -161,8 +161,16 @@ describe('the first run', () => {
   });
 
   it('crosses its steps on the tier-2 axis rather than inventing a transition', () => {
+    /* The entrance is the same primitive with a delay on it, not a second
+       transition: Svelte starts an `in:` and an `out:` together and tier 2's
+       exit is shorter than its entrance, so without the wait two
+       full-screen steps were on top of each other for the length of the
+       exit. What is checked is that the geometry still comes from
+       navigation.ts rather than from a curve written here. */
     expect(onboarding).toContain("from '$lib/motion/navigation'");
-    expect(onboardingMarkup).toContain('in:sharedAxisX');
+    expect(onboarding).toMatch(/const config = sharedAxisX\(node, params, options\)/);
+    expect(onboarding).toMatch(/delay: motionDuration\('--dur-fast'/);
+    expect(onboardingMarkup).toContain('in:stepIn');
     expect(onboardingMarkup).toContain('out:sharedAxisX');
   });
 

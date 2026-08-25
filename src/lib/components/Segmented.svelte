@@ -13,14 +13,33 @@
     options,
     value,
     onChange,
+    compact = false,
+    key
   }: {
     name: string;
-    options: { value: string; label: string }[];
+    /** A `href` makes the segment a link and the group a nav: each choice is
+        its own screen at its own URL, so switching is navigation and belongs
+        in history. Wrapped's four cadences are that, and they had a
+        hand-written copy of this control with no pill on it, so the same
+        gesture looked like two different controls one tab apart (Alicja,
+        2026-08-25). */
+    options: { value: string; label: string; href?: string }[];
     value: string;
-    onChange: (v: string) => void;
+    onChange?: (v: string) => void;
+    /** For a set of short labels - a range in days, a number of steps. The
+        buttons keep their 48dp press height and the pill is drawn shorter
+        inside it, so what slides reads as a pill crossing the set rather
+        than as a dot moving between dots. Six segments reading "7d" to
+        "365d" were 52px wide and 42px tall, which is a circle, and a circle
+        sliding says nothing about the set it is crossing (Alicja,
+        2026-08-25). */
+    compact?: boolean;
+    /** The group's own identity for the walkthrough's handle (ADR-0029). */
+    key?: string;
   } = $props();
 
-  let buttons = $state<(HTMLButtonElement | undefined)[]>([]);
+  let links = $derived(options.some((o) => o.href !== undefined));
+  let buttons = $state<(HTMLElement | undefined)[]>([]);
   let pill = $state({ x: 0, w: 0 });
   /** Set while the pill is crossing, which is what plays the stretch. Not set
       on the first measurement: the control does not slide into its own initial
@@ -39,28 +58,62 @@
   });
 </script>
 
-<div
-  class="segmented"
-  role="radiogroup"
-  aria-label={name}
-  style:--seg-x="{pill.x}px"
-  style:--seg-w="{pill.w}px"
->
+{#snippet pillMark()}
   <span
     class="segment-pill"
     class:is-sliding={sliding}
     aria-hidden="true"
     onanimationend={() => (sliding = false)}
   ></span>
-  {#each options as o, i (o.value)}
-    <button
-      bind:this={buttons[i]}
-      class="segment"
-      class:is-active={o.value === value}
-      role="radio"
-      aria-checked={o.value === value}
-      data-segment={o.value}
-      onclick={() => onChange(o.value)}>{o.label}</button
-    >
-  {/each}
-</div>
+{/snippet}
+
+<!-- A nav of links or a radiogroup of buttons, written out rather than
+     resolved through <svelte:element>: the two carry different keyboard
+     behaviour and different announcements, and the tag has to be legible to
+     the compiler for it to check either. The pill and its measuring are the
+     same either way, which is the whole point of the two living here. -->
+{#if links}
+  <nav
+    class="segmented"
+    class:is-compact={compact}
+    data-segmented={key}
+    aria-label={name}
+    style:--seg-x="{pill.x}px"
+    style:--seg-w="{pill.w}px"
+  >
+    {@render pillMark()}
+    {#each options as o, i (o.value)}
+      <a
+        bind:this={buttons[i]}
+        class="segment"
+        class:is-active={o.value === value}
+        aria-current={o.value === value ? 'page' : undefined}
+        data-segment={o.value}
+        href={o.href}>{o.label}</a
+      >
+    {/each}
+  </nav>
+{:else}
+  <div
+    class="segmented"
+    class:is-compact={compact}
+    data-segmented={key}
+    role="radiogroup"
+    aria-label={name}
+    style:--seg-x="{pill.x}px"
+    style:--seg-w="{pill.w}px"
+  >
+    {@render pillMark()}
+    {#each options as o, i (o.value)}
+      <button
+        bind:this={buttons[i]}
+        class="segment"
+        class:is-active={o.value === value}
+        role="radio"
+        aria-checked={o.value === value}
+        data-segment={o.value}
+        onclick={() => onChange?.(o.value)}>{o.label}</button
+      >
+    {/each}
+  </div>
+{/if}

@@ -18,7 +18,12 @@ import type { TallyEventInput } from '../journal/tally';
 import type { EntryInput } from '../journal/entries';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
-import { startOfDayTimestamp, todayEpochDay } from '../epochDay';
+import {
+  epochDayFromLocalDate,
+  localDateFromEpochDay,
+  startOfDayTimestamp,
+  todayEpochDay
+} from '../epochDay';
 
 /* The one custom tag in the demo, so the tag manager has something to show
    that behaves like a user's own. It used to sit inside the built-in gender
@@ -120,6 +125,47 @@ function buildEntries(): PersonaEntry[] {
       });
     }
   }
+
+  /* And the calendar year before last, sparsely.
+
+     The persona seeded 151 days, which is the right density for Home, the
+     calendar and the stats ranges - and it meant the one period
+     /wrapped/year ever covers, the *previous* calendar year, was empty by
+     construction. So the yearly wrapped could not be reviewed at all: it
+     drew its entry-floor notice on every build, and the year grid it exists
+     to show had nothing to draw (Alicja, 2026-08-25: "how am i supposed to
+     see how the yearly wrapped looks like?"). PRODUCT.md's own line is that
+     demo data renders every screen.
+
+     Kept separate from the loop above, and deliberately sparser - about two
+     days in five, one entry each, no photos. The recent history is what most
+     screens are reviewed against and none of its numbers move; this is a
+     year with texture in it, which is what a year grid and a year's figures
+     need. It stops before the 151-day window so the two never overlap. */
+  const lastYear = localDateFromEpochDay(today).getFullYear() - 1;
+  const yearStart = epochDayFromLocalDate(new Date(lastYear, 0, 1));
+  const yearEnd = Math.min(epochDayFromLocalDate(new Date(lastYear, 11, 31)), today - 151);
+  for (let day = yearStart; day <= yearEnd; day++) {
+    if (r() < 0.6) continue;
+    const season = Math.sin(((day - yearStart) / 365) * Math.PI * 2);
+    const eu = Math.max(4, Math.min(97, Math.round(38 + season * 14 + (r() - 0.5) * 40)));
+    const mood = Math.max(1, Math.min(5, Math.round(eu / 24 + r() * 1.4)));
+    const tags: string[] = [];
+    if (eu > 66) tags.push(r() < 0.5 ? 'g-soc-eu' : 'g-body-eu');
+    if (eu < 34) tags.push(r() < 0.5 ? 'g-soc-dys' : 'g-body-dys');
+    if (mood >= 4) tags.push(r() < 0.5 ? 'e-happy' : 'e-calm');
+    if (mood <= 2) tags.push('e-anxious');
+    entries.push({
+      epochDay: day,
+      timestamp: startOfDayTimestamp(day) + (9 + Math.floor(r() * 9)) * 3600000,
+      mood,
+      note: NOTES[Math.floor(r() * NOTES.length)],
+      dims: { euphoria_dysphoria: eu, femininity: Math.max(10, Math.min(98, Math.round(34 + (r() - 0.5) * 30))) },
+      tags: [...new Set(tags)],
+      photoCount: 0
+    });
+  }
+
   return entries;
 }
 

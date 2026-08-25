@@ -33,6 +33,10 @@
   import Switch from '$lib/components/Switch.svelte';
   import WrappedCard from '$lib/components/WrappedCard.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
   const today = todayEpochDay();
 
@@ -120,50 +124,53 @@
   {#if recapQuery.loading}
     <Skeleton variant="block" count={1} />
   {:else if !ready}
-    <div class="notice notice-info" role="status">
-      <Icon name="info" size={20} />
-      <div class="notice-body">
-        <span class="notice-title">{m.wrapped_unknown_title()}</span>
-        {m.wrapped_unknown_body()}
-      </div>
-    </div>
+    <Notice
+      icon="info"
+      key="wrapped-share-unavailable"
+      title={m.wrapped_unknown_title()}
+      text={m.wrapped_unknown_body()}
+      aria-live="polite"
+    />
   {:else}
-    <div class="card">
-      <span class="row-title" style="display:block;margin-bottom:var(--space-3)">{m.wrapped_share_picker_title()}</span>
-      <div class="pref-row">
-        <span class="row-text"><span class="row-title">{m.wrapped_stat_entries()}</span></span>
-        <Switch
-          checked={selection.counts}
-          label={m.wrapped_stat_entries()}
-          onChange={(v) => (selection = { ...selection, counts: v })}
-        />
-      </div>
-      <div class="pref-row">
-        <span class="row-text"><span class="row-title">{m.wrapped_stat_streak()}</span></span>
-        <Switch
-          checked={selection.streak}
-          label={m.wrapped_stat_streak()}
-          onChange={(v) => (selection = { ...selection, streak: v })}
-        />
-      </div>
-      <div class="pref-row">
-        <span class="row-text"><span class="row-title">{m.wrapped_share_element_palette()}</span></span>
-        <Switch
-          checked={selection.paletteArt}
-          label={m.wrapped_share_element_palette()}
-          onChange={(v) => (selection = { ...selection, paletteArt: v })}
-        />
-      </div>
-    </div>
+    <SectionHeading text={m.wrapped_share_picker_title()} />
+    <ListCard>
+      <ListRow key="share-counts" title={m.wrapped_stat_entries()} chevron={false}>
+        {#snippet trailing()}
+          <Switch
+            checked={selection.counts}
+            label={m.wrapped_stat_entries()}
+            onChange={(v) => (selection = { ...selection, counts: v })}
+          />
+        {/snippet}
+      </ListRow>
+      <ListRow key="share-streak" title={m.wrapped_stat_streak()} chevron={false}>
+        {#snippet trailing()}
+          <Switch
+            checked={selection.streak}
+            label={m.wrapped_stat_streak()}
+            onChange={(v) => (selection = { ...selection, streak: v })}
+          />
+        {/snippet}
+      </ListRow>
+      <ListRow key="share-palette" title={m.wrapped_share_element_palette()} chevron={false}>
+        {#snippet trailing()}
+          <Switch
+            checked={selection.paletteArt}
+            label={m.wrapped_share_element_palette()}
+            onChange={(v) => (selection = { ...selection, paletteArt: v })}
+          />
+        {/snippet}
+      </ListRow>
+    </ListCard>
 
     {#if previewUrl && showing}
-      <div class="card" style="margin-top:var(--space-4)">
+      <div class="share-preview">
         <img
           src={previewUrl}
           alt={m.wrapped_share_preview_alt()}
           style="display:block;width:100%;height:auto;border-radius:var(--radius-md)"
         />
-        <p class="muted small" style="margin-top:var(--space-3)">{m.pj_stays_here()}</p>
+        <p class="share-note">{m.pj_stays_here()}</p>
         <div class="journey-actions" style="display:flex;gap:var(--space-3);margin-top:var(--space-3)">
           <button class="btn btn-primary" data-share onclick={share}>
             <Icon name="share" size={20} /><span>{m.pj_share()}</span>
@@ -174,17 +181,23 @@
         </div>
       </div>
     {:else}
-      <div style="margin-top:var(--space-4)" bind:this={cardHost}>
+      <!-- The reason the button is off sits under the switches it is about,
+           not under the card at the bottom of the screen (Alicja,
+           2026-08-25). -->
+      {#if nothingPicked}
+        <p class="share-note">{m.wrapped_share_none_selected()}</p>
+      {/if}
+      <div class="share-stage" bind:this={cardHost}>
         <WrappedCard {content} />
       </div>
-      <div class="editor-savebar" style="margin-top:var(--space-4)">
+      <!-- On the navigation bar rather than in the page: this is the screen's
+           one commitment, it is the same bar the entry editor's save sits on,
+           and a button that scrolls away is a button you go looking for. -->
+      <div class="editor-savebar">
         <button class="btn btn-primary" data-generate disabled={running || nothingPicked} onclick={make}>
           <span>{m.pj_generate()}</span>
         </button>
       </div>
-      {#if nothingPicked}
-        <p class="muted small" style="margin-top:var(--space-3)">{m.wrapped_share_none_selected()}</p>
-      {/if}
     {/if}
   {/if}
 </div>

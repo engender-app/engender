@@ -33,6 +33,7 @@
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { sharedAxisX } from '$lib/motion/navigation';
+  import { motionDuration } from '$lib/motion/tokens';
   import {
     isSkippable,
     onboardingDestination,
@@ -45,7 +46,6 @@
   } from '$lib/onboarding/steps';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
-  import SunSweep from '$lib/components/SunSweep.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -112,6 +112,27 @@
   let index = $derived(stepIndex(steps, step));
   let growth = $derived(sunGrowth(index, steps.length));
 
+  /* The incoming step waits for the outgoing one to finish leaving.
+     Svelte starts an `in:` and an `out:` together, and tier 2's own timings
+     make the exit shorter than the entrance - so for the length of the exit
+     there were two full-screen titles on top of each other, fading in
+     opposite directions. On a phone that is a smear; at desktop type sizes
+     it reads as the screen loading twice, which is what Alicja saw.
+
+     Material's fade-through is sequential for exactly this reason. The
+     delay is the exit's own duration read from the same token the exit
+     uses, so the two cannot drift, and it is 0 under reduced motion because
+     motionDuration returns 0 there and a crossfade has nothing to wait
+     for. */
+  function stepIn(
+    node: Element,
+    params: { back: boolean },
+    options: { direction?: 'in' | 'out' | 'both' }
+  ) {
+    const config = sharedAxisX(node, params, options);
+    return { ...config, delay: motionDuration('--dur-fast', 150) };
+  }
+
   function go(to: OnboardingStep) {
     back = stepIndex(steps, to) < index;
     step = to;
@@ -177,11 +198,6 @@
         {#key prefs.palette}
           <FlagSun />
         {/key}
-        <!-- Replayed on a step and on a flag alike: a step change on its
-             own is answered by a size, and a flag tap by a redraw, and the
-             sweep is what makes either read as the sun doing something
-             rather than as the screen having changed. -->
-        <SunSweep pass={`${index}-${prefs.palette}`} />
       </div>
     </div>
   {/if}
@@ -201,7 +217,7 @@
       {#key step}
         <div
           class="setup-step"
-          in:sharedAxisX={{ back }}
+          in:stepIn={{ back }}
           out:sharedAxisX={{ back }}
         >
           {#if step === 'welcome'}

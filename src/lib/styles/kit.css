@@ -60,7 +60,14 @@
 .kit-tile,
 .kit-strip,
 .kit-chart,
-.kit-notice {
+.kit-notice,
+/* The timeline is not a kit surface - it is a rail, and the kit has no rail
+   - but it wears a stripe the same way, so it derives the same three values
+   here rather than a fourth set of its own. Without this it was handed
+   --role and --role-mark-in and never the --role-mark they are for, so its
+   dots and its rail drew in an undefined colour, which is no colour at all
+   (phase 5 UX ticket 23). */
+.timeline {
   --role-c: var(--role, var(--accent));
   --role-ink: var(--role-ink-in, color-mix(in oklab, var(--role-c) 30%, var(--text)));
   --role-mark: var(--role-mark-in, var(--role-ink));
@@ -68,7 +75,22 @@
      tinted disc and a shaded week cell carry no information and sit under
      nothing that has to be read, so nothing about them owes a ratio. This
      is where the palette was going wrong - nonbinary's yellow darkened to
-     olive to clear a floor it never owed, and a 15% tint of olive is mud. */
+     olive to clear a floor it never owed, and a 15% tint of olive is mud.
+
+     A chart mark is one of those. --role-draw is the stripe as it is, and it
+     is what every drawn shape in a chart uses - the line, its fill, a bar, a
+     column, a dot, the timeline's rail. Alicja, 2026-08-25, twice and in
+     capitals: "THE COLORS OF THE FLAG MUST BE UNCHANGED! WE DONT WANT
+     OLIVE". Ticket 20's handoff had put a bar in the marks column, held to
+     3:1, and on nonbinary's light theme that is olive - the exact colour the
+     round which produced that rule was reacting to.
+
+     --role-mark survives for what actually needs a floor: a glyph inside a
+     tinted disc, where the stripe is drawn on 15% of itself and a white band
+     on a white tint would be nothing at all. That is a small shape on a
+     ground derived from the same colour, which is a different problem from a
+     26px bar on a card. */
+  --role-draw: var(--role-c);
   --role-tint: color-mix(in oklab, var(--role-c) 15%, var(--surface));
   --role-wash: color-mix(in oklab, var(--role-c) 12%, var(--bg));
   /* The edge a tinted shape needs to still be a shape. A fill owes no
@@ -183,6 +205,17 @@
    moves the whole card. What answers the press here is the fill. */
 .kit-row:active {
   background: var(--role-wash);
+}
+
+/* A row that states something and goes nowhere (the Stats hub's correlation
+   cards). It keeps the hairline and the padding and gives up the two things
+   that promise a destination: the pointer, and the press. */
+.kit-row.is-static {
+  cursor: default;
+}
+
+.kit-row.is-static:active {
+  background: none;
 }
 
 /* Found on Home (phase 5 ticket 21): ticket 20's gallery only ever handed
@@ -972,22 +1005,82 @@ a.kit-entry:active {
   margin-top: var(--space-3);
 }
 
+/* Nothing logged in this range. It sits in the space the marks would have
+   taken rather than as a line where a chart's top edge would be, so a card
+   with no data is the same height as a card with some and a screen of them
+   does not concertina as the range changes. */
 .kit-chart-empty {
-  margin: var(--space-3) 0 0;
+  display: grid;
+  place-items: center;
+  min-height: 88px;
+  margin: 0;
+  padding: var(--space-4) var(--space-2);
   color: var(--text-2);
   font-size: var(--text-sm);
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* Anything that is not a surface, sitting above one: a control, a caption, a
+   note, a chip row. They all used to meet the surface below them at a
+   hairline, because the adjacency rule under this one only knows about two
+   surfaces, and every screen in the look-back group has one of them
+   somewhere (Alicja, 2026-08-25, three separate notes about gaps).
+
+   --space-5 rather than --space-4, which is what two surfaces get: a control
+   and the thing it controls are further apart than two cards, or the control
+   reads as part of the card. */
+:is(.segmented, .stats-caption, .stats-note, .wrapped-note, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
+  + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-day, .kit-moods, .wrapped-figure-list, .skeleton-stack) {
+  margin-top: var(--space-5);
+}
+
+/* And the other way round: a surface with a chip row or a photo strip under
+   it. The heading above those carries their top space, so what is missing is
+   the space beneath. */
+:is(.kit-chart, .kit-list, .kit-day, .wrapped-figure-list) + :is(.tag-row, .wrapped-photos, .otd-photos) {
+  margin-top: var(--space-4);
+}
+
+/* A loading placeholder stands where a surface will be, so it takes the same
+   space a surface would - it had none, and sat against the switcher above it
+   (Alicja, 2026-08-25). */
+.skeleton-stack + *,
+* + .skeleton-stack {
+  margin-top: var(--space-5);
+}
+
+/* Two surfaces with no heading between them.
+
+   A screen built entirely of named areas never needs this - the heading's
+   own padding is the space above every surface under it - but the Stats hub
+   stacks four charts and a list, and the areas there are named by the chart
+   headings themselves. So the rule is adjacency rather than a gap on the
+   screen: where a heading is present it still owns the space. */
+/* The wrapped figures are a list card inside a wrapper that carries the
+   handle four walkthrough flows grip, so the wrapper is what sits beside the
+   next surface and has to be in this set: without it the figures and the
+   mood chart met with no gap at all. */
+:is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods, .wrapped-figure-list)
+  + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods, .wrapped-figure-list) {
+  margin-top: var(--space-4);
 }
 
 /* --- area ---
 
-   A timeline that scrolls rather than a range squashed into a card. The
-   value gutter sits outside the scroller: a scale that slides away with the
-   data is not a scale. */
+   The whole range in one card, read by moving a finger across it. It used to
+   scroll, one 14px slot per reading; a chart in a card is something you
+   glance at, and a chart you have to drag has no shape until you have
+   dragged all of it. What changes with the range is the grain, not the
+   width. */
 .kit-area {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: var(--space-3);
   align-items: stretch;
+  /* A drag across it scrubs; a drag down the screen still scrolls the
+     screen, which is what a chart in the middle of a long page owes. */
+  touch-action: pan-y;
 }
 
 .kit-area-scale {
@@ -1005,31 +1098,23 @@ a.kit-entry:active {
   padding-block: calc(7px - 0.55em);
 }
 
-.kit-area-scroll {
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  /* The far end is the newest reading, which is what a chart of your own
-     history opens on. */
-  direction: rtl;
+.kit-area-plot-wrap {
+  position: relative;
+  min-width: 0;
 }
-
-.kit-area-scroll::-webkit-scrollbar { display: none; }
 
 .kit-area-plot {
   display: block;
-  direction: ltr;
   overflow: visible;
 }
 
 .kit-area-fill {
-  fill: color-mix(in oklab, var(--role-mark) 16%, transparent);
+  fill: color-mix(in oklab, var(--role-draw) 16%, transparent);
 }
 
 .kit-area-line {
   fill: none;
-  stroke: var(--role-mark);
+  stroke: var(--role-draw);
   stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -1040,13 +1125,53 @@ a.kit-entry:active {
    show through it. */
 .kit-area-ring {
   fill: var(--surface);
-  stroke: var(--role-mark);
+  stroke: var(--role-draw);
   stroke-width: 2.5;
 }
 
 .kit-area-dot {
-  fill: var(--role-mark);
+  fill: var(--role-draw);
   opacity: 0.55;
+}
+
+/* The scrub: what the scroll used to be for. Dotted and in the text colour
+   rather than the mark's, so it reads as a measurement laid over the chart
+   rather than as one more thing drawn on it. */
+.kit-area-scrub {
+  stroke: var(--text-2);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.kit-area-scrub-dot {
+  fill: var(--role-draw);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+/* The reading under the finger, in the corner rather than beside the line:
+   a label that follows the touch is a label under the thumb holding it. */
+.kit-area-readout {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--outline);
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.kit-area-readout b {
+  font-size: var(--text-sm);
+  color: var(--text);
 }
 
 /* The range beneath, under the plot rather than under the gutter. */
@@ -1071,6 +1196,40 @@ a.kit-entry:active {
   gap: var(--space-3);
 }
 
+/* A bar row that opens what is behind it (the Stats hub's tag insights).
+
+   Tier 1 answers with the fill and not with a scale, which is the rule
+   DIRECTION.md already writes for a row the width of the screen: this one
+   is the width of a card, and scaling it would move the card around it. The
+   wash is the same one a list row takes, so a pressable bar and a pressable
+   row feel like one control drawn two ways. */
+.kit-bar.is-open {
+  display: block;
+  width: 100%;
+  /* Out to the card's own padding and back, so the press fill covers the
+     whole reading rather than stopping short of the bar's ends. */
+  margin: 0 calc(var(--space-2) * -1);
+  padding: var(--space-2);
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition-property: background-color;
+  transition-duration: var(--dur-fast);
+}
+
+.kit-bar.is-open:active {
+  background: var(--role-wash);
+}
+
+.kit-bar.is-open:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .kit-bar-label {
   display: flex;
   align-items: baseline;
@@ -1093,6 +1252,18 @@ a.kit-entry:active {
   font-weight: var(--weight-bold);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A line under the name, for the counts a reading is drawn from. Wraps
+   freely: it is the one part of a bar row that is a sentence. */
+.kit-bar-note {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .kit-bar-track {
@@ -1108,11 +1279,15 @@ a.kit-entry:active {
   border-radius: 8px;
   width: calc(var(--bar-share) * 1%);
   min-width: 2px;
-  background: color-mix(in oklab, var(--role-mark) 62%, var(--surface));
+  background: color-mix(in oklab, var(--role-draw) 62%, var(--surface));
   transform: scaleX(1);
   transform-origin: left center;
   animation: kit-bar-in var(--dur-slow) var(--ease-out) both;
-  animation-delay: calc(var(--bar-index, 0) * var(--stagger-step));
+  /* Capped, because the index is a row's place in the set and a set can be
+     long: the values list is one row per day, and at 365 rows an uncapped
+     stagger is eighteen seconds of bars arriving. Twelve steps is the point
+     where a set reads as arriving in order rather than as arriving at once. */
+  animation-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
   transition-property: width;
   transition-duration: var(--dur-slow);
   transition-timing-function: var(--ease-out);
@@ -1123,8 +1298,173 @@ a.kit-entry:active {
   to { transform: scaleX(1); }
 }
 
+@keyframes kit-dist-in {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
 .kit-bar-mark.is-leader {
-  background: var(--role-mark);
+  background: var(--role-draw);
+}
+
+/* --- a year of moods ---
+
+   Three rows per month, eleven columns, and the month named above its own
+   block rather than beside it.
+
+   Four sizes before this one, each moved for a reason, and the reason is the
+   same every time: a cell is square, so how big a face gets is decided by
+   how many of them share a row. Fifty-three week columns overflowed a 390px
+   card at 5px. Twelve rows of 31 fitted at 11px - big enough for a colour,
+   and a colour is what ADR-0025 warns about, since the ramp's steps are
+   literal hexes chosen to be sat on and on the dark theme they are all dark.
+   Two rows of sixteen reached 17px, beside a gutter and then without one,
+   which was nearly enough to read. Three rows of eleven is 27px, which is
+   inside the size ticket 31 tuned the faces to be legible at. */
+.kit-year {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.kit-year-label {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-2);
+}
+
+.kit-year-rows {
+  display: grid;
+  /* Eleven, so a 31-day month is three rows and a short month simply stops -
+     which is true of February and not a gap to fill.
+
+     Sixteen columns capped the cell at 17px however much gutter was given
+     back, because the cell is square and the width is what it has: the only
+     thing that makes a face bigger is fewer of them per row. Eleven puts it
+     near 27px, which is comfortably inside the size ticket 31 tuned the
+     faces to be read at. */
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.kit-year-cell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+}
+
+/* A day nobody logged is not a day at the bottom of the scale, so it is an
+   outline and never a face. */
+.kit-year-cell.is-empty {
+  border-radius: 50%;
+  /* An outline drawn inward rather than an inset box-shadow: the kit
+     separates with a line and never with a shadow, and a ring that happens
+     to be spelled `box-shadow` is still spelled `box-shadow`. Inward, so the
+     cell keeps its square box and the grid stays on its columns. */
+  outline: 1px solid var(--hairline);
+  outline-offset: -1px;
+}
+
+/* --- paired dots ---
+
+   The correlation cards' own mark. Two positions on one scale with the gap
+   between them drawn: a bar answers "how much" and these answer "these days
+   sat here, the other days sat there", which is a different question and
+   wanted a different shape. Each row's track is its own metric's range, so
+   nothing here is measured against the row above it - which a bar chart
+   cannot help doing, since every bar is measured against the longest. */
+.kit-paired {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.kit-paired-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.kit-paired-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kit-paired-gap {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.kit-paired-track {
+  position: relative;
+  height: 18px;
+  margin-top: 6px;
+}
+
+/* The scale itself, as the faintest line the theme has. Not a gridline and
+   not an axis: there are no ticks on it and nothing is written along it.
+   Drawn as a child rather than as a two-stop gradient on the track, because
+   the kit paints flat colour and a gradient of one colour is still a
+   gradient to anything reading this. */
+.kit-paired-track::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background: var(--hairline);
+}
+
+/* The distance between the two readings, which is the reading. */
+.kit-paired-span {
+  position: absolute;
+  top: 50%;
+  left: var(--from);
+  width: max(calc(var(--to) - var(--from)), 2px);
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--role-draw);
+}
+
+.kit-paired-dot {
+  position: absolute;
+  top: 50%;
+  left: var(--at);
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+}
+
+/* Filled is the days it happened, hollow is the rest - on every row,
+   whichever way the gap runs. Colour says which set, never which way
+   (ADR-0012). */
+.kit-paired-dot.is-with {
+  background: var(--role-draw);
+}
+
+.kit-paired-dot.is-without {
+  background: var(--surface);
+  border: 2px solid var(--role-draw);
+}
+
+.kit-paired-note {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- vertical distribution ---
@@ -1143,13 +1483,26 @@ a.kit-entry:active {
 
 .kit-dist-step {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 1fr auto;
   gap: var(--space-2);
-  justify-items: center;
+  justify-items: stretch;
   height: 100%;
 }
 
+/* The count rides on top of its own column. Bottom-aligned, so a short bar
+   carries its number down with it instead of leaving it stranded at the top
+   of the card with every other count. */
+.kit-dist-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 100%;
+  min-height: 0;
+}
+
 .kit-dist-count {
+  text-align: center;
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
@@ -1162,7 +1515,19 @@ a.kit-entry:active {
   min-height: 6px;
   border-radius: 6px 6px 2px 2px;
   border: 1px solid var(--outline);
-  background: var(--dist-fill, var(--role-mark));
+  background: var(--dist-fill, var(--role-draw));
+  /* The set rises as it arrives, left to right, on the horizontal bars' own
+     entrance and stagger - a distribution is a set of bars, and one of the
+     two rising while the other appeared would read as an oversight in
+     whichever was still. The entrance scales rather than growing, so the
+     keyframe touches only a transform and ends where this rule already
+     rests. The height transition below is a different movement and predates
+     it: it carries a column from one dataset's value to the next, which is
+     the same job the area chart's re-tween does. */
+  transform: scaleY(1);
+  transform-origin: bottom center;
+  animation: kit-dist-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--bar-index, 0) * var(--stagger-step));
   transition-property: height;
   transition-duration: var(--dur-slow);
   transition-timing-function: var(--ease-out);
