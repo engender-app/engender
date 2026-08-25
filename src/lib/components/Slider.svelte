@@ -13,6 +13,7 @@
      melt gives it tabindex="0" as well and two tab stops for one control
      means the second one is a focusable div with no role and no name. It
      keeps tabindex="-1" so melt's pointerdown can still focus it. */
+  import { untrack } from 'svelte';
   import { Slider as MeltSlider } from 'melt/builders';
   import { displayValue, sliderScaleStops, snapToStop } from './sliderScale';
 
@@ -64,6 +65,29 @@
        but an arrow key just adds it, so a stored 63 on a step-of-5 scale
        would walk 58, 53, 48 and never land on a mark. */
     onValueChange: (v) => onInput(snapToStop(v, min, max, scale.step)),
+  });
+
+  /* Melt registers its own window pointermove/pointerup pair inside the `root`
+     getter (melt/builders/Slider, via runed's useEventListener, which is an
+     $effect), so their lifetime belongs to whoever reads that getter. Read
+     only from the template's spread, they are torn down and re-attached on
+     every value change - and a release that lands before Svelte's next flush
+     finds no pointerup listener at all. Melt's mouse-down flag is a plain
+     field rather than state, so nothing else ever clears it, and from that
+     moment the control commits on every window pointermove for the rest of
+     the screen's life: the thumb follows the pointer with nothing held, and
+     two sliders that have both been touched end up on one value, whichever of
+     them the finger last moved past. Reported on 2026-08-25 as "two sliders
+     lock onto each other"; measured as a slider walking 20 to 85 to 90 with
+     the button up.
+
+     So the getter is read once here instead, untracked, which gives the pair
+     the component's lifetime. The template still spreads it - that is where
+     the attributes come from and they have to stay reactive - and the
+     duplicate registration is harmless, because a commit is the same value
+     computed twice from the same event. */
+  $effect(() => {
+    untrack(() => slider.root);
   });
 
   /* Whether a finger is currently down, which the blur handler below needs to

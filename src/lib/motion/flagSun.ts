@@ -9,23 +9,6 @@
     the size of seven-stripe agender. */
 export const SUN_OUTER = 350;
 
-/** A stripe that is near-black disappears into a dark theme and one that
-    is near-white disappears into a light one, so both get nudged toward a
-    colour that still reads as the flag's own stripe. The two yellows nudge
-    for the same reason on light, one shade down. These are the app's 8
-    palettes' actual near-black, white and yellow stripes (DIRECTION.md) -
-    not a generic contrast formula, because there are exactly 8 palettes
-    and the substitutes were chosen by eye against each one. */
-export function ringColour(hex: string, dark: boolean): string {
-  const upper = hex.toUpperCase();
-  if (dark && (upper === '#000000' || upper === '#1A1A1A' || upper === '#2C2C2C' || upper === '#2F2F2F')) {
-    return '#524C5E';
-  }
-  if (!dark && upper === '#FFFFFF') return '#DAD4DF';
-  if (!dark && (upper === '#FCF434' || upper === '#FFED00')) return '#E3D300';
-  return hex;
-}
-
 export interface SunRing {
   /** Diameter in px. */
   diameter: number;
@@ -47,7 +30,7 @@ export function sunRings(stripes: string[], dark: boolean): SunRing[] {
   const n = stripes.length;
   return stripes.map((hex, i) => ({
     diameter: (SUN_OUTER * (n - i)) / n,
-    color: ringColour(hex, dark),
+    color: hex,
     inDelay: i * 0.11,
     breatheDelay: i * 0.11 + 0.85
   }));

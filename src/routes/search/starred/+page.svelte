@@ -1,20 +1,33 @@
 <script lang="ts">
+  /* The starred shelf (phase 5 ticket 22), rebuilt on the kit.
+
+     Two named areas rather than two `SectionTitle` labels over a photo grid
+     and a flat run of entry cards: the photos keep their grid, which is what
+     a photo wants, and the entries become day cards like everywhere else, so
+     a starred entry looks the same here as it does on Home and on a day.
+
+     Unbounded, and that is the design rather than an oversight - see the
+     query's own note below. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { entryDayGroups } from '$lib/data/recentEntries';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
   import Icon from '$lib/components/Icon.svelte';
-  import EntryCard from '$lib/components/EntryCard.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import EntryDays from '$lib/components/EntryDays.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
   /* Unbounded, like photos.inJournal() (settings/photos/+page.svelte): a
      starred list is self-limiting by how much a person actually stars,
      not by how large the journal is (ADR-0004's concern). */
   let entriesQuery = liveQuery(['entry'], (j) => j.entries.searchEntries('', [], { starred: true }));
   let entries = $derived(entriesQuery.value ?? []);
+  let groups = $derived(entryDayGroups(entries));
 
   let photosQuery = liveQuery(['photo'], (j) => j.photos.starredPhotos());
   let photos = $derived(photosQuery.value ?? []);
@@ -22,28 +35,38 @@
   let loading = $derived(entriesQuery.loading || photosQuery.loading);
   let empty = $derived(!loading && entries.length === 0 && photos.length === 0);
 
+  /* One coloured area: the entries. The photo grid is photographs, which
+     bring their own colour and take none from the flag. */
+  let role = $derived(roleAt(activeFlag.roles, 0));
+
   async function unstarPhoto(id: string) {
     await journal.photos.setStarred(id, false);
   }
 </script>
 
 <div class="screen" data-screen>
-  <ScreenHeader title={m.starred_shelf_title()} back="/search" />
+  <ScreenHeader title={m.starred_shelf_title()} screen="starred" back="/search" />
 
   {#if loading}
     <Skeleton variant="card" count={3} />
   {:else if empty}
-    <EmptyState title={m.starred_shelf_empty_title()} text={m.starred_shelf_empty_body()} />
+    <Notice
+      icon="star"
+      key="starred-empty"
+      {role}
+      title={m.starred_shelf_empty_title()}
+      text={m.starred_shelf_empty_body()}
+    />
   {:else}
     {#if photos.length}
-      <SectionTitle text={m.starred_shelf_photos_label()} />
-      <div class="photo-grid">
+      <SectionHeading text={m.starred_shelf_photos_label()} />
+      <div class="photo-grid" data-starred-photos>
         {#each photos as p (p.id)}
           <div class="starred-photo-cell">
             <PhotoThumb photo={p} size={104} />
             <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
             <button
-              class="starred-photo-unstar"
+              class="starred-photo-unstar press"
               aria-label={m.unstar_photo()}
               onclick={() => unstarPhoto(p.id)}
             >
@@ -55,10 +78,8 @@
     {/if}
 
     {#if entries.length}
-      <SectionTitle text={m.starred_shelf_entries_label()} />
-      {#each entries as e (e.id)}
-        <EntryCard entry={e} />
-      {/each}
+      <SectionHeading text={m.starred_shelf_entries_label()} />
+      <EntryDays {groups} {role} />
     {/if}
   {/if}
 </div>
