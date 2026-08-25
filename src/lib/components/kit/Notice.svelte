@@ -20,6 +20,17 @@
      different keyboard behaviour and different announcements, and "back up
      now" is a destination however it is drawn.
 
+     And it can be the app's own primary button rather than a text action,
+     because a notice and an empty state are the same surface at two
+     different weights. A notice remarks - the backup is old, here is the way
+     to fix it - and a text action is the right size for a remark. An empty
+     state asks: it is the whole of what a first-run Home has to say, and the
+     one thing to do about it is the screen's only call to action. That is
+     what `.btn .btn-primary` is (phase 5 ticket 30's control inventory), and
+     without this Home shipped no instance of the app's primary control at
+     all. One flag rather than a second component, because everything else
+     about the two is identical.
+
      Title and text are both optional, and a notice with only a title is the
      shape a one-line statement wants: the text is --text-2 by design,
      because a notice usually has a bold thing to say and a quieter
@@ -54,8 +65,14 @@
     role?: Role;
     key?: string;
     /** The one thing the notice asks for, if it asks for anything. Exactly
-        one of `href` and `onclick`: where it navigates it is a link. */
-    action?: { label: string; href: string; onclick?: never } | { label: string; onclick: () => void; href?: never };
+        one of `href` and `onclick`: where it navigates it is a link.
+
+        `primary` draws it as the app's primary button instead of a text
+        action - for an empty state, where it is the screen's only call to
+        action rather than an aside on a remark. */
+    action?:
+      | { label: string; href: string; onclick?: never; primary?: boolean }
+      | { label: string; onclick: () => void; href?: never; primary?: boolean };
     /** The label travels with the handler rather than beside it: an icon
         button with no accessible name is unusable by voice and
         unannounceable by a screen reader, and two optional props let one
@@ -84,9 +101,18 @@
     </button>
   {/if}
   {#if action?.href}
-    <a class="kit-notice-act" data-notice-action href={action.href}>{action.label}</a>
+    <a
+      class={action.primary ? 'kit-notice-cta btn btn-primary' : 'kit-notice-act'}
+      data-notice-action
+      href={action.href}>{action.label}</a
+    >
   {:else if action}
-    <button type="button" class="kit-notice-act" data-notice-action onclick={action.onclick}>
+    <button
+      type="button"
+      class={action.primary ? 'kit-notice-cta btn btn-primary' : 'kit-notice-act'}
+      data-notice-action
+      onclick={action.onclick}
+    >
       {action.label}
     </button>
   {/if}

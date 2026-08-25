@@ -252,7 +252,10 @@
        exactly where it was. With neither qualifying the grid has no
        children and so no height, and the air around it belongs to its
        neighbours rather than to itself. -->
-  <TileGrid role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
+  <TileGrid
+    role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}
+    flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+  >
     {#if prefs.wrappedEnabled}
       <WrappedHomeCard />
     {/if}
@@ -343,7 +346,7 @@
           role={roleAt(activeFlag.roles, AREA_ROLE.days)}
           title={m.empty_home_title()}
           text={m.empty_home_body()}
-          action={{ label: m.new_entry(), onclick: () => (ui.chooserOpen = true) }}
+          action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }}
         />
       </div>
     {/if}

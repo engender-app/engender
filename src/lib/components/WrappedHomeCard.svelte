@@ -20,7 +20,10 @@
      One of Home's two look-back tiles since phase 5 ticket 21, where it was
      a full-width card with a gradient wash. The gradient is gone with every
      other one, and the tile is what DIRECTION.md's slop audit left standing:
-     an offer that carries its own data and no icon disc. Its sibling is
+     an offer that carries its own data and no icon disc - the count is the
+     reading, drawn at display size with the flag as a bar under it, and
+     `wrapped_stat_entries` is the label the wrapped screen already puts on
+     that same number. Its sibling is
      OnThisDayHomeCard, and the two share nothing but the grid they sit in -
      each keeps its own preference gate, its own query and its own floor,
      which is what lets one be silenced without touching the other. */
@@ -55,7 +58,8 @@
 {#if !recapQuery.loading && entryCount >= WRAPPED_ENTRY_FLOOR}
   <Tile
     {title}
-    note={m.wrapped_home_sub({ count: entryCount })}
+    value={String(entryCount)}
+    note={m.wrapped_stat_entries()}
     href={`/wrapped/${period.cadence}`}
     key="wrapped"
     data-wrapped-card=""

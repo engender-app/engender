@@ -711,6 +711,23 @@ a.kit-entry:active {
   text-decoration: none;
 }
 
+/* Drawn as the app's primary button instead (Notice.svelte), which means it
+   does not wear .kit-notice-act at all. The two are alternatives rather than
+   a base and a modifier, and the cascade settles it either way: kit.css
+   loads after components.css, so at equal specificity the text action's
+   `background: none` and its own colour would take the button's gradient
+   straight back off. Everything the control is comes from .btn and
+   .btn-primary - the pill, the gradient, the press depth and its
+   reduced-motion substitute - and all this rule does is place it on the
+   notice's grid. Nothing about the control is retyped here; a second copy of
+   a press depth is what tests/motion-system.test.ts exists to fail on. */
+.kit-notice-cta {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: start;
+  margin-top: var(--space-2);
+}
+
 .kit-notice-x {
   grid-column: 3;
   grid-row: 1;
