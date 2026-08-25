@@ -1,14 +1,31 @@
 <script lang="ts">
+  /* The More hub, on the surface kit (phase 5 ticket 24).
+
+     What it used to be: a hand-rolled `.list-group`/`.list-row` stack, the
+     "old world" kit.css's own header comment names - one rounded card with
+     a shadow, repeated four times, each row carrying a subtitle whether or
+     not the title needed one. The kit's ListCard/ListRow/SectionHeading
+     (ticket 20) are the replacement; this ticket is the one that spends
+     them here.
+
+     DIRECTION.md 3b: subtitles are earned, not standard. These 22 rows
+     carry titles alone now - the subtitle text stays in the catalogue
+     (nothing deleted, in case a later ticket earns it back) but nothing
+     reads it here except the trailing Settings row, where "Settings" alone
+     does not say what is behind it.
+
+     Every row's icon/title/href/group membership is unchanged, per this
+     ticket's own scope line: a redesign changes the container, not what
+     each row says. */
   import { m } from '$lib/paraglide/messages';
-  import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
-  /* ADR-0036: these are the 22 feature surfaces that used to live under
-     Settings' Care section, now grouped here instead of in one 27-row list.
-     Every row keeps its existing icon/title/subtitle/href from that section -
-     no restyle, no copy change; those are tickets 11-13 and copy 01/03. */
   type HubRow = { key: string; icon: string; title: () => string; subtitle: () => string; href: string };
 
   const BODY_ROWS: HubRow[] = [
@@ -78,30 +95,32 @@
        visible label. -->
   <ScreenHeader title={m.nav_more()} titleHidden />
 
-  {#each GROUPS as group (group.title())}
-    <SectionTitle text={group.title()} />
-    <div class="list-group">
+  {#each GROUPS as group, i (group.title())}
+    <SectionHeading text={group.title()} />
+    <ListCard role={roleAt(activeFlag.roles, i)}>
       {#each group.rows as row (row.key)}
-        <a class="list-row" href={row.href} data-hub-row={row.key}>
-          <span class="row-icon"><Icon name={row.icon} size={22} /></span>
-          <span class="row-text">
-            <span class="row-title">{row.title()}</span>
-            <span class="row-subtitle">{row.subtitle()}</span>
-          </span>
-          <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-        </a>
+        <ListRow key={row.key} icon={row.icon} title={row.title()} href={row.href} />
       {/each}
-    </div>
+    </ListCard>
   {/each}
 
-  <div class="list-group">
-    <a class="list-row" href="/settings" data-hub-row="settings">
-      <span class="row-icon"><Icon name="settings" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.nav_settings()}</span>
-        <span class="row-subtitle">{m.hub_settings_row_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
+  <!-- No role: this row is the app talking about itself, not one of the
+       journal's own areas (the same call Home's backup notice makes).
+
+       No SectionHeading either - it is one row, not a group - but sitting
+       flush under Practice with nothing between them read as if it
+       belonged to that group (Alicja, on the live build). A plain margin
+       gives it the same clearance a heading would, without a heading that
+       has nothing to say. -->
+  <div style="margin-top:var(--space-6)">
+    <ListCard>
+      <ListRow
+        key="settings"
+        icon="settings"
+        title={m.nav_settings()}
+        subtitle={m.hub_settings_row_sub()}
+        href="/settings"
+      />
+    </ListCard>
   </div>
 </div>

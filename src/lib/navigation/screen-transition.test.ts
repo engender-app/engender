@@ -76,6 +76,42 @@ describe('choosing a tier-2 pattern', () => {
     expect(screenTransition(nav({ from: '/stats', to: '/stats' }))).toBe('none');
   });
 
+  it('grows the tapped entry into the editor, and shrinks it back', () => {
+    /* The one container transform in the app (DIRECTION.md tier 2): the
+       entry card really does become the editor. Ticket 18 wired the other
+       three patterns and left this one, because it is the only one that
+       needs the two surfaces to agree on a key rather than only the
+       navigation. */
+    expect(screenTransition(nav({ from: '/calendar', to: '/entry/41' }))).toBe('container');
+    expect(screenTransition(nav({ from: '/day/20690', to: '/entry/41' }))).toBe('container');
+    expect(screenTransition(nav({ from: '/search', to: '/entry/41' }))).toBe('container');
+    expect(screenTransition(nav({ from: '/', to: '/entry/41' }))).toBe('container');
+    expect(
+      screenTransition(nav({ from: '/entry/41', to: '/day/20690', type: 'popstate', delta: -1 }))
+    ).toBe('container');
+  });
+
+  it('opens a new entry on the shared axis, because nothing was tapped to become it', () => {
+    /* A container transform needs a container. Quick add's fan, the day
+       screen's add button and a launcher shortcut all open the editor with
+       no card behind them, so /entry/new keeps the axis it has. */
+    expect(screenTransition(nav({ from: '/day/20690', to: '/entry/new/20690' }))).toBe('shared-axis');
+    expect(screenTransition(nav({ from: '/', to: '/entry/new/today?seedMood=4' }))).toBe(
+      'fade-through'
+    );
+  });
+
+  it('leaves the container transform to Android going back, like every other pattern', () => {
+    /* The predictive back gesture has already started drawing where the
+       person is going, and a fixed animation on top of it is worse than
+       none. */
+    expect(
+      screenTransition(
+        nav({ from: '/entry/41', to: '/day/20690', type: 'popstate', delta: -1, isAndroid: true })
+      )
+    ).toBe('none');
+  });
+
   it('treats a forward popstate as forward', () => {
     expect(screenTransition(nav({ from: '/calendar', to: '/day/20690', type: 'popstate', delta: 1 }))).toBe(
       'shared-axis'

@@ -120,7 +120,12 @@
      true - the metric picker on Home read as part of the heading text
      (Alicja, 2026-08-25). */
   justify-content: space-between;
-  padding: var(--space-5) var(--space-1) var(--space-3);
+  /* No horizontal inset. A heading, the card under it and the fields under
+     that all start at the screen's own edge (Alicja, 2026-08-25: "'gender',
+     'however it feels...' and 'gender feeling' are all starting at different
+     points in x axis"). The 4px this used to carry put every section heading
+     in the app 4px right of the surface it heads. */
+  padding: var(--space-5) 0 var(--space-3);
 }
 
 .kit-heading:first-child {

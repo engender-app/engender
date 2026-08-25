@@ -36,6 +36,7 @@
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { screenTransition } from '$lib/navigation/screen-transition';
+  import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import QuickAdd from '$lib/components/QuickAdd.svelte';
@@ -148,7 +149,7 @@
        notification, the back button. */
     ui.chooserOpen = false;
 
-    if (!document.startViewTransition || !navigation.to) return;
+    if (!navigation.to) return;
     const pattern = screenTransition({
       from: navigation.from?.url.pathname ?? null,
       to: navigation.to.url.pathname,
@@ -157,7 +158,13 @@
       isAndroid: isAndroid(),
       isChromeless: chromeless || chromelessPath(navigation.to.url.pathname)
     });
-    if (pattern === 'none') return;
+    /* Before the capture below, and on every navigation rather than only the
+       animated ones: a card left wearing the container name is pulled out of
+       the screen's own snapshot, so it would hold still while the rest of
+       the screen slid past it. Computed first because the pattern is what
+       says whether this navigation is the transform. */
+    if (pattern !== 'container') closeEntryContainer();
+    if (!document.startViewTransition || pattern === 'none') return;
 
     return new Promise((resolve) => {
       document.documentElement.dataset.nav = pattern;

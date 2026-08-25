@@ -36,6 +36,18 @@ export interface Role {
       the difference is what keeps the app looking like the flag rather
       than like a darkened copy of it. */
   mark: string;
+  /** The five steps of the heat ramp in this stripe's hue, deepest last.
+      A week cell has nothing written on it and a calendar cell has the day
+      number, so each step carries the ink that number is written in. */
+  heat: HeatStep[];
+}
+
+export interface HeatStep {
+  /** The cell's fill: the stripe at this step's strength, undiluted by any
+      contrast floor, the same as every other fill a role paints. */
+  fill: string;
+  /** What a number written on that fill is drawn in, at 4.5:1 or better. */
+  ink: string;
 }
 
 /** The two floors a role is held to.
@@ -132,6 +144,43 @@ export function legibleInk(
   return text;
 }
 
+/** The heat ramp's steps, as how much of the stripe is mixed into the
+    ground behind the cell. The same five numbers palettes.css writes for
+    --heat-0..4 and BareStrip.svelte lists for the week, so a week cell and
+    a calendar cell shade one day's reading the same way and only the hue
+    differs (ticket 20's review: "a cell here and a calendar cell are the
+    same scale in the flag's hue"). */
+export const HEAT_STEPS = [0, 22, 45, 70, 100];
+
+/** The one thing a role-hued heat cell needs that the accent ramp got by
+    hand. palettes.css pairs every --heat-N with an --on-heat-N, tuned per
+    palette and sometimes per theme, because a ramp from the page's own
+    surface up to a saturated colour crosses the lightness band where
+    neither --text nor its opposite clears 4.5:1. That table is eight
+    palettes times two themes; a role-hued ramp is that times however many
+    stripes the flag has, which is not a table anybody keeps in step.
+
+    So it is computed, the same way the hand-tuned overrides were reasoned
+    about: the theme's own text colour where it clears the floor, and
+    otherwise whichever of black and white contrasts more. That second
+    branch cannot fail - the two are furthest apart exactly where they are
+    equal, and there they are still 4.58:1 - which is what makes the ramp
+    safe on a stripe nobody has looked at.
+
+    The fill is never adjusted. A fill answers to no ratio (see legibleInk
+    above): it is the number that has to be read, not the cell. */
+export function heatRamp(stripe: string, text: string, ground: string): HeatStep[] {
+  return HEAT_STEPS.map((pct) => {
+    const fill = pct === 0 ? ground : pct === 100 ? stripe : colorMixOklab(stripe, pct, ground);
+    return { fill, ink: heatInk(fill, text) };
+  });
+}
+
+function heatInk(fill: string, text: string): string {
+  if (contrast(text, fill) >= TEXT_FLOOR) return text;
+  return contrast('#FFFFFF', fill) >= contrast('#000000', fill) ? '#FFFFFF' : '#000000';
+}
+
 /** Below this a stripe is a shade rather than a colour. The eight flags'
     white, black, near-black and mid-grey bands all sit under it; every hue
     any of them carries sits well above. */
@@ -147,7 +196,17 @@ const ACHROMATIC = 0.02;
     stripe still gets a turn - the shades follow the colours rather than
     being dropped - which keeps the white band a part of the palette without
     letting it be the first thing anyone sees of it. */
-export function flagRoles(stripes: string[], text: string, grounds: string[]): Role[] {
+export function flagRoles(
+  stripes: string[],
+  text: string,
+  grounds: string[],
+  /** The one ground a heat cell sits on, which is narrower than the list
+      above: a role writes on the page and on both card surfaces, but the
+      ramp's own empty step *is* a surface, so it needs to be told which.
+      Defaults to the last of `grounds`, which is where readFlagRoles puts
+      it. */
+  heatGround: string = grounds[grounds.length - 1]
+): Role[] {
   const ordered = [
     ...stripeRoles(stripes).filter((s) => chromaOf(s) >= ACHROMATIC),
     ...stripeRoles(stripes).filter((s) => chromaOf(s) < ACHROMATIC)
@@ -155,7 +214,8 @@ export function flagRoles(stripes: string[], text: string, grounds: string[]): R
   return ordered.map((stripe) => ({
     stripe,
     ink: legibleInk(stripe, text, grounds, TEXT_FLOOR),
-    mark: legibleInk(stripe, text, grounds, MARK_FLOOR)
+    mark: legibleInk(stripe, text, grounds, MARK_FLOOR),
+    heat: heatRamp(stripe, text, heatGround)
   }));
 }
 
@@ -208,12 +268,15 @@ export function flagFill(stripes: string[]): string {
 export function readFlagRoles(doc: Document = document): Role[] {
   const style = getComputedStyle(doc.documentElement);
   const read = (token: string) => style.getPropertyValue(token).trim();
-  // Every ground a role can land on: the page, both card surfaces.
-  return flagRoles(readStripes(doc), read('--text'), [
-    read('--bg'),
-    read('--surface'),
+  // Every ground a role can land on: the page, both card surfaces. The heat
+  // ramp is handed --surface-2 by name, because that is what palettes.css
+  // makes --heat-0 and it is the surface an empty cell has always been.
+  return flagRoles(
+    readStripes(doc),
+    read('--text'),
+    [read('--bg'), read('--surface'), read('--surface-2')],
     read('--surface-2')
-  ]);
+  );
 }
 
 /** The active flag as a fill. Read the same way and at the same time as the

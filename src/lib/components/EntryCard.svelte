@@ -1,5 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
+  import { entryContainerName, opensHere, openEntryContainer } from '$lib/motion/container.svelte';
   import Icon from './Icon.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import type { Entry } from '$lib/data/types';
@@ -16,7 +17,18 @@
   let more = $derived(entry.tags.length - tags.length);
 </script>
 
-<a class="entry-card" data-entry-card href="/entry/{entry.id}">
+<!-- The source half of the container transform, the same as the kit's day
+     entry: three screens still draw this card and all three link into the
+     editor, so leaving it out would make the transform depend on which
+     surface the entry happened to be tapped on
+     ($lib/motion/container.svelte). -->
+<a
+  class="entry-card"
+  data-entry-card
+  href="/entry/{entry.id}"
+  style:view-transition-name={entryContainerName(String(entry.id))}
+  onclick={(event) => { if (opensHere(event)) openEntryContainer(String(entry.id)); }}
+>
   <div class="entry-side">
     {#if entry.mood != null}
       <span

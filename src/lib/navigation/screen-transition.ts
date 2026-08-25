@@ -13,7 +13,7 @@
 
 import { activeTabKey } from './active-tab';
 
-export type ScreenTransition = 'none' | 'fade-through' | 'shared-axis' | 'shared-axis-back';
+export type ScreenTransition = 'none' | 'fade-through' | 'shared-axis' | 'shared-axis-back' | 'container';
 
 export interface NavigationFacts {
   from: string | null;
@@ -46,7 +46,26 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
   if (from === null || isChromeless) return 'none';
   if (from === to) return 'none';
 
-  if (isBack(from, to, type, delta)) return isAndroid ? 'none' : 'shared-axis-back';
+  if (isBack(from, to, type, delta)) {
+    if (isAndroid) return 'none';
+    /* Out of the editor the transform runs backwards, which is the pattern
+       being symmetric rather than a second decision: the same two boxes
+       swap which one is arriving. */
+    return isEntryEditor(from) ? 'container' : 'shared-axis-back';
+  }
+
+  /* The one container transform in the app. It is not chosen by where the
+     navigation came from, because every surface that draws an entry owes
+     the same link and they are all correct sources - Home's day cards, a
+     day, a search hit. What it is chosen by is the destination being the
+     editor for an entry that exists, which is the only case where
+     something on screen was tapped and is about to become the screen.
+
+     /entry/new is deliberately not here. Quick add's fan, a day's add
+     button and a launcher shortcut all open it with nothing behind them,
+     and a container transform with no container is a crossfade wearing a
+     longer duration. */
+  if (isEntryEditor(to)) return 'container';
 
   /* A screen with several views of itself is not a sequence. Wrapped's four
      cadence tabs are one screen showing a different period, so crossing them
@@ -72,6 +91,12 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
 
 /** Routes whose sub-paths are views of one screen rather than steps into it. */
 const SWITCHES_VIEWS_IN_PLACE = ['/wrapped/'];
+
+/** The editor for an entry that already exists. `/entry/new/...` is a
+    different screen for this purpose, whatever it shares underneath. */
+function isEntryEditor(path: string): boolean {
+  return /^\/entry\/\d+$/.test(path);
+}
 
 /* Two ways back, and both have to count.
    The system's back and the browser's arrive as a popstate with a negative
