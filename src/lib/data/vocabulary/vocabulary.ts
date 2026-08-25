@@ -37,6 +37,7 @@ import {
   dimensionHigh,
   dimensionLow,
   dimensionName,
+  dimensionNote as builtInDimensionNote,
   effectCategoryName,
   entryPromptText,
   entryTemplateName,
@@ -136,6 +137,19 @@ export const vocabulary = {
       `visibleTagGroups` already applies to tags. */
   get visibleDimensions(): GenderDimension[] {
     return this.dimensions.filter((d) => !d.hidden);
+  },
+  /** The line under a scale's name on the checklist that chooses which
+      scales get logged (phase 5 ticket 35), saying what the slider
+      measures rather than what having it says about you.
+
+      A custom scale has no catalogue line to look up, so it gets its own
+      two ends read back to it - which is the same fact in the person's own
+      words, and better than a sentence the app wrote about a scale it
+      knows nothing about. Undefined for a built-in this build has no line
+      for, which draws the row without a subtitle rather than with a key. */
+  dimensionNote(dim: GenderDimension): string | undefined {
+    if (!dim.builtIn) return m.scale_custom_note({ low: dim.low, high: dim.high });
+    return builtInDimensionNote(dim.key) ?? undefined;
   },
   /** The lean the ticked scales carry (phase 5 ticket 43, ADR-0030) -
       `null` when both `femininity` and `masculinity` are ticked, or neither,

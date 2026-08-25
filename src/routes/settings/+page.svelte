@@ -26,6 +26,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { isAndroid } from '$lib/platform';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -49,7 +50,11 @@
   ];
 
   let isWeb = $derived(!isAndroid());
-  let preset = $derived(vocabulary.activePreset);
+  /* The row's subtitle names the ticked scales rather than counting them.
+     PR-001 chose names over "3 scales" when the row had a preset name to
+     beat; with the preset gone the names are all there is to say, and they
+     are also the only way to see the set without opening the sheet. */
+  let tickedNames = $derived(vocabulary.activeDimensions.map((d) => d.name).join(', '));
   let metricName = $derived(vocabulary.metricName);
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
 
@@ -59,6 +64,17 @@
   let activeReminders = $derived((reminders.value ?? []).filter((r) => r.enabled).length);
 
   let presetSheet = $state(false);
+
+  /* Written straight through rather than held and applied on close: the
+     sheet has no confirm and never has, so a tick is the change. Assigned
+     as a new array because the preference store's proxy writes on
+     assignment, and mutating the stored list in place would leave SQLite
+     holding the old one. */
+  function toggleScale(key: string) {
+    prefs.activeScales = prefs.activeScales.includes(key)
+      ? prefs.activeScales.filter((k) => k !== key)
+      : [...prefs.activeScales, key];
+  }
   let metricSheet = $state(false);
   let disguiseSheet = $state(false);
   let aboutSheet = $state(false);
@@ -235,10 +251,10 @@
   <div class="stack-3" data-settings-list>
     <ListCard>
       <ListRow
-        key="preset"
+        key="scales"
         icon="heart"
-        title={m.gender_preset()}
-        subtitle={preset.name}
+        title={m.gender_scales()}
+        subtitle={tickedNames || m.scales_none_ticked()}
         chevron={false}
         onclick={() => (presetSheet = true)}
       >
@@ -465,35 +481,13 @@
     <span translate="no">{m.app_name()}</span> · {m.footer_note()}
   </p>
 
-  <Sheet bind:open={presetSheet} title={m.gender_preset()}>
-    <h3>{m.gender_preset()}</h3>
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.preset_note()}</p>
-    <div class="list-group" style="box-shadow:none">
-      {#each vocabulary.presets as p (p.id)}
-        <button
-          class="list-row"
-          data-selected={prefs.activePreset === p.id ? 'true' : 'false'}
-          data-pick-preset={p.id}
-          onclick={() => {
-            prefs.activePreset = p.id;
-            presetSheet = false;
-          }}
-        >
-          <span class="row-text">
-            <span class="row-title" data-row-title>{p.name}</span>
-            <span class="row-subtitle">{vocabulary.presetDimensionNames(p.dims)}{p.builtIn ? '' : ` · ${m.custom_suffix()}`}</span>
-          </span>
-          {#if prefs.activePreset === p.id}<Icon name="check" size={20} />{/if}
-        </button>
-      {/each}
-      <a class="list-row" href="/settings/dimension" onclick={() => (presetSheet = false)}>
-        <span class="row-icon"><Icon name="plus" size={20} /></span>
-        <span class="row-text">
-          <span class="row-title">{m.add_custom()}</span>
-          <span class="row-subtitle">{m.add_custom_sub()}</span>
-        </span>
-      </a>
-    </div>
+  <Sheet bind:open={presetSheet} title={m.gender_scales()}>
+    <h3>{m.gender_scales()}</h3>
+    <p class="muted small" style="margin-bottom:var(--space-3)">{m.scales_note()}</p>
+    <!-- The same list the first run draws, built once. This one carries the
+         way to a custom scale, because Settings is a place somebody can be
+         sent away from and come back to. -->
+    <ScaleChecklist ticked={prefs.activeScales} onToggle={toggleScale} addHref="/settings/dimension" />
   </Sheet>
 
   <Sheet bind:open={metricSheet} title={m.home_cal_colour()}>
