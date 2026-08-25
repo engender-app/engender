@@ -1,4 +1,17 @@
 <script lang="ts">
+  /* Every dose, and how it sits against the schedule, on the surface kit
+     (phase 5 UX ticket 25).
+
+     The log row was four lines deep: the dose and its route, when and
+     where, which regimen episode it falls under, and - where the dose came
+     from a schedule - what that schedule had asked for. Two of those are
+     about the dose and two are about the bookkeeping around it, so the
+     bookkeeping moves to the end of the row where a reading goes, and the
+     row is a dose again.
+
+     The three states the schedule view can be in - several episodes
+     running, none, or one with no schedule - were `.notice notice-info`
+     paragraphs, which is the old world's notice. They are the kit's. */
   /* The dose log (phase 4 ticket 02, widened to concurrent episodes by
      phase 5 ticket 38). Two views over the same three reads: what was
      logged, and how it sits against what the active episode's schedule
@@ -44,12 +57,24 @@
   import type { ApplicationSiteKey, InjectionSiteKey } from '$lib/data/doseSchedule';
   import type { DoseEvent, DoseRoute, DoseStatus, InjectionVehicle } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
+
+  /* Three areas across the two views: the doses themselves, the schedule
+     they are compared against, and what fell outside either. */
+  const AREA_ROLE = { doses: 0, schedule: 1, leftover: 2 };
 
   /** How far back the log and the comparison look. A window rather than the
       whole history because both reads are per-day and a journal years deep
@@ -337,7 +362,7 @@
 <div class="screen">
   <ScreenHeader title={m.doses()} back="/settings/regimen" subtitle={m.doses_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.doses_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.doses_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -351,137 +376,151 @@
       { value: 'schedule', label: m.doses_view_schedule() }
     ]}
     onChange={(v) => (view = v as 'log' | 'schedule')}
+    key="doses-view"
   />
 
   {#if loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if view === 'log'}
     {#if doses.length}
-      <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: WINDOW_DAYS })}</p>
-      <div class="list-group">
-        {#each [...doses].reverse() as dose (dose.id)}
-          {@const attribution = attributeDose(episodes, dose)}
-          {@const site = siteOf(dose)}
-          <button
-            class="list-row"
-            data-dose={dose.id}
-            aria-label={m.doses_row_aria({ route: routeLabel(dose.route), when: whenOf(dose) })}
-            onclick={() => openEditor(dose)}
-          >
-            <span class="row-text">
-              <span class="row-title">
-                {dose.dose} {dose.doseUnit} · {routeLabel(dose.route)}
-                {#if dose.status !== 'taken'}
-                  <span class="dose-status">{statusLabel(dose.status)}</span>
-                {/if}
-              </span>
-              <span class="row-subtitle">
-                {whenOf(dose)}
-                {#if site}· {site}{/if}
-                {#if isInjectionDose(dose) && dose.vehicle}· {vehicleLabel(dose.vehicle)}{/if}
-              </span>
-              <span class="row-subtitle">
-                {#if attribution.episode}
-                  {m.doses_under_episode({ drug: attribution.episode.drug })}
-                {:else if attribution.ambiguous}
-                  {m.doses_ambiguous_episode()}
-                {:else}
-                  {m.doses_no_episode()}
-                {/if}
-              </span>
-              {#if dose.scheduled}
-                <span class="row-subtitle">
-                  {m.dose_scheduled_legend()}: {dose.scheduled.dose}
-                  {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
+      <div in:crossfade>
+        <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: WINDOW_DAYS })}</p>
+        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.doses)}>
+          {#each [...doses].reverse() as dose (dose.id)}
+            {@const attribution = attributeDose(episodes, dose)}
+            {@const site = siteOf(dose)}
+            <ListRow
+              key={dose.id}
+              icon="clock"
+              title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
+              subtitle={[
+                whenOf(dose),
+                site,
+                isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : ''
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              chevron={false}
+              onclick={() => openEditor(dose)}
+            >
+              {#snippet trailing()}
+                <!-- The bookkeeping, at the end of the row rather than as
+                     two more lines under the dose: which episode the app
+                     attributed it to, whether it was taken as logged, and
+                     what a schedule had asked for. All three are about the
+                     record rather than about the dose. -->
+                <span class="dose-trail">
+                  {#if dose.status !== 'taken'}
+                    <span class="dose-status">{statusLabel(dose.status)}</span>
+                  {/if}
+                  <span>
+                    {#if attribution.episode}
+                      {m.doses_under_episode({ drug: attribution.episode.drug })}
+                    {:else if attribution.ambiguous}
+                      {m.doses_ambiguous_episode()}
+                    {:else}
+                      {m.doses_no_episode()}
+                    {/if}
+                  </span>
+                  {#if dose.scheduled}
+                    <span>
+                      {m.dose_scheduled_legend()}: {dose.scheduled.dose}
+                      {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
+                    </span>
+                  {/if}
+                </span>
+              {/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+      </div>
+    {:else}
+      <div in:crossfade>
+        <Notice
+          icon="clock"
+          key="doses-empty"
+          role={roleAt(activeFlag.roles, AREA_ROLE.doses)}
+          title={m.doses_empty_title()}
+          text={m.doses_empty_body()}
+          action={{ label: m.doses_empty_action(), primary: true, onclick: () => openEditor(null) }}
+        />
+      </div>
+    {/if}
+  {:else if activeEpisodes.length > 1}
+    <Notice icon="info" key="adherence-multiple" text={m.adherence_multiple_episodes()} />
+  {:else if !activeEpisode}
+    <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
+  {:else if !activeSchedule}
+    <Notice icon="info" key="adherence-no-schedule" text={m.adherence_no_schedule({ drug: activeEpisode.drug })} />
+  {:else if comparison}
+    <div in:crossfade>
+      <p class="muted small" style="margin:var(--space-3) 0">
+        {m.adherence_for_episode({ drug: activeEpisode.drug })}
+      </p>
+      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.schedule)}>
+        {#each [...comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
+          <div class="kit-row is-static" data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}>
+            <span class="kit-row-text">
+              <span class="kit-row-title">{fmtDayLong(row.slot.epochDay)}</span>
+              {#if activeSchedule.dosesPerDay > 1}
+                <span class="kit-row-sub">
+                  {m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: activeSchedule.dosesPerDay })}
+                </span>
+              {/if}
+              {#if row.slot.amount}
+                <span class="kit-row-sub">
+                  {m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })}
                 </span>
               {/if}
             </span>
-            <Icon name="pencil" size={18} />
-          </button>
+            <span class="kit-row-trail">
+              {#if row.dose}
+                {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
+              {:else}
+                {m.adherence_nothing_logged()}
+              {/if}
+            </span>
+          </div>
         {/each}
-      </div>
-    {:else}
-      <EmptyState title={m.doses_empty_title()} text={m.doses_empty_body()}>
-        {#snippet action()}
-          <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.doses_empty_action()}</span></button>
-        {/snippet}
-      </EmptyState>
-    {/if}
-  {:else if activeEpisodes.length > 1}
-    <p class="notice notice-info" style="margin-top:var(--space-4)">{m.adherence_multiple_episodes()}</p>
-  {:else if !activeEpisode}
-    <p class="notice notice-info" style="margin-top:var(--space-4)">{m.adherence_no_episode()}</p>
-  {:else if !activeSchedule}
-    <p class="notice notice-info" style="margin-top:var(--space-4)">
-      {m.adherence_no_schedule({ drug: activeEpisode.drug })}
-    </p>
-  {:else if comparison}
-    <p class="muted small" style="margin:var(--space-3) 0">
-      {m.adherence_for_episode({ drug: activeEpisode.drug })}
-    </p>
-    <div class="list-group">
-      {#each [...comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
-        <div class="list-row" data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}>
-          <span class="row-text">
-            <span class="row-title">{fmtDayLong(row.slot.epochDay)}</span>
-            {#if activeSchedule.dosesPerDay > 1}
-              <span class="row-subtitle">
-                {m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: activeSchedule.dosesPerDay })}
+      </ListCard>
+
+      {#if activePauses.length}
+        <SectionHeading text={m.adherence_paused_heading()} />
+        <p class="muted small">{m.adherence_paused_note()}</p>
+        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.leftover)}>
+          {#each activePauses as pause (pause.id)}
+            <div class="kit-row is-static" data-pause={pause.id}>
+              <span class="kit-row-text">
+                <span class="kit-row-title">
+                  {pause.endEpochDay === null
+                    ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
+                    : m.adherence_paused_range({
+                        from: fmtDayLong(pause.startEpochDay),
+                        to: fmtDayLong(pause.endEpochDay)
+                      })}
+                </span>
+                <span class="kit-row-sub">{pauseReasonLabel(pause.reason)}</span>
               </span>
-            {/if}
-            {#if row.slot.amount}
-              <span class="row-subtitle">
-                {m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })}
+            </div>
+          {/each}
+        </ListCard>
+      {/if}
+
+      {#if comparison.unmatched.length}
+        <SectionHeading text={m.adherence_unmatched_heading()} />
+        <p class="muted small">{m.adherence_unmatched_note()}</p>
+        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.leftover)}>
+          {#each comparison.unmatched as dose (dose.id)}
+            <div class="kit-row is-static" data-unmatched={dose.id}>
+              <span class="kit-row-text">
+                <span class="kit-row-title">{dose.dose} {dose.doseUnit} · {routeLabel(dose.route)}</span>
+                <span class="kit-row-sub">{whenOf(dose)}</span>
               </span>
-            {/if}
-          </span>
-          <span class="row-trailing">
-            {#if row.dose}
-              {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
-            {:else}
-              {m.adherence_nothing_logged()}
-            {/if}
-          </span>
-        </div>
-      {/each}
+            </div>
+          {/each}
+        </ListCard>
+      {/if}
     </div>
-
-    {#if activePauses.length}
-      <h2 class="section-title">{m.adherence_paused_heading()}</h2>
-      <p class="muted small">{m.adherence_paused_note()}</p>
-      <div class="list-group">
-        {#each activePauses as pause (pause.id)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">
-                {pause.endEpochDay === null
-                  ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
-                  : m.adherence_paused_range({
-                      from: fmtDayLong(pause.startEpochDay),
-                      to: fmtDayLong(pause.endEpochDay)
-                    })}
-              </span>
-              <span class="row-subtitle">{pauseReasonLabel(pause.reason)}</span>
-            </span>
-          </div>
-        {/each}
-      </div>
-    {/if}
-
-    {#if comparison.unmatched.length}
-      <h2 class="section-title">{m.adherence_unmatched_heading()}</h2>
-      <p class="muted small">{m.adherence_unmatched_note()}</p>
-      <div class="list-group">
-        {#each comparison.unmatched as dose (dose.id)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{dose.dose} {dose.doseUnit} · {routeLabel(dose.route)}</span>
-              <span class="row-subtitle">{whenOf(dose)}</span>
-            </span>
-          </div>
-        {/each}
-      </div>
-    {/if}
   {/if}
 
   <Sheet
@@ -689,6 +728,20 @@
 </div>
 
 <style>
+  /* The bookkeeping stacks at the end of the row rather than running along
+     it: three facts on one line at 390px is an ellipsis, and the widest of
+     them is a whole scheduled dose written out. Right-aligned, so the
+     column of them reads down the edge of the card. */
+  .dose-trail {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    text-align: right;
+    max-width: 12rem;
+    line-height: 1.25;
+  }
+
   .dose-status {
     padding: 2px 8px;
     border-radius: var(--radius-pill);
