@@ -167,6 +167,14 @@
   background: var(--role-wash);
 }
 
+/* The disc is the stripe as a fill, and a fill owes no contrast ratio - but
+   it does have to be a disc. A flag has a white band and a near-black one,
+   and a 15% tint of white on a light card is the card: on the palettes where
+   the rows draw that band, the icon lost its disc entirely and sat on the
+   row as a bare glyph (found on Home, phase 5 ticket 21 - ticket 20's
+   gallery only ever handed its list card a coloured role). The hairline is
+   drawn from --role-mark, which is the contrast-corrected version, so it is
+   there whatever band this area got. */
 .kit-row-ico {
   flex: 0 0 auto;
   width: 36px;
@@ -176,6 +184,7 @@
   place-items: center;
   color: var(--role-mark);
   background: var(--role-tint);
+  border: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
 }
 
 .kit-row-text {

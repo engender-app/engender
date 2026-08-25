@@ -29,16 +29,31 @@
   overflow: hidden;
   min-height: calc(175px + var(--inset-top));
 }
+/* Flat, and clear of the sun.
+
+   It was a gradient clipped to the letterforms, which DIRECTION.md's
+   decision 2 rules out outright - colour arrives as flat fill and as
+   coloured text, never as a gradient - and which on the nonbinary palette
+   ran the word "Diary" through olive on its way from purple to yellow.
+   The accent at 38px answers to the 3:1 large-text floor, which is what
+   --accent is already held to.
+
+   The width cap is the other half of it. The sun is 350px across and
+   centred on the top right corner, so anything running past about two
+   thirds of the screen disappears under it - which is what was happening to
+   the last two letters of the app's own name. DIRECTION.md says the
+   greeting sits clear beneath the sun; the title has to sit clear of it
+   too, and the way to do that is to stop the text rather than to move the
+   flag. */
 .home-hero {
   font-family: var(--font-display);
   font-size: 2.4rem; font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.01em;
-  background: linear-gradient(105deg, var(--accent) 20%, var(--accent-2) 60%, var(--accent));
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent;
+  color: var(--accent);
+  max-width: 62%;
 }
-.home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
+.home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); max-width: 78%; }
 
 /* Home's vertical rhythm (phase 5 ticket 21). Written as a margin below
    each surface rather than as a flex gap on the column, because one of

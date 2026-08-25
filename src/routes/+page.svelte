@@ -22,15 +22,22 @@
      the tell.
 
      Colour comes from the flag, categorically (DIRECTION.md): each area
-     takes one stripe as its own. The four permanent areas take roles 0 to 3
-     in reading order, and the two conditional notices take a fixed role
-     rather than a positional one - a notice that appears on a Tuesday must
-     not shift what colour the milestones are.
+     takes one stripe as its own. The two conditional notices take a fixed
+     role rather than a positional one, because a notice that appears on a
+     Tuesday must not change what colour the milestones are.
+
+     The week strip takes role 0 rather than its place in reading order, and
+     that is the one deliberate break. $lib/theme/roles.ts orders a flag's
+     colours before its shades, so role 0 is the only index guaranteed to be
+     a colour on all 8 palettes - and the strip is the one area here where
+     the stripe is a value rather than a decoration. On trans, whose flag
+     yields three roles for four areas, reading order would have handed the
+     strip the white band, and a heat ramp from white into a white page is
+     not a ramp. Everything else takes its turn as normal.
 
      Out of scope, and named because it is the obvious next question: live
      reads and writes are wired already, but the integration effort ticket
      15 excluded is not this ticket's - what is new here is the shape. */
-  import { onMount } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
@@ -45,7 +52,8 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
-  import { readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import MilestoneCard from '$lib/components/MilestoneCard.svelte';
@@ -65,24 +73,6 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
-
-  /* The flag's stripes as this screen's section colours, read off the DOM
-     rather than from a table here - palettes.css is where the 8 flags are
-     written down (the same read FlagSun makes). Re-read when the palette or
-     the theme changes, because an ink is chosen against the ground it lands
-     on and both of those move the ground. +layout.svelte stamps the two on
-     <html> from an effect of its own, and a parent's effect runs before a
-     child's, so by the time this one reads them they are already there. */
-  let roles = $state<Role[]>([]);
-  onMount(() => {
-    roles = readFlagRoles();
-  });
-  $effect(() => {
-    // Named so the effect actually depends on them.
-    void prefs.palette;
-    void prefs.theme;
-    roles = readFlagRoles();
-  });
 
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
      read; the entry-shaped reads below are the ones that had to become
@@ -230,7 +220,7 @@
     <Notice
       icon="sparkle"
       key="celebration"
-      role={roleAt(roles, 1)}
+      role={roleAt(activeFlag.roles, 2)}
       aria-live="polite"
       text={landing?.s.years
         ? m.home_anniv_years({
@@ -266,7 +256,7 @@
        exactly where it was. With neither qualifying the grid has no
        children and so no height, and the air around it belongs to its
        neighbours rather than to itself. -->
-  <TileGrid role={roleAt(roles, 0)}>
+  <TileGrid role={roleAt(activeFlag.roles, 1)}>
     {#if prefs.wrappedEnabled}
       <WrappedHomeCard />
     {/if}
@@ -283,7 +273,7 @@
       <a class="kit-heading-action" href="/timeline">{m.timeline()}</a>
     {/snippet}
   </SectionHeading>
-  <ListCard role={roleAt(roles, 1)}>
+  <ListCard role={roleAt(activeFlag.roles, 2)}>
     {#if upcoming.length}
       {#each upcoming.slice(0, 4) as x (x.m.id)}
         <MilestoneCard milestone={x.m} s={x.s} />
@@ -309,7 +299,7 @@
       />
     {/snippet}
   </SectionHeading>
-  <WeekStrip metric={metricKey(prefs)} role={roleAt(roles, 2)} />
+  <WeekStrip metric={metricKey(prefs)} role={roleAt(activeFlag.roles, 0)} />
   <!-- The streak, as the caption on the week it describes. -->
   {#if streak > 1 && !pausedToday}
     <p class="home-week-caption" data-home-streak>{streak} {m.streak_row()}</p>
@@ -328,7 +318,7 @@
         {#each dayGroups as group (group.epochDay)}
           <DayCard
             key={String(group.epochDay)}
-            role={roleAt(roles, 3)}
+            role={roleAt(activeFlag.roles, 3)}
             date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
             aside={group.dayCount > 1 ? m.entry_day_count({ count: String(group.dayCount) }) : undefined}
           >
@@ -350,7 +340,7 @@
       <Notice
         icon="book"
         key="no-entries"
-        role={roleAt(roles, 3)}
+        role={roleAt(activeFlag.roles, 3)}
         title={m.empty_home_title()}
         text={m.empty_home_body()}
         action={{ label: m.new_entry(), onclick: () => (ui.chooserOpen = true) }}
