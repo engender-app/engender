@@ -188,7 +188,9 @@ const base = `http://localhost:${address.port}`;
         await page.waitForTimeout(400);
         await shoot(page, `setup-${i}-${step}-open-${palette}-${theme}`);
       }
-      if (step === 'scales') await page.locator('[data-list-row="preset-p-nb"]').click();
+      // Tick one more than the default set, so the shot shows a mix of
+      // ticked and unticked rows rather than a uniform column.
+      if (step === 'scales') await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
       if (step !== 'done') await page.locator('[data-next]').click();
     }
   }
@@ -217,7 +219,7 @@ const base = `http://localhost:${address.port}`;
   for (const [i, step] of disguisedSteps.entries()) {
     await page.waitForTimeout(600);
     await shoot(page, `setup-disguised-${i}-${step}`);
-    if (step === 'scales') await page.locator('[data-list-row="preset-p-nb"]').click();
+    if (step === 'scales') await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
     if (step !== 'done') await page.locator('[data-next]').click();
   }
 

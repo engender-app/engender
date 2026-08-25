@@ -4,7 +4,6 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -26,10 +25,13 @@
     hidden: false,
   });
 
-  /* Adding a dimension spawns a custom preset extending the active one and
-     switches to it, which is what makes the new scale appear in the editor.
-     Three writes rather than one - the journal keeps presets and dimensions
-     separate, because a preset is also creatable without a new dimension. */
+  /* Add the scale, then tick it, which is what makes it appear in the
+     editor. It used to take three writes: a dimension, a custom preset
+     holding the active preset's scales plus the new one, and a switch to
+     that preset - all because the stored choice was a preset and a preset
+     had to exist for a scale to be in one. Ticket 35 made the stored choice
+     the list itself, so the second and third writes have nothing left to
+     do. */
   async function saveDimension() {
     const created = await journal.dimensions.addCustomDimension({
       name: name.trim() || m.cd_default_name(),
@@ -38,11 +40,7 @@
       min: 0,
       max,
     });
-    const preset = await journal.dimensions.addPreset({
-      name: m.cd_preset_name(),
-      dims: [...vocabulary.activePreset.dims, created.key],
-    });
-    prefs.activePreset = preset.id;
+    prefs.activeScales = [...prefs.activeScales, created.key];
     goto('/settings');
     toast(m.cd_added_toast());
   }

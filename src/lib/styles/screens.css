@@ -563,37 +563,10 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   .swatch-bloom { animation: none; }
 }
 
-/* The scales step. Eight preset cards rather than eight list rows: what a
-   preset actually is, is the set of scales it puts in front of you when you
-   log, and a row's subtitle was spending that on a comma list that ran past
-   its own width. The scales are chips now - the kit's own mini chip, which
-   the tag rows already use for exactly this - so the shape of a preset is
-   read rather than parsed. No count beside the name: "3 scales" needs
-   Polish's three plural forms to be honest, and the chips are the count
-   anyway. */
-.setup-presets { display: flex; flex-direction: column; gap: var(--space-2); }
-.setup-preset {
-  display: block; width: 100%; text-align: left;
-  padding: var(--space-4);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-card);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-  transition-property: background-color, border-color;
-  transition-duration: var(--dur-fast);
-  transition-timing-function: var(--ease-out);
-}
-.setup-preset:hover { border-color: var(--accent-border); }
-.setup-preset.is-picked { border-color: var(--accent); background: var(--accent-soft); }
-.setup-preset-name {
-  font-family: var(--font-display); font-size: var(--text-lg);
-  font-weight: var(--weight-medium); letter-spacing: var(--display-track);
-}
-.setup-preset.is-picked .setup-preset-name { color: var(--on-accent-soft); }
-.setup-preset-scales { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-3); }
-
+/* The scales step draws no surface of its own any more (phase 5 ticket 35):
+   the eight preset cards became one list card of tickable rows, shared with
+   Settings, and a list card is what the lock step below already uses. Its
+   own styles went with it. */
 .setup-title {
   font-family: var(--font-display);
   font-size: var(--text-3xl);

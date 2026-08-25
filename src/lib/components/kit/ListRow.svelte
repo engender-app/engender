@@ -12,6 +12,7 @@
      as well as to the eye. */
   import type { Snippet } from 'svelte';
   import Icon from '../Icon.svelte';
+  import Check from './Check.svelte';
 
   let {
     title,
@@ -20,6 +21,7 @@
     href,
     onclick,
     key,
+    checked,
     chevron = true,
     trailing
   }: {
@@ -32,6 +34,13 @@
     /** The row's own identity for the walkthrough's handle (ADR-0029) -
         a stable key, never the title, which is copy. */
     key?: string;
+    /** Set, and the row is a checkbox: it announces itself as one, carries
+        its state, and draws its own box at the trailing edge (phase 5
+        ticket 35). The row is the control rather than holding one, so the
+        whole width of it is the target and a keyboard gets one stop per
+        row - which is what a list of things to tick wants, and what a row
+        holding a switch deliberately does not do. */
+    checked?: boolean;
     /** Off for a row that acts in place rather than going somewhere - a
         row carrying a switch, say, where a chevron would promise a screen
         that is not there. */
@@ -51,6 +60,7 @@
   </span>
   <span class="kit-row-trail">
     {#if trailing}{@render trailing()}{/if}
+    {#if checked !== undefined}<Check checked={checked} />{/if}
     {#if chevron}<Icon name="chevronRight" size={22} />{/if}
   </span>
 {/snippet}
@@ -61,6 +71,19 @@
      legible to the compiler for it to check either. -->
 {#if href}
   <a class="kit-row" data-list-row={key} {href} {onclick}>{@render body()}</a>
+{:else if checked !== undefined}
+  <!-- role="checkbox" on the button rather than a real input, which is the
+       same contract Switch.svelte already carries for role="switch": the
+       state is a prop, the announcement is aria-checked, and there is no
+       hidden input whose :checked could disagree with either. -->
+  <button
+    type="button"
+    class="kit-row"
+    role="checkbox"
+    aria-checked={checked}
+    data-list-row={key}
+    {onclick}
+  >{@render body()}</button>
 {:else}
   <button type="button" class="kit-row" data-list-row={key} {onclick}>{@render body()}</button>
 {/if}

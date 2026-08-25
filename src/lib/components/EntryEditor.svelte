@@ -166,7 +166,6 @@
       .filter((d): d is GenderDimension => !!d);
     return [...active.map((dim) => ({ dim, inPreset: true })), ...extras.map((dim) => ({ dim, inPreset: false }))];
   });
-  let preset = $derived(vocabulary.activePreset);
   let isToday = $derived(day === todayEpochDay());
 
   // An entry holds several photos, so one trip through the picker can bring
@@ -405,10 +404,17 @@
 
   <SectionHeading text={m.gender_label()}>
     {#snippet action()}
-      <a class="kit-heading-action" href="/settings">{m.preset_prefix()} {preset.name}</a>
+      <a class="kit-heading-action" href="/settings">{m.scales_change()}</a>
     {/snippet}
   </SectionHeading>
   <p class="editor-hint">{m.gender_hint()}</p>
+  <!-- Nothing ticked and nothing kept from this entry is a resting state,
+       not a gap: somebody can reach it by unticking five boxes, and a mood,
+       tags, a note and a photo are still an entry. The section says what it
+       is rather than leaving a heading over nothing (phase 5 ticket 35). -->
+  {#if dims.length === 0}
+    <p class="editor-hint editor-hint-tight" data-no-scales>{m.editor_no_scales()}</p>
+  {/if}
   {#each dims as { dim, inPreset } (dim.key)}
     <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
     {#if !inPreset}
