@@ -24,6 +24,7 @@
   import { bootState, submitPassphraseSetup, submitPassphraseUnlock, submitSkipSetup, resetApp } from '$lib/stores/boot.svelte';
   import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
+  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -52,7 +53,38 @@
       : `${Math.max(1, Math.round(bytes / 1024))} KB`;
   }
 
+  /* Hoisted out of the template so its length can decide whether it is a
+     line to centre or a paragraph to left-align (GateScreen). */
+  let formBody = $derived(
+    converting && mode === 'setup'
+      ? m.pp_convert_setup_body()
+      : converting
+        ? m.pp_convert_resume_body()
+        : mode === 'setup'
+          ? m.pp_setup_body()
+          : m.pp_unlock_body()
+  );
+
+  let refusalBody = $derived(
+    bootState.conversionRefusal?.reason === 'not-enough-space'
+      ? m.pp_convert_refused_space({
+          need: megabytes(bootState.conversionRefusal.needBytes),
+          free: megabytes(bootState.conversionRefusal.freeBytes)
+        })
+      : bootState.conversionRefusal?.reason === 'schema-too-new'
+        ? m.pp_convert_refused_schema()
+        : ''
+  );
+
   let progress = $derived(bootState.conversion?.progress ?? null);
+  /** The photo stage, and only where there is something to divide by: the
+      other two stages have no count, and a journal with no photos reports a
+      total of zero. */
+  let photoProgress = $derived(
+    progress?.stage === 'photos' && progress.total > 0
+      ? { done: progress.done, total: progress.total }
+      : null
+  );
   let progressLine = $derived(
     progress === null
       ? m.pp_converting_preparing()
@@ -130,69 +162,68 @@
 </script>
 
 {#if screen === 'conversion-refused'}
-  <div class="screen">
-    <div class="applock">
-      <div class="applock-badge"><Icon name="alert" size={30} /></div>
-      <h1 class="ob-title" style="text-align:center">{m.pp_convert_refused_title()}</h1>
-      <p class="ob-text" style="text-align:center" data-conversion-refusal>
-        {#if bootState.conversionRefusal?.reason === 'not-enough-space'}
-          {m.pp_convert_refused_space({
-            need: megabytes(bootState.conversionRefusal.needBytes),
-            free: megabytes(bootState.conversionRefusal.freeBytes)
-          })}
-        {:else if bootState.conversionRefusal?.reason === 'schema-too-new'}
-          {m.pp_convert_refused_schema()}
-        {/if}
-      </p>
-    </div>
-  </div>
+  <GateScreen icon="alert" tone="alert" title={m.pp_convert_refused_title()}>
+    <p class={gateBodyClass(refusalBody)} data-conversion-refusal>{refusalBody}</p>
+  </GateScreen>
 {:else if screen === 'converting'}
-  <div class="screen">
-    <div class="applock">
-      <div class="applock-badge"><Icon name="lock" size={30} /></div>
-      <h1 class="ob-title" style="text-align:center">{m.pp_converting_title()}</h1>
-      <!-- SF-004: conversion used to advance through stages with no
-           announcement - a silent content swap for anyone not watching
-           the screen during a process that can take a while. -->
-      <p class="ob-text" style="text-align:center" role="status" data-conversion-progress>{progressLine}</p>
-      <!-- True, and worth saying: every step is written down before it
-           happens, so a closed tab or a dead battery resumes rather than
-           starts over (conversion.ts). -->
-      <p class="ob-text small" style="text-align:center">{m.pp_converting_note()}</p>
-    </div>
-  </div>
+  <GateScreen icon="lock" title={m.pp_converting_title()}>
+    <!-- SF-004: conversion used to advance through stages with no
+         announcement - a silent content swap for anyone not watching
+         the screen during a process that can take a while. -->
+    <p class="gate-body" role="status" data-conversion-progress>{progressLine}</p>
+    {#if photoProgress}
+      <!-- The one stage that knows how far along it is. It was spending that
+           on a sentence alone, on a screen that can hold someone for
+           minutes; the bar is the same two numbers as a length. -->
+      <div
+        class="rail gate-progress"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={photoProgress.total}
+        aria-valuenow={photoProgress.done}
+        data-conversion-bar
+      >
+        <i style={`transform: scaleX(${photoProgress.done / photoProgress.total})`}></i>
+      </div>
+    {/if}
+    <!-- True, and worth saying: every step is written down before it
+         happens, so a closed tab or a dead battery resumes rather than
+         starts over (conversion.ts). -->
+    <p class="gate-body is-small" style="margin-top:var(--space-4)">{m.pp_converting_note()}</p>
+  </GateScreen>
 {:else if screen === 'form'}
-<div class="screen">
-  <div class="applock">
-    <div class="applock-badge"><Icon name="lock" size={30} /></div>
-    <!-- No name in the unlock greeting on purpose: the display name lives in
-         the encrypted journal, and this screen renders before it can be read. -->
-    <h1 class="ob-title" style="text-align:center">
-      {#if converting && mode === 'setup'}{m.pp_convert_setup_title()}
-      {:else if converting}{m.pp_convert_resume_title()}
-      {:else if mode === 'setup'}{m.pp_setup_title()}
-      {:else}{m.pp_unlock_title()}{/if}
-    </h1>
-    <p class="ob-text" style="text-align:center">
-      {#if converting && mode === 'setup'}{m.pp_convert_setup_body()}
-      {:else if converting}{m.pp_convert_resume_body()}
-      {:else if mode === 'setup'}{m.pp_setup_body()}
-      {:else}{m.pp_unlock_body()}{/if}
-    </p>
+  <!-- No name in the unlock greeting on purpose: the display name lives in
+       the encrypted journal, and this screen renders before it can be read. -->
+  <GateScreen
+    icon="lock"
+    title={converting && mode === 'setup'
+      ? m.pp_convert_setup_title()
+      : converting
+        ? m.pp_convert_resume_title()
+        : mode === 'setup'
+          ? m.pp_setup_title()
+          : m.pp_unlock_title()}
+  >
+    <p class={gateBodyClass(formBody)}>{formBody}</p>
 
     {#if canSkip}
-      <div class="notice notice-warn" style="margin-top:var(--space-4)">
-        <Icon name="info" size={20} />
-        <div class="notice-body">
-          <span class="notice-title">{m.pp_modes_title()}</span>
-          <div>{m.pp_mode_passphrase()}</div>
-          <div>{m.pp_mode_device()}</div>
-          <div>{m.pp_mode_pin()}</div>
+      <!-- The notice surface, written out rather than reached for, because
+           the kit's Notice carries one line of text and this is three whole
+           sentences that have to stay three lines: they are three ways to
+           unlock a journal, and running them together into a paragraph is
+           how a person picks the wrong one. -->
+      <div class="gate-modes" data-passphrase-modes>
+        <span class="gate-modes-ico"><Icon name="info" size={22} /></span>
+        <div>
+          <strong>{m.pp_modes_title()}</strong>
+          <p>{m.pp_mode_passphrase()}</p>
+          <p>{m.pp_mode_device()}</p>
+          <p>{m.pp_mode_pin()}</p>
         </div>
       </div>
     {/if}
 
-    <form class="stack-3" onsubmit={submit} style="margin-top:var(--space-4)">
+    <form class="gate-form" onsubmit={submit}>
       <div>
         <label class="field-label" for="journal-passphrase">
           {mode === 'setup' ? m.pp_label_setup() : m.pp_label_unlock()}
@@ -239,14 +270,13 @@
     </form>
 
     {#if mode === 'unlock'}
-      <div style="text-align:center;margin-top:var(--space-6)">
+      <div class="gate-foot">
         <button class="btn btn-ghost" data-forgot-passphrase onclick={() => (resetOpen = true)}>
           <span>{m.pp_forgot()}</span>
         </button>
       </div>
     {/if}
-  </div>
-</div>
+  </GateScreen>
 {/if}
 
 <Sheet bind:open={resetOpen} title={m.pp_forgot()}>

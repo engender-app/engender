@@ -2,6 +2,10 @@ node_modules/
 node_modules
 .svelte-kit/
 build/
+# A build copied aside to be looked at while work carries on. `npm run build`
+# rewrites build/ and .svelte-kit/ under whatever is serving them, which kills
+# a dev server mid-review; a snapshot in its own directory survives that.
+build-live/
 src/lib/paraglide/
 vite.config.ts.timestamp-*
 
