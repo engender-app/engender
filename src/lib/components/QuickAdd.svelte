@@ -158,6 +158,7 @@
       await write();
     } catch (error) {
       console.error(`quick add: ${kind} was not written`, error);
+      refuse();
       toast(m.quick_add_failed(), { kind: `${kind}-failed` });
       return;
     }
@@ -166,6 +167,25 @@
   }
 
   let caughtTimer: ReturnType<typeof setTimeout> | null = null;
+  let failTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /* The failed outcome, and it is deliberately not a mirror of the landed
+     one. Nothing flies, because nothing arrived - the absence of the mark
+     is part of what the failure says. The control shakes where it stands
+     and wears an alert instead of a tick, and it starts at once rather than
+     waiting out a flight that is not coming, because bad news should not be
+     slower than good.
+
+     Sideways, and only sideways. A vertical shake on a control that sits
+     against the bottom of the screen reads as the bar itself coming loose. */
+  function refuse() {
+    if (failTimer) clearTimeout(failTimer);
+    ui.chooserFailed = true;
+    failTimer = setTimeout(() => {
+      ui.chooserFailed = false;
+      failTimer = null;
+    }, HOLD_MS);
+  }
 
   function land(from: ReturnType<typeof flightFrom>) {
     if (flightTimer) clearTimeout(flightTimer);
@@ -213,14 +233,6 @@
   function openBackdate() {
     close();
     backdateOpen = true;
-  }
-
-  /* A photo is recorded on an entry too, but it is not the same choice as a
-     mood: it says what the entry is for rather than how the day felt, and
-     it opens the picker on the way. */
-  function addPhoto() {
-    close();
-    goto('/entry/new/today?seedPhoto=1');
   }
 
   /* The tap logs the counter with no context and waits on nothing after it
@@ -327,7 +339,6 @@
 
   const ACTIONS: Record<string, () => void> = {
     'another-day': openBackdate,
-    photo: addPhoto,
     'tally-misgendered': () => void logTally('misgendered'),
     'tally-correctly_gendered': () => void logTally('correctly_gendered'),
     dose: logDose,
@@ -459,16 +470,6 @@
          at the bottom is the one that makes today's - which is why "Today"
          is not a row of its own any more. -->
     <div class="fan-card" in:fanIn out:fanOut>
-      <button
-        class="fan-item"
-        class:is-armed={armed === 'photo'}
-        data-fan-target="photo"
-        data-choose="photo"
-        onclick={ACTIONS.photo}
-      >
-        <span class="fan-icon"><Icon name="image" size={22} /></span>
-        <span class="fan-label">{m.quick_add_photo()}</span>
-      </button>
       <button
         class="fan-item"
         class:is-armed={armed === 'another-day'}

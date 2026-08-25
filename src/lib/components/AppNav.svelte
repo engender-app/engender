@@ -82,13 +82,14 @@
   <button
     class="rail-add press-add"
     class:is-catching={ui.chooserConfirming}
+    class:is-refusing={ui.chooserFailed}
     data-rail-add
     aria-expanded={ui.chooserOpen}
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
-    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserCaught}>
-      <Icon name={ui.chooserCaught ? 'check' : 'plus'} size={20} />
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserCaught && !ui.chooserFailed}>
+      <Icon name={ui.chooserFailed ? 'alert' : ui.chooserCaught ? 'check' : 'plus'} size={20} />
     </span>
     <span>{m.quick_add_title()}</span>
   </button>
@@ -136,14 +137,15 @@
   <button
     class="nav-add press-add"
     class:is-catching={ui.chooserConfirming}
+    class:is-refusing={ui.chooserFailed}
     data-nav-fab
     aria-label={m.quick_add_title()}
     aria-expanded={ui.chooserOpen}
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
-    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserCaught}>
-      <Icon name={ui.chooserCaught ? 'check' : 'plus'} size={26} />
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserCaught && !ui.chooserFailed}>
+      <Icon name={ui.chooserFailed ? 'alert' : ui.chooserCaught ? 'check' : 'plus'} size={26} />
     </span>
   </button>
   {#each TRAILING as item (item.key)}{@render tab(item)}{/each}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -30,7 +30,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
-  let { epochDay, entryId, seedMood, seedPhoto = false }: { epochDay?: number; entryId?: number; seedMood?: number | null; seedPhoto?: boolean } = $props();
+  let { epochDay, entryId, seedMood }: { epochDay?: number; entryId?: number; seedMood?: number | null } = $props();
 
   /* An entry to edit is a round trip away now, so the draft cannot be built
      during initialisation the way it was over the synchronous store. The
@@ -158,14 +158,6 @@
   async function addPhoto() {
     for (const photo of await pickPhotos()) entryDraft.addPhoto(photo);
   }
-
-  /* Arriving from quick add's photo option. Read once on mount, like
-     `seedMood`, rather than watched: the editor is here to be filled in
-     from now on, and re-opening the picker because a prop settled again
-     would fight whoever is already using it. */
-  onMount(() => {
-    if (seedPhoto) void addPhoto();
-  });
 
   // The context is this entry: the last photo already in its own draft,
   // stored or just picked, not the journal's last photo overall.

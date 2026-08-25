@@ -16,5 +16,9 @@ export const ui = $state({
   chooserConfirming: false,
   /* The moment the flight arrives, which is later than the moment it
      starts: the control only wears the tick once something has reached it. */
-  chooserCaught: false
+  chooserCaught: false,
+  /* The other outcome. Its own flag rather than a mode on the one above,
+     because they are not two shades of the same thing: one has something
+     arriving and the other has nothing to arrive. */
+  chooserFailed: false
 });
