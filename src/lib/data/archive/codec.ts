@@ -45,7 +45,18 @@ const archiveCodecV1: ArchiveCodec = {
   }
 };
 
-export const ARCHIVE_CODECS: readonly ArchiveCodec[] = [archiveCodecV1];
+/* v2 changed what the payload's preferences hold, not how the body is laid
+   out: phase 5 ticket 35 replaced the active preset with the list of scales
+   it stood for, and PAYLOAD_MIGRATIONS carries a v1 file across. So this is
+   v1's own encode and decode under a second version number rather than a
+   second implementation - the format version is one number shared by the
+   body layout and the payload's shape, and only the second one moved.
+
+   Written as a spread rather than by mutating v1's number, because a v1 file
+   still has to decode as v1 before the ladder walks it. */
+const archiveCodecV2: ArchiveCodec = { ...archiveCodecV1, formatVersion: 2 };
+
+export const ARCHIVE_CODECS: readonly ArchiveCodec[] = [archiveCodecV1, archiveCodecV2];
 
 export function currentArchiveFormatVersion(codecs: readonly ArchiveCodec[] = ARCHIVE_CODECS): number {
   const current = codecs[codecs.length - 1];
