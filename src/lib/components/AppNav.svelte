@@ -34,10 +34,20 @@
 
   /* The bar splits its four tabs around the add button, so the button sits
      in the middle of five cells rather than floating over a gap. */
+  const MARKS = ['plus', 'check', 'alert'];
+
   const LEADING = NAV.slice(0, 2);
   const TRAILING = NAV.slice(2);
 
   let activeKey = $derived(activeTabKey(page.url.pathname));
+
+  /* Which mark the add control is wearing. All three are rendered and
+     stacked rather than swapped, because swapping one <Icon> for another is
+     a cut: the alert vanished and the plus was simply there, which is the
+     one moment in this whole sequence that had no motion in it at all.
+     Stacked, the outgoing mark can fade and shrink while the incoming one
+     arrives, and CSS does the tween with no keyed block or JS transition. */
+  let mark = $derived(ui.chooserFailed ? 'alert' : ui.chooserCaught ? 'check' : 'plus');
 
   /* Quick add opens on the way down, not on click, because the press and
      the tap are the same gesture: holding it and sliding onto a target is
@@ -88,8 +98,10 @@
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
-    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserCaught && !ui.chooserFailed}>
-      <Icon name={ui.chooserFailed ? 'alert' : ui.chooserCaught ? 'check' : 'plus'} size={20} />
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen && mark === 'plus'}>
+      {#each MARKS as name (name)}
+        <span class="nav-add-glyph" class:is-shown={mark === name}><Icon {name} size={20} /></span>
+      {/each}
     </span>
     <span>{m.quick_add_title()}</span>
   </button>
@@ -144,8 +156,10 @@
     onpointerdown={addPointerDown}
     onclick={addClick}
   >
-    <span class="nav-add-mark" class:is-open={ui.chooserOpen && !ui.chooserCaught && !ui.chooserFailed}>
-      <Icon name={ui.chooserFailed ? 'alert' : ui.chooserCaught ? 'check' : 'plus'} size={26} />
+    <span class="nav-add-mark" class:is-open={ui.chooserOpen && mark === 'plus'}>
+      {#each MARKS as name (name)}
+        <span class="nav-add-glyph" class:is-shown={mark === name}><Icon {name} size={26} /></span>
+      {/each}
     </span>
   </button>
   {#each TRAILING as item (item.key)}{@render tab(item)}{/each}
