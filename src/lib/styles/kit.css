@@ -1225,16 +1225,17 @@ a.kit-entry:active {
 
 /* --- a year of moods ---
 
-   A row per month, a column per day of the month. Drawn as 53 week-columns
-   first, which overflowed a 390px card at 5px a cell - and 5px is well under
-   what mood's ramp needs to read as five colours, since its steps are chosen
-   to be sat on rather than to be dots and on the dark theme they are all
-   dark. Twelve rows of 31 puts the cell near 11px on the same card. */
+   Two rows per month, sixteen columns, so a cell is near 17px on a 340px
+   card - enough for the face the picker draws. Drawn as 53 week-columns
+   first, which overflowed at 5px a cell, then as twelve rows of 31, which
+   fitted at 11px and was big enough for a colour but not for a face. A
+   coloured square is what ADR-0025 warns about: the ramp's steps are chosen
+   to be sat on, and on the dark theme they are all dark. */
 .kit-year {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 3px var(--space-2);
+  gap: var(--space-2) var(--space-2);
 }
 
 .kit-year-label {
@@ -1242,28 +1243,46 @@ a.kit-entry:active {
   color: var(--text-2);
   white-space: nowrap;
   text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
-.kit-year-row {
+.kit-year-rows {
   display: grid;
-  /* Short months have fewer cells and stop short, which is true of February
-     and not a gap to fill. */
-  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  /* Sixteen, so a 31-day month is two rows and a short month simply stops -
+     which is true of February and not a gap to fill. */
+  grid-template-columns: repeat(16, minmax(0, 1fr));
   gap: 2px;
 }
 
 .kit-year-cell {
+  display: grid;
+  place-items: center;
   aspect-ratio: 1;
-  border-radius: 2px;
-  background: var(--cell-fill);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 12%, transparent);
 }
 
-/* A day nobody logged is not a day at the bottom of the scale. */
+/* A day nobody logged is not a day at the bottom of the scale, so it is an
+   outline and never a face. */
 .kit-year-cell.is-empty {
-  background: none;
+  border-radius: 50%;
   box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* The scale, not a legend of which line is which: the mood ramp is a scale
+   this chart has no axis for, so it is written out once underneath. */
+.kit-year-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--hairline);
+}
+
+.kit-year-key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  color: var(--text-2);
 }
 
 /* --- paired dots ---

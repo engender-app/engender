@@ -96,6 +96,10 @@
      block of columns (Alicja, 2026-08-25). */
   let grid = $derived(moodYear(year, moodTrend.map((p) => ({ day: p.day, value: p.value }))));
 
+  /* The scale under the grid. Named from the vocabulary, which is where
+     every other mood label in the app comes from. */
+  const moodSteps = [1, 2, 3, 4, 5].map((step) => ({ step, name: moodName(step) }));
+
   const shortMonth = (month: number) =>
     fmtDay(epochDayFromLocalDate(new Date(year, month, 1)), { month: 'short' });
 
@@ -180,7 +184,7 @@
   <!-- Short month names: full ones took 70px of a 340px card, which is a
        fifth of the grid's width spent on labels the reader already knows the
        order of. -->
-  <MoodYear {grid} monthName={shortMonth} {dayLabel} />
+  <MoodYear {grid} monthName={shortMonth} {dayLabel} steps={moodSteps} />
 </ChartCard>
 
 <SectionHeading text={m.wrapped_year_figures()} />

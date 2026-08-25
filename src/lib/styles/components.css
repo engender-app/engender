@@ -1137,10 +1137,15 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
 
 /* ---------- decorative motion stage (ticket 09: RiveSlot's CSS fallback is
    now its only content - see RiveSlot.svelte) ---------- */
+/* The wash reaches transparent inside its own box. At `transparent 75%` on
+   an ellipse centred at 60% height it was still coloured where the box ends,
+   and `overflow: hidden` cut it off along a hard horizontal line (Alicja,
+   2026-08-25, on the yearly wrapped's cover - it is the same stage on the
+   empty state and in onboarding). */
 .rive-stage {
   position: relative;
   border-radius: var(--radius-lg);
-  background: radial-gradient(ellipse at 50% 60%, var(--accent-soft), transparent 75%);
+  background: radial-gradient(ellipse 72% 62% at 50% 48%, var(--accent-soft), transparent 68%);
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
   width: 100%;
