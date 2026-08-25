@@ -20,7 +20,13 @@ const PATHS: Record<string, string> = {
   download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>',
   upload: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 21h14"/>',
   tag: '<path d="M2 11.5V4a2 2 0 0 1 2-2h7.5L21 11.5a2.1 2.1 0 0 1 0 3L14.5 21a2.1 2.1 0 0 1-3 0z"/><circle cx="7.5" cy="7.5" r="1.3"/>',
-  flag: '<path d="M4 22V3"/><path d="M4 4h13l-2.5 4L17 12H4"/>',
+  /* Shifted to put its own ink in the middle of the box (phase 5 ticket 21).
+     It was drawn from x=4 to x=17 and y=3 to y=22, so its bounding box
+     centred on (10.5, 12.5) rather than on (12, 12) - and `place-items:
+     center` centres the box, not what is in it, so every flag disc in the
+     app wore its flag up and to the left. This is the mechanical fix, one
+     glyph; optical centring across the whole set is ticket 31's. */
+  flag: '<path d="M5.5 21.5V2.5"/><path d="M5.5 3.5h13l-2.5 4L18.5 11.5H5.5"/>',
   flask: '<path d="M10 2v7L4.5 19a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 9V2"/><path d="M8 2h8M7.5 15h9"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   check: '<path d="m4.5 12.5 5 5 10-11"/>',

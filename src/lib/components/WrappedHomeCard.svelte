@@ -15,13 +15,24 @@
      The entry floor is applied here rather than in the wrapped screen's
      favour, because "there is not enough in last week to be worth reading"
      is a reason to say nothing on Home, not a reason to offer a card that
-     apologises when you open it. */
+     apologises when you open it.
+
+     One of Home's two look-back tiles since phase 5 ticket 21, where it was
+     a full-width card with a gradient wash. The gradient is gone with every
+     other one, and the tile is what DIRECTION.md's slop audit left standing:
+     an offer that carries its own data and no icon disc - the count is the
+     reading, drawn at display size with the flag as a bar under it, and
+     `wrapped_stat_entries` is the label the wrapped screen already puts on
+     that same number. Its sibling is
+     OnThisDayHomeCard, and the two share nothing but the grid they sit in -
+     each keeps its own preference gate, its own query and its own floor,
+     which is what lets one be silenced without touching the other. */
   import { m } from '$lib/paraglide/messages';
   import { fmtMonthName } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { WRAPPED_ENTRY_FLOOR, offeredWrappedPeriod } from '$lib/data/wrapped';
-  import Icon from './Icon.svelte';
+  import Tile from './kit/Tile.svelte';
 
   const period = offeredWrappedPeriod(todayEpochDay());
 
@@ -45,12 +56,12 @@
      offer that flickers into place is worse than one that arrives a moment
      late. -->
 {#if !recapQuery.loading && entryCount >= WRAPPED_ENTRY_FLOOR}
-  <a class="card spread wrapped-home-card" href="/wrapped/{period.cadence}" data-wrapped-card>
-    <span class="wrapped-home-mark"><Icon name="sparkle" size={20} /></span>
-    <span class="row-text">
-      <span class="row-title">{title}</span>
-      <span class="row-subtitle">{m.wrapped_home_sub({ count: entryCount })}</span>
-    </span>
-    <Icon name="chevronRight" size={20} />
-  </a>
+  <Tile
+    {title}
+    value={String(entryCount)}
+    note={m.wrapped_stat_entries()}
+    href={`/wrapped/${period.cadence}`}
+    key="wrapped"
+    data-wrapped-card=""
+  />
 {/if}

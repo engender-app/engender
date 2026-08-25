@@ -575,16 +575,32 @@ try {
 try {
   /* Home's own list of the last few days, counted off the DOM: if a merge
      inserted a second copy of anything, every one of those days would show
-     twice the entries it did before. */
+     twice the entries it did before.
+
+     And a day, uncapped, because Home alone stopped being able to answer
+     this. Phase 5 ticket 21 caps what Home draws at five entries with the
+     rest one tap away, so a merge that doubled the journal would leave that
+     count sitting at five and this check would pass without checking
+     anything. The day detail lists every entry of one day with no cap, so
+     that is where a second copy of today shows up. Both, rather than the
+     day alone: the pair is what says the duplication is neither on Home nor
+     behind it. */
   const homeCards = async () => {
     await page.goto(BASE + '/', { waitUntil: 'networkidle' });
     await booted();
     await page.waitForSelector('[data-entry-card]');
     return page.locator('[data-entry-card]').count();
   };
+  const todayRows = async () => {
+    await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+    await booted();
+    await page.waitForSelector('[data-day-entry-row]');
+    return page.locator('[data-day-entry-row]').count();
+  };
 
   await fresh('/');
   const before = await homeCards();
+  const beforeToday = await todayRows();
 
   await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
   await booted();
@@ -610,7 +626,11 @@ try {
 
   const after = await homeCards();
   if (after !== before) throw new Error(`Home went from ${before} entries to ${after} on merging its own backup`);
-  ok(`export → import round trip through the screen, ${before} recent entries unchanged`);
+  const afterToday = await todayRows();
+  if (afterToday !== beforeToday) {
+    throw new Error(`today went from ${beforeToday} entries to ${afterToday} on merging its own backup`);
+  }
+  ok(`export → import round trip through the screen, ${before} recent entries and ${beforeToday} for today unchanged`);
 } catch (e) { fail('archive round trip', e); }
 
 /* 11c. the plain CSV export (ticket 15, F22): the warning it has to go
