@@ -302,7 +302,7 @@
       title={m.wrapped_off_title()}
       text={m.wrapped_off_body()}
       action={{ label: m.nav_settings(), href: '/settings' }}
-      role:aria-live="polite"
+      aria-live="polite"
     />
   {:else if !cadence && !isRange}
     <Notice icon="info" key="wrapped-unknown" title={m.wrapped_unknown_title()} text={m.wrapped_unknown_body()} />

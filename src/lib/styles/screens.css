@@ -351,21 +351,15 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   font-size: 0.8rem; font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Onboarding & recap ---------- */
+/* ---------- Onboarding ---------- */
 .onboarding { max-width: 420px; margin: 0 auto; padding-top: var(--space-7); position: relative; z-index: 1; }
-.onboarding-progress, .recap-progress { display: flex; gap: 6px; justify-content: center; margin-bottom: var(--space-7); }
+
+.onboarding-progress { display: flex; gap: 6px; justify-content: center; margin-bottom: var(--space-7); }
 .ob-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-2); transition: background var(--dur-med); }
 .ob-dot.is-done { background: var(--accent); }
 .ob-title { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 600; margin: var(--space-5) 0 var(--space-3); line-height: var(--leading-display); }
 .ob-text { color: var(--text-2); margin-bottom: var(--space-5); }
 .ob-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-5); }
-.recap-stage { max-width: 420px; margin: 0 auto; text-align: center; padding-top: var(--space-6); position: relative; z-index: 1; }
-.recap-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; margin: var(--space-5) 0 var(--space-3); }
-.recap-body { color: var(--text-2); margin-bottom: var(--space-6); }
-.recap-progress { margin: var(--space-5) 0; }
-.recap-cta { color: var(--text); text-decoration: none; }
-.recap-periods { margin-bottom: var(--space-3); }
-.recap-custom-picker { margin-bottom: var(--space-3); }
 .recap-custom-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -374,11 +368,12 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 }
 
 /* ---------- Wrapped ----------
-   Two presentations, deliberately unalike (phase 4 features ticket 01). The
-   weekly/monthly one is a stack of the same small cards the rest of the app
-   uses; the yearly one is a cover plus full-width sections, so a year does
-   not read as a longer week. Everything below the first block belongs to one
-   or the other, never to both. */
+   Two presentations, deliberately unalike (phase 4 features ticket 01,
+   rebuilt on the kit by phase 5 UX ticket 23). Both are built from the kit's
+   own surfaces now, so what is left here is the three things the kit has no
+   surface for - the head, the cover, and the photo strip - plus the figure
+   values inside a list row. Everything below the first block belongs to one
+   presentation or the other, never to both. */
 /* The cadence switcher's segments are links, not the buttons .segment was
    written for, so they need the anchor's underline off and the text centred
    inside the 44px minimum height rather than sitting at its top. */
@@ -403,11 +398,6 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 }
 .wrapped-stat strong { display: block; font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; }
 .wrapped-stat span { display: block; font-size: var(--text-xs); color: var(--text-2); margin-top: 2px; }
-.wrapped-block + .wrapped-block { margin-top: var(--space-3); }
-.wrapped-milestones { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
-.wrapped-milestone { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
-.wrapped-milestone > span:nth-of-type(1) { flex: 1; min-width: 0; }
-.wrapped-milestone svg { color: var(--accent); flex-shrink: 0; }
 .wrapped-photos { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
 .wrapped-thin { text-align: center; padding: var(--space-8) var(--space-4); position: relative; z-index: 1; }
 .wrapped-thin .muted { margin-top: var(--space-2); }
@@ -441,66 +431,41 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   text-transform: uppercase; letter-spacing: 0.14em;
   color: var(--text-2);
 }
+/* The year at display size, in the text colour. It was gradient text, which
+   the craft floor refuses outright: emphasis comes from weight and size, and
+   the colour on this screen belongs to the flag underneath. */
 .wrapped-cover-year {
   font-family: var(--font-display);
-  font-size: 4rem; font-weight: 700; line-height: 1;
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: var(--display-track);
   margin: var(--space-2) 0 var(--space-3);
-  background: linear-gradient(105deg, var(--accent) 20%, var(--accent-2) 60%, var(--accent));
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
+
+/* The flag itself under the year, turned a quarter so the bands run across
+   it - the same treatment the kit's tile gives a number that matters, and
+   the same rule: every colour drawn as the flag is the flag's own hex.
+   --flag-fill arrives from $lib/theme/roles, which hands out nothing at all
+   under disguise (ADR-0035), so the bar is simply absent there. */
+.wrapped-cover-flag {
+  display: block;
+  width: 96px;
+  height: 8px;
+  margin: 0 auto var(--space-4);
+  border-radius: 2px;
+  background: var(--flag-fill);
+}
+
 .wrapped-cover-intro { color: var(--text-2); max-width: 30ch; margin: 0 auto; }
-.wrapped-year-section { margin-bottom: var(--space-7); position: relative; z-index: 1; }
-.wrapped-year-heading {
-  font-size: var(--text-xs); font-weight: var(--weight-bold);
-  text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--text-2);
-  margin-bottom: var(--space-3);
-}
-.wrapped-months { display: flex; flex-direction: column; gap: var(--space-2); }
-.wrapped-month {
-  display: grid; grid-template-columns: 5.5rem 1fr 2.5rem;
-  align-items: center; gap: var(--space-3);
-  font-size: var(--text-sm);
-}
-.wrapped-month-name { color: var(--text-2); }
-.wrapped-month-bar { height: 10px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
-.wrapped-month-fill {
-  display: block; height: 100%;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--accent-2), var(--accent));
-}
-.wrapped-month-value { text-align: right; font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
-.wrapped-figures {
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1);
-  overflow: hidden;
-}
-.wrapped-figure { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); padding: var(--space-4); }
-.wrapped-figure + .wrapped-figure { border-top: 1px solid var(--border); }
-.wrapped-figure dt { font-size: var(--text-sm); color: var(--text-2); }
-.wrapped-figure dd { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; text-align: right; }
 .wrapped-photo-strip {
   display: flex; gap: var(--space-3);
   overflow-x: auto; padding-bottom: var(--space-2);
   scrollbar-width: none;
   margin: 0 calc(-1 * var(--space-5)); padding-left: var(--space-5); padding-right: var(--space-5);
 }
-.wrapped-year-timeline { display: flex; flex-direction: column; }
-.wrapped-year-milestone {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3) 0;
-  font-size: var(--text-sm);
-}
-.wrapped-year-milestone + .wrapped-year-milestone { border-top: 1px solid var(--border); }
-.wrapped-year-dot {
-  display: flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--accent-soft); color: var(--accent);
-}
-.wrapped-year-milestone-name { flex: 1; min-width: 0; font-weight: var(--weight-medium); }
 .wrapped-year-close {
   text-align: center; color: var(--text-2); font-size: var(--text-sm);
   padding-bottom: var(--space-7);
@@ -905,4 +870,46 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 .stats-interval-input:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* The figures, as rows of a list card rather than a row of small tiles
+   (phase 5 UX ticket 23). What the list bought is the best-ever streak: it
+   sits under the period's own best as the thing that one is measured
+   against, where a fifth tile would have stated a number about a different
+   period with nothing to say it was a different period. */
+.wrapped-figure-value {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wrapped-figure-date {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Which tags the insight chart left out. The same paragraph the stats hub
+   carries under the same chart, and the same argument for it: a finding says
+   what a reading means, and this says what is not in the reading. */
+.wrapped-note {
+  margin: var(--space-2) var(--space-1) 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+}
+
+.wrapped-note + :is(.kit-chart, .kit-list) {
+  margin-top: var(--space-4);
+}
+
+/* The two dates a custom range needs, inside the range sheet. */
+.wrapped-range-dates {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+  text-align: left;
 }

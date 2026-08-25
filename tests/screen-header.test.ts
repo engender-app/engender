@@ -57,12 +57,17 @@ describe('every screen gets its header from one component', () => {
        message its tab is labelled with has to hide it, so adding a fifth
        tab or renaming one cannot quietly leave a screen repeating itself.
 
-       Stats is the deliberate exception DIRECTION names, and it falls out
-       of the same rule rather than needing an entry here: its title is
-       stats_title, not nav_stats, because the period is in it. */
+       Stats is the exception DIRECTION names outright - "Stats keeps its
+       title because the subtitle there carries the active period" - so it
+       is listed here rather than derived. It used to satisfy the rule by
+       accident, through a stats_title that read "Stats · last 30 days" and
+       had no subtitle under it at all; phase 5 UX ticket 23 split that into
+       the title the tab is named with and the period beneath it, which is
+       the header shape every other screen already has and the one 3d
+       describes. A title doing two jobs was the thing to fix, not the
+       repetition. */
     const TAB_TITLES = new Map([
       ['src/routes/calendar/+page.svelte', 'm.nav_calendar()'],
-      ['src/routes/stats/+page.svelte', 'm.nav_stats()'],
       ['src/routes/more/+page.svelte', 'm.nav_more()']
     ]);
 

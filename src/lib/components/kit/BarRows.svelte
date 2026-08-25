@@ -55,9 +55,9 @@
 
 {#snippet bar(row: BarRow)}
   <div class="kit-bar-label">
-    <span class="kit-bar-name">{row.name}</span>
+    <span class="kit-bar-name" data-bar-name>{row.name}</span>
     {#if row.note}<span class="kit-bar-value">{row.note}</span>{/if}
-    <span class="kit-bar-value">{row.value}</span>
+    <span class="kit-bar-value" data-bar-value>{row.value}</span>
   </div>
   <div class="kit-bar-track">
     <span
