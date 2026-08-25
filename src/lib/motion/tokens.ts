@@ -47,6 +47,36 @@ function readCssNumber(token: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/** A duration token in milliseconds, whatever unit it is written in.
+
+    The unit has to be read rather than assumed, and this cost the app every
+    JS-driven animation it has - in production only, which is why it survived
+    from ticket 09 to phase 5 ticket 31 without anyone seeing it. The tokens
+    are authored as `240ms`, and `npm run dev` serves exactly that, so
+    parseFloat gives 240 and every sheet, toast, fan and crossfade runs at its
+    real duration. A production build minifies the stylesheet, and a CSS
+    minifier is free to rewrite `240ms` as `.24s` because to CSS those are the
+    same value. To parseFloat they are 240 and 0.24. So every transition that
+    reads its duration through here has been running in about a quarter of a
+    millisecond in every build anyone could install, while looking correct on
+    the machine it was written on.
+
+    Found because the calendar's new month label would not animate on a phone
+    (phase 5 ticket 31) and animated perfectly in dev. */
+function readCssMs(token: string, fallback: number): number {
+  if (typeof document === 'undefined' || typeof getComputedStyle === 'undefined') return fallback;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  const parsed = parseFloat(raw);
+  if (!Number.isFinite(parsed)) return fallback;
+  /* `ms` first: `.endsWith('s')` is true of both units, and that ordering is
+     the whole bug in miniature. */
+  if (/ms$/i.test(raw)) return parsed;
+  if (/s$/i.test(raw)) return parsed * 1000;
+  /* Unitless is not a valid <time> in CSS, so treat it as the ms the tokens
+     are authored in rather than inventing a unit for it. */
+  return parsed;
+}
+
 /** A duration that reduced motion is allowed to take to zero.
 
     --dur-crossfade is deliberately absent from the union: it exists because
@@ -57,7 +87,7 @@ export function motionDuration(
   token: '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored',
   fallback: number
 ): number {
-  return isReducedMotion() ? 0 : readCssNumber(token, fallback);
+  return isReducedMotion() ? 0 : readCssMs(token, fallback);
 }
 
 export function motionDistance(token: '--motion-distance-sm' | '--motion-distance-md', fallback: number): number {
@@ -74,5 +104,5 @@ export function motionDistance(token: '--motion-distance-sm' | '--motion-distanc
     anything. --dur-crossfade sits outside base.css's clamp blocks for the
     same reason. */
 export function crossfadeDuration(): number {
-  return readCssNumber('--dur-crossfade', 120);
+  return readCssMs('--dur-crossfade', 120);
 }

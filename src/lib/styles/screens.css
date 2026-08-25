@@ -168,6 +168,8 @@
 @keyframes cheer-fall {
   0% { transform: translateY(-2px) rotate(0deg); opacity: 0; }
   14% { opacity: 1; }
+  46% { opacity: 1; }
+  76% { opacity: 0.4; }
   100% { transform: translateY(46px) rotate(var(--r)); opacity: 0; }
 }
 
@@ -184,14 +186,21 @@
    end state (tests/motion-system.test.ts). */
 .home-cheer.is-burst i {
   opacity: 0;
-  transform: translate(var(--dx, 0), -13px) rotate(var(--r));
-  animation: cheer-burst calc(var(--dur-authored) * 1.6) var(--ease-out) var(--d) both;
+  transform: translate(var(--dx, 0), -11px) rotate(var(--r));
+  animation: cheer-burst calc(var(--dur-authored) * 2) var(--ease-out) var(--d) both;
 }
+/* The fade starts at a third rather than at seven tenths, so the pieces are
+   already going out for most of the way up instead of holding full strength
+   and then dropping (Alicja, 2026-08-25: "the confetti also shouldn't
+   disappear so abruptly"). Two stops on the way down rather than one, which
+   is what keeps the tail from reading as a straight ramp: most of the
+   brightness goes early and the last of it lingers. */
 @keyframes cheer-burst {
   0% { transform: translate(0, 2px) rotate(0deg); opacity: 0; }
   12% { opacity: 1; }
-  70% { opacity: 1; }
-  100% { transform: translate(var(--dx, 0), -13px) rotate(var(--r)); opacity: 0; }
+  34% { opacity: 1; }
+  68% { opacity: 0.42; }
+  100% { transform: translate(var(--dx, 0), -11px) rotate(var(--r)); opacity: 0; }
 }
 /* Substituted rather than clamped: at 1ms this is a flicker, and the moment
    it stands for is "well done", which the line underneath already says. */
