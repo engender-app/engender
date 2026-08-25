@@ -4,29 +4,25 @@
      corner. Replaces PrideAurora, a blurred wash of the same stripes shown
      on ten screens, which is deleted rather than restyled (ADR-0035).
 
-     Stripes and theme are read once, from the DOM, rather than tracked
-     reactively against `prefs`: `--motif-stripes` is the one source of
-     truth every palette-aware surface reads (no parallel TS table to drift
-     out of sync), and the only way to see a different palette here is to
-     leave Home and come back - which already remounts this component fresh,
-     since "/" is its own route and SvelteKit destroys and recreates a
-     page's components on every navigation to a different route. That is
-     also the entrance's cue: a plain CSS animation on mount already plays
-     once per genuine visit and never replays for a reactive update within
-     the same visit, so there is nothing here tracking "did we just enter
-     Home" beyond the component existing at all. */
-  import { onMount } from 'svelte';
-  import { parseMotifStripes, sunRings, type SunRing } from '$lib/motion/flagSun';
+     The stripes and the theme come from $lib/theme/activeFlag, which the
+     shell refreshes in the same effect that stamps the palette on <html>.
+     This used to read them itself in onMount, on the reasoning that "/" is
+     its own route and so remounts on every genuine visit - which is true,
+     and still lost the race: on a cold start the palette arrives from SQLite
+     after boot, so a mount that happened in between drew the flag the
+     localStorage mirror had a moment earlier. Changing the palette in
+     Settings and walking back to Home showed the old flag's sun until the
+     app was restarted, on the one screen the flag is the point of.
 
-  let rings = $state<SunRing[]>([]);
+     The entrance is still a plain CSS animation on mount, which is what
+     makes it play once per visit and never on a reactive update within one.
+     A palette change while Home is open redraws the rings in the new
+     flag's colours without replaying it - the rings are keyed by index, so
+     they keep their elements. */
+  import { sunRings } from '$lib/motion/flagSun';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
 
-  onMount(() => {
-    const stripes = parseMotifStripes(
-      getComputedStyle(document.documentElement).getPropertyValue('--motif-stripes')
-    );
-    const dark = document.documentElement.dataset.theme === 'dark';
-    rings = sunRings(stripes, dark);
-  });
+  let rings = $derived(sunRings(activeFlag.stripes, activeFlag.dark));
 </script>
 
 <div class="sun" aria-hidden="true">
