@@ -1,4 +1,4 @@
-/* The built-in vocabulary every install gets: five gender dimensions, eight
+/* The built-in vocabulary every install gets: seven gender dimensions, eight
   presets, five tag groups and eight milestone templates.
 
    Keys only, no display text. A built-in is the same concept on any
@@ -25,16 +25,62 @@ import type {
   TagGroup
 } from '../types.ts';
 
+/* The seven scales an entry can carry a number on.
+
+   Five of these are the original set, which predates this tracker and was
+   never argued from a source: four of them describe the content of a
+   gender (how feminine, how masculine, how binary, how strongly present)
+   and the fifth describes a feeling about it. The two added last
+   (`social_recognition`, `gender_stability`) come out of
+   `.scratch/phase-5/gender-scale-axes-research.md`, and each fills a gap
+   that research found the rest of the app could not already answer:
+
+     social_recognition  the outside world. Four sources that do not
+                         descend from one another separate being read by
+                         others from both body and identity: the GCLS's
+                         own "social gender role recognition" factor, the
+                         KGDQ's split of alienation and role pressure from
+                         body dysphoria, genderdysphoria.fyi's definition
+                         of social dysphoria ("What gender do people
+                         believe me to be?"), and Gender Spectrum's
+                         body/identity/social model. The app records this
+                         today only as flags (`g-soc-dys`, `g-soc-eu`,
+                         `g-gendered-ok`, `g-misgendered`, `dt-social`)
+                         and as tally counts, and a count answers "how
+                         often" rather than "how much" - it reads a day
+                         spent indoors as a day that went well.
+
+     gender_stability    movement. Every other scale here records a
+                         position; none of them can say that the position
+                         moved. `binary_nonbinary` and `agender_gendered`
+                         each collapse a day that shifted to whatever it
+                         averaged out at, which is the same reading a flat
+                         day gets.
+
+   Deliberately not a certainty or doubt scale, which is the neighbouring
+   idea and a different one. The GRRS measures rumination about one's own
+   gender as a harm, and ADR-0037 has just removed the surface that asked
+   somebody to narrate their doubt; a daily slider for how sure you are
+   would put that question back on the log form. Steady and shifting are
+   descriptive and neither is the better end. */
 export const BUILT_IN_DIMENSIONS = [
   { key: 'euphoria_dysphoria', min: 0, max: 100 },
   { key: 'femininity', min: 0, max: 100 },
   { key: 'masculinity', min: 0, max: 100 },
   { key: 'binary_nonbinary', min: 0, max: 100 },
-  { key: 'agender_gendered', min: 0, max: 100 }
+  { key: 'agender_gendered', min: 0, max: 100 },
+  { key: 'social_recognition', min: 0, max: 100 },
+  { key: 'gender_stability', min: 0, max: 100 }
 ] as const;
 
 export type BuiltInDimensionKey = (typeof BUILT_IN_DIMENSIONS)[number]['key'];
 
+/* Frozen. These eight stopped being a picker in ticket 35 and survive only
+   to resolve a preset key out of an archive written before that, so each
+   list has to keep saying what that key meant when it was written. A scale
+   added to BUILT_IN_DIMENSIONS above never joins one of these: `p-nb` was
+   all five scales that existed then, and restoring a 2026 archive must tick
+   those five rather than whatever "all of them" means today. */
 export const BUILT_IN_PRESETS = [
   { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] },
   { key: 'p-fluid', dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary'] },

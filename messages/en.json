@@ -2249,5 +2249,13 @@
   "scales_none_ticked": "None ticked",
   "scale_custom_note": "Your own scale, from {low} to {high}.",
   "scales_change": "change",
-  "editor_no_scales": "No scales are ticked. A mood, tags, a note and a photo still make an entry."
+  "editor_no_scales": "No scales are ticked. A mood, tags, a note and a photo still make an entry.",
+  "dim_social_recognition": "Being read",
+  "dim_social_recognition_low": "unseen",
+  "dim_social_recognition_high": "recognised",
+  "dim_social_recognition_note": "How far the people around you read your gender the way you feel it.",
+  "dim_gender_stability": "Steady ↔ shifting",
+  "dim_gender_stability_low": "steady",
+  "dim_gender_stability_high": "shifting",
+  "dim_gender_stability_note": "Where the day sat between a steady sense of gender and a shifting one."
 }
