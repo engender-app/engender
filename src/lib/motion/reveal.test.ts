@@ -165,6 +165,18 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
     expect(frame(css!, 0.5)).toContain('width: 240px');
   });
 
+  /* Phase 5 ticket 32.16: a positioned element with no z-index still paints
+     after normal-flow content in stacking order regardless of DOM order
+     (CSS2.1 Appendix E), so the out-of-flow placeholder painted over the
+     content it was fading off of for the whole 160ms - a second "appears
+     twice" this primitive's own history had already named once, from taking
+     the skeleton out of flow without also taking it out of the paint order. */
+  it('paints behind the content it is fading off of', () => {
+    stubDocument(false, true, {});
+    const { css } = crossfade(measured(240));
+    expect(frame(css!, 0.5)).toContain('z-index: -1');
+  });
+
   it('removes the placeholder on the spot under reduced motion', () => {
     stubDocument(true, true, {});
     expect(crossfade(measured(240)).duration).toBe(0);
