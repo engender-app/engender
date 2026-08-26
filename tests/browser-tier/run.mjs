@@ -285,7 +285,9 @@ try {
   if (r.filesAfterDelete.length === 0) ok('deleting the entry takes the photo and its thumbnail off real storage');
   else fail('deleting the entry takes the photo and its thumbnail off real storage', JSON.stringify(r.filesAfterDelete));
 
-  if (r.filesAfterSweep.length === 0) ok('the boot sweep reclaims a file no row references, against real OPFS');
+  const sweptToKeptOnly =
+    r.filesAfterSweep.length === 2 && r.filesAfterSweep.every((n) => n.startsWith(r.keptPhotoId));
+  if (sweptToKeptOnly) ok('the boot sweep reclaims a file no row references, against real OPFS');
   else fail('the boot sweep reclaims a file no row references, against real OPFS', JSON.stringify(r.filesAfterSweep));
 
   /* The picker, driven through a real file dialog. Two files rather than
