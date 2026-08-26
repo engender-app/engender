@@ -2271,6 +2271,92 @@ try {
   fail('More hub route characterization', e);
 }
 
+/* Phase 5 ticket 36: the persona alone leaves most of the More hub in its
+   empty state, which is why this ticket exists - a review pass through
+   those screens was "a tour of empty states with a few exceptions"
+   (Alicja, 2026-08-26). "Fill every feature" layers a second seed over the
+   persona; walked here by checking each area's own `data-notice="<key>-
+   empty"` marker is gone rather than by counting rows, since an empty-state
+   Notice existing at all is a screen's own claim that it has nothing to
+   show. */
+try {
+  await fresh('/settings/measurements'); // any settings route boots the shell before the demo bar is queried
+  await page.click('[data-fill-every-feature]');
+  await page.waitForURL('**/more');
+  await booted();
+
+  const NOT_EMPTY_ROUTES = [
+    ['/settings/measurements', 'measurements-empty'],
+    ['/settings/sizes', 'sizes-empty'],
+    ['/settings/hair-progress', 'hair-stages-empty'],
+    ['/settings/hair-removal', 'hair-removal-empty'],
+    ['/settings/labs', 'labs-empty'],
+    ['/settings/regimen', 'regimen-empty'],
+    ['/settings/hormone-curve', 'curve-empty'],
+    ['/doses', 'doses-empty'],
+    ['/settings/cycle-events', 'cycle-events-empty'],
+    ['/settings/side-effects', 'side-effects-empty'],
+    ['/settings/surgery', 'surgery-empty'],
+    ['/settings/appointment-prep', 'appointment-prep-empty'],
+    ['/settings/milestones', 'milestones-empty'],
+    ['/settings/letters', 'letters-empty'],
+    ['/settings/tryouts', 'tryouts-empty'],
+    ['/settings/voice', 'voice-empty'],
+    ['/settings/wear', 'wear-empty'],
+    ['/settings/stock', 'stock-empty']
+  ];
+  for (const [route, emptyKey] of NOT_EMPTY_ROUTES) {
+    await page.goto(BASE + route, { waitUntil: 'networkidle' });
+    if (await page.locator(`[data-notice="${emptyKey}"]`).count()) {
+      throw new Error(`${route} still shows its empty state (${emptyKey}) after filling every feature`);
+    }
+  }
+
+  // Roadmap and effects carry no empty-state Notice of their own (their
+  // toggles and tracks always render) - checked instead for a signal that
+  // only exists once something is ticked or marked.
+  await page.goto(BASE + '/settings/roadmap', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-status="checked"], [data-status="not-my-path"]').count()) === 0) {
+    throw new Error('roadmap has no ticked or not-my-path goal after filling every feature');
+  }
+
+  // The tryout detail route is reached from the list, not a URL this test
+  // would have to invent an id for.
+  await page.goto(BASE + '/settings/tryouts', { waitUntil: 'networkidle' });
+  await page.locator('[data-tryout] a').first().click();
+  await page.waitForSelector('[data-screen-header]');
+  const tryoutUrl = page.url();
+
+  // The entries section reads a range keyed off the tryout row a sibling
+  // query resolves first (existing, in the page's own words) - occasionally
+  // that second query starts before the first one has landed, and settles
+  // on the empty branch for good rather than re-running once existing does
+  // land (a pre-existing gap in the page's own reactivity, not something
+  // this ticket's fixture data can paper over from here). One reload gives
+  // it a clean second run before this counts as a real failure - the same
+  // "a glitch and a real break read alike once" call feature-screen-shots.mjs
+  // already makes for a broken-looking route.
+  const notEmpty = async () => {
+    await page
+      .waitForFunction(
+        () => document.querySelector('[data-notice="tryout-entries-empty"]') || document.querySelector('[data-entry-card]'),
+        null,
+        { timeout: 8000 }
+      )
+      .catch(() => {});
+    return (await page.locator('[data-notice="tryout-entries-empty"]').count()) === 0;
+  };
+  if (!(await notEmpty())) {
+    await page.goto(tryoutUrl, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-screen-header]');
+    if (!(await notEmpty())) throw new Error('the first tryout has no entries in its date range after filling every feature');
+  }
+
+  ok('every More-hub area shows real content once "Fill every feature" has run, not just its empty state');
+} catch (e) {
+  fail('fill every feature', e);
+}
+
 /* Quick add, rebuilt (phase 5 ticket 18, closing spec 04).
 
    The old sheet offered two choices that both led to the same screen. What

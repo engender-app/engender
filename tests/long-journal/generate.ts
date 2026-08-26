@@ -20,13 +20,28 @@
    JPEG at the sizes ADR-0008 normalizes to, which needs a canvas the Node
    tier has not got, and the byte size is most of what the photo grid and
    the Archive export are measuring - so the platform that has the canvas
-   supplies it. */
+   supplies it.
+
+   Phase 5 ticket 36 widened this from five kinds of content to nineteen.
+   `npm run benchmark:long-journal` still reports every measurement inside
+   its budget, but the generation step itself - not one of the individually
+   budgeted numbers, just the "Written in Xs" line the harness prints before
+   measuring anything - moved from 51s to 56s on the machine budgets.json
+   was recorded on. Recorded here, next to the old number, rather than
+   quietly replaced: a ~10% write-time increase for fourteen more areas of
+   content, nothing near the 5x budget headroom any of the measured reads
+   actually gates on. */
 
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
-import type { BodyRegionFeeling } from '../../src/lib/data/types.ts';
+import type { BodyRegionFeeling, TryoutKind } from '../../src/lib/data/types.ts';
+import type { InjectionSiteKey } from '../../src/lib/data/doseSchedule.ts';
 import { weekdayOfEpochDay } from '../../src/lib/data/epochDay.ts';
-import { BUILT_IN_DIMENSIONS } from '../../src/lib/data/vocabulary/builtins.ts';
+import { BUILT_IN_DIMENSIONS, BUILT_IN_MEASUREMENT_TYPES, BUILT_IN_PERSONAL_EFFECT_TYPES } from '../../src/lib/data/vocabulary/builtins.ts';
+import { GARMENT_CATEGORIES } from '../../src/lib/data/garmentCategories.ts';
+import { HAIR_REMOVAL_AREAS } from '../../src/lib/data/hairRemovalAreas.ts';
+import { POLISH_PACK, ROADMAP_TRACKS } from '../../src/lib/data/roadmap.ts';
+import { demoAudioBytes } from '../../src/lib/data/demoAudioBytes.ts';
 
 /** Days in ten years, two of them leap. The unit is in the name because the
     option it is passed to takes days, and `{ days: TEN_YEARS }` read as
@@ -80,6 +95,23 @@ export interface LongJournalSummary {
   /** Doses logged against the fixture's one regimen episode (phase 5
       ticket 40). */
   doseEvents: number;
+  /** Doses logged against the two episodes phase 5 ticket 36 adds beside
+      the one above, so at least one stretch of the fixture has two
+      concurrent episodes overlapping (ticket 38's shape). */
+  additionalDoseEvents: number;
+  measurements: number;
+  sizeRecords: number;
+  hairRemovalSessions: number;
+  roadmapChecks: number;
+  letters: number;
+  tryouts: number;
+  personalEffects: number;
+  wearSessions: number;
+  cycleEvents: number;
+  sideEffects: number;
+  stockEntries: number;
+  checklistItems: number;
+  voiceRecordings: number;
 }
 
 /* Deterministic and cheap. Not a cryptographic generator and does not need
@@ -234,6 +266,26 @@ const MILESTONE_NAMES = [
     of a straight line would flatter every chart the stats screen draws. */
 const TREND_PERIOD = 620;
 
+/* Phase 5 ticket 36: every More-hub area a review pass needs real content
+   in, none of it spanning the whole decade - "a year of readings, at an
+   irregular cadence" is the product's own instruction for the body-tracking
+   areas, and the rest follow the same proportionate spirit rather than
+   multiplying the write count by ten for no reader-visible benefit. */
+
+const MEASUREMENT_TYPES = BUILT_IN_MEASUREMENT_TYPES.map((t) => t.key);
+const HAIR_REMOVAL_METHODS = ['laser', 'electrolysis', 'other'] as const;
+const INJECTABLE_SITES: InjectionSiteKey[] = [
+  'thigh-left',
+  'thigh-right',
+  'deltoid-left',
+  'deltoid-right',
+  'ventrogluteal-left',
+  'ventrogluteal-right'
+];
+const TRYOUT_KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
+const CYCLE_EVENT_KINDS = ['period_occurred', 'spotting', 'nothing_this_month'] as const;
+const SIDE_EFFECT_NAMES = ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
+
 export async function generateLongJournal(
   journal: Journal,
   options: LongJournalOptions
@@ -261,7 +313,21 @@ export async function generateLongJournal(
     tagWordEntries: 0,
     regionEuphoriaEntries: 0,
     hairStagings: 0,
-    doseEvents: 0
+    doseEvents: 0,
+    additionalDoseEvents: 0,
+    measurements: 0,
+    sizeRecords: 0,
+    hairRemovalSessions: 0,
+    roadmapChecks: 0,
+    letters: 0,
+    tryouts: 0,
+    personalEffects: 0,
+    wearSessions: 0,
+    cycleEvents: 0,
+    sideEffects: 0,
+    stockEntries: 0,
+    checklistItems: 0,
+    voiceRecordings: 0
   };
 
   const customTags = await Promise.all(
@@ -301,6 +367,13 @@ export async function generateLongJournal(
       const attachPhotos = random() < 0.12 ? [await makePhoto(summary.photos)] : undefined;
       if (attachPhotos) summary.photos++;
 
+      // A voice recording on about one entry in two hundred - raw bytes, no
+      // format to get right (voiceRecordings.ts writes them through as-is)
+      // and no callback needed the way a photo needs a real JPEG for its
+      // byte size to mean anything.
+      const attachRecordings = random() < 0.005 ? [demoAudioBytes(random)] : undefined;
+      if (attachRecordings) summary.voiceRecordings++;
+
       // A body region on roughly one entry in six, its euphoria clearing
       // GOOD_DAY_REGION_EUPHORIA_FLOOR about half the time - a mix, not an
       // always-true or always-false clause.
@@ -328,7 +401,8 @@ export async function generateLongJournal(
         dims,
         tags,
         bodyRegions,
-        attachPhotos
+        attachPhotos,
+        attachRecordings
       });
       summary.entries++;
     }
@@ -413,10 +487,241 @@ export async function generateLongJournal(
       route: 'oral',
       dose: amount.dose,
       doseUnit: amount.doseUnit,
-      status: 'taken'
+      status: 'taken',
+      drug: 'Estradiol'
     });
     summary.doseEvents++;
   }
+
+  // A second, overlapping episode (phase 5 ticket 36): an antiandrogen
+  // running for about 500 days in the middle of the fixture, well inside
+  // the first episode's still-open span - two concurrently active episodes
+  // for different drugs, the shape ticket 38's walkthrough test already
+  // exercises. Every dose on it names its own drug, the disambiguation a
+  // person makes once two episodes can both be active.
+  const secondEpisodeStartEpochDay = regimenStartEpochDay + 800;
+  const secondEpisodeEndEpochDay = secondEpisodeStartEpochDay + 500;
+  const secondEpisodeId = await journal.regimen.upsertEpisode({
+    drug: 'Spironolactone',
+    ester: null,
+    dose: 100,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: secondEpisodeStartEpochDay,
+    endEpochDay: secondEpisodeEndEpochDay
+  });
+  await journal.doses.upsertSchedule({
+    episodeId: secondEpisodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: [{ dose: 100, doseUnit: 'mg' }]
+  });
+  for (let day = secondEpisodeStartEpochDay; day <= secondEpisodeEndEpochDay; day++) {
+    if (random() < 0.08) continue;
+    await journal.doses.upsertDose({
+      timestamp: (day * 24 + 21) * 3_600_000,
+      route: 'oral',
+      dose: 100,
+      doseUnit: 'mg',
+      status: 'taken',
+      drug: 'Spironolactone'
+    });
+    summary.additionalDoseEvents++;
+  }
+
+  // A third episode, injectable, confined to the fixture's final ~150 days
+  // (phase 5 ticket 36) - the hormone curve reads doses within
+  // CURVE_LOOKBACK_DAYS (~63 days) of wherever it is asked to draw, so a
+  // decade-long weekly schedule would spend nine and a half years of writes
+  // on doses no curve ever reads. Named distinctly from the first episode's
+  // "Estradiol" so the two read as a route switch rather than one typo.
+  const thirdEpisodeStartEpochDay = lastEpochDay - 150;
+  const thirdEpisodeId = await journal.regimen.upsertEpisode({
+    drug: 'Estradiol valerate',
+    ester: 'valerate',
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'weekly',
+    startEpochDay: thirdEpisodeStartEpochDay,
+    endEpochDay: null
+  });
+  await journal.doses.upsertSchedule({
+    episodeId: thirdEpisodeId,
+    recurrence: { kind: 'weekdays', weekdays: [0] },
+    dosesPerDay: 1,
+    doseAmounts: [{ dose: 4, doseUnit: 'mg' }]
+  });
+  let injectionCount = 0;
+  for (let day = thirdEpisodeStartEpochDay; day <= lastEpochDay; day++) {
+    if (weekdayOfEpochDay(day) !== 0) continue;
+    if (random() < 0.05) continue;
+    await journal.doses.upsertDose({
+      timestamp: (day * 24 + 19) * 3_600_000,
+      route: 'im',
+      dose: 4,
+      doseUnit: 'mg',
+      status: 'taken',
+      drug: 'Estradiol valerate',
+      injectionSite: INJECTABLE_SITES[injectionCount % INJECTABLE_SITES.length],
+      vehicle: 'oil'
+    });
+    injectionCount++;
+    summary.additionalDoseEvents++;
+  }
+
+  // Measurements, sizes and hair-removal sessions: a year each, at an
+  // irregular cadence - an evenly spaced series is the one case every
+  // chart already handles, so this is deliberately not one.
+  const trackingWindowStart = lastEpochDay - 365;
+  for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
+    if (random() < 0.94) continue;
+    const type = pick(MEASUREMENT_TYPES);
+    const unit = type === 'waist' && random() < 0.15 ? 'in' : 'cm';
+    const base = { waist: 78, hips: 92, chest: 88, underbust: 74 }[type]!;
+    const value = unit === 'in' ? Math.round(base / 2.54) : base + Math.round((random() - 0.5) * 6);
+    await journal.measurements.upsertMeasurement({ type, epochDay: day, value, unit });
+    summary.measurements++;
+  }
+  for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
+    if (random() < 0.97) continue;
+    const category = pick(GARMENT_CATEGORIES);
+    await journal.sizeRecords.upsertRecord({
+      epochDay: day,
+      category,
+      size: pick(['XS', 'S', 'M', 'L', '32', '34', '36', '8', '10']),
+      brand: pick(['', 'Zara', "Levi's", 'H&M', 'Uniqlo']),
+      fitNote: pick(['', 'true to size', 'runs small', 'runs large'])
+    });
+    summary.sizeRecords++;
+  }
+  let hairRemovalPhotoIndex = 0;
+  for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
+    if (random() < 0.95) continue;
+    const sessionId = await journal.hairRemoval.upsertSession({
+      epochDay: day,
+      area: pick(HAIR_REMOVAL_AREAS),
+      method: pick(HAIR_REMOVAL_METHODS),
+      painRating: between(1, 5),
+      cost: random() < 0.7 ? `${between(150, 450)} PLN` : '',
+      provider: random() < 0.7 ? 'Klinika Laserowa' : ''
+    });
+    summary.hairRemovalSessions++;
+    if (random() < 0.2) {
+      await journal.hairRemoval.addPhoto(sessionId, await makePhoto(hairPhotoIndex + hairRemovalPhotoIndex + 1000));
+      hairRemovalPhotoIndex++;
+    }
+  }
+
+  // Roadmap: a few ticks across every track, plus one custom goal.
+  for (const track of ROADMAP_TRACKS) {
+    const goals = POLISH_PACK.goals.filter((g) => g.track === track);
+    for (const goal of goals) {
+      if (random() < 0.65) continue;
+      await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, random() < 0.85 ? 'checked' : 'not-my-path');
+      summary.roadmapChecks++;
+    }
+  }
+  const customGoal = await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
+  summary.roadmapChecks++;
+
+  // Letters: a few, both sealed and already unlockable relative to the
+  // fixture's own last day.
+  const letterDays = [firstEpochDay + 200, firstEpochDay + 900, lastEpochDay - 400, lastEpochDay - 30];
+  for (const [i, day] of letterDays.entries()) {
+    await journal.letters.addLetter({
+      epochDay: day,
+      text: `Letter ${i + 1} to my future self, written on day ${day}.`,
+      unlockEpochDay: day + (i % 2 === 0 ? 60 : 900)
+    });
+    summary.letters++;
+  }
+
+  // Tryouts: one per kind, dated inside the range entries already cover, so
+  // its detail route has real entries to read back by date overlap.
+  for (const [i, kind] of TRYOUT_KINDS.entries()) {
+    const startDay = firstEpochDay + 400 + i * 90;
+    const tryoutId = await journal.tryouts.upsertTryout({
+      kind,
+      label: pick(['Alex', 'she/her', 'layered look', 'sundress', 'soft glam', 'first day out']),
+      description: kind === 'name' ? null : `Notes on trying out ${kind}.`,
+      startEpochDay: startDay,
+      endEpochDay: i % 2 === 0 ? startDay + 60 : null
+    });
+    summary.tryouts++;
+    if (random() < 0.5) await journal.tryouts.addPhoto(tryoutId, startDay + 5, await makePhoto(hairPhotoIndex + hairRemovalPhotoIndex + 2000 + i));
+    await journal.feltSense.add({ tryoutId }, { epochDay: startDay + 3, mood: between(2, 5) });
+  }
+
+  // Personal effects: several feminizing markers across categories, plus
+  // one non-default category switched on so its disclosure group has
+  // something in it too.
+  await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
+  const effectTypes = BUILT_IN_PERSONAL_EFFECT_TYPES.filter((t) => t.direction === 'feminizing').filter(
+    (_, i) => i % 3 === 0
+  );
+  for (const [i, type] of effectTypes.entries()) {
+    await journal.personalEffects.upsertMarker({
+      effect: type.key,
+      firstNoticedEpochDay: regimenStartEpochDay + 30 + i * 45
+    });
+    summary.personalEffects++;
+  }
+
+  // Wear sessions: a year, irregular, most backfilled with a duration.
+  for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
+    if (random() < 0.55) continue;
+    await journal.wearSessions.upsertSession({
+      startTimestamp: (day * 24 + 8) * 3_600_000,
+      durationMs: between(2, 8) * 3_600_000,
+      note: random() < 0.2 ? 'a bit tight by the end' : null
+    });
+    summary.wearSessions++;
+  }
+
+  // Cycle events: roughly monthly over the tracking window.
+  for (let day = trackingWindowStart; day <= lastEpochDay; day += between(24, 34)) {
+    await journal.cycleEvents.upsertCycleEvent({ kind: pick(CYCLE_EVENT_KINDS), epochDay: day });
+    summary.cycleEvents++;
+  }
+
+  // Side effects: a handful spread across the whole fixture.
+  for (let i = 0; i < 10; i++) {
+    await journal.sideEffects.upsertSideEffect({
+      name: pick(SIDE_EFFECT_NAMES),
+      severity: between(1, 5),
+      epochDay: firstEpochDay + Math.floor(((i + 1) / 11) * days)
+    });
+    summary.sideEffects++;
+  }
+
+  // Surgery: one procedure, dated, with a consult, notes and a recovery
+  // checklist - so /settings/surgery has more than an empty timeline.
+  const procedureId = await journal.procedures.upsertProcedure({
+    name: 'top surgery',
+    surgeryEpochDay: lastEpochDay - 600,
+    notes: 'Double incision, drains out on day 5.'
+  });
+  await journal.procedures.addConsult(procedureId, lastEpochDay - 650);
+  await journal.procedures.addConsult(procedureId, lastEpochDay - 620);
+  for (const item of ['buy gauze', 'arrange time off work', 'ask about lifting restrictions']) {
+    await journal.procedures.addChecklistItem(procedureId, item);
+    summary.checklistItems++;
+  }
+  await journal.procedures.addPhoto(procedureId, lastEpochDay - 590, await makePhoto(hairPhotoIndex + hairRemovalPhotoIndex + 3000));
+
+  // Appointment prep: a standalone checklist, unrelated to the procedure's.
+  for (const item of ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {
+    await journal.checklists.addToStandaloneChecklist(item);
+    summary.checklistItems++;
+  }
+
+  // Stock: current supply reported for the two drugs in regimen.
+  await journal.stock.upsertEntry({ drug: 'Estradiol', quantity: 40, unit: 'tablets', recordedEpochDay: lastEpochDay - 3 });
+  await journal.stock.upsertEntry({ drug: 'Estradiol valerate', quantity: 6, unit: 'mL', recordedEpochDay: lastEpochDay - 3 });
+  summary.stockEntries += 2;
 
   return summary;
 }
