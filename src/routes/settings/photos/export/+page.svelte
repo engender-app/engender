@@ -187,7 +187,7 @@
   {#if photosQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={2} /></div>
   {:else if photos.length === 0}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="image"
         key="journey-empty"
@@ -197,7 +197,7 @@
       />
     </div>
   {:else}
-    <div>
+    <div class="screen-part">
       <SectionHeading text={m.pj_range_title()} />
       <div class="compare-picker-grid">
         <label for="pj-start">{m.recap_custom_start_label()}</label>

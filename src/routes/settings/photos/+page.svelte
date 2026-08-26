@@ -170,7 +170,7 @@
         </div>
       {/if}
     {:else}
-      <div>
+      <div class="screen-part">
         <Notice
           icon="image"
           key="photos-empty"

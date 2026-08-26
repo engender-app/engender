@@ -57,7 +57,7 @@
     <p class="ob-text">{adding ? m.pp_add_body() : m.pp_change_body()}</p>
     <form class="stack-3" onsubmit={submit}>
       {#if !adding}
-        <div>
+        <div class="screen-part">
           <label class="field-label" for="current-passphrase">{m.pp_current_label()}</label>
           <input
             class="input"

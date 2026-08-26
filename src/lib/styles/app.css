@@ -142,6 +142,27 @@ body {
   margin-top: var(--space-2);
 }
 
+/* The floor is a direct-child rule, and most screens put their content one
+   level down: `{#if loading}...{:else}<div>` needs an element to hang the
+   branch on, and that div was the whole of it. So the blocks a person
+   actually reads were not the children this rule was written about, and 52
+   of these wrappers across the app were quietly holding their contents flush
+   - which is what Alicja was seeing on the collage screen, where the photo
+   count sat on the picker above it and on the grid below it, and on the wear
+   log, where the empty notice sat on the range switcher (2026-08-26).
+
+   Naming the wrapper rather than reaching through it with `.screen > * > *`,
+   which would put a margin inside every card, list and chart on the screen.
+   The wrapper is still a child of `.screen`, so it takes the floor itself
+   and the run inside it takes it too. */
+.screen > .screen-part > * + * {
+  margin-top: var(--space-4);
+}
+
+.screen > .screen-part > .kit-heading + * {
+  margin-top: var(--space-2);
+}
+
 /* And the header is the screen's own title block: its subtitle already
    carries the space under it. */
 .screen > .screen-header + * {

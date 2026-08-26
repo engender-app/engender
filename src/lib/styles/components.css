@@ -856,6 +856,19 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .sheet-drag:not(.is-dragging) {
   transition: transform var(--dur-med) var(--ease-out);
 }
+/* The floor a screen has, inside a sheet. The letter composer's "Seal it
+   away" sat flat against the anchor chips above it (Alicja, 2026-08-26), and
+   it is the same cause as on the screens: the blocks that nobody remembered
+   to space by hand end up flush.
+
+   Safe as an addition rather than a doubling because `.sheet` is a block
+   container and `.field` already carries a `margin-bottom` - adjacent
+   margins collapse, so a field followed by a field is still 16px apart and
+   only the pairs that had nothing between them move. */
+.sheet > * + * {
+  margin-top: var(--space-4);
+}
+
 .sheet {
   background: var(--surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;

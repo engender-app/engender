@@ -103,7 +103,7 @@
   {#if recordsQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if records.length}
-    <div>
+    <div class="screen-part">
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each [...records].reverse() as r (r.id)}
           <ListRow
@@ -119,7 +119,7 @@
       </ListCard>
     </div>
   {:else}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="package"
         key="sizes-empty"

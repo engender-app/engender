@@ -259,7 +259,7 @@
   {#if episodesQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if episodes.length}
-    <div>
+    <div class="screen-part">
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
         {#each [...episodes].reverse() as episode (episode.id)}
           <ListRow
@@ -287,7 +287,7 @@
       </ListCard>
     </div>
   {:else}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="flask"
         key="regimen-empty"

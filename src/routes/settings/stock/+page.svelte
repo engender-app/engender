@@ -99,7 +99,7 @@
   {#if rowsQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if rows.length}
-    <div>
+    <div class="screen-part">
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each rows as row (row.entry.id)}
           <ListRow
@@ -128,13 +128,13 @@
         {/each}
       </ListCard>
       {#if excludedDoses > 0}
-        <div>
+        <div class="screen-part">
           <Notice icon="info" key="stock-excluded" text={m.stock_excluded_note({ count: String(excludedDoses) })} />
         </div>
       {/if}
     </div>
   {:else}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="package"
         key="stock-empty"
