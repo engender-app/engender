@@ -20,6 +20,13 @@ import type { TransitionConfig } from 'svelte/transition';
     look alike. */
 export const EASE_OUT = quintOut;
 
+/** The same --ease-out curve as EASE_OUT, as the string form WAAPI's own
+    `animate()` takes - `Animation` has no `css(t)` to hand a JS function to,
+    so the two constants exist for the two APIs and must be kept to the one
+    curve by hand (phase 5 ticket 32.17's `resize`, the first primitive that
+    animates via WAAPI rather than a Svelte transition). */
+export const EASE_OUT_CSS = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
 /** Opacity alone over `duration`, which two different jobs both need: tier
     2's reduced-motion substitute, and tier 3's fallback where the runtime has
     no clip-path. Shared from here rather than written out in both, since the
