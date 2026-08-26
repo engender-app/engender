@@ -144,11 +144,21 @@
   function chooseRange(choice: WrappedRangeChoice) {
     /* Two of the seven are periods that already have a screen. Sending the
        person there rather than drawing the same period a second way is what
-       keeps one period at one URL. */
+       keeps one period at one URL.
+
+       Every one of these replaces rather than pushes. The seven periods are
+       views of one screen, which `screen-transition.ts` already says in as
+       many words - it gives `/wrapped/` its own rule so that crossing them
+       is tier 3 rather than a navigation. A pushed entry per switch made
+       back walk the switcher instead of leaving the screen: change the
+       period a few times and the back arrow spent those taps undoing them
+       (Alicja, 2026-08-26). It only became visible once `smartBack` started
+       working - until then every back control took its fallback route and
+       history was never consulted at all. */
     const goesToCadence = wrappedRangeCadence(choice);
     if (goesToCadence) {
       rangePicker = false;
-      goto(`/wrapped/${goesToCadence}`);
+      goto(`/wrapped/${goesToCadence}`, { replaceState: true });
       return;
     }
     if (choice === 'custom') {
@@ -163,11 +173,13 @@
         return;
       }
       rangePicker = false;
-      goto(`/wrapped/range${wrappedRangeQuery('custom', { start: customStart, end: customEnd })}`);
+      goto(`/wrapped/range${wrappedRangeQuery('custom', { start: customStart, end: customEnd })}`, {
+        replaceState: true
+      });
       return;
     }
     rangePicker = false;
-    goto(`/wrapped/range${wrappedRangeQuery(choice)}`);
+    goto(`/wrapped/range${wrappedRangeQuery(choice)}`, { replaceState: true });
   }
 
   /* The preference is read inside every query rather than around them, so
