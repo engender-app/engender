@@ -424,7 +424,7 @@
   {#each dims as { dim, ticked } (dim.key)}
     <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
     {#if !ticked}
-      <p class="editor-hint editor-hint-tight">{m.not_in_preset()}</p>
+      <p class="editor-hint editor-hint-tight">{m.scale_not_ticked()}</p>
     {/if}
   {/each}
 
