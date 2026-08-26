@@ -182,7 +182,7 @@
   <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
   {#if !prefs.measurementProtocolDismissed[type] && PROTOCOL[type]}
-    <div style="margin-top:var(--space-4)">
+    <div>
       <Notice
         icon="ruler"
         key="protocol"
@@ -326,7 +326,7 @@
         </div>
       {/each}
     </div>
-    <div class="field" style="margin-top:var(--space-4)">
+    <div class="field">
       <label class="field-label" for="new-measurement-type">{m.measurement_type_new_label()}</label>
       <input
         class="input"

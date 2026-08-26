@@ -126,7 +126,7 @@
       </ListCard>
     {/if}
 
-    <div style="margin-top:var(--space-6)">
+    <div>
       <button class="btn btn-soft press" onclick={() => { comparing = false; selected = []; }}>
         <span>{m.ph_back_to_all()}</span>
       </button>
@@ -157,7 +157,7 @@
           </button>
         {/each}
       </div>
-      <div style="margin-top:var(--space-4)">
+      <div>
         <a class="btn btn-soft press" href="/settings/photos/export" data-journey-export>
           <Icon name="image" size={20} /><span>{m.pj_open()}</span>
         </a>

@@ -449,7 +449,7 @@
             <div class="dim-ends"><span>{dim.low}</span><span>{dim.high}</span></div>
           </div>
         {/each}
-        <div class="stack-3" style="margin-top:var(--space-3)">
+        <div class="stack-3">
           <button class="btn btn-primary" data-qld-add onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>
           <button class="btn btn-ghost" data-qld-skip onclick={() => (dimsPromptEntryId = null)}><span>{m.not_now()}</span></button>
         </div>

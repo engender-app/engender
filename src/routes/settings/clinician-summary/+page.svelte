@@ -69,6 +69,17 @@
   );
   let summary = $derived(summaryQuery.value);
 
+  /** Whether a registered section has anything in it for this range. The
+      exposure section is three lists rather than one, so it is empty only
+      when all three are. */
+  function sectionIsEmpty(key: ClinicianSummarySectionKey, s: ClinicianSummary): boolean {
+    if (key === 'exposure') {
+      return !s.exposure.doseTotals.length && !s.exposure.routeDays.length && !s.exposure.regimenDays.length;
+    }
+    const section = s[key];
+    return Array.isArray(section) && section.length === 0;
+  }
+
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const dayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
   const whenOf = (dose: DoseEvent) => `${dayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
@@ -358,13 +369,26 @@
     <div out:crossfade><Skeleton variant="block" count={4} /></div>
   {:else}
     <div>
+      <!-- A section with nothing in it does not get the screen-title
+           heading. Seven display headings over seven grey one-liners was
+           most of what a thin range printed, and on paper it is a page of
+           saying nothing loudly (Alicja, 2026-08-26). What is there keeps
+           its heading; what is not is a quiet label and its own line, at
+           the weight the exposure counters' sub-headings already use.
+
+           Order is the registry's either way: a clinician reads these in a
+           fixed sequence, so an empty one is quieter, never moved. -->
       {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
-        <SectionHeading text={clinicianSummarySectionTitle(key)} />
+        {#if sectionIsEmpty(key, summary)}
+          <p class="sub-heading" data-empty-section={key}>{clinicianSummarySectionTitle(key)}</p>
+        {:else}
+          <SectionHeading text={clinicianSummarySectionTitle(key)} />
+        {/if}
         {@render SECTION_ROWS[key](summary)}
       {/each}
     </div>
 
-    <p class="muted small no-print" style="margin-top:var(--space-4)">{m.clinician_summary_disclaimer()}</p>
+    <p class="muted small no-print">{m.clinician_summary_disclaimer()}</p>
     <p class="disclaimer-print">{m.clinician_summary_disclaimer()}</p>
   {/if}
 </div>

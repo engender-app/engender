@@ -128,7 +128,7 @@
         {/each}
       </ListCard>
       {#if excludedDoses > 0}
-        <div style="margin-top:var(--space-4)">
+        <div>
           <Notice icon="info" key="stock-excluded" text={m.stock_excluded_note({ count: String(excludedDoses) })} />
         </div>
       {/if}
@@ -176,7 +176,7 @@
         <input class="input" type="date" id="stock-date" name="stock-date" bind:value={editor.recordedDate} />
       </div>
 
-      <div class="stack-3" style="margin-top:var(--space-4)">
+      <div class="stack-3">
         <button class="btn btn-primary" data-save-stock onclick={saveEntry}><span>{m.stock_save()}</span></button>
         {#if editor.id}
           <button class="btn btn-ghost" data-delete-stock onclick={deleteEntry}>

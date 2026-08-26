@@ -21,6 +21,7 @@
   import { entryContainerName } from '$lib/motion/container.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import { smartBack } from '$lib/navigation/smart-back';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -352,10 +353,17 @@
      `existing` would arrive after the picture was taken. The route knows
      which entry this is without asking anybody. -->
 <div class="screen editor" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}>
+  <!-- Back goes wherever you opened it from, not to the entry's own day. An
+       entry is drawn on Home, on a day, in search, on the timeline, inside a
+       tryout and in the counterevidence journal, and every one of those sent
+       you to /day/... on the way back - a screen you may never have been on
+       (Alicja, 2026-08-26, from the counterevidence journal). The day stays
+       as the fallback for a deep link or a reload, which is what smartBack
+       is for (NAV-005). -->
   <ScreenHeader
     title={existing ? m.entry() : m.new_entry()}
     screen="entry"
-    back={existing ? `/day/${day}` : '/'}
+    back={() => smartBack(existing ? `/day/${day}` : '/')}
   >
     {#snippet actions()}
       {#if existing}

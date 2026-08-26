@@ -555,7 +555,7 @@
        first, because that is the end of the range you came from. -->
   <Sheet open={valueSheet} title={shown.name} onClose={() => (valueSheet = false)}>
     <BarRows rows={valueRows} />
-    <button class="btn btn-ghost" style="margin-top:var(--space-4)" onclick={() => (valueSheet = false)}>
+    <button class="btn btn-ghost" onclick={() => (valueSheet = false)}>
       <span>{m.done()}</span>
     </button>
   </Sheet>
@@ -568,7 +568,7 @@
           <EntryCard entry={e} />
         {/each}
       </div>
-      <button class="btn btn-ghost" style="margin-top:var(--space-3)" onclick={() => (insightSheet = null)}>
+      <button class="btn btn-ghost" onclick={() => (insightSheet = null)}>
         <span>{m.done()}</span>
       </button>
     {/if}

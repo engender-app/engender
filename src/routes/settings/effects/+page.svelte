@@ -285,7 +285,7 @@
       {/if}
     {/each}
 
-    <p class="muted small" style="margin-top:var(--space-4)">{m.effects_source()}</p>
+    <p class="muted small">{m.effects_source()}</p>
   {/if}
 
   <Sheet open={editor !== null} title={editor ? editor.effect.name : ''} onClose={() => (editor = null)}>
@@ -329,7 +329,7 @@
       {/each}
     </div>
 
-    <h3 style="margin-top:var(--space-4)">{m.effect_manage_types()}</h3>
+    <h3>{m.effect_manage_types()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.effect_manage_types_intro()}</p>
     <div class="managed-tags">
       {#each vocabulary.personalEffectTypes as e (e.key)}
@@ -350,7 +350,7 @@
       {/each}
     </div>
 
-    <div class="field" style="margin-top:var(--space-4)">
+    <div class="field">
       <label class="field-label" for="new-effect-type">{m.effect_type_new_label()}</label>
       <input
         class="input"

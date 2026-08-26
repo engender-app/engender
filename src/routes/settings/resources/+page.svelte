@@ -54,20 +54,28 @@
     <ListCard role={roleAt(activeFlag.roles, i)}>
       {#each resourcesFor(group.region) as resource (resource.key)}
         <div class="kit-row is-static resource-row" data-resource={resource.key}>
-          <span class="kit-row-text">
+          <span class="kit-row-text resource-text">
             <span class="kit-row-title">{resource.name}</span>
-            <span class="kit-row-sub">{resourceDescription(resource.key)}</span>
+            <span class="kit-row-sub resource-desc">{resourceDescription(resource.key)}</span>
             <span class="resource-links">
               {#if resource.phone}
                 <!-- No icon: icons.ts has no phone glyph, and the nearest
                      ones already mean something else across the app (a bell
                      is a reminder). A number reads as a number. -->
-                <a class="resource-link" href={dial(resource.phone)} aria-label={m.resources_call({ name: resource.name })}>
-                  {resource.phone}
-                </a>
-                {#if resourceHours(resource.key)}
-                  <span class="resource-hours">{resourceHours(resource.key)}</span>
-                {/if}
+                <!-- The number and when it is answered travel together, so
+                     the hours cannot end up on a line between the two ways
+                     in. No icon on it either: icons.ts has no phone glyph
+                     and the nearest ones already mean something else across
+                     the app - a bell is a reminder. A number reads as a
+                     number. -->
+                <span class="resource-way">
+                  <a class="resource-link" href={dial(resource.phone)} aria-label={m.resources_call({ name: resource.name })}>
+                    {resource.phone}
+                  </a>
+                  {#if resourceHours(resource.key)}
+                    <span class="resource-hours">{resourceHours(resource.key)}</span>
+                  {/if}
+                </span>
               {/if}
               {#if resource.url}
                 <!-- target="_blank" is load-bearing, not habit. Without it
@@ -93,38 +101,76 @@
     </ListCard>
   {/each}
 
-  <p class="muted small" style="margin-top:var(--space-4)">{m.resources_reviewed({ date: reviewedOn })}</p>
-  <p class="muted small" style="margin-top:var(--space-2)">{m.resources_leaving()}</p>
+  <p class="muted small">{m.resources_reviewed({ date: reviewedOn })}</p>
+  <p class="muted small">{m.resources_leaving()}</p>
 </div>
 
 <style>
-  /* The row holds four stacked things rather than the usual title and
-     subtitle, so it grows instead of centring in one touch target. */
+  /* The row holds a name, what the service is, and the ways to reach it,
+     so it grows instead of centring in one touch target. */
   .resource-row {
     align-items: flex-start;
-    padding-top: var(--space-3);
-    padding-bottom: var(--space-3);
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-4);
   }
+
+  /* Three bands, each with its own separation. The name and the description
+     were a line apart with nothing between them, so the name read as the
+     first line of its own description (Alicja, 2026-08-26). */
+  .resource-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .resource-desc {
+    margin-bottom: var(--space-2);
+  }
+
+  /* Always a row of its own under the description, never trailing the end of
+     it. Wrapping inside a text column put the ways to reach a service beside
+     a short description and under a long one, so no two rows in the list
+     agreed on where to look for a phone number. */
   .resource-links {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2) var(--space-3);
-    margin-top: var(--space-2);
+    gap: var(--space-2);
   }
+
+  /* Each way in is a control rather than a run of coloured words: same pill,
+     same order every time - the number first, then the site. A 16px glyph
+     and a label do not reach a touch target on their own, so the pill
+     carries the height. */
   .resource-link {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    /* 44px of target on a phone, which the 16px icon and the label alone
-       would not reach. */
     min-height: var(--touch-target);
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--outline);
+    background: var(--surface-2);
     color: var(--role-ink);
     text-decoration: none;
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
   }
-  .resource-link:hover { text-decoration: underline; }
+
+  .resource-link:hover { border-color: var(--outline-strong); }
+
+  /* The number and its opening hours are one way in, so they wrap as one.
+     Loose in the row, the hours landed between the phone and the site and
+     split the two apart. */
+  .resource-way {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  /* Beside the pill rather than inside it: when a helpline is answered is a
+     fact about the number, not a second thing to press. */
   .resource-hours {
     font-size: var(--text-sm);
     color: var(--text-2);

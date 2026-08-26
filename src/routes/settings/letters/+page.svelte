@@ -119,7 +119,7 @@
     <SectionHeading text={m.letters_compose_title()} />
     <textarea class="input" rows="6" placeholder={m.letters_compose_placeholder()} bind:value={text}></textarea>
 
-    <div class="field" style="margin-top:var(--space-4)">
+    <div class="field">
       <label class="field-label" for="letter-unlock">{m.letters_unlock_label()}</label>
       <input class="input" type="date" id="letter-unlock" name="letter-unlock" bind:value={unlockDate} />
     </div>
@@ -145,7 +145,7 @@
 
     <button
       class="btn btn-primary btn-block"
-      style="margin-top:var(--space-4)"
+     
       data-save-letter
       disabled={text.trim().length === 0 || !unlockDate}
       onclick={saveLetter}

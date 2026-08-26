@@ -50,7 +50,6 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -314,7 +313,7 @@
       {/if}
 
       {#if completed.length}
-        <div style="margin-top:var(--space-3)">
+        <div>
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
             {#each completed as session (session.id)}
               {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
@@ -343,7 +342,10 @@
         />
       {/if}
 
-      <SectionHeading text={m.wear_session_trend_title()} />
+      <!-- No heading over the range. The chart card under it is called
+           "Wear time and intensity" and so was this, one above the other -
+           the same two-headers-stacked reading DIRECTION.md 3d names. The
+           card names the area. -->
       <Segmented
         name={m.stats_range_group()}
         options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
@@ -368,18 +370,25 @@
             />
           {/if}
         {/snippet}
-        <WearTrendChart
-          wearPoints={wearTrend}
-          regionPoints={regionTrend}
-          {wearMax}
-          regionMin={BODY_REGION_INTENSITY_MIN}
-          regionMax={BODY_REGION_INTENSITY_MAX}
-          ariaLabel={m.wear_session_trend_title()}
-        />
-        <p class="muted small wear-trend-legend">
-          <span class="legend-dot legend-wear"></span>{m.wear_session_trend_wear_legend()}
-          <span class="legend-dot legend-region"></span>{m.wear_session_trend_region_legend({ region: trendRegionLabel })}
-        </p>
+        <!-- A chart with nothing in it drew an empty plot and a legend
+             naming two lines that were not there. It says so instead, the
+             way every other chart in the kit does. -->
+        {#if wearTrend.length || regionTrend.length}
+          <WearTrendChart
+            wearPoints={wearTrend}
+            regionPoints={regionTrend}
+            {wearMax}
+            regionMin={BODY_REGION_INTENSITY_MIN}
+            regionMax={BODY_REGION_INTENSITY_MAX}
+            ariaLabel={m.wear_session_trend_title()}
+          />
+          <p class="muted small wear-trend-legend">
+            <span class="legend-dot legend-wear"></span>{m.wear_session_trend_wear_legend()}
+            <span class="legend-dot legend-region"></span>{m.wear_session_trend_region_legend({ region: trendRegionLabel })}
+          </p>
+        {:else}
+          <p class="kit-chart-empty">{m.not_enough_data()}</p>
+        {/if}
       </ChartCard>
     </div>
   {/if}

@@ -59,7 +59,7 @@
     {#each counterevidence as e (e.id)}
       <EntryCard entry={e} />
     {/each}
-    <button class="btn btn-soft btn-block" style="margin-top:var(--space-3)" onclick={saveSnapshot}>
+    <button class="btn btn-soft btn-block" onclick={saveSnapshot}>
       <Icon name="heart" size={18} /> <span>{m.doubt_save_snapshot()}</span>
     </button>
   {:else}
@@ -77,7 +77,7 @@
           </button>
         </div>
         {#each snap.items as item, i (i)}
-          <p class="entry-note" style="margin-top:var(--space-2)">
+          <p class="entry-note">
             {#if item.mood != null}<strong>{moodName(item.mood)}</strong> · {/if}{dayLabel(item.epochDay)}: {item.note}
           </p>
         {/each}

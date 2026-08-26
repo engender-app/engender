@@ -74,7 +74,7 @@
     <p class="muted small">{m.exposure_dose_totals_empty()}</p>
   {/if}
   {#if counters && counters.excludedDoses > 0}
-    <div style="margin-top:var(--space-3)">
+    <div>
       <Notice icon="info" key="exposure-excluded" text={m.exposure_excluded_note({ count: String(counters.excludedDoses) })} />
     </div>
   {/if}
