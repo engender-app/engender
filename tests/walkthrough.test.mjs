@@ -244,8 +244,18 @@ try {
   await page.waitForSelector('[data-slider]');
   const values = () =>
     page.locator('[data-slider]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-valuenow')));
+  /* Centred in the viewport before it is measured. The editor's save bar and
+     the nav are fixed over the bottom of the screen, so a slider that happens
+     to sit under either of them takes the pointer nowhere and the drag reads
+     as a control that did not move - which is this flow's failure message,
+     for a screen that is only scrolled wrong. Where the sliders land depends
+     on how tall everything above them is, so it is not a property this flow
+     should be asserting on by accident. */
   const drag = async (index, fraction) => {
-    const box = await page.locator('[data-slider]').nth(index).boundingBox();
+    const slider = page.locator('[data-slider]').nth(index);
+    await slider.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(150);
+    const box = await slider.boundingBox();
     await page.mouse.move(box.x + box.width * fraction, box.y + box.height / 2);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * fraction, box.y + box.height / 2, { steps: 4 });
