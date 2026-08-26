@@ -999,12 +999,25 @@ a.kit-entry:active {
    .btn-primary - the pill, the gradient, the press depth and its
    reduced-motion substitute - and all this rule does is place it on the
    notice's grid. Nothing about the control is retyped here; a second copy of
-   a press depth is what tests/motion-system.test.ts exists to fail on. */
+   a press depth is what tests/motion-system.test.ts exists to fail on.
+
+   Full width and a block's own gap, not a line's (phase 5 ticket 32.10):
+   `justify-self: start` left the 48px button hugging the text's own width,
+   48px inside a 153px surface with 8px under the sentence it belongs to -
+   the gap `.kit-notice-act`'s text action gets, not what a control gets, so
+   it read as dropped on the card rather than as the one thing the card is
+   asking for. The doc comment above already draws that distinction:
+   `primary` is for an empty state, where the action "is the whole of what
+   a first-run Home has to say" - the screen's only call to action, not an
+   aside on a remark. Stretching it to the text's own width and giving it
+   `--space-4`, the same gap `.screen > * + *` gives two blocks that do not
+   touch, is that distinction drawn in the surface instead of only in the
+   comment. */
 .kit-notice-cta {
   grid-column: 2;
   grid-row: 2;
-  justify-self: start;
-  margin-top: var(--space-2);
+  justify-self: stretch;
+  margin-top: var(--space-4);
 }
 
 .kit-notice-x {
