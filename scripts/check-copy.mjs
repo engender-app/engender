@@ -94,7 +94,11 @@ export function findLiterals(source) {
       return;
     }
     // An expression is code, and a comment is for whoever reads the file.
+    // `style:--x="{n}px"` parses to a StyleDirective whose value is the same
+    // mixed text+expression shape as an attribute's, so its trailing "px" is
+    // CSS, not something anyone reads.
     if (type === 'ExpressionTag' || type === 'Comment') return;
+    if (type === 'StyleDirective') return;
     if (type === 'Attribute') {
       const { name, value } = /** @type {{ name: string, value: unknown }} */ (node);
       if (SPOKEN_ATTRIBUTES.has(name)) walk(value, name);
