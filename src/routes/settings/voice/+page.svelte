@@ -84,7 +84,7 @@
     {#if recordingsQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={4} /></div>
     {:else if recordings.length}
-      <div in:crossfade>
+      <div>
         {#if comparing && !pair}
           <p class="muted small" style="margin-bottom:var(--space-2)">{m.vc_compare_reset()}</p>
         {/if}
@@ -123,7 +123,7 @@
         </div>
       {/if}
     {:else}
-      <div in:crossfade>
+      <div>
         <Notice
           icon="mic"
           key="voice-empty"

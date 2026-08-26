@@ -185,10 +185,19 @@ describe('what the worker is still fetching', () => {
        What this holds is that no screen was left off the crossfade, not that
        each one declares it: the first pass wrote the same arrow function
        into twenty-four routes and this assertion was what pinned it there.
-       It grips the shared primitive's import instead. */
+       It grips the shared primitive's import instead.
+
+       And it holds the asymmetry, because that is the part that was wrong.
+       The skeleton fades out; the content it uncovers gets no entrance of
+       its own. A screen arriving is tier 2's - the shell already runs a
+       view transition over the whole of it - so a second fade on the
+       content a moment later is that content arriving twice. */
     for (const route of ENTRY_DATA) {
       expect(sourceOf.get(route), route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
-      expect(markupOf.get(route), route).toMatch(/(in|out):crossfade/);
+      expect(markupOf.get(route), route).toMatch(/out:crossfade/);
+      expect(markupOf.get(route), `${route} fades its content in on top of the navigation`).not.toMatch(
+        /in:crossfade/
+      );
     }
   });
 });

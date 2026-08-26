@@ -357,7 +357,7 @@
   {:else if summaryQuery.loading || !summary}
     <div out:crossfade><Skeleton variant="block" count={4} /></div>
   {:else}
-    <div in:crossfade>
+    <div>
       {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
         <SectionHeading text={clinicianSummarySectionTitle(key)} />
         {@render SECTION_ROWS[key](summary)}

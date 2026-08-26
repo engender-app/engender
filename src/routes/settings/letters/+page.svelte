@@ -83,7 +83,7 @@
   {#if lettersQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if letters.length}
-    <div in:crossfade>
+    <div>
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each letters as letter (letter.id)}
           {@const sealed = isLetterSealed(letter, today)}
@@ -103,7 +103,7 @@
       </ListCard>
     </div>
   {:else}
-    <div in:crossfade>
+    <div>
       <Notice
         icon="book"
         key="letters-empty"

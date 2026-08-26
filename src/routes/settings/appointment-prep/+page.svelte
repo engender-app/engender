@@ -74,7 +74,7 @@
   {#if checklistQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if items.length}
-    <div in:crossfade>
+    <div>
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each items as item (item.id)}
           <div class="kit-row is-split" data-appointment-item={item.id}>
@@ -115,7 +115,7 @@
       </ListCard>
     </div>
   {:else}
-    <div in:crossfade>
+    <div>
       <Notice
         icon="check"
         key="appointment-prep-empty"

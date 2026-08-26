@@ -127,23 +127,48 @@ export function disclose(node: Element): TransitionConfig {
 
 /**
  * Tier 3, change within a screen: a skeleton crossfading into the content it
- * was standing in for, rather than being swapped for it in one frame.
+ * was standing in for.
  *
- * `out:crossfade` on the skeleton and `in:crossfade` on what replaces it -
- * the empty state included, since a first-run journal lands on that branch
- * and owes the same arrival as a populated one.
+ * `out:crossfade` on the skeleton, and nothing at all on what replaces it.
+ * That asymmetry is the whole of this primitive and it was wrong the first
+ * time: pairing it with an `in:` on the content produced a *sequence*
+ * rather than a crossfade, and two things went wrong with that.
  *
- * Here rather than declared per screen. Ticket 25 wrote this same line into
- * twenty-four routes before the review caught it, which is the point at
- * which a shape stops being a call site and starts being a primitive. The
- * three screens that had it first - Home, the calendar and Stats - still
- * carry their own copy; folding those in is a change to screens this ticket
- * does not otherwise touch.
+ * The content faded in twice. A screen arriving is tier 2's, and the shell
+ * already runs a shared-axis view transition over the whole of it; a
+ * content fade a moment later, once the worker answers, is that same
+ * content arriving a second time. Alicja saw it as "the panels fade in two
+ * times, second time very close to each other and glitchy" (2026-08-26).
  *
- * Reduced motion takes the duration to zero through `motionDuration`, which
- * is tier 3's substitute: a change inside a screen has no journey for a fade
- * to stand in for.
+ * And the page jumped. In an `{#if}`/`{:else}` both blocks are alive while
+ * the transition runs, so a skeleton fading out in normal flow still holds
+ * its height and everything under it drops when it finally goes.
+ *
+ * So the skeleton leaves the flow as it fades - the content is already in
+ * its final position underneath, and what animates is the placeholder
+ * uncovering it. Content itself is simply there, which is tier 4's default
+ * and what DIRECTION.md asks for everywhere it has not authored a moment.
+ *
+ * Its own width is measured and pinned rather than being stretched to the
+ * container. An absolutely positioned box with no width shrinks to fit, so
+ * the placeholder would narrow on its first frame; and stretching it to the
+ * container instead resolves against whichever ancestor happens to be
+ * positioned, which is `.screen` for a placeholder at the top level of a
+ * screen and something else for one nested inside a branch. The node knows
+ * its own width, so it is asked. Vertical placement needs nothing: an
+ * absolutely positioned box with no `top` sits at its static position, which
+ * is exactly where it already was.
+ *
+ * Reduced motion takes the duration to zero through `motionDuration`: the
+ * skeleton is removed on the spot, which is tier 3's substitute. There is no
+ * resting rule for the `to` state to match, because the node is gone by then.
  */
-export function crossfade(_node: Element): TransitionConfig {
-  return fadeOnly(motionDuration('--dur-fast', 160));
+export function crossfade(node: Element): TransitionConfig {
+  const width = node.getBoundingClientRect().width;
+
+  return {
+    duration: motionDuration('--dur-fast', 160),
+    easing: EASE_OUT,
+    css: (t) => `opacity: ${t}; position: absolute; width: ${width}px; pointer-events: none`
+  };
 }

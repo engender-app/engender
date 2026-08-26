@@ -292,7 +292,7 @@
   {#if loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else}
-    <div in:crossfade>
+    <div>
       {#if running}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
           <ListRow

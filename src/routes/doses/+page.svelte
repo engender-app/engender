@@ -390,7 +390,7 @@
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if view === 'log'}
     {#if doses.length}
-      <div in:crossfade>
+      <div>
         <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: WINDOW_DAYS })}</p>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
           {#each [...doses].reverse() as dose (dose.id)}
@@ -443,7 +443,7 @@
         </ListCard>
       </div>
     {:else}
-      <div in:crossfade>
+      <div>
         <Notice
           icon="clock"
           key="doses-empty"
@@ -461,7 +461,7 @@
   {:else if !activeSchedule}
     <Notice icon="info" key="adherence-no-schedule" text={m.adherence_no_schedule({ drug: activeEpisode.drug })} />
   {:else if comparison}
-    <div in:crossfade>
+    <div>
       <p class="muted small" style="margin:var(--space-3) 0">
         {m.adherence_for_episode({ drug: activeEpisode.drug })}
       </p>
