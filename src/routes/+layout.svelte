@@ -339,7 +339,11 @@
         channelReminders: m.reminders(),
         channelCheckIn: m.checkin_title(),
         checkInTitle: m.checkin_title(),
-        checkInBody: m.checkin_sub()
+        /* The question itself, not the Settings row's subtitle: that one
+           ends in the mechanic ("skipped on days you already logged"),
+           which is what a person reading the row needs and not what a
+           notification should say. */
+        checkInBody: m.checkin_notification_body()
       }),
       isValidLaunchRoute: isValidAndroidLaunchRoute,
       currentPathname: () => page.url.pathname,
