@@ -901,13 +901,10 @@ a.kit-entry:active {
 .kit-notice {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  /* Both rows named explicitly, and the second one is why. `grid-row: 1 /
-     -1` on the disc below resolves -1 against the *explicit* grid, and with
-     rows left implicit the explicit grid has one line - so the span
-     collapsed to row 1 and the disc went on centring itself against the
-     sentence rather than against the notice, which is the thing it had just
-     been changed not to do. A notice with no action leaves row 2 at auto
-     with nothing in it, which is 0. */
+  /* Row 1 is what the notice says, row 2 is the one thing to do about it -
+     .kit-notice-body and .kit-notice-cta/.kit-notice-act name themselves
+     onto one each. A notice with no action leaves row 2 at auto with
+     nothing in it, which is 0. */
   grid-template-rows: auto auto;
   align-items: center;
   gap: 0 var(--space-3);
@@ -918,23 +915,30 @@ a.kit-entry:active {
   font-size: var(--text-sm);
 }
 
-/* The icon takes the disc a list row's does, one size up, and it centres on
-   the whole notice rather than on its first row. A notice that asks for
-   something has two rows - what it says, and the one thing to do about it -
-   and a disc pinned to row 1 sat above the middle of the box it is the mark
-   for. Spanning both rows is what makes `align-items: center` mean the
-   notice rather than the sentence.
+/* The icon takes the disc a list row's does, one size up, and it sits
+   beside what it marks rather than centred on the whole notice (phase 5
+   ticket 32.13). It used to span both rows and centre on the box - which
+   read right on a short notice, where row 1 is barely taller than the
+   disc itself and the two land beside each other either way - and wrong on
+   a tall one, where a heading, a paragraph and a call to action pushed the
+   box's own middle well past the heading and into the paragraph: measured
+   on /settings/hormone-curve, 123px below the words it marks. Row 1 only,
+   top-aligned, needs no threshold between the two: on a short notice row 1
+   is the whole notice in every way that matters, so aligning to its top
+   still reads as centred on the box; on a tall one it is only the heading
+   and its explanation, so the same rule lands the disc beside the heading
+   without row 2's action pulling it down. A pixel height that switched
+   between two rules would have to be re-picked every time a font size or
+   a translation changed the text's own height; this doesn't, because it
+   never measures one.
 
    44px rather than a row's 36. A row's disc is one of five down a card and
    answers to the column they make; a notice has exactly one, on a wider
-   surface, and at 36 it read as a bullet rather than as the notice's mark.
-
-   Centred on the notice, which with symmetric padding is the middle of the
-   card and not the middle of the text. */
+   surface, and at 36 it read as a bullet rather than as the notice's mark. */
 .kit-notice-ico {
   grid-column: 1;
-  grid-row: 1 / -1;
-  align-self: center;
+  grid-row: 1;
+  align-self: start;
   width: 44px;
   height: 44px;
   border-radius: 50%;
