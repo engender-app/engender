@@ -269,7 +269,6 @@ export interface TallyEvent {
   id: string;
   epochDay: number;
   kind: TallyKind;
-  context: string;
 }
 
 /** One of the user's own euphoria-tagged entries, copied into a
