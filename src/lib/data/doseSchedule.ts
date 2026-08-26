@@ -27,6 +27,71 @@ export const isInjectionDose = <T extends { route: DoseRoute }>(dose: T): dose i
 export const isTopicalDose = <T extends { route: DoseRoute }>(dose: T): dose is T & { route: 'patch' | 'gel' } =>
   dose.route === 'patch' || dose.route === 'gel';
 
+/* Reading a route out of the words someone typed (phase 5 UX ticket 37).
+
+   A RegimenEpisode's `route` is free text and a dose's is one of six keys,
+   so the sheet that logs a dose against a regimen had been asking for the
+   route again - and defaulting to oral, which is the wrong answer for
+   every injected regimen there is.
+
+   The abbreviations below are ASCII and matched as whole words, which is
+   the whole of the care this needs: "discontinued" carries `sc` as a
+   substring, and Polish "po" is a preposition, so a substring match or a
+   two-letter alias list reaching further than this would resolve a route
+   out of ordinary prose. The words the app itself uses for the six routes
+   are handed in rather than imported, because they speak paraglide and
+   this file may not (ADR-0016, and doseLabels.ts is where they live). */
+const ROUTE_ALIASES: Record<DoseRoute, readonly string[]> = {
+  oral: ['oral'],
+  sublingual: ['sublingual', 'sl'],
+  im: ['im', 'intramuscular'],
+  sc: ['sc', 'subcutaneous', 'subcut'],
+  patch: ['patch'],
+  gel: ['gel']
+};
+
+const compactWord = (text: string): string => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+const wordsIn = (text: string): string[] => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+
+/**
+ * Which of the six dose routes a free-text route names, or null.
+ *
+ * Null covers both "names none of them" and "names two", and the second is
+ * the one worth spelling out: an episode whose route reads "patch, gel when
+ * travelling" has not settled which route today's dose was, and a prefill
+ * that picks one of the two is a wrong answer wearing a right answer's
+ * confidence. The sheet asks instead.
+ *
+ * `routeWords` is `ROUTE_OPTIONS` from doseLabels.ts at the call site: the
+ * app's own word for each route, in whichever language is running. Without
+ * it only the keys and the ASCII abbreviations match, which is what the
+ * Node tier gets.
+ */
+export function matchDoseRoute(
+  text: string,
+  routeWords: readonly { value: DoseRoute; label: string }[] = []
+): DoseRoute | null {
+  const compact = compactWord(text);
+  if (!compact) return null;
+
+  const needles = new Map<DoseRoute, string[]>();
+  for (const route of Object.keys(ROUTE_ALIASES) as DoseRoute[]) {
+    needles.set(route, [...ROUTE_ALIASES[route]]);
+  }
+  for (const { value, label } of routeWords) {
+    const word = compactWord(label);
+    if (word) needles.get(value)?.push(word);
+  }
+
+  for (const [route, words] of needles) {
+    if (words.includes(compact)) return route;
+  }
+
+  const words = wordsIn(text);
+  const named = [...needles].filter(([, needle]) => needle.some((word) => words.includes(word)));
+  return named.length === 1 ? named[0][0] : null;
+}
+
 /** The rotation map's regions. Covers both injection routes: the first
     three are the usual IM sites, the last three the usual SC ones, and
     plenty of people use a route the "wrong" list would have hidden.
@@ -89,6 +154,32 @@ export function siteRecency(
     recency[site.key] = lastDay === undefined ? null : todayEpochDay - lastDay;
   }
   return recency;
+}
+
+/** The most recent injection logged before `before`, or null where there is
+    none. `exceptId` leaves out the dose being edited, so a dose is never its
+    own predecessor.
+
+    Two screens' worth of question in one read: the rotation map marks where
+    the last one went, and the sheet fills in the vehicle that one used
+    rather than asking again (phase 5 UX ticket 37). An injection with no
+    site on record is still returned - it has nothing to say about rotation
+    and everything to say about which vehicle is in the fridge.
+
+    Order-independent, unlike the reverse scan over `doses` this replaces:
+    the log arrives ascending today, and a read that quietly depends on that
+    is a read that breaks the day something sorts differently. */
+export function lastInjectionBefore(
+  doses: readonly DoseEvent[],
+  before: number,
+  exceptId?: string
+): Extract<DoseEvent, { route: 'im' | 'sc' }> | null {
+  let latest: Extract<DoseEvent, { route: 'im' | 'sc' }> | null = null;
+  for (const dose of doses) {
+    if (dose.timestamp >= before || dose.id === exceptId || !isInjectionDose(dose)) continue;
+    if (!latest || dose.timestamp > latest.timestamp) latest = dose;
+  }
+  return latest;
 }
 
 /** Where a patch or gel went. A flat list, not the rotation map: a patch
@@ -251,4 +342,22 @@ export function adherence(
 
   const unmatched = [...byDay.values()].flat().filter((dose) => !matched.has(dose));
   return { rows, unmatched };
+}
+
+/** The amount the schedule is still expecting on `epochDay`: the first slot
+    that day with nothing logged against it. Null where the day expects
+    nothing, where every slot is already logged, or where the schedule
+    tracks no amounts at all.
+
+    What this is for is the alternating regimen (phase 5 UX ticket 37). An
+    episode carries one figure and a schedule's `doseAmounts` can cycle
+    2mg/1mg across the slots, so seeding a new dose from the episode fills
+    in the wrong number on every other day. Reading it here means the sheet
+    offers the figure the schedule was expecting next, and no screen has to
+    do the cycle arithmetic itself.
+
+    Deliberately no verdict, like the rest of this file: "still expecting"
+    is a slot with nothing in it, not a judgement about a dose being late. */
+export function expectedAmountOn({ rows }: Adherence, epochDay: number): DoseScheduleAmount | null {
+  return rows.find((row) => row.slot.epochDay === epochDay && row.dose === null)?.slot.amount ?? null;
 }
