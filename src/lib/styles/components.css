@@ -291,6 +291,17 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
   scrollbar-width: none;
 }
 .segmented::-webkit-scrollbar { display: none; }
+
+/* A flex scroll container drops its trailing padding at the end of the
+   scroll, so the last segment ran flush into the track's rounded edge and
+   read as a label that did not fit its background (Alicja, 2026-08-26, on a
+   new hair-removal session and on side effects). A spacer the width of that
+   padding is the standard answer: it is content, so the scroll box includes
+   it. */
+.segmented::after {
+  content: '';
+  flex: 0 0 3px;
+}
 /* SH-102: 34px min-height and a 2px gap were under both the 44px touch
    target and the 8px touch spacing minimums, on the control theme,
    language, stats range and several pickers all repeat. */
@@ -436,6 +447,22 @@ a.segment {
   transition: border-color var(--dur-fast) var(--ease-out);
 }
 .input:focus { border-color: var(--accent); outline: none; }
+
+/* The wrapper a group opens inside (`disclose`). It establishes a block
+   formatting context, and that is the whole of it: `disclose` sets
+   `overflow: hidden` while it runs, which stops the last field's
+   `margin-bottom` collapsing out of the wrapper - so the animation ran to a
+   height that contained the margin, then the inline styles came off, the
+   margin escaped, and the block below dropped another 16px. The group
+   expanded nicely and then jumped (Alicja, 2026-08-26, on a new tryout and
+   on a wear session).
+
+   `flow-root` rather than `overflow: hidden` at rest: same containment, and
+   it does not clip anything that legitimately paints outside the box, like a
+   focus ring on the last field. */
+.disclosed {
+  display: flow-root;
+}
 
 /* A date or time field on the web is the platform's control, and it was
    arriving with the platform's colours: a black calendar glyph beside every

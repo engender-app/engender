@@ -38,6 +38,7 @@
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { recordNavigation } from '$lib/navigation/smart-back';
+  import { rememberScroll, restoreScroll } from '$lib/navigation/scroll-region';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import QuickAdd from '$lib/components/QuickAdd.svelte';
@@ -148,6 +149,10 @@
      so a cancelled one is never counted. */
   afterNavigate((navigation) => {
     recordNavigation(navigation.type, navigation.delta);
+    /* A screen you have not read starts at the top; one you are coming back
+       to starts where you left it. The scroll region is the layout's own
+       element, so nothing else in the stack does this for us. */
+    if (navigation.to) restoreScroll(navigation.to.url.pathname);
   });
 
   onNavigate((navigation) => {
@@ -158,6 +163,9 @@
        is the right answer for every other way out of it too: a deep link, a
        notification, the back button. */
     ui.chooserOpen = false;
+
+    /* Before the capture, while the outgoing screen can still be measured. */
+    rememberScroll(navigation.from?.url.pathname);
 
     if (!navigation.to) return;
     const pattern = screenTransition({

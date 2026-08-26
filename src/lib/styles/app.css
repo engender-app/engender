@@ -131,42 +131,73 @@ body {
    container and several screens position things inside it, so turning it
    into a flex column to get `gap` would change layout well beyond the
    spacing this is about. */
-.screen > * + * {
-  margin-top: var(--space-4);
+/* Nothing on a screen touches the thing above it.
+
+   Every screen had been spacing its own areas by hand, with an inline
+   `margin-top` on whichever block happened to need one, and the blocks that
+   nobody remembered ended up flush: two outlined cards with a 0px gap
+   between them, which reads as one card with a line through it (Alicja,
+   2026-08-26, on body measurements - "no 0px gaps should happen anywhere").
+   A floor stated once is the only version of this that stays true as
+   screens change.
+
+   Each block carries its own space *below* it rather than taking space from
+   whatever happens to precede it, and that is load-bearing rather than a
+   preference. Written as `* + *` with a `.screen-header + *` exception, a
+   block's margin depended on its neighbour - so on every screen that shows a
+   skeleton first, the content arrived under the outgoing skeleton, took the
+   generic gap, and then jumped 16px up the moment that skeleton left the DOM
+   and the header became its neighbour instead. Ten screens, every time they
+   loaded (Alicja, 2026-08-26). A block that owns its own trailing space
+   cannot move when something above it is removed.
+
+   The owl was also the wrong shape for a second reason: `.screen` is a block
+   container and several screens position things inside it, so turning it
+   into a flex column to get `gap` would change layout well beyond the
+   spacing this is about. Margins collapse; a gap would not.
+
+   The trailing margin on the last block is deliberate and harmless: the
+   scroll region already clears the floating bar with its own padding. */
+.screen > * {
+  margin-bottom: var(--space-4);
 }
 
-/* Except under a heading, which belongs to what comes after it. More space
-   above a heading than below it is what makes a screen read as named areas
-   rather than as an even column of blocks. */
-.screen > .kit-heading + * {
-  margin-top: var(--space-2);
+/* A heading belongs to what comes after it. Less space under it than over it
+   is what makes a screen read as named areas rather than as an even column
+   of blocks. */
+.screen > .kit-heading {
+  margin-bottom: var(--space-2);
 }
 
-/* The floor is a direct-child rule, and most screens put their content one
-   level down: `{#if loading}...{:else}<div>` needs an element to hang the
-   branch on, and that div was the whole of it. So the blocks a person
-   actually reads were not the children this rule was written about, and 52
-   of these wrappers across the app were quietly holding their contents flush
-   - which is what Alicja was seeing on the collage screen, where the photo
-   count sat on the picker above it and on the grid below it, and on the wear
-   log, where the empty notice sat on the range switcher (2026-08-26).
-
-   Naming the wrapper rather than reaching through it with `.screen > * > *`,
-   which would put a margin inside every card, list and chart on the screen.
-   The wrapper is still a child of `.screen`, so it takes the floor itself
-   and the run inside it takes it too. */
-.screen > .screen-part > * + * {
-  margin-top: var(--space-4);
+/* The header is the screen's own title block: its subtitle already carries
+   the space under it. */
+.screen > .screen-header {
+  margin-bottom: 0;
 }
 
-.screen > .screen-part > .kit-heading + * {
-  margin-top: var(--space-2);
+/* The floor reaches one level down, because most screens put their content
+   inside a branch wrapper: `{#if loading}...{:else}<div>` needs an element to
+   hang the branch on, and that div was the whole of it. So the blocks a
+   person actually reads were not the children the rule above was written
+   about, and 52 of these wrappers across the app were holding their contents
+   flush - the collage screen's photo count sat on the picker above it and on
+   the grid below it, and the wear log's empty notice sat on its range
+   switcher (Alicja, 2026-08-26).
+
+   Named rather than reached through with `.screen > * > *`, which would put
+   a margin inside every card, list and chart on the screen. */
+.screen > .screen-part > * {
+  margin-bottom: var(--space-4);
 }
 
-/* And the header is the screen's own title block: its subtitle already
-   carries the space under it. */
-.screen > .screen-header + * {
-  margin-top: 0;
+.screen > .screen-part > .kit-heading {
+  margin-bottom: var(--space-2);
+}
+
+/* The wrapper's own last child would otherwise add its margin to the
+   wrapper's, so a branch wrapper is spaced by the block inside it. */
+.screen > .screen-part > :last-child {
+  margin-bottom: 0;
 }
 
 /* staggered list entrance, pure CSS. Delays are multiples of the same
