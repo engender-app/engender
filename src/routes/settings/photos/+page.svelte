@@ -139,7 +139,7 @@
       {#if comparing && !pair}
         <p class="muted small" style="margin-bottom:var(--space-2)">{m.ph_compare_reset()}</p>
       {/if}
-      <p class="muted small" style="margin-bottom:var(--space-4)" in:crossfade>
+      <p class="muted small" style="margin-bottom:var(--space-4)">
         {orderedSelected.length === 0
           ? m.ph_pick_two()
           : orderedSelected.length === 1
@@ -170,7 +170,7 @@
         </div>
       {/if}
     {:else}
-      <div in:crossfade>
+      <div>
         <Notice
           icon="image"
           key="photos-empty"

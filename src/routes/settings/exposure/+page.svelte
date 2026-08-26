@@ -56,7 +56,7 @@
   {#if countersQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={2} /></div>
   {:else if counters && counters.doseTotals.length}
-    <div in:crossfade>
+    <div>
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each counters.doseTotals as t (`${t.drug}-${t.route}-${t.doseUnit}`)}
           <div class="kit-row is-static" data-dose-total={`${t.drug}-${t.route}`}>
@@ -83,7 +83,7 @@
   {#if countersQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={2} /></div>
   {:else if counters && counters.routeDays.length}
-    <div in:crossfade>
+    <div>
       <ListCard role={roleAt(activeFlag.roles, 1)}>
         {#each counters.routeDays as r (r.route)}
           <div class="kit-row is-static" data-route-days={r.route}>
@@ -107,7 +107,7 @@
   {#if countersQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={2} /></div>
   {:else if counters && counters.regimenDays.length}
-    <div in:crossfade>
+    <div>
       <ListCard role={roleAt(activeFlag.roles, 2)}>
         {#each counters.regimenDays as rd (rd.episodeId)}
           <div class="kit-row is-static" data-regimen-days={rd.episodeId}>

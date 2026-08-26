@@ -198,7 +198,7 @@
   {#if measurementsQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if measurements.length}
-    <div in:crossfade>
+    <div>
       {#each series as s (s.unit)}
         {@const chart = chartFor(s)}
         <ChartCard
@@ -242,7 +242,7 @@
       </ListCard>
     </div>
   {:else}
-    <div in:crossfade>
+    <div>
       <Notice
         icon="ruler"
         key="measurements-empty"

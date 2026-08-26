@@ -378,7 +378,7 @@
     {#if recent.loading}
       <div out:crossfade><Skeleton variant="card" count={3} /></div>
     {:else if dayGroups.length}
-      <div class="home-days" in:crossfade>
+      <div class="home-days">
         {#each dayGroups as group (group.epochDay)}
           <DayCard
             key={String(group.epochDay)}
@@ -404,7 +404,7 @@
       <!-- Wrapped because a transition goes on an element, not a component,
            and the empty state is the branch a first-run journal lands on -
            it owes the same crossfade the day cards get. -->
-      <div in:crossfade>
+      <div>
         <Notice
           icon="book"
           key="no-entries"

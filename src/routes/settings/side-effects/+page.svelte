@@ -91,7 +91,7 @@
   {#if effectsQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if effects.length}
-    <div in:crossfade>
+    <div>
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each [...effects].reverse() as effect (effect.id)}
           <ListRow
@@ -107,7 +107,7 @@
       </ListCard>
     </div>
   {:else}
-    <div in:crossfade>
+    <div>
       <Notice
         icon="zap"
         key="side-effects-empty"

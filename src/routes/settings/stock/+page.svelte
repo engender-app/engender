@@ -99,7 +99,7 @@
   {#if rowsQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if rows.length}
-    <div in:crossfade>
+    <div>
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each rows as row (row.entry.id)}
           <ListRow
@@ -134,7 +134,7 @@
       {/if}
     </div>
   {:else}
-    <div in:crossfade>
+    <div>
       <Notice
         icon="package"
         key="stock-empty"

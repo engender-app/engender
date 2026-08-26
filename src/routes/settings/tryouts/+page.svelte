@@ -51,7 +51,7 @@
   {#if tryoutsQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if tryouts.length}
-    <div in:crossfade>
+    <div>
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each tryouts as t (t.id)}
           <ListRow
@@ -67,7 +67,7 @@
       </ListCard>
     </div>
   {:else}
-    <div in:crossfade>
+    <div>
       <Notice
         icon="tag"
         key="tryouts-empty"

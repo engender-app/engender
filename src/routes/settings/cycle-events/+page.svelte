@@ -110,7 +110,7 @@
   {#if eventsQuery.loading || episodesQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if events.length}
-    <div in:crossfade>
+    <div>
       <!-- The chart is not in a card. It is the only thing in this area of
            the screen, and a box drawn around the one thing on a screen is
            what DIRECTION.md 2b names as making a screen read as generic -
@@ -153,7 +153,7 @@
       </ListCard>
     </div>
   {:else}
-    <div in:crossfade>
+    <div>
       <Notice
         icon="calendar"
         key="cycle-events-empty"

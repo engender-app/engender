@@ -231,7 +231,7 @@
     {#if feelingQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={2} /></div>
     {:else if feeling.length}
-      <div in:crossfade>
+      <div>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
           {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
             <div class="kit-row is-static" data-feeling={f.id}>
@@ -252,7 +252,7 @@
         </ListCard>
       </div>
     {:else}
-      <div in:crossfade>
+      <div>
         <Notice
           icon="heart"
           key="tryout-feeling-empty"
@@ -274,7 +274,7 @@
     {#if photosQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={1} /></div>
     {:else if photos.length}
-      <div in:crossfade style="margin-bottom:var(--space-3)">
+      <div style="margin-bottom:var(--space-3)">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
           {#each photos as p (p.id)}
             <div class="kit-row is-static" data-tryout-photo={p.id}>
@@ -293,7 +293,7 @@
         </ListCard>
       </div>
     {:else}
-      <div in:crossfade>
+      <div>
         <Notice
           icon="camera"
           key="tryout-photos-empty"
@@ -308,13 +308,13 @@
     {#if entriesQuery.loading}
       <div out:crossfade><Skeleton variant="card" count={2} /></div>
     {:else if entriesInRange.length}
-      <div in:crossfade>
+      <div>
         {#each entriesInRange as e (e.id)}
           <EntryCard entry={e} />
         {/each}
       </div>
     {:else}
-      <div in:crossfade>
+      <div>
         <Notice
           icon="book"
           key="tryout-entries-empty"

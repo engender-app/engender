@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { disclose, wipe } from './reveal';
+import { crossfade, disclose, wipe } from './reveal';
 
 /* Same stub the tier-2 tests use: reveal.ts reads its duration and its easing
    out of the token layer through $lib/motion/tokens, which asks
@@ -27,6 +27,9 @@ afterEach(() => {
 
 const node = {} as Element;
 const frame = (css: (t: number, u: number) => string, t: number) => css(t, 1 - t);
+
+/** A node that knows how wide it is, which is all the crossfade asks of one. */
+const measured = (width: number) => ({ getBoundingClientRect: () => ({ width }) }) as unknown as Element;
 
 describe('tier 3, the wipe', () => {
   it('uncovers from the left, so content arrives the way it is read', () => {
@@ -125,5 +128,45 @@ describe('tier 3, a group opening its own height', () => {
   it('cuts instantly under reduced motion', () => {
     stubDocument(true, true, { height: '180px' });
     expect(disclose(node).duration).toBe(0);
+  });
+});
+
+describe('tier 3, a skeleton uncovering the content under it', () => {
+  /* It is an out-only transition, and the asymmetry is the point. Pairing it
+     with an `in:` on the content made the content arrive twice - once with
+     the screen, under tier 2's own view transition, and again a moment later
+     when the worker answered (Alicja, 2026-08-26: "the panels seem to fade in
+     two times, second time very close to each other and glitchy"). */
+  it('fades the placeholder out rather than fading the content in', () => {
+    stubDocument(false, true, {});
+    const { css, duration } = crossfade(measured(240));
+    expect(duration).toBe(160);
+    expect(frame(css!, 1)).toContain('opacity: 1');
+    expect(frame(css!, 0)).toContain('opacity: 0');
+  });
+
+  /* And it leaves the flow while it runs. Both blocks of an {#if}/{:else}
+     are alive during a transition, so a skeleton fading out in normal flow
+     holds its height and everything under it drops when it finally goes.
+     `.screen` is position:relative, which is what this resolves against. */
+  it('takes the placeholder out of the flow so nothing under it jumps', () => {
+    stubDocument(false, true, {});
+    const { css } = crossfade(measured(240));
+    expect(frame(css!, 0.5)).toContain('position: absolute');
+  });
+
+  /* Pinned to the node's own width: an absolutely positioned box with no
+     width shrinks to fit, so the placeholder would narrow on its first
+     frame. Vertical placement needs nothing - with no `top` it sits at its
+     static position, which is where it already was. */
+  it('keeps the width it had, so it does not narrow as it goes', () => {
+    stubDocument(false, true, {});
+    const { css } = crossfade(measured(240));
+    expect(frame(css!, 0.5)).toContain('width: 240px');
+  });
+
+  it('removes the placeholder on the spot under reduced motion', () => {
+    stubDocument(true, true, {});
+    expect(crossfade(measured(240)).duration).toBe(0);
   });
 });
