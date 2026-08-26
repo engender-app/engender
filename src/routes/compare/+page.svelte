@@ -26,7 +26,7 @@
   import type { Journal } from '$lib/data/journal/journal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { roleStyle } from '$lib/components/kit/role';
+  import { roleAttrs } from '$lib/components/kit/role';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -143,7 +143,7 @@
   {/snippet}
 
   <SectionHeading text={m.compare_period_a_label()} />
-  <div class="compare-picker" style={roleStyle(roleAt(activeFlag.roles, 0))}>
+  <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
     {@render dateRow(
       'compare-a-start',
       m.recap_custom_start_label(),
@@ -163,7 +163,7 @@
   </div>
 
   <SectionHeading text={m.compare_period_b_label()} />
-  <div class="compare-picker" style={roleStyle(roleAt(activeFlag.roles, 1))}>
+  <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 1))}>
     {@render dateRow(
       'compare-b-start',
       m.recap_custom_start_label(),
