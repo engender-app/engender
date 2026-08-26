@@ -11,7 +11,7 @@ import { test } from 'vitest';
 import { thumbFileName } from '../photos/names.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import { BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
+import { BUILT_IN_DIMENSIONS, BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
 import { attributeDose } from '../regimenEpisode.ts';
 import { epochDayFromTimestamp } from '../epochDay.ts';
 import { emptyArchiveJournal } from './archiveSections.ts';
@@ -540,7 +540,7 @@ test('replace keeps built-in rows by key rather than deleting them, and never du
 
   const dimensions = await target.journal.dimensions.getDimensions();
   assert.equal(dimensions.filter((d) => d.key === 'femininity').length, 1);
-  assert.equal(dimensions.filter((d) => d.builtIn).length, 5);
+  assert.equal(dimensions.filter((d) => d.builtIn).length, BUILT_IN_DIMENSIONS.length);
   const groups = await target.journal.tags.getTagGroups();
   assert.equal(groups.filter((g) => g.key === 'activities').length, 1);
   assert.equal(groups.flatMap((g) => g.tags).filter((t) => t.id === 'e-happy').length, 1);
@@ -810,7 +810,10 @@ test('importing into a journal that has never been through a boot works', async 
   await target.archive.replace(await exported(source.journal));
 
   assert.equal((await target.entries.entriesForDay(20000)).length, 1);
-  assert.equal((await target.dimensions.getDimensions()).filter((d) => d.builtIn).length, 5);
+  assert.equal(
+    (await target.dimensions.getDimensions()).filter((d) => d.builtIn).length,
+    BUILT_IN_DIMENSIONS.length
+  );
   assert.equal((await target.dimensions.getPresets()).filter((p) => p.builtIn).length, BUILT_IN_PRESETS.length);
   assert.equal(await rowCount(db, 'pref'), 0);
 });
@@ -828,7 +831,7 @@ test('an empty journal restores over a populated one, which is what a Replace me
   // The index went with the entries, through the trigger migration v3 added.
   assert.deepEqual(await target.journal.entries.searchEntries('good', []), []);
   // The vocabulary a screen needs to render is still there.
-  assert.equal((await target.journal.dimensions.getDimensions()).length, 5);
+  assert.equal((await target.journal.dimensions.getDimensions()).length, BUILT_IN_DIMENSIONS.length);
 });
 
 test('restore does not scale round trips per row for either replace or merge', async () => {
