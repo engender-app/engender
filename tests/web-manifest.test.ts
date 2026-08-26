@@ -20,8 +20,8 @@ const disguised = JSON.parse(read('static/manifest-notes.webmanifest'));
 
 describe('the web app manifest', () => {
   it('names the app and installs it as a standalone window', () => {
-    expect(manifest.name).toBe('Gender Diary');
-    expect(manifest.short_name).toBe('Gender Diary');
+    expect(manifest.name).toBe('enGender');
+    expect(manifest.short_name).toBe('enGender');
     // Not 'browser': a display mode of 'browser' is the one value that makes
     // Chromium refuse to install the app at all.
     expect(manifest.display).toBe('standalone');
