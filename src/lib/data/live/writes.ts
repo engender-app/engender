@@ -436,7 +436,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     reads: ['getChecklist', 'getChecklistByOwner', 'getStandaloneChecklist']
   },
   tally: {
-    writes: { log: ['tally'], setContext: ['tally'], deleteEvent: ['tally'] },
+    writes: { log: ['tally'], deleteEvent: ['tally'] },
     reads: ['getEvents']
   },
   regimen: {
