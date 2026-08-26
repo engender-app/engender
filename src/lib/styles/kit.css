@@ -1086,6 +1086,21 @@ a.kit-entry:active {
   cursor: pointer;
 }
 
+/* components.css styles the picker every select in the app opens, but the
+   rule above loads after it and turns appearance off at the same
+   specificity, so the chart picker was the one control that never got it -
+   it kept opening the platform's own list, which is the list Alicja asked
+   to be rid of. Opted in here, beside the declaration it has to beat.
+
+   The select being invisible is not in the way: the picker renders in the
+   top layer, anchored to the pill, so opacity 0 hides the control and not
+   the list it opens. */
+@supports (appearance: base-select) {
+  .kit-chart-pick select {
+    appearance: base-select;
+  }
+}
+
 .kit-chart-pick-face {
   display: inline-flex;
   align-items: center;
