@@ -203,9 +203,16 @@ body {
    spacing this is about. Margins collapse; a gap would not.
 
    The trailing margin on the last block is deliberate and harmless: the
-   scroll region already clears the floating bar with its own padding. */
+   scroll region already clears the floating bar with its own padding.
+
+   --space-6, not --space-4: two cards read as one with a line through it at
+   16px (Alicja, 2026-08-26, register finding 32.14). This is a different
+   axis from DIRECTION.md decision 3's "tighter, not airier" - that gap
+   (--space-3) is between related items inside a section and deliberately
+   shrank; this one is between unrelated blocks that need to read as
+   separate, and grows for the same reason the other one shrank. */
 .screen > * {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
 /* A heading belongs to what comes after it. Less space under it than over it
@@ -231,9 +238,11 @@ body {
    switcher (Alicja, 2026-08-26).
 
    Named rather than reached through with `.screen > * > *`, which would put
-   a margin inside every card, list and chart on the screen. */
+   a margin inside every card, list and chart on the screen.
+
+   --space-6 to match the floor above it (32.14). */
 .screen > .screen-part > * {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
 .screen > .screen-part > .kit-heading {
