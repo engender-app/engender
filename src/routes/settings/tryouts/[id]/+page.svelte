@@ -155,7 +155,22 @@
     feelingDeleteTarget = null;
     await journal.feltSense.remove(id);
   }
+  /* One example per kind. Name and pronouns had their own and the other four
+     shared "a short name for it", so moving between Style, Garment, Makeup
+     and Presentation step changed the highlight and nothing else - which
+     reads as a switcher that does not work (Alicja, 2026-08-26). An example
+     of the thing itself is the shortest way to say what the kind means. */
+  function labelPlaceholder(kind: TryoutKind): string {
+    if (kind === 'name') return m.tryout_label_placeholder_name();
+    if (kind === 'pronouns') return m.tryout_label_placeholder_pronouns();
+    if (kind === 'style') return m.tryout_label_placeholder_style();
+    if (kind === 'garment') return m.tryout_label_placeholder_garment();
+    if (kind === 'makeup') return m.tryout_label_placeholder_makeup();
+    if (kind === 'presentation_step') return m.tryout_label_placeholder_presentation_step();
+    return m.tryout_label_placeholder_other();
+  }
 </script>
+
 
 <div class="screen">
   <ScreenHeader title={isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/settings/tryouts" />
@@ -176,11 +191,7 @@
         class="input"
         id="tr-label"
         name="tr-label"
-        placeholder={draft.kind === 'name'
-          ? m.tryout_label_placeholder_name()
-          : draft.kind === 'pronouns'
-            ? m.tryout_label_placeholder_pronouns()
-            : m.tryout_label_placeholder_other()}
+        placeholder={labelPlaceholder(draft.kind)}
         bind:value={draft.label}
       />
     </div>
