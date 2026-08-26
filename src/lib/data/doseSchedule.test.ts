@@ -15,9 +15,9 @@ import {
   pauseCoversDay,
   siteRecency
 } from './doseSchedule.ts';
-import type { InjectionSiteKey } from './doseSchedule.ts';
+import type { InjectionSiteKey, RouteOption } from './doseSchedule.ts';
 import { startOfDayTimestamp } from './epochDay.ts';
-import type { DoseEvent, DosePause, DoseSchedule, DoseScheduleAmount } from './types.ts';
+import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount } from './types.ts';
 
 const schedule = (
   everyNDays: number,
@@ -363,23 +363,29 @@ test('siteRecency ignores oral doses and injection doses with no site on record'
    the sheet hands over an episode's words, the dose log, and a
    comparison, and gets back what to prefill. */
 
-const ROUTE_WORDS = [
-  { value: 'oral' as const, label: 'Oral' },
-  { value: 'sublingual' as const, label: 'Sublingual' },
-  { value: 'im' as const, label: 'Intramuscular' },
-  { value: 'sc' as const, label: 'Subcutaneous' },
-  { value: 'patch' as const, label: 'Patch' },
-  { value: 'gel' as const, label: 'Gel' }
-];
+/** The six routes with the words the catalogues actually show for them, in
+    both languages, since a regimen's route is typed in whichever one the
+    person is reading. */
+const routeWords = (labels: [DoseRoute, string][]): RouteOption[] =>
+  labels.map(([value, label]) => ({ value, label }));
 
-const POLISH_ROUTE_WORDS = [
-  { value: 'oral' as const, label: 'Doustnie' },
-  { value: 'sublingual' as const, label: 'Podjęzykowo' },
-  { value: 'im' as const, label: 'Domięśniowo' },
-  { value: 'sc' as const, label: 'Podskórnie' },
-  { value: 'patch' as const, label: 'Plaster' },
-  { value: 'gel' as const, label: 'Żel' }
-];
+const ROUTE_WORDS = routeWords([
+  ['oral', 'Oral'],
+  ['sublingual', 'Sublingual'],
+  ['im', 'Intramuscular'],
+  ['sc', 'Subcutaneous'],
+  ['patch', 'Patch'],
+  ['gel', 'Gel']
+]);
+
+const POLISH_ROUTE_WORDS = routeWords([
+  ['oral', 'Doustnie'],
+  ['sublingual', 'Podjęzykowo'],
+  ['im', 'Domięśniowo'],
+  ['sc', 'Podskórnie'],
+  ['patch', 'Plaster'],
+  ['gel', 'Żel']
+]);
 
 test('an episode whose route is one of the six keys resolves to that route', () => {
   assert.equal(matchDoseRoute('im', ROUTE_WORDS), 'im');
@@ -419,10 +425,10 @@ test('text naming no route resolves to null rather than to a guess', () => {
   assert.equal(matchDoseRoute('po jedzeniu', POLISH_ROUTE_WORDS), null);
 });
 
-test('the route matcher works with no words handed to it: the six keys are its own', () => {
-  assert.equal(matchDoseRoute('sc'), 'sc');
-  assert.equal(matchDoseRoute('Intramuscular'), 'im');
-  assert.equal(matchDoseRoute('Domięśniowo'), null); // no words, so no Polish
+test('handed no words at all, the six keys and the abbreviations are still its own', () => {
+  assert.equal(matchDoseRoute('sc', []), 'sc');
+  assert.equal(matchDoseRoute('Intramuscular', []), 'im');
+  assert.equal(matchDoseRoute('Domięśniowo', []), null); // no words, so no Polish
 });
 
 test('lastInjectionBefore finds the most recent injection before a moment', () => {
