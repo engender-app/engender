@@ -335,7 +335,7 @@
     }
   ],
   "apart_suffix": "apart",
-  "dim_euphoria_dysphoria": "Gender feeling",
+  "dim_euphoria_dysphoria": "Dysphoria ↔ euphoria",
   "dim_euphoria_dysphoria_low": "dysphoria",
   "dim_euphoria_dysphoria_high": "euphoria",
   "dim_euphoria_dysphoria_note": "Where the day sat between dysphoria and euphoria.",
@@ -2250,7 +2250,7 @@
   "scale_custom_note": "Your own scale, from {low} to {high}.",
   "scales_change": "change",
   "editor_no_scales": "No scales are ticked. A mood, tags, a note and a photo still make an entry.",
-  "dim_social_recognition": "Being read",
+  "dim_social_recognition": "Unseen ↔ recognised",
   "dim_social_recognition_low": "unseen",
   "dim_social_recognition_high": "recognised",
   "dim_social_recognition_note": "How far the people around you read your gender the way you feel it.",

@@ -1009,20 +1009,46 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.palette === 'nonbinary');
   await page.locator('[data-next]').click(); // flag -> scales
 
-  /* Five scales a person ticks, not eight presets a person picks (phase 5
+  /* Scales a person ticks, not eight presets a person picks (phase 5
      ticket 35). The names are the scales' own, and each row carries a line
      saying what it measures - which is the whole reason the checklist
-     replaced the cards, so the subtitle is asserted rather than assumed. */
+     replaced the cards, so the subtitle is asserted rather than assumed.
+
+     The built-ins are asserted by key and in order rather than against a
+     row count: an earlier flow adds a custom scale to this journal, so a
+     bare count folds "every built-in is offered" together with "how many
+     custom ones exist today" and breaks on either. Custom rows are counted
+     separately below and simply have to not be built-ins. */
   const scaleRows = page.locator('[data-list-row^="scale-"]');
   const scaleTexts = await scaleRows.allTextContents();
+  const scaleKeys = (
+    await scaleRows.evaluateAll((els) => els.map((el) => el.dataset.listRow.replace(/^scale-/, '')))
+  );
   const expectedScales = [
-    ['Gender feeling', 'dysphoria and euphoria'],
+    ['Dysphoria \u2194 euphoria', 'dysphoria and euphoria'],
     ['Femininity', 'not at all to very'],
     ['Masculinity', 'not at all to very'],
     ['Binary \u2194 nonbinary', 'binary and nonbinary'],
-    ['Agender \u2194 gendered', 'strong sense of gender']
+    ['Agender \u2194 gendered', 'strong sense of gender'],
+    ['Unseen \u2194 recognised', 'read your gender'],
+    ['Steady \u2194 shifting', 'steady sense of gender']
   ];
-  if (scaleTexts.length !== 5) throw new Error('onboarding scale count was not 5: ' + scaleTexts.length);
+  const builtInKeys = [
+    'euphoria_dysphoria',
+    'femininity',
+    'masculinity',
+    'binary_nonbinary',
+    'agender_gendered',
+    'social_recognition',
+    'gender_stability'
+  ];
+  const offeredBuiltIns = scaleKeys.filter((k) => builtInKeys.includes(k));
+  if (offeredBuiltIns.join() !== builtInKeys.join()) {
+    throw new Error('onboarding built-in scales, in order: ' + JSON.stringify(offeredBuiltIns));
+  }
+  if (scaleKeys.slice(0, builtInKeys.length).join() !== builtInKeys.join()) {
+    throw new Error('built-ins do not lead the onboarding list: ' + JSON.stringify(scaleKeys));
+  }
   expectedScales.forEach(([name, note], i) => {
     if (!scaleTexts[i].trim().startsWith(name)) {
       throw new Error(`onboarding scale ${i}: ${JSON.stringify(scaleTexts[i])}`);
@@ -1120,18 +1146,32 @@ try {
      be gripping structure (ADR-0029, walkthrough-locators.test.ts). */
   const rowTexts = await rows.allTextContents();
   const expected = [
-    ['euphoria_dysphoria', 'Gender feeling'],
+    ['euphoria_dysphoria', 'Dysphoria \u2194 euphoria'],
     ['femininity', 'Femininity'],
     ['masculinity', 'Masculinity'],
     ['binary_nonbinary', 'Binary \u2194 nonbinary'],
-    ['agender_gendered', 'Agender \u2194 gendered']
+    ['agender_gendered', 'Agender \u2194 gendered'],
+    ['social_recognition', 'Unseen \u2194 recognised'],
+    ['gender_stability', 'Steady \u2194 shifting']
   ];
   expected.forEach(([, label], i) => {
     if (!rowTexts[i]?.trim().startsWith(label)) {
       throw new Error(`settings scale ${i}: ${JSON.stringify(rowTexts[i])}`);
     }
   });
-  if (rowTexts.length !== expected.length) throw new Error('settings scale count: ' + rowTexts.length);
+  /* The built-ins lead and are all present; anything after them is a custom
+     scale this journal picked up in an earlier flow. Asserted this way
+     rather than as a row count for the reason the onboarding list gives. */
+  const settingsKeys = await rows.evaluateAll((els) =>
+    els.map((el) => el.dataset.listRow.replace(/^scale-/, ''))
+  );
+  const expectedKeys = expected.map(([key]) => key);
+  if (settingsKeys.slice(0, expectedKeys.length).join() !== expectedKeys.join()) {
+    throw new Error('settings built-in scales, in order: ' + JSON.stringify(settingsKeys));
+  }
+  if (settingsKeys.filter((k) => expectedKeys.includes(k)).length !== expectedKeys.length) {
+    throw new Error('a built-in scale is offered twice: ' + JSON.stringify(settingsKeys));
+  }
   await expectNoHorizontalOverflow('[data-app-viewport]');
 
   /* Ticking a scale writes it, and the row behind the sheet says so. What
