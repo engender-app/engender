@@ -18,6 +18,7 @@ import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-store.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
+import { purgeExpiredTrash, TRASH_WINDOW_DAYS } from '../../src/lib/data/journal/entries.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
 import { normalizePhoto, MAX_EDGE, UnsupportedImageError } from '../../src/lib/data/photos/normalize.ts';
 import { filePhotoPicker } from '../../src/lib/data/photos/picker.ts';
@@ -183,11 +184,28 @@ async function run() {
 
   // Deleting the entry takes both files, and the sweep finds nothing left
   // to do - the two halves of the delete rule, on real storage.
+  //
+  // deleteEntry only moves the row to trash now (phase 5 ticket 19), so the
+  // files outlive it until purgeExpiredTrash reclaims them - the same real
+  // removal path entries.test.ts exercises against a fake store, here
+  // against real OPFS. Backdating trashed_at is what that test does too;
+  // there is no other way to cross a 30-day window in a probe that runs in
+  // seconds.
   await journal.entries.deleteEntry(entryId);
+  await booted.driver.run('UPDATE entry SET trashed_at = ? WHERE id = ?', [
+    Date.now() - TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000 - 1,
+    entryId
+  ]);
+  await purgeExpiredTrash(booted.driver, journalFiles);
   result.filesAfterDelete = (await journalFiles.list()).filter((n) => n.startsWith(photoId));
 
-  // An orphan the sweep must reclaim: a file with no row, like a crash
-  // between writing bytes and inserting the row would leave.
+  // An orphan the sweep must reclaim, next to a photo it must leave alone -
+  // purging above took the deleted entry's own photo with it, so without a
+  // live one here the sweep would have nothing referenced to distinguish
+  // an orphan from.
+  const keptEntryId = await journal.entries.upsertEntry({ epochDay: 20001, mood: 4 });
+  const keptPhotoId = await journal.photos.attach({ entryId: keptEntryId }, normalized);
+  result.keptPhotoId = keptPhotoId;
   await journalFiles.write('00000000-0000-4000-8000-00000000dead.jpg', new Uint8Array([7]));
   await sweepOrphanPhotos(booted.driver, journalFiles);
   result.filesAfterSweep = await journalFiles.list();
