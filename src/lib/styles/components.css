@@ -1515,3 +1515,70 @@ html[data-a11y-motion='reduce'] .skeleton::after {
 .skeleton-fill { height: 96px; border-radius: var(--radius-md); display: block; }
 
 .skeleton-line:only-child { margin: var(--space-2) 0; }
+
+/* ---------- the dropdown's own list ----------
+
+   A `<select>` is the right control here and the reasoning has not changed:
+   Android opens its own picker, and a keyboard, a screen reader and the
+   system font scale all get what they expect. What that left was a styled
+   pill that opened an unstyled list - "they look very barebones (the
+   expanded list, just the pill is nice)" (Alicja, 2026-08-26).
+
+   `appearance: base-select` is how a select keeps every one of those
+   guarantees and still takes the app's own surfaces. Behind `@supports`
+   because it is recent: where it is missing the browser opens the list it
+   always did, which is the correct control drawn plainly rather than a
+   broken one. Nothing here changes what the closed control looks like. */
+@supports (appearance: base-select) {
+  select.input,
+  .kit-chart-pick select {
+    appearance: base-select;
+  }
+
+  select.input::picker(select),
+  .kit-chart-pick select::picker(select) {
+    appearance: base-select;
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-2);
+    padding: var(--space-2);
+    /* Taller than a couple of rows is a list to scroll, not a page to grow
+       into - the same cap a sheet answers to. */
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  select.input option,
+  .kit-chart-pick select option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-md);
+  }
+
+  select.input option:hover,
+  .kit-chart-pick select option:hover {
+    background: var(--surface-2);
+  }
+
+  /* The tick the base appearance puts before the chosen row, in the app's
+     own accent rather than the platform's. */
+  select.input option::checkmark,
+  .kit-chart-pick select option::checkmark {
+    color: var(--accent);
+  }
+
+  /* The pill is drawn by the span beside it (ChartPicker), so the select
+     itself stays the invisible target it already was - base-select would
+     otherwise paint a second control on top of the one that is seen. */
+  .kit-chart-pick select::picker-icon {
+    display: none;
+  }
+}
