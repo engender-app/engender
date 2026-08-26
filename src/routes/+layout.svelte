@@ -19,7 +19,7 @@
 
   import { page } from '$app/state';
   import { assets } from '$app/paths';
-  import { goto, onNavigate } from '$app/navigation';
+  import { afterNavigate, goto, onNavigate } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -37,6 +37,7 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
+  import { recordNavigation } from '$lib/navigation/smart-back';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import QuickAdd from '$lib/components/QuickAdd.svelte';
@@ -140,6 +141,15 @@
      The pattern itself is chosen by screen-transition.ts and lands on
      <html> as a data attribute for app.css to read - the decision is a
      table, and this is only the wiring. */
+  /* How deep the app is in its own history, for the back controls that ask
+     whether there is anything behind them (`smartBack`). Counted here rather
+     than read off `history.state`, which carries SvelteKit's own bookkeeping
+     and stopped carrying an index. After the navigation rather than before,
+     so a cancelled one is never counted. */
+  afterNavigate((navigation) => {
+    recordNavigation(navigation.type, navigation.delta);
+  });
+
   onNavigate((navigation) => {
     /* The bar sits above quick add's scrim so the add control stays sharp
        while the fan is up, which leaves the four tabs pressable behind it.
