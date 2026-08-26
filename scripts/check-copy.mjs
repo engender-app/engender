@@ -1,5 +1,6 @@
-/* Two checks over the app's copy, run on every pull request (phase 2 ticket
-   06, which wires up what ticket 19 then relies on):
+/* Three checks over the app's copy, run on every pull request (phase 2 ticket
+   06, which wires up what ticket 19 then relies on; the third check added by
+   phase 5 ticket 05):
 
    1. The two catalogues hold the same keys. A key present in English and
       missing in Polish is not an error anywhere else - paraglide falls back to
@@ -14,6 +15,16 @@
       rather than a rule that could pass now: nothing may go up, and anything
       that goes down is recorded. messages/untranslated-literals.txt is that
       record, and it is the number tickets 19 and 23 work down.
+
+   3. No Polish string genders the reader (docs/ui-copy.md, "The reader has no
+      gender here"). Polish inflects second-person past tense for gender, so a
+      word ending in "-łaś" always addresses the reader as a woman - that
+      ending is specific enough to flag anywhere it appears. A predicate
+      adjective aimed at the reader genders just as surely ("jesteś dumna"),
+      but a general pattern for that catches adjectives that agree with an
+      ordinary feminine noun instead ("niepewna ... krzywa", "wersja ...
+      gotowa"), so this check only flags a short, named list of forms already
+      found addressing the reader rather than every feminine adjective ending.
 
    Run `node scripts/check-copy.mjs` to see where it stands, and
    `node scripts/check-copy.mjs --update` after moving copy into the
@@ -44,6 +55,14 @@ const SPOKEN_ATTRIBUTES = new Set([
 const A_WORD = /\p{L}/u;
 
 /**
+ * Feminine predicate adjectives already found addressing the reader
+ * directly, rather than agreeing with an ordinary feminine noun nearby
+ * ("jesteś dumna" vs "wersja jest gotowa"). Kept short and literal on
+ * purpose - see the file header.
+ */
+const GENDERED_READER_ADJECTIVES = new Set(['dumna', 'zauważona']);
+
+/**
  * Keys one catalogue has and the other does not, in both directions.
  *
  * @param {Record<string, unknown>} en
@@ -61,6 +80,29 @@ export function catalogueProblems(en, pl) {
     ...enKeys.filter((key) => !plKeys.includes(key)).map((key) => `${key} is missing from messages/pl.json`),
     ...plKeys.filter((key) => !enKeys.includes(key)).map((key) => `${key} is missing from messages/en.json`)
   ];
+}
+
+/**
+ * Polish strings that gender the reader: a word ending in "-łaś" (the
+ * feminine second-person past-tense clitic, e.g. "czułaś", "zapisałaś") or
+ * a known feminine predicate adjective aimed at the reader.
+ *
+ * @param {Record<string, unknown>} pl
+ * @returns {string[]}
+ */
+export function genderedReaderProblems(pl) {
+  const problems = [];
+  for (const [key, value] of Object.entries(pl)) {
+    if (key.startsWith('$') || typeof value !== 'string') continue;
+    const words = value.match(/\p{L}+/gu) ?? [];
+    for (const word of words) {
+      const lower = word.toLowerCase();
+      if (lower.endsWith('łaś') || GENDERED_READER_ADJECTIVES.has(lower)) {
+        problems.push(`${key} genders the reader: "${word}" in messages/pl.json`);
+      }
+    }
+  }
+  return problems;
 }
 
 /**
@@ -190,12 +232,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(0);
   }
 
+  const plCatalogue = JSON.parse(readFileSync('messages/pl.json', 'utf8'));
   const problems = [
-    ...catalogueProblems(
-      JSON.parse(readFileSync('messages/en.json', 'utf8')),
-      JSON.parse(readFileSync('messages/pl.json', 'utf8'))
-    ),
-    ...ratchetProblems(counts, readBaseline())
+    ...catalogueProblems(JSON.parse(readFileSync('messages/en.json', 'utf8')), plCatalogue),
+    ...ratchetProblems(counts, readBaseline()),
+    ...genderedReaderProblems(plCatalogue)
   ];
 
   for (const problem of problems) console.log('FAIL', problem);
@@ -206,4 +247,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   console.log('PASS both catalogues hold the same keys');
   console.log(`PASS no new user-facing literals (${total} known, in ${Object.keys(counts).length} file(s))`);
+  console.log('PASS no Polish string genders the reader');
 }
