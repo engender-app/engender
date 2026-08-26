@@ -229,14 +229,14 @@ export function persona(): Persona {
       { epochDay: today - 70, analyte: 'prolactin', value: 17, unit: 'ng/mL', note: '' },
     ],
     tallyEvents: [
-      { epochDay: today - 60, kind: 'misgendered', context: 'at the pharmacy' },
       { epochDay: today - 60, kind: 'misgendered' },
-      { epochDay: today - 45, kind: 'misgendered', context: 'phone call with the bank' },
+      { epochDay: today - 60, kind: 'misgendered' },
+      { epochDay: today - 45, kind: 'misgendered' },
       { epochDay: today - 20, kind: 'misgendered' },
-      { epochDay: today - 55, kind: 'correctly_gendered', context: 'new barista, first try' },
+      { epochDay: today - 55, kind: 'correctly_gendered' },
       { epochDay: today - 30, kind: 'correctly_gendered' },
       { epochDay: today - 30, kind: 'correctly_gendered' },
-      { epochDay: today - 10, kind: 'correctly_gendered', context: 'whole family dinner' },
+      { epochDay: today - 10, kind: 'correctly_gendered' },
     ],
   };
 }

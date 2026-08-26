@@ -245,7 +245,6 @@ export interface ArchiveTallyEvent {
   id: string;
   epochDay: number;
   kind: string;
-  context: string;
 }
 
 export interface ArchiveSideEffect {

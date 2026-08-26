@@ -408,10 +408,10 @@ export async function readSizeRecords({ driver }: SectionRead): Promise<ArchiveS
 }
 
 export async function readTallyEvents({ driver }: SectionRead): Promise<ArchiveTallyEvent[]> {
-  const rows = await driver.query<{ uuid: string; epoch_day: number; kind: string; context: string | null }>(
-    'SELECT uuid, epoch_day, kind, context FROM tally_event ORDER BY epoch_day, id'
+  const rows = await driver.query<{ uuid: string; epoch_day: number; kind: string }>(
+    'SELECT uuid, epoch_day, kind FROM tally_event ORDER BY epoch_day, id'
   );
-  return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, kind: r.kind, context: r.context ?? '' }));
+  return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, kind: r.kind }));
 }
 
 export async function readSideEffects({ driver }: SectionRead): Promise<ArchiveSideEffect[]> {
