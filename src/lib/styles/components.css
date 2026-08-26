@@ -1683,4 +1683,20 @@ html[data-a11y-motion='reduce'] .skeleton::after {
   .kit-chart-pick select::picker-icon {
     display: none;
   }
+
+  /* base-select does change the closed control after all: it draws its own
+     filled triangle where the platform drew a chevron, and a solid triangle
+     is the one arrow in the app that is not the line chevron every row, pill
+     and back button is drawn with. So it takes `chevronDown` from icons.ts -
+     the same path at the same 2-unit stroke - carried as a mask, which is
+     what lets it be a token colour rather than the glyph's own black and
+     follow the theme the way an inlined Icon does. */
+  select.input::picker-icon {
+    width: 20px;
+    height: 20px;
+    color: transparent;
+    background: var(--text-2);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+  }
 }
