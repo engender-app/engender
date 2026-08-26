@@ -112,6 +112,10 @@ export interface LongJournalSummary {
   stockEntries: number;
   checklistItems: number;
   voiceRecordings: number;
+  /** The start day of the earliest open-ended tryout (`endEpochDay: null`) -
+      the widest possible span `searchEntries` can be asked to read for one
+      tryout's detail screen. */
+  tryoutWideOpenStartEpochDay: number;
 }
 
 /* Deterministic and cheap. Not a cryptographic generator and does not need
@@ -327,7 +331,8 @@ export async function generateLongJournal(
     sideEffects: 0,
     stockEntries: 0,
     checklistItems: 0,
-    voiceRecordings: 0
+    voiceRecordings: 0,
+    tryoutWideOpenStartEpochDay: 0
   };
 
   const customTags = await Promise.all(
@@ -649,14 +654,18 @@ export async function generateLongJournal(
   // its detail route has real entries to read back by date overlap.
   for (const [i, kind] of TRYOUT_KINDS.entries()) {
     const startDay = firstEpochDay + 400 + i * 90;
+    const endEpochDay = i % 2 === 0 ? startDay + 60 : null;
     const tryoutId = await journal.tryouts.upsertTryout({
       kind,
       label: pick(['Alex', 'she/her', 'layered look', 'sundress', 'soft glam', 'first day out']),
       description: kind === 'name' ? null : `Notes on trying out ${kind}.`,
       startEpochDay: startDay,
-      endEpochDay: i % 2 === 0 ? startDay + 60 : null
+      endEpochDay
     });
     summary.tryouts++;
+    if (endEpochDay === null && summary.tryoutWideOpenStartEpochDay === 0) {
+      summary.tryoutWideOpenStartEpochDay = startDay;
+    }
     if (random() < 0.5) await journal.tryouts.addPhoto(tryoutId, startDay + 5, await makePhoto(hairPhotoIndex + hairRemovalPhotoIndex + 2000 + i));
     await journal.feltSense.add({ tryoutId }, { epochDay: startDay + 3, mood: between(2, 5) });
   }
@@ -724,8 +733,18 @@ export async function generateLongJournal(
     summary.checklistItems++;
   }
 
-  // Stock: current supply reported for the two drugs in regimen.
-  await journal.stock.upsertEntry({ drug: 'Estradiol', quantity: 40, unit: 'tablets', recordedEpochDay: lastEpochDay - 3 });
+  // Stock: current supply reported for the two drugs in regimen. Estradiol's
+  // count is recorded years ago rather than at `today` on purpose (ticket
+  // 05): getProjections reads every dose from a stock entry's own
+  // recordedEpochDay forward (stock.ts), and a count nobody has refreshed
+  // since near the start of HRT is what makes that read decade-scale rather
+  // than the few-day window a freshly recorded count would produce.
+  await journal.stock.upsertEntry({
+    drug: 'Estradiol',
+    quantity: 4000,
+    unit: 'tablets',
+    recordedEpochDay: regimenStartEpochDay + 200
+  });
   await journal.stock.upsertEntry({ drug: 'Estradiol valerate', quantity: 6, unit: 'mL', recordedEpochDay: lastEpochDay - 3 });
   summary.stockEntries += 2;
 
