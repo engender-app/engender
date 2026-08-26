@@ -36,7 +36,7 @@
       </div>
       <div class="managed-tags">
         {#each g.tags as tg, i (tg.id)}
-          <div class="managed-tag" class:is-hidden={tg.hidden}>
+          <div class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
             <span class="drag-dots" aria-hidden="true"><Icon name="dots" size={14} /></span>
             <span class="managed-label">{tg.label}</span>
             {#if tg.hidden}<span class="muted small">{m.tags_hidden()}</span>{/if}

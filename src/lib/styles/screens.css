@@ -1143,14 +1143,6 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   padding: var(--space-2) 0;
 }
 
-.date-row + .date-row::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: var(--hairline);
-}
-
 .date-row-label {
   font-size: var(--text-sm);
   color: var(--text-2);
@@ -1220,9 +1212,7 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   gap: var(--space-2);
   align-items: baseline;
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border);
 }
-.compare-metrics-row:last-child { border-bottom: none; }
 .compare-metrics-row span { font-variant-numeric: tabular-nums; }
 .compare-metrics-header { font-size: var(--text-sm); color: var(--text-2); }
 .compare-period-label { font-weight: var(--weight-bold); }
@@ -1235,10 +1225,8 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 .value-row {
   display: flex; align-items: center; gap: var(--space-3); justify-content: space-between;
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border);
   color: var(--text); text-decoration: none; font-size: var(--text-sm);
 }
-.value-row:last-child { border-bottom: none; }
 
 /* ---------- Settings ---------- */
 /* Phase 5 ticket 24: this section moved onto the kit's ListCard for its
@@ -1335,9 +1323,7 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 .managed-tag {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-1) 0;
-  border-bottom: 1px solid var(--border);
 }
-.managed-tag:last-child { border-bottom: none; }
 /* P10-007/probe 2: opacity 0.45 on the ambient (full-strength) text colour
    computed to 2.66-4.05:1, failing 16/16 combinations. The strikethrough
    already carries the "hidden" meaning; --text-2 gives the same

@@ -103,7 +103,7 @@
      primitive per shape - `resize` cannot see a node arriving or leaving,
      which is `disclose`'s job, and `disclose` cannot see a node's own
      content changing size while it stays put, which is `resize`'s. -->
-<div class="kit-notice" data-notice={key} out:disclose {...roleAttrs(role)} {...rest}>
+<div class="kit-notice" data-kit-surface data-notice={key} out:disclose {...roleAttrs(role)} {...rest}>
   <span class="kit-notice-ico"><Icon name={icon} size={22} /></span>
   <!-- Not the root: `disclose`'s own out-transition animates the root's
        height too, on the way out, and ResizeObserver cannot tell that
