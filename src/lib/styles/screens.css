@@ -13,7 +13,17 @@
    bleed to a clean quarter instead of a scrollable overhang; min-height
    keeps that quarter from clipping again against this header's own bottom
    edge before the innermost ring finishes drawing (SUN_OUTER/2 in
-   $lib/motion/flagSun.ts). */
+   $lib/motion/flagSun.ts).
+
+   175px rather than a var(), because CSS has no way to read a TS export -
+   flagSun.test.ts holds this number to SUN_OUTER/2 so the two cannot drift
+   silently. What is a var() here is the scale: the breathing loop grows
+   every ring to --sun-breathe-scale (theme/base.css) at its cycle's
+   midpoint, and the resting radius alone was the reserve until phase 5
+   ticket 32.12 - so for part of every cycle the outermost ring grew past
+   its own room and overflow: hidden shaved it flat along this header's own
+   bottom edge. Multiplying by the same token the breathing keyframe reads
+   means the two can only ever agree. */
 .home-header {
   position: relative; z-index: 1;
   padding: calc(var(--space-7) + var(--inset-top)) var(--space-5) var(--space-4);
@@ -27,7 +37,7 @@
      readable does. */
   margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
   overflow: hidden;
-  min-height: calc(175px + var(--inset-top));
+  min-height: calc(175px * var(--sun-breathe-scale) + var(--inset-top));
 }
 /* Flat, and clear of the sun.
 
