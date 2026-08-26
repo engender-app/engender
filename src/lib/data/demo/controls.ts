@@ -15,6 +15,7 @@ import { prefs } from '../prefs/store.svelte';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue';
 import { clearJournal, seedPersonaJournal } from './journal-seed';
 import { demoPreferences } from './persona';
+import { seedFullFixture } from './fullFixture';
 
 export async function resetDemo(): Promise<void> {
   // Defaults first, then the persona: without the defaults a palette or a
@@ -23,6 +24,17 @@ export async function resetDemo(): Promise<void> {
   Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
   await clearJournal(journal);
   await seedPersonaJournal(journal);
+}
+
+/** The persona plus every other More-hub area (phase 5 ticket 36) - a
+    second jump rather than a change to `resetDemo` above, so "Reset demo
+    state" still leaves every one of those areas in its designed empty
+    state for a reviewer who wants to see that instead. */
+export async function resetDemoFull(): Promise<void> {
+  Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
+  await clearJournal(journal);
+  await seedPersonaJournal(journal);
+  await seedFullFixture(journal);
 }
 
 /** True first-run state, for the demo bar's "Onboarding (first run)". Only
