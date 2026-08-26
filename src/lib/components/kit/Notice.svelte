@@ -44,7 +44,7 @@
      what a backup is - `data-notice` names the surface and the handle beside
      it names the thing being said (ADR-0029). */
   import Icon from '../Icon.svelte';
-  import { roleStyle } from './role';
+  import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 
   let {
@@ -83,7 +83,7 @@
   } = $props();
 </script>
 
-<div class="kit-notice" data-notice={key} style={roleStyle(role)} {...rest}>
+<div class="kit-notice" data-notice={key} {...roleAttrs(role)} {...rest}>
   <span class="kit-notice-ico"><Icon name={icon} size={22} /></span>
   <div class="kit-notice-body">
     {#if title}<strong class="kit-notice-title" data-notice-title>{title}</strong>{/if}

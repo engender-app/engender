@@ -54,20 +54,21 @@
    Everything a surface paints is derived from one of the two rather than
    from the raw stripe, for the reason they exist at all: a flag has a white
    band, and a white line on a white card is not a chart. The raw stripe
-   survives as --role-c, which nothing but the fallback ink reads. */
-.kit-row,
-.kit-day,
-.kit-tile,
-.kit-strip,
-.kit-chart,
-.kit-notice,
-/* The timeline is not a kit surface - it is a rail, and the kit has no rail
-   - but it wears a stripe the same way, so it derives the same three values
-   here rather than a fourth set of its own. Without this it was handed
-   --role and --role-mark-in and never the --role-mark they are for, so its
-   dots and its rail drew in an undefined colour, which is no colour at all
-   (phase 5 UX ticket 23). */
-.timeline {
+   survives as --role-c, which nothing but the fallback ink reads.
+
+   Selected by [data-kit-role] rather than by a hand-maintained list of
+   surface classes (phase 5 ticket 32.8): the list was exactly the kind of
+   thing that goes stale silently - a surface handed --role and never added
+   to the list gets the raw inputs and none of the values it needs to paint
+   with, which looks like a colour bug and is a custom property nobody
+   defined. `role.ts`'s roleAttrs() sets `data-kit-role` on the same
+   element it sets the inputs on, every time, so opting a surface in is the
+   one call rather than that call plus a second edit here. A surface that
+   only inherits the inputs - ListRow inside ListCard, Tile inside TileGrid -
+   never carries the attribute itself and does not need to: the values
+   this rule computes are custom properties too, so they inherit down to
+   it the same way the raw inputs did. */
+[data-kit-role] {
   --role-c: var(--role, var(--accent));
   --role-ink: var(--role-ink-in, color-mix(in oklab, var(--role-c) 30%, var(--text)));
   --role-mark: var(--role-mark-in, var(--role-ink));

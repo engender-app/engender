@@ -28,7 +28,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { roleStyle } from '$lib/components/kit/role';
+  import { roleAttrs } from '$lib/components/kit/role';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -61,7 +61,7 @@
     <!-- One role for the whole rail rather than one per item: the rail is a
          single area of the screen, and a colour per milestone would make the
          palette a sequence of unrelated marks. -->
-    <div class="timeline" style={roleStyle(roleAt(activeFlag.roles, 0))}>
+    <div class="timeline" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
       {#each items as item (item.id)}
         {#if item.kind === 'today'}
           <div class="tl-item tl-today" data-tl-today>

@@ -6,7 +6,7 @@
      took it off the Stats screen, which is a list now. What earns a tile is
      having something to show on it. */
   import type { Snippet } from 'svelte';
-  import { roleStyle } from './role';
+  import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 
   let {
@@ -26,9 +26,8 @@
 <div
   class="kit-tiles"
   data-tile-grid
-  style={[roleStyle(role), flagFill ? `--flag-fill: ${flagFill}` : undefined]
-    .filter(Boolean)
-    .join('; ') || undefined}
+  {...roleAttrs(role)}
+  style:--flag-fill={flagFill}
 >
   {@render children()}
 </div>
