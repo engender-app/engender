@@ -82,7 +82,7 @@
   "body_map_chart_aria": "Two lines for {region}: {first} and {second}, over the chosen range.",
   "entry": "Entry",
   "delete_entry_q": "Delete this entry?",
-  "delete_entry_hint": "The entry, its photos and its voice recordings move to trash. You can restore them within 30 days, from Settings.",
+  "delete_entry_hint": "The entry, its photos, voice recordings and video notes move to trash. You can restore them within 30 days, from Settings.",
   "delete_entry": "Delete entry",
   "keep_it": "Keep it",
   "trash_title": "Trash",
