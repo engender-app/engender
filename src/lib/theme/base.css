@@ -178,8 +178,8 @@
      32.15: the derived tint carried --scrim's per-theme colour into the
      blur (near-black in light, pure black in dark), which is what read as
      muddying a dark palette. One neutral grey now, the same in both themes,
-     matching the material's own cap of one scrim, one radius - picked with
-     the same tuner artifact, 2026-08-27. */
+     matching the material's own cap of one scrim, one radius - see
+     --blur-withdraw above for how it was picked. */
   --scrim-withdraw: rgb(15 15 15 / 0.31);
 
   /* --- Layout --- */
