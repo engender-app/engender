@@ -1040,6 +1040,16 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   flex: 1; border: none; background: none; font: inherit; color: var(--text);
   min-height: 48px; outline: none;
 }
+/* components.css's global :focus-visible rule outranks the bare outline:
+   none above ((0,2,0) against (0,1,0)), and wins on a click too - Chromium's
+   :focus-visible heuristic always matches a text field regardless of
+   pointer vs. keyboard. This rule ties the global one at (0,2,0) too, and
+   screens.css loads after components.css (+layout.svelte), so at equal
+   specificity this is the one that lands - the same cascade kit.css relies
+   on against components.css. The pill already answers focus with its own
+   cue, .search-box:focus-within's border colour above, so the field does
+   not need a second one. */
+.search-input:focus-visible { outline: none; }
 
 /* The chips are the only place the state of the query is visible once the
    filters moved into a sheet (phase 5 ticket 22), so they sit directly under
