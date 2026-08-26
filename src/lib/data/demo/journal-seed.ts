@@ -92,7 +92,7 @@ export async function seedPersonaJournal(journal: Journal): Promise<void> {
    bytes this just encoded. The gradient is the same idea PhotoThumb's
    placeholder had: a stable hue per photo, so the grid does not look like one
    photo repeated. */
-async function demoPhoto(seed: number): Promise<NormalizedPhoto> {
+export async function demoPhoto(seed: number): Promise<NormalizedPhoto> {
   const hue = (seed * 37) % 360;
   return { full: await gradientJpeg(hue, 640), thumb: await gradientJpeg(hue, 320) };
 }
