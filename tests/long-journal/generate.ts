@@ -584,6 +584,12 @@ export async function generateLongJournal(
     await journal.measurements.upsertMeasurement({ type, epochDay: day, value, unit });
     summary.measurements++;
   }
+  // A guaranteed second unit on waist - the random 15% above makes it rare
+  // enough that a run can land on zero or one 'in' reading, which draws as
+  // "two measurements make a trend, add another" rather than a trend.
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - 200, value: 31, unit: 'in' });
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - 40, value: 30, unit: 'in' });
+  summary.measurements += 2;
   for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
     if (random() < 0.97) continue;
     const category = pick(GARMENT_CATEGORIES);

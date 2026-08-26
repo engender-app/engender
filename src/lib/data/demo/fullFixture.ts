@@ -125,6 +125,11 @@ export async function seedFullFixture(journal: Journal): Promise<void> {
     const value = unit === 'in' ? Math.round(base / 2.54) : base + Math.round((r() - 0.5) * 6);
     await journal.measurements.upsertMeasurement({ type, epochDay: day, value, unit });
   }
+  // A guaranteed second unit on waist - the random 15% above makes it rare
+  // enough that a run can land on zero or one 'in' reading, which draws as
+  // "two measurements make a trend, add another" rather than a trend.
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 200, value: 31, unit: 'in' });
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 40, value: 30, unit: 'in' });
 
   for (let day = trackingStart; day <= today; day++) {
     if (r() < 0.97) continue;
