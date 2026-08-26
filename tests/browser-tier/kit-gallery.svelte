@@ -55,7 +55,7 @@
   /* Three scales on one chart, which is what the picker is for: switching
      the metric re-tweens rather than redrawing. */
   const METRICS = [
-    { value: 'gender', label: 'Gender feeling' },
+    { value: 'gender', label: 'Dysphoria ↔ euphoria' },
     { value: 'euphoria', label: 'Euphoria' },
     { value: 'voice', label: 'Voice' }
   ];
@@ -276,7 +276,7 @@
     {/snippet}
     <AreaChart
       points={range === 'week' ? WEEK(SHIFT[metric]) : YEAR(SHIFT[metric])}
-      ariaLabel="Gender feeling, day by day"
+      ariaLabel="Dysphoria ↔ euphoria, day by day"
       from={range === 'week' ? '18 Aug' : '25 Aug 2025'}
       to="24 Aug"
     />
@@ -306,7 +306,7 @@
   </ChartCard>
 
   <ChartCard heading="Nothing logged yet" kind="empty" role={roleAt(roles, 0)}>
-    <AreaChart points={[]} ariaLabel="Gender feeling, day by day" />
+    <AreaChart points={[]} ariaLabel="Dysphoria ↔ euphoria, day by day" />
   </ChartCard>
 </div>
 

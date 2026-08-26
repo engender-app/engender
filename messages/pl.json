@@ -365,7 +365,7 @@
     }
   ],
   "apart_suffix": "różnicy",
-  "dim_euphoria_dysphoria": "Poczucie płci",
+  "dim_euphoria_dysphoria": "Dysforia ↔ euforia",
   "dim_euphoria_dysphoria_low": "dysforia",
   "dim_euphoria_dysphoria_high": "euforia",
   "dim_euphoria_dysphoria_note": "Gdzie dzień wypadł między dysforią a euforią.",
@@ -2296,5 +2296,13 @@
   "scales_none_ticked": "Nic nie zaznaczono",
   "scale_custom_note": "Własna skala, od {low} do {high}.",
   "scales_change": "zmień",
-  "editor_no_scales": "Żadna skala nie jest zaznaczona. Nastrój, tagi, notatka i zdjęcie to nadal wpis."
+  "editor_no_scales": "Żadna skala nie jest zaznaczona. Nastrój, tagi, notatka i zdjęcie to nadal wpis.",
+  "dim_social_recognition": "Niewidoczność ↔ rozpoznanie",
+  "dim_social_recognition_low": "niewidoczność",
+  "dim_social_recognition_high": "rozpoznanie",
+  "dim_social_recognition_note": "Na ile ludzie wokół odbierali twoją płeć tak, jak ją czujesz.",
+  "dim_gender_stability": "Stałość ↔ zmienność",
+  "dim_gender_stability_low": "stałość",
+  "dim_gender_stability_high": "zmienność",
+  "dim_gender_stability_note": "Gdzie dzień wypadł między stałym a zmiennym poczuciem płci."
 }
