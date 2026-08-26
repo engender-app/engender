@@ -329,7 +329,12 @@ try {
   const r = await load('/archive.html', 'data-archive-probe-ready', '__archiveProbeResult');
   if (r.error) throw new Error(r.error);
 
-  if (r.header.formatVersion === 1 && r.spansChunks)
+  /* Format version 2 (phase 5 ticket 35): the payload's preferences
+     changed shape (the active preset became the list of scales it stood
+     for), which moved the version this probe writes and reads without
+     touching the body layout it is actually checking here. See
+     src/lib/data/archive/codec.ts's own comment on archiveCodecV2. */
+  if (r.header.formatVersion === 2 && r.spansChunks)
     ok(`a real journal packs into ${r.header.totalChunks} chunks of ${r.header.chunkSize} bytes (${r.archiveLength} bytes, ${r.packMs}ms including the KDF)`);
   else fail('a real journal packs into several chunks', JSON.stringify(r.header));
 
@@ -361,7 +366,11 @@ try {
     restored.tags?.includes('e-happy') &&
     restored.milestones === 1 &&
     restored.photos === 2 &&
-    restored.builtInDimensions === 5 &&
+    /* Seven built-in gender dimensions today (src/lib/data/vocabulary/
+       builtins.ts's BUILT_IN_DIMENSIONS) - social_recognition and
+       gender_stability joined the original five after this count was
+       last written here. */
+    restored.builtInDimensions === 7 &&
     restored.photoBytesMatch
   )
     ok('a Replace installs the archive over the encrypted driver and OPFS: rows, photo bytes and the built-ins it kept by key');
@@ -395,7 +404,10 @@ try {
 
   const magic = bytes.subarray(0, 6).toString('latin1');
   const headerJson = JSON.parse(bytes.subarray(12, 12 + bytes.readUInt32BE(8)).toString('utf8'));
-  if (bytes.length === r.archiveLength && magic === 'GDIARY' && bytes.readUInt16BE(6) === 1 && headerJson.totalChunks === r.header.totalChunks)
+  // Version byte read raw off the file, deliberately not through the app's
+  // own decoder (see this block's own comment above) - 2, same as r.header
+  // .formatVersion above, for the same format-version-2 reason.
+  if (bytes.length === r.archiveLength && magic === 'GDIARY' && bytes.readUInt16BE(6) === 2 && headerJson.totalChunks === r.header.totalChunks)
     ok('the downloaded file is the archive, and its version, KDF parameters and salt read without a password');
   else fail('the downloaded file is the archive with a readable plaintext header', `${bytes.length} bytes, magic ${magic}`);
 
