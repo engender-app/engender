@@ -8,7 +8,7 @@
      strip draws a week of a journal, a week of a metric, or a week of
      demo data without knowing which. WeekStrip.svelte is the app's
      journal-connected caller. */
-  import { roleStyle } from './role';
+  import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 
   export interface StripDay {
@@ -31,7 +31,7 @@
   const LEVELS = [0, 22, 45, 70, 100];
 </script>
 
-<div class="kit-strip" data-week-strip style={roleStyle(role)}>
+<div class="kit-strip" data-week-strip {...roleAttrs(role)}>
   {#each days as day (day.key)}
     <div class="kit-strip-day" class:is-today={day.isToday}>
       <span

@@ -8,7 +8,7 @@
      formatted it here would be a second place that decides how this app
      writes a date. */
   import type { Snippet } from 'svelte';
-  import { roleStyle } from './role';
+  import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 
   let {
@@ -29,7 +29,7 @@
   } = $props();
 </script>
 
-<section class="kit-day" data-day-card={key} style={roleStyle(role)}>
+<section class="kit-day" data-day-card={key} {...roleAttrs(role)}>
   <h3 class="kit-day-bar">
     {date}
     {#if aside}<span class="kit-day-aside">{aside}</span>{/if}
