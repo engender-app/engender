@@ -291,7 +291,7 @@
   {#if loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else}
-    <div>
+    <div class="screen-part">
       {#if running}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
           <ListRow
@@ -313,7 +313,7 @@
       {/if}
 
       {#if completed.length}
-        <div>
+        <div class="screen-part">
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
             {#each completed as session (session.id)}
               {@const parts = hoursMinutesOf(session.durationMs ?? 0)}

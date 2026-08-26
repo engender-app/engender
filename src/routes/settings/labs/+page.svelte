@@ -347,7 +347,7 @@
   {#if usedQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if analytes.length}
-    <div>
+    <div class="screen-part">
       <Segmented
         name={m.labs_analyte_group()}
         options={analytes.map((a) => ({ value: a, label: a }))}
@@ -427,7 +427,7 @@
       </ListCard>
     </div>
   {:else}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="flask"
         key="labs-empty"

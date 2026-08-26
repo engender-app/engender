@@ -234,7 +234,7 @@
     {#if stagesQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={2} /></div>
     {:else if stages.length}
-      <div>
+      <div class="screen-part">
         {#each stageGroups as group (group.scale)}
           <!-- Each scale keeps its own card and its own name above it. A run
                of subtitles across two scales reads as one series, which is
@@ -257,7 +257,7 @@
         {/each}
       </div>
     {:else}
-      <div>
+      <div class="screen-part">
         <Notice
           icon="comb"
           key="hair-stages-empty"
@@ -309,7 +309,7 @@
     {#if photosQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={2} /></div>
     {:else if photos.length}
-      <div>
+      <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
           {#each [...photos].reverse() as p (p.id)}
             {@const since = sinceStart(p.epochDay)}
@@ -332,7 +332,7 @@
         </ListCard>
       </div>
     {:else}
-      <div>
+      <div class="screen-part">
         <Notice
           icon="camera"
           key="hair-photos-empty"

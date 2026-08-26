@@ -368,7 +368,7 @@
   {:else if summaryQuery.loading || !summary}
     <div out:crossfade><Skeleton variant="block" count={4} /></div>
   {:else}
-    <div>
+    <div class="screen-part">
       <!-- A section with nothing in it does not get the screen-title
            heading. Seven display headings over seven grey one-liners was
            most of what a thin range printed, and on paper it is a page of

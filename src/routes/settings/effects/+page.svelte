@@ -192,7 +192,7 @@
   {#if episodesQuery.loading || markersQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if anchorEpochDay == null}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="sparkle"
         key="effects-no-regimen"

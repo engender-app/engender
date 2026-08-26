@@ -237,7 +237,7 @@
   {#if proceduresQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if procedures.length}
-    <div>
+    <div class="screen-part">
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
         {#each procedures as procedure (procedure.id)}
           <div class="kit-row is-split" data-procedure={procedure.id}>
@@ -268,7 +268,7 @@
       </ListCard>
     </div>
   {:else}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="flag"
         key="surgery-empty"

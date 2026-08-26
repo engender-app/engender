@@ -182,7 +182,7 @@
   <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
   {#if !prefs.measurementProtocolDismissed[type] && PROTOCOL[type]}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="ruler"
         key="protocol"
@@ -198,7 +198,7 @@
   {#if measurementsQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if measurements.length}
-    <div>
+    <div class="screen-part">
       {#each series as s (s.unit)}
         {@const chart = chartFor(s)}
         <ChartCard
@@ -242,7 +242,7 @@
       </ListCard>
     </div>
   {:else}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="ruler"
         key="measurements-empty"

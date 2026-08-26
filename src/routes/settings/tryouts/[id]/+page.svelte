@@ -233,7 +233,7 @@
     {#if feelingQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={2} /></div>
     {:else if feeling.length}
-      <div>
+      <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
           {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
             <div class="kit-row is-static" data-feeling={f.id}>
@@ -254,7 +254,7 @@
         </ListCard>
       </div>
     {:else}
-      <div>
+      <div class="screen-part">
         <Notice
           icon="heart"
           key="tryout-feeling-empty"
@@ -295,7 +295,7 @@
         </ListCard>
       </div>
     {:else}
-      <div>
+      <div class="screen-part">
         <Notice
           icon="camera"
           key="tryout-photos-empty"
@@ -310,13 +310,13 @@
     {#if entriesQuery.loading}
       <div out:crossfade><Skeleton variant="card" count={2} /></div>
     {:else if entriesInRange.length}
-      <div>
+      <div class="screen-part">
         {#each entriesInRange as e (e.id)}
           <EntryCard entry={e} />
         {/each}
       </div>
     {:else}
-      <div>
+      <div class="screen-part">
         <Notice
           icon="book"
           key="tryout-entries-empty"

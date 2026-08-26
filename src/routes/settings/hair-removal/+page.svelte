@@ -142,7 +142,7 @@
   {#if sessionsQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if sessions.length}
-    <div>
+    <div class="screen-part">
       <SectionHeading text={m.hair_removal_recency_title()} />
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
         {#each HAIR_REMOVAL_AREAS as area (area)}
@@ -174,7 +174,7 @@
       </ListCard>
     </div>
   {:else}
-    <div>
+    <div class="screen-part">
       <Notice
         icon="shuffle"
         key="hair-removal-empty"
