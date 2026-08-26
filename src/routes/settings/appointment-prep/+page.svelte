@@ -113,6 +113,13 @@
           </div>
         {/each}
       </ListCard>
+      <!-- What the flag beside each row does. It was a bare icon with an
+           aria-label, so the only people the app told were the ones using a
+           screen reader (Alicja, 2026-08-26: "what does the flag do in
+           appointment check list?"). Under the list rather than in the
+           screen's own intro, because it is about a control that is only on
+           screen once there is something to flag. -->
+      <p class="muted small">{m.appointment_prep_flag_hint()}</p>
     </div>
   {:else}
     <div class="screen-part">
