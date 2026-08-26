@@ -118,9 +118,15 @@
   --dur-press: 260ms;
 
   /* Tier 0, the app's whole ambient motion budget: Home's flag sun arrives
-     over --dur-authored and then breathes on --dur-breathe. */
+     over --dur-authored and then breathes on --dur-breathe, growing each
+     ring to --sun-breathe-scale at the cycle's midpoint (components.css).
+     Named rather than left inline there because .home-header's reserve
+     (screens.css) has to hold room for the sun at that scale, not at its
+     resting size (phase 5 ticket 32.12) - one token instead of the same
+     number copied into a second file with nothing tying them together. */
   --dur-authored: 700ms;
   --dur-breathe: 7s;
+  --sun-breathe-scale: 1.035;
 
   /* The reduced-motion contract substitutes rather than deletes, and tier
      2's substitute is a crossfade - which needs a duration the clamp below

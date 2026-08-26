@@ -1487,7 +1487,7 @@ html[data-a11y-motion='reduce'] .confetti .cf {
 }
 @keyframes breathe {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -50%) scale(1.035); }
+  50% { transform: translate(-50%, -50%) scale(var(--sun-breathe-scale)); }
 }
 /* MO-001: the global reduce rule clamps every animation's duration to 1ms,
    which turns breathe's infinite loop into a restart-every-millisecond

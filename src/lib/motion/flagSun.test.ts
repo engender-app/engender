@@ -99,3 +99,44 @@ describe('the flag is the flag', () => {
     expect(palettes.trans).toContain('#FFFFFF');
   });
 });
+
+describe("Home's header reserves room for the sun at its breathing size", () => {
+  /* Phase 5 ticket 32.12: the reserve held only the resting radius, so the
+     breathing loop's outermost ring grew past its own room for half of
+     every 7s cycle and overflow: hidden shaved it flat along the header's
+     bottom edge. CSS cannot read SUN_OUTER, so screens.css keeps its own
+     175px literal - this is what holds that literal to SUN_OUTER/2 rather
+     than trusting a comment to notice it drifted. */
+  const screens = readFileSync(join(root, 'src/lib/styles/screens.css'), 'utf8');
+  const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
+  const components = readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8');
+
+  it("screens.css's resting radius is SUN_OUTER/2, not a second number", () => {
+    const raw = /\.home-header\s*\{[\s\S]*?min-height:\s*calc\((\d+)px/.exec(screens);
+    expect(raw, '.home-header should set min-height from a literal px radius').not.toBeNull();
+    expect(Number(raw![1])).toBe(SUN_OUTER / 2);
+  });
+
+  it('reserves the resting radius times --sun-breathe-scale, not the resting radius alone', () => {
+    // The exact expression, not just that the token appears somewhere in
+    // it: a `.toContain` check here would still pass a reserve that divided
+    // by the scale instead of multiplying by it - shrinking the room for
+    // the sun rather than growing it, which is worse than the bug this
+    // fixes and would pass just as silently.
+    const raw = /\.home-header\s*\{[\s\S]*?min-height:\s*calc\(([^;]+)\);/.exec(screens);
+    expect(raw, '.home-header should set min-height').not.toBeNull();
+    expect(raw![1].replace(/\s+/g, ' ').trim()).toBe(
+      `${SUN_OUTER / 2}px * var(--sun-breathe-scale) + var(--inset-top)`
+    );
+  });
+
+  it('is the same --sun-breathe-scale the breathing keyframe itself grows to', () => {
+    const tokenValue = /--sun-breathe-scale:\s*([\d.]+);/.exec(base);
+    const keyframeValue = /@keyframes breathe\s*\{[\s\S]*?50%\s*\{[^}]*scale\((var\([^)]+\))\)/.exec(components);
+    expect(tokenValue, 'theme/base.css should define --sun-breathe-scale').not.toBeNull();
+    expect(keyframeValue, 'the breathe keyframe should scale by a var()').not.toBeNull();
+    expect(keyframeValue![1].trim()).toBe('var(--sun-breathe-scale)');
+    // Not 1: the whole point is that the reserve accounts for growth.
+    expect(Number(tokenValue![1])).toBeGreaterThan(1);
+  });
+});
