@@ -37,7 +37,9 @@ const DIMENSION_NAME: Record<BuiltInDimensionKey, Message> = {
   femininity: m.dim_femininity,
   masculinity: m.dim_masculinity,
   binary_nonbinary: m.dim_binary_nonbinary,
-  agender_gendered: m.dim_agender_gendered
+  agender_gendered: m.dim_agender_gendered,
+  social_recognition: m.dim_social_recognition,
+  gender_stability: m.dim_gender_stability
 };
 
 const DIMENSION_LOW: Record<BuiltInDimensionKey, Message> = {
@@ -45,7 +47,9 @@ const DIMENSION_LOW: Record<BuiltInDimensionKey, Message> = {
   femininity: m.dim_femininity_low,
   masculinity: m.dim_masculinity_low,
   binary_nonbinary: m.dim_binary_nonbinary_low,
-  agender_gendered: m.dim_agender_gendered_low
+  agender_gendered: m.dim_agender_gendered_low,
+  social_recognition: m.dim_social_recognition_low,
+  gender_stability: m.dim_gender_stability_low
 };
 
 const DIMENSION_HIGH: Record<BuiltInDimensionKey, Message> = {
@@ -53,7 +57,9 @@ const DIMENSION_HIGH: Record<BuiltInDimensionKey, Message> = {
   femininity: m.dim_femininity_high,
   masculinity: m.dim_masculinity_high,
   binary_nonbinary: m.dim_binary_nonbinary_high,
-  agender_gendered: m.dim_agender_gendered_high
+  agender_gendered: m.dim_agender_gendered_high,
+  social_recognition: m.dim_social_recognition_high,
+  gender_stability: m.dim_gender_stability_high
 };
 
 /* One line per built-in scale saying what it measures (phase 5 ticket 35),
@@ -70,7 +76,9 @@ const DIMENSION_NOTE: Record<BuiltInDimensionKey, Message> = {
   femininity: m.dim_femininity_note,
   masculinity: m.dim_masculinity_note,
   binary_nonbinary: m.dim_binary_nonbinary_note,
-  agender_gendered: m.dim_agender_gendered_note
+  agender_gendered: m.dim_agender_gendered_note,
+  social_recognition: m.dim_social_recognition_note,
+  gender_stability: m.dim_gender_stability_note
 };
 
 /* Mood is not a built-in row - it is a column on the entry - but its five
