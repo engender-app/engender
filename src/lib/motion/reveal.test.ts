@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { crossfade, disclose, wipe } from './reveal';
+import { crossfade, disclose, resize, wipe } from './reveal';
 
 /* Same stub the tier-2 tests use: reveal.ts reads its duration and its easing
    out of the token layer through $lib/motion/tokens, which asks
@@ -180,5 +180,39 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
   it('removes the placeholder on the spot under reduced motion', () => {
     stubDocument(true, true, {});
     expect(crossfade(measured(240)).duration).toBe(0);
+  });
+});
+
+/* `resize` (phase 5 ticket 32.17) is an action, not a transition config
+   function - it does its own ongoing watching via ResizeObserver and
+   node.animate() rather than returning a css(t) Svelte calls on a fixed
+   schedule, which is the whole reason it exists next to `disclose` instead
+   of being a mode on it. Neither browser API has a meaningful Node-tier
+   stub: mocking ResizeObserver's callback timing and node.animate()'s
+   compositing would test the mock, not the primitive, which is why
+   AppNav.svelte's own ResizeObserver-driven pill has no unit test for its
+   resize-triggered behaviour either. What is tested here is what a stub
+   safely can: the two guards that skip the browser work entirely. The
+   travel itself - old height to new, smoothly, once - is a real-browser
+   frame capture, not a unit test. */
+describe('tier 3, a box resizing under its own content', () => {
+  it('does nothing under reduced motion - the box still resizes, in the one frame it always could', () => {
+    stubDocument(true);
+    const node = { getBoundingClientRect: () => ({ height: 100 }) } as unknown as HTMLElement;
+    expect(resize(node)).toBeUndefined();
+  });
+
+  it('does nothing where ResizeObserver does not exist, the same as a wipe with no clip-path support', () => {
+    stubDocument(false);
+    const g = globalThis as Record<string, unknown>;
+    const hadResizeObserver = 'ResizeObserver' in g;
+    const prior = g.ResizeObserver;
+    delete g.ResizeObserver;
+    const node = { getBoundingClientRect: () => ({ height: 100 }) } as unknown as HTMLElement;
+    try {
+      expect(resize(node)).toBeUndefined();
+    } finally {
+      if (hadResizeObserver) g.ResizeObserver = prior;
+    }
   });
 });
