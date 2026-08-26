@@ -1014,14 +1014,14 @@ a.kit-entry:active {
    `primary` is for an empty state, where the action "is the whole of what
    a first-run Home has to say" - the screen's only call to action, not an
    aside on a remark. Stretching it to the text's own width and giving it
-   `--space-4`, the same gap `.screen > * + *` gives two blocks that do not
-   touch, is that distinction drawn in the surface instead of only in the
-   comment. */
+   `--space-6`, the same gap `.screen > * + *` gives two blocks that do not
+   touch (32.14 moved it from --space-4), is that distinction drawn in the
+   surface instead of only in the comment. */
 .kit-notice-cta {
   grid-column: 2;
   grid-row: 2;
   justify-self: stretch;
-  margin-top: var(--space-4);
+  margin-top: var(--space-6);
 }
 
 .kit-notice-x {
@@ -1194,12 +1194,14 @@ a.kit-entry:active {
    surfaces, and every screen in the look-back group has one of them
    somewhere (Alicja, 2026-08-25, three separate notes about gaps).
 
-   --space-5 rather than --space-4, which is what two surfaces get: a control
-   and the thing it controls are further apart than two cards, or the control
-   reads as part of the card. */
+   --space-7 rather than --space-6, which is what two surfaces get (32.14): a
+   control and the thing it controls are further apart than two cards, or the
+   control reads as part of the card. Was --space-5 against the old
+   --space-4 two-surfaces gap; kept one step above it rather than left even
+   with it now that gap has grown. */
 :is(.segmented, .stats-caption, .stats-note, .wrapped-note, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
   + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-day, .kit-moods, .wrapped-figure-list, .skeleton-stack) {
-  margin-top: var(--space-5);
+  margin-top: var(--space-7);
 }
 
 /* And the other way round: a surface with a chip row or a photo strip under
@@ -1227,10 +1229,14 @@ a.kit-entry:active {
 /* The wrapped figures are a list card inside a wrapper that carries the
    handle four walkthrough flows grip, so the wrapper is what sits beside the
    next surface and has to be in this set: without it the figures and the
-   mood chart met with no gap at all. */
+   mood chart met with no gap at all.
+
+   --space-6, matching the floor `.screen > * + *` gives elsewhere (32.14):
+   this is the same gap by another route, where a heading isn't between
+   the two blocks to already own the space. */
 :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods, .wrapped-figure-list)
   + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods, .wrapped-figure-list) {
-  margin-top: var(--space-4);
+  margin-top: var(--space-6);
 }
 
 /* --- area ---
