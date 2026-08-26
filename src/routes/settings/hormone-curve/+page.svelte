@@ -54,15 +54,13 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
-
   /* Colour that carries a value takes role 0 (DIRECTION.md); the fit switch
      takes the stripe after it. */
-  const AREA_ROLE = { charts: 0, fit: 1 };
+  const SECTION_ROLE = { charts: 0, fit: 1 };
   import HormoneBandChart from '$lib/components/HormoneBandChart.svelte';
   import QualitativeCurveChart from '$lib/components/QualitativeCurveChart.svelte';
 
@@ -283,7 +281,7 @@
     <Notice
       icon="curve"
       key="curve-empty"
-      role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
+      role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
       title={m.curve_empty_title()}
       text={m.curve_empty_body()}
       action={futile ? undefined : { label: m.curve_empty_action(), primary: true, href: '/doses' }}
@@ -322,7 +320,7 @@
         <ChartCard
           heading={esterLabel(curve.ester)}
           kind="curve-{curve.ester}"
-          role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
         >
           <HormoneBandChart
             band={curve.band}
@@ -401,7 +399,7 @@
           <ChartCard
             heading={qualitativeCurveLabel(curve.key)}
             kind="curve-qual-{curve.key}"
-            role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
+            role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
           >
             {#snippet control()}
               <!-- On the heading's line, because it is what this heading
@@ -443,7 +441,7 @@
     {/if}
 
     <div class="curve-fit">
-      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.fit)}>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.fit)}>
         <!-- A plain row rather than a ListRow: a ListRow renders as a link
              or a button, and a button wrapping the switch's own button is a
              nested control. Same call ticket 24 made in Settings. -->

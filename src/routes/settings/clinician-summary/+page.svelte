@@ -52,7 +52,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import Skeleton from '$lib/components/Skeleton.svelte';
 
   const today = todayEpochDay();
@@ -68,8 +68,6 @@
     range ? j.clinicianSummary.getSummary(range.start, range.end) : Promise.resolve(null)
   );
   let summary = $derived(summaryQuery.value);
-
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const dayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });

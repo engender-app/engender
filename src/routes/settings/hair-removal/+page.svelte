@@ -28,15 +28,13 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
-
   /* Two areas: how long since each area was last worked on, and the
      sessions themselves. */
-  const AREA_ROLE = { recency: 0, sessions: 1 };
+  const SECTION_ROLE = { recency: 0, sessions: 1 };
 
   const PAIN_RATINGS = [1, 2, 3, 4, 5];
 
@@ -146,7 +144,7 @@
   {:else if sessions.length}
     <div in:crossfade>
       <SectionHeading text={m.hair_removal_recency_title()} />
-      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.recency)}>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
         {#each HAIR_REMOVAL_AREAS as area (area)}
           {@const days = recency[area]}
           <div class="kit-row is-static" data-recency={area}>
@@ -161,7 +159,7 @@
       </ListCard>
 
       <SectionHeading text={m.hair_removal()} />
-      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
         {#each [...sessions].reverse() as session (session.id)}
           <ListRow
             key={session.id}
@@ -180,7 +178,7 @@
       <Notice
         icon="shuffle"
         key="hair-removal-empty"
-        role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
         title={m.hair_removal_empty_title()}
         text={m.hair_removal_empty_body()}
         action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => openEditor(null) }}
@@ -263,7 +261,7 @@
           <Skeleton variant="line" count={1} />
         {:else if photos.length}
           <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}>
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
               {#each photos as p (p.id)}
                 <div class="kit-row is-static" data-hair-removal-photo={p.id}>
                   <PhotoThumb photo={p} size={48} />

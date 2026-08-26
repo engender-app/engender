@@ -22,11 +22,9 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* The audio counterpart to settings/photos (ticket 25): same picker and
      compare interaction over journal.voice.inJournal's dated, oldest-first

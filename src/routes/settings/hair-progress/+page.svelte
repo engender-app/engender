@@ -32,16 +32,14 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* Two areas, two stripes: the staging and the photographs. The notices
      that talk about the app rather than about the journal take no role at
      all, which is the call Home's backup notice makes. */
-  const AREA_ROLE = { stages: 0, photos: 1 };
+  const SECTION_ROLE = { stages: 0, photos: 1 };
 
   const today = todayEpochDay();
 
@@ -242,7 +240,7 @@
                of subtitles across two scales reads as one series, which is
                the thing ticket 33 split these groups apart to stop. -->
           <p class="hair-scale-name" data-scale-group={group.scale}>{hairScaleName(group.scale)}</p>
-          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.stages)}>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
             {#each group.stages as s (s.id)}
               {@const graded = isGradedScale(s.scale)}
               <ListRow
@@ -263,7 +261,7 @@
         <Notice
           icon="comb"
           key="hair-stages-empty"
-          role={roleAt(activeFlag.roles, AREA_ROLE.stages)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}
           title={m.hair_stage_empty_title()}
           text={m.hair_stage_empty_body()}
           action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => openStageEditor(null) }}
@@ -280,7 +278,7 @@
         <Notice
           icon="camera"
           key="hair-photo-due"
-          role={roleAt(activeFlag.roles, AREA_ROLE.photos)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
           title={m.hair_photo_due_title()}
           text={m.hair_photo_due_body()}
         />
@@ -312,7 +310,7 @@
       <div out:crossfade><Skeleton variant="line" count={2} /></div>
     {:else if photos.length}
       <div in:crossfade>
-        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.photos)}>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
           {#each [...photos].reverse() as p (p.id)}
             {@const since = sinceStart(p.epochDay)}
             <div class="kit-row is-static" data-hair-photo={p.id}>
@@ -338,7 +336,7 @@
         <Notice
           icon="camera"
           key="hair-photos-empty"
-          role={roleAt(activeFlag.roles, AREA_ROLE.photos)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
           title={m.hair_photo_empty_title()}
           text={m.hair_photo_empty_body()}
         />
@@ -376,7 +374,7 @@
       </div>
       <div class="field">
         <span class="field-label" id="hair-scale-label">{m.hair_scale_label()}</span>
-        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.stages)}>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
           <div role="radiogroup" aria-labelledby="hair-scale-label">
             {#each HAIR_SCALES as scale (scale)}
               <button

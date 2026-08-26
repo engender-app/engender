@@ -25,16 +25,11 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
-
-  /* Tier 3, change within a screen: the skeleton crossfades into the list
-     rather than being swapped for it. Reduced motion is an instant cut -
-     the token is clamped by the theme and motionDuration reads the token. */
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* The trend view's own grouping: one category filtered at a time, the
      same reasoning the measurements screen's type picker gives - there is

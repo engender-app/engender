@@ -30,18 +30,16 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* Colour that carries a value takes role 0 (DIRECTION.md): roles run a
      flag's colours before its shades, so index 0 is the only one
      guaranteed chromatic on all 8 palettes and a chart drawn in an
      achromatic band is a chart of disabled marks. The list takes the
      stripe after it, where a tinted disc carries no reading. */
-  const AREA_ROLE = { chart: 0, list: 1 };
+  const SECTION_ROLE = { chart: 0, list: 1 };
 
   /** No card for a custom type - it never had built-in guidance to give
       (CONTEXT: "Custom"). */
@@ -189,7 +187,7 @@
         icon="ruler"
         key="protocol"
         data-protocol={type}
-        role={roleAt(activeFlag.roles, AREA_ROLE.list)}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
         title={m.measurement_protocol_title()}
         text={PROTOCOL[type]!()}
         dismiss={{ label: m.measurement_protocol_dismiss_aria(), onclick: () => dismissProtocol(type) }}
@@ -206,7 +204,7 @@
         <ChartCard
           heading={vocabulary.measurementTypeName(type)}
           kind="measurements-{s.unit}"
-          role={roleAt(activeFlag.roles, AREA_ROLE.chart)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
         >
           {#if chart}
             {@const ends = fmtRangeEnds(chart.from, chart.to)}
@@ -229,7 +227,7 @@
         </ChartCard>
       {/each}
 
-      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.list)}>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
         {#each [...measurements].reverse() as r (r.id)}
           <ListRow
             key={r.id}
@@ -248,7 +246,7 @@
       <Notice
         icon="ruler"
         key="measurements-empty"
-        role={roleAt(activeFlag.roles, AREA_ROLE.list)}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
         title={m.measurement_empty_title()}
         text={m.measurement_empty_body()}
         action={{ label: m.measurement_empty_action(), primary: true, onclick: () => openEditor(null) }}

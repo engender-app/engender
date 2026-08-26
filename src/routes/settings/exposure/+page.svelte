@@ -26,7 +26,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -35,8 +35,6 @@
 
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
-
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   let countersQuery = liveQuery(['regimen', 'dose'], (j) => j.exposure.getCounters(from, today));
   let counters = $derived(countersQuery.value);

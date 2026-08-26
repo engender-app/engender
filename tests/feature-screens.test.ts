@@ -166,13 +166,18 @@ describe('what the worker is still fetching', () => {
   });
 
   it('crossfades the skeleton into the content rather than popping it', () => {
-    /* DIRECTION.md tier 3: skeletons crossfade into content over --dur-fast.
-       The substitute under reduced motion is an instant cut, which
-       fadeOnly's own duration read handles - the token is clamped to 1ms
-       by the theme, and motionDuration reads the token. */
+    /* DIRECTION.md tier 3: skeletons crossfade into content over --dur-fast,
+       and the substitute under reduced motion is an instant cut, which the
+       primitive's own duration read handles - the token is clamped to 1ms by
+       the theme.
+
+       What this holds is that no screen was left off the crossfade, not that
+       each one declares it: the first pass wrote the same arrow function
+       into twenty-four routes and this assertion was what pinned it there.
+       It grips the shared primitive's import instead. */
     for (const route of ENTRY_DATA) {
-      expect(sourceOf.get(route), route).toContain("from '$lib/motion/tokens'");
-      expect(sourceOf.get(route), route).toMatch(/fadeOnly\(motionDuration\('--dur-fast'/);
+      expect(sourceOf.get(route), route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
+      expect(markupOf.get(route), route).toMatch(/(in|out):crossfade/);
     }
   });
 });

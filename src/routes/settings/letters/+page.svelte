@@ -31,7 +31,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -42,8 +42,6 @@
   let text = $state('');
   let unlockDate = $state(dateInputValueFromEpochDay(todayEpochDay()));
   let composing = $state(false);
-
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let milestones = $derived(vocabulary.milestones);

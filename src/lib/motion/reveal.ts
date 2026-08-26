@@ -124,3 +124,26 @@ export function disclose(node: Element): TransitionConfig {
       `padding-bottom: ${t * paddingBottom}px;`
   };
 }
+
+/**
+ * Tier 3, change within a screen: a skeleton crossfading into the content it
+ * was standing in for, rather than being swapped for it in one frame.
+ *
+ * `out:crossfade` on the skeleton and `in:crossfade` on what replaces it -
+ * the empty state included, since a first-run journal lands on that branch
+ * and owes the same arrival as a populated one.
+ *
+ * Here rather than declared per screen. Ticket 25 wrote this same line into
+ * twenty-four routes before the review caught it, which is the point at
+ * which a shape stops being a call site and starts being a primitive. The
+ * three screens that had it first - Home, the calendar and Stats - still
+ * carry their own copy; folding those in is a change to screens this ticket
+ * does not otherwise touch.
+ *
+ * Reduced motion takes the duration to zero through `motionDuration`, which
+ * is tier 3's substitute: a change inside a screen has no journey for a fade
+ * to stand in for.
+ */
+export function crossfade(_node: Element): TransitionConfig {
+  return fadeOnly(motionDuration('--dur-fast', 160));
+}
