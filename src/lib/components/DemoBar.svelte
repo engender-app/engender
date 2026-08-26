@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import Icon from './Icon.svelte';
-  import { resetDemo, markFirstRun } from '$lib/data/demo/controls';
+  import { resetDemo, resetDemoFull, markFirstRun } from '$lib/data/demo/controls';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { frame, SIMULATED_INSETS } from '$lib/data/demo/frame.svelte';
 
@@ -128,6 +128,18 @@
       await resetDemo();
       goto('/');
     }}>Reset demo state</button
+  >
+  <!-- Ticket 36: the persona alone leaves most of the More hub empty, which
+       is the state "Reset demo state" above still gives on purpose - this is
+       the second jump, layering every other area on top for a pass that
+       needs real content everywhere rather than the designed empty states. -->
+  <button
+    class="demo-btn"
+    data-fill-every-feature
+    onclick={async () => {
+      await resetDemoFull();
+      goto('/more');
+    }}>Fill every feature</button
   >
   <div class="demo-jump">
     <label class="visually-hidden" for="demo-jump">Jump to screen</label>
