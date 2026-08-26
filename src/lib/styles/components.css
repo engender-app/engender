@@ -436,6 +436,43 @@ a.segment {
   transition: border-color var(--dur-fast) var(--ease-out);
 }
 .input:focus { border-color: var(--accent); outline: none; }
+
+/* A date or time field on the web is the platform's control, and it was
+   arriving with the platform's colours: a black calendar glyph beside every
+   field, and the browser's own blue over whichever segment was being edited
+   (Alicja, 2026-08-26: "date picker needs to look nicer on web").
+
+   `accent-color` is the whole of the second half - Chromium paints the
+   picked segment, and the selected day inside the dropped calendar, with it.
+   The glyph is `calendar` from icons.ts carried as a mask, the same way the
+   select's picker icon is, so it is the app's own mark at the app's own
+   stroke in a token colour rather than a second icon language beside it.
+
+   Android draws its own picker over the field, so none of this reaches it,
+   which is why it is worth doing rather than duplicating a control. */
+.input[type='date'],
+.input[type='time'],
+.input[type='datetime-local'] {
+  accent-color: var(--accent);
+}
+
+.input[type='date']::-webkit-calendar-picker-indicator,
+.input[type='time']::-webkit-calendar-picker-indicator,
+.input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  opacity: 1;
+  background: var(--text-2);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='5.6' width='16' height='14.4' rx='2'/%3E%3Cpath d='M8.5 4v3.2M15.5 4v3.2'/%3E%3Cpath d='M4 10.6h16'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.input[type='date']::-webkit-calendar-picker-indicator:hover,
+.input[type='time']::-webkit-calendar-picker-indicator:hover,
+.input[type='datetime-local']::-webkit-calendar-picker-indicator:hover {
+  background: var(--text);
+}
 textarea.input { resize: vertical; line-height: var(--leading-body); }
 /* SF-003: opacity 0.7 on top of --text-2 computed to 2.89-4.50:1 across
    palettes - --text-2 itself already clears 4.5:1 (probe 1), so the extra
