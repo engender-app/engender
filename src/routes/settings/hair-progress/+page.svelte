@@ -32,7 +32,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -398,27 +398,29 @@
       </div>
       {#if stageEditor.scale}
         {@const scale = stageEditor.scale}
-        {#if isGradedScale(scale)}
-          <div class="field">
-            <label class="field-label" for="hair-stage-value">{m.hair_stage_label()}</label>
-            <select class="input" id="hair-stage-value" bind:value={stageEditor.stage}>
-              {#each gradesOfScale(scale) as grade (grade)}
-                <option value={grade}>{hairStageName(scale, grade)}</option>
-              {/each}
-            </select>
-          </div>
-        {:else}
-          <div class="field">
-            <label class="field-label" for="hair-other-value">{m.hair_other_label()}</label>
-            <input
-              class="input"
-              id="hair-other-value"
-              name="hair-other-value"
-              placeholder={m.hair_other_placeholder()}
-              bind:value={stageEditor.description}
-            />
-          </div>
-        {/if}
+        <div class="disclosed" transition:disclose>
+          {#if isGradedScale(scale)}
+            <div class="field">
+              <label class="field-label" for="hair-stage-value">{m.hair_stage_label()}</label>
+              <select class="input" id="hair-stage-value" bind:value={stageEditor.stage}>
+                {#each gradesOfScale(scale) as grade (grade)}
+                  <option value={grade}>{hairStageName(scale, grade)}</option>
+                {/each}
+              </select>
+            </div>
+          {:else}
+            <div class="field">
+              <label class="field-label" for="hair-other-value">{m.hair_other_label()}</label>
+              <input
+                class="input"
+                id="hair-other-value"
+                name="hair-other-value"
+                placeholder={m.hair_other_placeholder()}
+                bind:value={stageEditor.description}
+              />
+            </div>
+          {/if}
+        </div>
       {/if}
       <div class="stack-3">
         <button class="btn btn-primary" data-save-hair-stage disabled={!stageEditor.scale} onclick={saveStage}>

@@ -34,6 +34,7 @@
     androidRetrospectiveNotifications,
     type AndroidRetrospectiveNotificationStatus
   } from '$lib/retrospective/android-bridge';
+  import { disclose } from '$lib/motion/reveal';
 
   /* Keyed, not worded, so the swatch names translate with everything else. */
   const PALETTES: [string, () => string][] = [
@@ -369,7 +370,7 @@
         </span>
       </div>
       {#if !isWeb && prefs.wrappedEnabled}
-        <div class="kit-row" data-wrapped-notify-toggle>
+        <div class="kit-row" data-wrapped-notify-toggle transition:disclose>
           <span class="kit-row-text">
             <span class="kit-row-title">{m.retro_notify_title()}</span>
             <span class="kit-row-sub">{m.wrapped_notify_sub()}</span>
@@ -402,7 +403,7 @@
         </span>
       </div>
       {#if !isWeb && prefs.onThisDayEnabled}
-        <div class="kit-row" data-on-this-day-notify-toggle>
+        <div class="kit-row" data-on-this-day-notify-toggle transition:disclose>
           <span class="kit-row-text">
             <span class="kit-row-title">{m.retro_notify_title()}</span>
             <span class="kit-row-sub">{m.on_this_day_notify_sub()}</span>

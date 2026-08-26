@@ -27,7 +27,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -390,123 +390,125 @@
           <p class="muted small">{m.regimen_schedule_hint()}</p>
         </div>
         {#if schedule}
-          <div class="field">
-            <span class="field-label" id="schedule-kind-label">{m.regimen_schedule_kind_label()}</span>
-            <div class="tag-row" role="group" aria-labelledby="schedule-kind-label">
-              {#each ['everyNDays', 'weekdays'] as const as kind (kind)}
-                <button
-                  type="button"
-                  class="tag-chip"
-                  class:is-selected={schedule.recurrenceKind === kind}
-                  aria-pressed={schedule.recurrenceKind === kind}
-                  data-schedule-kind={kind}
-                  onclick={() => schedule && (schedule.recurrenceKind = kind)}
-                >
-                  {kind === 'everyNDays' ? m.regimen_schedule_kind_every_days() : m.regimen_schedule_kind_weekdays()}
-                </button>
-              {/each}
-            </div>
-          </div>
-
-          {#if schedule.recurrenceKind === 'everyNDays'}
+          <div class="disclosed" transition:disclose>
             <div class="field">
-              <label class="field-label" for="regimen-every">{m.regimen_schedule_every_label()}</label>
-              <input
-                class="input"
-                type="number"
-                min="1"
-                id="regimen-every"
-                name="regimen-every"
-                inputmode="numeric"
-                bind:value={schedule.everyNDays}
-              />
-            </div>
-          {:else}
-            <div class="field">
-              <span class="field-label" id="schedule-weekdays-label">{m.regimen_schedule_weekdays_label()}</span>
-              <div class="tag-row" role="group" aria-labelledby="schedule-weekdays-label">
-                {#each WEEKDAYS as day (day)}
+              <span class="field-label" id="schedule-kind-label">{m.regimen_schedule_kind_label()}</span>
+              <div class="tag-row" role="group" aria-labelledby="schedule-kind-label">
+                {#each ['everyNDays', 'weekdays'] as const as kind (kind)}
                   <button
                     type="button"
                     class="tag-chip"
-                    class:is-selected={schedule.weekdays.includes(day)}
-                    aria-pressed={schedule.weekdays.includes(day)}
-                    data-weekday={day}
-                    onclick={() => toggleWeekday(day)}
+                    class:is-selected={schedule.recurrenceKind === kind}
+                    aria-pressed={schedule.recurrenceKind === kind}
+                    data-schedule-kind={kind}
+                    onclick={() => schedule && (schedule.recurrenceKind = kind)}
                   >
-                    {fmtDay(4 + day, { weekday: 'short' })}
+                    {kind === 'everyNDays' ? m.regimen_schedule_kind_every_days() : m.regimen_schedule_kind_weekdays()}
                   </button>
                 {/each}
               </div>
             </div>
-          {/if}
 
-          <div class="field">
-            <label class="field-label" for="regimen-per-day">{m.regimen_schedule_per_day_label()}</label>
-            <input
-              class="input"
-              type="number"
-              min="1"
-              id="regimen-per-day"
-              name="regimen-per-day"
-              inputmode="numeric"
-              bind:value={schedule.dosesPerDay}
-            />
-          </div>
-
-          <div class="field">
-            <span class="field-label">{m.regimen_schedule_amounts_legend()}</span>
-            <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
-          </div>
-          {#if schedule.doseAmounts.length}
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
-              {#each schedule.doseAmounts as amount, index (index)}
-                <div class="kit-row is-static">
-                  <span class="kit-row-text cd-endpoints">
-                    <span class="field">
-                      <input
-                        class="input"
-                        type="number"
-                        inputmode="decimal"
-                        data-amount-dose={index}
-                        aria-label={m.dose_amount_label()}
-                        bind:value={amount.dose}
-                      />
-                    </span>
-                    <span class="field">
-                      <input
-                        class="input"
-                        data-amount-unit={index}
-                        aria-label={m.dose_unit_label()}
-                        bind:value={amount.doseUnit}
-                      />
-                    </span>
-                  </span>
-                  <button
-                    class="kit-row-act press"
-                    data-delete-amount={index}
-                    aria-label={m.regimen_schedule_amount_delete_aria({ index: index + 1 })}
-                    onclick={() => removeDoseAmount(index)}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
+            {#if schedule.recurrenceKind === 'everyNDays'}
+              <div class="field">
+                <label class="field-label" for="regimen-every">{m.regimen_schedule_every_label()}</label>
+                <input
+                  class="input"
+                  type="number"
+                  min="1"
+                  id="regimen-every"
+                  name="regimen-every"
+                  inputmode="numeric"
+                  bind:value={schedule.everyNDays}
+                />
+              </div>
+            {:else}
+              <div class="field">
+                <span class="field-label" id="schedule-weekdays-label">{m.regimen_schedule_weekdays_label()}</span>
+                <div class="tag-row" role="group" aria-labelledby="schedule-weekdays-label">
+                  {#each WEEKDAYS as day (day)}
+                    <button
+                      type="button"
+                      class="tag-chip"
+                      class:is-selected={schedule.weekdays.includes(day)}
+                      aria-pressed={schedule.weekdays.includes(day)}
+                      data-weekday={day}
+                      onclick={() => toggleWeekday(day)}
+                    >
+                      {fmtDay(4 + day, { weekday: 'short' })}
+                    </button>
+                  {/each}
                 </div>
-              {/each}
-            </ListCard>
-          {/if}
-          <button class="btn btn-ghost press" data-add-amount onclick={addDoseAmount}>
-            <span>{m.regimen_schedule_amount_add()}</span>
-          </button>
+              </div>
+            {/if}
 
-          <button
-            class="btn btn-soft"
-            data-save-schedule
-            disabled={!scheduleCanSave}
-            onclick={saveSchedule}
+            <div class="field">
+              <label class="field-label" for="regimen-per-day">{m.regimen_schedule_per_day_label()}</label>
+              <input
+                class="input"
+                type="number"
+                min="1"
+                id="regimen-per-day"
+                name="regimen-per-day"
+                inputmode="numeric"
+                bind:value={schedule.dosesPerDay}
+              />
+            </div>
+
+            <div class="field">
+              <span class="field-label">{m.regimen_schedule_amounts_legend()}</span>
+              <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
+            </div>
+            {#if schedule.doseAmounts.length}
+              <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+                {#each schedule.doseAmounts as amount, index (index)}
+                  <div class="kit-row is-static">
+                    <span class="kit-row-text cd-endpoints">
+                      <span class="field">
+                        <input
+                          class="input"
+                          type="number"
+                          inputmode="decimal"
+                          data-amount-dose={index}
+                          aria-label={m.dose_amount_label()}
+                          bind:value={amount.dose}
+                        />
+                      </span>
+                      <span class="field">
+                        <input
+                          class="input"
+                          data-amount-unit={index}
+                          aria-label={m.dose_unit_label()}
+                          bind:value={amount.doseUnit}
+                        />
+                      </span>
+                    </span>
+                    <button
+                      class="kit-row-act press"
+                      data-delete-amount={index}
+                      aria-label={m.regimen_schedule_amount_delete_aria({ index: index + 1 })}
+                      onclick={() => removeDoseAmount(index)}
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  </div>
+                {/each}
+              </ListCard>
+            {/if}
+            <button class="btn btn-ghost press" data-add-amount onclick={addDoseAmount}>
+              <span>{m.regimen_schedule_amount_add()}</span>
+            </button>
+
+            <button
+              class="btn btn-soft"
+              data-save-schedule
+              disabled={!scheduleCanSave}
+              onclick={saveSchedule}
            
-          >
-            <span>{m.regimen_schedule_save()}</span>
-          </button>
+            >
+              <span>{m.regimen_schedule_save()}</span>
+            </button>
+          </div>
         {/if}
 
         <div class="field">

@@ -1644,25 +1644,41 @@ html[data-a11y-motion='reduce'] .skeleton::after {
     border: 1px solid var(--outline);
     border-radius: var(--r-card);
     box-shadow: var(--shadow-2);
-    padding: var(--space-2);
+    /* No padding of its own: the rows are separated by hairlines and each one
+       runs the full width of the panel, the way a list card's rows do. Inset
+       rows would leave the hairline floating short of both edges. */
+    padding: 0;
+    overflow: hidden;
     /* Taller than a couple of rows is a list to scroll, not a page to grow
        into - the same cap a sheet answers to. */
     max-height: 60vh;
     overflow-y: auto;
   }
 
+  /* A hairline between rows, and none above the first, which is how every
+     other list in the app is divided (Alicja, 2026-08-26). 40px rather than
+     the 48px touch floor: the floor belongs to a control you aim at on a
+     screen full of other controls, and this is a list that has taken over
+     the screen and is dismissed by the next tap wherever it lands. Tighter
+     was the other half of the ask, and the row's height is where the slack
+     was - the type and the tick beside it are unchanged. */
   select.input option,
   .kit-chart-pick select option {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border-radius: var(--radius-md);
+    min-height: 40px;
+    padding: var(--space-1) var(--space-3);
+    border-top: 1px solid var(--outline);
     background: none;
     color: var(--text);
     font: inherit;
     font-size: var(--text-md);
+  }
+
+  select.input option:first-of-type,
+  .kit-chart-pick select option:first-of-type {
+    border-top: 0;
   }
 
   select.input option:hover,

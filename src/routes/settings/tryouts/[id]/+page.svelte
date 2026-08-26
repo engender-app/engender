@@ -33,7 +33,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -185,15 +185,17 @@
       />
     </div>
     {#if hasDescription(draft.kind)}
-      <div class="field">
-        <label class="field-label" for="tr-description">{m.tryout_description_label()}</label>
-        <textarea
-          class="input"
-          id="tr-description"
-          rows="2"
-          placeholder={m.tryout_description_placeholder()}
-          bind:value={draft.description}
-        ></textarea>
+      <div class="disclosed" transition:disclose>
+        <div class="field">
+          <label class="field-label" for="tr-description">{m.tryout_description_label()}</label>
+          <textarea
+            class="input"
+            id="tr-description"
+            rows="2"
+            placeholder={m.tryout_description_placeholder()}
+            bind:value={draft.description}
+          ></textarea>
+        </div>
       </div>
     {/if}
     <div class="field">
