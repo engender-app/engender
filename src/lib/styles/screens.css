@@ -597,6 +597,13 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   text-wrap: balance;
   margin: 0;
 }
+/* The dictionary line on the welcome step: the app's name, read back as the
+   word it is. Italic and muted so it sits between the title and the pitch
+   as an aside rather than a second heading. */
+.setup-def { color: var(--text-2); font-style: italic; margin: 0; }
+/* Only the welcome pitch justifies, and only because the dictionary line
+   above it sets a print register the ragged edge would break. */
+.setup-def + .setup-body { text-align: justify; }
 .setup-body { color: var(--text-2); margin: 0; }
 .setup-step .input { margin-top: var(--space-2); }
 .setup-time { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
