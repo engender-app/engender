@@ -283,13 +283,18 @@
   {#if selected}
     <div class="recovery" data-recovery-log={selected.id}>
       <SectionHeading text={m.surgery_date_label()} />
+      <!-- With no date the notice said "No surgery date yet" and offered
+           nothing to do about it, so the one thing a person on this panel
+           wants was two taps away through the procedure's own editor
+           (Alicja, 2026-08-26). Same editor, opened from where the sentence
+           is. -->
       <Notice
         icon="clock"
         key="surgery-recovery"
         role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
         title={recoveryText(selected)}
         action={selected.surgeryEpochDay === null
-          ? undefined
+          ? { label: m.surgery_set_date(), onclick: () => openEditor(selected) }
           : { label: m.surgery_milestone_add(), onclick: () => addAsMilestone(selected) }}
         data-add-as-milestone-notice
       />

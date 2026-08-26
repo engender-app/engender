@@ -328,7 +328,7 @@
   {/if}
 {/snippet}
 
-<div class="screen">
+<div class="screen clinician-summary">
   <ScreenHeader title={m.clinician_summary_title()} back="/more" class="no-print" subtitle={m.clinician_summary_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" aria-label={m.clinician_summary_print()} onclick={printSummary}>
