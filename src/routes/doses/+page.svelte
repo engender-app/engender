@@ -655,8 +655,17 @@
         >
           <span class="dose-line-text">
             <span class="dose-line-lead">
-              <span class="dose-amount-said">{editorAmountText}</span>
-              {#if editorDrugText}<span class="dose-drug-said">{editorDrugText}</span>{/if}
+              <span class="dose-line-amount">{editorAmountText}</span>
+              <!-- Where several regimens are running and none has been
+                   picked, the line says what is missing rather than saying
+                   nothing: the group opens itself on this state, but it can
+                   be closed again, and a Save that will not fire needs a
+                   reason on screen. -->
+              {#if editorDrugText}
+                <span class="dose-line-drug">{editorDrugText}</span>
+              {:else if editorNeedsDrugPick}
+                <span class="dose-line-drug">{m.dose_drug_label()}</span>
+              {/if}
             </span>
             <span class="dose-line-sub">{editorRouteText}</span>
           </span>
@@ -1002,7 +1011,7 @@
     gap: var(--space-2);
   }
 
-  .dose-amount-said {
+  .dose-line-amount {
     font-family: var(--font-display);
     font-size: var(--text-2xl);
     font-weight: var(--weight-bold);
@@ -1010,7 +1019,7 @@
     line-height: var(--leading-display);
   }
 
-  .dose-drug-said {
+  .dose-line-drug {
     font-size: var(--text-md);
     color: var(--text-2);
   }
@@ -1018,7 +1027,7 @@
   /* Nothing seeded an amount, so the line is showing the label of the field
      open underneath it rather than a value. Said in the secondary colour so
      it does not read as one. */
-  .dose-line.is-unset .dose-amount-said {
+  .dose-line.is-unset .dose-line-amount {
     color: var(--text-2);
   }
 
@@ -1076,6 +1085,11 @@
     border-color: var(--accent);
   }
 
+  /* The floor stays on the inputs, not only on the box around them. The box
+     is a plain div: it labels nothing and focuses nothing, so 48px of it
+     with a 20px input centred inside is 28px of dead height that looks
+     tappable and is not. PRODUCT.md's floor is Android's 48dp and this is
+     the sheet's only text entry. */
   .dose-amount input {
     font: inherit;
     color: var(--text);
@@ -1083,6 +1097,7 @@
     border: 0;
     padding: 0;
     min-width: 0;
+    min-height: var(--touch-target);
   }
 
   .dose-amount input:focus {

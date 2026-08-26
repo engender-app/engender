@@ -50,8 +50,18 @@ const ROUTE_ALIASES: Record<DoseRoute, readonly string[]> = {
   gel: ['gel']
 };
 
-const compactWord = (text: string): string => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 const wordsIn = (text: string): string[] => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+/** The same fold with the gaps closed up, so "I.M." and "im" are one string
+    to compare rather than two spellings to remember. */
+const compactWord = (text: string): string => wordsIn(text).join('');
+
+/** A route and the word the app shows for it. Named here rather than
+    restated at each call site: doseLabels.ts builds the list, this file
+    reads it, and neither should be describing the same pair twice. */
+export interface RouteOption {
+  value: DoseRoute;
+  label: string;
+}
 
 /**
  * Which of the six dose routes a free-text route names, or null.
@@ -63,14 +73,12 @@ const wordsIn = (text: string): string[] => text.toLowerCase().split(/[^\p{L}\p{
  * confidence. The sheet asks instead.
  *
  * `routeWords` is `ROUTE_OPTIONS` from doseLabels.ts at the call site: the
- * app's own word for each route, in whichever language is running. Without
- * it only the keys and the ASCII abbreviations match, which is what the
- * Node tier gets.
+ * app's own word for each route, in whichever language is running. Passing
+ * an empty list matches on the keys and the ASCII abbreviations alone, which
+ * is all the Node tier can ask for - those words speak paraglide and this
+ * file may not (ADR-0016).
  */
-export function matchDoseRoute(
-  text: string,
-  routeWords: readonly { value: DoseRoute; label: string }[] = []
-): DoseRoute | null {
+export function matchDoseRoute(text: string, routeWords: readonly RouteOption[]): DoseRoute | null {
   const compact = compactWord(text);
   if (!compact) return null;
 
