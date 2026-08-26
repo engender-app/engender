@@ -1676,6 +1676,19 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   .compare-wrap { max-width: 560px; margin-left: auto; margin-right: auto; }
   .home-hero { font-size: 3rem; }
   .editor-savebar { bottom: var(--space-4); }
+
+  /* Home's own frame on the web (phase 5 ticket 32.11, redone). Drawn on
+     `.home` itself rather than the whole app: this box is already the exact
+     edge `.home-header` bleeds its sun against - the negative margin above
+     cancels precisely this element's own padding - so the sun's existing
+     clip and this border land on the same line, and the rounded corner
+     reads as cutting the sun rather than as a frame drawn somewhere past
+     where it already stopped. */
+  .home {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
 }
 
 /* ---------- Stats hub (phase 5 UX ticket 23) ---------- */
