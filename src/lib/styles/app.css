@@ -200,19 +200,6 @@ body {
   margin-bottom: 0;
 }
 
-/* staggered list entrance, pure CSS. Delays are multiples of the same
-   --stagger-step token .stagger-in (components.css) uses, rather than each
-   picking its own numbers (MO-004: two hand-tuned stagger systems used to
-   drift out of step with each other). */
-.screen > .entry-card, .screen > .card, .screen > .list-group {
-  animation: card-in var(--dur-slow) var(--ease-out) both;
-}
-.screen > :nth-child(3) { animation-delay: var(--stagger-step); }
-.screen > :nth-child(4) { animation-delay: calc(var(--stagger-step) * 2); }
-.screen > :nth-child(5) { animation-delay: calc(var(--stagger-step) * 3); }
-.screen > :nth-child(6) { animation-delay: calc(var(--stagger-step) * 4); }
-.screen > :nth-child(n+7) { animation-delay: calc(var(--stagger-step) * 5); }
-
 /* ---------- phone: the floating bar ----------
 
    DIRECTION.md's decision 2 gives the whole app one shadow, and this is
