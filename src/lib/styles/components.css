@@ -315,6 +315,15 @@ a.segment {
      short segment is a pill and the floor is still met for a one-letter
      one. The compact form overrides the inline padding and is untouched. */
   padding: 6px 18px; min-width: var(--touch-target); min-height: var(--touch-target);
+  /* A flex item shrinks by default, and this track is capped at the width of
+     the field it sits in - so five segments of prose were squeezed narrower
+     than their own words while `nowrap` kept the words at full width, and
+     "barely noticeable" ran out of its pill and across "mild" (Alicja,
+     2026-08-26, on a new hair-removal session). The track already scrolls;
+     what it needed was segments that keep their size so there is something
+     to scroll. The compact form sets `flex: 1` after this, deliberately:
+     that one divides a width it knows it fits in. */
+  flex: 0 0 auto;
   border-radius: var(--radius-pill);
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--text-2);
