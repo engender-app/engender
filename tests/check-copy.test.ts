@@ -73,6 +73,10 @@ describe('findLiterals', () => {
   it('reports where in the file each one is, so the count can be acted on', () => {
     expect(findLiterals('<p>Hello</p>')[0].line).toBe(1);
   });
+
+  it('leaves a style directive alone - its "px" is CSS, not copy', () => {
+    expect(texts('<div style:--seg-x="{pill.x}px"></div>')).toEqual([]);
+  });
 });
 
 describe('ratchetProblems', () => {
