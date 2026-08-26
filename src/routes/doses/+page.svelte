@@ -245,7 +245,16 @@
          the definition of asking twice. */
       const seededAmount = comparison ? expectedAmountOn(comparison, today) : null;
       const lastInjection = lastInjectionBefore(doses, now);
-      editor = {
+      /* Built as a local first, and the reason is load-bearing: quick add
+         reaches this function from inside the `?add=1` effect below, and an
+         effect that reads back a `$state` it has just written depends on it
+         and so invalidates itself. Deciding `openGroup` from `editor.dose`
+         rather than from `draft.dose` looped until Svelte's depth guard
+         stopped it, which is what the walkthrough's page-error check caught
+         (effect_update_depth_exceeded, on quick add's dose row only - every
+         other way in calls this from an event handler, where nothing is
+         being tracked). */
+      const draft: Editor = {
         day: dateInputValueFromEpochDay(today),
         time: timeInputValue(now),
         route: (activeEpisode && matchDoseRoute(activeEpisode.route, ROUTE_OPTIONS)) || 'oral',
@@ -264,7 +273,8 @@
          make one. Those are the two cases that also block the save: an
          amount nothing seeded, and several active episodes with no drug
          picked yet. Everything else opens stated and closed. */
-      openGroup = editor.dose === '' || activeDrugChoices.length > 1 ? 'what' : null;
+      openGroup = draft.dose === '' || activeDrugChoices.length > 1 ? 'what' : null;
+      editor = draft;
       return;
     }
 
@@ -330,7 +340,10 @@
   let editorDrugText = $derived(editor?.drug.trim() || editorEpisode?.drug || '');
   let editorRouteText = $derived.by(() => {
     if (!editor) return '';
-    if (isInjectionDose(editor)) return `${routeLabel(editor.route)}, ${vehicleLabel(editor.vehicle)}`;
+    /* The middot, not a comma: it is the separator the log's own rows use
+       between a route and a vehicle, and it carries the capital letter each
+       of those labels legitimately has where a comma would not. */
+    if (isInjectionDose(editor)) return `${routeLabel(editor.route)} · ${vehicleLabel(editor.vehicle)}`;
     return routeLabel(editor.route);
   });
   let editorWhenText = $derived(
@@ -675,12 +688,18 @@
 
             <!-- One value, one control. The amount and its unit were two
                  full-width fields side by side for a figure nobody reads as
-                 two things; the unit sits inside the box now, after the
-                 number, sized to the two or three characters a unit is. Its
-                 label is on the field rather than above it, because a label
-                 over a suffix is taller than the thing it names. -->
+                 two things; the unit sits inside the box now, right after
+                 the number, so the pair reads as "4 mg" rather than as two
+                 answers to two questions.
+
+                 No visible label, which is the one place this sheet drops
+                 one. The line directly above the open group already states
+                 this exact value, and where there is nothing to state it
+                 states the word "Dose" instead - so a label here would be
+                 the third time the same word appeared in four lines. Both
+                 inputs carry it as an accessible name, which is what a
+                 field without a visible label owes. -->
             <div class="field">
-              <label class="field-label" for="dose-amount">{m.dose_amount_label()}</label>
               <div class="dose-amount">
                 <input
                   class="dose-amount-num"
@@ -688,6 +707,7 @@
                   id="dose-amount"
                   name="dose-amount"
                   inputmode="decimal"
+                  aria-label={m.dose_amount_label()}
                   placeholder={m.dose_amount_placeholder()}
                   bind:value={editor.dose}
                 />
@@ -1035,16 +1055,14 @@
   }
 
   /* One value, one box. The unit is a suffix inside the amount's own field
-     rather than a second full-width field beside it, and the pair is capped
-     well short of the sheet's width because an amount is three characters
-     and a field the width of the screen says otherwise.
-
-     The spinners come off. They are a mouse affordance on a control that
-     declares inputmode="decimal", and inside this box they would land
-     between the number and its unit. */
+     rather than a second full-width field beside it, and the box is sized to
+     what it holds rather than to the sheet, because an amount is three
+     characters and a field the width of the screen says otherwise. */
   .dose-amount {
     display: flex;
     align-items: center;
+    gap: var(--space-2);
+    width: fit-content;
     max-width: 14rem;
     background: var(--surface);
     border: 1.5px solid var(--border);
@@ -1071,8 +1089,21 @@
     outline: none;
   }
 
+  /* Both inputs size to what is in them, so "4" and "mg" sit next to each
+     other instead of at opposite ends of a box. `field-sizing` is Chromium's
+     and this app ships inside a Chromium WebView; where it is missing the
+     two fall back to their intrinsic widths and the box hits the max-width
+     above, which is a wider version of the same field rather than a broken
+     one. The floors stop an empty field collapsing to nothing and keep both
+     placeholders readable.
+
+     The spinners come off. They are a mouse affordance on a control that
+     declares inputmode="decimal", and inside this box they would land
+     between the number and its unit. */
   .dose-amount-num {
-    flex: 1;
+    field-sizing: content;
+    min-width: 5ch;
+    max-width: 9ch;
     appearance: textfield;
   }
 
@@ -1083,8 +1114,9 @@
   }
 
   .dose-amount-unit {
-    width: 8ch;
-    text-align: right;
+    field-sizing: content;
+    min-width: 6ch;
+    max-width: 8ch;
     color: var(--text-2);
   }
 </style>
