@@ -1,4 +1,14 @@
 <script lang="ts">
+  /* The progress-photo journey export, on the surface kit (phase 5 UX
+     ticket 25).
+
+     Three cards became three named areas. Each of them held one control
+     and a line of hint under a `.row-title` borrowed from a list row, so
+     the screen read as three boxes of settings rather than as a range, a
+     choice and a result - and the preview, which is the only thing on the
+     screen worth looking at, was boxed at the same weight as the two
+     controls above it. It sits on the page now at the width of the screen,
+     which is also the width the collage was made at. */
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
@@ -26,7 +36,11 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { crossfade } from '$lib/motion/reveal';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
 
   /* Ticket 27. Two steps, deliberately not one: this screen makes a file and
      holds it, and it takes a second press to hand that file to the share
@@ -171,19 +185,27 @@
   <ScreenHeader title={m.pj_title()} back="/settings/photos" />
 
   {#if photosQuery.loading}
-    <Skeleton variant="card" count={2} />
+    <div out:crossfade><Skeleton variant="block" count={2} /></div>
   {:else if photos.length === 0}
-    <EmptyState title={m.ph_empty_title()} text={m.ph_empty_body()} />
+    <div class="screen-part">
+      <Notice
+        icon="image"
+        key="journey-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.ph_empty_title()}
+        text={m.ph_empty_body()}
+      />
+    </div>
   {:else}
-    <div class="card">
-      <span class="row-title">{m.pj_range_title()}</span>
+    <div class="screen-part">
+      <SectionHeading text={m.pj_range_title()} />
       <div class="compare-picker-grid">
         <label for="pj-start">{m.recap_custom_start_label()}</label>
         <input class="input" id="pj-start" type="date" bind:value={startInput} max={endInput || undefined} />
         <label for="pj-end">{m.recap_custom_end_label()}</label>
         <input class="input" id="pj-end" type="date" bind:value={endInput} min={startInput || undefined} />
       </div>
-      <p class="muted small" style="margin-top:var(--space-3)">
+      <p class="muted small">
         {#if !range}
           {m.recap_custom_range_required()}
         {:else if selected.length === 0}
@@ -192,43 +214,40 @@
           {m.pj_count({ count: selected.length })} {m.pj_leave_out_hint()}
         {/if}
       </p>
-    </div>
 
-    {#if inRange.length}
-      <div class="photo-grid" style="margin-top:var(--space-4)">
-        {#each inRange as p (p.id)}
-          {@const included = !excluded.includes(p.id)}
-          <button
-            class="photo-cell"
-            class:is-selected={included}
-            aria-pressed={included}
-            aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-            onclick={() => toggle(p.id)}
-          >
-            <PhotoThumb photo={p} size={104} />
-            <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
-            {#if included}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
-          </button>
-        {/each}
-      </div>
-    {/if}
-
-    <div class="card" style="margin-top:var(--space-4)">
-      <span class="row-title">{m.pj_output_title()}</span>
-      {#if canRecord}
-        <div style="margin-top:var(--space-3)">
-          <Segmented
-            name={m.pj_output_title()}
-            value={output}
-            onChange={(v) => (output = v as JourneyOutput)}
-            options={[
-              { value: 'collage', label: m.pj_output_collage() },
-              { value: 'timelapse', label: m.pj_output_timelapse() }
-            ]}
-          />
+      {#if inRange.length}
+        <div class="photo-grid">
+          {#each inRange as p (p.id)}
+            {@const included = !excluded.includes(p.id)}
+            <button
+              class="photo-cell"
+              class:is-selected={included}
+              aria-pressed={included}
+              aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+              onclick={() => toggle(p.id)}
+            >
+              <PhotoThumb photo={p} size={104} />
+              <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+              {#if included}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+            </button>
+          {/each}
         </div>
       {/if}
-      <p class="muted small" style="margin-top:var(--space-3)">
+
+      <SectionHeading text={m.pj_output_title()} />
+      {#if canRecord}
+        <Segmented
+          name={m.pj_output_title()}
+          value={output}
+          onChange={(v) => (output = v as JourneyOutput)}
+          options={[
+            { value: 'collage', label: m.pj_output_collage() },
+            { value: 'timelapse', label: m.pj_output_timelapse() }
+          ]}
+          key="journey-output"
+        />
+      {/if}
+      <p class="muted small">
         {#if output === 'collage'}
           {m.pj_collage_hint()}
           {#if !canRecord}{' '}{m.pj_timelapse_unavailable()}{/if}
@@ -236,42 +255,46 @@
           {m.pj_timelapse_hint()} {m.pj_timelapse_length({ n: seconds })}
         {/if}
       </p>
-    </div>
 
-    {#if previewUrl && showing}
-      <div class="card journey-preview" style="margin-top:var(--space-4)" use:reveal>
-        {#if output === 'collage'}
-          <img src={previewUrl} alt={m.pj_preview_collage_alt()} style:background={JOURNEY_SURROUND} />
-        {:else}
-          <!-- svelte-ignore a11y_media_has_caption -->
-          <video src={previewUrl} controls playsinline muted style:background={JOURNEY_SURROUND}></video>
-        {/if}
-        <p class="muted small">{m.pj_stays_here()}</p>
-        <div class="journey-actions">
-          <button class="btn btn-primary" data-share onclick={share}>
-            <Icon name="share" size={20} /><span>{m.pj_share()}</span>
-          </button>
-          <button class="btn btn-soft" data-again onclick={() => (made = null)}>
-            <span>{m.pj_again()}</span>
-          </button>
+      {#if previewUrl && showing}
+        <div class="journey-preview" use:reveal>
+          {#if output === 'collage'}
+            <img src={previewUrl} alt={m.pj_preview_collage_alt()} style:background={JOURNEY_SURROUND} />
+          {:else}
+            <!-- svelte-ignore a11y_media_has_caption -->
+            <video src={previewUrl} controls playsinline muted style:background={JOURNEY_SURROUND}></video>
+          {/if}
+          <p class="muted small">{m.pj_stays_here()}</p>
+          <div class="journey-actions">
+            <button class="btn btn-primary press" data-share onclick={share}>
+              <Icon name="share" size={20} /><span>{m.pj_share()}</span>
+            </button>
+            <button class="btn btn-soft press" data-again onclick={() => (made = null)}>
+              <span>{m.pj_again()}</span>
+            </button>
+          </div>
         </div>
-      </div>
-    {:else}
-      <div class="editor-savebar journey-actions">
-        <button class="btn btn-primary" data-generate disabled={running || selected.length === 0} onclick={make}>
-          <span>{running && progress ? m.pj_progress({ done: progress.done, total: progress.total }) : m.pj_generate()}</span>
-        </button>
-        {#if attempt}
-          <button class="btn btn-soft" data-stop onclick={() => attempt?.abort()}>
-            <span>{m.pj_stop()}</span>
+      {:else}
+        <div class="editor-savebar journey-actions">
+          <button class="btn btn-primary press" data-generate disabled={running || selected.length === 0} onclick={make}>
+            <span>{running && progress ? m.pj_progress({ done: progress.done, total: progress.total }) : m.pj_generate()}</span>
           </button>
-        {/if}
-      </div>
-    {/if}
+          {#if attempt}
+            <button class="btn btn-soft press" data-stop onclick={() => attempt?.abort()}>
+              <span>{m.pj_stop()}</span>
+            </button>
+          {/if}
+        </div>
+      {/if}
+    </div>
   {/if}
 </div>
 
 <style>
+  .journey-preview {
+    margin-top: var(--space-4);
+  }
+
   .journey-preview img,
   .journey-preview video {
     display: block;

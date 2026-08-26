@@ -106,6 +106,13 @@
   min-height: var(--touch-target);
   padding: 0 var(--space-6);
   border-radius: var(--radius-pill);
+  /* A button that is a link is still a button. Nothing reset this, so every
+     `<a class="btn">` in the app - the journey export's own link, a day's
+     "add another", an empty state whose one action is a destination - drew a
+     browser underline through the middle of its label inside the pill. Found
+     on the rendered feature screens (phase 5 UX ticket 25), which is where
+     the first primary link-CTA landed. */
+  text-decoration: none;
   font-family: var(--font-body);
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
@@ -269,6 +276,13 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 .segmented {
   position: relative;
   display: inline-flex; gap: var(--space-2);
+  /* inline-flex hugs its content, and then `.field` - a column flex box -
+     stretched it to full width anyway, because a flex item's default cross
+     alignment is stretch. So every switcher in an editor sheet drew a track
+     far wider than the words in it (Alicja, 2026-08-26, on three separate
+     screens). Named here rather than at each call site: the control knows
+     it wants to be the width of its own segments. */
+  align-self: start;
   background: var(--surface-2);
   border-radius: var(--radius-pill);
   padding: 3px;
@@ -277,6 +291,17 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
   scrollbar-width: none;
 }
 .segmented::-webkit-scrollbar { display: none; }
+
+/* A flex scroll container drops its trailing padding at the end of the
+   scroll, so the last segment ran flush into the track's rounded edge and
+   read as a label that did not fit its background (Alicja, 2026-08-26, on a
+   new hair-removal session and on side effects). A spacer the width of that
+   padding is the standard answer: it is content, so the scroll box includes
+   it. */
+.segmented::after {
+  content: '';
+  flex: 0 0 3px;
+}
 /* SH-102: 34px min-height and a 2px gap were under both the 44px touch
    target and the 8px touch spacing minimums, on the control theme,
    language, stats range and several pickers all repeat. */
@@ -294,7 +319,22 @@ a.segment {
 
 .segment {
   border: none; background: none; cursor: pointer;
-  padding: 6px 14px; min-width: var(--touch-target); min-height: var(--touch-target);
+  /* 18px, not 14px. The min-width is the touch floor and a two-letter
+     label ("cm", "in") sat exactly on it, so the pill came out 48 by 48 -
+     a circle, which is the shape this control's own note rejects. Wider
+     padding clears the floor with the label rather than against it, so a
+     short segment is a pill and the floor is still met for a one-letter
+     one. The compact form overrides the inline padding and is untouched. */
+  padding: 6px 18px; min-width: var(--touch-target); min-height: var(--touch-target);
+  /* A flex item shrinks by default, and this track is capped at the width of
+     the field it sits in - so five segments of prose were squeezed narrower
+     than their own words while `nowrap` kept the words at full width, and
+     "barely noticeable" ran out of its pill and across "mild" (Alicja,
+     2026-08-26, on a new hair-removal session). The track already scrolls;
+     what it needed was segments that keep their size so there is something
+     to scroll. The compact form sets `flex: 1` after this, deliberately:
+     that one divides a width it knows it fits in. */
+  flex: 0 0 auto;
   border-radius: var(--radius-pill);
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--text-2);
@@ -348,9 +388,17 @@ a.segment {
    a dot moving between dots: six segments reading "7d" through "365d" are
    about as wide as they are tall, and at that ratio --radius-pill draws a
    circle. Phase 5 UX ticket 23. */
-.segmented.is-compact { display: flex; width: 100%; }
+.segmented.is-compact { display: flex; width: 100%; align-self: stretch; }
 .segmented.is-compact .segment { flex: 1; min-width: 0; padding-inline: var(--space-1); }
-.segmented.is-compact .segment-pill { top: 9px; bottom: 9px; }
+/* 5px, not 9px. The inset was tuned when the compact form carried six
+   segments across the full width, where the pill is wider than it is tall
+   whatever the inset. With three or six *short* labels the segments are wide
+   and the pill came out nearly square, which is the shape this control's own
+   note already rejects - "a circle sliding says nothing about the set it is
+   crossing" (Alicja, 2026-08-25, and again 2026-08-26 on two more screens:
+   "switcher highlight too short"). At 5px it is 38px in a 48px track, which
+   reads as a pill. */
+.segmented.is-compact .segment-pill { top: 5px; bottom: 5px; }
 
 .segment-pill.is-sliding {
   scale: 1 1;
@@ -399,6 +447,59 @@ a.segment {
   transition: border-color var(--dur-fast) var(--ease-out);
 }
 .input:focus { border-color: var(--accent); outline: none; }
+
+/* The wrapper a group opens inside (`disclose`). It establishes a block
+   formatting context, and that is the whole of it: `disclose` sets
+   `overflow: hidden` while it runs, which stops the last field's
+   `margin-bottom` collapsing out of the wrapper - so the animation ran to a
+   height that contained the margin, then the inline styles came off, the
+   margin escaped, and the block below dropped another 16px. The group
+   expanded nicely and then jumped (Alicja, 2026-08-26, on a new tryout and
+   on a wear session).
+
+   `flow-root` rather than `overflow: hidden` at rest: same containment, and
+   it does not clip anything that legitimately paints outside the box, like a
+   focus ring on the last field. */
+.disclosed {
+  display: flow-root;
+}
+
+/* A date or time field on the web is the platform's control, and it was
+   arriving with the platform's colours: a black calendar glyph beside every
+   field, and the browser's own blue over whichever segment was being edited
+   (Alicja, 2026-08-26: "date picker needs to look nicer on web").
+
+   `accent-color` is the whole of the second half - Chromium paints the
+   picked segment, and the selected day inside the dropped calendar, with it.
+   The glyph is `calendar` from icons.ts carried as a mask, the same way the
+   select's picker icon is, so it is the app's own mark at the app's own
+   stroke in a token colour rather than a second icon language beside it.
+
+   Android draws its own picker over the field, so none of this reaches it,
+   which is why it is worth doing rather than duplicating a control. */
+.input[type='date'],
+.input[type='time'],
+.input[type='datetime-local'] {
+  accent-color: var(--accent);
+}
+
+.input[type='date']::-webkit-calendar-picker-indicator,
+.input[type='time']::-webkit-calendar-picker-indicator,
+.input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  opacity: 1;
+  background: var(--text-2);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='5.6' width='16' height='14.4' rx='2'/%3E%3Cpath d='M8.5 4v3.2M15.5 4v3.2'/%3E%3Cpath d='M4 10.6h16'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.input[type='date']::-webkit-calendar-picker-indicator:hover,
+.input[type='time']::-webkit-calendar-picker-indicator:hover,
+.input[type='datetime-local']::-webkit-calendar-picker-indicator:hover {
+  background: var(--text);
+}
 textarea.input { resize: vertical; line-height: var(--leading-body); }
 /* SF-003: opacity 0.7 on top of --text-2 computed to 2.89-4.50:1 across
    palettes - --text-2 itself already clears 4.5:1 (probe 1), so the extra
@@ -804,9 +905,22 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .sheet-scrim.is-open { opacity: 1; }
 /* Carries the drag, so the sheet inside it keeps its transition's transform
    to itself (Sheet.svelte). Sized to the sheet rather than to the scrim, or
-   it would swallow the backdrop taps that dismiss. */
+   it would swallow the backdrop taps that dismiss.
+
+   It also carries the height cap, and that is a fix rather than a
+   preference. `.sheet` asked for `max-height: 85%` and a percentage
+   resolves against the containing block's height - which is this element,
+   inserted between the scrim and the sheet when drag-to-dismiss was added,
+   and sized to its own content. An indefinite containing block makes a
+   percentage max-height no cap at all, so every sheet in the app grew to
+   whatever it held and `overflow-y: auto` never had anything to scroll
+   against: the effect-type list measured 4794px inside an 804px frame and
+   simply ran off the bottom (Alicja, 2026-08-26: "too long and takes the
+   whole screen with no ability to scroll"). The scrim is `inset: 0` and so
+   is definite; the cap belongs here, and the sheet stretches to it. */
 .sheet-drag {
   width: 100%; max-width: 520px;
+  max-height: 85%;
   display: flex;
   touch-action: pan-y;
 }
@@ -815,6 +929,19 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .sheet-drag:not(.is-dragging) {
   transition: transform var(--dur-med) var(--ease-out);
 }
+/* The floor a screen has, inside a sheet. The letter composer's "Seal it
+   away" sat flat against the anchor chips above it (Alicja, 2026-08-26), and
+   it is the same cause as on the screens: the blocks that nobody remembered
+   to space by hand end up flush.
+
+   Safe as an addition rather than a doubling because `.sheet` is a block
+   container and `.field` already carries a `margin-bottom` - adjacent
+   margins collapse, so a field followed by a field is still 16px apart and
+   only the pairs that had nothing between them move. */
+.sheet > * + * {
+  margin-top: var(--space-4);
+}
+
 .sheet {
   background: var(--surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -839,11 +966,15 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
      no-bar value on a chromeless screen by itself. */
   padding: var(--space-3) var(--space-5) var(--nav-clearance);
   width: 100%;
-  /* Percent of the scrim, which is the app frame - not dvh. The demo bar
-     and the phone-frame preview both make the app shorter than the
-     viewport, and a sheet measured against the viewport then runs off the
-     top of the frame it is inside. */
-  max-height: 85%;
+  /* The cap itself is on .sheet-drag above, against the scrim, which is the
+     app frame rather than the viewport - the demo bar and the phone-frame
+     preview both make the app shorter than the window, and a sheet measured
+     against the window then runs off the top of the frame it is inside.
+     What is left here is stretching to that cap: min-height:0 is what lets
+     a flex item shrink below its content so the overflow has somewhere to
+     go. */
+  max-height: 100%;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   box-shadow: var(--shadow-3);
@@ -1500,6 +1631,12 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 .muted { color: var(--text-2); }
 .small { font-size: var(--text-sm); }
 .spread { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+/* `.field` is a column and `.spread` means "at either end of one line", so
+   the two together spread the label and its control down the box and
+   centred them across it - a switch under its own label, in the middle of
+   the sheet (Alicja, 2026-08-26, on the wear editor's reminder: "very
+   poorly placed, centered"). The pair only ever means a row. */
+.field.spread { flex-direction: row; }
 .stack-3 > * + * { margin-top: var(--space-3); }
 .hr { border: none; border-top: 1px solid var(--border); margin: var(--space-4) 0; }
 
@@ -1566,3 +1703,102 @@ html[data-a11y-motion='reduce'] .skeleton::after {
 .skeleton-fill { height: 96px; border-radius: var(--radius-md); display: block; }
 
 .skeleton-line:only-child { margin: var(--space-2) 0; }
+
+/* ---------- the dropdown's own list ----------
+
+   A `<select>` is the right control here and the reasoning has not changed:
+   Android opens its own picker, and a keyboard, a screen reader and the
+   system font scale all get what they expect. What that left was a styled
+   pill that opened an unstyled list - "they look very barebones (the
+   expanded list, just the pill is nice)" (Alicja, 2026-08-26).
+
+   `appearance: base-select` is how a select keeps every one of those
+   guarantees and still takes the app's own surfaces. Behind `@supports`
+   because it is recent: where it is missing the browser opens the list it
+   always did, which is the correct control drawn plainly rather than a
+   broken one. Nothing here changes what the closed control looks like. */
+@supports (appearance: base-select) {
+  select.input,
+  .kit-chart-pick select {
+    appearance: base-select;
+  }
+
+  select.input::picker(select),
+  .kit-chart-pick select::picker(select) {
+    appearance: base-select;
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-2);
+    /* No padding of its own: the rows are separated by hairlines and each one
+       runs the full width of the panel, the way a list card's rows do. Inset
+       rows would leave the hairline floating short of both edges. */
+    padding: 0;
+    overflow: hidden;
+    /* Taller than a couple of rows is a list to scroll, not a page to grow
+       into - the same cap a sheet answers to. */
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  /* A hairline between rows, and none above the first, which is how every
+     other list in the app is divided (Alicja, 2026-08-26). 40px rather than
+     the 48px touch floor: the floor belongs to a control you aim at on a
+     screen full of other controls, and this is a list that has taken over
+     the screen and is dismissed by the next tap wherever it lands. Tighter
+     was the other half of the ask, and the row's height is where the slack
+     was - the type and the tick beside it are unchanged. */
+  select.input option,
+  .kit-chart-pick select option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: var(--space-1) var(--space-3);
+    border-top: 1px solid var(--outline);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-md);
+  }
+
+  select.input option:first-of-type,
+  .kit-chart-pick select option:first-of-type {
+    border-top: 0;
+  }
+
+  select.input option:hover,
+  .kit-chart-pick select option:hover {
+    background: var(--surface-2);
+  }
+
+  /* The tick the base appearance puts before the chosen row, in the app's
+     own accent rather than the platform's. */
+  select.input option::checkmark,
+  .kit-chart-pick select option::checkmark {
+    color: var(--accent);
+  }
+
+  /* The pill is drawn by the span beside it (ChartPicker), so the select
+     itself stays the invisible target it already was - base-select would
+     otherwise paint a second control on top of the one that is seen. */
+  .kit-chart-pick select::picker-icon {
+    display: none;
+  }
+
+  /* base-select does change the closed control after all: it draws its own
+     filled triangle where the platform drew a chevron, and a solid triangle
+     is the one arrow in the app that is not the line chevron every row, pill
+     and back button is drawn with. So it takes `chevronDown` from icons.ts -
+     the same path at the same 2-unit stroke - carried as a mask, which is
+     what lets it be a token colour rather than the glyph's own black and
+     follow the theme the way an inlined Icon does. */
+  select.input::picker-icon {
+    width: 20px;
+    height: 20px;
+    color: transparent;
+    background: var(--text-2);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+  }
+}

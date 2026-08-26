@@ -377,7 +377,7 @@
     {#if recent.loading}
       <div out:crossfade><Skeleton variant="card" count={3} /></div>
     {:else if dayGroups.length}
-      <div class="home-days" in:crossfade>
+      <div class="home-days">
         {#each dayGroups as group (group.epochDay)}
           <DayCard
             key={String(group.epochDay)}
@@ -403,7 +403,7 @@
       <!-- Wrapped because a transition goes on an element, not a component,
            and the empty state is the branch a first-run journal lands on -
            it owes the same crossfade the day cards get. -->
-      <div in:crossfade>
+      <div>
         <Notice
           icon="book"
           key="no-entries"
@@ -448,7 +448,7 @@
             <div class="dim-ends"><span>{dim.low}</span><span>{dim.high}</span></div>
           </div>
         {/each}
-        <div class="stack-3" style="margin-top:var(--space-3)">
+        <div class="stack-3">
           <button class="btn btn-primary" data-qld-add onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>
           <button class="btn btn-ghost" data-qld-skip onclick={() => (dimsPromptEntryId = null)}><span>{m.not_now()}</span></button>
         </div>

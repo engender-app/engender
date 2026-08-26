@@ -50,8 +50,11 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
     if (isAndroid) return 'none';
     /* Out of the editor the transform runs backwards, which is the pattern
        being symmetric rather than a second decision: the same two boxes
-       swap which one is arriving. */
-    return isEntryEditor(from) ? 'container' : 'shared-axis-back';
+       swap which one is arriving. Symmetric in the carve-out too: a screen
+       that did not grow the editor does not get it shrinking back into it,
+       and leaving this leg alone would have spent the transform's own
+       longer duration on a plain crossfade. */
+    return isEntryEditor(from) && to !== NO_CONTAINER ? 'container' : 'shared-axis-back';
   }
 
   /* The one container transform in the app. It is not chosen by where the
@@ -65,7 +68,7 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
      button and a launcher shortcut all open it with nothing behind them,
      and a container transform with no container is a crossfade wearing a
      longer duration. */
-  if (isEntryEditor(to)) return 'container';
+  if (isEntryEditor(to)) return from === NO_CONTAINER ? 'shared-axis' : 'container';
 
   /* A screen with several views of itself is not a sequence. Wrapped's four
      cadence tabs are one screen showing a different period, so crossing them
@@ -88,6 +91,28 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
      this rather than a second list of "detail routes" kept beside it. */
   return activeTabKey(from) === activeTabKey(to) ? 'shared-axis' : 'fade-through';
 }
+
+/** The one surface carved out of the container transform (Alicja,
+    2026-08-26, phase 5 ticket 25). It draws entry cards like Home, a day
+    and a search hit do, so by the rule above it is a correct source - and
+    she read the transform out of it as far too big a movement for what
+    happens there. The screen is a list of past good days offered back as
+    evidence, so an entry on it is being cited rather than opened, and a box
+    growing into the whole screen claims more than the tap meant.
+
+    What it gets instead is the shared axis, named rather than left to the
+    tab rule at the bottom: that rule would call this a tab change and fade,
+    while coming back out of the editor is a slide, and a screen you fade
+    into and slide out of reads as two different places. On the axis it is
+    what it looks like - a step into one of the entries and a step back.
+
+    Written as an exception here rather than as a prop on EntryCard because
+    this file is where the rule it excepts is stated, and a rule and its one
+    carve-out belong in the same table. The source card is not told
+    anything: the layout drops the container name on any navigation this
+    function does not call the transform, so the pattern decides and the
+    surfaces stay uniform. */
+const NO_CONTAINER = '/doubt';
 
 /** Routes whose sub-paths are views of one screen rather than steps into it. */
 const SWITCHES_VIEWS_IN_PLACE = ['/wrapped/'];

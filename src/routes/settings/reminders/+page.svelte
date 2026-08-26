@@ -87,7 +87,7 @@
         />
       </div>
       {#if prefs.checkInEnabled}
-        <div class="spread" style="margin-top:var(--space-3)">
+        <div class="spread">
           <label class="small muted" for="checkin-time">{m.checkin_time()}</label>
           <input
             class="input"
@@ -98,7 +98,7 @@
             bind:value={prefs.checkInTime}
           />
         </div>
-        <div class="spread" style="margin-top:var(--space-3)" data-checkin-affirmations>
+        <div class="spread" data-checkin-affirmations>
           <span class="row-text">
             <span class="row-title">{m.checkin_affirmations_title()}</span>
             <span class="row-subtitle">{m.checkin_affirmations_sub()}</span>
@@ -114,7 +114,7 @@
       {/if}
     </div>
 
-    <div class="card spread" style="margin-top:var(--space-3)">
+    <div class="card spread">
       <span class="row-text">
         <span class="row-title"><Icon name="shield" size={16} /> {m.rem_hide_titles_title()}</span>
         <span class="row-subtitle">{m.rem_hide_titles_sub()}</span>
@@ -129,7 +129,7 @@
     </div>
 
     {#if status.notifications === 'denied' || status.exactAlarms === 'denied'}
-      <div class="notice notice-warning" style="margin-top:var(--space-3)">
+      <div class="notice notice-warning">
         <Icon name="alert" size={20} />
         <div class="notice-body">
           <span class="notice-title">{m.rem_capabilities_title()}</span>
@@ -146,7 +146,7 @@
       </div>
     {/if}
 
-    <div class="list-group" style="margin-top:var(--space-4)">
+    <div class="list-group">
       {#each reminders.value ?? [] as r (r.id)}
         <div class="list-row">
           <span class="row-icon"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
@@ -159,12 +159,12 @@
       {/each}
     </div>
 
-    <div class="notice notice-info" style="margin-top:var(--space-5)">
+    <div class="notice notice-info">
       <Icon name="info" size={20} />
       <div class="notice-body">
         <span class="notice-title">{m.rem_battery_title()}</span>
         {m.rem_battery_body()}
-        <button class="btn btn-soft" style="margin-top:var(--space-2)" onclick={openBatterySettings}>{m.rem_battery_link()}</button>
+        <button class="btn btn-soft" onclick={openBatterySettings}>{m.rem_battery_link()}</button>
       </div>
     </div>
   {/if}

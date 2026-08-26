@@ -1,4 +1,19 @@
 <script lang="ts">
+  /* Milestones, on the surface kit (phase 5 UX ticket 25).
+
+     Two things were crowded.
+
+     The screen opened on an "add a milestone" card - a heading, a shuffle
+     control, a dashed row for writing your own and three shuffled
+     templates - so the first thing a person with fourteen milestones saw
+     was a picker for a fifteenth. The templates are a sheet now, opened
+     from the header's add control the way every feature screen on the hub
+     opens its editor, and the screen opens on the milestones.
+
+     And each row carried two icon buttons, an edit and a delete, on top of
+     a photo, a name and a status line. Tapping the row is the edit, which
+     is what a row with an editor behind it means everywhere else in the
+     app; the delete stays as the row's own one control. */
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
@@ -12,11 +27,21 @@
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let shown = $state(vocabulary.randomTemplates(3));
+  let picking = $state(false);
+
+  function openPicker() {
+    shown = vocabulary.randomTemplates(3);
+    picking = true;
+  }
   /* A milestone shows one photo, so `photo` is whatever it will end up with -
      the stored row, a picked replacement, or none - and `storedPhotoId`
       remembers what was there when the editor opened, so Save can describe
@@ -52,6 +77,7 @@
   }
 
   function openEditor(existing: Milestone | null, template: MilestoneTemplate | null) {
+    picking = false;
     editor = existing
       ? {
           id: existing.id,
@@ -114,55 +140,78 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.milestones()} back="/settings" subtitle={m.ms_intro()} />
+  <ScreenHeader title={m.milestones()} back="/more" subtitle={m.ms_intro()}>
+    {#snippet actions()}
+      <button class="icon-btn press" data-add aria-label={m.ms_add_heading()} onclick={openPicker}>
+        <Icon name="plus" size={22} />
+      </button>
+    {/snippet}
+  </ScreenHeader>
 
-  <div class="card editor-section">
+  {#if sorted.length}
+    <ListCard role={roleAt(activeFlag.roles, 0)}>
+      {#each sorted as mi (mi.id)}
+        <ListRow
+          key={mi.id}
+          data-milestone={mi.id}
+          icon="flag"
+          title={mi.name}
+          subtitle={`${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`}
+          chevron={false}
+          onclick={() => openEditor(mi, null)}
+          action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => (deleteTarget = mi) }}
+        >
+          {#snippet leading()}
+            <!-- A milestone that has a photograph of itself shows it. The
+                 disc with a flag in it is what a milestone without one
+                 gets, rather than the picture being a fourth thing on the
+                 row beside the glyph standing in for it.
+
+                 Round, and at the disc's own size: a list where some rows
+                 lead with a circle and others with a rounded square reads
+                 as two lists interleaved, which is what the rendered screen
+                 showed (2026-08-26). -->
+            {#if mi.photo}
+              <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
+            {:else}
+              <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
+            {/if}
+          {/snippet}
+        </ListRow>
+      {/each}
+    </ListCard>
+  {:else}
+    <Notice
+      icon="flag"
+      key="milestones-empty"
+      role={roleAt(activeFlag.roles, 0)}
+      title={m.ms_none()}
+      text={m.ms_intro()}
+      action={{ label: m.ms_add(), primary: true, onclick: openPicker }}
+    />
+  {/if}
+
+  <Sheet open={picking} title={m.ms_add_heading()} onClose={() => (picking = false)}>
     <div class="spread" style="margin-bottom:var(--space-3)">
-      <h2 class="editor-heading">{m.ms_add_heading()}</h2>
-      <button class="icon-btn" data-shuffle aria-label={m.ms_shuffle()} onclick={() => (shown = vocabulary.randomTemplates(3))}>
+      <h3>{m.ms_add_heading()}</h3>
+      <button class="icon-btn press" data-shuffle aria-label={m.ms_shuffle()} onclick={() => (shown = vocabulary.randomTemplates(3))}>
         <Icon name="shuffle" size={20} />
       </button>
     </div>
-    <div class="stack-3">
-      <button class="list-row template-row" data-own style="border:1.5px dashed var(--accent-border);border-radius:var(--radius-md)"
-        onclick={() => openEditor(null, null)}>
-        <span class="row-icon"><Icon name="pencil" size={20} /></span>
-        <span class="row-text">
-          <span class="row-title">{m.ms_own_title()}</span>
-          <span class="row-subtitle">{m.ms_own_sub()}</span>
-        </span>
-      </button>
+    <ListCard role={roleAt(activeFlag.roles, 0)}>
+      <ListRow
+        key="own"
+        data-own
+        icon="pencil"
+        title={m.ms_own_title()}
+        subtitle={m.ms_own_sub()}
+        onclick={() => openEditor(null, null)}
+      />
       {#each shown as tp (tp.key)}
-        <button class="list-row template-row" data-template={tp.key} style="background:var(--surface-2);border-radius:var(--radius-md)"
-          onclick={() => openEditor(null, tp)}>
-          <span class="row-icon"><Icon name="flag" size={20} /></span>
-          <span class="row-text"><span class="row-title">{tp.name}</span></span>
-          <Icon name="chevronRight" size={18} />
-        </button>
+        <ListRow key={tp.key} data-template={tp.key} icon="flag" title={tp.name} onclick={() => openEditor(null, tp)} />
       {/each}
-    </div>
-  </div>
-
-  <SectionTitle text={m.ms_yours()} />
-  <div class="list-group">
-    {#each sorted as mi (mi.id)}
-      <div class="list-row">
-        {#if mi.photo}
-          <PhotoThumb photo={mi.photo} size={40} />
-        {:else}
-          <span class="row-icon"><Icon name="flag" size={20} /></span>
-        {/if}
-        <span class="row-text">
-          <span class="row-title">{mi.name}</span>
-          <span class="row-subtitle">{fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · {statusText(mi)}</span>
-        </span>
-        <button class="icon-btn" aria-label={m.ms_edit_aria({ name: mi.name })} onclick={() => openEditor(mi, null)}><Icon name="pencil" size={18} /></button>
-        <button class="icon-btn" aria-label={m.ms_delete_aria({ name: mi.name })} onclick={() => (deleteTarget = mi)}><Icon name="trash" size={18} /></button>
-      </div>
-    {:else}
-      <p class="muted small" style="padding:var(--space-4)">{m.ms_none()}</p>
-    {/each}
-  </div>
+    </ListCard>
+  </Sheet>
 
   <Sheet open={editor !== null} title={m.ms_sheet_title()} onClose={() => (editor = null)}>
     {#if editor}
@@ -233,3 +282,16 @@
     onSkip={() => (feelingOfferId = null)}
   />
 </div>
+
+<style>
+  .ms-photo {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    border: var(--role-hairline);
+  }
+</style>

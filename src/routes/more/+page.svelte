@@ -112,7 +112,7 @@
        belonged to that group (Alicja, on the live build). A plain margin
        gives it the same clearance a heading would, without a heading that
        has nothing to say. -->
-  <div style="margin-top:var(--space-6)">
+  <div>
     <ListCard>
       <ListRow
         key="settings"

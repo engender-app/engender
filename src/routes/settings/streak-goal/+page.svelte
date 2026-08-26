@@ -67,17 +67,17 @@
         onChange={(v) => pickTarget(Number(v))}
       />
 
-      <div class="goal-track" style="margin-top:var(--space-4)">
+      <div class="goal-track">
         <div class="goal-fill" style="width:{progress.fraction * 100}%"></div>
       </div>
-      <p class="muted small" style="margin-top:var(--space-2)">
+      <p class="muted small">
         {#if progress.met}
           {m.streak_goal_progress_met({ days: m.n_days({ n: progress.targetDays }) })}
         {:else}
           {m.streak_goal_progress_current({ current: String(progress.currentStreak), target: String(progress.targetDays) })}
         {/if}
       </p>
-      <p class="muted small" style="margin-top:var(--space-2)">{m.streak_goal_gap_note()}</p>
+      <p class="muted small">{m.streak_goal_gap_note()}</p>
     {/if}
   </div>
 

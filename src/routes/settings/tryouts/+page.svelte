@@ -1,14 +1,27 @@
 <script lang="ts">
+  /* Tryouts, on the surface kit (phase 5 UX ticket 25).
+
+     The row was three controls wearing one row's clothes: a `.list-row`
+     div, a bare anchor inside it holding the text with its own inline
+     `text-decoration:none;color:inherit`, and a delete button beside it -
+     so the tappable area was the words rather than the row. It is the
+     kit's split row now, which is the same two controls with the row's own
+     padding and press behind the first of them. */
   import { m } from '$lib/paraglide/messages';
   import { liveQuery, journal } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { tryoutKindName } from '$lib/data/vocabulary/labels';
   import type { Tryout } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { crossfade } from '$lib/motion/reveal';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
 
   let tryoutsQuery = liveQuery(['tryout'], (j) => j.tryouts.getTryouts());
   let tryouts = $derived(tryoutsQuery.value ?? []);
@@ -29,30 +42,40 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.tryout_title()} back="/settings" subtitle={m.tryout_intro()}>
+  <ScreenHeader title={m.tryout_title()} back="/more" subtitle={m.tryout_intro()}>
     {#snippet actions()}
-      <a class="icon-btn" href="/settings/tryouts/new" aria-label={m.tryout_add()}><Icon name="plus" size={22} /></a>
+      <a class="icon-btn press" href="/settings/tryouts/new" aria-label={m.tryout_add()}><Icon name="plus" size={22} /></a>
     {/snippet}
   </ScreenHeader>
 
   {#if tryoutsQuery.loading}
-    <Skeleton variant="line" count={3} />
-  {:else if tryouts.length === 0}
-    <EmptyState title={m.tryout_none()} text={m.tryout_intro()} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
+  {:else if tryouts.length}
+    <div class="screen-part">
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each tryouts as t (t.id)}
+          <ListRow
+            key={t.id}
+            data-tryout={t.id}
+            icon="tag"
+            title={t.label}
+            subtitle={`${tryoutKindName(t.kind)} · ${rangeLabel(t)}`}
+            href="/settings/tryouts/{t.id}"
+            action={{ icon: 'trash', label: m.tryout_delete_sheet(), onclick: () => (deleteTarget = t) }}
+          />
+        {/each}
+      </ListCard>
+    </div>
   {:else}
-    <div class="list-group">
-      {#each tryouts as t (t.id)}
-        <div class="list-row">
-          <span class="row-icon"><Icon name="tag" size={22} /></span>
-          <a class="row-text" href="/settings/tryouts/{t.id}" style="text-decoration:none;color:inherit">
-            <span class="row-title">{t.label}</span>
-            <span class="row-subtitle">{tryoutKindName(t.kind)} · {rangeLabel(t)}</span>
-          </a>
-          <button class="icon-btn" aria-label={m.tryout_delete_sheet()} onclick={() => (deleteTarget = t)}>
-            <Icon name="trash" size={18} />
-          </button>
-        </div>
-      {/each}
+    <div class="screen-part">
+      <Notice
+        icon="tag"
+        key="tryouts-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.tryout_none()}
+        text={m.tryout_intro()}
+        action={{ label: m.tryout_add(), primary: true, href: '/settings/tryouts/new' }}
+      />
     </div>
   {/if}
 

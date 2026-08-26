@@ -801,6 +801,27 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
    even though a printer drops background colours by default (phase 5
    ticket 17: a journal book's opening page is a palette and three numbers,
    and without the palette it is three numbers). */
+/* The clinician summary is the one thing this app prints for somebody else to
+   read, and it was printing in Nunito over Outfit headings - the app's own
+   rounded voice, on a page a doctor is handed (Alicja, 2026-08-26: "needs
+   more neutral/professional font").
+
+   A system stack rather than a webfont, because a print-to-PDF pass should
+   not depend on a font request landing, and because the whole point is a
+   face that carries no personality of its own. Print only: on screen the
+   summary is still a screen in this app, and the journal book - the other
+   print surface, and the one a person prints for themselves - keeps the
+   app's face deliberately. */
+@media print {
+  .clinician-summary,
+  .clinician-summary h1,
+  .clinician-summary h2,
+  .clinician-summary h3 {
+    font-family: 'Liberation Sans', Arial, Helvetica, sans-serif;
+    letter-spacing: normal;
+  }
+}
+
 @media print {
   .wrapped-card-art {
     print-color-adjust: exact;

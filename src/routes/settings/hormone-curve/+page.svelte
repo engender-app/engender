@@ -1,4 +1,20 @@
 <script lang="ts">
+  /* Modelled or illustrative estradiol or testosterone between doses, on
+     the surface and chart kits (phase 5 UX ticket 25).
+
+     The marks stay this screen's own. A band drawn from uncertainty samples
+     with lab results sitting on top of it is not something the chart kit
+     draws, and the alternative - two cards, one per layer - would take away
+     the only thing the pair is for. What moves onto the kit is everything
+     around them: the card is a chart card, the section headings are the
+     kit's, and the fit switch is a list card rather than a `.list-group`
+     holding one row.
+
+     What must not move is what the screen says about itself. Every curve
+     here is modelled or illustrative and says so - `curve_intro` at the
+     top, `curve_legend_band` on the band, `curve_qual_notice` on the
+     heading of every illustrative one - and no reading on it is
+     interpreted anywhere. */
   /* The hormone curve screen (phase 4 tickets 10 and 11).
 
      Two rules run through the whole file. Nothing states or implies a target,
@@ -33,8 +49,18 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { crossfade } from '$lib/motion/reveal';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  /* Colour that carries a value takes role 0 (DIRECTION.md); the fit switch
+     takes the stripe after it. */
+  const SECTION_ROLE = { charts: 0, fit: 1 };
   import HormoneBandChart from '$lib/components/HormoneBandChart.svelte';
   import QualitativeCurveChart from '$lib/components/QualitativeCurveChart.svelte';
 
@@ -239,10 +265,10 @@
 {/snippet}
 
 <div class="screen">
-  <ScreenHeader title={m.curve_title()} back="/settings" />
+  <ScreenHeader title={m.curve_title()} back="/more" />
 
   {#if injectableQuery.loading || qualLoading || !injectableView || !qualAnswered}
-    <Skeleton variant="block" count={2} />
+    <div out:crossfade><Skeleton variant="block" count={2} /></div>
   {:else if injectableView.curves.length === 0 && qualSections.length === 0}
     <!-- One empty state for every way of having no curve at all, across both
          kinds: nothing in the log adds up to either one. -->
@@ -252,10 +278,13 @@
          saying so again would put the limit on them rather than on this
          screen. -->
     {@const futile = injectableView.dosesNoCurveAnywhere > 0}
-    <EmptyState
+    <Notice
+      icon="curve"
+      key="curve-empty"
+      role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
       title={m.curve_empty_title()}
       text={m.curve_empty_body()}
-      action={futile ? undefined : doseLogAction}
+      action={futile ? undefined : { label: m.curve_empty_action(), primary: true, href: '/doses' }}
     />
     {#if futile}
       <p class="muted small curve-note" data-no-curve-note>
@@ -274,24 +303,25 @@
   {:else}
     <p class="muted small" style="margin-bottom:var(--space-4)">{m.curve_intro()}</p>
 
-    <div class="field">
-      <span class="field-label">{m.curve_window_label()}</span>
-      <Segmented
-        name={m.curve_window_label()}
-        options={WINDOWS.map((days) => ({ value: String(days), label: WINDOW_LABELS[days]() }))}
-        value={String(windowDays)}
-        onChange={(value) => (windowDays = Number(value) as (typeof WINDOWS)[number])}
-      />
-    </div>
+    <Segmented
+      name={m.curve_window_label()}
+      options={WINDOWS.map((days) => ({ value: String(days), label: WINDOW_LABELS[days]() }))}
+      value={String(windowDays)}
+      onChange={(value) => (windowDays = Number(value) as (typeof WINDOWS)[number])}
+      compact
+      key="curve-window"
+    />
 
     {#if injectableView.curves.length > 0}
-      <h2 class="curve-section-heading">{m.curve_injectable_heading()}</h2>
+      <SectionHeading text={m.curve_injectable_heading()} />
       {#each injectableView.curves as curve (curve.ester)}
         {@const points = pointsFor(curve)}
         {@const selected = picked[curve.ester] ?? null}
-        <div class="card curve-card">
-          <h3 class="curve-card-heading">{esterLabel(curve.ester)}</h3>
-
+        <ChartCard
+          heading={esterLabel(curve.ester)}
+          kind="curve-{curve.ester}"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
+        >
           <HormoneBandChart
             band={curve.band}
             labPoints={points}
@@ -353,24 +383,30 @@
               {/if}
             {/if}
           </div>
-        </div>
+        </ChartCard>
       {/each}
 
       <p class="muted small curve-note">{m.curve_band_note()}</p>
     {/if}
 
     {#if qualSections.length > 0}
-      <h2 class="curve-section-heading">{m.curve_qual_heading()}</h2>
+      <SectionHeading text={m.curve_qual_heading()} />
       <!-- Keyed by hormone and route together: the same route on the two
            hormones is two cards, and a key of the route alone would collide. -->
       {#each qualSections as { drug, view } (drug)}
         {#each view.curves as curve (curve.key)}
           {@const lines = qualLines(drug, view, curve)}
-          <div class="card curve-card">
-            <div class="qual-card-head">
-              <h3 class="curve-card-heading">{qualitativeCurveLabel(curve.key)}</h3>
+          <ChartCard
+            heading={qualitativeCurveLabel(curve.key)}
+            kind="curve-qual-{curve.key}"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
+          >
+            {#snippet control()}
+              <!-- On the heading's line, because it is what this heading
+                   means: the shape under it is illustrative rather than
+                   fitted to a published study. -->
               <span class="qual-notice">{m.curve_qual_notice()}</span>
-            </div>
+            {/snippet}
 
             <QualitativeCurveChart
               points={curve.points}
@@ -397,23 +433,28 @@
                 {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
               </div>
             {/if}
-          </div>
+          </ChartCard>
         {/each}
       {/each}
 
       <p class="muted small curve-note">{m.curve_qual_note()}</p>
     {/if}
 
-    <div class="list-group curve-fit">
-      <div class="list-row">
-        <span class="row-text">
-          <span class="row-title">{m.curve_fit_label()}</span>
-          <span class="row-subtitle">{m.curve_fit_hint()}</span>
-        </span>
-        <span class="row-trailing">
-          <Switch checked={prefs.hormoneCurveFitToOwnLabs} onChange={toggleFit} label={m.curve_fit_label()} />
-        </span>
-      </div>
+    <div class="curve-fit">
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.fit)}>
+        <!-- A plain row rather than a ListRow: a ListRow renders as a link
+             or a button, and a button wrapping the switch's own button is a
+             nested control. Same call ticket 24 made in Settings. -->
+        <div class="kit-row is-static" data-curve-fit>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.curve_fit_label()}</span>
+            <span class="kit-row-sub">{m.curve_fit_hint()}</span>
+          </span>
+          <span class="kit-row-trail">
+            <Switch checked={prefs.hormoneCurveFitToOwnLabs} onChange={toggleFit} label={m.curve_fit_label()} />
+          </span>
+        </div>
+      </ListCard>
     </div>
 
     {#if prefs.hormoneCurveFitToOwnLabs && injectableView.curves.length > 0}
@@ -480,32 +521,6 @@
 </div>
 
 <style>
-  .curve-section-heading {
-    font-size: var(--text-sm);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-2);
-    margin: var(--space-4) 0 var(--space-3);
-  }
-
-  .curve-card {
-    margin-bottom: var(--space-4);
-  }
-
-  .curve-card-heading {
-    font-size: var(--text-md);
-    margin: 0;
-  }
-
-  .qual-card-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-  }
-
   /* Permanently visible, not tucked into a paragraph below the chart: the
      one thing a reader must not miss even glancing at this card alone. */
   .qual-notice {
