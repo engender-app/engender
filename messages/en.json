@@ -2171,6 +2171,7 @@
   "surgery_delete_hint": "Its consult dates, recovery notes, photos and checklist go with it. This cannot be undone.",
   "surgery_row_aria": "Open {name}",
   "surgery_day_unscheduled": "No surgery date yet",
+  "surgery_set_date": "Set the date",
   "surgery_day_upcoming": "{days} to go",
   "surgery_day_of": "Surgery day",
   "surgery_day_since": "{days} since surgery",

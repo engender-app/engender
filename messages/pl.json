@@ -2217,6 +2217,7 @@
   "surgery_delete_hint": "Razem z nią znikną terminy konsultacji, notatki, zdjęcia i lista. Tego nie da się cofnąć.",
   "surgery_row_aria": "Otwórz {name}",
   "surgery_day_unscheduled": "Termin jeszcze nieustalony",
+  "surgery_set_date": "Ustaw datę",
   "surgery_day_upcoming": "Zostało {days}",
   "surgery_day_of": "Dzień operacji",
   "surgery_day_since": "{days} po operacji",
