@@ -687,43 +687,25 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   }
 }
 
-/* A frame for the app itself at desktop width, so a bleed has an edge to
-   cut against (phase 5 ticket 32.11). Nothing before this capped anything
-   but .screen, and .screen's own edge is well inside .app-main - so Home's
-   flag sun, clipped by .home-header's own overflow: hidden against that
-   edge, cut off against page that ran on unbroken past it in both
-   directions. Alicja, 2026-08-26: "let's leave the sun in the corner, but
-   let's put a nice border around the whole app on web, so that the sun
-   doesn't just cut off like that." The sun's own clip is unchanged - this
-   frames the rail and the column together, so the composition they make
-   reads as a window sitting on the page rather than as content that
-   happens to stop.
+/* Not a frame around the whole app any more (phase 5 ticket 32.11,
+   reverted here). That version bordered the rail and the column together
+   on `body`, which put the rail back to its normal desktop position but
+   left the border drawn nearly 200px out from where Home's own bleed
+   actually clips its sun - the composition read as a window on the page,
+   but the sun inside it still stopped at an edge with nothing marking it,
+   same as before, just with an unrelated frame around the whole thing
+   (Alicja, 2026-08-27: "the border should only be around the main home
+   content, not over the whole app... the menu can go back to the previous
+   position as well as the width of the app").
 
-   An outline, not a border, and on body rather than .app-viewport - both
-   for the same reason. A container query measures a size container's own
-   content box, and .app-viewport (width: 100% of its containing block) is
-   that container: a border anywhere between the real window and it - on
-   .app-viewport itself, or on body around it - takes its own width off
-   what .app-viewport ends up 100% of. Either placement landed 1024px of
-   real window as 1022px of container, one part in a thousand short of the
-   rail's own @container app (min-width: 1024px), and silently back to the
-   bottom bar. An outline draws in the same place without occupying any
-   box-model space, so nothing downstream measures a pixel narrower -
-   "border" above is the word for what a reader sees, which an outline
-   draws exactly.
-
-   A plain @media rather than the container query itself: body is outside
-   that container altogether, and 1024px matches the rail's own threshold
-   so the two move together. Below it, the frame does nothing: a narrow
-   desktop window is already close enough to phone width that .screen
-   fills it edge to edge, the same as it does on a phone. */
-@media (min-width: 1024px) {
-  body {
-    max-width: var(--app-frame-max);
-    margin: 0 auto;
-    outline: 1px solid var(--border);
-  }
-}
+   What replaces it is scoped to Home alone, in screens.css: a border
+   directly on `.home`, which already sits at the exact edge `.home-header`
+   bleeds its sun against (`.screen`'s own padding box, per the container
+   query above - the negative margin that pulls the header out to that
+   edge is unchanged). Putting the border on that same box, rather than
+   somewhere past it, means the rounded corner is what clips the sun now,
+   instead of the sun stopping at an edge and a border being drawn
+   somewhere else. */
 .rail-brand {
   font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg);
   letter-spacing: var(--display-track);
