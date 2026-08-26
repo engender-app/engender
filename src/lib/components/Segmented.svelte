@@ -83,12 +83,20 @@
   >
     {@render pillMark()}
     {#each options as o, i (o.value)}
+      <!-- Replaces rather than pushes. A switcher shows a different view of
+           the screen you are already on, so each flick of it is not a place
+           to come back to: pushed, the back arrow spent one tap per switch
+           undoing them instead of leaving the screen (Alicja, 2026-08-26).
+           `screen-transition.ts` already says the same thing about these in
+           its own table, where crossing them is tier 3 rather than a
+           navigation. -->
       <a
         bind:this={buttons[i]}
         class="segment"
         class:is-active={o.value === value}
         aria-current={o.value === value ? 'page' : undefined}
         data-segment={o.value}
+        data-sveltekit-replacestate
         href={o.href}>{o.label}</a
       >
     {/each}
