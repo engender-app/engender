@@ -411,7 +411,7 @@
           >
             <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
             <span class="kit-row-text">
-              <span class="kit-row-title">{r.value} {r.unit}</span>
+              <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
               <span class="kit-row-sub">
                 {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
               </span>
