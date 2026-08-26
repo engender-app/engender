@@ -82,7 +82,7 @@
   "body_map_chart_aria": "Dwie linie dla miejsca {region}: {first} i {second}, w wybranym zakresie.",
   "entry": "Wpis",
   "delete_entry_q": "Usunąć ten wpis?",
-  "delete_entry_hint": "Wpis, zdjęcia i nagrania trafią do kosza. Możesz je przywrócić w ciągu 30 dni, w Ustawieniach.",
+  "delete_entry_hint": "Wpis, zdjęcia oraz nagrania głosowe i wideo trafią do kosza. Możesz je przywrócić w ciągu 30 dni, w Ustawieniach.",
   "delete_entry": "Usuń wpis",
   "keep_it": "Zostaw",
   "trash_title": "Kosz",
