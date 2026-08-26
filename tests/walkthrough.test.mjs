@@ -1787,7 +1787,10 @@ try {
   await fresh('/settings/roadmap');
   await page.waitForSelector('[data-goal]');
 
-  const tracks = (await page.locator('[data-section-title]').allTextContents()).map((t) => t.trim());
+  /* The kit's heading, not SectionTitle's: phase 5 UX ticket 25 moved the
+     feature screens onto it, and the handle moved with the component the
+     way ticket 24's list-row handles did. */
+  const tracks = (await page.locator('[data-section-heading]').allTextContents()).map((t) => t.trim());
   for (const track of ['Social', 'Legal', 'Presentation', 'Medical']) {
     if (!tracks.includes(track)) throw new Error('missing track ' + track + ': ' + JSON.stringify(tracks));
   }
