@@ -6,7 +6,7 @@
    $state projection of the pref table, with writes forwarded to SQLite.
 
    It is a projection, not a second store. Nothing else caches a preference
-   and nothing writes to `values` except this module, so `activePreset`
+   and nothing writes to `values` except this module, so `activeScales`
    cannot end up with two sources of truth while the demo store still owns
    entries (ticket 07 takes those).
 

@@ -378,6 +378,77 @@
   color: var(--text-2);
 }
 
+/* ---------- the box on a tickable row ----------
+
+   Phase 5 ticket 35. The box carries the row's state; the row does not
+   change under it, for the reason Check.svelte gives.
+
+   The size is the icon size the rest of a row is drawn at, so the box lines
+   up with the chevrons and discs on the rows around it rather than being a
+   third measurement.
+
+   Ticked is `.tag-chip.is-selected`'s treatment, written out rather than
+   shared through a class: a chip is a pill and this is a square, and the two
+   agreeing on colour is not a reason to make one of them the other.
+
+   Named for the mark it draws rather than for the gesture, because
+   `.kit-*tick` is the chart kit's word for the axis furniture these charts
+   refuse to draw, and kit-surfaces.test.ts fails on sight of it. */
+.kit-check {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--on-accent-soft);
+  transition-property: background-color, border-color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+.kit-check.is-ticked {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* Tier 3, a change within the screen: the mark moves and its container does
+   not. The row's own press is tier 1 and is the wash it fills with; this is
+   the answer to the tap having landed.
+
+   The tick draws itself in over its own length rather than fading or
+   popping, which is the one gesture a check mark has: 22 units of path,
+   hidden by an offset of 22 and uncovered to 0. Unticking plays the same
+   transition backwards for nothing, which is the whole reason it is a
+   transition and not an animation.
+
+   --dur-slow, deliberately slower than the box's fill under it, so the
+   colour arrives and the mark is drawn onto it rather than the two landing
+   as one event. */
+.kit-check-mark {
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  transition: stroke-dashoffset var(--dur-slow) var(--ease-out);
+}
+
+.kit-check.is-ticked .kit-check-mark {
+  stroke-dashoffset: 0;
+}
+
+/* Reduced motion substitutes rather than deletes, the same way press.css
+   does: the mark is simply there, and the box's colour still changes. A
+   drawn line is movement, and this is the tier-3 contract's instant cut. */
+html[data-a11y-motion='reduce'] .kit-check-mark {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kit-check-mark {
+    transition: none;
+  }
+}
+
 /* ---------- day card ----------
 
    Entries grouped under a tinted date bar. The tint is the section's own

@@ -258,8 +258,8 @@ public class AutoExportPlugin extends Plugin {
             NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(getContext(), FAILURE_CHANNEL)
                     .setSmallIcon(android.R.drawable.stat_notify_error)
-                    .setContentTitle("Backup needs attention")
-                    .setContentText("Scheduled backup failed. Open the app to fix it.")
+                    .setContentTitle("Scheduled backup failed")
+                    .setContentText("Nothing was saved. Open the app to try again.")
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setAutoCancel(true)
                     .setVisibility(NotificationCompat.VISIBILITY_PRIVATE);

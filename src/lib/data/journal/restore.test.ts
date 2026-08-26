@@ -11,7 +11,7 @@ import { test } from 'vitest';
 import { thumbFileName } from '../photos/names.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import { BUILT_IN_PRESETS } from '../vocabulary/builtins.ts';
+import { BUILT_IN_DIMENSIONS } from '../vocabulary/builtins.ts';
 import { attributeDose } from '../regimenEpisode.ts';
 import { epochDayFromTimestamp } from '../epochDay.ts';
 import { emptyArchiveJournal } from './archiveSections.ts';
@@ -540,13 +540,15 @@ test('replace keeps built-in rows by key rather than deleting them, and never du
 
   const dimensions = await target.journal.dimensions.getDimensions();
   assert.equal(dimensions.filter((d) => d.key === 'femininity').length, 1);
-  assert.equal(dimensions.filter((d) => d.builtIn).length, 5);
+  assert.equal(dimensions.filter((d) => d.builtIn).length, BUILT_IN_DIMENSIONS.length);
   const groups = await target.journal.tags.getTagGroups();
   assert.equal(groups.filter((g) => g.key === 'activities').length, 1);
   assert.equal(groups.flatMap((g) => g.tags).filter((t) => t.id === 'e-happy').length, 1);
+  /* No built-in preset is asserted here any more: nothing seeds one since
+     ticket 35 left them legacy-only, so neither journal has one to keep. The
+     custom preset still has to survive, which is the uuid half of this
+     test's claim. */
   const presets = await target.journal.dimensions.getPresets();
-  assert.equal(presets.filter((p) => p.id === 'p-btw').length, 1);
-  assert.deepEqual(presets.find((p) => p.id === 'p-btw')?.dims, ['euphoria_dysphoria', 'femininity']);
   assert.deepEqual(presets.find((p) => p.id === source.preset.id)?.dims, [source.voice.key, 'femininity']);
   const measurementTypes = await target.journal.measurements.getMeasurementTypes();
   assert.equal(measurementTypes.filter((t) => t.key === 'waist').length, 1);
@@ -561,28 +563,10 @@ test('merge does not duplicate built-ins either, however they arrived', async ()
   assert.equal(await rowCount(target.db, "gender_dimension WHERE key = 'femininity'"), 1);
   assert.equal(await rowCount(target.db, "tag WHERE key = 'e-happy'"), 1);
   assert.equal(await rowCount(target.db, "tag_group WHERE key = 'activities'"), 1);
-  assert.equal(await rowCount(target.db, "gender_preset WHERE key = 'p-nb'"), 1);
   assert.equal(await rowCount(target.db, "measurement_type WHERE key = 'waist'"), 1);
-  assert.equal(
-    await rowCount(target.db, 'preset_dimension'),
-    BUILT_IN_PRESETS.reduce((sum, preset) => sum + preset.dims.length, 0) + 2
-  );
-});
-
-test('a built-in preset the archive does not carry keeps the dimensions it was reconciled with', async () => {
-  const source = await populated();
-  const target = await device();
-
-  // An archive written by a build that did not have p-nb yet. Emptying
-  // preset_dimension wholesale left it offering no scales at all, for good.
-  const contents = await exported(source.journal);
-  contents.journal.presets = contents.journal.presets.filter((p) => p.id !== 'p-nb');
-
-  await target.journal.archive.replace(contents);
-
-  const presets = await target.journal.dimensions.getPresets();
-  assert.equal(presets.find((p) => p.id === 'p-nb')?.dims.length, 5);
-  assert.deepEqual(presets.find((p) => p.id === 'p-btw')?.dims, ['euphoria_dysphoria', 'femininity']);
+  // The source journal's one custom preset and its two scales, and nothing
+  // else: no built-in preset is seeded on either side.
+  assert.equal(await rowCount(target.db, 'preset_dimension'), 2);
 });
 
 test('a tag merged into a group this device already has lands after the tags in it', async () => {
@@ -810,8 +794,11 @@ test('importing into a journal that has never been through a boot works', async 
   await target.archive.replace(await exported(source.journal));
 
   assert.equal((await target.entries.entriesForDay(20000)).length, 1);
-  assert.equal((await target.dimensions.getDimensions()).filter((d) => d.builtIn).length, 5);
-  assert.equal((await target.dimensions.getPresets()).filter((p) => p.builtIn).length, BUILT_IN_PRESETS.length);
+  assert.equal(
+    (await target.dimensions.getDimensions()).filter((d) => d.builtIn).length,
+    BUILT_IN_DIMENSIONS.length
+  );
+  assert.equal((await target.dimensions.getPresets()).filter((p) => p.builtIn).length, 0);
   assert.equal(await rowCount(db, 'pref'), 0);
 });
 
@@ -828,7 +815,7 @@ test('an empty journal restores over a populated one, which is what a Replace me
   // The index went with the entries, through the trigger migration v3 added.
   assert.deepEqual(await target.journal.entries.searchEntries('good', []), []);
   // The vocabulary a screen needs to render is still there.
-  assert.equal((await target.journal.dimensions.getDimensions()).length, 5);
+  assert.equal((await target.journal.dimensions.getDimensions()).length, BUILT_IN_DIMENSIONS.length);
 });
 
 test('restore does not scale round trips per row for either replace or merge', async () => {

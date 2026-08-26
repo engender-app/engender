@@ -66,6 +66,16 @@ test('a fresh install has not been onboarded', () => {
   expect(PREFERENCE_DEFAULTS.onboarded).toBe(false);
 });
 
-test('a fresh journal defaults to the symmetric fem+masc preset, not a single-axis one (ticket 28)', () => {
-  expect(PREFERENCE_DEFAULTS.activePreset).toBe('p-fem-masc');
+/* Ticket 35 turned the preset into a list of ticked scales, and the default
+   is the three the fem+masc preset stood for, in catalogue order: a new
+   install offers exactly what it offered before the list replaced the
+   preset. Symmetric, not single-axis, for ticket 28's reason - the app does
+   not decide in advance that a person is heading one way. */
+test('a fresh journal ticks the symmetric fem+masc scales, not a single-axis set (tickets 28, 35)', () => {
+  expect(PREFERENCE_DEFAULTS.activeScales).toEqual(['euphoria_dysphoria', 'femininity', 'masculinity']);
+});
+
+test('the ticked scales travel with the journal, because they describe it (ADR-0003)', () => {
+  expect(PORTABLE_KEYS).toContain('activeScales');
+  expect(BOOT_KEYS).not.toContain('activeScales');
 });

@@ -19,6 +19,7 @@
   import { androidKeystore } from '$lib/lock/keystore-bridge';
   import { bioGateDecision } from '$lib/lock/bio-consent';
   import { isAndroid } from '$lib/platform';
+  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -41,6 +42,18 @@
   let resetOpen = $state(false);
   let resetting = $state(false);
   let waitMs = $state(0);
+  /** The whole wait, taken the moment it starts, so the rail under the
+      status line can draw the share of it that is left. Read off the
+      throttle's first reading rather than added to its API: the countdown
+      always begins at the top of a penalty, so its first reading is the
+      penalty. */
+  let waitTotalMs = $state(0);
+  /** Counts refusals rather than holding a flag, so the shake plays again on
+      the second wrong PIN. A boolean would have to be set, cleared on a
+      timer and raced against the next attempt; a number keyed into the
+      markup gives a fresh element per refusal and the animation runs once
+      per element with nothing to clean up. */
+  let refusals = $state(0);
   let bioConsentOpen = $state(false);
 
   const throttle = createAttemptThrottle(localStorageAttempts());
@@ -85,7 +98,10 @@
   function startCountdown() {
     const remaining = throttle.remainingMs(Date.now());
     waitMs = remaining;
-    if (remaining > 0 && !countdown) countdown = setInterval(tickWait, 250);
+    if (remaining > 0 && !countdown) {
+      waitTotalMs = remaining;
+      countdown = setInterval(tickWait, 250);
+    }
   }
 
   /* A wait the last page load earned is still owed - reloading is the
@@ -121,6 +137,7 @@
     }
     if (pin !== chosen) {
       error = m.pin_mismatch();
+      refusals++;
       chosen = '';
       pin = '';
       return;
@@ -147,6 +164,7 @@
     throttle.recordWrong(Date.now());
     pin = '';
     error = m.pin_wrong();
+    refusals++;
     startCountdown();
   }
 
@@ -208,6 +226,12 @@
     }
   }
 
+  /* Hoisted out of the template with the title, so its length can decide
+     whether it is a line to centre or a paragraph to left-align. */
+  let body = $derived(
+    mode === 'setup' ? (confirming ? m.pin_confirm_body() : m.pin_setup_body()) : m.pin_unlock_body()
+  );
+
   let title = $derived(
     mode === 'setup'
       ? confirming
@@ -219,91 +243,101 @@
   );
 </script>
 
-<div class="screen">
-  <div class="applock" data-applock>
-    <div class="applock-badge"><Icon name="lock" size={30} /></div>
-    <h1 class="ob-title" style="text-align:center">{title}</h1>
-    <p class="ob-text" style="text-align:center">
-      {#if mode === 'setup'}
-        {#if confirming}{m.pin_confirm_body()}{:else}{m.pin_setup_body()}{/if}
-      {:else}
-        {m.pin_unlock_body()}
-      {/if}
-    </p>
-    <div class="pin-dots" aria-label={m.pin_progress({ typed: String(pin.length), total: String(PIN_LENGTH) })}>
+<GateScreen icon="lock" {title} data-applock>
+  <p class={gateBodyClass(body)}>{body}</p>
+
+  <!-- Keyed on the refusal count so a wrong PIN gets a fresh row and the
+       shake plays once per refusal rather than once per mount. -->
+  {#key refusals}
+    <div
+      class="pin-dots"
+      class:is-refused={refusals > 0}
+      aria-label={m.pin_progress({ typed: String(pin.length), total: String(PIN_LENGTH) })}
+    >
       {#each Array.from({ length: PIN_LENGTH }) as _, i (i)}<span
           class="pin-dot"
           class:is-filled={i < pin.length}
         ></span>{/each}
     </div>
-    <p
-      class="pin-status small"
-      role="alert"
-      data-pin-status={waitMs > 0 ? 'throttled' : error ? 'wrong' : 'idle'}
-    >
-      {#if waitMs > 0}
-        {m.pin_throttled({ seconds: String(Math.ceil(waitMs / 1000)) })}
-      {:else}{error}{/if}
-    </p>
-    <div class="pin-pad" data-pin-pad class:is-waiting={waitMs > 0}>
-      {#each ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as n (n)}
-        <button class="pin-key" data-key={n} disabled={waitMs > 0} onclick={() => press(n)}>{n}</button>
-      {/each}
-      {#if android && mode === 'unlock' && bioDecision === 'auto'}
-        <!-- Only on Android, where there is a prompt behind it (ticket 13);
-             on web there is nothing, so it stays out of the tab order
-             entirely. Throttled with the digits: a wait the PIN earned is not
-             one a fingerprint gets to skip. Gone entirely rather than merely
-             inert when consent is missing (ticket 18) - unlike the boot
-             gate, a PIN always works underneath, so there is nothing this
-             key needs to wait behind. -->
-        <button
-          class="pin-key is-ghost"
-          data-bio
-          aria-label={m.pin_bio_label()}
-          disabled={busy || waitMs > 0}
-          onclick={useBiometrics}
-        >
-          <Icon name="fingerprint" size={26} />
-        </button>
-      {:else}
-        <span></span>
-      {/if}
-      <button class="pin-key" data-key="0" disabled={waitMs > 0} onclick={() => press('0')}>0</button>
+  {/key}
+
+  {#if waitMs > 0}
+    <!-- The seconds on the line below are the information; this is their
+         shape. Keyed on the total so a second penalty restarts the drain
+         rather than continuing the first one's. -->
+    {#key waitTotalMs}
+      <div class="rail pin-wait" aria-hidden="true"><i style={`--wait:${waitTotalMs}ms`}></i></div>
+    {/key}
+  {/if}
+
+  <p
+    class="pin-status small"
+    role="alert"
+    data-pin-status={waitMs > 0 ? 'throttled' : error ? 'wrong' : 'idle'}
+  >
+    {#if waitMs > 0}
+      {m.pin_throttled({ seconds: String(Math.ceil(waitMs / 1000)) })}
+    {:else}{error}{/if}
+  </p>
+
+  <div class="pin-pad" data-pin-pad class:is-waiting={waitMs > 0}>
+    {#each ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as n (n)}
+      <button class="pin-key" data-key={n} disabled={waitMs > 0} onclick={() => press(n)}>{n}</button>
+    {/each}
+    {#if android && mode === 'unlock' && bioDecision === 'auto'}
+      <!-- Only on Android, where there is a prompt behind it (ticket 13);
+           on web there is nothing, so it stays out of the tab order
+           entirely. Throttled with the digits: a wait the PIN earned is not
+           one a fingerprint gets to skip. Gone entirely rather than merely
+           inert when consent is missing (ticket 18) - unlike the boot
+           gate, a PIN always works underneath, so there is nothing this
+           key needs to wait behind. -->
       <button
         class="pin-key is-ghost"
-        data-backspace
-        aria-label={m.pin_backspace()}
-        disabled={waitMs > 0}
-        onclick={() => (pin = pin.slice(0, -1))}
+        data-bio
+        aria-label={m.pin_bio_label()}
+        disabled={busy || waitMs > 0}
+        onclick={useBiometrics}
       >
-        <Icon name="backspace" size={24} />
+        <Icon name="fingerprint" size={26} />
+      </button>
+    {:else}
+      <span></span>
+    {/if}
+    <button class="pin-key" data-key="0" disabled={waitMs > 0} onclick={() => press('0')}>0</button>
+    <button
+      class="pin-key is-ghost"
+      data-backspace
+      aria-label={m.pin_backspace()}
+      disabled={waitMs > 0}
+      onclick={() => (pin = pin.slice(0, -1))}
+    >
+      <Icon name="backspace" size={24} />
+    </button>
+  </div>
+
+  {#if mode === 'setup' && onCancel}
+    <div class="gate-foot">
+      <button class="btn btn-ghost" data-cancel-setup onclick={onCancel}>
+        <span>{m.not_now()}</span>
       </button>
     </div>
+  {/if}
 
-    {#if mode === 'setup' && onCancel}
-      <div style="text-align:center;margin-top:var(--space-6)">
-        <button class="btn btn-ghost" data-cancel-setup onclick={onCancel}>
-          <span>{m.not_now()}</span>
-        </button>
-      </div>
-    {/if}
-
-    {#if mode === 'unlock'}
-      <div style="text-align:center;margin-top:var(--space-6)">
-        <button class="btn btn-ghost" data-forgot onclick={() => (resetOpen = true)}>
-          <span>{m.pin_forgot()}</span>
-        </button>
-      </div>
+  {#if mode === 'unlock'}
+    <div class="gate-foot">
+      <button class="btn btn-ghost" data-forgot onclick={() => (resetOpen = true)}>
+        <span>{m.pin_forgot()}</span>
+      </button>
       {#if prefs.lockOnLeave || prefs.quickExit}
-        <p class="muted small" style="text-align:center;margin-top:var(--space-3)">
+        <p class="gate-note">
           {prefs.lockOnLeave ? m.lock_auto_note() + ' ' : ''}
           {prefs.quickExit ? m.lock_quick_exit_note() : ''}
         </p>
       {/if}
-    {/if}
-  </div>
-</div>
+    </div>
+  {/if}
+</GateScreen>
 
 <Sheet bind:open={resetOpen} title={m.pin_forgot()}>
   <h3>{m.pin_forgot()}</h3>

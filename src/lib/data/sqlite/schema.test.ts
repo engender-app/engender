@@ -12,7 +12,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
-  assert.equal(db.getUserVersion(), 41);
+  assert.equal(db.getUserVersion(), 42);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -343,7 +343,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 41);
+  assert.equal(db.getUserVersion(), 42);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -375,7 +375,7 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 41);
+  assert.equal(db.getUserVersion(), 42);
 
   const row = db.raw.prepare('SELECT * FROM measurement WHERE uuid = ?').get('m1') as {
     type: string;
@@ -404,7 +404,7 @@ test('v39 drops the CHECK on personal_effect.effect and adds effect_category/per
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 41);
+  assert.equal(db.getUserVersion(), 42);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -488,7 +488,7 @@ test('v37 carries the v13 table across as Norwood-Hamilton stagings', async () =
   db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h1', 19180, '3a', 1000)");
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 41);
+  assert.equal(db.getUserVersion(), 42);
 
   const row = db.raw.prepare('SELECT * FROM hair_stage WHERE uuid = ?').get('h1') as {
     epoch_day: number;
@@ -519,7 +519,7 @@ test('v38 carries the v8 dose_schedule table across as everyNDays, with no weekd
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 41);
+  assert.equal(db.getUserVersion(), 42);
 
   const row = db.raw.prepare('SELECT * FROM dose_schedule WHERE uuid = ?').get('s1') as {
     recurrence_kind: string;
@@ -617,7 +617,7 @@ test('v40 backfills end_epoch_day from the pre-v40 next-episode inference, and a
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 41);
+  assert.equal(db.getUserVersion(), 42);
 
   const episodes = (
     db.raw.prepare('SELECT uuid, end_epoch_day FROM regimen_episode ORDER BY start_epoch_day').all() as Array<{
@@ -647,7 +647,7 @@ test('v41 drops doubt_entry and every row it held, leaving doubt_snapshot and it
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 41);
+  assert.equal(db.getUserVersion(), 42);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'doubt%'")
@@ -684,4 +684,90 @@ test('v27 video_note is entry-only, ordered, and unique by uuid', async () => {
   assert.throws(() =>
     exec("INSERT INTO video_note (uuid, entry_id, file_path, updated_at) VALUES ('n1', 1, 'other.webm', 1000)")
   );
+});
+
+/* Ticket 35 replaced the `activePreset` preference with `activeScales`, the
+   list of dimension keys the preset used to stand for. The three tests below
+   are the whole of that translation: a built-in preset, a custom one, and an
+   install that never wrote the preference at all. */
+
+/** The rows a v41 database would hold for one preset - the shape reconcile
+    seeds for a built-in and dimensions.ts writes for a custom one. */
+function seedPreset(
+  db: Awaited<ReturnType<typeof migratedDb>>,
+  preset: { key?: string; uuid?: string; dims: string[] }
+) {
+  const exec = (sql: string) => db.raw.exec(sql);
+  for (const [i, dim] of preset.dims.entries()) {
+    exec(
+      `INSERT OR IGNORE INTO gender_dimension (key, name, low_label, high_label, min_value, max_value, is_built_in, updated_at)
+       VALUES ('${dim}', '', '', '', 0, 100, 1, 1000)`
+    );
+    if (i === 0) {
+      exec(
+        `INSERT INTO gender_preset (uuid, key, name, is_built_in, updated_at)
+         VALUES (${preset.uuid ? `'${preset.uuid}'` : 'NULL'}, ${preset.key ? `'${preset.key}'` : 'NULL'}, '', ${preset.key ? 1 : 0}, 1000)`
+      );
+    }
+    exec(
+      `INSERT INTO preset_dimension (preset_id, dimension_id, order_index)
+       SELECT gp.id, gd.id, ${i} FROM gender_preset gp, gender_dimension gd
+       WHERE gd.key = '${dim}' AND COALESCE(gp.key, gp.uuid) = '${preset.key ?? preset.uuid}'`
+    );
+  }
+}
+
+async function migratedToV41() {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 41)
+  );
+  return db;
+}
+
+function activeScales(db: Awaited<ReturnType<typeof migratedDb>>): string[] | null {
+  const row = db.raw.prepare("SELECT value FROM pref WHERE key = 'activeScales'").get() as
+    | { value: string }
+    | undefined;
+  return row ? (JSON.parse(row.value) as string[]) : null;
+}
+
+test('v42 turns a built-in preset into the list of scales it stood for', async () => {
+  const db = await migratedToV41();
+  seedPreset(db, { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] });
+  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('activePreset', '"p-fem-masc"')`);
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  // Sorted, because the order group_concat lands them in is not part of the
+  // contract - nothing reads the stored order, and the editor draws its
+  // sliders in catalogue order.
+  assert.deepEqual(activeScales(db)?.sort(), ['euphoria_dysphoria', 'femininity', 'masculinity']);
+  // The value has been read and translated, so the row is not left behind
+  // for a build that no longer has a key for it.
+  assert.equal(db.raw.prepare("SELECT value FROM pref WHERE key = 'activePreset'").get(), undefined);
+});
+
+test('v42 translates a custom preset by its uuid, not only the built-in keys', async () => {
+  const db = await migratedToV41();
+  seedPreset(db, { uuid: 'custom-1', dims: ['euphoria_dysphoria', 'agender_gendered'] });
+  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('activePreset', '"custom-1"')`);
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  assert.deepEqual(activeScales(db)?.sort(), ['agender_gendered', 'euphoria_dysphoria']);
+});
+
+test('v42 leaves an install that never chose a preset on the default set', async () => {
+  const db = await migratedToV41();
+  seedPreset(db, { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity'] });
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  // No row rather than an empty list: an empty list is a person who unticked
+  // everything, and this install has said nothing at all, so the preference
+  // default is what should answer for it.
+  assert.equal(activeScales(db), null);
 });

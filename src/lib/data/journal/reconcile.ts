@@ -18,7 +18,6 @@ import {
   BUILT_IN_EFFECT_CATEGORIES,
   BUILT_IN_MEASUREMENT_TYPES,
   BUILT_IN_PERSONAL_EFFECT_TYPES,
-  BUILT_IN_PRESETS,
   BUILT_IN_TAG_GROUPS
 } from '../vocabulary/builtins';
 import { now } from './support';
@@ -32,7 +31,6 @@ import { now } from './support';
 export const RECONCILE_TABLES: TableName[] = [
   'tag',
   'dimension',
-  'preset',
   'affirmation',
   'bodyRegion',
   'measurementType',
@@ -68,21 +66,23 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     );
   }
 
-  const presetKeys = await presentKeys(driver, 'gender_preset');
-  for (const p of BUILT_IN_PRESETS) {
-    if (presetKeys.has(p.key)) continue;
-    await driver.run(`INSERT INTO gender_preset (key, name, is_built_in, updated_at) VALUES (?, '', 1, ?)`, [
-      p.key,
-      ts
-    ]);
-    for (const [orderIndex, dimKey] of p.dims.entries()) {
-      await driver.run(
-        `INSERT INTO preset_dimension (preset_id, dimension_id, order_index)
-         SELECT gp.id, gd.id, ? FROM gender_preset gp, gender_dimension gd WHERE gp.key = ? AND gd.key = ?`,
-        [orderIndex, p.key, dimKey]
-      );
-    }
-  }
+  /* No preset is seeded. The eight stopped being a picker in ticket 35 and
+     the app has read none since; BUILT_IN_PRESETS survives only to say what
+     a preset key meant when an older archive was written, which
+     archive/payload.ts and schema v42 read from the constant rather than
+     from these rows. Writing eight presets and twenty five link rows into a
+     journal created today put a table in it that nothing would ever read and
+     that every one of its exports would then carry.
+
+     Rows already seeded stay. This stops adding them and deletes nothing, so
+     a journal that has them keeps exporting them and a restore still applies
+     whatever an archive carries (archiveApply.ts).
+
+     What went with it, named because it was deliberate once: an archive that
+     omitted a built-in preset used to come back with that preset's scales
+     intact, because reconcile had already seeded them underneath. Restoring
+     such an archive now leaves the preset absent, which no surface in the
+     app can tell apart from present. */
 
   const groupKeys = await presentKeys(driver, 'tag_group');
   const tagKeys = await presentKeys(driver, 'tag');
