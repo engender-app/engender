@@ -181,6 +181,9 @@ export function demoPreferences(): Partial<PreferenceValues> {
     activeScales: ['euphoria_dysphoria', 'femininity'],
     metricKind: 'mood',
     checkInEnabled: true,
+    // 34 is asserted on literally by walkthrough.test.mjs flow 10b, which
+    // reads the notice's rendered day count to prove it was computed from
+    // epoch millis rather than an epoch day. Change the offset there too.
     lastBackupAt: startOfDayTimestamp(todayEpochDay() - 34),
   };
 }
