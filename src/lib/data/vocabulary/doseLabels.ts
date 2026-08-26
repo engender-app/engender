@@ -14,7 +14,7 @@
    sites, and the same trap waits in any language with agreement. */
 
 import { m } from '$lib/paraglide/messages';
-import type { ApplicationSiteKey, InjectionSiteKey } from '$lib/data/doseSchedule';
+import type { ApplicationSiteKey, InjectionSiteKey, RouteOption } from '$lib/data/doseSchedule';
 import type { DoseRoute, DoseStatus, InjectionVehicle, PauseReason } from '$lib/data/types';
 import type { RegimenTemplateKey } from './builtins';
 
@@ -127,9 +127,9 @@ export const regimenTemplateRoute = (key: string): string =>
 
 /** Route options for a picker, in the order the ticket names them: the two
     oral-ish routes, the two injections, then the two topical ones. */
-export const ROUTE_OPTIONS: { value: DoseRoute; label: string }[] = (
-  ['oral', 'sublingual', 'im', 'sc', 'patch', 'gel'] as const
-).map((route) => ({ value: route, label: routeLabel(route) }));
+export const ROUTE_OPTIONS: RouteOption[] = (['oral', 'sublingual', 'im', 'sc', 'patch', 'gel'] as const).map(
+  (route) => ({ value: route, label: routeLabel(route) })
+);
 
 export const STATUS_OPTIONS: { value: DoseStatus; label: string }[] = (['taken', 'skipped', 'changed'] as const).map(
   (status) => ({ value: status, label: statusLabel(status) })

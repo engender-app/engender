@@ -30,9 +30,12 @@
   import { activeEpisodesAt, attributeDose } from '$lib/data/regimenEpisode';
   import {
     adherence,
+    expectedAmountOn,
     expectedSlots,
     isInjectionDose,
     isTopicalDose,
+    lastInjectionBefore,
+    matchDoseRoute,
     siteRecency,
     APPLICATION_SITES
   } from '$lib/data/doseSchedule';
@@ -132,18 +135,6 @@
     return adherence(slots, episodeDoses, activePauses);
   });
 
-  /** The last injection before `timestamp`, so the site map can mark what to
-      rotate away from. Injections only: a patch site is not part of the
-      rotation the map exists for. */
-  function lastInjectionSite(before: number, exceptId?: string): string | null {
-    for (let i = doses.length - 1; i >= 0; i--) {
-      const dose = doses[i];
-      if (dose.timestamp >= before || dose.id === exceptId) continue;
-      if (isInjectionDose(dose)) return dose.injectionSite;
-    }
-    return null;
-  }
-
   /* Null when the row has no site rather than when the route has none: a
      dose imported without one shows no site line instead of a blank bullet. */
   const siteOf = (dose: DoseEvent): string | null => {
@@ -197,6 +188,15 @@
       whose own drug (if any) is shown but never forced. */
   let editorNeedsDrugPick = $derived(editor !== null && !editor.id && activeDrugChoices.length > 1);
 
+  /* Which of the record's three lines is open (phase 5 UX ticket 37).
+     One at a time, which is `disclose`'s own cap: a second group open
+     underneath the first is two heights animating over each other, and the
+     line that closed still states its value, so nothing is lost by closing
+     it. */
+  type RecordGroup = 'what' | 'when' | 'status';
+  let openGroup = $state<RecordGroup | null>(null);
+  const toggleGroup = (group: RecordGroup) => (openGroup = openGroup === group ? null : group);
+
   /* Quick add's dose option (phase 5 ticket 18, spec 04): the log is the
      surface that records a dose, and it supports seeding, so arriving from
      the sheet opens the same editor its own add button opens rather than
@@ -224,15 +224,44 @@
          amount and unit every time is the tax that stops people logging.
          With more than one episode active, there is no single "the
          active episode" to seed from - the drug picker below fills the
-         amount and unit in once a drug is chosen. */
-      editor = {
+         amount and unit in once a drug is chosen.
+
+         Three more seeds than that (phase 5 UX ticket 37), because the
+         sheet's job is to state what the app already knows rather than to
+         ask for it again:
+
+         The route comes off the episode's own words. It is free text there
+         and one of six keys here, so it needs reading rather than copying
+         (matchDoseRoute), and where the words name no route or two the
+         answer is oral - the same default as before, now only for the
+         cases nothing better is available.
+         The amount prefers what the schedule is still expecting today over
+         the episode's single figure, which is the alternating 2mg/1mg
+         regimen: seeding from the episode fills in the wrong number every
+         other day.
+         The vehicle comes off the last injection logged, whatever drug it
+         was for. It is not on the episode at all, and asking on every
+         injection for something that changes about once a prescription is
+         the definition of asking twice. */
+      const seededAmount = comparison ? expectedAmountOn(comparison, today) : null;
+      const lastInjection = lastInjectionBefore(doses, now);
+      /* Built as a local first, and the reason is load-bearing: quick add
+         reaches this function from inside the `?add=1` effect below, and an
+         effect that reads back a `$state` it has just written depends on it
+         and so invalidates itself. Deciding `openGroup` from `editor.dose`
+         rather than from `draft.dose` looped until Svelte's depth guard
+         stopped it, which is what the walkthrough's page-error check caught
+         (effect_update_depth_exceeded, on quick add's dose row only - every
+         other way in calls this from an event handler, where nothing is
+         being tracked). */
+      const draft: Editor = {
         day: dateInputValueFromEpochDay(today),
         time: timeInputValue(now),
-        route: 'oral',
-        dose: activeEpisode ? String(activeEpisode.dose) : '',
-        doseUnit: activeEpisode?.doseUnit ?? '',
+        route: (activeEpisode && matchDoseRoute(activeEpisode.route, ROUTE_OPTIONS)) || 'oral',
+        dose: seededAmount ? String(seededAmount.dose) : activeEpisode ? String(activeEpisode.dose) : '',
+        doseUnit: seededAmount?.doseUnit ?? activeEpisode?.doseUnit ?? '',
         injectionSite: '',
-        vehicle: 'oil',
+        vehicle: lastInjection?.vehicle ?? 'oil',
         applicationSite: '',
         status: 'taken',
         scheduledDose: '',
@@ -240,9 +269,16 @@
         scheduledTime: timeInputValue(now),
         drug: activeEpisode?.drug ?? ''
       };
+      /* A line whose fact the app does not know opens as the fields that
+         make one. Those are the two cases that also block the save: an
+         amount nothing seeded, and several active episodes with no drug
+         picked yet. Everything else opens stated and closed. */
+      openGroup = draft.dose === '' || activeDrugChoices.length > 1 ? 'what' : null;
+      editor = draft;
       return;
     }
 
+    openGroup = null;
     editor = {
       id: dose.id,
       day: dateInputValueFromEpochDay(epochDayFromTimestamp(dose.timestamp)),
@@ -261,14 +297,60 @@
     };
   }
 
-  /** Picking a drug in the disambiguation prompt also seeds the amount and
-      unit from that episode, the same convenience a single active episode
-      already gets for free. */
+  /** Picking a drug in the disambiguation prompt also seeds the amount, the
+      unit and the route from that episode, the same convenience a single
+      active episode already gets for free. */
   function pickDrug(drug: string) {
     if (!editor) return;
     const match = activeEpisodes.find((e) => e.drug === drug);
-    editor = { ...editor, drug, dose: match ? String(match.dose) : editor.dose, doseUnit: match ? match.doseUnit : editor.doseUnit };
+    if (!match) {
+      editor = { ...editor, drug };
+      return;
+    }
+    editor = {
+      ...editor,
+      drug,
+      dose: String(match.dose),
+      doseUnit: match.doseUnit,
+      route: matchDoseRoute(match.route, ROUTE_OPTIONS) ?? editor.route
+    };
   }
+
+  /* What the record's three lines state, and the one rule they share: a
+     line says the fact, never the question. The label of the field
+     underneath stands in only where there is no fact yet - a new dose with
+     nothing to seed an amount from - and the line marks itself unset so it
+     does not read as a value.
+
+     The drug is the episode covering the moment being logged, resolved the
+     same way the log rows resolve it, so correcting a date in the editor
+     moves the line onto the episode that really covered it. */
+  let editorEpisode = $derived.by(() => {
+    const draft = editor;
+    if (!draft) return null;
+    const at = activeEpisodesAt(episodes, timestampOf(draft.day, draft.time));
+    if (draft.drug) return at.find((e) => e.drug === draft.drug) ?? null;
+    return at.length === 1 ? at[0] : null;
+  });
+
+  let editorHasAmount = $derived(editor !== null && !isNaN(parseFloat(editor.dose)));
+  let editorAmountText = $derived(
+    editor && editorHasAmount ? `${editor.dose} ${editor.doseUnit}`.trim() : m.dose_amount_label()
+  );
+  let editorDrugText = $derived(editor?.drug.trim() || editorEpisode?.drug || '');
+  let editorRouteText = $derived.by(() => {
+    if (!editor) return '';
+    /* The middot, not a comma: it is the separator the log's own rows use
+       between a route and a vehicle, and it carries the capital letter each
+       of those labels legitimately has where a comma would not. */
+    if (isInjectionDose(editor)) return `${routeLabel(editor.route)} · ${vehicleLabel(editor.vehicle)}`;
+    return routeLabel(editor.route);
+  });
+  let editorWhenText = $derived(
+    editor
+      ? `${fmtDayShort(epochDayFromDateInputValue(editor.day) ?? today)}, ${fmtTime(timestampOf(editor.day, editor.time))}`
+      : ''
+  );
 
   let editorIsInjection = $derived(editor !== null && isInjectionDose(editor));
   let editorIsTopical = $derived(editor !== null && isTopicalDose(editor));
@@ -279,7 +361,7 @@
      exists to stop from being drawn into the wrong drug's curve. */
   let editorCanSave = $derived(
     editor !== null &&
-      !isNaN(parseFloat(editor.dose)) &&
+      editorHasAmount &&
       (!editorIsInjection || editor.injectionSite !== '') &&
       (!editorIsTopical || editor.applicationSite !== '') &&
       (!editorNeedsDrugPick || editor.drug !== '')
@@ -537,115 +619,285 @@
     onClose={() => (editor = null)}
   >
     {#if editor}
-      <h3>{editor.id ? m.dose_edit_sheet() : m.dose_new_sheet()}</h3>
+      <!-- The record, and the whole of this redesign (phase 5 UX ticket 37).
 
-      <div class="cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="dose-day">{m.dose_day_label()}</label>
-          <input class="input" type="date" id="dose-day" name="dose-day" bind:value={editor.day} />
-        </div>
-        <div class="field">
-          <label class="field-label" for="dose-time">{m.dose_time_label()}</label>
-          <input class="input" type="time" id="dose-time" name="dose-time" bind:value={editor.time} />
-        </div>
-      </div>
-      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-4)">{m.dose_time_hint()}</p>
+           Alicja, 2026-08-26: "current setting in the popup are too many
+           and too big". Six controls stood here for a dose logged as it was
+           taken - a day, a time, a route, an amount, a unit and a status -
+           and an active regimen already settles four of them. So they are
+           not controls any more. Three lines state what is about to be
+           recorded, each one opening the fields that made it if the
+           statement is wrong, and what is left drawn as a control is the
+           part that genuinely changes from dose to dose: where the needle
+           went.
 
-      {#if editorNeedsDrugPick}
-        <div class="disclosed" transition:disclose>
-          <div class="field">
-            <span class="field-label" id="dose-drug-label">{m.dose_drug_label()}</span>
-            <p class="muted small">{m.dose_drug_hint()}</p>
-            <div class="tag-row" role="group" aria-labelledby="dose-drug-label">
-              {#each activeDrugChoices as drug (drug)}
-                <button
-                  type="button"
-                  class="tag-chip"
-                  class:is-selected={editor.drug === drug}
-                  aria-pressed={editor.drug === drug}
-                  data-dose-drug={drug}
-                  onclick={() => pickDrug(drug)}
-                >
-                  {drug}
-                </button>
-              {/each}
+           There is no heading above them. Every other sheet in the app
+           opens with one, and the argument for dropping it here is that
+           this sheet opens on the thing itself - "4 mg estradiol" in the
+           display face is a better answer to "what did I just tap" than
+           the words "Log a dose" over the same information smaller. The
+           sheet still carries the title as its accessible name (Sheet.svelte
+           passes it to aria-label), so nothing is lost to a screen reader.
+
+           Each line is a button whose name is the value it states, plus
+           aria-expanded, which is what a disclosure owes: the values are
+           the useful half of the name and "collapsed" is already spoken.
+           A row the width of the screen answers a press by filling rather
+           than by scaling (DIRECTION.md, tier 1), so no .press here. -->
+      <div class="dose-record">
+        <button
+          type="button"
+          class="dose-line"
+          class:is-unset={!editorHasAmount}
+          aria-expanded={openGroup === 'what'}
+          data-dose-what
+          onclick={() => toggleGroup('what')}
+        >
+          <span class="dose-line-text">
+            <span class="dose-line-lead">
+              <span class="dose-line-amount">{editorAmountText}</span>
+              <!-- Where several regimens are running and none has been
+                   picked, the line says what is missing rather than saying
+                   nothing: the group opens itself on this state, but it can
+                   be closed again, and a Save that will not fire needs a
+                   reason on screen. -->
+              {#if editorDrugText}
+                <span class="dose-line-drug">{editorDrugText}</span>
+              {:else if editorNeedsDrugPick}
+                <span class="dose-line-drug">{m.dose_drug_label()}</span>
+              {/if}
+            </span>
+            <span class="dose-line-sub">{editorRouteText}</span>
+          </span>
+          <span class="dose-chev"><Icon name="chevronDown" size={20} /></span>
+        </button>
+
+        {#if openGroup === 'what'}
+          <div class="disclosed" transition:disclose|local>
+            {#if editorNeedsDrugPick}
+              <div class="field">
+                <span class="field-label" id="dose-drug-label">{m.dose_drug_label()}</span>
+                <p class="muted small">{m.dose_drug_hint()}</p>
+                <div class="tag-row" role="group" aria-labelledby="dose-drug-label">
+                  {#each activeDrugChoices as drug (drug)}
+                    <button
+                      type="button"
+                      class="tag-chip press"
+                      class:is-selected={editor.drug === drug}
+                      aria-pressed={editor.drug === drug}
+                      data-dose-drug={drug}
+                      onclick={() => pickDrug(drug)}
+                    >
+                      {drug}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            <!-- One value, one control. The amount and its unit were two
+                 full-width fields side by side for a figure nobody reads as
+                 two things; the unit sits inside the box now, right after
+                 the number, so the pair reads as "4 mg" rather than as two
+                 answers to two questions.
+
+                 No visible label, which is the one place this sheet drops
+                 one. The line directly above the open group already states
+                 this exact value, and where there is nothing to state it
+                 states the word "Dose" instead - so a label here would be
+                 the third time the same word appeared in four lines. Both
+                 inputs carry it as an accessible name, which is what a
+                 field without a visible label owes. -->
+            <div class="field">
+              <div class="dose-amount">
+                <input
+                  class="dose-amount-num"
+                  type="number"
+                  id="dose-amount"
+                  name="dose-amount"
+                  inputmode="decimal"
+                  aria-label={m.dose_amount_label()}
+                  placeholder={m.dose_amount_placeholder()}
+                  bind:value={editor.dose}
+                />
+                <input
+                  class="dose-amount-unit"
+                  id="dose-unit"
+                  name="dose-unit"
+                  aria-label={m.dose_unit_label()}
+                  placeholder={m.dose_unit_placeholder()}
+                  bind:value={editor.doseUnit}
+                />
+              </div>
             </div>
+
+            <div class="field">
+              <span class="field-label" id="dose-route-label">{m.dose_route_label()}</span>
+              <div class="tag-row" role="group" aria-labelledby="dose-route-label">
+                {#each ROUTE_OPTIONS as option (option.value)}
+                  <button
+                    type="button"
+                    class="tag-chip press"
+                    class:is-selected={editor.route === option.value}
+                    aria-pressed={editor.route === option.value}
+                    data-route={option.value}
+                    onclick={() => editor && (editor.route = option.value)}
+                  >
+                    {option.label}
+                  </button>
+                {/each}
+              </div>
+            </div>
+
+            <!-- The vehicle belongs to what the dose was, not to where it
+                 went: the line above already reads "Intramuscular, oil". -->
+            {#if editorIsInjection}
+              <div class="field">
+                <span class="field-label" id="dose-vehicle-label">{m.dose_vehicle_label()}</span>
+                <div class="tag-row" role="group" aria-labelledby="dose-vehicle-label">
+                  {#each ['oil', 'aqueous'] as const as vehicle (vehicle)}
+                    <button
+                      type="button"
+                      class="tag-chip press"
+                      class:is-selected={editor.vehicle === vehicle}
+                      aria-pressed={editor.vehicle === vehicle}
+                      data-vehicle={vehicle}
+                      onclick={() => editor && (editor.vehicle = vehicle)}
+                    >
+                      {vehicleLabel(vehicle)}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
-        </div>
-      {/if}
+        {/if}
 
-      <div class="field">
-        <span class="field-label" id="dose-route-label">{m.dose_route_label()}</span>
-        <div class="tag-row" role="group" aria-labelledby="dose-route-label">
-          {#each ROUTE_OPTIONS as option (option.value)}
-            <button
-              type="button"
-              class="tag-chip"
-              class:is-selected={editor.route === option.value}
-              aria-pressed={editor.route === option.value}
-              data-route={option.value}
-              onclick={() => editor && (editor.route = option.value)}
-            >
-              {option.label}
-            </button>
-          {/each}
-        </div>
+        <button
+          type="button"
+          class="dose-line"
+          aria-expanded={openGroup === 'when'}
+          data-dose-when
+          onclick={() => toggleGroup('when')}
+        >
+          <span class="dose-line-text">
+            <span class="dose-line-value">{editorWhenText}</span>
+          </span>
+          <span class="dose-chev"><Icon name="chevronDown" size={20} /></span>
+        </button>
+
+        {#if openGroup === 'when'}
+          <div class="disclosed" transition:disclose|local>
+            <div class="cd-endpoints">
+              <div class="field">
+                <label class="field-label" for="dose-day">{m.dose_day_label()}</label>
+                <input class="input" type="date" id="dose-day" name="dose-day" bind:value={editor.day} />
+              </div>
+              <div class="field">
+                <label class="field-label" for="dose-time">{m.dose_time_label()}</label>
+                <input class="input" type="time" id="dose-time" name="dose-time" bind:value={editor.time} />
+              </div>
+            </div>
+            <p class="muted small">{m.dose_time_hint()}</p>
+          </div>
+        {/if}
+
+        <!-- The correction job, folded away. Logging a dose that happened
+             and recording that one did not happen as scheduled are two
+             jobs, and the second was costing the first a full-width
+             segmented control and three more fields under it. It is one
+             quiet line stating the status, and everything the correction
+             needs is behind it. -->
+        <button
+          type="button"
+          class="dose-line is-quiet"
+          aria-expanded={openGroup === 'status'}
+          data-dose-status
+          onclick={() => toggleGroup('status')}
+        >
+          <span class="dose-line-text">
+            <span class="dose-line-value">{statusLabel(editor.status)}</span>
+          </span>
+          <span class="dose-chev"><Icon name="chevronDown" size={20} /></span>
+        </button>
+
+        {#if openGroup === 'status'}
+          <div class="disclosed" transition:disclose|local>
+            <div class="field">
+              <span class="field-label">{m.dose_status_label()}</span>
+              <Segmented
+                name={m.dose_status_label()}
+                value={editor.status}
+                options={STATUS_OPTIONS}
+                onChange={(v) => editor && (editor.status = v as DoseStatus)}
+              />
+            </div>
+
+            {#if editor.status === 'changed'}
+              <div class="disclosed" transition:disclose|local>
+                <div class="field">
+                  <span class="field-label">{m.dose_scheduled_legend()}</span>
+                  <p class="muted small">{m.dose_scheduled_hint()}</p>
+                </div>
+                <div class="cd-endpoints">
+                  <div class="field">
+                    <label class="field-label" for="dose-scheduled-amount">{m.dose_scheduled_amount_label()}</label>
+                    <input
+                      class="input"
+                      type="number"
+                      id="dose-scheduled-amount"
+                      name="dose-scheduled-amount"
+                      inputmode="decimal"
+                      bind:value={editor.scheduledDose}
+                    />
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="dose-scheduled-time">{m.dose_scheduled_time_label()}</label>
+                    <input
+                      class="input"
+                      type="time"
+                      id="dose-scheduled-time"
+                      name="dose-scheduled-time"
+                      bind:value={editor.scheduledTime}
+                    />
+                  </div>
+                </div>
+                <div class="field">
+                  <span class="field-label" id="dose-scheduled-route-label">{m.dose_scheduled_route_label()}</span>
+                  <div class="tag-row" role="group" aria-labelledby="dose-scheduled-route-label">
+                    {#each ROUTE_OPTIONS as option (option.value)}
+                      <button
+                        type="button"
+                        class="tag-chip press"
+                        class:is-selected={editor.scheduledRoute === option.value}
+                        aria-pressed={editor.scheduledRoute === option.value}
+                        onclick={() => editor && (editor.scheduledRoute = option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    {/each}
+                  </div>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
 
-      <div class="cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="dose-amount">{m.dose_amount_label()}</label>
-          <input
-            class="input"
-            type="number"
-            id="dose-amount"
-            name="dose-amount"
-            inputmode="decimal"
-            placeholder={m.dose_amount_placeholder()}
-            bind:value={editor.dose}
-          />
-        </div>
-        <div class="field">
-          <label class="field-label" for="dose-unit">{m.dose_unit_label()}</label>
-          <input
-            class="input"
-            id="dose-unit"
-            name="dose-unit"
-            placeholder={m.dose_unit_placeholder()}
-            bind:value={editor.doseUnit}
-          />
-        </div>
-      </div>
-
+      <!-- The one thing a regimen cannot know, so the one thing still drawn
+           as a control: a rotation only works if every dose says where it
+           went. Left outside the record and above the save, where it reads
+           as the question the sheet is actually asking. -->
       {#if editorIsInjection}
-        <div class="disclosed" transition:disclose>
-          <div class="field">
-            <span class="field-label">{m.dose_injection_site_label()}</span>
-            <p class="muted small">{m.dose_injection_site_hint()}</p>
-            <InjectionSiteMap
-              value={editor.injectionSite}
-              lastUsed={lastInjectionSite(timestampOf(editor.day, editor.time), editor.id)}
-              recency={siteRecencyByKey}
-              onChange={(site) => editor && (editor.injectionSite = site)}
-            />
-          </div>
-          <div class="field">
-            <span class="field-label" id="dose-vehicle-label">{m.dose_vehicle_label()}</span>
-            <div class="tag-row" role="group" aria-labelledby="dose-vehicle-label">
-              {#each ['oil', 'aqueous'] as const as vehicle (vehicle)}
-                <button
-                  type="button"
-                  class="tag-chip"
-                  class:is-selected={editor.vehicle === vehicle}
-                  aria-pressed={editor.vehicle === vehicle}
-                  data-vehicle={vehicle}
-                  onclick={() => editor && (editor.vehicle = vehicle)}
-                >
-                  {vehicleLabel(vehicle)}
-                </button>
-              {/each}
-            </div>
-          </div>
+        <div class="field" transition:disclose|local>
+          <span class="field-label">{m.dose_injection_site_label()}</span>
+          <p class="muted small">{m.dose_injection_site_hint()}</p>
+          <InjectionSiteMap
+            value={editor.injectionSite}
+            lastUsed={lastInjectionBefore(doses, timestampOf(editor.day, editor.time), editor.id)?.injectionSite ?? null}
+            recency={siteRecencyByKey}
+            onChange={(site) => editor && (editor.injectionSite = site)}
+          />
         </div>
       {/if}
 
@@ -658,7 +910,7 @@
             {#each APPLICATION_SITES as site (site)}
               <button
                 type="button"
-                class="tag-chip"
+                class="tag-chip press"
                 class:is-selected={editor.applicationSite === site}
                 aria-pressed={editor.applicationSite === site}
                 data-app-site={site}
@@ -667,64 +919,6 @@
                 {applicationSiteLabel(site)}
               </button>
             {/each}
-          </div>
-        </div>
-      {/if}
-
-      <div class="field">
-        <span class="field-label">{m.dose_status_label()}</span>
-        <Segmented
-          name={m.dose_status_label()}
-          value={editor.status}
-          options={STATUS_OPTIONS}
-          onChange={(v) => editor && (editor.status = v as DoseStatus)}
-        />
-      </div>
-
-      {#if editor.status === 'changed'}
-        <div class="disclosed" transition:disclose>
-          <div class="field">
-            <span class="field-label">{m.dose_scheduled_legend()}</span>
-            <p class="muted small">{m.dose_scheduled_hint()}</p>
-          </div>
-          <div class="cd-endpoints">
-            <div class="field">
-              <label class="field-label" for="dose-scheduled-amount">{m.dose_scheduled_amount_label()}</label>
-              <input
-                class="input"
-                type="number"
-                id="dose-scheduled-amount"
-                name="dose-scheduled-amount"
-                inputmode="decimal"
-                bind:value={editor.scheduledDose}
-              />
-            </div>
-            <div class="field">
-              <label class="field-label" for="dose-scheduled-time">{m.dose_scheduled_time_label()}</label>
-              <input
-                class="input"
-                type="time"
-                id="dose-scheduled-time"
-                name="dose-scheduled-time"
-                bind:value={editor.scheduledTime}
-              />
-            </div>
-          </div>
-          <div class="field">
-            <span class="field-label" id="dose-scheduled-route-label">{m.dose_scheduled_route_label()}</span>
-            <div class="tag-row" role="group" aria-labelledby="dose-scheduled-route-label">
-              {#each ROUTE_OPTIONS as option (option.value)}
-                <button
-                  type="button"
-                  class="tag-chip"
-                  class:is-selected={editor.scheduledRoute === option.value}
-                  aria-pressed={editor.scheduledRoute === option.value}
-                  onclick={() => editor && (editor.scheduledRoute = option.value)}
-                >
-                  {option.label}
-                </button>
-              {/each}
-            </div>
           </div>
         </div>
       {/if}
@@ -763,5 +957,181 @@
     color: var(--text-2);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
+  }
+
+  /* The record's three lines (phase 5 UX ticket 37). Uncontained: the sheet
+     is already the app's second surface and a panel drawn inside it would be
+     a card inside a card. What divides the lines is the hairline a list row
+     uses, so the three read as one object rather than as three blocks. */
+  .dose-line {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--touch-target);
+    padding: var(--space-3) 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+
+  /* Tier 1: a row the width of the screen fills rather than scales, because
+     scaling one moves the sheet it sits in. The fill is neutral rather than
+     a role wash - the kit's role tokens are keyed to its own surfaces, and
+     an editor spends almost none of the flag (DIRECTION.md, ticket 22). */
+  .dose-line:active {
+    background: var(--surface-2);
+  }
+
+  .dose-line + .dose-line,
+  .disclosed + .dose-line {
+    border-top: 1px solid var(--hairline);
+  }
+
+  .dose-line-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* The amount and the drug sit on one line as one statement: the figure in
+     the display face at the screen-title size, the drug beside it in body
+     text. Baseline-aligned, so the two read as a phrase and not as a heading
+     with a caption wedged next to it. */
+  .dose-line-lead {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .dose-line-amount {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--display-track);
+    line-height: var(--leading-display);
+  }
+
+  .dose-line-drug {
+    font-size: var(--text-md);
+    color: var(--text-2);
+  }
+
+  /* Nothing seeded an amount, so the line is showing the label of the field
+     open underneath it rather than a value. Said in the secondary colour so
+     it does not read as one. */
+  .dose-line.is-unset .dose-line-amount {
+    color: var(--text-2);
+  }
+
+  .dose-line-sub {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+
+  .dose-line-value {
+    font-size: var(--text-md);
+  }
+
+  /* The status line. Quiet on purpose: "Taken" is the answer on almost every
+     dose ever logged, and the line exists so the other two answers are one
+     tap away rather than to be read every time. */
+  .dose-line.is-quiet .dose-line-value {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+
+  .dose-chev {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    color: var(--text-2);
+    transition: transform var(--dur-med) var(--ease-out);
+  }
+
+  /* The chevron says what happened, which is also what carries the state
+     under reduced motion: the rotation lands instantly there (the 1ms clamp
+     on --dur-med) instead of being dropped. */
+  .dose-line[aria-expanded='true'] .dose-chev {
+    transform: rotate(180deg);
+  }
+
+  /* One value, one box. The unit is a suffix inside the amount's own field
+     rather than a second full-width field beside it, and the box is sized to
+     what it holds rather than to the sheet, because an amount is three
+     characters and a field the width of the screen says otherwise. */
+  .dose-amount {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: fit-content;
+    max-width: 14rem;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0 var(--space-4);
+    min-height: var(--touch-target);
+    transition: border-color var(--dur-fast) var(--ease-out);
+  }
+
+  .dose-amount:focus-within {
+    border-color: var(--accent);
+  }
+
+  /* The floor stays on the inputs, not only on the box around them. The box
+     is a plain div: it labels nothing and focuses nothing, so 48px of it
+     with a 20px input centred inside is 28px of dead height that looks
+     tappable and is not. PRODUCT.md's floor is Android's 48dp and this is
+     the sheet's only text entry. */
+  .dose-amount input {
+    font: inherit;
+    color: var(--text);
+    background: none;
+    border: 0;
+    padding: 0;
+    min-width: 0;
+    min-height: var(--touch-target);
+  }
+
+  .dose-amount input:focus {
+    outline: none;
+  }
+
+  /* Both inputs size to what is in them, so "4" and "mg" sit next to each
+     other instead of at opposite ends of a box. `field-sizing` is Chromium's
+     and this app ships inside a Chromium WebView; where it is missing the
+     two fall back to their intrinsic widths and the box hits the max-width
+     above, which is a wider version of the same field rather than a broken
+     one. The floors stop an empty field collapsing to nothing and keep both
+     placeholders readable.
+
+     The spinners come off. They are a mouse affordance on a control that
+     declares inputmode="decimal", and inside this box they would land
+     between the number and its unit. */
+  .dose-amount-num {
+    field-sizing: content;
+    min-width: 5ch;
+    max-width: 9ch;
+    appearance: textfield;
+  }
+
+  .dose-amount-num::-webkit-outer-spin-button,
+  .dose-amount-num::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+
+  .dose-amount-unit {
+    field-sizing: content;
+    min-width: 6ch;
+    max-width: 8ch;
+    color: var(--text-2);
   }
 </style>
