@@ -1098,6 +1098,17 @@ try {
   if (await page.evaluate(() => document.documentElement.dataset.palette) !== 'nonbinary') {
     throw new Error('the flag picked during onboarding did not survive into the app');
   }
+
+  /* Held on Home rather than asserted and left (32.1). Finishing used to
+     land here and then bounce back into onboarding about a second later,
+     and this flow read the greeting inside that window - so it passed while
+     the app was walking itself back to step one. What arrived late was a
+     navigation the demo jump issued after emptying the journal, so how long
+     the walk above took decides whether it lands during the walk or here;
+     on a slower device or a faster walk it lands here. Two and a half
+     seconds is comfortably past the clear either way. */
+  await page.waitForTimeout(2500);
+  if (!page.url().endsWith('/')) throw new Error(`onboarding came back after finishing it: ${page.url()}`);
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
 
@@ -1116,6 +1127,13 @@ try {
   await page.waitForSelector('[data-home-hello]');
   const leftGreet = await page.locator('[data-home-hello]').textContent();
   if (!leftGreet.includes('Sam')) throw new Error('leaving early lost the name: ' + leftGreet);
+
+  /* The same hold as flow 13, and the better place for it (32.1): leaving
+     from the second step reaches Home in two clicks, so a navigation the
+     demo jump issues after its journal clear has the least chance of having
+     already landed harmlessly during the walk. */
+  await page.waitForTimeout(2500);
+  if (!page.url().endsWith('/')) throw new Error(`left onboarding and was pulled back: ${page.url()}`);
 
   // And it counted as onboarded: a reload lands on Home, not back on step one.
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });

@@ -35,20 +35,25 @@
     prefs.theme = t;
   }
 
-  /* Both jumps that touch data await it before navigating: clearing the
-     journal is a round trip through the worker now, and onboarding rendering
-     over a journal still emptying itself would show the state the jump exists
-     to leave. */
+  /* The first-run jump does not navigate. Emptying the demo journal is 150
+     days of deletes through the worker and takes a second or more, and a
+     goto after that await is aimed at wherever the app was when the jump
+     started - so a reviewer who had walked onboarding and reached Home in
+     the meantime was thrown back into it a second later (32.1).
+
+     What moves the app is `onboarded` going false, which markFirstRun does
+     on this tap: the first-run gate in +layout.svelte owns the rule that an
+     app which has not been onboarded belongs on /onboarding, and it applies
+     it the moment the preference changes rather than when the clear ends.
+     Onboarding over a journal that is still emptying is fine - the flow
+     draws no entries - and it is what has actually happened here since the
+     clear became a round trip. */
   async function jump(e: Event) {
     const v = (e.currentTarget as HTMLSelectElement).value;
     (e.currentTarget as HTMLSelectElement).value = '';
     if (!v) return;
-    if (v === 'first-run') {
-      await markFirstRun();
-      goto('/onboarding');
-    } else {
-      goto(v);
-    }
+    if (v === 'first-run') await markFirstRun();
+    else goto(v);
   }
 
   /* Both classes exist for this component: one makes room for the bar, the
