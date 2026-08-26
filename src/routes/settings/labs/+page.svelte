@@ -639,7 +639,7 @@
           </div>
         {/each}
       </div>
-      <button class="btn btn-primary" style="margin-top:var(--space-3)" disabled={ocr.state.tag === 'saving'} onclick={() => ocr.save()}><span>{m.labs_ocr_save()}</span></button>
+      <button class="btn btn-primary" disabled={ocr.state.tag === 'saving'} onclick={() => ocr.save()}><span>{m.labs_ocr_save()}</span></button>
     {/if}
   </Sheet>
 </div>

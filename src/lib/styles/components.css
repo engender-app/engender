@@ -276,6 +276,13 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 .segmented {
   position: relative;
   display: inline-flex; gap: var(--space-2);
+  /* inline-flex hugs its content, and then `.field` - a column flex box -
+     stretched it to full width anyway, because a flex item's default cross
+     alignment is stretch. So every switcher in an editor sheet drew a track
+     far wider than the words in it (Alicja, 2026-08-26, on three separate
+     screens). Named here rather than at each call site: the control knows
+     it wants to be the width of its own segments. */
+  align-self: start;
   background: var(--surface-2);
   border-radius: var(--radius-pill);
   padding: 3px;
@@ -301,7 +308,13 @@ a.segment {
 
 .segment {
   border: none; background: none; cursor: pointer;
-  padding: 6px 14px; min-width: var(--touch-target); min-height: var(--touch-target);
+  /* 18px, not 14px. The min-width is the touch floor and a two-letter
+     label ("cm", "in") sat exactly on it, so the pill came out 48 by 48 -
+     a circle, which is the shape this control's own note rejects. Wider
+     padding clears the floor with the label rather than against it, so a
+     short segment is a pill and the floor is still met for a one-letter
+     one. The compact form overrides the inline padding and is untouched. */
+  padding: 6px 18px; min-width: var(--touch-target); min-height: var(--touch-target);
   border-radius: var(--radius-pill);
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--text-2);
@@ -355,9 +368,17 @@ a.segment {
    a dot moving between dots: six segments reading "7d" through "365d" are
    about as wide as they are tall, and at that ratio --radius-pill draws a
    circle. Phase 5 UX ticket 23. */
-.segmented.is-compact { display: flex; width: 100%; }
+.segmented.is-compact { display: flex; width: 100%; align-self: stretch; }
 .segmented.is-compact .segment { flex: 1; min-width: 0; padding-inline: var(--space-1); }
-.segmented.is-compact .segment-pill { top: 9px; bottom: 9px; }
+/* 5px, not 9px. The inset was tuned when the compact form carried six
+   segments across the full width, where the pill is wider than it is tall
+   whatever the inset. With three or six *short* labels the segments are wide
+   and the pill came out nearly square, which is the shape this control's own
+   note already rejects - "a circle sliding says nothing about the set it is
+   crossing" (Alicja, 2026-08-25, and again 2026-08-26 on two more screens:
+   "switcher highlight too short"). At 5px it is 38px in a 48px track, which
+   reads as a pill. */
+.segmented.is-compact .segment-pill { top: 5px; bottom: 5px; }
 
 .segment-pill.is-sliding {
   scale: 1 1;
@@ -811,9 +832,22 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .sheet-scrim.is-open { opacity: 1; }
 /* Carries the drag, so the sheet inside it keeps its transition's transform
    to itself (Sheet.svelte). Sized to the sheet rather than to the scrim, or
-   it would swallow the backdrop taps that dismiss. */
+   it would swallow the backdrop taps that dismiss.
+
+   It also carries the height cap, and that is a fix rather than a
+   preference. `.sheet` asked for `max-height: 85%` and a percentage
+   resolves against the containing block's height - which is this element,
+   inserted between the scrim and the sheet when drag-to-dismiss was added,
+   and sized to its own content. An indefinite containing block makes a
+   percentage max-height no cap at all, so every sheet in the app grew to
+   whatever it held and `overflow-y: auto` never had anything to scroll
+   against: the effect-type list measured 4794px inside an 804px frame and
+   simply ran off the bottom (Alicja, 2026-08-26: "too long and takes the
+   whole screen with no ability to scroll"). The scrim is `inset: 0` and so
+   is definite; the cap belongs here, and the sheet stretches to it. */
 .sheet-drag {
   width: 100%; max-width: 520px;
+  max-height: 85%;
   display: flex;
   touch-action: pan-y;
 }
@@ -827,11 +861,15 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: var(--space-3) var(--space-5) calc(var(--space-6) + var(--inset-bottom));
   width: 100%;
-  /* Percent of the scrim, which is the app frame - not dvh. The demo bar
-     and the phone-frame preview both make the app shorter than the
-     viewport, and a sheet measured against the viewport then runs off the
-     top of the frame it is inside. */
-  max-height: 85%;
+  /* The cap itself is on .sheet-drag above, against the scrim, which is the
+     app frame rather than the viewport - the demo bar and the phone-frame
+     preview both make the app shorter than the window, and a sheet measured
+     against the window then runs off the top of the frame it is inside.
+     What is left here is stretching to that cap: min-height:0 is what lets
+     a flex item shrink below its content so the overflow has somewhere to
+     go. */
+  max-height: 100%;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   box-shadow: var(--shadow-3);
@@ -1405,6 +1443,12 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
 .muted { color: var(--text-2); }
 .small { font-size: var(--text-sm); }
 .spread { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+/* `.field` is a column and `.spread` means "at either end of one line", so
+   the two together spread the label and its control down the box and
+   centred them across it - a switch under its own label, in the middle of
+   the sheet (Alicja, 2026-08-26, on the wear editor's reminder: "very
+   poorly placed, centered"). The pair only ever means a row. */
+.field.spread { flex-direction: row; }
 .stack-3 > * + * { margin-top: var(--space-3); }
 .hr { border: none; border-top: 1px solid var(--border); margin: var(--space-4) 0; }
 

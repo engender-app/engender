@@ -269,7 +269,7 @@
       </div>
     {/if}
 
-    <p class="muted small" style="margin-top:var(--space-2)">{m.hair_scale_source()}</p>
+    <p class="muted small">{m.hair_scale_source()}</p>
 
     <SectionHeading text={m.hair_photo_section_title()} />
 
@@ -286,7 +286,7 @@
     {/if}
 
     {#if !prefs.hairPhotoProtocolDismissed}
-      <div data-protocol style="margin-top:var(--space-3)">
+      <div data-protocol>
         <Notice
           icon="info"
           key="hair-photo-protocol"

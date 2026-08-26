@@ -205,7 +205,7 @@
         <label for="pj-end">{m.recap_custom_end_label()}</label>
         <input class="input" id="pj-end" type="date" bind:value={endInput} min={startInput || undefined} />
       </div>
-      <p class="muted small" style="margin-top:var(--space-3)">
+      <p class="muted small">
         {#if !range}
           {m.recap_custom_range_required()}
         {:else if selected.length === 0}
@@ -216,7 +216,7 @@
       </p>
 
       {#if inRange.length}
-        <div class="photo-grid" style="margin-top:var(--space-4)">
+        <div class="photo-grid">
           {#each inRange as p (p.id)}
             {@const included = !excluded.includes(p.id)}
             <button
@@ -247,7 +247,7 @@
           key="journey-output"
         />
       {/if}
-      <p class="muted small" style="margin-top:var(--space-3)">
+      <p class="muted small">
         {#if output === 'collage'}
           {m.pj_collage_hint()}
           {#if !canRecord}{' '}{m.pj_timelapse_unavailable()}{/if}

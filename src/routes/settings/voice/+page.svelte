@@ -74,7 +74,7 @@
       {/each}
     </div>
 
-    <div style="margin-top:var(--space-6)">
+    <div>
       <button class="btn btn-soft" onclick={() => { comparing = false; selected = []; }}>
         <span>{m.vc_back_to_all()}</span>
       </button>

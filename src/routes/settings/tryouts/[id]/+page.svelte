@@ -215,7 +215,7 @@
     <textarea
       class="input"
       rows="2"
-      style="margin-top:var(--space-3)"
+     
       placeholder={m.tryout_feeling_note_placeholder()}
       bind:value={feelingNote}
     ></textarea>

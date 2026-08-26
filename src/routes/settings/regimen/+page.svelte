@@ -454,7 +454,7 @@
             />
           </div>
 
-          <div class="field" style="margin-top:var(--space-3)">
+          <div class="field">
             <span class="field-label">{m.regimen_schedule_amounts_legend()}</span>
             <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
           </div>
@@ -503,13 +503,13 @@
             data-save-schedule
             disabled={!scheduleCanSave}
             onclick={saveSchedule}
-            style="margin-top:var(--space-3)"
+           
           >
             <span>{m.regimen_schedule_save()}</span>
           </button>
         {/if}
 
-        <div class="field" style="margin-top:var(--space-4)">
+        <div class="field">
           <span class="field-label">{m.regimen_pauses_legend()}</span>
           <p class="muted small">{m.regimen_pauses_hint()}</p>
         </div>
@@ -591,7 +591,7 @@
         {/if}
       {/if}
 
-      <div class="stack-3" style="margin-top:var(--space-4)">
+      <div class="stack-3">
         <button class="btn btn-primary" data-save-regimen onclick={saveEpisode}><span>{m.regimen_save()}</span></button>
         {#if editor.id}
           {#if editor.endDate === ''}
