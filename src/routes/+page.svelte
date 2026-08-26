@@ -51,7 +51,6 @@
   import { RECENT_ENTRY_CAP, entryMarks, recentDayGroups } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { metricKey } from '$lib/data/prefs/catalogue';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -357,13 +356,13 @@
       <ChartPicker
         key="home-metric"
         label={m.colour_days_by()}
-        value={metricKey(prefs)}
+        value={vocabulary.activeMetric}
         options={metricOptions}
         onPick={(value) => selectMetric(value === 'mood' ? null : value)}
       />
     {/snippet}
   </SectionHeading>
-  <WeekStrip metric={metricKey(prefs)} role={roleAt(activeFlag.roles, AREA_ROLE.week)} />
+  <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, AREA_ROLE.week)} />
   <!-- The streak, as the caption on the week it describes. -->
   {#if streak > 1 && !pausedToday}
     <p class="home-week-caption" data-home-streak>{streak} {m.streak_row()}</p>

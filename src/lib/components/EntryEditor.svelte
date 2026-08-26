@@ -155,18 +155,17 @@
     );
     templateSheetOpen = false;
   }
-  /* The union of the active preset's dimensions and the entry's own: an
-     old entry logged under a wider preset keeps its extra dimensions on screen
-     (marked below), instead of silently dropping their history on save. */
+  /* The union of the ticked scales and the entry's own: an entry logged
+     when more was ticked keeps its extra scales on screen (marked below),
+     instead of silently dropping their history on save. */
   let dims = $derived.by(() => {
     const active = vocabulary.activeDimensions;
     const extras = Object.keys(entryDraft.dims)
       .filter((key) => !active.some((d) => d.key === key))
       .map((key) => vocabulary.dimensions.find((d) => d.key === key))
       .filter((d): d is GenderDimension => !!d);
-    return [...active.map((dim) => ({ dim, inPreset: true })), ...extras.map((dim) => ({ dim, inPreset: false }))];
+    return [...active.map((dim) => ({ dim, ticked: true })), ...extras.map((dim) => ({ dim, ticked: false }))];
   });
-  let preset = $derived(vocabulary.activePreset);
   let isToday = $derived(day === todayEpochDay());
 
   // An entry holds several photos, so one trip through the picker can bring
@@ -405,13 +404,26 @@
 
   <SectionHeading text={m.gender_label()}>
     {#snippet action()}
-      <a class="kit-heading-action" href="/settings">{m.preset_prefix()} {preset.name}</a>
+      <a class="kit-heading-action" href="/settings">{m.scales_change()}</a>
     {/snippet}
   </SectionHeading>
-  <p class="editor-hint">{m.gender_hint()}</p>
-  {#each dims as { dim, inPreset } (dim.key)}
+  <!-- Nothing ticked and nothing kept from this entry is a resting state,
+       not a gap: somebody can reach it by unticking five boxes, and a mood,
+       tags, a note and a photo are still an entry. The section says what it
+       is rather than leaving a heading over nothing (phase 5 ticket 35).
+
+       One line or the other, never both. "However it feels right now, there
+       are no wrong answers" is reassurance about answering the sliders, and
+       with no sliders under it it was reassurance about nothing, stacked on
+       top of the line explaining why they are missing. -->
+  {#if dims.length === 0}
+    <p class="editor-hint" data-no-scales>{m.editor_no_scales()}</p>
+  {:else}
+    <p class="editor-hint">{m.gender_hint()}</p>
+  {/if}
+  {#each dims as { dim, ticked } (dim.key)}
     <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
-    {#if !inPreset}
+    {#if !ticked}
       <p class="editor-hint editor-hint-tight">{m.not_in_preset()}</p>
     {/if}
   {/each}

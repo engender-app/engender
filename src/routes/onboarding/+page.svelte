@@ -31,7 +31,6 @@
 
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { sharedAxisX } from '$lib/motion/navigation';
   import { motionDuration } from '$lib/motion/tokens';
@@ -46,6 +45,7 @@
     type OnboardingStep
   } from '$lib/onboarding/steps';
   import FlagSun from '$lib/components/FlagSun.svelte';
+  import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -76,7 +76,22 @@
   let bloomPass = $state(0);
 
   let name = $state('');
-  let preset = $state<string | null>(null);
+  /* Null until the scales step is touched, which is what lets Skip mean
+     "leave the stored default alone" rather than "store nothing" - the same
+     guard the name step needs, for the same reason. The list still arrives
+     with the default set ticked, so nothing is asked of somebody who
+     already agrees with it. An empty array is not null: unticking all five
+     is a choice, and it is stored like any other. */
+  let scales = $state<string[] | null>(null);
+  /* What the list draws: the working set once it has been touched, and the
+     stored default before that. */
+  let tickedScales = $derived(scales ?? prefs.activeScales);
+
+  function toggleScale(key: string) {
+    scales = tickedScales.includes(key)
+      ? tickedScales.filter((k) => k !== key)
+      : [...tickedScales, key];
+  }
   let appLock = $state(false);
   let lockOnLeave = $state(false);
   let checkIn = $state(false);
@@ -126,7 +141,7 @@
   function skip() {
     if (step === 'name') name = '';
     else if (step === 'flag') prefs.palette = paletteOnEntry;
-    else if (step === 'scales') preset = null;
+    else if (step === 'scales') scales = null;
     else if (step === 'lock') {
       appLock = false;
       lockOnLeave = false;
@@ -155,7 +170,7 @@
        Settings' job, where the field is the stored value rather than a
        draft of it. */
     if (name.trim()) prefs.name = name.trim();
-    if (preset) prefs.activePreset = preset;
+    if (scales) prefs.activeScales = scales;
     if (lockOnLeave) prefs.lockOnLeave = true;
     if (checkIn) {
       prefs.checkInEnabled = true;
@@ -247,29 +262,12 @@
           {:else if step === 'scales'}
             <h1 class="setup-title">{m.ob_track_title()}</h1>
             <p class="setup-body">{m.ob_track_body()}</p>
-            <!-- What a preset is, is the set of scales it puts in front of
-                 you when you log. A row's subtitle was spending that on a
-                 comma list that ran past its own width; the chips are the
-                 same fact, read rather than parsed. -->
-            <div class="setup-presets" role="radiogroup" aria-label={m.ob_track_title()}>
-              {#each vocabulary.presets as p (p.id)}
-                <button
-                  class="setup-preset press"
-                  class:is-picked={preset === p.id}
-                  role="radio"
-                  aria-checked={preset === p.id}
-                  data-list-row={`preset-${p.id}`}
-                  onclick={() => (preset = p.id)}
-                >
-                  <span class="setup-preset-name">{p.name}</span>
-                  <span class="setup-preset-scales">
-                    {#each p.dims as dim (dim)}
-                      <span class="tag-chip is-mini">{vocabulary.presetDimensionNames([dim])}</span>
-                    {/each}
-                  </span>
-                </button>
-              {/each}
-            </div>
+            <!-- One list, and Settings draws the same one. Two copies is
+                 how the flag picker ended up cramped on one screen and
+                 readable on the other. No "add your own" row here: it
+                 leaves the flow, and the first run has nowhere to come
+                 back to. -->
+            <ScaleChecklist ticked={tickedScales} onToggle={toggleScale} />
           {:else if step === 'lock'}
             <h1 class="setup-title">{m.ob_lock_title()}</h1>
             <p class="setup-body">{m.ob_lock_body()}</p>
@@ -358,7 +356,6 @@
         <button
           class="btn btn-primary"
           data-next
-          disabled={step === 'scales' && preset === null}
           onclick={() => go(stepAfter(steps, step))}
         >
           <span>{m.continue()}</span>
@@ -368,7 +365,7 @@
       <div class="setup-outs">
         {#if isSkippable(step)}
           <button class="btn btn-ghost" data-skip-step onclick={skip}>
-            <span>{step === 'scales' ? m.not_now() : m.skip()}</span>
+            <span>{m.skip()}</span>
           </button>
         {/if}
         {#if step !== 'done'}

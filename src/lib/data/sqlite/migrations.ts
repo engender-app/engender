@@ -1428,6 +1428,48 @@ const SCHEMA_V41 = `
 DROP TABLE doubt_entry;
 `;
 
+/* Phase 5 ticket 35: the active preset becomes the list of scales it stood
+   for. `prefs.activePreset` named one of eight presets and the app resolved
+   it to a dimension list at read time; `prefs.activeScales` is that list,
+   ticked directly.
+
+   The translation belongs here rather than in TypeScript because the answer
+   is already in the database: the preset's rows say which dimensions it
+   offered, and that is exactly what the new preference holds.
+   `COALESCE(key, uuid)` is how a preset is identified everywhere else
+   (archiveApply.ts, dimensions.ts), so a custom preset translates on the
+   same line as a built-in one. The stored value is JSON, hence the substr
+   stripping its quotes.
+
+   The order the keys land in is not defined and nothing reads it:
+   `reference.activeDimensions` draws the scales in catalogue order, so which
+   box was ticked first cannot move a slider.
+
+   No row when there was no preference, and none when the preset it named has
+   no dimensions (HAVING, since an aggregate with nothing to aggregate still
+   returns one NULL row) - an absent preference falls back to the default
+   three, which is what an install that never chose is entitled to. An empty
+   list would instead claim somebody had unticked everything.
+
+   Then the old row goes. openPreferences deliberately leaves a key it does
+   not recognise in the table, so that a downgrade and a second upgrade do
+   not lose it; that rule is about keys from a *newer* build, and this value
+   has been read and translated. A database this migration has touched is
+   also numbered past what an older build will open at all (ADR-0006), which
+   is what makes a new key safe here rather than a widened one. */
+const SCHEMA_V42 = `
+INSERT INTO pref (key, value)
+SELECT 'activeScales', '["' || group_concat(gd.key, '","') || '"]'
+FROM pref p
+JOIN gender_preset gp ON COALESCE(gp.key, gp.uuid) = substr(p.value, 2, length(p.value) - 2)
+JOIN preset_dimension pd ON pd.preset_id = gp.id
+JOIN gender_dimension gd ON gd.id = pd.dimension_id
+WHERE p.key = 'activePreset'
+HAVING count(gd.key) > 0;
+
+DELETE FROM pref WHERE key = 'activePreset';
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1469,7 +1511,8 @@ export const migrations: Migration[] = [
   { version: 38, sql: SCHEMA_V38 },
   { version: 39, sql: SCHEMA_V39 },
   { version: 40, sql: SCHEMA_V40 },
-  { version: 41, sql: SCHEMA_V41 }
+  { version: 41, sql: SCHEMA_V41 },
+  { version: 42, sql: SCHEMA_V42 }
 ];
 
 /** The newest schema this build can produce. Two things refuse a database

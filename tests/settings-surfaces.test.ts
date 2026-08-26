@@ -2,11 +2,13 @@
    level a screen's source can be held to - mirrors home-surfaces.test.ts and
    more-surfaces.test.ts.
 
-   Sheets are not a surface (home-surfaces.test.ts's own note): the preset,
-   metric, disguise and about sheets keep the old `.list-group`/`.list-row`/
-   `.card` vocabulary inside <Sheet>, so this file's "no card of its own"
-   check strips every <Sheet>...</Sheet> block first, the same way the
-   script block is stripped. */
+   Sheets are not a surface (home-surfaces.test.ts's own note): the metric,
+   disguise and about sheets keep the old `.list-group`/`.list-row`/`.card`
+   vocabulary inside <Sheet>, so this file's "no card of its own" check
+   strips every <Sheet>...</Sheet> block first, the same way the script
+   block is stripped. The scales sheet is the exception and is on the kit
+   already - phase 5 ticket 35 put the checklist there, and it is the same
+   component the first run draws. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

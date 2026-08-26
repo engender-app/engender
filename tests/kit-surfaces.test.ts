@@ -52,6 +52,11 @@ describe('the surfaces', () => {
       'BareStrip.svelte',
       'ChartCard.svelte',
       'ChartPicker.svelte',
+      /* The box a tickable row draws (phase 5 ticket 35). Not a surface of
+         its own - it is a part of ListRow, the way MoodFace is a part of a
+         chip - but its mark draws itself in and that motion wants one file
+         to live in rather than being inlined in a row's markup. */
+      'Check.svelte',
       'DayCard.svelte',
       'DayEntry.svelte',
       'Distribution.svelte',
