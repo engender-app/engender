@@ -159,6 +159,16 @@ export function disclose(node: Element): TransitionConfig {
  * absolutely positioned box with no `top` sits at its static position, which
  * is exactly where it already was.
  *
+ * z-index: -1, or the placeholder is never actually underneath. Positioning
+ * takes the skeleton out of flow, but a positioned element with no z-index
+ * still paints *after* normal-flow content in stacking order regardless of
+ * where either one sits in the DOM (CSS2.1 Appendix E) - so without this the
+ * skeleton painted over the content it was meant to be fading off of, for
+ * the whole of its 160ms, which is a second "appears twice" (phase 5 ticket
+ * 32.16) this primitive's own history had already named once and thought it
+ * had closed by taking the skeleton out of flow. Out of flow was necessary
+ * and not sufficient - it stopped the page jumping, not the paint order.
+ *
  * Reduced motion takes the duration to zero through `motionDuration`: the
  * skeleton is removed on the spot, which is tier 3's substitute. There is no
  * resting rule for the `to` state to match, because the node is gone by then.
@@ -169,6 +179,6 @@ export function crossfade(node: Element): TransitionConfig {
   return {
     duration: motionDuration('--dur-fast', 160),
     easing: EASE_OUT,
-    css: (t) => `opacity: ${t}; position: absolute; width: ${width}px; pointer-events: none`
+    css: (t) => `opacity: ${t}; position: absolute; width: ${width}px; z-index: -1; pointer-events: none`
   };
 }
