@@ -26,6 +26,7 @@ import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 import type { BodyRegionFeeling } from '../../src/lib/data/types.ts';
 import { weekdayOfEpochDay } from '../../src/lib/data/epochDay.ts';
+import { BUILT_IN_DIMENSIONS } from '../../src/lib/data/vocabulary/builtins.ts';
 
 /** Days in ten years, two of them leap. The unit is in the name because the
     option it is passed to takes days, and `{ days: TEN_YEARS }` read as
@@ -175,13 +176,12 @@ const CUSTOM_TAG_LABELS = [
   { group: 'gender', label: 'passing' }
 ];
 
-const DIMENSION_KEYS = [
-  'euphoria_dysphoria',
-  'femininity',
-  'masculinity',
-  'binary_nonbinary',
-  'agender_gendered'
-];
+/* Every built-in, derived rather than listed: generate.test.ts asserts that
+   each dimension the stats screen charts carries values, so a hand-written
+   copy of this list turns adding a built-in scale into a failure in the
+   generator rather than a missing series. Unlike the body regions below,
+   where logging a handful is the point. */
+const DIMENSION_KEYS: string[] = BUILT_IN_DIMENSIONS.map((d) => d.key);
 
 /* Built-in body regions (phase 5 ticket 30/31/44), a handful rather than
    all ten - the good-day and counterevidence measurements need a mix of
