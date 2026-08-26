@@ -91,6 +91,22 @@ describe('choosing a tier-2 pattern', () => {
     ).toBe('container');
   });
 
+  it('opens an entry from the counterevidence screen on the axis, both ways', () => {
+    /* The one screen carved out of the transform (Alicja, 2026-08-26). It
+       is a correct source by the rule - it draws entry cards and they link
+       into the editor - and she read the transform out of it as far too
+       big a movement for what it is: a list of past good days, where an
+       entry is evidence being cited rather than a thing being opened.
+
+       Both legs, because a pattern that only carves out the way in leaves
+       the way back a slow crossfade over the transform's own duration,
+       which is the same complaint arriving late. */
+    expect(screenTransition(nav({ from: '/doubt', to: '/entry/41' }))).toBe('shared-axis');
+    expect(
+      screenTransition(nav({ from: '/entry/41', to: '/doubt', type: 'popstate', delta: -1 }))
+    ).toBe('shared-axis-back');
+  });
+
   it('opens a new entry on the shared axis, because nothing was tapped to become it', () => {
     /* A container transform needs a container. Quick add's fan, the day
        screen's add button and a launcher shortcut all open the editor with
