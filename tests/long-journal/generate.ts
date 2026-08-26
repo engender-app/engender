@@ -20,7 +20,17 @@
    JPEG at the sizes ADR-0008 normalizes to, which needs a canvas the Node
    tier has not got, and the byte size is most of what the photo grid and
    the Archive export are measuring - so the platform that has the canvas
-   supplies it. */
+   supplies it.
+
+   Phase 5 ticket 36 widened this from five kinds of content to nineteen.
+   `npm run benchmark:long-journal` still reports every measurement inside
+   its budget, but the generation step itself - not one of the individually
+   budgeted numbers, just the "Written in Xs" line the harness prints before
+   measuring anything - moved from 51s to 56s on the machine budgets.json
+   was recorded on. Recorded here, next to the old number, rather than
+   quietly replaced: a ~10% write-time increase for fourteen more areas of
+   content, nothing near the 5x budget headroom any of the measured reads
+   actually gates on. */
 
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
@@ -31,6 +41,7 @@ import { BUILT_IN_DIMENSIONS, BUILT_IN_MEASUREMENT_TYPES, BUILT_IN_PERSONAL_EFFE
 import { GARMENT_CATEGORIES } from '../../src/lib/data/garmentCategories.ts';
 import { HAIR_REMOVAL_AREAS } from '../../src/lib/data/hairRemovalAreas.ts';
 import { POLISH_PACK, ROADMAP_TRACKS } from '../../src/lib/data/roadmap.ts';
+import { demoAudioBytes } from '../../src/lib/data/demoAudioBytes.ts';
 
 /** Days in ten years, two of them leap. The unit is in the name because the
     option it is passed to takes days, and `{ days: TEN_YEARS }` read as
@@ -87,7 +98,7 @@ export interface LongJournalSummary {
   /** Doses logged against the two episodes phase 5 ticket 36 adds beside
       the one above, so at least one stretch of the fixture has two
       concurrent episodes overlapping (ticket 38's shape). */
-  doseEvents2: number;
+  additionalDoseEvents: number;
   measurements: number;
   sizeRecords: number;
   hairRemovalSessions: number;
@@ -303,7 +314,7 @@ export async function generateLongJournal(
     regionEuphoriaEntries: 0,
     hairStagings: 0,
     doseEvents: 0,
-    doseEvents2: 0,
+    additionalDoseEvents: 0,
     measurements: 0,
     sizeRecords: 0,
     hairRemovalSessions: 0,
@@ -516,7 +527,7 @@ export async function generateLongJournal(
       status: 'taken',
       drug: 'Spironolactone'
     });
-    summary.doseEvents2++;
+    summary.additionalDoseEvents++;
   }
 
   // A third episode, injectable, confined to the fixture's final ~150 days
@@ -557,7 +568,7 @@ export async function generateLongJournal(
       vehicle: 'oil'
     });
     injectionCount++;
-    summary.doseEvents2++;
+    summary.additionalDoseEvents++;
   }
 
   // Measurements, sizes and hair-removal sessions: a year each, at an
@@ -713,15 +724,6 @@ export async function generateLongJournal(
   summary.stockEntries += 2;
 
   return summary;
-}
-
-/** Deterministic, arbitrary bytes - voiceRecordings.ts writes them through
-    with no decoding or format check, so unlike a photo this needs no real
-    audio, only a size worth attaching. */
-function demoAudioBytes(random: () => number): Uint8Array {
-  const bytes = new Uint8Array(4000);
-  for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(random() * 256);
-  return bytes;
 }
 
 function makeNote(

@@ -21,6 +21,7 @@
 import type { Journal } from '../journal/journal';
 import { todayEpochDay, weekdayOfEpochDay } from '../epochDay';
 import { demoPhoto } from './journal-seed';
+import { demoAudioBytes } from '../demoAudioBytes';
 import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
 import { GARMENT_CATEGORIES } from '../garmentCategories';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
@@ -34,16 +35,6 @@ function rng(seed: number) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-/** Arbitrary deterministic bytes - voiceRecordings.ts writes them through
-    with no decoding or format check, so unlike a photo this needs no real
-    audio, only a size worth attaching. */
-function demoAudioBytes(seed: number): Uint8Array {
-  const r = rng(seed);
-  const bytes = new Uint8Array(4000);
-  for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(r() * 256);
-  return bytes;
 }
 
 export async function seedFullFixture(journal: Journal): Promise<void> {
@@ -272,7 +263,7 @@ export async function seedFullFixture(journal: Journal): Promise<void> {
     dims: {},
     tags: [],
     bodyRegions: {},
-    attachRecordings: [demoAudioBytes(1)]
+    attachRecordings: [demoAudioBytes(r)]
   });
   await journal.entries.upsertEntry({
     epochDay: today - 60,
@@ -282,6 +273,6 @@ export async function seedFullFixture(journal: Journal): Promise<void> {
     dims: {},
     tags: [],
     bodyRegions: {},
-    attachRecordings: [demoAudioBytes(2)]
+    attachRecordings: [demoAudioBytes(r)]
   });
 }
