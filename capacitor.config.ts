@@ -13,7 +13,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'dev.barankiewicz.genderdiary',
-  appName: 'Gender Diary',
+  appName: 'enGender',
   webDir: 'build',
   android: {
     /* The journal is opened by the native driver over SQLCipher, not by the

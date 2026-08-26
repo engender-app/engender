@@ -222,7 +222,7 @@
         { title: prefs.disguise ? 'Notes' : 'New tab', icon: 'favicon-notes.svg' }
       : prefs.disguise
         ? { title: 'Notes', icon: 'favicon-notes.svg' }
-        : { title: 'Gender Diary', icon: 'favicon.svg' };
+        : { title: 'enGender', icon: 'favicon.svg' };
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
     /* The installed app's identity (ticket 25). Follows the preference and
