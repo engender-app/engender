@@ -43,6 +43,24 @@ async function fresh(path = '/') {
   await booted();
 }
 
+/* A navigation that arrives late (32.1). Leaving onboarding used to land on
+   Home and then be undone a moment afterwards by a goto the demo bar's
+   first-run jump had issued before the walk started - so a flow that read the
+   greeting and moved on passed inside the window.
+
+   What this can and cannot see, because it is a race and saying so is the
+   point: the late navigation arrives when the jump's journal clear ends,
+   which is about 1.6s after the jump on this machine, and any walk through
+   the flow here takes longer than that - so the arrival lands during the
+   walk, where it is harmless, rather than inside this hold. It catches the
+   defect on a device or a journal where the clear outlasts the walk, and it
+   catches any other navigation that arrives after Home. The deterministic
+   reproduction is a probe with the clear widened, not this suite. */
+async function heldOnHome(what) {
+  await page.waitForTimeout(2500);
+  if (!page.url().endsWith('/')) throw new Error(`${what}: ${page.url()}`);
+}
+
 async function typePin(digits) {
   for (const digit of digits) await page.locator(`[data-key="${digit}"]`).click();
 }
@@ -1099,16 +1117,9 @@ try {
     throw new Error('the flag picked during onboarding did not survive into the app');
   }
 
-  /* Held on Home rather than asserted and left (32.1). Finishing used to
-     land here and then bounce back into onboarding about a second later,
-     and this flow read the greeting inside that window - so it passed while
-     the app was walking itself back to step one. What arrived late was a
-     navigation the demo jump issued after emptying the journal, so how long
-     the walk above took decides whether it lands during the walk or here;
-     on a slower device or a faster walk it lands here. Two and a half
-     seconds is comfortably past the clear either way. */
-  await page.waitForTimeout(2500);
-  if (!page.url().endsWith('/')) throw new Error(`onboarding came back after finishing it: ${page.url()}`);
+  /* Held on Home rather than asserted and left (32.1), which is what this
+     flow used to do inside the window the bounce lived in. */
+  await heldOnHome('onboarding came back after finishing it');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
 
@@ -1128,12 +1139,9 @@ try {
   const leftGreet = await page.locator('[data-home-hello]').textContent();
   if (!leftGreet.includes('Sam')) throw new Error('leaving early lost the name: ' + leftGreet);
 
-  /* The same hold as flow 13, and the better place for it (32.1): leaving
-     from the second step reaches Home in two clicks, so a navigation the
-     demo jump issues after its journal clear has the least chance of having
-     already landed harmlessly during the walk. */
-  await page.waitForTimeout(2500);
-  if (!page.url().endsWith('/')) throw new Error(`left onboarding and was pulled back: ${page.url()}`);
+  /* The fastest way out of the flow, so this is the hold most likely to be
+     running when a late navigation arrives (32.1). */
+  await heldOnHome('leaving onboarding was undone by a late navigation');
 
   // And it counted as onboarded: a reload lands on Home, not back on step one.
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
