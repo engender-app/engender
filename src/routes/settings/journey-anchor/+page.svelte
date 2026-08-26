@@ -1,7 +1,7 @@
 <script lang="ts">
   /* Journey anchor (phase 5 ticket 25, ADR-0010): which milestone durations,
      stats ranges and wrapped figures are measured from. A single global
-     choice, mirroring `activePreset` (settings/+page.svelte's preset sheet) -
+     choice, mirroring `activeScales` (settings/+page.svelte's scales sheet) -
      one active pick rather than a per-surface one. Nothing computed here is
      stored; picking a milestone only ever writes its id.
 

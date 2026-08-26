@@ -233,7 +233,6 @@ test('built-in rows travel by key and custom rows by uuid (ADR-0002)', async () 
     snapshot.journal.presets.find((p) => p.id === preset.id),
     { id: preset.id, name: 'Mine', builtIn: false, dims: [voice.key, 'femininity'] }
   );
-  assert.ok(snapshot.journal.presets.some((p) => p.id === 'p-btw' && p.builtIn));
 
   const appointments = snapshot.journal.tagGroups.find((g) => g.key === group.key)!;
   assert.equal(appointments.builtIn, false);

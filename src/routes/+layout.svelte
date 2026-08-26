@@ -222,7 +222,7 @@
         { title: prefs.disguise ? 'Notes' : 'New tab', icon: 'favicon-notes.svg' }
       : prefs.disguise
         ? { title: 'Notes', icon: 'favicon-notes.svg' }
-        : { title: 'Gender Diary', icon: 'favicon.svg' };
+        : { title: 'enGender', icon: 'favicon.svg' };
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
     /* The installed app's identity (ticket 25). Follows the preference and
@@ -339,7 +339,11 @@
         channelReminders: m.reminders(),
         channelCheckIn: m.checkin_title(),
         checkInTitle: m.checkin_title(),
-        checkInBody: m.checkin_sub()
+        /* The question itself, not the Settings row's subtitle: that one
+           ends in the mechanic ("skipped on days you already logged"),
+           which is what a person reading the row needs and not what a
+           notification should say. */
+        checkInBody: m.checkin_notification_body()
       }),
       isValidLaunchRoute: isValidAndroidLaunchRoute,
       currentPathname: () => page.url.pathname,
@@ -364,7 +368,18 @@
        so it can be waited for: the walkthrough suite has to let a cold start
        finish before it clears storage, or it interrupts the very writes it
        then asserts against (tests/walkthrough.test.mjs). -->
-  <div class="app" data-app-root class:disguised={prefs.disguise} data-boot={bootState.status}>
+  <!-- is-chromeless is what tells the scroll region there is no bar floating
+       over it (phase 5 ticket 26). The clearance below the content is sized
+       for the bar, its float gap and the system inset, and on a screen with
+       no bar that is room held for nothing: it pushed a vertically-centred
+       gate up by most of a bar's height. -->
+  <div
+    class="app"
+    data-app-root
+    class:disguised={prefs.disguise}
+    class:is-chromeless={chromeless}
+    data-boot={bootState.status}
+  >
     {#if isErrorState(bootState)}
       <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
         <Icon name="alert" size={20} />

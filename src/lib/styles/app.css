@@ -86,6 +86,16 @@ body {
   --nav-bar-pad: 5px;
 }
 
+/* The gates and onboarding, which render instead of the app and have no bar
+   floating over them (phase 5 ticket 26). The clearance above is the bar's
+   height plus its float gap plus the inset plus a breath; on a screen with
+   no bar it is room held for nothing, and it pushed a vertically-centred
+   gate up by most of a bar's height. What is left is the system inset and
+   the same breath. */
+.app.is-chromeless {
+  --nav-clearance: calc(var(--inset-bottom) + var(--space-5));
+}
+
 /* No entrance of its own. It had one - fade in, slide 6px - and suppressing
    it during a navigation did not work the way suppression looks like it
    should: `animation: none` does not cancel an animation, it withholds it, so
