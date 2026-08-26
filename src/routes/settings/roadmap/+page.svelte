@@ -1,4 +1,18 @@
 <script lang="ts">
+  /* The step-by-step checklist, on the surface kit (phase 5 UX ticket 25).
+
+     The pack's provenance was five paragraphs stacked in one card - what
+     the pack is, what it does not cover, what a marker means, that none of
+     it is advice, and where it came from and when it was checked - which
+     is the first thing on the screen and reads as a wall before a single
+     step of the roadmap. It is a notice carrying the first two, which are
+     the ones that change how the list is read, and a quiet block under it
+     carrying the rest. Nothing is deleted: this is a bundled claim about
+     somebody's legal and medical path and every word of it stays.
+
+     The rows stay written out rather than built from ListRow: a row here
+     is a three-state tick whose accessible name is the goal and its state
+     together, and a ListRow announces a title and goes somewhere. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
@@ -20,8 +34,13 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { crossfade } from '$lib/motion/reveal';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
 
   /* One bundled pack, so no picker: the phase 4 scope decision ships
      Polish only. A second pack would turn this into a choice, and nothing
@@ -77,66 +96,69 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.roadmap_title()} back="/settings" subtitle={m.roadmap_intro()} />
-  <div class="card" style="margin:var(--space-3) 0">
-    <p class="quicklog-title">{roadmapPackName(pack.key)}</p>
-    <p class="small" style="margin:0">{roadmapPackCaveat(pack.key)}</p>
-    <p class="small" style="margin:var(--space-2) 0 0">{roadmapPackMarkerNote(pack.key)}</p>
-    <p class="small" style="margin:var(--space-2) 0 0">{m.roadmap_not_advice()}</p>
-    <p class="muted small" style="margin:var(--space-2) 0 0">
-      {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
-    </p>
+  <ScreenHeader title={m.roadmap_title()} back="/more" subtitle={m.roadmap_intro()} />
+
+  <Notice
+    icon="globe"
+    key="roadmap-pack"
+    title={roadmapPackName(pack.key)}
+    text={roadmapPackCaveat(pack.key)}
+  />
+  <div class="roadmap-provenance">
+    <p class="small">{roadmapPackMarkerNote(pack.key)}</p>
+    <p class="small">{m.roadmap_not_advice()}</p>
+    <p class="muted small">{roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}</p>
   </div>
 
   {#if statusQuery.loading || customQuery.loading}
-    <Skeleton variant="card" count={4} />
+    <div out:crossfade><Skeleton variant="line" count={4} /></div>
   {:else}
-    {#each ROADMAP_TRACKS as track (track)}
-      <SectionTitle text={roadmapTrackName(track)} />
-      <div class="list-group">
+    {#each ROADMAP_TRACKS as track, i (track)}
+      <SectionHeading text={roadmapTrackName(track)} />
+      <ListCard role={roleAt(activeFlag.roles, i)}>
         {#each rankByLean(goalsInTrack(pack, track), lean) as goal (goal.key)}
           {@const status = statuses[goal.key] ?? 'unchecked'}
           <button
-            class="list-row"
+            class="kit-row"
             data-goal={goal.key}
             data-status={status}
             aria-label={`${roadmapGoalTitle(goal.key)} — ${stateLabel(status)}`}
             onclick={() => toggleBuiltIn(goal.key)}
           >
-            <span class="row-icon" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
+            <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
               {#if status === 'checked'}
                 <Icon name="check" size={20} />
               {:else if status === 'not-my-path'}
                 <Icon name="x" size={16} />
               {/if}
             </span>
-            <span class="row-text">
+            <span class="kit-row-text">
               <span
-                class="row-title"
+                class="kit-row-title"
                 class:roadmap-done={status === 'checked'}
                 class:roadmap-skip-text={status === 'not-my-path'}
               >
                 {roadmapGoalTitle(goal.key)}
               </span>
               {#if roadmapGoalNote(goal.key)}
-                <span class="row-subtitle">{roadmapGoalNote(goal.key)}</span>
+                <span class="kit-row-sub">{roadmapGoalNote(goal.key)}</span>
               {/if}
               {#if roadmapGoalNoteSecondary(goal.key)}
-                <span class="row-subtitle">{roadmapGoalNoteSecondary(goal.key)}</span>
+                <span class="kit-row-sub">{roadmapGoalNoteSecondary(goal.key)}</span>
               {/if}
             </span>
           </button>
         {/each}
         {#each customGoals.filter((g) => g.track === track) as goal (goal.id)}
           <button
-            class="list-row"
+            class="kit-row"
             data-goal={goal.id}
             data-status={goal.status}
             aria-label={`${goal.text} — ${stateLabel(goal.status)}`}
             onclick={() => toggleCustom(goal)}
           >
             <span
-              class="row-icon"
+              class="roadmap-box"
               class:roadmap-ticked={goal.status === 'checked'}
               class:roadmap-skip={goal.status === 'not-my-path'}
             >
@@ -146,9 +168,9 @@
                 <Icon name="x" size={16} />
               {/if}
             </span>
-            <span class="row-text">
+            <span class="kit-row-text">
               <span
-                class="row-title"
+                class="kit-row-title"
                 class:roadmap-done={goal.status === 'checked'}
                 class:roadmap-skip-text={goal.status === 'not-my-path'}
               >
@@ -158,17 +180,17 @@
           </button>
         {/each}
         <button
-          class="list-row"
+          class="kit-row"
           data-add-goal={track}
           onclick={() => {
             addTrack = track;
             newGoalText = '';
           }}
         >
-          <span class="row-icon add-icon"><Icon name="plus" size={20} /></span>
-          <span class="row-text"><span class="row-title muted">{m.roadmap_new_goal()}</span></span>
+          <span class="roadmap-box add-icon"><Icon name="plus" size={20} /></span>
+          <span class="kit-row-text"><span class="kit-row-title muted">{m.roadmap_new_goal()}</span></span>
         </button>
-      </div>
+      </ListCard>
     {/each}
   {/if}
 </div>
@@ -196,9 +218,17 @@
 </Sheet>
 
 <style>
+  .roadmap-provenance {
+    margin: var(--space-3) 0 var(--space-5);
+  }
+
+  .roadmap-provenance p {
+    margin: 0 0 var(--space-2);
+  }
+
   /* An empty square until it is ticked, so a row reads as a checkbox
      rather than as a link into somewhere. */
-  .row-icon {
+  .roadmap-box {
     border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     width: 28px;
@@ -210,8 +240,8 @@
   }
 
   .roadmap-ticked {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--role-mark);
+    color: var(--role-mark);
   }
 
   /* A third, visually distinct fill from both the empty square (untaken)

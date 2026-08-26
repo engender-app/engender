@@ -83,3 +83,92 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
     css: (_t, u) => `clip-path: inset(0 ${u === 0 ? '0' : `${Number((u * 100).toFixed(2))}%`} 0 0)`
   };
 }
+
+/**
+ * Tier 3, change within a screen: a group opening its own height.
+ *
+ * DIRECTION.md names this case by itself - "a list insertion opens its own
+ * height rather than making everything below it jump" - and it is the one
+ * place tier 3 is allowed a layout property. What is animated is the
+ * element's own height, so the rows under it travel with it rather than
+ * being teleported down the screen by a block appearing at full size.
+ *
+ * The cap is the same as the wipe's, and stricter in practice: one group at
+ * a time, and a group rather than a screen. A disclosure that opens half the
+ * document is a screen, and belongs to tier 2 as a navigation instead.
+ *
+ * Reduced motion is an instant cut, which is tier 3's substitute: a group
+ * opening inside a screen has no journey for a fade to stand in for, and the
+ * chevron beside it has already turned to say what happened.
+ *
+ * The `to` state is `height: auto` by way of `scaleY`-free arithmetic on the
+ * measured height, so the resting rule the element already has is what it
+ * lands on - the invariant DIRECTION.md's reduced-motion contract imposes on
+ * every animation in the app.
+ */
+export function disclose(node: Element): TransitionConfig {
+  if (isReducedMotion()) return { duration: 0 };
+
+  const style = getComputedStyle(node);
+  const height = parseFloat(style.height) || 0;
+  const paddingTop = parseFloat(style.paddingTop) || 0;
+  const paddingBottom = parseFloat(style.paddingBottom) || 0;
+
+  return {
+    duration: motionDuration('--dur-med', 240),
+    easing: EASE_OUT,
+    css: (t) =>
+      `overflow: hidden;` +
+      `height: ${t * height}px;` +
+      `padding-top: ${t * paddingTop}px;` +
+      `padding-bottom: ${t * paddingBottom}px;`
+  };
+}
+
+/**
+ * Tier 3, change within a screen: a skeleton crossfading into the content it
+ * was standing in for.
+ *
+ * `out:crossfade` on the skeleton, and nothing at all on what replaces it.
+ * That asymmetry is the whole of this primitive and it was wrong the first
+ * time: pairing it with an `in:` on the content produced a *sequence*
+ * rather than a crossfade, and two things went wrong with that.
+ *
+ * The content faded in twice. A screen arriving is tier 2's, and the shell
+ * already runs a shared-axis view transition over the whole of it; a
+ * content fade a moment later, once the worker answers, is that same
+ * content arriving a second time. Alicja saw it as "the panels fade in two
+ * times, second time very close to each other and glitchy" (2026-08-26).
+ *
+ * And the page jumped. In an `{#if}`/`{:else}` both blocks are alive while
+ * the transition runs, so a skeleton fading out in normal flow still holds
+ * its height and everything under it drops when it finally goes.
+ *
+ * So the skeleton leaves the flow as it fades - the content is already in
+ * its final position underneath, and what animates is the placeholder
+ * uncovering it. Content itself is simply there, which is tier 4's default
+ * and what DIRECTION.md asks for everywhere it has not authored a moment.
+ *
+ * Its own width is measured and pinned rather than being stretched to the
+ * container. An absolutely positioned box with no width shrinks to fit, so
+ * the placeholder would narrow on its first frame; and stretching it to the
+ * container instead resolves against whichever ancestor happens to be
+ * positioned, which is `.screen` for a placeholder at the top level of a
+ * screen and something else for one nested inside a branch. The node knows
+ * its own width, so it is asked. Vertical placement needs nothing: an
+ * absolutely positioned box with no `top` sits at its static position, which
+ * is exactly where it already was.
+ *
+ * Reduced motion takes the duration to zero through `motionDuration`: the
+ * skeleton is removed on the spot, which is tier 3's substitute. There is no
+ * resting rule for the `to` state to match, because the node is gone by then.
+ */
+export function crossfade(node: Element): TransitionConfig {
+  const width = node.getBoundingClientRect().width;
+
+  return {
+    duration: motionDuration('--dur-fast', 160),
+    easing: EASE_OUT,
+    css: (t) => `opacity: ${t}; position: absolute; width: ${width}px; pointer-events: none`
+  };
+}

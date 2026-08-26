@@ -1,4 +1,15 @@
 <script lang="ts">
+  /* One tryout, on the surface kit (phase 5 UX ticket 25).
+
+     Four cards became four named areas, which is the call ticket 22 made
+     for the entry editor and recorded in DIRECTION.md: fields sit flush to
+     the page under a heading rather than inside a box, because a box drawn
+     around a form says the form is one item in a list of them.
+
+     The felt-sense entries and the photographs kept their delete beside
+     them, on the kit's split row, so a row is one control and the delete
+     is another rather than a button floating inside a row that also opens
+     something. */
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
@@ -15,12 +26,20 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  /* Three areas below the form: how it has felt, what it looked like, and
+     what was written while it ran. */
+  const SECTION_ROLE = { feeling: 0, photos: 1, entries: 2 };
 
   const KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
   const KIND_OPTIONS = KINDS.map((value) => ({ value, label: tryoutKindName(value) }));
@@ -136,12 +155,27 @@
     feelingDeleteTarget = null;
     await journal.feltSense.remove(id);
   }
+  /* One example per kind. Name and pronouns had their own and the other four
+     shared "a short name for it", so moving between Style, Garment, Makeup
+     and Presentation step changed the highlight and nothing else - which
+     reads as a switcher that does not work (Alicja, 2026-08-26). An example
+     of the thing itself is the shortest way to say what the kind means. */
+  function labelPlaceholder(kind: TryoutKind): string {
+    if (kind === 'name') return m.tryout_label_placeholder_name();
+    if (kind === 'pronouns') return m.tryout_label_placeholder_pronouns();
+    if (kind === 'style') return m.tryout_label_placeholder_style();
+    if (kind === 'garment') return m.tryout_label_placeholder_garment();
+    if (kind === 'makeup') return m.tryout_label_placeholder_makeup();
+    if (kind === 'presentation_step') return m.tryout_label_placeholder_presentation_step();
+    return m.tryout_label_placeholder_other();
+  }
 </script>
+
 
 <div class="screen">
   <ScreenHeader title={isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/settings/tryouts" />
 
-  <div class="card editor-section">
+  <div class="editor-section">
     <div class="field">
       <span class="field-label">{m.tryout_kind_label()}</span>
       <Segmented
@@ -157,24 +191,22 @@
         class="input"
         id="tr-label"
         name="tr-label"
-        placeholder={draft.kind === 'name'
-          ? m.tryout_label_placeholder_name()
-          : draft.kind === 'pronouns'
-            ? m.tryout_label_placeholder_pronouns()
-            : m.tryout_label_placeholder_other()}
+        placeholder={labelPlaceholder(draft.kind)}
         bind:value={draft.label}
       />
     </div>
     {#if hasDescription(draft.kind)}
-      <div class="field">
-        <label class="field-label" for="tr-description">{m.tryout_description_label()}</label>
-        <textarea
-          class="input"
-          id="tr-description"
-          rows="2"
-          placeholder={m.tryout_description_placeholder()}
-          bind:value={draft.description}
-        ></textarea>
+      <div class="disclosed" transition:disclose>
+        <div class="field">
+          <label class="field-label" for="tr-description">{m.tryout_description_label()}</label>
+          <textarea
+            class="input"
+            id="tr-description"
+            rows="2"
+            placeholder={m.tryout_description_placeholder()}
+            bind:value={draft.description}
+          ></textarea>
+        </div>
       </div>
     {/if}
     <div class="field">
@@ -185,53 +217,65 @@
       <label class="field-label" for="tr-end">{m.tryout_end_label()} <span class="muted">{m.tryout_end_hint()}</span></label>
       <input class="input" type="date" id="tr-end" name="tr-end" bind:value={draft.end} />
     </div>
-    <button class="btn btn-primary" data-save-tryout disabled={draft.label.trim().length === 0} onclick={saveTryout}>
+    <button class="btn btn-primary press" data-save-tryout disabled={draft.label.trim().length === 0} onclick={saveTryout}>
       <span>{isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
     </button>
   </div>
 
   {#if !isNew}
-    <SectionTitle text={m.tryout_feeling_title()} />
-    <div class="card">
-      <MoodPicker value={feelingMood} onPick={(v) => (feelingMood = v)} compact />
-      <textarea
-        class="input"
-        rows="2"
-        style="margin-top:var(--space-3)"
-        placeholder={m.tryout_feeling_note_placeholder()}
-        bind:value={feelingNote}
-      ></textarea>
-      <button
-        class="btn btn-soft btn-block"
-        style="margin-top:var(--space-3)"
-        disabled={feelingMood == null}
-        data-add-feeling
-        onclick={addFeeling}
-      >
-        <span>{m.tryout_feeling_save()}</span>
-      </button>
-    </div>
+    <SectionHeading text={m.tryout_feeling_title()} />
+    <MoodPicker value={feelingMood} onPick={(v) => (feelingMood = v)} compact />
+    <textarea
+      class="input"
+      rows="2"
+     
+      placeholder={m.tryout_feeling_note_placeholder()}
+      bind:value={feelingNote}
+    ></textarea>
+    <button
+      class="btn btn-soft btn-block press"
+      style="margin:var(--space-3) 0"
+      disabled={feelingMood == null}
+      data-add-feeling
+      onclick={addFeeling}
+    >
+      <span>{m.tryout_feeling_save()}</span>
+    </button>
     {#if feelingQuery.loading}
-      <Skeleton variant="line" count={2} />
+      <div out:crossfade><Skeleton variant="line" count={2} /></div>
     {:else if feeling.length}
-      <div class="list-group" style="margin-top:var(--space-3)">
-        {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{dayLabel(f.epochDay)}</span>
-              {#if f.note}<span class="row-subtitle">{f.note}</span>{/if}
-            </span>
-            <button class="icon-btn" aria-label={m.tryout_feeling_delete_sheet()} onclick={() => (feelingDeleteTarget = f)}>
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
-        {/each}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
+          {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
+            <div class="kit-row is-static" data-feeling={f.id}>
+              <span class="kit-row-text">
+                <span class="kit-row-title">{dayLabel(f.epochDay)}</span>
+                {#if f.note}<span class="kit-row-sub">{f.note}</span>{/if}
+              </span>
+              <button
+                class="kit-row-act press"
+                data-delete-feeling={f.id}
+                aria-label={m.tryout_feeling_delete_sheet()}
+                onclick={() => (feelingDeleteTarget = f)}
+              >
+                <Icon name="trash" size={18} />
+              </button>
+            </div>
+          {/each}
+        </ListCard>
       </div>
     {:else}
-      <p class="muted small" style="padding:var(--space-4)">{m.tryout_feeling_none()}</p>
+      <div class="screen-part">
+        <Notice
+          icon="heart"
+          key="tryout-feeling-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}
+          text={m.tryout_feeling_none()}
+        />
+      </div>
     {/if}
 
-    <SectionTitle text={m.tryout_photo_section_title()} />
+    <SectionHeading text={m.tryout_photo_section_title()} />
     <div class="photo-row" style="margin-bottom:var(--space-3)">
       <button class="photo-add" aria-label={m.add_photo()} onclick={pickTryoutPhoto}>
         <Icon name="image" size={20} /><span>{m.add_photo()}</span>
@@ -241,31 +285,57 @@
       </button>
     </div>
     {#if photosQuery.loading}
-      <Skeleton variant="line" count={1} />
+      <div out:crossfade><Skeleton variant="line" count={1} /></div>
     {:else if photos.length}
-      <div class="list-group" style="margin-bottom:var(--space-3)">
-        {#each photos as p (p.id)}
-          <div class="list-row" data-tryout-photo={p.id}>
-            <PhotoThumb photo={p} size={48} />
-            <button class="icon-btn" aria-label={m.tryout_photo_delete_sheet()} onclick={() => (photoDeleteTarget = p)}>
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
+      <div style="margin-bottom:var(--space-3)">
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
+          {#each photos as p (p.id)}
+            <div class="kit-row is-static" data-tryout-photo={p.id}>
+              <PhotoThumb photo={p} size={48} />
+              <span class="kit-row-text"></span>
+              <button
+                class="kit-row-act press"
+                data-delete-tryout-photo={p.id}
+                aria-label={m.tryout_photo_delete_sheet()}
+                onclick={() => (photoDeleteTarget = p)}
+              >
+                <Icon name="trash" size={18} />
+              </button>
+            </div>
+          {/each}
+        </ListCard>
+      </div>
+    {:else}
+      <div class="screen-part">
+        <Notice
+          icon="camera"
+          key="tryout-photos-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
+          title={m.tryout_photo_empty_title()}
+          text={m.tryout_photo_empty_body()}
+        />
+      </div>
+    {/if}
+
+    <SectionHeading text={m.tryout_entries_title()} />
+    {#if entriesQuery.loading}
+      <div out:crossfade><Skeleton variant="card" count={2} /></div>
+    {:else if entriesInRange.length}
+      <div class="screen-part">
+        {#each entriesInRange as e (e.id)}
+          <EntryCard entry={e} />
         {/each}
       </div>
     {:else}
-      <EmptyState title={m.tryout_photo_empty_title()} text={m.tryout_photo_empty_body()} />
-    {/if}
-
-    <SectionTitle text={m.tryout_entries_title()} />
-    {#if entriesQuery.loading}
-      <Skeleton variant="card" count={2} />
-    {:else if entriesInRange.length}
-      {#each entriesInRange as e (e.id)}
-        <EntryCard entry={e} />
-      {/each}
-    {:else}
-      <EmptyState title={m.tryout_entries_none()} text={m.tryout_entries_none_body()} />
+      <div class="screen-part">
+        <Notice
+          icon="book"
+          key="tryout-entries-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
+          title={m.tryout_entries_none()}
+          text={m.tryout_entries_none_body()}
+        />
+      </div>
     {/if}
   {/if}
 

@@ -244,8 +244,18 @@ try {
   await page.waitForSelector('[data-slider]');
   const values = () =>
     page.locator('[data-slider]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-valuenow')));
+  /* Centred in the viewport before it is measured. The editor's save bar and
+     the nav are fixed over the bottom of the screen, so a slider that happens
+     to sit under either of them takes the pointer nowhere and the drag reads
+     as a control that did not move - which is this flow's failure message,
+     for a screen that is only scrolled wrong. Where the sliders land depends
+     on how tall everything above them is, so it is not a property this flow
+     should be asserting on by accident. */
   const drag = async (index, fraction) => {
-    const box = await page.locator('[data-slider]').nth(index).boundingBox();
+    const slider = page.locator('[data-slider]').nth(index);
+    await slider.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(150);
+    const box = await slider.boundingBox();
     await page.mouse.move(box.x + box.width * fraction, box.y + box.height / 2);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * fraction, box.y + box.height / 2, { steps: 4 });
@@ -523,7 +533,10 @@ try {
 /* 6c. lab result CRUD and per-analyte chart */
 try {
   await fresh('/settings/labs');
-  if (!(await page.locator('[data-line-chart]').count())) throw new Error('the selected analyte has no trend chart');
+  /* The kit's area chart, not LineChart: phase 5 UX ticket 25 moved the four
+     charted feature screens onto the chart kit, and the handle moved with
+     the component the way ticket 24's list-row handles did. */
+  if (!(await page.locator('[data-chart="area"]').count())) throw new Error('the selected analyte has no trend chart');
 
   await page.locator('[data-add]').click();
   await page.locator('#lab-analyte').selectOption('custom');
@@ -585,7 +598,7 @@ try {
   if (JSON.stringify(units) !== JSON.stringify(['pg/mL', 'pmol/L'])) throw new Error('series units: ' + JSON.stringify(units));
   /* One line, not two: the pmol/L series has a single result so far, and the
      pg/mL line still runs over its own five. */
-  if ((await page.locator('[data-line-chart]').count()) !== 1) throw new Error('the new unit was drawn into an existing line');
+  if ((await page.locator('[data-chart="area"]').count()) !== 1) throw new Error('the new unit was drawn into an existing line');
   if ((await page.locator('[data-lab-result]').count()) !== resultsBefore + 1) throw new Error('the list dropped a result');
 
   await page.locator('[data-lab-result]').first().click();
@@ -653,6 +666,11 @@ try {
 /* 9. milestone shuffle */
 try {
   await fresh('/settings/milestones');
+  /* The templates are a sheet off the header now (phase 5 UX ticket 25):
+     the screen opened on a picker for a fifteenth milestone rather than on
+     the milestones. The shuffle went with them. */
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('[data-shuffle]');
   const first = await page.locator('[data-template]').allTextContents();
   let changed = false;
   for (let i = 0; i < 6 && !changed; i++) {
@@ -1978,7 +1996,10 @@ try {
   await fresh('/settings/roadmap');
   await page.waitForSelector('[data-goal]');
 
-  const tracks = (await page.locator('[data-section-title]').allTextContents()).map((t) => t.trim());
+  /* The kit's heading, not SectionTitle's: phase 5 UX ticket 25 moved the
+     feature screens onto it, and the handle moved with the component the
+     way ticket 24's list-row handles did. */
+  const tracks = (await page.locator('[data-section-heading]').allTextContents()).map((t) => t.trim());
   for (const track of ['Social', 'Legal', 'Presentation', 'Medical']) {
     if (!tracks.includes(track)) throw new Error('missing track ' + track + ': ' + JSON.stringify(tracks));
   }

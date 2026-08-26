@@ -1,4 +1,23 @@
 <script lang="ts">
+  /* Binder and tucking wear time, on the surface and chart kits (phase 5 UX
+     ticket 25).
+
+     The trend was two controls stacked above a card: a Segmented over every
+     body region the person tracks, and a hand-written copy of `.segmented`
+     for the range - the same class names as the real control with no
+     sliding pill and no press. The range is the real Segmented now, and the
+     region is the chart card's own picker, which is where DIRECTION.md puts
+     a section's one switch and is also the control eight regions actually
+     fit in.
+
+     The marks stay WearTrendChart's. Two series on two scales is not
+     something the chart kit draws, and drawing them as two cards would take
+     away the only reason the pair is on one axis - whether the hours and
+     the feeling move together. That also keeps the one legend in the app,
+     which DIRECTION.md's chart rules refuse: a legend is what a
+     single-series chart does not need, and two lines with nothing naming
+     them is not a chart at all. Named as a departure rather than left to be
+     found. */
   /* The binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear
      session"). Two ways into the same row: tapping "Now" writes a running
      session (a null duration) immediately, and stopping it later fills the
@@ -22,11 +41,24 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Reminder, WearSession } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  /* Colour that carries a value takes role 0 (DIRECTION.md): index 0 is the
+     only role guaranteed chromatic on all 8 palettes, and a two-line chart
+     drawn in an achromatic band reads as disabled. The sessions take the
+     stripe after it. */
+  const SECTION_ROLE = { chart: 0, sessions: 1 };
   import Switch from '$lib/components/Switch.svelte';
   import WearTrendChart from '$lib/components/WearTrendChart.svelte';
 
@@ -248,88 +280,116 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.wear_log()} back="/settings" subtitle={m.wear_log_intro()}>
+  <ScreenHeader title={m.wear_log()} back="/more" subtitle={m.wear_log_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.wear_session_add_aria()} onclick={openNewEditor}>
+      <button class="icon-btn press" data-add aria-label={m.wear_session_add_aria()} onclick={openNewEditor}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
   {#if loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else}
-    {#if running}
-      <button
-        class="list-row wear-running-row"
-        data-wear-running
-        aria-label={m.wear_session_row_running_aria({ time: fmtTime(running.startTimestamp) })}
-        onclick={() => openEditor(running)}
-      >
-        <span class="row-text">
-          <span class="row-title">{m.wear_session_running_card_title()}</span>
-          <span class="row-subtitle">{m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })}</span>
-          {#if runningElapsed}
-            <span class="row-subtitle">
-              {m.wear_session_duration_hm({ hours: String(runningElapsed.hours), minutes: String(runningElapsed.minutes) })}
-            </span>
-          {/if}
-        </span>
-        <Icon name="stop" size={18} />
-      </button>
-    {/if}
-
-    {#if completed.length}
-      <div class="list-group" style="margin-top:var(--space-3)">
-        {#each completed as session (session.id)}
-          {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
-          <button
-            class="list-row"
-            data-wear-session={session.id}
-            aria-label={m.wear_session_row_aria({ date: fmtDayLong(epochDayFromTimestamp(session.startTimestamp)) })}
-            onclick={() => openEditor(session)}
+    <div class="screen-part">
+      {#if running}
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+          <ListRow
+            key="running"
+            data-wear-running
+            icon="clock"
+            title={m.wear_session_running_card_title()}
+            subtitle={runningElapsed
+              ? `${m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })} · ${m.wear_session_duration_hm({ hours: String(runningElapsed.hours), minutes: String(runningElapsed.minutes) })}`
+              : m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })}
+            chevron={false}
+            onclick={() => openEditor(running)}
           >
-            <span class="row-text">
-              <span class="row-title">{m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}</span>
-              <span class="row-subtitle">{fmtDayLong(epochDayFromTimestamp(session.startTimestamp))}</span>
-              {#if session.note}<span class="row-subtitle">{session.note}</span>{/if}
-            </span>
-            <Icon name="pencil" size={18} />
-          </button>
-        {/each}
-      </div>
-    {:else if !running}
-      <EmptyState title={m.wear_session_empty_title()} text={m.wear_session_empty_body()}>
-        {#snippet action()}
-          <button class="btn btn-soft" onclick={openNewEditor}><span>{m.wear_session_empty_action()}</span></button>
-        {/snippet}
-      </EmptyState>
-    {/if}
+            {#snippet trailing()}
+              <Icon name="stop" size={20} />
+            {/snippet}
+          </ListRow>
+        </ListCard>
+      {/if}
 
-    <h2 class="section-title" style="margin-top:var(--space-5)">{m.wear_session_trend_title()}</h2>
-    {#if trendRegionOptions.length}
-      <Segmented name={m.wear_session_trend_region_group()} options={trendRegionOptions} value={trendRegion} onChange={(v) => (trendRegion = v)} />
-    {/if}
-    <div class="segmented" role="radiogroup" aria-label={m.stats_range_group()} style="margin:var(--space-4) 0">
-      {#each RANGES as r (r)}
-        <button class="segment" class:is-active={r === range} role="radio" aria-checked={r === range} onclick={() => (range = r)}>
-          {m.range_days({ days: String(r) })}
-        </button>
-      {/each}
-    </div>
-    <div class="card chart-card">
-      <WearTrendChart
-        wearPoints={wearTrend}
-        regionPoints={regionTrend}
-        {wearMax}
-        regionMin={BODY_REGION_INTENSITY_MIN}
-        regionMax={BODY_REGION_INTENSITY_MAX}
-        ariaLabel={m.wear_session_trend_title()}
+      {#if completed.length}
+        <div class="screen-part">
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+            {#each completed as session (session.id)}
+              {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
+              <ListRow
+                key={session.id}
+                data-wear-session={session.id}
+                icon="clock"
+                title={m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}
+                subtitle={session.note
+                  ? `${fmtDayLong(epochDayFromTimestamp(session.startTimestamp))} · ${session.note}`
+                  : fmtDayLong(epochDayFromTimestamp(session.startTimestamp))}
+                chevron={false}
+                onclick={() => openEditor(session)}
+              />
+            {/each}
+          </ListCard>
+        </div>
+      {:else if !running}
+        <Notice
+          icon="clock"
+          key="wear-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
+          title={m.wear_session_empty_title()}
+          text={m.wear_session_empty_body()}
+          action={{ label: m.wear_session_empty_action(), primary: true, onclick: openNewEditor }}
+        />
+      {/if}
+
+      <!-- No heading over the range. The chart card under it is called
+           "Wear time and intensity" and so was this, one above the other -
+           the same two-headers-stacked reading DIRECTION.md 3d names. The
+           card names the area. -->
+      <Segmented
+        name={m.stats_range_group()}
+        options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
+        value={String(range)}
+        onChange={(v) => (range = Number(v))}
+        compact
+        key="wear-range"
       />
-      <p class="muted small wear-trend-legend">
-        <span class="legend-dot legend-wear"></span>{m.wear_session_trend_wear_legend()}
-        <span class="legend-dot legend-region"></span>{m.wear_session_trend_region_legend({ region: trendRegionLabel })}
-      </p>
+      <ChartCard
+        heading={m.wear_session_trend_title()}
+        kind="wear-trend"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
+      >
+        {#snippet control()}
+          {#if trendRegionOptions.length}
+            <ChartPicker
+              key="wear-region"
+              label={m.wear_session_trend_region_group()}
+              value={trendRegion}
+              options={trendRegionOptions}
+              onPick={(v) => (trendRegion = v)}
+            />
+          {/if}
+        {/snippet}
+        <!-- A chart with nothing in it drew an empty plot and a legend
+             naming two lines that were not there. It says so instead, the
+             way every other chart in the kit does. -->
+        {#if wearTrend.length || regionTrend.length}
+          <WearTrendChart
+            wearPoints={wearTrend}
+            regionPoints={regionTrend}
+            {wearMax}
+            regionMin={BODY_REGION_INTENSITY_MIN}
+            regionMax={BODY_REGION_INTENSITY_MAX}
+            ariaLabel={m.wear_session_trend_title()}
+          />
+          <p class="muted small wear-trend-legend">
+            <span class="legend-dot legend-wear"></span>{m.wear_session_trend_wear_legend()}
+            <span class="legend-dot legend-region"></span>{m.wear_session_trend_region_legend({ region: trendRegionLabel })}
+          </p>
+        {:else}
+          <p class="kit-chart-empty">{m.not_enough_data()}</p>
+        {/if}
+      </ChartCard>
     </div>
   {/if}
 
@@ -352,21 +412,23 @@
         {/if}
 
         {#if editor.mode === 'backfill'}
-          <div class="field">
-            <label class="field-label" for="wear-day">{m.wear_session_day_label()}</label>
-            <input class="input" type="date" id="wear-day" name="wear-day" bind:value={editor.day} />
-          </div>
-          <div class="field">
-            <label class="field-label" for="wear-duration">{m.wear_session_duration_label()}</label>
-            <input
-              class="input"
-              type="number"
-              id="wear-duration"
-              name="wear-duration"
-              inputmode="decimal"
-              placeholder={m.wear_session_duration_placeholder()}
-              bind:value={editor.durationHours}
-            />
+          <div class="disclosed" transition:disclose>
+            <div class="field">
+              <label class="field-label" for="wear-day">{m.wear_session_day_label()}</label>
+              <input class="input" type="date" id="wear-day" name="wear-day" bind:value={editor.day} />
+            </div>
+            <div class="field">
+              <label class="field-label" for="wear-duration">{m.wear_session_duration_label()}</label>
+              <input
+                class="input"
+                type="number"
+                id="wear-duration"
+                name="wear-duration"
+                inputmode="decimal"
+                placeholder={m.wear_session_duration_placeholder()}
+                bind:value={editor.durationHours}
+              />
+            </div>
           </div>
         {/if}
       {/if}
@@ -382,18 +444,20 @@
         <Switch checked={editor.reminderEnabled} label={m.wear_session_reminder_toggle()} onChange={(v) => editor && (editor.reminderEnabled = v)} />
       </div>
       {#if editor.reminderEnabled}
-        <div class="field">
-          <label class="field-label" for="wear-reminder-hours">{m.wear_session_reminder_hours_label()}</label>
-          <input
-            class="input"
-            type="number"
-            id="wear-reminder-hours"
-            name="wear-reminder-hours"
-            inputmode="decimal"
-            bind:value={editor.reminderHours}
-          />
+        <div class="disclosed" transition:disclose>
+          <div class="field">
+            <label class="field-label" for="wear-reminder-hours">{m.wear_session_reminder_hours_label()}</label>
+            <input
+              class="input"
+              type="number"
+              id="wear-reminder-hours"
+              name="wear-reminder-hours"
+              inputmode="decimal"
+              bind:value={editor.reminderHours}
+            />
+          </div>
+          <p class="muted small">{m.wear_session_reminder_hint()}</p>
         </div>
-        <p class="muted small">{m.wear_session_reminder_hint()}</p>
       {/if}
 
       <div class="stack-3">
@@ -428,10 +492,11 @@
 </div>
 
 <style>
-  .wear-running-row {
-    border: 1px solid var(--accent-border, var(--border));
-  }
-
+  /* The running session had an accent outline drawn around the row to say
+     it was live. The card it now sits in has an outline of its own and the
+     two would have been a line inside a line; what says it is running is
+     that it is the only row above the list, with a stop control where every
+     other row carries nothing. */
   .wear-trend-legend {
     display: flex;
     align-items: center;

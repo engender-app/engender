@@ -1,4 +1,17 @@
 <script lang="ts">
+  /* What you are taking, and since when, on the surface kit (phase 5 UX
+     ticket 25).
+
+     The three links out - the dose log, the stock projection, the exposure
+     counters - sat above the regimen itself as a list-group indistinguishable
+     from the one holding the episodes, so the first three rows of the screen
+     were somewhere else and the fourth was the thing you came for. They are
+     an area of their own with a heading over them, and the episodes are the
+     first thing under the header.
+
+     Stock and exposure are still only reachable from here, which SCREENS.md
+     flags as a decision rather than an oversight, and no ticket in this
+     phase gives either an inbound link from the hub. Unchanged here. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
@@ -8,10 +21,19 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DoseScheduleRecurrence, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  /* Two areas: what is being taken, and the three screens that read the
+     dose log from other angles. */
+  const SECTION_ROLE = { episodes: 0, elsewhere: 1 };
 
   let episodesQuery = liveQuery(['regimen'], (j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.value ?? []);
@@ -226,105 +248,100 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.regimen()} back="/settings" subtitle={m.regimen_intro()}>
+  <ScreenHeader title={m.regimen()} back="/more" subtitle={m.regimen_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-add aria-label={m.regimen_add_aria()} onclick={() => (templatePicker = true)}>
+      <button class="icon-btn press" data-add aria-label={m.regimen_add_aria()} onclick={() => (templatePicker = true)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
-  <div class="list-group" style="margin-bottom:var(--space-4)">
-    <a class="list-row" href="/doses">
-      <span class="row-icon"><Icon name="timeline" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.regimen_doses_link()}</span>
-        <span class="row-subtitle">{m.doses_row_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <a class="list-row" href="/settings/stock">
-      <span class="row-icon"><Icon name="package" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.regimen_stock_link()}</span>
-        <span class="row-subtitle">{m.regimen_stock_link_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <a class="list-row" href="/settings/exposure">
-      <span class="row-icon"><Icon name="stats" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.regimen_exposure_link()}</span>
-        <span class="row-subtitle">{m.regimen_exposure_link_sub()}</span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-  </div>
-
   {#if episodesQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if episodes.length}
-    <div class="list-group">
-      {#each [...episodes].reverse() as episode (episode.id)}
-        <button
-          class="list-row"
-          data-episode={episode.id}
-          aria-label={m.regimen_row_aria({ drug: episode.drug, date: fmtDay(episode.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-          onclick={() => openEditor(episode)}
-        >
-          <span class="row-text">
-            <span class="row-title">
-              {episode.drug}
-              {#if activeIds.has(episode.id)}<span class="notice-warn" data-active-badge style="padding:2px 8px;border-radius:var(--radius-pill);font-size:var(--text-xs)">{m.regimen_active_badge()}</span>{/if}
+    <div class="screen-part">
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+        {#each [...episodes].reverse() as episode (episode.id)}
+          <ListRow
+            key={episode.id}
+            data-episode={episode.id}
+            icon="flask"
+            title={episode.drug}
+            subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
+            chevron={false}
+            onclick={() => openEditor(episode)}
+          >
+            {#snippet trailing()}
+              <!-- Which episodes are running, and which have been hidden,
+                   at the end of the row rather than wedged into the drug's
+                   own name. A badge inside a title pushes the name it
+                   belongs to onto a second line as soon as the name is long,
+                   which every ester is. -->
+              {#if activeIds.has(episode.id)}
+                <span class="notice-warn regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
+              {/if}
               {#if episode.hidden}<span class="muted small">{m.regimen_hidden()}</span>{/if}
-            </span>
-            <span class="row-subtitle">
-              {episode.dose} {episode.doseUnit} · {episode.route} · {episode.interval} · {rangeLabel(episode)}
-            </span>
-          </span>
-          <Icon name="pencil" size={18} />
-        </button>
-      {/each}
+            {/snippet}
+          </ListRow>
+        {/each}
+      </ListCard>
     </div>
   {:else}
-    <EmptyState title={m.regimen_empty_title()} text={m.regimen_empty_body()}>
-      {#snippet action()}
-        <button class="btn btn-soft" onclick={() => (templatePicker = true)}><span>{m.regimen_empty_action()}</span></button>
-      {/snippet}
-    </EmptyState>
+    <div class="screen-part">
+      <Notice
+        icon="flask"
+        key="regimen-empty"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
+        title={m.regimen_empty_title()}
+        text={m.regimen_empty_body()}
+        action={{ label: m.regimen_empty_action(), primary: true, onclick: () => (templatePicker = true) }}
+      />
+    </div>
   {/if}
+
+  <!-- No heading over these three. The catalogue's only wording for the
+       area is the name of the first row in it, which would be the row
+       repeated at heading size; a name for it is a copy ticket's to write.
+       The gap and the second stripe are what separate them from the
+       regimen above. -->
+  <div class="regimen-elsewhere">
+    <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.elsewhere)}>
+    <ListRow key="doses" icon="timeline" title={m.regimen_doses_link()} subtitle={m.doses_row_sub()} href="/doses" />
+    <ListRow
+      key="stock"
+      icon="package"
+      title={m.regimen_stock_link()}
+      subtitle={m.regimen_stock_link_sub()}
+      href="/settings/stock"
+    />
+    <ListRow
+      key="exposure"
+      icon="stats"
+      title={m.regimen_exposure_link()}
+      subtitle={m.regimen_exposure_link_sub()}
+      href="/settings/exposure"
+    />
+    </ListCard>
+  </div>
 
   <Sheet
     open={templatePicker}
     title={m.regimen_template_sheet_title()}
     onClose={() => (templatePicker = false)}
   >
-    <div class="stack-3">
-      <button
-        class="list-row template-row"
+    <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+      <ListRow
+        key="own"
         data-own
-        style="border:1.5px dashed var(--accent-border);border-radius:var(--radius-md)"
+        icon="pencil"
+        title={m.regimen_own_title()}
+        subtitle={m.regimen_own_sub()}
         onclick={() => openEditor(null, null)}
-      >
-        <span class="row-icon"><Icon name="pencil" size={20} /></span>
-        <span class="row-text">
-          <span class="row-title">{m.regimen_own_title()}</span>
-          <span class="row-subtitle">{m.regimen_own_sub()}</span>
-        </span>
-      </button>
+      />
       {#each vocabulary.regimenTemplates as tp (tp.key)}
-        <button
-          class="list-row template-row"
-          data-template={tp.key}
-          style="background:var(--surface-2);border-radius:var(--radius-md)"
-          onclick={() => openEditor(null, tp)}
-        >
-          <span class="row-icon"><Icon name="flask" size={20} /></span>
-          <span class="row-text"><span class="row-title">{tp.name}</span></span>
-          <Icon name="chevronRight" size={18} />
-        </button>
+        <ListRow key={tp.key} data-template={tp.key} icon="flask" title={tp.name} onclick={() => openEditor(null, tp)} />
       {/each}
-    </div>
+    </ListCard>
   </Sheet>
 
   <Sheet open={editor !== null} title={editor?.id ? m.regimen_edit_sheet() : m.regimen_new_sheet()} onClose={() => (editor = null)}>
@@ -373,144 +390,146 @@
           <p class="muted small">{m.regimen_schedule_hint()}</p>
         </div>
         {#if schedule}
-          <div class="field">
-            <span class="field-label" id="schedule-kind-label">{m.regimen_schedule_kind_label()}</span>
-            <div class="tag-row" role="group" aria-labelledby="schedule-kind-label">
-              {#each ['everyNDays', 'weekdays'] as const as kind (kind)}
-                <button
-                  type="button"
-                  class="tag-chip"
-                  class:is-selected={schedule.recurrenceKind === kind}
-                  aria-pressed={schedule.recurrenceKind === kind}
-                  data-schedule-kind={kind}
-                  onclick={() => schedule && (schedule.recurrenceKind = kind)}
-                >
-                  {kind === 'everyNDays' ? m.regimen_schedule_kind_every_days() : m.regimen_schedule_kind_weekdays()}
-                </button>
-              {/each}
-            </div>
-          </div>
-
-          {#if schedule.recurrenceKind === 'everyNDays'}
+          <div class="disclosed" transition:disclose>
             <div class="field">
-              <label class="field-label" for="regimen-every">{m.regimen_schedule_every_label()}</label>
-              <input
-                class="input"
-                type="number"
-                min="1"
-                id="regimen-every"
-                name="regimen-every"
-                inputmode="numeric"
-                bind:value={schedule.everyNDays}
-              />
-            </div>
-          {:else}
-            <div class="field">
-              <span class="field-label" id="schedule-weekdays-label">{m.regimen_schedule_weekdays_label()}</span>
-              <div class="tag-row" role="group" aria-labelledby="schedule-weekdays-label">
-                {#each WEEKDAYS as day (day)}
+              <span class="field-label" id="schedule-kind-label">{m.regimen_schedule_kind_label()}</span>
+              <div class="tag-row" role="group" aria-labelledby="schedule-kind-label">
+                {#each ['everyNDays', 'weekdays'] as const as kind (kind)}
                   <button
                     type="button"
                     class="tag-chip"
-                    class:is-selected={schedule.weekdays.includes(day)}
-                    aria-pressed={schedule.weekdays.includes(day)}
-                    data-weekday={day}
-                    onclick={() => toggleWeekday(day)}
+                    class:is-selected={schedule.recurrenceKind === kind}
+                    aria-pressed={schedule.recurrenceKind === kind}
+                    data-schedule-kind={kind}
+                    onclick={() => schedule && (schedule.recurrenceKind = kind)}
                   >
-                    {fmtDay(4 + day, { weekday: 'short' })}
+                    {kind === 'everyNDays' ? m.regimen_schedule_kind_every_days() : m.regimen_schedule_kind_weekdays()}
                   </button>
                 {/each}
               </div>
             </div>
-          {/if}
 
-          <div class="field">
-            <label class="field-label" for="regimen-per-day">{m.regimen_schedule_per_day_label()}</label>
-            <input
-              class="input"
-              type="number"
-              min="1"
-              id="regimen-per-day"
-              name="regimen-per-day"
-              inputmode="numeric"
-              bind:value={schedule.dosesPerDay}
-            />
-          </div>
-
-          <div class="field" style="margin-top:var(--space-3)">
-            <span class="field-label">{m.regimen_schedule_amounts_legend()}</span>
-            <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
-          </div>
-          {#if schedule.doseAmounts.length}
-            <div class="list-group">
-              {#each schedule.doseAmounts as amount, index (index)}
-                <div class="list-row">
-                  <span class="row-text cd-endpoints">
-                    <span class="field">
-                      <input
-                        class="input"
-                        type="number"
-                        inputmode="decimal"
-                        data-amount-dose={index}
-                        aria-label={m.dose_amount_label()}
-                        bind:value={amount.dose}
-                      />
-                    </span>
-                    <span class="field">
-                      <input
-                        class="input"
-                        data-amount-unit={index}
-                        aria-label={m.dose_unit_label()}
-                        bind:value={amount.doseUnit}
-                      />
-                    </span>
-                  </span>
-                  <button
-                    class="icon-btn"
-                    data-delete-amount={index}
-                    aria-label={m.regimen_schedule_amount_delete_aria({ index: index + 1 })}
-                    onclick={() => removeDoseAmount(index)}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
+            {#if schedule.recurrenceKind === 'everyNDays'}
+              <div class="field">
+                <label class="field-label" for="regimen-every">{m.regimen_schedule_every_label()}</label>
+                <input
+                  class="input"
+                  type="number"
+                  min="1"
+                  id="regimen-every"
+                  name="regimen-every"
+                  inputmode="numeric"
+                  bind:value={schedule.everyNDays}
+                />
+              </div>
+            {:else}
+              <div class="field">
+                <span class="field-label" id="schedule-weekdays-label">{m.regimen_schedule_weekdays_label()}</span>
+                <div class="tag-row" role="group" aria-labelledby="schedule-weekdays-label">
+                  {#each WEEKDAYS as day (day)}
+                    <button
+                      type="button"
+                      class="tag-chip"
+                      class:is-selected={schedule.weekdays.includes(day)}
+                      aria-pressed={schedule.weekdays.includes(day)}
+                      data-weekday={day}
+                      onclick={() => toggleWeekday(day)}
+                    >
+                      {fmtDay(4 + day, { weekday: 'short' })}
+                    </button>
+                  {/each}
                 </div>
-              {/each}
-            </div>
-          {/if}
-          <button class="btn btn-ghost" data-add-amount onclick={addDoseAmount}>
-            <span>{m.regimen_schedule_amount_add()}</span>
-          </button>
+              </div>
+            {/if}
 
-          <button
-            class="btn btn-soft"
-            data-save-schedule
-            disabled={!scheduleCanSave}
-            onclick={saveSchedule}
-            style="margin-top:var(--space-3)"
-          >
-            <span>{m.regimen_schedule_save()}</span>
-          </button>
+            <div class="field">
+              <label class="field-label" for="regimen-per-day">{m.regimen_schedule_per_day_label()}</label>
+              <input
+                class="input"
+                type="number"
+                min="1"
+                id="regimen-per-day"
+                name="regimen-per-day"
+                inputmode="numeric"
+                bind:value={schedule.dosesPerDay}
+              />
+            </div>
+
+            <div class="field">
+              <span class="field-label">{m.regimen_schedule_amounts_legend()}</span>
+              <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
+            </div>
+            {#if schedule.doseAmounts.length}
+              <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+                {#each schedule.doseAmounts as amount, index (index)}
+                  <div class="kit-row is-static">
+                    <span class="kit-row-text cd-endpoints">
+                      <span class="field">
+                        <input
+                          class="input"
+                          type="number"
+                          inputmode="decimal"
+                          data-amount-dose={index}
+                          aria-label={m.dose_amount_label()}
+                          bind:value={amount.dose}
+                        />
+                      </span>
+                      <span class="field">
+                        <input
+                          class="input"
+                          data-amount-unit={index}
+                          aria-label={m.dose_unit_label()}
+                          bind:value={amount.doseUnit}
+                        />
+                      </span>
+                    </span>
+                    <button
+                      class="kit-row-act press"
+                      data-delete-amount={index}
+                      aria-label={m.regimen_schedule_amount_delete_aria({ index: index + 1 })}
+                      onclick={() => removeDoseAmount(index)}
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  </div>
+                {/each}
+              </ListCard>
+            {/if}
+            <button class="btn btn-ghost press" data-add-amount onclick={addDoseAmount}>
+              <span>{m.regimen_schedule_amount_add()}</span>
+            </button>
+
+            <button
+              class="btn btn-soft"
+              data-save-schedule
+              disabled={!scheduleCanSave}
+              onclick={saveSchedule}
+           
+            >
+              <span>{m.regimen_schedule_save()}</span>
+            </button>
+          </div>
         {/if}
 
-        <div class="field" style="margin-top:var(--space-4)">
+        <div class="field">
           <span class="field-label">{m.regimen_pauses_legend()}</span>
           <p class="muted small">{m.regimen_pauses_hint()}</p>
         </div>
         {#if editorPauses.length}
-          <div class="list-group">
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
             {#each editorPauses as pause (pause.id)}
-              <div class="list-row">
-                <span class="row-text">
-                  <span class="row-title">
+              <div class="kit-row is-split">
+                <span class="kit-row-main">
+                  <span class="kit-row-title">
                     {fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
                     {pause.endEpochDay === null
                       ? `· ${m.regimen_pause_ongoing()}`
                       : `– ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`}
                   </span>
-                  <span class="row-subtitle">{pauseReasonLabel(pause.reason)}</span>
+                  <span class="kit-row-sub">{pauseReasonLabel(pause.reason)}</span>
                 </span>
                 <button
-                  class="icon-btn"
+                  class="kit-row-act press"
                   data-delete-pause={pause.id}
                   aria-label={m.regimen_pause_delete_aria({
                     from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
@@ -521,7 +540,7 @@
                 </button>
               </div>
             {/each}
-          </div>
+          </ListCard>
         {/if}
         {#if newPause}
           <div class="cd-endpoints">
@@ -574,7 +593,7 @@
         {/if}
       {/if}
 
-      <div class="stack-3" style="margin-top:var(--space-4)">
+      <div class="stack-3">
         <button class="btn btn-primary" data-save-regimen onclick={saveEpisode}><span>{m.regimen_save()}</span></button>
         {#if editor.id}
           {#if editor.endDate === ''}
@@ -590,3 +609,18 @@
     {/if}
   </Sheet>
 </div>
+
+<style>
+  .regimen-elsewhere {
+    margin-top: var(--space-6);
+  }
+
+  /* Small enough to sit at the end of a row without pushing the reading
+     beside it around. */
+  .regimen-badge {
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+</style>

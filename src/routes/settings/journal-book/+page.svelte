@@ -131,7 +131,7 @@
       </div>
     </div>
     {#if range === null}
-      <p class="muted small" style="margin-top:var(--space-2)">{m.journal_book_range_required()}</p>
+      <p class="muted small">{m.journal_book_range_required()}</p>
     {/if}
   </div>
 

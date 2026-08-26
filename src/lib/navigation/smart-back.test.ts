@@ -5,13 +5,29 @@
    whole of the decision `smartBack` makes, so they are what a unit test can
    usefully isolate without a real browser. The end-to-end case - does the
    button actually land on the right screen in the running app - belongs to
-   `tests/walkthrough.test.mjs`, which drives a real build. */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+   `tests/walkthrough.test.mjs`, which drives a real build.
+
+   These tests used to stub `history.state['sveltekit:index']`, which is a
+   key SvelteKit stopped writing: it stamps `sveltekit:history` and
+   `sveltekit:navigation` timestamps now. So the module read `undefined` on
+   every screen and took its fallback every time, and this file passed
+   against a fiction it supplied itself (phase 5 UX ticket 25). The depth is
+   the app's own count now, which is a thing the app controls and can
+   therefore keep testing. */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({ goto }));
 
-const { smartBack } = await import('./smart-back.ts');
+const { smartBack, recordNavigation } = await import('./smart-back.ts');
+
+let back: ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  back = vi.fn();
+  vi.stubGlobal('history', { back });
+  recordNavigation('enter');
+});
 
 afterEach(() => {
   goto.mockClear();
@@ -19,9 +35,15 @@ afterEach(() => {
 });
 
 describe('smartBack', () => {
-  it('goes back through history when there is an in-app entry behind this one', () => {
-    const back = vi.fn();
-    vi.stubGlobal('history', { state: { 'sveltekit:index': 1 }, back });
+  it('falls back on the entry the app booted on - a deep link, or a reload', () => {
+    smartBack('/calendar');
+
+    expect(goto).toHaveBeenCalledWith('/calendar');
+    expect(back).not.toHaveBeenCalled();
+  });
+
+  it('goes back through history once a navigation has happened inside the app', () => {
+    recordNavigation('link');
 
     smartBack('/calendar');
 
@@ -29,23 +51,55 @@ describe('smartBack', () => {
     expect(goto).not.toHaveBeenCalled();
   });
 
-  it('falls back to the given route on the first in-app entry (a deep link or a reload)', () => {
-    const back = vi.fn();
-    vi.stubGlobal('history', { state: { 'sveltekit:index': 0 }, back });
-
+  it('counts a goto and a form the same as a link, because each pushes an entry', () => {
+    recordNavigation('goto');
     smartBack('/calendar');
+    expect(back).toHaveBeenCalledOnce();
 
-    expect(goto).toHaveBeenCalledWith('/calendar');
-    expect(back).not.toHaveBeenCalled();
+    recordNavigation('enter');
+    recordNavigation('form');
+    smartBack('/calendar');
+    expect(back).toHaveBeenCalledTimes(2);
+    expect(goto).not.toHaveBeenCalled();
   });
 
-  it('falls back when there is no SvelteKit history state at all', () => {
-    const back = vi.fn();
-    vi.stubGlobal('history', { state: null, back });
+  it('follows the delta back down when the system back button is used', () => {
+    /* Two screens in, then back twice by the system: the second one lands on
+       the entry the app booted on, and from there the fallback is the only
+       thing to offer. */
+    recordNavigation('link');
+    recordNavigation('link');
+    recordNavigation('popstate', -1);
+    smartBack('/calendar');
+    expect(back).toHaveBeenCalledOnce();
+
+    recordNavigation('popstate', -1);
+    smartBack('/calendar');
+    expect(back).toHaveBeenCalledOnce();
+    expect(goto).toHaveBeenCalledWith('/calendar');
+  });
+
+  it('counts a forward popstate back up', () => {
+    recordNavigation('link');
+    recordNavigation('popstate', -1);
+    recordNavigation('popstate', 1);
 
     smartBack('/calendar');
 
-    expect(goto).toHaveBeenCalledWith('/calendar');
-    expect(back).not.toHaveBeenCalled();
+    expect(back).toHaveBeenCalledOnce();
+    expect(goto).not.toHaveBeenCalled();
+  });
+
+  it('never goes below the boot entry, whatever deltas arrive', () => {
+    /* A popstate that walks further back than the app has counted - the
+       browser's history holds entries from before the app was opened - must
+       not leave a negative depth that a later navigation could climb out of
+       without ever pushing anything. */
+    recordNavigation('popstate', -5);
+    recordNavigation('link');
+
+    smartBack('/calendar');
+
+    expect(back).toHaveBeenCalledOnce();
   });
 });

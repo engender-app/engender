@@ -174,6 +174,33 @@
   overflow: hidden;
 }
 
+/* ---------- the plain panel ----------
+
+   The second of DIRECTION.md decision 2's two surfaces with nothing else
+   on it: page and card, and this is a card that is not a list, a day, a
+   tile grid, a chart or a notice.
+
+   Deliberately last, and deliberately dull. Decision 2b exists because one
+   rounded card repeated down a screen is what made the app read as
+   generic, so the answer to "which surface does this content want" is
+   almost always one of the six that carry a shape of their own. What is
+   left over is a run of form fields that has to be told apart from the run
+   under it - one review row of an import against the next, a saved
+   result's frozen context against the fields that are still editable - and
+   there is nothing list-shaped, day-shaped or chart-shaped about that.
+
+   It is the kit's version of the old world's `.card`, which is what those
+   places were using: same job, and this one carries the outline instead of
+   a shadow and the kit's tighter padding instead of the old 20px
+   (DIRECTION.md decisions 2 and 3). A screen reaching for it where one of
+   the six would do is the failure mode; the six come first. */
+.kit-panel {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-card);
+  padding: var(--space-4);
+}
+
 .kit-row {
   display: flex;
   align-items: center;
@@ -259,6 +286,113 @@
   gap: var(--space-2);
   color: var(--text-2);
   font-size: var(--text-sm);
+}
+
+/* A row that opens something and also carries one control of its own - a
+   letter that can be read or thrown away, a tryout that can be opened or
+   dropped (phase 5 UX ticket 25).
+
+   Eight of the feature screens had written this by hand as a `.list-row`
+   div holding a bare `<a>` for the text and an icon button beside it, and
+   the hand-written ones had drifted: some gave the link the row's padding
+   and some did not, so the tappable area stopped at the words on half of
+   them. It is one shape, so it belongs here.
+
+   The split is what makes it legal as well as legible: a button inside a
+   link is not markup a browser or a screen reader can resolve, so the row
+   itself is an unstyled container and the two real controls sit inside it
+   side by side. The main half takes the row's own press wash; the trailing
+   half is a control in its own right at the full touch target. */
+.kit-row.is-split {
+  padding: 0;
+  cursor: default;
+}
+
+.kit-row.is-split:active {
+  background: none;
+}
+
+.kit-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition-property: background-color;
+  transition-duration: var(--dur-fast);
+}
+
+.kit-row-main:active {
+  background: var(--role-wash);
+}
+
+.kit-row-act {
+  flex: 0 0 auto;
+  width: var(--touch-target);
+  align-self: stretch;
+  min-height: var(--touch-target);
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+/* ---------- the filter line ----------
+
+   A label and one control, sitting on the page rather than in a card:
+   which garment category the size log is showing, which measurement type
+   the chart plots, which area the hair-removal sessions came from.
+
+   The feature screens had this as a `.field` with a full-width `<select>`
+   in it, which is the shape a form uses for something being *entered*.
+   Nothing here is being entered - the control changes what the screen is
+   showing - and a form field the width of the screen sitting above a list
+   reads as the first row of that list.
+
+   Up against its own label rather than at the end of the line, which is
+   where the calendar's own metric picker ended up after a thumb kept
+   catching the chevron above it (ticket 22). Same reasoning, same shape;
+   `.cal-metric` is the instance that came first and this is the one every
+   screen after it uses. */
+.kit-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) 0 var(--space-4);
+}
+
+.kit-filter-label {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+/* The gender-scales row names every scale that is ticked, so it is the one
+   subtitle in the app whose length is set by how much the person has chosen.
+   Past three it wrapped to a second line, the row grew by 17px, and the whole
+   Settings screen reflowed underneath the open sheet - which reads as the
+   blurred panel behind the sheet jumping up and down while you tick (Alicja,
+   2026-08-26). The scroll position moved with it.
+
+   One line, and the names that fit are the ones shown; the sheet above is
+   where the full list lives. Scoped to this row rather than to `.kit-row-sub`
+   because every other subtitle in the app is copy of a fixed length, and
+   several of them are written to wrap. */
+[data-list-row='scales'] .kit-row-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- the box on a tickable row ----------
@@ -967,6 +1101,21 @@ a.kit-entry:active {
   -webkit-appearance: none;
   font: inherit;
   cursor: pointer;
+}
+
+/* components.css styles the picker every select in the app opens, but the
+   rule above loads after it and turns appearance off at the same
+   specificity, so the chart picker was the one control that never got it -
+   it kept opening the platform's own list, which is the list Alicja asked
+   to be rid of. Opted in here, beside the declaration it has to beat.
+
+   The select being invisible is not in the way: the picker renders in the
+   top layer, anchored to the pill, so opacity 0 hides the control and not
+   the list it opens. */
+@supports (appearance: base-select) {
+  .kit-chart-pick select {
+    appearance: base-select;
+  }
 }
 
 .kit-chart-pick-face {

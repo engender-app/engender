@@ -466,7 +466,7 @@
       <Icon name={android ? 'share' : 'download'} size={20} />
       <span>{running === 'encrypted' ? m.exp_running() : android ? m.exp_run_share() : m.exp_run_download()}</span>
     </button>
-    <p class="muted small" style="margin-top:var(--space-3)">
+    <p class="muted small">
       <Icon name="key" size={13} /> {m.exp_crypto_note()}
     </p>
   </div>
@@ -486,21 +486,21 @@
           onChange={setAutoEnabled} />
       </div>
 
-        <div class="spread" style="margin-top:var(--space-3)">
+        <div class="spread">
           <span class="small muted">{m.exp_auto_destination_label()}</span>
           <button class="btn btn-soft" type="button" onclick={pickAutoDestination} disabled={autoBusy}>
             <span>{autoDestination ? m.exp_auto_change_destination() : m.exp_auto_choose_destination()}</span>
           </button>
         </div>
-        <p class="muted small" style="margin-top:var(--space-2)">
+        <p class="muted small">
           {m.exp_auto_destination_note()}
         </p>
-        <p class="muted small" style="margin-top:var(--space-2)">
+        <p class="muted small">
           {autoDestination ?? m.exp_auto_destination_missing()}
         </p>
 
       {#if prefs.autoExportEnabled}
-        <div class="spread" style="margin-top:var(--space-3)">
+        <div class="spread">
           <span class="small muted">{m.exp_schedule()}</span>
           <Segmented name={m.exp_schedule()}
             options={[{ value: 'weekly', label: m.exp_schedule_weekly() }, { value: 'monthly', label: m.exp_schedule_monthly() }]}
@@ -508,27 +508,27 @@
             onChange={setAutoSchedule} />
         </div>
 
-          <button class="btn btn-soft" style="margin-top:var(--space-3)" type="button"
+          <button class="btn btn-soft" type="button"
             onclick={backupNowToDestination} disabled={autoBusy}>
             <span>{autoBusy ? m.exp_auto_running() : m.exp_auto_backup_now()}</span>
           </button>
       {/if}
 
-        <p class="muted small" style="margin-top:var(--space-3)">
+        <p class="muted small">
           {m.exp_auto_note({ folder: autoDestination ?? m.exp_auto_destination_missing() })}
         </p>
-        <p class="muted small" style="margin-top:var(--space-2)">
+        <p class="muted small">
           {autoHasPassword ? m.exp_auto_password_saved() : m.exp_auto_password_missing()}
         </p>
-        <p class="muted small" style="margin-top:var(--space-2)">
+        <p class="muted small">
           {m.exp_auto_last_success({ when: stampText(autoLastSuccessAt) })}
         </p>
         {#if autoLastFailureAt !== null}
-          <p class="muted small" style="margin-top:var(--space-2)">
+          <p class="muted small">
             {m.exp_auto_last_failure({ when: stampText(autoLastFailureAt) })}
           </p>
           {#if autoLastFailureReason}
-            <p class="muted small" style="margin-top:var(--space-1)">{m.exp_auto_failed()}</p>
+            <p class="muted small">{m.exp_auto_failed()}</p>
           {/if}
         {/if}
     </div>

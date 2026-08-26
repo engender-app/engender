@@ -1,19 +1,45 @@
 <script lang="ts">
+  /* Waist, hips, chest and underbust over time, on the surface and chart
+     kits (phase 5 UX ticket 25).
+
+     The chart is the kit's area chart now rather than this screen's own
+     LineChart, which is what the ticket asks of the four charted feature
+     screens. What that buys beyond a consistent drawing is the scrub: a
+     reading was a dot you could see and not name, and an exact number now
+     comes from dragging across the plot. The unit rides on the formatter,
+     so the gutter at the ends of the scale says "82 cm" and nothing on the
+     card has to repeat it.
+
+     A series still exists per unit, because a measurement is never
+     converted (ADR-0012) and 82 cm and 32 in on one axis is a lie. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import type { MeasurementSeries } from '$lib/data/journal/measurements';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Measurement } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import LineChart from '$lib/components/LineChart.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import AreaChart from '$lib/components/kit/AreaChart.svelte';
+  import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { crossfade } from '$lib/motion/reveal';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
+
+  /* Colour that carries a value takes role 0 (DIRECTION.md): roles run a
+     flag's colours before its shades, so index 0 is the only one
+     guaranteed chromatic on all 8 palettes and a chart drawn in an
+     achromatic band is a chart of disabled marks. The list takes the
+     stripe after it, where a tinted disc carries no reading. */
+  const SECTION_ROLE = { chart: 0, list: 1 };
 
   /** No card for a custom type - it never had built-in guidance to give
       (CONTEXT: "Custom"). */
@@ -35,13 +61,23 @@
   let seriesQuery = liveQuery(['measurement'], (j) => j.measurements.getSeries(type));
   let series = $derived(seriesQuery.value ?? []);
 
+  /* The scale is padded off the readings rather than starting at zero: a
+     waist measured in centimetres moves within a few percent of itself,
+     and a zero-based axis draws that as a flat line. Not axis furniture -
+     there is none - only what the top and the bottom of the plot mean. */
   function chartFor(s: MeasurementSeries) {
     if (s.measurements.length < 2) return null;
     const values = s.measurements.map((r) => r.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const pad = (max - min) * 0.2 || 1;
-    return { points: s.measurements.map((r) => ({ day: r.epochDay, value: r.value })), min: min - pad, max: max + pad };
+    return {
+      points: s.measurements.map((r) => ({ x: r.epochDay, y: r.value })),
+      min: min - pad,
+      max: max + pad,
+      from: s.measurements[0].epochDay,
+      to: s.measurements[s.measurements.length - 1].epochDay
+    };
   }
 
   /** The unit this type was last logged in, so a new entry defaults to
@@ -133,12 +169,12 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.body_measurements()} back="/settings" subtitle={m.measurements_intro()}>
+  <ScreenHeader title={m.body_measurements()} back="/more" subtitle={m.measurements_intro()}>
     {#snippet actions()}
-      <button class="icon-btn" data-manage-types aria-label={m.measurement_manage_types_aria()} onclick={() => (manageOpen = true)}>
+      <button class="icon-btn press" data-manage-types aria-label={m.measurement_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
       </button>
-      <button class="icon-btn" data-add aria-label={m.measurement_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.measurement_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -146,59 +182,76 @@
   <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
   {#if !prefs.measurementProtocolDismissed[type] && PROTOCOL[type]}
-    <div class="card" data-protocol={type} style="margin-top:var(--space-4)">
-      <div class="spread">
-        <h3>{m.measurement_protocol_title()}</h3>
-        <button class="icon-btn" aria-label={m.measurement_protocol_dismiss_aria()} onclick={() => dismissProtocol(type)}>
-          <Icon name="x" size={18} />
-        </button>
-      </div>
-      <p class="muted small">{PROTOCOL[type]!()}</p>
+    <div class="screen-part">
+      <Notice
+        icon="ruler"
+        key="protocol"
+        data-protocol={type}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
+        title={m.measurement_protocol_title()}
+        text={PROTOCOL[type]!()}
+        dismiss={{ label: m.measurement_protocol_dismiss_aria(), onclick: () => dismissProtocol(type) }}
+      />
     </div>
   {/if}
 
   {#if measurementsQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if measurements.length}
-    {#each series as s (s.unit)}
-      {@const chart = chartFor(s)}
-      <div class="card" data-measurement-series={s.unit} style="margin-top:var(--space-4)">
-        <div class="spread" style="margin-bottom:var(--space-2)">
-          <span class="chart-title">{vocabulary.measurementTypeName(type)}</span>
-          <span class="muted small series-unit">{s.unit}</span>
-        </div>
-        {#if chart}
-          <LineChart points={chart.points} min={chart.min} max={chart.max} showDots />
-        {:else}
-          <div class="chart-too-little">{m.measurement_too_little()}</div>
-        {/if}
-      </div>
-    {/each}
-
-    <div class="list-group" style="margin-top:var(--space-4)">
-      {#each [...measurements].reverse() as r (r.id)}
-        <button
-          class="list-row"
-          data-measurement={r.id}
-          aria-label={m.measurement_row_aria({ type: vocabulary.measurementTypeName(r.type), date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-          onclick={() => openEditor(r)}
+    <div class="screen-part">
+      {#each series as s (s.unit)}
+        {@const chart = chartFor(s)}
+        <ChartCard
+          heading={vocabulary.measurementTypeName(type)}
+          kind="measurements-{s.unit}"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
         >
-          <span class="row-text">
-            <span class="row-title">{r.value} <span class="muted small">{r.unit}</span></span>
-            <span class="row-subtitle">
-              {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
-          </span>
-          <Icon name="pencil" size={18} />
-        </button>
+          {#if chart}
+            {@const ends = fmtRangeEnds(chart.from, chart.to)}
+            <AreaChart
+              points={chart.points}
+              min={chart.min}
+              max={chart.max}
+              from={ends.from}
+              to={ends.to}
+              formatValue={(v) => `${Math.round(v * 10) / 10} ${s.unit}`}
+              scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
+              ariaLabel={m.measurement_row_aria({
+                type: vocabulary.measurementTypeName(type),
+                date: fmtDay(chart.to, { day: 'numeric', month: 'long', year: 'numeric' })
+              })}
+            />
+          {:else}
+            <p class="kit-chart-empty">{m.measurement_too_little()}</p>
+          {/if}
+        </ChartCard>
       {/each}
+
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
+        {#each [...measurements].reverse() as r (r.id)}
+          <ListRow
+            key={r.id}
+            data-measurement={r.id}
+            icon="ruler"
+            title={`${r.value} ${r.unit}`}
+            subtitle={fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+            chevron={false}
+            onclick={() => openEditor(r)}
+          />
+        {/each}
+      </ListCard>
     </div>
   {:else}
-    <EmptyState title={m.measurement_empty_title()} text={m.measurement_empty_body()}>
-      {#snippet action()}
-        <button class="btn btn-soft" onclick={() => openEditor(null)}><span>{m.measurement_empty_action()}</span></button>
-      {/snippet}
-    </EmptyState>
+    <div class="screen-part">
+      <Notice
+        icon="ruler"
+        key="measurements-empty"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
+        title={m.measurement_empty_title()}
+        text={m.measurement_empty_body()}
+        action={{ label: m.measurement_empty_action(), primary: true, onclick: () => openEditor(null) }}
+      />
+    </div>
   {/if}
 
   <Sheet open={editor !== null} title={editor?.id ? m.measurement_edit_sheet() : m.measurement_new_sheet()} onClose={() => (editor = null)}>
@@ -273,7 +326,7 @@
         </div>
       {/each}
     </div>
-    <div class="field" style="margin-top:var(--space-4)">
+    <div class="field">
       <label class="field-label" for="new-measurement-type">{m.measurement_type_new_label()}</label>
       <input
         class="input"

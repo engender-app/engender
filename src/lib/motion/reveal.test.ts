@@ -1,17 +1,19 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { wipe } from './reveal';
+import { crossfade, disclose, wipe } from './reveal';
 
 /* Same stub the tier-2 tests use: reveal.ts reads its duration and its easing
    out of the token layer through $lib/motion/tokens, which asks
    getComputedStyle for the number and documentElement.dataset for the
    reduced-motion signal. CSS is stubbed too, because this primitive also asks
    whether the runtime has clip-path at all. */
-function stubDocument(reduced = false, clipPath = true) {
+function stubDocument(reduced = false, clipPath = true, box?: Record<string, string>) {
   const g = globalThis as Record<string, unknown>;
   g.document = { documentElement: { dataset: reduced ? { a11yMotion: 'reduce' } : {} } };
   g.getComputedStyle = () => ({
-    getPropertyValue: (name: string) => ({ '--dur-slow': '380ms', '--dur-crossfade': '120ms' })[name] ?? ''
+    ...box,
+    getPropertyValue: (name: string) =>
+      ({ '--dur-slow': '380ms', '--dur-med': '240ms', '--dur-crossfade': '120ms' })[name] ?? ''
   });
   g.CSS = { supports: () => clipPath };
 }
@@ -25,6 +27,9 @@ afterEach(() => {
 
 const node = {} as Element;
 const frame = (css: (t: number, u: number) => string, t: number) => css(t, 1 - t);
+
+/** A node that knows how wide it is, which is all the crossfade asks of one. */
+const measured = (width: number) => ({ getBoundingClientRect: () => ({ width }) }) as unknown as Element;
 
 describe('tier 3, the wipe', () => {
   it('uncovers from the left, so content arrives the way it is read', () => {
@@ -91,5 +96,77 @@ describe('tier 3, the wipe', () => {
   it('prefers the cut to the fade when both apply, because movement is the question', () => {
     stubDocument(true, false);
     expect(wipe(node).duration).toBe(0);
+  });
+});
+
+
+describe('tier 3, a group opening its own height', () => {
+  /* DIRECTION.md names this case by itself: a list insertion opens its own
+     height rather than making everything below it jump. It is the one place
+     tier 3 spends a layout property, so what the test holds is that it lands
+     exactly on the element's resting box - the invariant the reduced-motion
+     contract imposes on every animation in the app. */
+  it('grows from nothing to the height the element already has', () => {
+    stubDocument(false, true, { height: '180px', paddingTop: '12px', paddingBottom: '12px' });
+    const { css, duration } = disclose(node);
+    expect(duration).toBe(240);
+    expect(frame(css!, 0)).toContain('height: 0px');
+    expect(frame(css!, 1)).toContain('height: 180px');
+    expect(frame(css!, 1)).toContain('padding-top: 12px');
+    expect(frame(css!, 1)).toContain('padding-bottom: 12px');
+  });
+
+  it('clips while it runs, so the rows inside do not spill past the edge', () => {
+    stubDocument(false, true, { height: '180px', paddingTop: '0px', paddingBottom: '0px' });
+    const { css } = disclose(node);
+    expect(frame(css!, 0.5)).toContain('overflow: hidden');
+  });
+
+  /* Tier 3's substitute is an instant cut rather than tier 2's crossfade: a
+     group opening inside a screen has no journey for a fade to stand in for,
+     and the chevron beside it has already said what happened. */
+  it('cuts instantly under reduced motion', () => {
+    stubDocument(true, true, { height: '180px' });
+    expect(disclose(node).duration).toBe(0);
+  });
+});
+
+describe('tier 3, a skeleton uncovering the content under it', () => {
+  /* It is an out-only transition, and the asymmetry is the point. Pairing it
+     with an `in:` on the content made the content arrive twice - once with
+     the screen, under tier 2's own view transition, and again a moment later
+     when the worker answered (Alicja, 2026-08-26: "the panels seem to fade in
+     two times, second time very close to each other and glitchy"). */
+  it('fades the placeholder out rather than fading the content in', () => {
+    stubDocument(false, true, {});
+    const { css, duration } = crossfade(measured(240));
+    expect(duration).toBe(160);
+    expect(frame(css!, 1)).toContain('opacity: 1');
+    expect(frame(css!, 0)).toContain('opacity: 0');
+  });
+
+  /* And it leaves the flow while it runs. Both blocks of an {#if}/{:else}
+     are alive during a transition, so a skeleton fading out in normal flow
+     holds its height and everything under it drops when it finally goes.
+     `.screen` is position:relative, which is what this resolves against. */
+  it('takes the placeholder out of the flow so nothing under it jumps', () => {
+    stubDocument(false, true, {});
+    const { css } = crossfade(measured(240));
+    expect(frame(css!, 0.5)).toContain('position: absolute');
+  });
+
+  /* Pinned to the node's own width: an absolutely positioned box with no
+     width shrinks to fit, so the placeholder would narrow on its first
+     frame. Vertical placement needs nothing - with no `top` it sits at its
+     static position, which is where it already was. */
+  it('keeps the width it had, so it does not narrow as it goes', () => {
+    stubDocument(false, true, {});
+    const { css } = crossfade(measured(240));
+    expect(frame(css!, 0.5)).toContain('width: 240px');
+  });
+
+  it('removes the placeholder on the spot under reduced motion', () => {
+    stubDocument(true, true, {});
+    expect(crossfade(measured(240)).duration).toBe(0);
   });
 });
