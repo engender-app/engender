@@ -25,6 +25,7 @@
 
 <div
   class="kit-tiles"
+  data-kit-surface
   data-tile-grid
   {...roleAttrs(role)}
   style:--flag-fill={flagFill}

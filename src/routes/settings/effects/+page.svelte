@@ -333,7 +333,7 @@
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.effect_manage_types_intro()}</p>
     <div class="managed-tags">
       {#each vocabulary.personalEffectTypes as e (e.key)}
-        <div class="managed-tag" class:is-hidden={e.hidden}>
+        <div class="rows-divide managed-tag" class:is-hidden={e.hidden}>
           <span class="managed-label">
             {e.name}{#if !e.builtIn}<span class="muted small"> · {m.custom_suffix()}</span>{/if}
           </span>
