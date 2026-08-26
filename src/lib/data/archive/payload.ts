@@ -18,7 +18,8 @@
    with; the files themselves follow it in the archive body (pack.ts), so
    neither packing nor unpacking has to hold more than one photo at a time. */
 
-import { PORTABLE_KEYS, type PreferenceValues } from '../prefs/catalogue';
+import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
+import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
 import { ARCHIVE_FORMAT_VERSION } from './container';
 
 /** The preferences that describe the journal and travel with it
@@ -671,10 +672,44 @@ export interface ArchivePayload {
 /** Brings a payload written at one version up to the next one. */
 export type PayloadMigration = (payload: ArchivePayload) => ArchivePayload;
 
-/** Step i migrates a payload written at format version i + 1. Empty while
-    version 1 is the only version there has ever been; appending here is
-    what a format change costs, and the ladder below then walks it. */
-export const PAYLOAD_MIGRATIONS: readonly PayloadMigration[] = [];
+/** The shape a v1 archive's preferences had where they now hold a list of
+    ticked scales: one preset key, which the app resolved to a dimension
+    list at read time (phase 5 ticket 35). */
+interface PreferencesV1 {
+  activePreset?: string;
+}
+
+/** v1 to v2: the active preset becomes the scales it stood for.
+
+    The archive's own preset rows answer first, so a custom preset restores
+    the list its owner built rather than the nearest built-in. BUILT_IN_PRESETS
+    answers second, which is the reason those eight outlive the eight cards
+    they used to draw: a file that names `p-agender` without carrying it -
+    hand-edited, or written by something partial - still knows what that key
+    has always meant. Neither answering leaves the preference unset, and the
+    default set applies, which is also what an archive that predates the
+    preference entirely gets.
+
+    The old key is dropped rather than left beside the new one. Two stored
+    answers to "which scales does this journal offer" is exactly what this
+    ticket removed, and an archive is where one of them would come back. */
+const presetBecomesTickedScales: PayloadMigration = (payload) => {
+  const { activePreset, ...rest } = payload.preferences as PortablePreferences & PreferencesV1;
+  if (activePreset === undefined) return payload;
+
+  const carried = payload.journal.presets?.find((preset) => preset.id === activePreset);
+  const builtIn = BUILT_IN_PRESETS.find((preset) => preset.key === activePreset);
+  const dims = carried?.dims ?? builtIn?.dims;
+
+  return {
+    ...payload,
+    preferences: { ...rest, activeScales: dims ? [...dims] : [...PREFERENCE_DEFAULTS.activeScales] }
+  };
+};
+
+/** Step i migrates a payload written at format version i + 1. Appending here
+    is what a format change costs, and the ladder below then walks it. */
+export const PAYLOAD_MIGRATIONS: readonly PayloadMigration[] = [presetBecomesTickedScales];
 
 /** Walks the version ladder one step at a time, so a v1 archive opened by
     a build on v4 goes through every shape in between rather than needing a

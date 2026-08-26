@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
+import { ARCHIVE_FORMAT_VERSION } from './container.ts';
 import { portablePreferences } from './payload.ts';
 import type { ArchiveEntry, ArchiveJournal } from './payload.ts';
 import { emptyArchiveJournal } from '../journal/archiveSections.ts';
@@ -117,7 +118,7 @@ test('the JSON carries the whole journal and the settings that travel with it', 
   const journal = journalOf([entry({ mood: 4, note: 'zażółć gęślą jaźń', dims: { voice: 7 } })]);
   const parsed = JSON.parse(journalJson(journal, portablePreferences({ ...PREFERENCE_DEFAULTS, name: 'Alicja' })));
 
-  assert.equal(parsed.formatVersion, 1);
+  assert.equal(parsed.formatVersion, ARCHIVE_FORMAT_VERSION);
   assert.deepEqual(parsed.journal, journal);
   assert.equal(parsed.preferences.name, 'Alicja');
   // Device-local settings do not leave the device in an archive (ADR-0003),
@@ -137,7 +138,7 @@ test('the JSON reads as a file, indented, version first', () => {
   assert.equal(
     written.split('\n').slice(0, 42).join('\n'),
     `{
-  "formatVersion": 1,
+  "formatVersion": 2,
   "journal": {
     "dimensions": [],
     "presets": [],
@@ -179,6 +180,9 @@ test('the JSON reads as a file, indented, version first', () => {
   "preferences": {
     "name": "Ola",`
   );
-  assert.match(written, /\n {4}"name": "Ola",\n {4}"activePreset": "p-fem-masc",/);
+  assert.match(
+    written,
+    /\n {4}"name": "Ola",\n {4}"activeScales": \[\n {6}"euphoria_dysphoria",\n {6}"femininity",\n {6}"masculinity"\n {4}\],/
+  );
   assert.match(written, /\n {4}"palette": "lesbian",/);
 });

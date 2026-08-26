@@ -49,8 +49,6 @@ export const BUILT_IN_PRESETS = [
   { key: 'p-masc', dims: ['euphoria_dysphoria', 'masculinity'] }
 ] as const;
 
-export type BuiltInPresetKey = (typeof BUILT_IN_PRESETS)[number]['key'];
-
 /** The three tags that count as a euphoria capture (CONTEXT: "Euphoria
     capture") - general, social and body, read as equals by anything that
     asks "did this day carry a euphoria capture" (the doubt journal's

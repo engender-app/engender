@@ -19,7 +19,6 @@ import type {
   BuiltInEffectCategoryKey,
   BuiltInMeasurementTypeKey,
   BuiltInPersonalEffectKey,
-  BuiltInPresetKey,
   BuiltInTagGroupKey,
   BuiltInTagKey,
   EntryPromptKey,
@@ -55,6 +54,23 @@ const DIMENSION_HIGH: Record<BuiltInDimensionKey, Message> = {
   masculinity: m.dim_masculinity_high,
   binary_nonbinary: m.dim_binary_nonbinary_high,
   agender_gendered: m.dim_agender_gendered_high
+};
+
+/* One line per built-in scale saying what it measures (phase 5 ticket 35),
+   for the checklist that replaced the eight presets. "Binary <-> nonbinary"
+   is not self-explanatory to somebody twenty minutes into this app, and the
+   list is the second screen they ever see.
+
+   Its lookup returns null rather than falling back to the key the way the
+   three above do. A name has to render as something and a key is better
+   than a blank row; a note is a subtitle, and a row with no subtitle is a
+   shape this list already draws. */
+const DIMENSION_NOTE: Record<BuiltInDimensionKey, Message> = {
+  euphoria_dysphoria: m.dim_euphoria_dysphoria_note,
+  femininity: m.dim_femininity_note,
+  masculinity: m.dim_masculinity_note,
+  binary_nonbinary: m.dim_binary_nonbinary_note,
+  agender_gendered: m.dim_agender_gendered_note
 };
 
 /* Mood is not a built-in row - it is a column on the entry - but its five
@@ -329,16 +345,6 @@ const CYCLE_EVENT_KIND_NAME: Record<CycleEventKind, Message> = {
 /** The name of a cycle event kind. */
 export const cycleEventKindName = (kind: CycleEventKind): string => CYCLE_EVENT_KIND_NAME[kind]();
 
-const PRESET_NAME: Record<BuiltInPresetKey, Message> = {
-  'p-btw': m.preset_p_btw,
-  'p-masc': m.preset_p_masc,
-  'p-fem-masc': m.preset_p_fem_masc,
-  'p-fluid': m.preset_p_fluid,
-  'p-agender': m.preset_p_agender,
-  'p-demi-fem': m.preset_p_demi_fem,
-  'p-demi-masc': m.preset_p_demi_masc,
-  'p-nb': m.preset_p_nb
-};
 
 const TAG_GROUP_NAME: Record<BuiltInTagGroupKey, Message> = {
   gender: m.taggroup_gender,
@@ -470,7 +476,8 @@ function lookup<K extends string>(map: Record<K, Message>, key: string): string 
 export const dimensionName = (key: string) => lookup(DIMENSION_NAME, key);
 export const dimensionLow = (key: string) => lookup(DIMENSION_LOW, key);
 export const dimensionHigh = (key: string) => lookup(DIMENSION_HIGH, key);
-export const presetName = (key: string) => lookup(PRESET_NAME, key);
+export const dimensionNote = (key: string): string | null =>
+  (DIMENSION_NOTE as Record<string, Message | undefined>)[key]?.() ?? null;
 export const tagGroupName = (key: string) => lookup(TAG_GROUP_NAME, key);
 export const tagLabel = (key: string) => lookup(TAG_LABEL, key);
 /** The longer explanation a dysphoria type tag carries, or null for every

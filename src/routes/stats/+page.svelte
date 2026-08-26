@@ -34,7 +34,6 @@
   } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { metricKey } from '$lib/data/prefs/catalogue';
   import { isPausedOn } from '$lib/data/journalingPause';
   import { atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
@@ -110,7 +109,7 @@
     ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max }))
   ]);
   let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
-  let shown = $derived(metrics.find((mt) => mt.key === metricKey(prefs)) ?? metrics[0]);
+  let shown = $derived(metrics.find((mt) => mt.key === vocabulary.activeMetric) ?? metrics[0]);
 
   let streakQuery = liveQuery(['entry', 'journalingPause'], (j) => j.stats.streak(today));
   let streak = $derived(streakQuery.value ?? 0);
@@ -133,7 +132,7 @@
   });
   let seriesFor = $derived((key: string): DayAverage[] => seriesQuery.value?.get(key) ?? []);
 
-  let insightsQuery = liveQuery(['entry', 'tag'], (j) => j.stats.tagInsights(metricKey(prefs), from, today));
+  let insightsQuery = liveQuery(['entry', 'tag'], (j) => j.stats.tagInsights(vocabulary.activeMetric, from, today));
   let insights = $derived(insightsQuery.value ?? []);
 
   let lastMonth = $derived(previousCalendarMonthRange(today));
@@ -189,7 +188,7 @@
         withoutAvg: insight.withoutAvg,
         delta: insight.withAvg - insight.withoutAvg
       })),
-      metricKey(prefs)
+      vocabulary.activeMetric
     )
   );
 

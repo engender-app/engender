@@ -30,7 +30,17 @@
 export interface PreferenceValues {
   onboarded: boolean;
   name: string;
-  activePreset: string;
+  /** The gender scales the entry screen offers, by dimension key (phase 5
+      ticket 35). A list somebody ticked, not a preset key resolved to a
+      list: there are 32 subsets of five scales and the app used to ship
+      eight of them, so choosing meant finding the preset that was wrong in
+      the fewest places. Empty is a legitimate resting state - a mood, tags,
+      a note and a photo are still an entry - and never an error.
+
+      Order here is the order they were ticked in and nothing reads it: the
+      editor draws its sliders in catalogue order (`reference.activeDimensions`),
+      so which box was ticked first cannot move a slider. */
+  activeScales: string[];
   /** Which quantity colours the Home strip and the calendar (CONTEXT: Metric). */
   metricKind: 'mood' | 'dimension';
   /** The gender dimension's key when metricKind is 'dimension', otherwise null. */
@@ -161,7 +171,7 @@ export interface PreferenceValues {
   /** The milestone id that durations, stats ranges and wrapped figures are
       measured from (phase 5 ticket 25), or null when none is chosen - a
       resting state the app never nags about, the same way an unset
-      `streakGoalHabit` is never a bug to fix. Mirrors `activePreset`: one
+      `streakGoalHabit` is never a bug to fix. Mirrors `activeScales`: one
       global choice rather than a per-surface one, so wrapped and a stats
       range cannot disagree about how long the person has been on their own
       journey. A milestone this install no longer has resolves to unset
@@ -184,7 +194,7 @@ export type PreferenceKey = keyof PreferenceValues;
 export const PREFERENCE_DEFAULTS: PreferenceValues = {
   onboarded: false,
   name: '',
-  activePreset: 'p-fem-masc',
+  activeScales: ['euphoria_dysphoria', 'femininity', 'masculinity'],
   metricKind: 'mood',
   metricDimension: null,
   theme: 'system',
@@ -230,7 +240,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
 /** Describes the journal, so it travels in an archive (ADR-0003). */
 export const PORTABLE_KEYS = [
   'name',
-  'activePreset',
+  'activeScales',
   'metricKind',
   'metricDimension',
   'palette',

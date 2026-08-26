@@ -69,7 +69,7 @@ function everyPreferenceSet(): PreferenceValues {
     ...PREFERENCE_DEFAULTS,
     onboarded: true,
     name: 'Alicja',
-    activePreset: 'p-nb',
+    activeScales: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary', 'agender_gendered'],
     metricKind: 'dimension',
     metricDimension: 'femininity',
     theme: 'dark',

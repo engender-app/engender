@@ -663,12 +663,37 @@ try {
   ok('milestone template shuffle');
 } catch (e) { fail('shuffle', e); }
 
-/* 10. custom dimension live preview */
+/* 10. custom scale: the live preview, then saving it, then finding it in the
+   checklist looking like any built-in (phase 5 ticket 35) */
 try {
   await fresh('/settings/dimension');
   await page.locator('#cd-name').fill('Voice comfort');
+  await page.locator('#cd-low').fill('strained');
+  await page.locator('#cd-high').fill('easy');
   await page.waitForFunction(() => document.querySelector('[data-dim-name]')?.textContent === 'Voice comfort');
-  ok('custom dimension live preview');
+
+  /* Saving a scale ticks it, which is the whole of what saving one does
+     now: it used to also spawn a custom preset and switch to it. */
+  await page.locator('[data-save]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.getByRole('button', { name: /Gender scales/i }).click();
+
+  /* A row like any other: ticked, and carrying a line about itself. A
+     custom scale has no catalogue line, so it reads its own two ends
+     back - which is why the endpoints above are filled in. */
+  const custom = page.locator('[data-list-row^="scale-"][aria-checked="true"]').last();
+  const customText = (await custom.textContent()).trim();
+  if (!customText.startsWith('Voice comfort')) throw new Error('custom scale row: ' + customText);
+  if (!customText.includes('strained') || !customText.includes('easy')) {
+    throw new Error('custom scale row says nothing about its ends: ' + customText);
+  }
+
+  // And it reaches the entry screen like any built-in.
+  await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
+  await booted();
+  const names = await page.locator('[data-dim-name]').allTextContents();
+  if (!names.includes('Voice comfort')) throw new Error('editor scales: ' + JSON.stringify(names));
+  ok('a custom scale previews, saves ticked, and appears like a built-in');
 } catch (e) { fail('custom dimension', e); }
 
 /* 10b. Home's stale-backup notice (ticket 15, F21). Before the export
@@ -984,30 +1009,41 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.palette === 'nonbinary');
   await page.locator('[data-next]').click(); // flag -> scales
 
-  const presetRows = page.locator('[data-list-row^="preset-"]');
-  const presetNames = await presetRows.allTextContents();
-  const expectedPresetNames = [
-    'Fem + masc',
-    'Fem + masc + nonbinary',
-    'Agender axis',
-    'Partly feminine',
-    'Partly masculine',
-    'Full spectrum',
-    'Femininity',
-    'Masculinity'
+  /* Five scales a person ticks, not eight presets a person picks (phase 5
+     ticket 35). The names are the scales' own, and each row carries a line
+     saying what it measures - which is the whole reason the checklist
+     replaced the cards, so the subtitle is asserted rather than assumed. */
+  const scaleRows = page.locator('[data-list-row^="scale-"]');
+  const scaleTexts = await scaleRows.allTextContents();
+  const expectedScales = [
+    ['Gender feeling', 'dysphoria and euphoria'],
+    ['Femininity', 'not at all to very'],
+    ['Masculinity', 'not at all to very'],
+    ['Binary \u2194 nonbinary', 'binary and nonbinary'],
+    ['Agender \u2194 gendered', 'strong sense of gender']
   ];
-  if (presetNames.length !== 8) throw new Error('onboarding preset count was not 8');
-  /* A row carries its subtitle in the same element as its title now that it
-     is a ListRow, so the name is what the row starts with rather than all
-     of what it says. */
-  expectedPresetNames.forEach((name, i) => {
-    if (!presetNames[i].trim().startsWith(name)) {
-      throw new Error(`onboarding preset ${i}: ${JSON.stringify(presetNames[i])}`);
+  if (scaleTexts.length !== 5) throw new Error('onboarding scale count was not 5: ' + scaleTexts.length);
+  expectedScales.forEach(([name, note], i) => {
+    if (!scaleTexts[i].trim().startsWith(name)) {
+      throw new Error(`onboarding scale ${i}: ${JSON.stringify(scaleTexts[i])}`);
+    }
+    if (!scaleTexts[i].includes(note)) {
+      throw new Error(`onboarding scale ${i} has no line saying what it is: ${JSON.stringify(scaleTexts[i])}`);
     }
   });
+
+  /* The default three arrive ticked and the other two do not, which is what
+     "nothing is asked of somebody who agrees with the default" means on
+     this screen. */
+  const tickedOnArrival = await page.locator('[data-list-row^="scale-"][aria-checked="true"]').count();
+  if (tickedOnArrival !== 3) throw new Error('scales ticked on arrival: ' + tickedOnArrival);
+
   await expectNoHorizontalOverflow('[data-app-viewport]');
 
-  await page.locator('[data-list-row="preset-p-nb"]').click();
+  // Tick the two the default set leaves off, so what reaches the app is a
+  // set this screen chose rather than the one it started with.
+  await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
+  await page.locator('[data-list-row="scale-agender_gendered"]').click();
   await page.locator('[data-next]').click(); // scales -> lock
   await page.locator('[data-next]').click(); // lock -> check-in
   await page.locator('[data-next]').click(); // check-in -> finish
@@ -1070,48 +1106,94 @@ try {
   ok('skipping the flag step restores the flag it was reached with');
 } catch (e) { fail('onboarding flag skip', e); }
 
-/* 13b. settings preset picker lists all built-ins at 390px and each pick persists */
+/* 13b. the settings scales sheet is the same list onboarding drew, and a
+   tick is the change - there is no confirm on the sheet and never was
+   (phase 5 ticket 35) */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/settings');
-  await page.getByRole('button', { name: /Gender preset/i }).click();
+  await page.getByRole('button', { name: /Gender scales/i }).click();
 
-  const picks = page.locator('[data-pick-preset]');
-  const names = await picks.locator('[data-row-title]').allTextContents();
+  const rows = page.locator('[data-list-row^="scale-"]');
+  /* Read off the row rather than a title element inside it: a row carries
+     its name and its line in one node, and gripping the inner class would
+     be gripping structure (ADR-0029, walkthrough-locators.test.ts). */
+  const rowTexts = await rows.allTextContents();
   const expected = [
-    ['p-fem-masc', 'Fem + masc'],
-    ['p-fluid', 'Fem + masc + nonbinary'],
-    ['p-agender', 'Agender axis'],
-    ['p-demi-fem', 'Partly feminine'],
-    ['p-demi-masc', 'Partly masculine'],
-    ['p-nb', 'Full spectrum'],
-    ['p-btw', 'Femininity'],
-    ['p-masc', 'Masculinity']
+    ['euphoria_dysphoria', 'Gender feeling'],
+    ['femininity', 'Femininity'],
+    ['masculinity', 'Masculinity'],
+    ['binary_nonbinary', 'Binary \u2194 nonbinary'],
+    ['agender_gendered', 'Agender \u2194 gendered']
   ];
-  if (JSON.stringify(names) !== JSON.stringify(expected.map(([, label]) => label))) {
-    throw new Error('settings preset names: ' + JSON.stringify(names));
-  }
-  if ((await picks.count()) !== expected.length) throw new Error('settings preset count was not 8');
+  expected.forEach(([, label], i) => {
+    if (!rowTexts[i]?.trim().startsWith(label)) {
+      throw new Error(`settings scale ${i}: ${JSON.stringify(rowTexts[i])}`);
+    }
+  });
+  if (rowTexts.length !== expected.length) throw new Error('settings scale count: ' + rowTexts.length);
   await expectNoHorizontalOverflow('[data-app-viewport]');
 
-  for (const [key, label] of expected) {
-    await page.locator(`[data-pick-preset="${key}"]`).click();
-    /* Phase 5 ticket 24: the preset row is a ListRow now, so the picked
-       name shows up in its own text rather than under a bespoke attribute -
-       read as text content, not a nested class selector, to keep this
-       locator restyle-safe (walkthrough-locators.test.ts). */
-    await page.waitForFunction(
-      (want) => document.querySelector('[data-list-row="preset"]')?.textContent.includes(want),
-      label
-    );
-    await page.getByRole('button', { name: /Gender preset/i }).click();
-    await page.waitForSelector(`[data-pick-preset="${key}"][data-selected="true"]`);
-  }
-  ok('settings preset picker lists and persists all built-ins');
-} catch (e) { fail('settings preset picker', e); }
+  /* Ticking a scale writes it, and the row behind the sheet says so. What
+     is asserted is that the summary changed, not what it now reads: this
+     file's checks are copy literals often enough that a reworded string can
+     make a flow pass for free, and the row's job here is to follow the set
+     rather than to hold a particular sentence. */
+  const summaryBefore = await page.locator('[data-list-row="scales"]').textContent();
+  await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
+  await page.waitForSelector('[data-list-row="scale-binary_nonbinary"][aria-checked="true"]');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(
+    (before) => document.querySelector('[data-list-row="scales"]')?.textContent !== before,
+    summaryBefore
+  );
 
-/* 13c. onboarding step 2 starts unchosen, and "Not now" leaves the stored
-   default preset in place (ticket 28) */
+  /* And what is ticked is what the entry screen offers, which is the whole
+     claim the checklist makes. */
+  await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
+  await booted();
+  const drawn = await page.locator('[data-dim-name]').count();
+  if (drawn !== 4) throw new Error('the editor drew ' + drawn + ' scales for four ticked');
+
+  /* Colour Home by one of the ticked scales first, so unticking it below
+     has something to strand. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-chart-picker="home-metric"]').selectOption('femininity');
+  await page.waitForFunction(
+    () => document.querySelector('[data-chart-picker="home-metric"]')?.value === 'femininity'
+  );
+
+  /* Untick everything, and the editor says what it is rather than leaving
+     a heading over nothing. A state somebody reaches by unticking five
+     boxes, and it must not read as broken. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Gender scales/i }).click();
+  for (const [key] of expected) {
+    const ticked = page.locator(`[data-list-row="scale-${key}"][aria-checked="true"]`);
+    if (await ticked.count()) await ticked.click();
+  }
+  await page.keyboard.press('Escape');
+  await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-no-scales]');
+  if (await page.locator('[data-dim-name]').count()) {
+    throw new Error('the editor drew a scale with none ticked');
+  }
+
+  /* And Home is back on mood rather than still coloured by a scale its own
+     picker no longer offers. Read off the picker, which is where the two
+     would visibly disagree. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  const metric = await page.locator('[data-chart-picker="home-metric"]').inputValue();
+  if (metric !== 'mood') throw new Error('Home is still coloured by ' + metric + ' with nothing ticked');
+  ok('settings scales sheet ticks through to the editor, empty included');
+} catch (e) { fail('settings scales sheet', e); }
+
+/* 13c. the first run arrives with the default set ticked, and Skip leaves
+   it exactly as it was (tickets 28, 35) */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -1122,9 +1204,13 @@ try {
   await page.locator('[data-next]').click(); // name -> flag
   await page.locator('[data-next]').click(); // flag -> scales
 
-  if (await page.locator('[data-next]').isEnabled()) {
-    throw new Error('the scales step\'s Continue was enabled before a preset was tapped');
+  /* Continue is never disabled here. Nothing ticked is a legitimate state
+     and the default set is ticked on arrival anyway, so there is nothing
+     this screen is waiting to be told. */
+  if (!(await page.locator('[data-next]').isEnabled())) {
+    throw new Error('the scales step made Continue wait for something');
   }
+  // Untouched, then skipped: the stored default has to survive both.
   await page.locator('[data-skip-step]').click(); // scales -> lock
   await page.locator('[data-next]').click(); // lock -> check-in
   await page.locator('[data-next]').click(); // check-in -> finish
@@ -1133,10 +1219,15 @@ try {
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
-  await page.getByRole('button', { name: /Gender preset/i }).click();
-  await page.waitForSelector('[data-pick-preset="p-fem-masc"][data-selected="true"]');
-  ok('onboarding "Not now" keeps the default preset');
-} catch (e) { fail('onboarding not-now preset', e); }
+  await page.getByRole('button', { name: /Gender scales/i }).click();
+  for (const key of ['euphoria_dysphoria', 'femininity', 'masculinity']) {
+    await page.waitForSelector(`[data-list-row="scale-${key}"][aria-checked="true"]`);
+  }
+  for (const key of ['binary_nonbinary', 'agender_gendered']) {
+    await page.waitForSelector(`[data-list-row="scale-${key}"][aria-checked="false"]`);
+  }
+  ok('skipping the scales step keeps the default set');
+} catch (e) { fail('onboarding scales skip', e); }
 
 /* 14. desktop: rail via container query at wide viewport */
 try {

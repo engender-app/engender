@@ -190,7 +190,7 @@ function portableWith(marker: string) {
 
   return {
     name: values.name,
-    activePreset: values.activePreset,
+    activeScales: values.activeScales,
     metricKind: values.metricKind,
     metricDimension: values.metricDimension,
     palette: values.palette,
