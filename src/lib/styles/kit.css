@@ -378,6 +378,23 @@
   color: var(--text-2);
 }
 
+/* The gender-scales row names every scale that is ticked, so it is the one
+   subtitle in the app whose length is set by how much the person has chosen.
+   Past three it wrapped to a second line, the row grew by 17px, and the whole
+   Settings screen reflowed underneath the open sheet - which reads as the
+   blurred panel behind the sheet jumping up and down while you tick (Alicja,
+   2026-08-26). The scroll position moved with it.
+
+   One line, and the names that fit are the ones shown; the sheet above is
+   where the full list lives. Scoped to this row rather than to `.kit-row-sub`
+   because every other subtitle in the app is copy of a fixed length, and
+   several of them are written to wrap. */
+[data-list-row='scales'] .kit-row-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- the box on a tickable row ----------
 
    Phase 5 ticket 35. The box carries the row's state; the row does not

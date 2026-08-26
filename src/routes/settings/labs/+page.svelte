@@ -41,7 +41,7 @@
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -488,9 +488,11 @@
         </select>
       </div>
       {#if editor.analyte === 'custom'}
-        <div class="field">
-          <label class="field-label" for="lab-custom-analyte">{m.labs_custom_label()}</label>
-          <input class="input" id="lab-custom-analyte" name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
+        <div class="disclosed" transition:disclose>
+          <div class="field">
+            <label class="field-label" for="lab-custom-analyte">{m.labs_custom_label()}</label>
+            <input class="input" id="lab-custom-analyte" name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
+          </div>
         </div>
       {/if}
       <div class="cd-endpoints">

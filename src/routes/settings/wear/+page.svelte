@@ -50,7 +50,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -412,21 +412,23 @@
         {/if}
 
         {#if editor.mode === 'backfill'}
-          <div class="field">
-            <label class="field-label" for="wear-day">{m.wear_session_day_label()}</label>
-            <input class="input" type="date" id="wear-day" name="wear-day" bind:value={editor.day} />
-          </div>
-          <div class="field">
-            <label class="field-label" for="wear-duration">{m.wear_session_duration_label()}</label>
-            <input
-              class="input"
-              type="number"
-              id="wear-duration"
-              name="wear-duration"
-              inputmode="decimal"
-              placeholder={m.wear_session_duration_placeholder()}
-              bind:value={editor.durationHours}
-            />
+          <div class="disclosed" transition:disclose>
+            <div class="field">
+              <label class="field-label" for="wear-day">{m.wear_session_day_label()}</label>
+              <input class="input" type="date" id="wear-day" name="wear-day" bind:value={editor.day} />
+            </div>
+            <div class="field">
+              <label class="field-label" for="wear-duration">{m.wear_session_duration_label()}</label>
+              <input
+                class="input"
+                type="number"
+                id="wear-duration"
+                name="wear-duration"
+                inputmode="decimal"
+                placeholder={m.wear_session_duration_placeholder()}
+                bind:value={editor.durationHours}
+              />
+            </div>
           </div>
         {/if}
       {/if}
@@ -442,18 +444,20 @@
         <Switch checked={editor.reminderEnabled} label={m.wear_session_reminder_toggle()} onChange={(v) => editor && (editor.reminderEnabled = v)} />
       </div>
       {#if editor.reminderEnabled}
-        <div class="field">
-          <label class="field-label" for="wear-reminder-hours">{m.wear_session_reminder_hours_label()}</label>
-          <input
-            class="input"
-            type="number"
-            id="wear-reminder-hours"
-            name="wear-reminder-hours"
-            inputmode="decimal"
-            bind:value={editor.reminderHours}
-          />
+        <div class="disclosed" transition:disclose>
+          <div class="field">
+            <label class="field-label" for="wear-reminder-hours">{m.wear_session_reminder_hours_label()}</label>
+            <input
+              class="input"
+              type="number"
+              id="wear-reminder-hours"
+              name="wear-reminder-hours"
+              inputmode="decimal"
+              bind:value={editor.reminderHours}
+            />
+          </div>
+          <p class="muted small">{m.wear_session_reminder_hint()}</p>
         </div>
-        <p class="muted small">{m.wear_session_reminder_hint()}</p>
       {/if}
 
       <div class="stack-3">
