@@ -82,6 +82,13 @@ body {
   flex-direction: column;
   background: var(--bg);
   overflow: hidden;
+  /* An identity transform, so a `position: fixed` descendant - a sheet's
+     scrim (components.css) - is contained by this box instead of the real
+     window. Normally the two are the same size; in the demo bar's
+     phone-frame preview and the walkthrough's own frame they are not, and a
+     sheet fixed to the true window would centre on the browser instead of
+     the frame it visually belongs to. */
+  transform: translateZ(0);
 }
 
 /* The one place the window insets are spent (phase 5 ticket 18).
@@ -109,6 +116,12 @@ body {
   overflow-x: hidden;
   position: relative;
   scrollbar-width: thin;
+  /* Reserves the scrollbar's own width whether or not one is drawn, so
+     Sheet.svelte locking this element to `overflow: hidden` while a sheet
+     is open does not also remove the scrollbar and shift the content under
+     it (Alicja, 2026-08-27: the list jumps when an entry is selected, in
+     hair removal). */
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   padding-top: var(--inset-top);
   padding-left: var(--inset-left);

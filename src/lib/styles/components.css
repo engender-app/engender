@@ -292,6 +292,23 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 }
 .segmented::-webkit-scrollbar { display: none; }
 
+/* The hint the hidden scrollbar above took away: a fade over whichever edge
+   still has segments past it, on only whichever side that is true
+   (Segmented.svelte tracks scroll position for these two classes). No fade
+   at all when the track holds everything already, which is most of them. */
+.segmented.can-scroll-end:not(.can-scroll-start) {
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+}
+.segmented.can-scroll-start:not(.can-scroll-end) {
+  mask-image: linear-gradient(to right, transparent, black 28px);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 28px);
+}
+.segmented.can-scroll-start.can-scroll-end {
+  mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent 100%);
+}
+
 /* A flex scroll container drops its trailing padding at the end of the
    scroll, so the last segment ran flush into the track's rounded edge and
    read as a label that did not fit its background (Alicja, 2026-08-26, on a
@@ -896,8 +913,18 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .chart-too-little { color: var(--text-2); font-size: var(--text-sm); padding: var(--space-6); text-align: center; }
 
 /* ---------- sheets, toasts ---------- */
+/* Fixed rather than absolute, and against the app frame rather than the
+   real window: `.app-main` scrolls, and an `inset: 0` sized to a scrolling
+   ancestor is sized to its scrolled content, not the screen - a sheet's
+   scrim centred that way sat in the middle of the content instead of the
+   middle of what was actually on screen, and on a content column taller
+   than the viewport that middle could be scrolled out of view entirely
+   (Alicja, 2026-08-27: doesn't centre in Cycle or the wear log). `position:
+   fixed` fixes to the nearest ancestor with a transform, which `.app` in
+   app.css now is - so this still respects the phone-frame demo preview and
+   the walkthrough's own frame, not just the true window. */
 .sheet-scrim {
-  position: absolute; inset: 0; z-index: 40;
+  position: fixed; inset: 0; z-index: 40;
   background: var(--scrim);
   display: flex; align-items: flex-end; justify-content: center;
   opacity: 0; transition: opacity var(--dur-med) var(--ease-out);
