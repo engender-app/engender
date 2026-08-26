@@ -1171,7 +1171,7 @@
   "dose_vehicle_label": "Nośnik",
   "dose_app_site_label": "Miejsce aplikacji",
   "dose_scheduled_legend": "Co było w planie",
-  "dose_scheduled_hint": "Zostaje obok tego, co faktycznie przyjęłaś, żeby dało się później porównać jedno z drugim.",
+  "dose_scheduled_hint": "Zostaje obok faktycznie przyjętej dawki, żeby dało się później porównać jedno z drugim.",
   "dose_scheduled_amount_label": "Dawka z planu",
   "dose_scheduled_route_label": "Sposób podania z planu",
   "dose_scheduled_time_label": "Godzina z planu",

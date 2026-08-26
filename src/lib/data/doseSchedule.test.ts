@@ -8,13 +8,16 @@ import {
   APPLICATION_SITES,
   INJECTION_SITES,
   adherence,
+  expectedAmountOn,
   expectedSlots,
+  lastInjectionBefore,
+  matchDoseRoute,
   pauseCoversDay,
   siteRecency
 } from './doseSchedule.ts';
-import type { InjectionSiteKey } from './doseSchedule.ts';
+import type { InjectionSiteKey, RouteOption } from './doseSchedule.ts';
 import { startOfDayTimestamp } from './epochDay.ts';
-import type { DoseEvent, DosePause, DoseSchedule, DoseScheduleAmount } from './types.ts';
+import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount } from './types.ts';
 
 const schedule = (
   everyNDays: number,
@@ -353,4 +356,143 @@ test('siteRecency ignores oral doses and injection doses with no site on record'
   const recency = siteRecency(doses, 100);
 
   assert.ok(Object.values(recency).every((days) => days === null));
+});
+
+/* Three reads the log-a-dose sheet needs to stop asking for what the app
+   already knows (phase 5 UX ticket 37). Pure like everything else here:
+   the sheet hands over an episode's words, the dose log, and a
+   comparison, and gets back what to prefill. */
+
+/** The six routes with the words the catalogues actually show for them, in
+    both languages, since a regimen's route is typed in whichever one the
+    person is reading. */
+const routeWords = (labels: [DoseRoute, string][]): RouteOption[] =>
+  labels.map(([value, label]) => ({ value, label }));
+
+const ROUTE_WORDS = routeWords([
+  ['oral', 'Oral'],
+  ['sublingual', 'Sublingual'],
+  ['im', 'Intramuscular'],
+  ['sc', 'Subcutaneous'],
+  ['patch', 'Patch'],
+  ['gel', 'Gel']
+]);
+
+const POLISH_ROUTE_WORDS = routeWords([
+  ['oral', 'Doustnie'],
+  ['sublingual', 'Podjęzykowo'],
+  ['im', 'Domięśniowo'],
+  ['sc', 'Podskórnie'],
+  ['patch', 'Plaster'],
+  ['gel', 'Żel']
+]);
+
+test('an episode whose route is one of the six keys resolves to that route', () => {
+  assert.equal(matchDoseRoute('im', ROUTE_WORDS), 'im');
+  assert.equal(matchDoseRoute('gel', ROUTE_WORDS), 'gel');
+  assert.equal(matchDoseRoute('sublingual', ROUTE_WORDS), 'sublingual');
+});
+
+test('the route text is matched however it was capitalised or punctuated', () => {
+  assert.equal(matchDoseRoute('  I.M. ', ROUTE_WORDS), 'im');
+  assert.equal(matchDoseRoute('S.C.', ROUTE_WORDS), 'sc');
+  assert.equal(matchDoseRoute('ORAL', ROUTE_WORDS), 'oral');
+});
+
+test('a route named in the words the app itself uses resolves, in either language', () => {
+  assert.equal(matchDoseRoute('Intramuscular', ROUTE_WORDS), 'im');
+  assert.equal(matchDoseRoute('domięśniowo', POLISH_ROUTE_WORDS), 'im');
+  assert.equal(matchDoseRoute('żel', POLISH_ROUTE_WORDS), 'gel');
+});
+
+test('a route word inside a longer note still resolves: the field is free text', () => {
+  assert.equal(matchDoseRoute('IM injection, alternating sides', ROUTE_WORDS), 'im');
+  assert.equal(matchDoseRoute('domięśniowo (udo)', POLISH_ROUTE_WORDS), 'im');
+});
+
+test('text naming two routes resolves to neither: an ambiguous prefill is a wrong prefill', () => {
+  assert.equal(matchDoseRoute('oral or sublingual', ROUTE_WORDS), null);
+  assert.equal(matchDoseRoute('patch, gel when travelling', ROUTE_WORDS), null);
+});
+
+test('text naming no route resolves to null rather than to a guess', () => {
+  assert.equal(matchDoseRoute('', ROUTE_WORDS), null);
+  assert.equal(matchDoseRoute('twice daily', ROUTE_WORDS), null);
+  /* An abbreviation is only matched as a whole word. "discontinued" carries
+     "sc", and Polish "po" - a preposition in half the sentences someone
+     might type - would carry "po" if that were ever an alias here. */
+  assert.equal(matchDoseRoute('discontinued', ROUTE_WORDS), null);
+  assert.equal(matchDoseRoute('po jedzeniu', POLISH_ROUTE_WORDS), null);
+});
+
+test('handed no words at all, the six keys and the abbreviations are still its own', () => {
+  assert.equal(matchDoseRoute('sc', []), 'sc');
+  assert.equal(matchDoseRoute('Intramuscular', []), 'im');
+  assert.equal(matchDoseRoute('Domięśniowo', []), null); // no words, so no Polish
+});
+
+test('lastInjectionBefore finds the most recent injection before a moment', () => {
+  const doses = [injectionDose(90, 'thigh-right'), injectionDose(95, 'deltoid-left'), injectionDose(99, 'abdomen-left')];
+
+  const found = lastInjectionBefore(doses, startOfDayTimestamp(98));
+
+  assert.equal(found?.id, injectionDose(95, 'deltoid-left').id);
+});
+
+test('lastInjectionBefore does not care what order the doses arrive in', () => {
+  const forward = lastInjectionBefore([injectionDose(90, 'thigh-left'), injectionDose(95, 'thigh-right')], startOfDayTimestamp(99));
+  const backward = lastInjectionBefore([injectionDose(95, 'thigh-right'), injectionDose(90, 'thigh-left')], startOfDayTimestamp(99));
+
+  assert.equal(forward?.id, backward?.id);
+  assert.equal(forward?.injectionSite, 'thigh-right');
+});
+
+test('lastInjectionBefore skips the dose being edited, so a dose is not its own predecessor', () => {
+  const being = injectionDose(95, 'deltoid-left');
+  const doses = [injectionDose(90, 'thigh-right'), being];
+
+  const found = lastInjectionBefore(doses, startOfDayTimestamp(99), being.id);
+
+  assert.equal(found?.injectionSite, 'thigh-right');
+});
+
+test('lastInjectionBefore ignores routes that are not injections, and answers null where there is none', () => {
+  assert.equal(lastInjectionBefore([dose(95, 8), dose(96, 8)], startOfDayTimestamp(99)), null);
+  assert.equal(lastInjectionBefore([], startOfDayTimestamp(99)), null);
+});
+
+test('lastInjectionBefore keeps an injection with no site on record: it still says which vehicle was used', () => {
+  const found = lastInjectionBefore([injectionDose(95, null)], startOfDayTimestamp(99));
+
+  assert.equal(found?.injectionSite, null);
+  assert.equal(found?.route, 'im');
+});
+
+test('expectedAmountOn gives the amount of the first slot that day with nothing logged against it', () => {
+  const slots = expectedSlots(schedule(1, 1, [{ dose: 2, doseUnit: 'mg' }, { dose: 1, doseUnit: 'mg' }]), 100, 100, 103);
+  const comparison = adherence(slots, [dose(100, 8), dose(101, 8)], []);
+
+  assert.deepEqual(expectedAmountOn(comparison, 102), { dose: 2, doseUnit: 'mg' });
+});
+
+test('expectedAmountOn passes over a slot already filled: the second dose of the day is the one left', () => {
+  const slots = expectedSlots(schedule(1, 2, [{ dose: 2, doseUnit: 'mg' }, { dose: 1, doseUnit: 'mg' }]), 100, 100, 100);
+  const comparison = adherence(slots, [dose(100, 8)], []);
+
+  assert.deepEqual(expectedAmountOn(comparison, 100), { dose: 1, doseUnit: 'mg' });
+});
+
+test('expectedAmountOn answers null once every slot that day is logged', () => {
+  const slots = expectedSlots(schedule(1, 2, [{ dose: 2, doseUnit: 'mg' }]), 100, 100, 100);
+  const comparison = adherence(slots, [dose(100, 8), dose(100, 20)], []);
+
+  assert.equal(expectedAmountOn(comparison, 100), null);
+});
+
+test('expectedAmountOn answers null for a schedule that tracks no amounts, and for a day it expects nothing on', () => {
+  const noAmounts = adherence(expectedSlots(schedule(1, 1), 100, 100, 100), [], []);
+  assert.equal(expectedAmountOn(noAmounts, 100), null);
+
+  const everyThirdDay = adherence(expectedSlots(schedule(3, 1, [{ dose: 2, doseUnit: 'mg' }]), 100, 100, 106), [], []);
+  assert.equal(expectedAmountOn(everyThirdDay, 101), null);
 });
