@@ -8,7 +8,6 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import {
   BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_DIMENSIONS,
-  BUILT_IN_PRESETS,
   BUILT_IN_TAG_GROUPS
 } from '../vocabulary/builtins.ts';
 import type { TableName } from '../live/writes.ts';
@@ -19,27 +18,17 @@ import { countingDriver } from './test-support.ts';
 const count = (db: Awaited<ReturnType<typeof migratedDb>>, table: string): number =>
   (db.raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
 
-test('seeds every built-in dimension, preset, group and tag into an empty journal', async () => {
+test('seeds every built-in dimension, group and tag into an empty journal, and no preset', async () => {
   const db = await migratedDb();
   await openJournal(db, fakeFileStore()).reconcileBuiltIns();
 
   assert.equal(count(db, 'gender_dimension'), BUILT_IN_DIMENSIONS.length);
-  assert.equal(count(db, 'gender_preset'), BUILT_IN_PRESETS.length);
+  // Ticket 35 left the presets legacy-only, so an empty journal gets none.
+  assert.equal(count(db, 'gender_preset'), 0);
   assert.equal(count(db, 'tag_group'), BUILT_IN_TAG_GROUPS.length);
   assert.equal(count(db, 'tag'), BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags).length);
   assert.equal(count(db, 'affirmation'), BUILT_IN_AFFIRMATION_KEYS.length);
 
-  // Preset links land in declared order, resolved through dimension keys.
-  const nb = db.raw
-    .prepare(
-      `SELECT gd.key FROM preset_dimension pd
-       JOIN gender_preset gp ON gp.id = pd.preset_id
-       JOIN gender_dimension gd ON gd.id = pd.dimension_id
-       WHERE gp.key = 'p-nb' ORDER BY pd.order_index`
-    )
-    .all()
-    .map((r) => (r as { key: string }).key);
-  assert.deepEqual(nb, [...BUILT_IN_PRESETS.find((p) => p.key === 'p-nb')!.dims]);
 });
 
 test('running twice changes nothing', async () => {
