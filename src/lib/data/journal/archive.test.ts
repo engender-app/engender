@@ -599,7 +599,7 @@ const CARRIED: Record<string, string[]> = {
   measurement: ['uuid', 'epoch_day', 'type', 'value', 'unit'],
   measurement_type: ['uuid', 'key', 'name', 'is_built_in', 'hidden'],
   size_record: ['uuid', 'epoch_day', 'category', 'size', 'brand', 'fit_note'],
-  tally_event: ['uuid', 'epoch_day', 'kind', 'context'],
+  tally_event: ['uuid', 'epoch_day', 'kind'],
   regimen_episode: [
     'uuid',
     'drug',
