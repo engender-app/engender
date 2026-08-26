@@ -9,6 +9,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import { smartBack } from '$lib/navigation/smart-back';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -49,7 +50,11 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.doubt_title()} back="/" />
+  <!-- Back to the hub this screen lives on, not to Home, which is where it
+       lived until ticket 08 moved it. `smartBack` so that arriving here from
+       anywhere else - a search hit, a launcher shortcut - returns there
+       instead (Alicja, 2026-08-26). -->
+  <ScreenHeader title={m.doubt_title()} back={() => smartBack('/more')} />
 
   <SectionTitle text={m.doubt_counterevidence_title()} />
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.doubt_counterevidence_sub()}</p>
