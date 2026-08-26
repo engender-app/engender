@@ -1279,7 +1279,7 @@ try {
   const served = await page.evaluate((href) => fetch(href).then((r) => r.status), await favicon());
   if (served !== 200) throw new Error('the disguised icon is not served: HTTP ' + served);
   await page.getByRole('switch', { name: 'Disguise app' }).click();
-  await page.waitForFunction(() => document.title === 'Gender Diary', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
   if (!/\/favicon\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
 
   await page.getByRole('switch', { name: 'Lock on leave' }).click();
