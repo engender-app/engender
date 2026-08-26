@@ -43,14 +43,12 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
-
   /* The procedures, and the record kept against whichever one is open. */
-  const AREA_ROLE = { procedures: 0, recovery: 1 };
+  const SECTION_ROLE = { procedures: 0, recovery: 1 };
 
   const today = todayEpochDay();
 
@@ -240,7 +238,7 @@
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if procedures.length}
     <div in:crossfade>
-      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.procedures)}>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
         {#each procedures as procedure (procedure.id)}
           <div class="kit-row is-split" data-procedure={procedure.id}>
             <button
@@ -274,7 +272,7 @@
       <Notice
         icon="flag"
         key="surgery-empty"
-        role={roleAt(activeFlag.roles, AREA_ROLE.procedures)}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
         title={m.surgery_empty_title()}
         text={m.surgery_empty_body()}
         action={{ label: m.surgery_add(), primary: true, onclick: () => openEditor(null) }}
@@ -288,7 +286,7 @@
       <Notice
         icon="clock"
         key="surgery-recovery"
-        role={roleAt(activeFlag.roles, AREA_ROLE.recovery)}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
         title={recoveryText(selected)}
         action={selected.surgeryEpochDay === null
           ? undefined
@@ -299,7 +297,7 @@
       <SectionHeading text={m.surgery_consults_title()} />
       {#if selected.consults.length}
         <div style="margin-bottom:var(--space-3)">
-          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.recovery)}>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
             {#each selected.consults as consult (consult.id)}
               <div class="kit-row is-static" data-consult={consult.id}>
                 <span class="kit-row-text"><span class="kit-row-title">{dayLabel(consult.epochDay)}</span></span>
@@ -342,7 +340,7 @@
         <Skeleton variant="line" count={1} />
       {:else if photos.length}
         <div style="margin-bottom:var(--space-3)">
-          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.recovery)}>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
             {#each photos as photo (photo.id)}
               <div class="kit-row is-static" data-procedure-photo={photo.id}>
                 <PhotoThumb photo={photo} size={48} />
@@ -369,7 +367,7 @@
       <SectionHeading text={m.surgery_checklist_title()} />
       {#if checklistItems.length}
         <div style="margin-bottom:var(--space-3)">
-          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.recovery)}>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
           {#each checklistItems as item (item.id)}
             <div class="kit-row is-split" data-procedure-item={item.id}>
               <button

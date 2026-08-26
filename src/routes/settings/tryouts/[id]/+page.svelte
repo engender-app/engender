@@ -33,15 +33,13 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
-
   /* Three areas below the form: how it has felt, what it looked like, and
      what was written while it ran. */
-  const AREA_ROLE = { feeling: 0, photos: 1, entries: 2 };
+  const SECTION_ROLE = { feeling: 0, photos: 1, entries: 2 };
 
   const KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
   const KIND_OPTIONS = KINDS.map((value) => ({ value, label: tryoutKindName(value) }));
@@ -234,7 +232,7 @@
       <div out:crossfade><Skeleton variant="line" count={2} /></div>
     {:else if feeling.length}
       <div in:crossfade>
-        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.feeling)}>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
           {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
             <div class="kit-row is-static" data-feeling={f.id}>
               <span class="kit-row-text">
@@ -258,7 +256,7 @@
         <Notice
           icon="heart"
           key="tryout-feeling-empty"
-          role={roleAt(activeFlag.roles, AREA_ROLE.feeling)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}
           text={m.tryout_feeling_none()}
         />
       </div>
@@ -277,7 +275,7 @@
       <div out:crossfade><Skeleton variant="line" count={1} /></div>
     {:else if photos.length}
       <div in:crossfade style="margin-bottom:var(--space-3)">
-        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.photos)}>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
           {#each photos as p (p.id)}
             <div class="kit-row is-static" data-tryout-photo={p.id}>
               <PhotoThumb photo={p} size={48} />
@@ -299,7 +297,7 @@
         <Notice
           icon="camera"
           key="tryout-photos-empty"
-          role={roleAt(activeFlag.roles, AREA_ROLE.photos)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
           title={m.tryout_photo_empty_title()}
           text={m.tryout_photo_empty_body()}
         />
@@ -320,7 +318,7 @@
         <Notice
           icon="book"
           key="tryout-entries-empty"
-          role={roleAt(activeFlag.roles, AREA_ROLE.entries)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
           title={m.tryout_entries_none()}
           text={m.tryout_entries_none_body()}
         />

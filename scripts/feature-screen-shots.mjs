@@ -90,38 +90,39 @@ page.on('pageerror', (error) => process.stdout.write(`  page error: ${error.mess
 
 const shots = [];
 const broken = [];
+
+/** One route, both themes, filed under the name the route gives it. */
+async function captureBoth(group, route, name) {
+  for (const theme of THEMES) {
+    await useTheme(theme);
+    await page.waitForTimeout(250);
+    const file = `${outDir}/${name}-${theme}.png`;
+    await page.locator('[data-app-root]').screenshot({ path: file });
+    shots.push({ group, route, theme, file });
+  }
+}
+
+/** Navigate, wait for the screen to be itself, and shoot it. */
+async function visit(group, route) {
+  await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
+  await hideScaffolding();
+  await settled();
+  await captureBoth(group, route, slug(route));
+}
 for (const [group, route] of ROUTES) {
   try {
-    await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
-    await hideScaffolding();
-    await settled();
-    for (const theme of THEMES) {
-      await useTheme(theme);
-      await page.waitForTimeout(250);
-      const file = `${outDir}/${slug(route)}-${theme}.png`;
-      await page.locator('[data-app-root]').screenshot({ path: file });
-      shots.push({ group, route, theme, file });
-    }
+    await visit(group, route);
     process.stdout.write(`${route}\n`);
   } catch (error) {
     /* A dev server re-optimizing its dependencies drops the module graph
        out from under whatever navigated during it, which reads exactly
        like a broken route and is not one. One retry tells the two apart. */
     try {
-      await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
-      await hideScaffolding();
-      await settled();
-      for (const theme of THEMES) {
-        await useTheme(theme);
-        await page.waitForTimeout(250);
-        const file = `${outDir}/${slug(route)}-${theme}.png`;
-        await page.locator('[data-app-root]').screenshot({ path: file });
-        shots.push({ group, route, theme, file });
-      }
+      await visit(group, route);
       process.stdout.write(`${route} (retried)\n`);
     } catch {
       broken.push(route);
-      process.stdout.write(`BROKEN ${route} — ${String(error).split('\n')[0]}\n`);
+      process.stdout.write(`BROKEN ${route} - ${String(error).split('\n')[0]}\n`);
     }
   }
 }
@@ -137,13 +138,7 @@ if (await firstTryout.count()) {
   await firstTryout.click();
   await hideScaffolding();
   await settled();
-  for (const theme of THEMES) {
-    await useTheme(theme);
-    await page.waitForTimeout(250);
-    const file = `${outDir}/settings-tryouts-detail-${theme}.png`;
-    await page.locator('[data-app-root]').screenshot({ path: file });
-    shots.push({ group: 'transition', route: '/settings/tryouts/[id]', theme, file });
-  }
+  await captureBoth('transition', '/settings/tryouts/[id]', 'settings-tryouts-detail');
   process.stdout.write('/settings/tryouts/[id]\n');
 }
 

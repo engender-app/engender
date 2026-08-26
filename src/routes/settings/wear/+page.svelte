@@ -51,17 +51,15 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* Colour that carries a value takes role 0 (DIRECTION.md): index 0 is the
      only role guaranteed chromatic on all 8 palettes, and a two-line chart
      drawn in an achromatic band reads as disabled. The sessions take the
      stripe after it. */
-  const AREA_ROLE = { chart: 0, sessions: 1 };
+  const SECTION_ROLE = { chart: 0, sessions: 1 };
   import Switch from '$lib/components/Switch.svelte';
   import WearTrendChart from '$lib/components/WearTrendChart.svelte';
 
@@ -296,7 +294,7 @@
   {:else}
     <div in:crossfade>
       {#if running}
-        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
           <ListRow
             key="running"
             data-wear-running
@@ -317,7 +315,7 @@
 
       {#if completed.length}
         <div style="margin-top:var(--space-3)">
-          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
             {#each completed as session (session.id)}
               {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
               <ListRow
@@ -338,7 +336,7 @@
         <Notice
           icon="clock"
           key="wear-empty"
-          role={roleAt(activeFlag.roles, AREA_ROLE.sessions)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
           title={m.wear_session_empty_title()}
           text={m.wear_session_empty_body()}
           action={{ label: m.wear_session_empty_action(), primary: true, onclick: openNewEditor }}
@@ -357,7 +355,7 @@
       <ChartCard
         heading={m.wear_session_trend_title()}
         kind="wear-trend"
-        role={roleAt(activeFlag.roles, AREA_ROLE.chart)}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
       >
         {#snippet control()}
           {#if trendRegionOptions.length}

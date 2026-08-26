@@ -41,15 +41,13 @@
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
-
   /* Colour that carries a value takes role 0 (DIRECTION.md). The results
      list takes the stripe after it. */
-  const AREA_ROLE = { chart: 0, results: 1 };
+  const SECTION_ROLE = { chart: 0, results: 1 };
 
   let unitsOpen = $state(false);
 
@@ -346,7 +344,6 @@
     {/snippet}
   </ScreenHeader>
 
-
   {#if usedQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if analytes.length}
@@ -363,7 +360,7 @@
         {@const chart = chartFor(s)}
         {@const mixed = comparabilityLabels(seriesComparability(s.results))}
         <div data-lab-series={s.unit}>
-          <ChartCard heading={analyte} kind="labs-{s.unit}" role={roleAt(activeFlag.roles, AREA_ROLE.chart)}>
+          <ChartCard heading={analyte} kind="labs-{s.unit}" role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}>
             {#snippet control()}
               <!-- The unit on the heading's line, which is the one thing
                    about this chart that is not the analyte above it. A
@@ -404,7 +401,7 @@
         </div>
       {/each}
 
-      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.results)}>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
         {#each [...results].reverse() as r (r.id)}
           <button
             class="kit-row"
@@ -434,7 +431,7 @@
       <Notice
         icon="flask"
         key="labs-empty"
-        role={roleAt(activeFlag.roles, AREA_ROLE.results)}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
         title={m.labs_empty_title()}
         text={m.labs_empty_body()}
         action={{ label: m.labs_empty_action(), primary: true, onclick: () => openEditor(null) }}

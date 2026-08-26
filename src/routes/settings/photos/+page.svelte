@@ -28,11 +28,9 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* One query, not a union of a table and a column: entry photos and
      milestone photos are rows in the same table (ADR-0008), already dated and

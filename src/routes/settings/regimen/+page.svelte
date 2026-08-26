@@ -27,15 +27,13 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
-
   /* Two areas: what is being taken, and the three screens that read the
      dose log from other angles. */
-  const AREA_ROLE = { episodes: 0, elsewhere: 1 };
+  const SECTION_ROLE = { episodes: 0, elsewhere: 1 };
 
   let episodesQuery = liveQuery(['regimen'], (j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.value ?? []);
@@ -262,7 +260,7 @@
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if episodes.length}
     <div in:crossfade>
-      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.episodes)}>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
         {#each [...episodes].reverse() as episode (episode.id)}
           <ListRow
             key={episode.id}
@@ -293,7 +291,7 @@
       <Notice
         icon="flask"
         key="regimen-empty"
-        role={roleAt(activeFlag.roles, AREA_ROLE.episodes)}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
         title={m.regimen_empty_title()}
         text={m.regimen_empty_body()}
         action={{ label: m.regimen_empty_action(), primary: true, onclick: () => (templatePicker = true) }}
@@ -307,7 +305,7 @@
        The gap and the second stripe are what separate them from the
        regimen above. -->
   <div class="regimen-elsewhere">
-    <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.elsewhere)}>
+    <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.elsewhere)}>
     <ListRow key="doses" icon="timeline" title={m.regimen_doses_link()} subtitle={m.doses_row_sub()} href="/doses" />
     <ListRow
       key="stock"
@@ -331,7 +329,7 @@
     title={m.regimen_template_sheet_title()}
     onClose={() => (templatePicker = false)}
   >
-    <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.episodes)}>
+    <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
       <ListRow
         key="own"
         data-own
@@ -461,7 +459,7 @@
             <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
           </div>
           {#if schedule.doseAmounts.length}
-            <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.episodes)}>
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
               {#each schedule.doseAmounts as amount, index (index)}
                 <div class="kit-row is-static">
                   <span class="kit-row-text cd-endpoints">
@@ -516,7 +514,7 @@
           <p class="muted small">{m.regimen_pauses_hint()}</p>
         </div>
         {#if editorPauses.length}
-          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.episodes)}>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
             {#each editorPauses as pause (pause.id)}
               <div class="kit-row is-split">
                 <span class="kit-row-main">

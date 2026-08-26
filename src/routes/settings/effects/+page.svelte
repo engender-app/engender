@@ -28,12 +28,10 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { disclose } from '$lib/motion/reveal';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
   import Switch from '$lib/components/Switch.svelte';
   import EffectsTimeline from '$lib/components/EffectsTimeline.svelte';
 

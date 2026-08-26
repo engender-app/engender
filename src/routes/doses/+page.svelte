@@ -66,15 +66,13 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
-
   /* Three areas across the two views: the doses themselves, the schedule
      they are compared against, and what fell outside either. */
-  const AREA_ROLE = { doses: 0, schedule: 1, leftover: 2 };
+  const SECTION_ROLE = { doses: 0, schedule: 1, leftover: 2 };
 
   /** How far back the log and the comparison look. A window rather than the
       whole history because both reads are per-day and a journal years deep
@@ -385,7 +383,7 @@
     {#if doses.length}
       <div in:crossfade>
         <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: WINDOW_DAYS })}</p>
-        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.doses)}>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
           {#each [...doses].reverse() as dose (dose.id)}
             {@const attribution = attributeDose(episodes, dose)}
             {@const site = siteOf(dose)}
@@ -440,7 +438,7 @@
         <Notice
           icon="clock"
           key="doses-empty"
-          role={roleAt(activeFlag.roles, AREA_ROLE.doses)}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
           title={m.doses_empty_title()}
           text={m.doses_empty_body()}
           action={{ label: m.doses_empty_action(), primary: true, onclick: () => openEditor(null) }}
@@ -458,7 +456,7 @@
       <p class="muted small" style="margin:var(--space-3) 0">
         {m.adherence_for_episode({ drug: activeEpisode.drug })}
       </p>
-      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.schedule)}>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
         {#each [...comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
           <div class="kit-row is-static" data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}>
             <span class="kit-row-text">
@@ -488,7 +486,7 @@
       {#if activePauses.length}
         <SectionHeading text={m.adherence_paused_heading()} />
         <p class="muted small">{m.adherence_paused_note()}</p>
-        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.leftover)}>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
           {#each activePauses as pause (pause.id)}
             <div class="kit-row is-static" data-pause={pause.id}>
               <span class="kit-row-text">
@@ -510,7 +508,7 @@
       {#if comparison.unmatched.length}
         <SectionHeading text={m.adherence_unmatched_heading()} />
         <p class="muted small">{m.adherence_unmatched_note()}</p>
-        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.leftover)}>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
           {#each comparison.unmatched as dose (dose.id)}
             <div class="kit-row is-static" data-unmatched={dose.id}>
               <span class="kit-row-text">
