@@ -13,7 +13,7 @@
      for one. A screen that wants to say something about a reading has
      nowhere in this component to say it. */
   import type { Snippet } from 'svelte';
-  import { roleStyle } from './role';
+  import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 
   let {
@@ -35,7 +35,7 @@
   } = $props();
 </script>
 
-<section class="kit-chart" data-chart-card={kind} style={roleStyle(role)}>
+<section class="kit-chart" data-chart-card={kind} {...roleAttrs(role)}>
   <div class="kit-chart-head">
     <h3>{heading}</h3>
     {#if control}{@render control()}{/if}

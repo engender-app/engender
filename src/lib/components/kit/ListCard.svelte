@@ -12,7 +12,7 @@
      run of links is announced as links, and role="list" here would put the
      burden of role="listitem" on whatever a screen renders inside. */
   import type { Snippet } from 'svelte';
-  import { roleStyle } from './role';
+  import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 
   let {
@@ -25,6 +25,6 @@
   } = $props();
 </script>
 
-<div class="kit-list" data-list-card style={roleStyle(role)}>
+<div class="kit-list" data-list-card {...roleAttrs(role)}>
   {@render children()}
 </div>
