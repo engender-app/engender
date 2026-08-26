@@ -18,9 +18,20 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
 /** SCREENS.md's list: 22 hub rows + tryouts/[id] + stock + exposure +
-    photos/export. The hub row count is 23 there because doubt is one of
-    them, and doubt is not this ticket's screen - it is unchanged by the
-    move that put it on the hub (ticket 24). */
+    photos/export.
+
+    The cross-check the acceptance box asks for, and it finds a
+    discrepancy rather than agreement. SCREENS.md's Total says "22 More-hub
+    rows" and its four tables list 22 routes; the hub actually renders 23,
+    because `/doubt` moved onto it under spec 08 and the inventory was
+    never updated. Ticket 24 found the same gap from the other side and
+    recorded it as out of its scope, `tests/more-surfaces.test.ts` holding
+    the real 23.
+
+    So: 22 of this ticket's routes are hub rows, the 23rd hub row is
+    `/doubt`, and `/doubt` is not redesigned here - the move that put it on
+    the hub left the screen itself unchanged (ticket 24). Correcting
+    SCREENS.md is still nobody's ticket. */
 const ROUTES = [
   // Body
   'settings/photos',
