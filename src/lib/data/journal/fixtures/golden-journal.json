@@ -1434,8 +1434,7 @@
     {
       "id": "194f6e9c-1b73-45dc-b24e-af4b9680f5f9",
       "epochDay": 20000,
-      "kind": "misgendered",
-      "context": "wrong pronoun at the pharmacy"
+      "kind": "misgendered"
     }
   ],
   "counterevidenceSnapshots": [

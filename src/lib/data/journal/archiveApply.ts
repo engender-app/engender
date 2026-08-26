@@ -577,8 +577,8 @@ export async function applyTallyEvents({ driver, journal, ts }: Restoring): Prom
   const inserting = journal.tallyEvents.filter((event) => !present.has(event.id));
   await insertRows(
     driver,
-    'INSERT INTO tally_event (uuid, epoch_day, kind, context, updated_at)',
-    inserting.map((event) => [event.id, event.epochDay, event.kind, event.context, ts])
+    'INSERT INTO tally_event (uuid, epoch_day, kind, updated_at)',
+    inserting.map((event) => [event.id, event.epochDay, event.kind, ts])
   );
 }
 
