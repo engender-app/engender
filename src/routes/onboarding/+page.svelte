@@ -207,6 +207,7 @@
         >
           {#if step === 'welcome'}
             <h1 class="setup-title">{m.ob_welcome_title()}</h1>
+            <p class="setup-def">{m.ob_welcome_def()}</p>
             <p class="setup-body">{m.ob_welcome_body()}</p>
           {:else if step === 'name'}
             <h1 class="setup-title">{m.ob_name_title()}</h1>
