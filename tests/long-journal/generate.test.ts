@@ -174,7 +174,7 @@ test('it writes the fixture every More-hub area reads (ticket 36)', async () => 
   const episodes = await journal.regimen.getEpisodes();
   expect(episodes).toHaveLength(3);
   expect(await journal.doses.getSchedules()).toHaveLength(3);
-  expect(summary.doseEvents2).toBeGreaterThan(0);
+  expect(summary.additionalDoseEvents).toBeGreaterThan(0);
   const injectable = (await journal.doses.getDoses(0, summary.lastEpochDay)).filter((d) => d.route === 'im');
   expect(injectable.length).toBeGreaterThan(0);
   expect(injectable.every((d) => d.drug === 'Estradiol valerate')).toBe(true);
@@ -249,7 +249,7 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'cycleEvents',
       'daysWithEntries',
       'doseEvents',
-      'doseEvents2',
+      'additionalDoseEvents',
       'entries',
       'firstEpochDay',
       'hairRemovalSessions',
