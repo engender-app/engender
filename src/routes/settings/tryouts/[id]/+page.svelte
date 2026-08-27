@@ -10,14 +10,13 @@
      them, on the kit's split row, so a row is one control and the delete
      is another rather than a button floating inside a row that also opens
      something. */
-  import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveList, liveListIn, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { tryoutKindName } from '$lib/data/vocabulary/labels';
-  import type { FeltSenseEntry, TryoutKind, TryoutPhoto } from '$lib/data/types';
+  import type { FeltSenseEntry, Tryout, TryoutKind, TryoutPhoto } from '$lib/data/types';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { pickPhotos } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
@@ -32,6 +31,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -52,56 +52,49 @@
   // scope split).
   const hasDescription = (kind: TryoutKind) => kind !== 'name' && kind !== 'pronouns';
 
-  const isNew = page.params.id === 'new';
-  const tryoutId = page.params.id as string;
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
-  let stored = liveQuery((j) => (isNew ? Promise.resolve([]) : j.tryouts.getTryouts()));
-  let existing = $derived(stored.value?.find((t) => t.id === page.params.id));
-
-  let draft = $state({
-    kind: 'name' as TryoutKind,
-    label: '',
-    description: '',
-    start: dateInputValueFromEpochDay(todayEpochDay()),
-    end: ''
+  const detail = detailDraft<Tryout, { kind: TryoutKind; label: string; description: string; start: string; end: string }>({
+    read: async (j, id) => (await j.tryouts.getTryouts()).find((t) => t.id === id),
+    blank: () => ({
+      kind: 'name',
+      label: '',
+      description: '',
+      start: dateInputValueFromEpochDay(todayEpochDay()),
+      end: ''
+    }),
+    fromRecord: (found) => ({
+      kind: found.kind,
+      label: found.label,
+      description: found.description ?? '',
+      start: dateInputValueFromEpochDay(found.startEpochDay),
+      end: found.endEpochDay == null ? '' : dateInputValueFromEpochDay(found.endEpochDay)
+    })
   });
-
-  onFirstResult(stored, (tryouts) => {
-    const found = tryouts?.find((t) => t.id === page.params.id);
-    if (found) {
-      draft = {
-        kind: found.kind,
-        label: found.label,
-        description: found.description ?? '',
-        start: dateInputValueFromEpochDay(found.startEpochDay),
-        end: found.endEpochDay == null ? '' : dateInputValueFromEpochDay(found.endEpochDay)
-      };
-    }
-  });
+  let draft = $derived(detail.draft);
 
   async function saveTryout() {
-    await journal.tryouts.upsertTryout({
-      id: existing?.id,
+    const id = await journal.tryouts.upsertTryout({
+      id: detail.record?.id,
       kind: draft.kind,
       label: draft.label,
       description: hasDescription(draft.kind) ? draft.description : null,
       startEpochDay: epochDayFromDateInputValue(draft.start) ?? todayEpochDay(),
       endEpochDay: draft.end ? epochDayFromDateInputValue(draft.end) : null
     });
-    /* Back to the list rather than to this tryout's own new id: navigating
-       within the same [id] route would reuse this component instance
-       without `isNew`/`tryoutId` - captured once at the top - ever
-       updating, leaving the felt-sense section permanently hidden after a
-       create. Reopening the row is one extra tap, the same shape
-       reminders' own create flow already has. */
-    if (isNew) await goto('/settings/tryouts');
+    /* Straight onto the new tryout, which is where its felt-sense section
+       is. This used to go back to the list instead, because navigating
+       within the same [id] route reuses this component instance and the
+       route parameter was captured in a const that never updated - so the
+       section stayed hidden after a create. The parameter is read through
+       detailDraft now, which is the module that reads it reactively. */
+    if (detail.isNew) await goto(`/settings/tryouts/${id}`);
   }
 
   /* Only once a tryout has its own id, the same reasoning hair-removal's
      own photo section gives: a photo belongs to one tryout, so there is
      nothing to attach it to before that first save. */
-  let photosQuery = liveList((j) => (isNew ? Promise.resolve([]) : j.tryouts.getPhotos(tryoutId)));
+  let photosQuery = liveList((j) => (detail.isNew ? Promise.resolve([]) : j.tryouts.getPhotos(detail.id)));
   let photos = $derived(photosQuery.rows);
   const photoRecord = recordEditor<TryoutPhoto>({
     remove: (id) => journal.tryouts.deletePhoto(id),
@@ -109,8 +102,8 @@
   });
 
   async function storePhoto(photo: NormalizedPhoto | null) {
-    if (isNew || !photo) return;
-    await journal.tryouts.addPhoto(tryoutId, todayEpochDay(), photo);
+    if (detail.isNew || !photo) return;
+    await journal.tryouts.addPhoto(detail.id, todayEpochDay(), photo);
   }
 
   async function pickTryoutPhoto() {
@@ -125,7 +118,7 @@
   );
 
   const HISTORY_LIMIT = 50;
-  let feelingQuery = liveList((j) => (isNew ? Promise.resolve([]) : j.feltSense.forTryout(tryoutId)));
+  let feelingQuery = liveList((j) => (detail.isNew ? Promise.resolve([]) : j.feltSense.forTryout(detail.id)));
   let feeling = $derived(feelingQuery.rows);
 
   /* Phase 5 performance ticket 07/08: an open-ended tryout's range has no
@@ -141,8 +134,8 @@
      it was after an edit would silently ask for pages*PAGE entries in what
      might now be a much smaller range. */
   $effect(() => {
-    existing?.startEpochDay;
-    existing?.endEpochDay;
+    detail.record?.startEpochDay;
+    detail.record?.endEpochDay;
     pages = 1;
   });
 
@@ -150,9 +143,14 @@
      its count are one read, and defaulting them apart let the two disagree. */
   const NOTHING_IN_RANGE = { hits: [], total: 0 };
 
-  let entriesQuery = liveQuery((j) => {
-    if (isNew || !existing) return Promise.resolve(NOTHING_IN_RANGE);
-    const range = { startEpochDay: existing.startEpochDay, endEpochDay: existing.endEpochDay };
+  /* Through the record rather than beside it: the range comes from the
+     tryout, so this only runs once there is one and only counts as answered
+     once the answer was read for the tryout on the route. Read beside it,
+     the first run had no range to search, answered with nothing, and left
+     "no entries in this range" on screen over a tryout with ninety of them
+     (detailDraft.ts, and the browser-tier probe for it). */
+  let entriesQuery = detail.readingRecord((j, tryout) => {
+    const range = { startEpochDay: tryout.startEpochDay, endEpochDay: tryout.endEpochDay };
     return Promise.all([
       j.entries.searchEntries('', [], range, PAGE * pages),
       j.entries.countSearchMatches('', [], range)
@@ -171,7 +169,7 @@
   async function addFeeling() {
     if (feelingMood == null) return;
     await journal.feltSense.add(
-      { tryoutId },
+      { tryoutId: detail.id },
       { epochDay: todayEpochDay(), mood: feelingMood, note: feelingNote.trim() || null }
     );
     feelingMood = null;
@@ -200,7 +198,7 @@
 
 
 <div class="screen">
-  <ScreenHeader title={isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/settings/tryouts" />
+  <ScreenHeader title={detail.isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/settings/tryouts" />
 
   <div class="editor-section">
     <div class="field">
@@ -245,11 +243,11 @@
       <input class="input" type="date" id="tr-end" name="tr-end" bind:value={draft.end} />
     </div>
     <button class="btn btn-primary press" data-save-tryout disabled={draft.label.trim().length === 0} onclick={saveTryout}>
-      <span>{isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
+      <span>{detail.isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
     </button>
   </div>
 
-  {#if !isNew}
+  {#if !detail.isNew}
     <SectionHeading text={m.tryout_feeling_title()} />
     <MoodPicker value={feelingMood} onPick={(v) => (feelingMood = v)} compact />
     <textarea

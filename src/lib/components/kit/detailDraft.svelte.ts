@@ -9,9 +9,9 @@
    this module cannot write that line any more. */
 
 import { page } from '$app/state';
-import { liveQuery, type LiveList } from '$lib/data/live/journal.svelte';
+import { liveQuery, type LiveQuery } from '$lib/data/live/journal.svelte';
 import type { Journal } from '$lib/data/journal/journal';
-import { draftFor, fillDecision, waitingOn } from './detailDraft.ts';
+import { answersFor, draftFor, fillDecision } from './detailDraft.ts';
 
 export type DetailDraftOptions<TRecord, TDraft> = {
   /** Find the record this id names. Not called for a new one. */
@@ -36,9 +36,12 @@ export type DetailDraft<TRecord, TDraft> = {
   readonly loading: boolean;
   /** True when that read rejected. */
   readonly failed: boolean;
-  /** A list read that hangs off this record, held at loading until the
-      record has arrived (detailDraft.ts). */
-  waitingOnRecord: <T>(read: LiveList<T>) => LiveList<T>;
+  /** A read that needs this record to run at all - the entries inside a
+      tryout's date range. It is only called once there is a record, and it
+      is `loading` until the answer on hand was read for the id on the
+      route, which is the rule the tryout entries race turned on
+      (detailDraft.ts). */
+  readingRecord: <V>(read: (journal: Journal, record: TRecord) => Promise<V>) => LiveQuery<V>;
 };
 
 const NEW = 'new';
@@ -91,8 +94,29 @@ export function detailDraft<TRecord, TDraft extends object>(
     get failed() {
       return query.failed;
     },
-    waitingOnRecord<T>(read: LiveList<T>): LiveList<T> {
-      return waitingOn(answer === undefined, read);
+    readingRecord<V>(read: (journal: Journal, record: TRecord) => Promise<V>): LiveQuery<V> {
+      /* Tagged with the id it was read for, the same way the record's own
+         read above is. `null` is a run that had no record yet and so asked
+         nothing - the run whose empty answer used to reach the screen. */
+      const dependent = liveQuery(async (journal) => {
+        const id = routeId();
+        const current = answer;
+        if (current === undefined) return { for: null, value: undefined };
+        return { for: id, value: current.record ? await read(journal, current.record) : undefined };
+      });
+      const mine = $derived(answersFor(dependent.value, routeId()) ? dependent.value : undefined);
+
+      return {
+        get value() {
+          return mine?.value;
+        },
+        get loading() {
+          return mine === undefined;
+        },
+        get failed() {
+          return dependent.failed;
+        }
+      };
     }
   };
 }

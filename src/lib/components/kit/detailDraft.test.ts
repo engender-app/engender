@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { draftFor, fillDecision, waitingOn } from './detailDraft.ts';
+import { answersFor, draftFor, fillDecision } from './detailDraft.ts';
 
 type Rec = { id: string; name: string };
 type Draft = { name: string };
@@ -48,28 +48,33 @@ describe('draftFor', () => {
   });
 });
 
-describe('waitingOn', () => {
-  const answered = { rows: [], loading: false, empty: true, failed: false };
-
+describe('answersFor', () => {
   /* The tryout entries race: the entries read has nothing to look up while
-     the tryout itself is still loading, so it answers with nothing and the
-     screen renders "no entries in this range" over a record that has not
-     arrived. A read that hangs off the record is loading while the record
-     is. */
-  it('holds a dependent read at loading while the record is still loading', () => {
-    expect(waitingOn(true, answered)).toEqual({ rows: [], loading: true, empty: false, failed: false });
+     the tryout itself is still loading, so it answers with nothing - and a
+     live query keeps that answer on screen through the re-run the record
+     triggers. Rendered as-is it is "no entries in this range" over a record
+     that does have some. */
+  it('refuses an answer read before there was a record to read for', () => {
+    expect(answersFor({ for: null, value: undefined }, 'a')).toBe(false);
   });
 
-  it('reports the read itself once the record has arrived', () => {
-    expect(waitingOn(false, answered)).toBe(answered);
+  it('refuses an answer read for a different id', () => {
+    expect(answersFor({ for: 'a', value: [] }, 'b')).toBe(false);
   });
 
-  it('keeps a failure visible rather than hiding it behind the wait', () => {
-    expect(waitingOn(true, { ...answered, failed: true })).toEqual({
-      rows: [],
-      loading: true,
-      empty: false,
-      failed: true
-    });
+  it('refuses a read that has not answered at all', () => {
+    expect(answersFor(undefined, 'a')).toBe(false);
+  });
+
+  it('takes an answer read for this id, empty or not', () => {
+    expect(answersFor({ for: 'a', value: [] }, 'a')).toBe(true);
+    expect(answersFor({ for: 'a', value: [1] }, 'a')).toBe(true);
+  });
+
+  /* An id that names nothing stored still gets an answer: the read ran, it
+     had no record, and an empty state is the right thing to show. What must
+     never happen is a placeholder held forever. */
+  it('takes an answer read for this id even when the id names nothing', () => {
+    expect(answersFor({ for: 'gone', value: undefined }, 'gone')).toBe(true);
   });
 });
