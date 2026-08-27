@@ -28,7 +28,8 @@
    Nothing here is tested in the Node tier: `$state` is not defined there
    (ADR-0017), which is why the parts with a rule in them live rune-free
    elsewhere - writes.ts for the table mapping, tableVersions.notify.ts for the
-   write-announcement notify. What this file adds beyond that is covered from
+   write-announcement notify, readState.ts for what a read shows and what each
+   outcome of a run does to it. What this file adds beyond that is covered from
    the browser: `tests/walkthrough.test.mjs` driving the real screens, and
    `tests/browser-tier/live-reads-probe.svelte.ts` for the dependency
    resolution, which needs a real scheduler to be seen re-running at all. */
