@@ -8,6 +8,13 @@
    stops here - screens reach the journal through data/live/, which is the
    only thing above this file that knows a database is involved at all.
 
+   Since phase 5 audit ticket 14 it decides nothing. boot-machine.ts holds the
+   order - web and Android, first run and unlock, conversion, a refused key, a
+   schema from a newer build - and this is its adapter: an effect arrives, the
+   platform is asked, and what it answered goes back as an event. The reducer's
+   state is mirrored into the rune below and read by the layout and the gates
+   exactly as before.
+
    Two things arrive in two steps each, matching boot()'s own sequence.
    Preferences: the mirrored boot set is read synchronously before anything
    renders, so theme and palette match what the pre-paint script in app.html
@@ -19,15 +26,10 @@ import { boot } from '../data/sqlite/boot';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
 import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
-import {
-  androidJournalIsPlaintext,
-  createAndroidSqlite,
-  deleteAndroidDatabase
-} from '../data/sqlite/android-driver';
+import { createAndroidSqlite, deleteAndroidDatabase } from '../data/sqlite/android-driver';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
 import { InterruptedRestoreError, SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
-import { markJournalBusy } from '../data/journal-busy';
 import { openJournal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
@@ -38,36 +40,17 @@ import { hydrateReference } from '../data/live/reference.svelte';
 import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file-store';
 import { appPrivatePhotoFiles } from '../data/photos/android-file-store';
 import { encryptedFileStore } from '../data/photos/encrypted-file-store';
-import { addJournalPassphrase, journalKeystoreExists, setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
 import {
-  deviceBoundJournalExists,
+  addJournalPassphrase,
+  setupJournalPassphrase,
+  unlockJournalPassphrase
+} from '../data/journal-passphrase';
+import {
   DeviceBoundKeyUnavailableError,
   removeDeviceBoundJournal,
-  setupDeviceBoundJournal,
-  unlockDeviceBoundJournal
+  setupDeviceBoundJournal
 } from '../data/device-bound-journal';
-import {
-  chooseJournalAccessMode,
-  describeAndroidBootPlan,
-  describeWebBootPlan,
-  type JournalAccessMode
-} from '../data/journal-access-mode';
-import {
-  describeJournalState,
-  finishRetirement,
-  prepareConversion,
-  runConversion,
-  type JournalSurvey
-} from '../data/conversion/conversion';
-import { opfsConversionMarker } from '../data/conversion/marker-file';
-import {
-  JOURNAL_DATABASE,
-  plaintextJournalPresent,
-  removePlaintextRemnants,
-  webConversionPorts,
-  webConversionPrecheckPorts
-} from '../data/conversion/web-ports';
-import { LATEST_SCHEMA_VERSION } from '../data/sqlite/schema-version';
+import { JOURNAL_DATABASE } from '../data/conversion/web-ports';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles } from './videoFiles';
 import { setVoiceFiles } from './voiceFiles';
@@ -82,12 +65,45 @@ import { androidKeystore } from '../lock/keystore-bridge';
 import { toast } from './toasts.svelte';
 import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
-import { bootStates, bootTransitions, type BootState } from './boot-state';
+import type { BootState } from './boot-state';
+import { performPlatformEffect } from './boot-platform';
+import {
+  initialBoot,
+  reduce,
+  skipSetupOutcome,
+  type BootEffect,
+  type BootEvent,
+  type BootMachine,
+  type SkipSetupResult
+} from './boot-machine';
 
-export const bootState = $state<BootState>(bootStates.booting());
+export const bootState = $state<BootState>(initialBoot().boot);
 
-function applyBootState(next: BootState): void {
-  Object.assign(bootState, next);
+let machine: BootMachine = initialBoot();
+
+/** One event in, the reducer's answer mirrored out, and whatever it asked for
+    started. Synchronous on purpose: by the time a caller's dispatch returns,
+    the screen it renders has already changed. */
+function dispatch(event: BootEvent): void {
+  const step = reduce(machine, event);
+  machine = step.machine;
+  Object.assign(bootState, machine.boot);
+  for (const effect of step.effects) void run(effect);
+}
+
+/** Any effect that throws is the boot failing. The sequences this replaced
+    each ended in a `.catch(failBoot)`; this is the same net, one layer down,
+    and it now covers the post-migration steps too. */
+async function run(effect: BootEffect): Promise<void> {
+  try {
+    await perform(effect);
+  } catch (error) {
+    dispatch({ type: 'boot-failed', message: describeError(error) });
+  }
+}
+
+function describeError(error: unknown): string {
+  return String((error as Error)?.message ?? error);
 }
 
 let started = false;
@@ -164,146 +180,10 @@ export async function restorePreviousJournal(): Promise<void> {
   location.reload();
 }
 
-/** In a demo build the passphrase machinery runs for real - keystore,
-    wrap, encrypted database - but under a fixed passphrase entered by no
-    one, so reviewers and the walkthrough suite land in the journal instead
-    of at a setup wall. Folded out of production bundles with the rest of
-    the demo (ticket 05). */
-const DEMO_PASSPHRASE = 'demo';
-
-type SkipSetupResult = 'ok' | 'needs-device-lock' | 'device-bound-unavailable';
-
 export function startBoot() {
   if (started) return;
   started = true;
-
-  /* Before anything async: the passphrase gate is about to render, and it
-     should do so in the person's theme and palette, not the defaults. This
-     used to be step 1 inside boot(), which now runs only after the gate. */
-  applyCachedBootPreferences(bootCache.read());
-
-  /* Android takes none of what follows (ticket 11). The survey below asks
-     OPFS what an earlier web install left there, and the states it can
-     return - convert, retire, unlock - are all about the web keystore and
-     the plaintext journal that predated it. A phone has neither: this is
-     the first build that runs on one. */
-  if (isAndroid()) {
-    continueBootOnAndroid();
-    return;
-  }
-
-  (async () => {
-    const passphraseKeystoreExists = await journalKeystoreExists();
-    const deviceBoundKeystoreExists = await deviceBoundJournalExists();
-    applyBootState(
-      bootTransitions.setAccessMode(
-        bootState,
-        chooseJournalAccessMode({ passphraseKeystoreExists, deviceBoundKeystoreExists })
-      )
-    );
-
-    let state = describeJournalState({
-      keystoreExists: passphraseKeystoreExists || deviceBoundKeystoreExists,
-      plaintextJournalPresent: await plaintextJournalPresent(),
-      marker: await opfsConversionMarker().read()
-    });
-
-    /* A conversion that got all the way through and was killed before its
-       last few deletes (ticket 10). Nothing here needs a data key, so it
-       happens before the gate renders rather than after someone types a
-       passphrase: ADR-0018's claim is false for as long as those files are
-       readable. */
-    if (state === 'retire') {
-      await finishRetirement(opfsConversionMarker(), removePlaintextRemnants);
-      state = describeJournalState(await surveyJournal());
-    }
-
-    if (__DEMO__) {
-      if (state === 'convert') {
-        /* A demo journal is throwaway by definition - reseeded from the
-           persona on every empty boot - so a plaintext leftover from before
-           encryption is wiped rather than converted. */
-        await wipeLocalData({
-          closeDatabase: async () => {},
-          storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
-          clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
-          clearBootCache: () => bootCache.clear()
-        });
-        state = 'first-run';
-      }
-
-      if (state === 'unlock') {
-        /* A reviewer may have changed the demo passphrase in Settings; the
-           gate is the honest fallback. */
-        try {
-          continueBoot(await unlockJournalPassphrase(DEMO_PASSPHRASE), 'passphrase');
-        } catch {
-          applyBootState(bootTransitions.toNeedsUnlock(bootState));
-        }
-        return;
-      }
-      continueBoot(await setupJournalPassphrase(DEMO_PASSPHRASE), 'passphrase');
-      return;
-    }
-
-    if (state === 'convert') {
-      /* Free space and the schema version, asked before anyone is made to
-         choose a passphrase and write it down - ticket 10 refuses clearly
-         rather than part way through, and a refusal leaves the plaintext
-         Journal exactly as it was. */
-      const precheck = await prepareConversion(webConversionPrecheckPorts(), LATEST_SCHEMA_VERSION);
-      if (!precheck.ok) {
-        applyBootState(bootTransitions.toConversionRefused(bootState, precheck));
-        return;
-      }
-      /* A keystore already there means an earlier attempt got past the
-         passphrase screen, so ask for that passphrase again rather than
-         for a new one - the one they saved is still the one. */
-      const resuming = await journalKeystoreExists();
-      applyBootState(
-        resuming
-          ? bootTransitions.toNeedsUnlock(bootState, { accessMode: 'passphrase', conversionRequired: true })
-          : bootTransitions.toNeedsSetup(bootState, { accessMode: 'passphrase', conversionRequired: true })
-      );
-      return;
-    }
-
-    const plan = describeWebBootPlan({
-      passphraseKeystoreExists,
-      deviceBoundKeystoreExists,
-      plaintextJournalPresent: false,
-      marker: null
-    });
-
-    if (plan === 'auto-unlock') {
-      try {
-        continueBoot(await unlockDeviceBoundJournal(), 'device-bound');
-      } catch (error) {
-        if (error instanceof DeviceBoundKeyUnavailableError) {
-          applyBootState(bootTransitions.toNeedsDeviceRecovery(bootState));
-          return;
-        }
-        throw error;
-      }
-      return;
-    }
-
-    applyBootState(
-      plan === 'needs-unlock'
-        ? bootTransitions.toNeedsUnlock(bootState)
-        : bootTransitions.toNeedsSetup(bootState)
-    );
-  })().catch(failBoot);
-}
-
-/** The three questions that decide what a boot is looking at, asked of the
-    files themselves (conversion.ts turns the answers into a state). */
-async function surveyJournal(): Promise<JournalSurvey> {
-  return {
-    keystoreExists: await journalKeystoreExists(),
-    plaintextJournalPresent: await plaintextJournalPresent(),
-    marker: await opfsConversionMarker().read()
-  };
+  dispatch({ type: 'started', platform: isAndroid() ? 'android' : 'web', demo: __DEMO__ });
 }
 
 /** The setup screen's submit (first run). The passphrase the person just
@@ -313,7 +193,7 @@ async function surveyJournal(): Promise<JournalSurvey> {
 export async function submitPassphraseSetup(passphrase: string): Promise<void> {
   const dataKey = await setupJournalPassphrase(passphrase);
   markUnlocked();
-  await convertThenBoot(dataKey, 'passphrase');
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase' });
 }
 
 /** The unlock screen's submit. Throws DecryptionFailedError back to the
@@ -321,9 +201,12 @@ export async function submitPassphraseSetup(passphrase: string): Promise<void> {
 export async function submitPassphraseUnlock(passphrase: string): Promise<void> {
   const dataKey = await unlockJournalPassphrase(passphrase);
   markUnlocked();
-  await convertThenBoot(dataKey, 'passphrase');
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase' });
 }
 
+/** The setup screen's "skip the passphrase" (ADR-0018). Whether the platform
+    would mint a device-bound key is the screen's answer to render, not a boot
+    transition - a refusal leaves the setup gate exactly where it was. */
 export async function submitSkipSetup(): Promise<SkipSetupResult> {
   if (isAndroid()) {
     const result = await openAndroidDataKey(androidKeystore, {
@@ -332,20 +215,17 @@ export async function submitSkipSetup(): Promise<SkipSetupResult> {
       cancel: '',
       deviceCredential: false
     });
-    if (result.kind !== 'key') {
-      return result.kind === 'refused' && result.authentication.wayForward === 'setDeviceLock'
-        ? 'needs-device-lock'
-        : 'device-bound-unavailable';
-    }
+    const outcome = skipSetupOutcome(result);
+    if (result.kind !== 'key') return outcome;
     markUnlocked();
-    continueBoot(result.dataKey, 'device-bound');
-    return 'ok';
+    dispatch({ type: 'key-obtained', dataKey: result.dataKey, accessMode: 'device-bound' });
+    return outcome;
   }
 
   try {
     const dataKey = await setupDeviceBoundJournal();
     markUnlocked();
-    continueBoot(dataKey, 'device-bound');
+    dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound' });
     return 'ok';
   } catch (error) {
     if (error instanceof DeviceBoundKeyUnavailableError) return 'device-bound-unavailable';
@@ -356,7 +236,7 @@ export async function submitSkipSetup(): Promise<SkipSetupResult> {
 export async function upgradeJournalToPassphrase(passphrase: string): Promise<void> {
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
   await addJournalPassphrase(sessionDataKey, passphrase);
-  applyBootState(bootTransitions.setAccessMode(bootState, 'passphrase'));
+  dispatch({ type: 'passphrase-added' });
   if (isAndroid()) {
     await androidKeystore.erase().catch((error) => {
       console.warn('could not erase the Android device-bound key after adding a passphrase', error);
@@ -366,120 +246,6 @@ export async function upgradeJournalToPassphrase(passphrase: string): Promise<vo
   await removeDeviceBoundJournal().catch((error) => {
     console.warn('could not remove the browser device-bound key after adding a passphrase', error);
   });
-}
-
-/** Between the passphrase and the journal, on a device that still holds a
-    plaintext one: the conversion runs to completion first (ticket 10), so
-    the app never opens anything but a Journal that has been copied whole
-    and verified. A conversion that fails says so in its own words - the
-    gate's "that passphrase is not right" would be a lie, and the
-    passphrase has already been accepted by the time this runs.
-
-    Not awaited past the conversion: continueBoot() is fire-and-forget by
-    design, and the gate only needs its submit to resolve once the screen
-    it renders has changed. */
-async function convertThenBoot(dataKey: Uint8Array<ArrayBuffer>, accessMode: JournalAccessMode): Promise<void> {
-  if (bootState.conversion === null) {
-    continueBoot(dataKey, accessMode);
-    return;
-  }
-
-  applyBootState(bootTransitions.toConverting(bootState));
-  /* The longest of the four windows an update must not land in (ticket 04):
-     a whole Journal and every photo, rewritten on a phone. The conversion
-     survives being killed and resumes, but code replaced under it mid-write
-     is not an interruption it can reason about. */
-  const converting = markJournalBusy();
-  try {
-    await runConversion(webConversionPorts(dataKey), (progress) => {
-      applyBootState(bootTransitions.updateConversionProgress(bootState, progress));
-    });
-  } catch (error) {
-    failBoot(error);
-    return;
-  } finally {
-    converting();
-  }
-
-  continueBoot(dataKey, accessMode);
-}
-
-function continueBoot(dataKey: Uint8Array<ArrayBuffer>, accessMode: JournalAccessMode) {
-  sessionDataKey = dataKey;
-  applyBootState(bootTransitions.setAccessMode(bootState, accessMode));
-  // The PRD asks for navigator.storage.persist() on first save, not on
-  // boot - but persist() is safe to call more than once and asking here
-  // covers every save path at once. Worth revisiting when the PWA ticket
-  // lands, not by adding a second call.
-  if (isAndroid()) {
-    openAndBoot(
-      createAndroidSqlite(JOURNAL_DATABASE, dataKey),
-      encryptedFileStore(appPrivatePhotoFiles(), dataKey)
-    );
-    return;
-  }
-
-  openAndBoot(
-    createEncryptedWebSqlite(JOURNAL_DATABASE, dataKey),
-    // Encrypted per file under the same data key as the database (ticket
-    // 09): whole-database encryption never reaches files outside SQLite
-    // (ADR-0020).
-    encryptedFileStore(opfsPhotoFiles(), dataKey)
-  );
-}
-
-/** The Android shell's boot (ticket 13). Where the web asks for a passphrase
-    and unwraps a keystore file with it, this asks Android Keystore, which
-    holds the wrapping key itself and will not use it until the platform says
-    somebody authenticated (ADR-0018).
-
-    A first run is silent - the wrap needs no authentication, so there is no
-    prompt about a Journal that does not exist yet - and lands in the app.
-    Every later run stops here and hands over to the gate, because the prompt
-    is Android's own UI and its words have to come from the catalogue.
-
-    The `void` is the same fire-and-forget continueBoot() is: what the caller
-    needs is that the screen has changed, and every failure below sets a
-    status rather than throwing. */
-function continueBootOnAndroid() {
-  void (async () => {
-    const passphraseKeystoreExists = await journalKeystoreExists();
-    const { hasKey } = await androidKeystore.status();
-    applyBootState(
-      bootTransitions.setAccessMode(
-        bootState,
-        chooseJournalAccessMode({
-          passphraseKeystoreExists,
-          deviceBoundKeystoreExists: hasKey
-        })
-      )
-    );
-
-    const plan = describeAndroidBootPlan({
-      passphraseKeystoreExists,
-      nativeDeviceKeyExists: hasKey,
-      plaintextJournalPresent: await androidJournalIsPlaintext(JOURNAL_DATABASE)
-    });
-
-    if (plan === 'plaintext-error') {
-      /* Rendered through i18n in +layout: this path is expected and needs a
-         user sentence, not a raw SQLite failure string. */
-      applyBootState(bootTransitions.toError(bootState, 'android-plaintext-journal'));
-      return;
-    }
-
-    if (plan === 'needs-unlock') {
-      applyBootState(bootTransitions.toNeedsUnlock(bootState));
-      return;
-    }
-
-    if (plan === 'needs-authentication') {
-      applyBootState(bootTransitions.toNeedsAuthentication(bootState));
-      return;
-    }
-
-    applyBootState(bootTransitions.toNeedsSetup(bootState));
-  })().catch(failBoot);
 }
 
 /** The Android gate's submit, and the first run's own call. Asks Keystore for
@@ -497,12 +263,12 @@ export async function openAndroidJournal(request: UnlockRequest): Promise<void> 
     /* The bridge itself failed - no plugin, no keystore, a platform that
        threw. Not a refusal with a way forward, so it goes to the boot error
        screen rather than being dressed up as one. */
-    failBoot(error);
+    dispatch({ type: 'boot-failed', message: describeError(error) });
     return;
   }
 
   if (result.kind !== 'key') {
-    applyBootState(bootTransitions.toNeedsAuthentication(bootState, result));
+    dispatch({ type: 'android-key-refused', refusal: result });
     return;
   }
 
@@ -510,20 +276,87 @@ export async function openAndroidJournal(request: UnlockRequest): Promise<void> 
      gate too, the same way a typed passphrase does on the web: this is the
      strong case the spec allows app lock to stand down for. */
   markUnlocked();
-  continueBoot(result.dataKey, 'device-bound');
+  dispatch({ type: 'key-obtained', dataKey: result.dataKey, accessMode: 'device-bound' });
 }
 
-function failBoot(error: unknown) {
-  applyBootState(bootTransitions.toError(bootState, String((error as Error)?.message ?? error)));
+/** The three effects that need a rune, an open journal or a driver this
+    module is holding. Everything else is the platform's side of the boot and
+    lives in boot-platform.ts. */
+async function perform(effect: BootEffect): Promise<void> {
+  switch (effect.type) {
+    case 'apply-cached-preferences':
+      applyCachedBootPreferences(bootCache.read());
+      return;
+
+    case 'open-journal':
+      await openAndBoot(effect.dataKey);
+      return;
+
+    case 'restore-previous-journal':
+      await restorePreviousJournal();
+      return;
+
+    /* Whether the failure screen can offer a way back. Asked of the disk
+       rather than assumed from the failure: a copy is there only if this boot
+       or an earlier one got as far as taking one, and a driver too broken to
+       answer is a driver that cannot restore either. */
+    case 'check-pre-migration-copy':
+      dispatch({
+        type: 'pre-migration-copy-checked',
+        usable:
+          openFileOps === null
+            ? false
+            : await Promise.resolve(openFileOps.preMigrationCopyIsUsable()).catch(() => false)
+      });
+      return;
+
+    case 'warn-persist-denied':
+      // Raised here rather than from an $effect in +layout.svelte, where it
+      // used to live: toast() pushes onto a $state array, and reading that
+      // array's length to push made the effect depend on what it was
+      // writing, so it re-ran itself until Svelte gave up with
+      // effect_update_depth_exceeded. It never fired while opening the
+      // database was failing outright, which is how it stayed hidden.
+      toast(
+        "This browser didn't grant persistent storage. Export backups regularly so nothing is lost to storage pressure."
+      );
+      return;
+
+    default:
+      await performPlatformEffect(effect, dispatch);
+  }
 }
 
-/** Everything both platforms do once they have a driver: the journal is
-    constructed over it, boot() runs its sequence, and the UI is handed the
-    result. Nothing below this point knows which platform it is on, which is
-    ADR-0017's seam doing its job. */
-function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
-  applyBootState(bootTransitions.toBooting(bootState));
+/** The driver and the file store this platform opens a journal with. The last
+    place either platform is named: everything past it is ADR-0017's seam,
+    where nothing knows which one it is on. */
+function journalPorts(dataKey: Uint8Array<ArrayBuffer>): { sqlite: WebSqlite; photoFiles: PhotoFileStore } {
+  if (isAndroid()) {
+    return {
+      sqlite: createAndroidSqlite(JOURNAL_DATABASE, dataKey),
+      photoFiles: encryptedFileStore(appPrivatePhotoFiles(), dataKey)
+    };
+  }
+  return {
+    sqlite: createEncryptedWebSqlite(JOURNAL_DATABASE, dataKey),
+    // Encrypted per file under the same data key as the database (ticket
+    // 09): whole-database encryption never reaches files outside SQLite
+    // (ADR-0020).
+    photoFiles: encryptedFileStore(opfsPhotoFiles(), dataKey)
+  };
+}
 
+/** Everything both platforms do once they have a data key: the journal is
+    constructed over a driver, boot() runs its sequence, and how it ended goes
+    back to the reducer as an event. */
+async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+  sessionDataKey = dataKey;
+  const { sqlite, photoFiles } = journalPorts(dataKey);
+
+  // The PRD asks for navigator.storage.persist() on first save, not on
+  // boot - but persist() is safe to call more than once and asking here
+  // covers every save path at once. Worth revisiting when the PWA ticket
+  // lands, not by adding a second call.
   const { driver, fileOps, requestPersistentStorage } = sqlite;
   openDriver = driver;
   openFileOps = fileOps;
@@ -543,7 +376,7 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
      parked until journalIsOpen(). */
   const journal = attachJournal(openJournal(driver, photoFiles));
 
-  boot({
+  const result = await boot({
     createDriver: () => driver,
     fileOps,
     requestPersistentStorage,
@@ -572,90 +405,50 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
     },
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
     scheduleHousekeeping: whenIdle
-  }).then(async (result) => {
-    if (result.phase === 'error') {
-      /* The rollback direction (ticket 04): older code has met a Journal a
-         newer build already migrated. Not the generic failure, because
-         nothing is wrong with the Journal and there is something to do about
-         it - the screen says which, in the person's language, rather than
-         printing the exception. */
-      if (result.error instanceof SchemaTooNewError) {
-        applyBootState(bootTransitions.toSchemaTooNew(bootState));
-        return;
-      }
+  });
 
-      /* A restore that was interrupted between unlinking the database and
-         writing the copy over it. Finished here rather than shown to anybody,
-         the way ticket 10's retirement is: the decision to restore was already
-         made, and this is the same operation reaching its end. Doing it once
-         and reloading terminates - what comes up is the copy's own schema,
-         which is not the empty database that got us here. */
-      if (result.error instanceof InterruptedRestoreError) {
-        await restorePreviousJournal();
-        return;
-      }
-
-      applyBootState(bootTransitions.toError(bootState, String((result.error as Error)?.message ?? result.error)));
-      /* Whether the failure screen can offer a way back. Asked of the disk
-         rather than assumed from the failure: a copy is there only if this
-         boot or an earlier one got as far as taking one, and a driver too
-         broken to answer is a driver that cannot restore either. */
-      applyBootState(
-        bootTransitions.markErrorRecoverable(
-          bootState,
-          await Promise.resolve(fileOps.preMigrationCopyIsUsable()).catch(() => false)
-        )
-      );
+  if (result.phase === 'error') {
+    if (result.error instanceof SchemaTooNewError) {
+      dispatch({ type: 'journal-schema-too-new' });
       return;
     }
-
-    const preferences = await openPreferences(result.driver, bootCache);
-    /* The demo persona (Alice, onboarded, her active preset, 150 days of
-       entries) is what makes the demo build land on a populated Home rather
-       than on onboarding. Gated on the preference table being empty rather
-       than on the journal being empty, so the demo bar's "first run" jump -
-       which empties the journal on purpose - is not undone by the next
-       reload. Dropped whole from a production build (ticket 05). */
-    if (__DEMO__ && preferences.openedEmpty()) {
-      const { clearJournal, seedPersonaJournal } = await import('../data/demo/journal-seed');
-      /* Cleared first, and the preferences written last, so an interrupted
-         seed heals itself. Writing the persona is a few thousand statements
-         through a worker, and a tab closed part-way through would otherwise
-         leave a demo that is permanently half-seeded: the preferences would
-         say it had been done, while the journal held only the oldest entries -
-         the persona writes 150 days oldest-first, so what goes missing is
-         exactly the recent data every screen shows. */
-      await clearJournal(journal);
-      await seedPersonaJournal(journal);
-      for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
-        await preferences.set(key, value);
-      }
+    if (result.error instanceof InterruptedRestoreError) {
+      dispatch({ type: 'restore-interrupted' });
+      return;
     }
-    await attachPreferences(preferences);
+    dispatch({ type: 'journal-open-failed', message: describeError(result.error) });
+    return;
+  }
 
-    /* Last, so no query runs against a half-written journal. Each of the
-       persona's entries bumps the entry version, and announcing that to
-       screens that are already mounted would re-run Home's list once per
-       seeded entry. */
-    journalIsOpen();
-
-    applyBootState(
-      bootTransitions.toReady(bootState, {
-        persistDenied: result.persistDenied,
-        journal
-      })
-    );
-
-    // Raised here rather than from an $effect in +layout.svelte, where it
-    // used to live: toast() pushes onto a $state array, and reading that
-    // array's length to push made the effect depend on what it was
-    // writing, so it re-ran itself until Svelte gave up with
-    // effect_update_depth_exceeded. It never fired while opening the
-    // database was failing outright, which is how it stayed hidden.
-    if (result.persistDenied) {
-      toast(
-        "This browser didn't grant persistent storage. Export backups regularly so nothing is lost to storage pressure."
-      );
+  const preferences = await openPreferences(result.driver, bootCache);
+  /* The demo persona (Alice, onboarded, her active preset, 150 days of
+     entries) is what makes the demo build land on a populated Home rather
+     than on onboarding. Gated on the preference table being empty rather
+     than on the journal being empty, so the demo bar's "first run" jump -
+     which empties the journal on purpose - is not undone by the next
+     reload. Dropped whole from a production build (ticket 05). */
+  if (__DEMO__ && preferences.openedEmpty()) {
+    const { clearJournal, seedPersonaJournal } = await import('../data/demo/journal-seed');
+    /* Cleared first, and the preferences written last, so an interrupted
+       seed heals itself. Writing the persona is a few thousand statements
+       through a worker, and a tab closed part-way through would otherwise
+       leave a demo that is permanently half-seeded: the preferences would
+       say it had been done, while the journal held only the oldest entries -
+       the persona writes 150 days oldest-first, so what goes missing is
+       exactly the recent data every screen shows. */
+    await clearJournal(journal);
+    await seedPersonaJournal(journal);
+    for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
+      await preferences.set(key, value);
     }
-  });
+  }
+  await attachPreferences(preferences);
+
+  /* Last, so no query runs against a half-written journal. Each of the
+     persona's entries bumps the entry version, and announcing that to
+     screens that are already mounted would re-run Home's list once per
+     seeded entry. */
+  journalIsOpen();
+
+  dispatch({ type: 'journal-opened', journal, persistDenied: result.persistDenied });
 }
