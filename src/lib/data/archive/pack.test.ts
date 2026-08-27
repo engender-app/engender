@@ -172,6 +172,17 @@ test('a lab result survives the encrypted archive and restores into another jour
   );
 });
 
+/* The floor added for phase 5 security ticket 02 sits on the two fields
+   that choose a password, never on the one that opens an archive: an
+   archive made before that floor existed has to keep opening. */
+test('an archive made with a password under the floor still opens', async () => {
+  const { contents } = await contentsOf();
+
+  const { payload } = await unpack(await pack(contents, 'four'), 'four');
+
+  assert.deepEqual(payload.journal, contents.journal);
+});
+
 test('a wrong password is rejected cleanly, and says only that', async () => {
   const { contents } = await contentsOf();
   const archive = await pack(contents);

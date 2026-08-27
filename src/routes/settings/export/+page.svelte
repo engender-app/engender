@@ -6,6 +6,8 @@
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { applyPortablePreferences, prefs } from '$lib/data/prefs/store.svelte';
   import { openArchive } from '$lib/data/archive/pack';
+  import { archivePasswordProblem } from '$lib/data/archive/password';
+  import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { CorruptArchiveError, UnsupportedArchiveError } from '$lib/data/archive/container';
   import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
   import { verifyArchive } from '$lib/data/journal/restore';
@@ -64,9 +66,22 @@
     json: m.exp_done_json
   };
 
+  /* The floor lives in archive/password.ts and the wording lives here:
+     each caller has its own sentence for an empty field, and all of them
+     share the journal passphrase's too-short line rather than inventing a
+     second one (phase 5 security ticket 02). */
+  function expPassRefusal(whenMissing: () => string): string | null {
+    const problem = archivePasswordProblem(expPass);
+    if (problem === null) return null;
+    return problem === 'missing'
+      ? whenMissing()
+      : m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) });
+  }
+
   function openExportWarning() {
-    if (!expPass) {
-      toast(m.exp_password_first());
+    const refusal = expPassRefusal(m.exp_password_first);
+    if (refusal) {
+      toast(refusal);
       return;
     }
     exportWarningOpen = true;
@@ -114,8 +129,9 @@
 
   async function setAutoEnabled(enabled: boolean) {
     if (enabled && !autoHasPassword) {
-      if (!expPass) {
-        toast(m.exp_auto_password_needed());
+      const refusal = expPassRefusal(m.exp_auto_password_needed);
+      if (refusal) {
+        toast(refusal);
         prefs.autoExportEnabled = false;
         return;
       }
@@ -150,8 +166,9 @@
 
   async function backupNowToDestination() {
     if (!android || autoBusy) return;
-    if (!expPass) {
-      toast(m.exp_password_first());
+    const refusal = expPassRefusal(m.exp_password_first);
+    if (refusal) {
+      toast(refusal);
       return;
     }
 
