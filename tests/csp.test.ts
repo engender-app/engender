@@ -26,13 +26,20 @@ import { expect, test } from 'vitest';
 const DOCUMENT = 'build/index.html';
 const NGINX_HEADERS = 'deploy/nginx/journal-headers.conf';
 
-/** The directives a `<meta>` element cannot deliver: the browser parses the
-    policy but ignores these three, so the header is their only home. Only
-    frame-ancestors is in this app's set; X-Frame-Options: DENY says the same
-    thing to anything old enough not to read it. */
+/** The three directives CSP says a `<meta>` element cannot deliver: a browser
+    parses the policy and ignores these, so a header is their only home. All
+    three are listed because the rule is the spec's rather than this app's,
+    and only frame-ancestors is in the header today - X-Frame-Options: DENY
+    says the same thing to anything old enough not to read it. */
 const HEADER_ONLY = ['frame-ancestors', 'report-uri', 'sandbox'];
 
 /** What the built document's meta policy must say, hashes aside.
+
+    Spelled out rather than derived from the header, even though the last test
+    below asserts the two agree. Derived, an edit that dropped connect-src from
+    both policies at once would keep every test passing, and dropping a
+    directive from both is exactly the mistake worth catching - the two files
+    are edited by the same hand.
 
     `script-src` is the one directive whose two policies differ on purpose:
     the header keeps 'unsafe-inline' because it cannot know the hashes and a
@@ -123,6 +130,11 @@ test('the meta CSP carries the whole directive set, not the script half alone', 
   }
 });
 
+/* This one reaches into deploy/nginx/journal-headers.conf, which no other node
+   test does. The reason is the defect it guards: the two policies drifting
+   apart is what left Android with the script half alone for two releases. A
+   deliberate change to the header is therefore a change to both places and to
+   EXPECTED above - that this test fails first is the intent, not a snag. */
 test('the two policies name the same directives, so neither platform gets less', () => {
   const meta = directives(metaPolicy(html()));
   const header = directives(headerPolicy());

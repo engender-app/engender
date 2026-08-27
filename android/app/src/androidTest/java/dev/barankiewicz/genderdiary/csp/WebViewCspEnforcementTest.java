@@ -1,19 +1,21 @@
 package dev.barankiewicz.genderdiary.csp;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import dev.barankiewicz.genderdiary.MainActivity;
+import dev.barankiewicz.genderdiary.webview.WebViewProbe;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Whether the Capacitor shell enforces the document's Content Security Policy
@@ -38,12 +40,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>The other half is that the policy is not too narrow. blob: URLs are how
  * three things in this app work - a photo thumbnail decrypted into memory, a
  * voice note or timelapse fed to its player, and the OCR worker tesseract.js
- * constructs - and each is loaded here through the real policy. A too-narrow
- * directive shows up as a violation naming it.
+ * constructs - and each is loaded here through the real policy. What this can
+ * and cannot say about them is worth being exact about: the image really
+ * decodes, and the worker really posts a message back, but the media elements
+ * are handed bytes that are not media, so they end in a decode error either
+ * way. For those two the claim is only that the policy did not refuse the
+ * source. Playback itself is the walkthrough suite's, against the same
+ * document in a real browser.
  *
  * <p>evaluateJavascript is the probe vehicle. It runs outside the page's
- * script-src, which is why it can install the listener at all;
- * WebViewPrintAdapterTest drives the bridge the same way.
+ * script-src, which is why it can install the listener at all.
  */
 @RunWith(AndroidJUnit4.class)
 public class WebViewCspEnforcementTest {
@@ -56,11 +62,10 @@ public class WebViewCspEnforcementTest {
      * nginx header stays its only home and nothing frames this WebView.
      * tests/csp.test.ts pins the sources; this pins that they arrive here.
      */
-    private static final String[] REQUIRED_DIRECTIVES = {
+    private static final List<String> REQUIRED_DIRECTIVES = Arrays.asList(
         "default-src", "base-uri", "object-src", "frame-src", "form-action",
         "script-src", "style-src", "img-src", "font-src", "connect-src",
-        "worker-src", "manifest-src", "media-src"
-    };
+        "worker-src", "manifest-src", "media-src");
 
     /** A 1x1 transparent PNG, so the image the blob carries really decodes. */
     private static final String ONE_PIXEL_PNG_BASE64 =
@@ -69,43 +74,42 @@ public class WebViewCspEnforcementTest {
     @Test
     public void theShellEnforcesTheDocumentsPolicyAndStillAllowsWhatTheAppNeeds() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            WebViewProbe webView = new WebViewProbe(scenario, TIMEOUT_SECONDS);
+
             // The app's own scripts ran under the policy, so boot is not blocked by it.
-            awaitTrue(scenario, "!!document.querySelector('[data-app-root]')");
+            webView.awaitTrue("!!document.querySelector('[data-app-root]')");
 
-            evaluate(scenario, probe());
-            assertEquals(
-                "the probe never settled", "true", awaitValue(scenario, "!!window.__csp.done", "true"));
+            webView.evaluate(probe());
+            assertEquals("the probe never settled", "true", webView.awaitValue("!!window.__csp.done", "true"));
 
-            String policy = string(evaluate(scenario, "window.__csp.policy"));
-            assertTrue("the document in the shell carries no meta CSP at all", policy != null);
+            String policy = WebViewProbe.string(webView.evaluate("window.__csp.policy"));
+            assertNotNull("the document in the shell carries no meta CSP at all", policy);
+            List<String> missing = new ArrayList<>();
             for (String directive : REQUIRED_DIRECTIVES) {
-                assertTrue(
-                    "the shell's document is missing " + directive + ", policy was: " + policy,
-                    policy.contains(directive));
+                if (!directiveNames(policy).contains(directive)) missing.add(directive);
             }
+            assertTrue(
+                "the shell's document is missing " + missing + ", policy was: " + policy, missing.isEmpty());
 
             // Enforcement. A dead policy lets the request leave and reports nothing.
             assertEquals(
-                "an off-origin fetch was not refused",
-                "\"refused\"",
-                evaluate(scenario, "window.__csp.offOrigin"));
+                "an off-origin fetch was not refused", "\"refused\"", webView.evaluate("window.__csp.offOrigin"));
             assertEquals(
                 "no connect-src violation, so the meta policy is parsed but not enforced",
                 "true",
-                evaluate(scenario, "window.__csp.violations.some(function(v){return v.directive==='connect-src'})"));
+                webView.evaluate("window.__csp.violations.some(function(v){return v.directive==='connect-src'})"));
 
             // Not too narrow: the app's own assets, and the three blob: cases.
             assertEquals(
                 "connect-src refused the app's own bundled assets, which is OCR's language data",
                 "\"allowed\"",
-                evaluate(scenario, "window.__csp.sameOrigin"));
-            assertEquals("a blob: image was refused", "\"load\"", evaluate(scenario, "window.__csp.image"));
-            assertEquals("a blob: worker was refused", "\"message\"", evaluate(scenario, "window.__csp.worker"));
+                webView.evaluate("window.__csp.sameOrigin"));
+            assertEquals("a blob: image was refused", "\"load\"", webView.evaluate("window.__csp.image"));
+            assertEquals("a blob: worker was refused", "\"message\"", webView.evaluate("window.__csp.worker"));
             assertEquals(
                 "a blob: media source raised a violation",
                 "0",
-                evaluate(
-                    scenario,
+                webView.evaluate(
                     "window.__csp.violations.filter(function(v){"
                         + "return v.directive==='media-src'||v.directive==='img-src'||v.directive==='worker-src'})"
                         + ".length"));
@@ -113,7 +117,22 @@ public class WebViewCspEnforcementTest {
     }
 
     /**
-     * Installs a violation listener, then exercises the four cases and sets
+     * The directive names a policy declares. Parsed rather than searched for as
+     * substrings, so a name that only appears inside another directive's source
+     * list does not read as present.
+     */
+    private static List<String> directiveNames(String policy) {
+        List<String> names = new ArrayList<>();
+        for (String part : policy.split(";")) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) continue;
+            names.add(trimmed.split("\\s+")[0]);
+        }
+        return names;
+    }
+
+    /**
+     * Installs a violation listener, then exercises the cases and sets
      * `window.__csp.done`. One string because evaluateJavascript takes one.
      */
     private static String probe() {
@@ -166,48 +185,5 @@ public class WebViewCspEnforcementTest {
             + "});"
             + "return 'installed';"
             + "})()";
-    }
-
-    /** evaluateJavascript returns JSON, so a string arrives quoted or as `null`. */
-    private static String string(String json) {
-        if (json == null || "null".equals(json)) return null;
-        return json.startsWith("\"") ? json.substring(1, json.length() - 1) : json;
-    }
-
-    private static void awaitTrue(ActivityScenario<MainActivity> scenario, String expression)
-        throws InterruptedException {
-        assertEquals("never became true: " + expression, "true", awaitValue(scenario, expression, "true"));
-    }
-
-    /** Polls `expression` until it equals `wanted`, then returns what it last saw. */
-    private static String awaitValue(ActivityScenario<MainActivity> scenario, String expression, String wanted)
-        throws InterruptedException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
-        String seen = null;
-        while (System.nanoTime() < deadline) {
-            seen = evaluate(scenario, expression);
-            if (wanted.equals(seen)) return seen;
-            Thread.sleep(250);
-        }
-        return seen;
-    }
-
-    private static String evaluate(ActivityScenario<MainActivity> scenario, String expression)
-        throws InterruptedException {
-        AtomicReference<String> value = new AtomicReference<>();
-        CountDownLatch evaluated = new CountDownLatch(1);
-        scenario.onActivity(
-            activity ->
-                activity
-                    .getBridge()
-                    .getWebView()
-                    .evaluateJavascript(
-                        expression,
-                        result -> {
-                            value.set(result);
-                            evaluated.countDown();
-                        }));
-        if (!evaluated.await(10, TimeUnit.SECONDS)) throw new AssertionError("the WebView stopped answering");
-        return value.get();
     }
 }
