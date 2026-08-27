@@ -57,6 +57,12 @@ describe("kit.css's cross-block spacing", () => {
     expect(kit).toMatch(/\+\s*:is\(\[data-kit-surface\], \.skeleton-stack\)\s*\{[^}]*margin-top/);
   });
 
+  it('gives a chip row or photo strip under a surface its gap by attribute too', () => {
+    expect(kit).toMatch(
+      /\[data-kit-surface\]\s*\+\s*:is\(\.tag-row, \.wrapped-photos, \.otd-photos\)\s*\{[^}]*margin-top/
+    );
+  });
+
   it('gives a note the two-things gap, not a control gap', () => {
     // This is the rule screens.css asked for twice and never got, because
     // kit.css is imported after it and matched at the same specificity. It
@@ -74,15 +80,14 @@ describe("kit.css's cross-block spacing", () => {
   });
 
   it('no longer enumerates the full surface set anywhere', () => {
-    // The two rules this ticket replaced each carried the whole set by name,
-    // in three places between them. What's left in kit.css is one rule going
-    // the other way (a chip row or photo strip *under* a surface), and its
-    // list is a deliberate subset - kit-tiles, kit-notice, kit-strip and
-    // kit-moods are absent because nothing puts a tag row under them.
-    // Swapping that one to [data-kit-surface] would hand those four a gap
-    // they don't have today, so it stays a list and stays out of scope.
+    // The two rules ticket 41 replaced each carried the whole set by name,
+    // in three places between them. Ticket 43 closed the last one - the
+    // chip-row/photo-strip-under-a-surface rule above - so no spacing
+    // selector in kit.css names a surface class on its lead side any more.
     const fullSet = /\.kit-chart,\s*\.kit-list,\s*\.kit-tiles,\s*\.kit-notice/;
     expect(kit).not.toMatch(fullSet);
+    const tagRowLead = /\.kit-chart,\s*\.kit-list,\s*\.kit-day,\s*\.wrapped-figure-list/;
+    expect(kit).not.toMatch(tagRowLead);
   });
 });
 
