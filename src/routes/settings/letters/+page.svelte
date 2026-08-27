@@ -26,12 +26,12 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -68,7 +68,6 @@
     remove: (id) => journal.letters.deleteLetter(id),
     findById: (id) => letters.find((letter) => letter.id === id)
   });
-  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
@@ -172,16 +171,16 @@
     {/if}
   </Sheet>
 
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.letters_delete_sheet()}
-    question={deleteTarget ? m.letters_delete_q() : ''}
-    hint={m.letters_delete_hint()}
-    confirmLabel={m.letters_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-letter': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
+  <RecordSheet
+    {record}
+    handle="letter"
+    confirm={{
+      title: m.letters_delete_sheet(),
+      question: () => m.letters_delete_q(),
+      hint: () => m.letters_delete_hint(),
+      confirmLabel: m.letters_delete(),
+      cancelLabel: m.keep_it()
+    }}
   />
 </div>
 

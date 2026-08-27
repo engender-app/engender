@@ -7,8 +7,8 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import type { Affirmation } from '$lib/data/types';
 
   let language = $state<'en' | 'pl'>(getLocale() === 'pl' ? 'pl' : 'en');
@@ -25,7 +25,6 @@
     remove: (id) => journal.affirmations.deleteLine(id),
     findById: (id) => vocabulary.affirmations.find((a) => a.id === id)
   });
-  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
@@ -138,14 +137,14 @@
     {/if}
   </Sheet>
 
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.affirmations_delete_sheet()}
-    question={deleteTarget ? m.affirmations_delete_q() : ''}
-    confirmLabel={m.affirmations_delete_confirm()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
+  <RecordSheet
+    {record}
+    handle="affirmation"
+    confirm={{
+      title: m.affirmations_delete_sheet(),
+      question: () => m.affirmations_delete_q(),
+      confirmLabel: m.affirmations_delete_confirm(),
+      cancelLabel: m.keep_it()
+    }}
   />
 </div>

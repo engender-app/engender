@@ -29,11 +29,11 @@
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -107,7 +107,6 @@
     remove: (id) => journal.tryouts.deletePhoto(id),
     findById: (id) => photos.find((p) => p.id === id)
   });
-  let photoDeleteTarget = $derived(photoRecord.deleteTarget);
 
   async function storePhoto(photo: NormalizedPhoto | null) {
     if (isNew || !photo) return;
@@ -183,7 +182,6 @@
     remove: (id) => journal.feltSense.remove(id),
     findById: (id) => feeling.find((f) => f.id === id)
   });
-  let feelingDeleteTarget = $derived(feelingRecord.deleteTarget);
   /* One example per kind. Name and pronouns had their own and the other four
      shared "a short name for it", so moving between Style, Garment, Makeup
      and Presentation step changed the highlight and nothing else - which
@@ -374,28 +372,28 @@
     </ReadGate>
   {/if}
 
-  <ConfirmDeleteSheet
-    open={feelingDeleteTarget !== null}
-    title={m.tryout_feeling_delete_sheet()}
-    question={m.tryout_feeling_delete_q()}
-    hint={m.tryout_feeling_delete_hint()}
-    confirmLabel={m.tryout_feeling_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-feeling': '' }}
-    onConfirm={feelingRecord.confirmDelete}
-    onCancel={feelingRecord.cancelDelete}
+  <RecordSheet
+    record={feelingRecord}
+    handle="feeling"
+    confirm={{
+      title: m.tryout_feeling_delete_sheet(),
+      question: () => m.tryout_feeling_delete_q(),
+      hint: () => m.tryout_feeling_delete_hint(),
+      confirmLabel: m.tryout_feeling_delete(),
+      cancelLabel: m.keep_it()
+    }}
   />
 
-  <ConfirmDeleteSheet
-    open={photoDeleteTarget !== null}
-    title={m.tryout_photo_delete_sheet()}
-    question={m.tryout_photo_delete_q()}
-    hint={m.tryout_photo_delete_hint()}
-    confirmLabel={m.tryout_photo_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-tryout-photo': '' }}
-    onConfirm={photoRecord.confirmDelete}
-    onCancel={photoRecord.cancelDelete}
+  <RecordSheet
+    record={photoRecord}
+    handle="tryout-photo"
+    confirm={{
+      title: m.tryout_photo_delete_sheet(),
+      question: () => m.tryout_photo_delete_q(),
+      hint: () => m.tryout_photo_delete_hint(),
+      confirmLabel: m.tryout_photo_delete(),
+      cancelLabel: m.keep_it()
+    }}
   />
 
   <PhotoAlignmentReview
