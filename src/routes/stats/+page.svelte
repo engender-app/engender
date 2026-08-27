@@ -52,6 +52,7 @@
   import BarRows from '$lib/components/kit/BarRows.svelte';
   import type { BarRow } from '$lib/components/kit/barRow';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import { metricPickerOptions } from '$lib/components/kit/chartPickerOptions';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Distribution from '$lib/components/kit/Distribution.svelte';
   import PairedDots from '$lib/components/kit/PairedDots.svelte';
@@ -108,7 +109,7 @@
   let anchorDuration = $derived(anchor ? fmtDuration(calendarDuration(anchor.epochDay, today)) : null);
 
   let metrics = $derived(vocabulary.metric.options);
-  let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
+  let metricOptions = $derived(metricPickerOptions(metrics));
   let shown = $derived(vocabulary.metric);
 
   let streakQuery = liveQuery((j) => j.stats.streak(today));

@@ -56,7 +56,7 @@
      beat; with the preset gone the names are all there is to say, and they
      are also the only way to see the set without opening the sheet. */
   let tickedNames = $derived(vocabulary.activeDimensions.map((d) => d.name).join(', '));
-  let metricName = $derived(vocabulary.metricName);
+  let metricName = $derived(vocabulary.metric.name);
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
 
   /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
