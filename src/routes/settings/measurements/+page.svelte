@@ -31,11 +31,11 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -125,8 +125,6 @@
     remove: (id) => journal.measurements.deleteMeasurement(id),
     findById: (id) => measurements.find((r) => r.id === id)
   });
-  let editor = $derived(record.editor);
-  let deleteTarget = $derived(record.deleteTarget);
   let manageOpen = $state(false);
   let newTypeName = $state('');
 
@@ -242,12 +240,25 @@
     {/snippet}
   </ReadGate>
 
-  <Sheet open={editor !== null} title={editor?.id ? m.measurement_edit_sheet() : m.measurement_new_sheet()} onClose={() => (record.editor = null)}>
-    {#if editor}
-      <h3>{editor.id ? m.measurement_edit_sheet() : m.measurement_new_sheet()}</h3>
+  <RecordSheet
+    {record}
+    handle="measurement"
+    newTitle={m.measurement_new_sheet()}
+    editTitle={m.measurement_edit_sheet()}
+    saveLabel={m.measurement_save()}
+    deleteLabel={m.measurement_delete()}
+    confirm={{
+      title: m.measurement_delete_sheet(),
+      question: (mr) => m.measurement_delete_q({ type: vocabulary.measurementTypeName(mr.type) }),
+      hint: () => m.measurement_delete_hint(),
+      confirmLabel: m.measurement_delete(),
+      cancelLabel: m.keep_it()
+    }}
+  >
+    {#snippet fields(editor)}
       <div class="field">
         <span class="field-label">{m.measurement_type_label()}</span>
-        <Segmented name={m.measurement_type_label()} options={typeOptions} value={editor.type} onChange={(v) => (editor!.type = v)} />
+        <Segmented name={m.measurement_type_label()} options={typeOptions} value={editor.type} onChange={(v) => (editor.type = v)} />
       </div>
       <div class="field">
         <label class="field-label" for="measurement-date">{m.measurement_date_label()}</label>
@@ -267,30 +278,12 @@
               { value: 'in', label: m.measurement_unit_in() }
             ]}
             value={editor.unit}
-            onChange={(v) => (editor!.unit = v)}
+            onChange={(v) => (editor.unit = v)}
           />
         </div>
       </div>
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-measurement onclick={record.save}><span>{m.measurement_save()}</span></button>
-        {#if editor.id}
-          <button class="btn btn-ghost" data-delete-measurement onclick={() => record.askToDelete()}><span>{m.measurement_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
-
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.measurement_delete_sheet()}
-    question={deleteTarget ? m.measurement_delete_q({ type: vocabulary.measurementTypeName(deleteTarget.type) }) : ''}
-    hint={m.measurement_delete_hint()}
-    confirmLabel={m.measurement_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-measurement': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
-  />
+    {/snippet}
+  </RecordSheet>
 
   <Sheet open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.measurement_manage_types()}</h3>
