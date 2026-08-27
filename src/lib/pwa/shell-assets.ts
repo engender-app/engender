@@ -1,5 +1,9 @@
-/* Which of the files in static/ belong to the offline shell, and which one
-   directory does not (phase 5 performance ticket 01).
+/* What the offline shell is made of: which files in static/ belong to it,
+   which one directory does not, and what the cache holding them is called
+   (phase 5 performance ticket 01).
+
+   The cache name is here rather than in the worker because two sides delete by
+   it, and only one of them is the worker.
 
    Everything in static/ is shell - the manifests, the icons, the woff2 faces -
    because the app reaches for all of it on the way to its first paint. The OCR
