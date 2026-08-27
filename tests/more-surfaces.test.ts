@@ -1,6 +1,11 @@
 /* The rules the More hub keeps after the rebuild (phase 5 ticket 24), at the
    level a screen's source can be held to - mirrors home-surfaces.test.ts,
-   which is where this shape of test started. */
+   which is where this shape of test started.
+
+   Greps by design (ticket 08): the hub's rules are its row list and the
+   surfaces it may not reach for, and both are questions about what is and
+   is not in the file. Nothing here stands in for a rule that could be
+   called instead. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

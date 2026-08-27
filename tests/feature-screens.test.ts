@@ -8,7 +8,14 @@
    The list below is SCREENS.md's own: the 22 hub rows, the three reached
    only from inside a feature screen, and the tryout detail. It is written
    out rather than globbed, because a screen dropped from the glob and a
-   screen dropped from the redesign look identical to a glob. */
+   screen dropped from the redesign look identical to a glob.
+
+   Greps by design (ticket 08). The question this file asks 26 times is
+   whether a screen still reaches for the old vocabulary, which is a
+   negative over its source and has no call form. Where one of these
+   screens held a rule instead of markup it has since moved out: the
+   archive failure kinds, the chart's padded scale and the personal
+   effect's source tier are all called from their own tests now. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

@@ -9,7 +9,17 @@
    the walkthrough, a preference gate collapsed into one condition.
 
    The list of card surfaces is the reason spec 08 exists. Home could render
-   twelve at once. */
+   twelve at once.
+
+   What is left here is greps, and deliberately so (ticket 08). A class
+   that may not appear, an import that has to be there, a handle the
+   walkthrough grips: those are negatives and wirings over a file, and
+   there is no call that answers them. The rules Home used to state inline
+   are not here any more - the wordmark's swap is
+   disguise/identity.test.ts's and the area-to-stripe table is a value this
+   file reads, because an assertion that matches source text passes on
+   broken behaviour that keeps the string and fails on a correct refactor
+   that moves it. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

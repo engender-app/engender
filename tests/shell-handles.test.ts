@@ -12,6 +12,11 @@ import { describe, expect, it } from 'vitest';
    then breaks silently the next time that class is restyled - which is the
    failure ADR-0029 exists to stop.
 
+   A handle that must exist is the textbook case for a grep (ticket 08):
+   it is a fact about a file, and the flow that depends on it fails in a
+   browser twenty minutes later as an anonymous timeout. So this stays a
+   source match on purpose.
+
    What is checked is the chrome. Screen-level controls are out of scope
    here and belong to their own screens and tickets - with one exception
    that is worth naming rather than leaving to be discovered: the shell's

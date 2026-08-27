@@ -8,7 +8,13 @@
    strips every <Sheet>...</Sheet> block first, the same way the script
    block is stripped. The scales sheet is the exception and is on the kit
    already - phase 5 ticket 35 put the checklist there, and it is the same
-   component the first run draws. */
+   component the first run draws.
+
+   Greps by design (ticket 08): every assertion here is a class that may
+   not appear or a component that has to, which is a negative or a wiring
+   over a file rather than a rule with a return value. Anything on this
+   screen that decides something lives in a module with a test that calls
+   it. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

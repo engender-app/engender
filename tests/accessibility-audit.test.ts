@@ -1,3 +1,14 @@
+/* The accessibility seams that are facts about a file rather than
+   behaviour with a return value: a chart carrying its aria-label, a
+   control keeping its label association, the shell writing the
+   accessibility attributes it promises to write.
+
+   Greps by design (ticket 08). Each of these is a construct that either
+   appears in a source file or does not, and what breaks when one goes
+   missing is silent - a screen reader reads nothing where a label was.
+   Nothing here stands in for a rule that could be moved into a module and
+   called; where the repo found one of those it moved it. */
+
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
