@@ -9,7 +9,9 @@
 
    The timeout is a ceiling, not a delay: a page that stays busy would
    otherwise never run the work at all, and housekeeping that only happens on
-   idle machines is housekeeping that does not happen. */
+   idle machines is housekeeping that does not happen. Where the callback is
+   missing the same number becomes a plain delay, which is the fallback's whole
+   job - be late rather than land on top of the first screen. */
 
 interface IdleWindow {
   requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
@@ -19,7 +21,9 @@ interface IdleWindow {
 const IDLE_TIMEOUT_MS = 3000;
 
 export function whenIdle(run: () => void): void {
-  const schedule = (globalThis as IdleWindow).requestIdleCallback;
-  if (schedule) schedule(() => run(), { timeout: IDLE_TIMEOUT_MS });
+  // Called as a method rather than through a saved reference: a detached
+  // platform function is an illegal invocation in some engines.
+  const idle = globalThis as IdleWindow;
+  if (idle.requestIdleCallback) idle.requestIdleCallback(() => run(), { timeout: IDLE_TIMEOUT_MS });
   else setTimeout(run, IDLE_TIMEOUT_MS);
 }
