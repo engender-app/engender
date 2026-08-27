@@ -74,7 +74,12 @@ jobs:
         run: |
           mkdir -p dist
           node scripts/android-version.mjs "${{ steps.version.outputs.value }}" > dist/android-version.env
-          cat dist/android-version.env >> "$GITHUB_ENV"
+          cat dist/android-version.env
+          # android-version.mjs prints ANDROID_VERSION_CODE; build.gradle reads
+          # GENDER_DIARY_VERSION_CODE (GENDER_DIARY_VERSION is already set from
+          # the tag above, and matches ANDROID_VERSION_NAME by construction).
+          version_code="$(grep '^ANDROID_VERSION_CODE=' dist/android-version.env | cut -d= -f2)"
+          echo "GENDER_DIARY_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
 
       - name: Materialize Android signing key in the protected environment
         env:
