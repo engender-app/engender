@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Phase 5 security ticket 01 (F-02). The second half of turning the
+     platform's backup service off, and the half android:allowBackup does
+     not reach.
+
+     From Android 12 onwards allowBackup="false" stops cloud backup and
+     nothing else: device-to-device transfer keeps taking the app's private
+     directory unless these rules say otherwise, and the app targets 36. So
+     both sections exclude every domain rather than one of them - what would
+     leave here is the WebView's localStorage draft, the reminder titles and
+     the backup destination's label, in plaintext, on a schedule nobody
+     chose.
+
+     Every domain by name rather than "root" alone: the domains are
+     addressed separately by the backup service, and a list that says all of
+     them cannot be read as covering only the top directory. The two
+     sections repeat each other because the schema gives no way to say it
+     once, so a domain added here has to be added twice - the test in
+     tests/android-manifest-backup.test.ts checks both lists rather than one. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>
