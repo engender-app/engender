@@ -82,6 +82,16 @@ describe('OcrMachine – success path', () => {
     expect(m.state.tag).toBe('picking');
   });
 
+  test('onStateChange fires with every transition, not just the object read back from .state', () => {
+    const seen: string[] = [];
+    const m = createOcrMachine(imageSourceThat(null), recognizerThat(''), saverWith(), (state) =>
+      seen.push(state.tag)
+    );
+    m.open();
+    m.close();
+    expect(seen).toEqual(['picking', 'idle']);
+  });
+
   test('full success path ends in saved with correct count', async () => {
     const saver = saverWith();
     const m = createOcrMachine(
