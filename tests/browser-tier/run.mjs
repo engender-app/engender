@@ -426,6 +426,18 @@ try {
   if (r.keystoreRoundTrips) ok('the keystore file round-trips: unlock returns the same data key that was created');
   else fail('the keystore file round-trips', 'unlocked key differs from the created one');
 
+  // F-08 (ticket 04): the web database cipher is pinned rather than left to
+  // sqlite3mc's compiled default.
+  if (r.cipher === 'chacha20') ok(`the web database cipher is pinned explicitly (${r.cipher})`);
+  else fail('the web database cipher is pinned explicitly', `got ${JSON.stringify(r.cipher)}`);
+
+  // F-08's compatibility risk: a journal written under sqlite3mc's implicit
+  // cipher default - what every journal on disk was written under before
+  // this ticket - still opens now that the cipher is pinned to chacha20.
+  if (r.cipherCompat?.cipher === 'chacha20' && r.cipherCompat?.readBack === 'sentinel-cipher-compat-8420')
+    ok('a database written under the pre-pin implicit cipher default still opens under the pinned cipher');
+  else fail('a database written under the implicit cipher default still opens pinned', JSON.stringify(r.cipherCompat));
+
   if (r.searchHitsWhileOpen >= 1) ok(`FTS5 searches the encrypted journal while it is open (${r.searchHitsWhileOpen} hits)`);
   else fail('FTS5 searches the encrypted journal while it is open', `got ${r.searchHitsWhileOpen} hits`);
 
