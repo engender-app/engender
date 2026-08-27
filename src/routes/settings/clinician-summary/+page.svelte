@@ -51,6 +51,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -95,6 +96,16 @@
     return null;
   };
 
+  const doseHeadline = (dose: DoseEvent) =>
+    [`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`, dose.status !== 'taken' && statusLabel(dose.status)]
+      .filter(Boolean)
+      .join(' · ');
+
+  const doseDetailLine = (dose: DoseEvent) =>
+    [whenOf(dose), siteOf(dose), isInjectionDose(dose) && dose.vehicle && vehicleLabel(dose.vehicle)]
+      .filter(Boolean)
+      .join(' · ');
+
   const labContextLine = (r: LabResult) => [r.timing ? labTimingLabel(r.timing) : '', r.provider.trim()].filter(Boolean).join(' · ');
 
   /* The rows for each registered section, looked up by the same key the
@@ -124,14 +135,11 @@
   {#if s.regimenEpisodes.length}
     <div class="section-block"><ListCard>
       {#each s.regimenEpisodes as episode (episode.id)}
-        <div class="kit-row is-static">
-          <span class="kit-row-text">
-            <span class="kit-row-title">{episode.drug}</span>
-            <span class="kit-row-sub">
-              {episode.dose} {episode.doseUnit} · {episode.route} · {episode.interval} · {episodeRangeLabel(episode.endEpochDay, episode.startEpochDay)}
-            </span>
-          </span>
-        </div>
+        <ListRow
+          static
+          title={episode.drug}
+          subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${episodeRangeLabel(episode.endEpochDay, episode.startEpochDay)}`}
+        />
       {/each}
       </ListCard>
     </div>
@@ -144,20 +152,7 @@
   {#if s.doses.length}
     <div class="section-block"><ListCard>
       {#each s.doses as dose (dose.id)}
-        {@const site = siteOf(dose)}
-        <div class="kit-row is-static">
-          <span class="kit-row-text">
-            <span class="kit-row-title">
-              {dose.dose} {dose.doseUnit} · {routeLabel(dose.route)}
-              {#if dose.status !== 'taken'}· {statusLabel(dose.status)}{/if}
-            </span>
-            <span class="kit-row-sub">
-              {whenOf(dose)}
-              {#if site}· {site}{/if}
-              {#if isInjectionDose(dose) && dose.vehicle}· {vehicleLabel(dose.vehicle)}{/if}
-            </span>
-          </span>
-        </div>
+        <ListRow static title={doseHeadline(dose)} subtitle={doseDetailLine(dose)} />
       {/each}
       </ListCard>
     </div>
@@ -169,6 +164,9 @@
 {#snippet labResultRows(s: ClinicianSummary)}
   {#if s.labResults.length}
     <div class="section-block"><ListCard>
+      <!-- Hand-rolled rather than `<ListRow static>` (ticket 40): the title
+           carries markup of its own - the unit set in muted small beside the
+           value - and a ListRow's title is a string. -->
       {#each s.labResults as result (result.id)}
         {@const context = labContextLine(result)}
         <div class="kit-row is-static">
@@ -195,14 +193,11 @@
   {#if s.exposure.doseTotals.length}
     <div class="section-block"><ListCard>
       {#each s.exposure.doseTotals as t (`${t.drug}-${t.route}-${t.doseUnit}`)}
-        <div class="kit-row is-static">
-          <span class="kit-row-text">
-            <span class="kit-row-title">{t.drug}</span>
-            <span class="kit-row-sub">
-              {m.exposure_dose_total_sub({ route: routeLabel(t.route), total: String(t.total), unit: t.doseUnit })}
-            </span>
-          </span>
-        </div>
+        <ListRow
+          static
+          title={t.drug}
+          subtitle={m.exposure_dose_total_sub({ route: routeLabel(t.route), total: String(t.total), unit: t.doseUnit })}
+        />
       {/each}
       </ListCard>
     </div>
@@ -214,10 +209,9 @@
   {#if s.exposure.routeDays.length}
     <div class="section-block"><ListCard>
       {#each s.exposure.routeDays as r (r.route)}
-        <div class="kit-row is-static">
-          <span class="kit-row-text"><span class="kit-row-title">{r.route}</span></span>
-          <span class="kit-row-trail">{m.exposure_days_count({ days: String(r.days) })}</span>
-        </div>
+        <ListRow static title={r.route}>
+          {#snippet trailing()}{m.exposure_days_count({ days: String(r.days) })}{/snippet}
+        </ListRow>
       {/each}
       </ListCard>
     </div>
@@ -229,13 +223,13 @@
   {#if s.exposure.regimenDays.length}
     <div class="section-block"><ListCard>
       {#each s.exposure.regimenDays as rd (rd.episodeId)}
-        <div class="kit-row is-static">
-          <span class="kit-row-text">
-            <span class="kit-row-title">{rd.drug}</span>
-            <span class="kit-row-sub">{m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}</span>
-          </span>
-          <span class="kit-row-trail">{m.exposure_days_count({ days: String(rd.days) })}</span>
-        </div>
+        <ListRow
+          static
+          title={rd.drug}
+          subtitle={m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}
+        >
+          {#snippet trailing()}{m.exposure_days_count({ days: String(rd.days) })}{/snippet}
+        </ListRow>
       {/each}
       </ListCard>
     </div>
@@ -248,12 +242,7 @@
   {#if s.sideEffects.length}
     <div class="section-block"><ListCard>
       {#each s.sideEffects as effect (effect.id)}
-        <div class="kit-row is-static">
-          <span class="kit-row-text">
-            <span class="kit-row-title">{effect.name}</span>
-            <span class="kit-row-sub">{dayLong(effect.epochDay)} · {severityName(effect.severity)}</span>
-          </span>
-        </div>
+        <ListRow static title={effect.name} subtitle={`${dayLong(effect.epochDay)} · ${severityName(effect.severity)}`} />
       {/each}
       </ListCard>
     </div>
@@ -271,6 +260,9 @@
 {#snippet procedureRows(s: ClinicianSummary)}
   {#if s.procedures.length}
     <div class="section-block"><ListCard>
+      <!-- Hand-rolled rather than `<ListRow static>` (ticket 40): a ticked
+           checklist line is struck through, which is a style on the
+           individual subtitle and not something the kit's rows carry. -->
       {#each s.procedures as procedure (procedure.id)}
         {@const day = recoveryDay(procedure.surgeryEpochDay, today)}
         <div class="kit-row is-static">
@@ -313,6 +305,9 @@
 {#snippet appointmentPrepRows(s: ClinicianSummary)}
   {#if s.appointmentPrepItems.length}
     <div class="section-block"><ListCard>
+      <!-- Hand-rolled rather than `<ListRow static>` (ticket 40): a ticked
+           question is struck through, which is a style on the title alone -
+           the same reason the procedure rows above stay written out. -->
       {#each s.appointmentPrepItems as item (item.id)}
         <div class="kit-row is-static">
           <span class="kit-row-text">
