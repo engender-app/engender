@@ -20,7 +20,7 @@
   import { seriesComparability } from '$lib/data/labTiming';
   import { comparabilityLabels, labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { createOcrMachine, type OcrSaver } from '$lib/data/labs/ocr-machine';
+  import { createOcrMachine, type OcrMachineState, type OcrSaver } from '$lib/data/labs/ocr-machine';
   import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, normalizeUnit, type PreferredUnitAnalyte } from '$lib/data/labs/units';
   import { defaultUnitForAnalyte, nextUnitAfterAnalyteChange } from '$lib/data/labs/preferred-units';
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
@@ -223,54 +223,59 @@
     }
   };
 
-  const ocrMachineBase = createOcrMachine(
+  // The machine writes to its own closed-over object; it cannot write into a
+  // $state proxy from inside its own methods. So the component owns the
+  // reactive copy, and the machine notifies it on every transition.
+  let ocrState = $state<OcrMachineState>({ tag: 'idle' });
+  const ocr = createOcrMachine(
     platformImageSource(),
     tesseractOcrRecognizer(),
-    ocrSaver
+    ocrSaver,
+    (next) => {
+      ocrState = next;
+    }
   );
-  // Wrap in $state so Svelte tracks reads on .state
-  let ocr = $state(ocrMachineBase);
 
   // After save succeeds, show a toast and return to idle.
   $effect(() => {
-    if (ocr.state.tag === 'saved') {
-      toast(m.labs_ocr_saved_toast({ count: String(ocr.state.count) }));
+    if (ocrState.tag === 'saved') {
+      toast(m.labs_ocr_saved_toast({ count: String(ocrState.count) }));
       ocr.close();
     }
   });
 
   // Derive error message string for the review sheet's notice.
   let ocrValidationError = $derived(
-    ocr.state.tag === 'save-validation-failed'
-      ? ocr.state.error === 'missing-analyte'
+    ocrState.tag === 'save-validation-failed'
+      ? ocrState.error === 'missing-analyte'
         ? m.labs_ocr_missing_analyte()
-        : ocr.state.error === 'invalid-value'
+        : ocrState.error === 'invalid-value'
           ? m.labs_ocr_invalid_value()
-          : ocr.state.error === 'missing-date'
+          : ocrState.error === 'missing-date'
             ? m.labs_ocr_missing_date()
             : m.labs_ocr_invalid_date()
-      : ocr.state.tag === 'save-failed'
+      : ocrState.tag === 'save-failed'
         ? m.labs_ocr_failed()
         : ''
   );
 
   // The review rows, available from review, save-validation-failed, and save-failed states.
   let ocrRows = $derived<OcrReviewRow[]>(
-    ocr.state.tag === 'review' ||
-    ocr.state.tag === 'save-validation-failed' ||
-    ocr.state.tag === 'save-failed'
-      ? ocr.state.rows
+    ocrState.tag === 'review' ||
+    ocrState.tag === 'save-validation-failed' ||
+    ocrState.tag === 'save-failed'
+      ? ocrState.rows
       : []
   );
 
   // Whether the OCR sheet should be open (any non-idle state).
-  let ocrSheetOpen = $derived(ocr.state.tag !== 'idle' && ocr.state.tag !== 'saved');
+  let ocrSheetOpen = $derived(ocrState.tag !== 'idle' && ocrState.tag !== 'saved');
 
   // Title for the sheet header.
   let ocrSheetTitle = $derived(
-    ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving' || ocr.state.tag === 'save-failed'
+    ocrState.tag === 'review' || ocrState.tag === 'save-validation-failed' || ocrState.tag === 'saving' || ocrState.tag === 'save-failed'
       ? m.labs_ocr_review_sheet()
-      : ocr.state.tag === 'no-rows'
+      : ocrState.tag === 'no-rows'
         ? m.labs_ocr_empty_sheet()
         : m.labs_ocr_pick_sheet()
   );
@@ -557,7 +562,10 @@
     title={ocrSheetTitle}
     onClose={closeOcrSheet}
   >
-    {#if ocr.state.tag === 'picking'}
+    <!-- The tag itself, not just its wording, so a walkthrough can grip the
+         state directly (ADR-0029) rather than matching translated copy. -->
+    <div data-ocr-state={ocrState.tag}>
+    {#if ocrState.tag === 'picking'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_pick_intro()}</p>
       {#if ocrDownloads}
@@ -569,38 +577,38 @@
         />
       {/if}
       <div class="stack-3">
-        <button class="btn btn-soft" onclick={() => ocr.pickSource('gallery')}>
+        <button class="btn btn-soft" data-ocr-pick="gallery" onclick={() => ocr.pickSource('gallery')}>
           <span>{m.labs_ocr_pick_gallery()}</span>
         </button>
-        <button class="btn btn-soft" onclick={() => ocr.pickSource('camera')}>
+        <button class="btn btn-soft" data-ocr-pick="camera" onclick={() => ocr.pickSource('camera')}>
           <span>{m.labs_ocr_pick_camera()}</span>
         </button>
       </div>
-    {:else if ocr.state.tag === 'recognizing'}
+    {:else if ocrState.tag === 'recognizing'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <p class="muted small">{m.labs_ocr_running()}</p>
-    {:else if ocr.state.tag === 'permission-denied'}
+    {:else if ocrState.tag === 'permission-denied'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_permission_denied()}</div>
       </div>
-      <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
-    {:else if ocr.state.tag === 'recognition-failed'}
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+    {:else if ocrState.tag === 'recognition-failed'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_failed()}</div>
       </div>
-      <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
-    {:else if ocr.state.tag === 'no-rows'}
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+    {:else if ocrState.tag === 'no-rows'}
       <h3>{m.labs_ocr_empty_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_no_rows_body()}</p>
       <div class="stack-3">
-        <button class="btn btn-primary" onclick={() => { ocr.close(); record.openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
-        <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+        <button class="btn btn-primary" data-ocr-manual onclick={() => { ocr.close(); record.openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
+        <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
       </div>
-    {:else if ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving' || ocr.state.tag === 'save-failed'}
+    {:else if ocrState.tag === 'review' || ocrState.tag === 'save-validation-failed' || ocrState.tag === 'saving' || ocrState.tag === 'save-failed'}
       <h3>{m.labs_ocr_review_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-3)">{m.labs_ocr_review_intro()}</p>
       {#if ocrValidationError}
@@ -624,21 +632,21 @@
             {/if}
             <div class="field">
               <label class="field-label" for={`ocr-analyte-${i}`}>{m.labs_analyte_label()}</label>
-              <input class="input" id={`ocr-analyte-${i}`} value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+              <input class="input" id={`ocr-analyte-${i}`} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
             </div>
             <div class="cd-endpoints">
               <div class="field">
                 <label class="field-label" for={`ocr-value-${i}`}>{m.labs_value_label()}</label>
-                <input class="input" id={`ocr-value-${i}`} inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input class="input" id={`ocr-value-${i}`} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               </div>
               <div class="field">
                 <label class="field-label" for={`ocr-unit-${i}`}>{m.labs_unit_label()}</label>
-                <input class="input" id={`ocr-unit-${i}`} value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input class="input" id={`ocr-unit-${i}`} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               </div>
             </div>
             <div class="field">
               <label class="field-label" for={`ocr-date-${i}`}>{m.labs_date_label()}</label>
-              <input class="input" type="date" id={`ocr-date-${i}`} value={row.date} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+              <input class="input" type="date" id={`ocr-date-${i}`} data-ocr-field="date" value={row.date} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
             </div>
             <div class="field">
               <label class="field-label" for={`ocr-note-${i}`}>{m.labs_note_label()}</label>
@@ -647,7 +655,8 @@
           </div>
         {/each}
       </div>
-      <button class="btn btn-primary" disabled={ocr.state.tag === 'saving'} onclick={() => ocr.save()}><span>{m.labs_ocr_save()}</span></button>
+      <button class="btn btn-primary" data-ocr-save disabled={ocrState.tag === 'saving'} onclick={() => ocr.save()}><span>{m.labs_ocr_save()}</span></button>
     {/if}
+    </div>
   </Sheet>
 </div>
