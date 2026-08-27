@@ -23,13 +23,13 @@
     "calendar-month": {
       "what": "calendar, one month of heat map",
       "baselineMs": 9,
-      "budgetMs": 200,
+      "budgetMs": 100,
       "targetMs": 100
     },
     "stats-year-streak": {
       "what": "stats screen, the streak",
       "baselineMs": 6,
-      "budgetMs": 200,
+      "budgetMs": 100,
       "targetMs": 100
     },
     "stats-year-series": {
@@ -71,19 +71,19 @@
     "search-common": {
       "what": "search \"lustro\", one page and the total",
       "baselineMs": 8,
-      "budgetMs": 200,
+      "budgetMs": 150,
       "targetMs": 150
     },
     "search-rare": {
       "what": "search \"endokrynolog\", one page and the total",
       "baselineMs": 4,
-      "budgetMs": 200,
+      "budgetMs": 150,
       "targetMs": 150
     },
     "search-tag-word": {
       "what": "search \"basen\", one page and the total",
       "baselineMs": 6,
-      "budgetMs": 200,
+      "budgetMs": 150,
       "targetMs": 150
     },
     "photo-grid-list": {

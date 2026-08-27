@@ -25,7 +25,9 @@ import { openArchive, packArchive } from '../../src/lib/data/archive/pack.ts';
 import { portablePreferences } from '../../src/lib/data/archive/payload.ts';
 import { deliverFile, exportFileName } from '../../src/lib/data/archive/deliver.ts';
 import { DecryptionFailedError } from '../../src/lib/crypto/aesGcm.ts';
+import { publish } from '../probe-handshake.mjs';
 
+const NAME = 'archive-probe';
 const PASSWORD = 'demo';
 
 /** Not random: run.mjs checks the photo comes back byte for byte, and a
@@ -179,8 +181,7 @@ async function run() {
     });
   });
 
-  (window as unknown as { __archiveProbeResult: unknown }).__archiveProbeResult = result;
-  document.body.dataset.archiveProbeReady = 'true';
+  publish(NAME, result);
 }
 
 async function refusal(call: () => Promise<unknown>): Promise<{ name: string; message: string } | null> {
@@ -195,9 +196,4 @@ async function refusal(call: () => Promise<unknown>): Promise<{ name: string; me
   }
 }
 
-run().catch((err) => {
-  (window as unknown as { __archiveProbeResult: unknown }).__archiveProbeResult = {
-    error: String(err?.stack ?? err)
-  };
-  document.body.dataset.archiveProbeReady = 'true';
-});
+run().catch((err) => publish(NAME, { error: String(err?.stack ?? err) }));

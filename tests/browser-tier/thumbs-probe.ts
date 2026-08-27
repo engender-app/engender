@@ -13,7 +13,9 @@ import { mount } from 'svelte';
 import PhotoThumb from '../../src/lib/components/PhotoThumb.svelte';
 import { setPhotoFiles } from '../../src/lib/stores/photoFiles.ts';
 import type { PhotoFileStore } from '../../src/lib/data/journal/journal.ts';
+import { publish } from '../probe-handshake.mjs';
 
+const NAME = 'thumbs';
 const TILES = 60;
 /** The tile with no stored file: its row exists, its bytes are gone, and
     it has to draw as a placeholder rather than as a gap. */
@@ -122,14 +124,7 @@ async function run() {
 }
 
 run().then(
-  (result) => {
-    (window as unknown as Record<string, unknown>).__thumbsResult = result;
-    document.body.setAttribute('data-thumbs-ready', '');
-  },
-  (error: unknown) => {
-    (window as unknown as Record<string, unknown>).__thumbsResult = {
-      error: error instanceof Error ? `${error.message}\n${error.stack}` : String(error)
-    };
-    document.body.setAttribute('data-thumbs-ready', '');
-  }
+  (result) => publish(NAME, result),
+  (error: unknown) =>
+    publish(NAME, { error: error instanceof Error ? `${error.message}\n${error.stack}` : String(error) })
 );

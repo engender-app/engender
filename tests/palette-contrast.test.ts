@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { colorMixOklab, contrast, luminance, toRgb } from '../src/lib/theme/colour';
+import { PALETTES } from './palettes.mjs';
 
 const css = readFileSync('src/lib/theme/palettes.css', 'utf8');
 
-const PALETTES = ['trans', 'nonbinary', 'genderfluid', 'bisexual', 'lesbian', 'pansexual', 'rainbow', 'agender'];
 const THEMES = ['light', 'dark'] as const;
 const MOOD_PRESETS = ['amber', 'teal', 'plum', 'moss'];
 

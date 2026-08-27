@@ -35,11 +35,20 @@ export function launchPersistentChromium(userDataDir, options = {}) {
 }
 
 /** Collects PASS/FAIL lines in the format all three scripts already
-    printed, plus the closing summary line and failure count. */
+    printed, plus the closing summary line and failure count, and `block()`
+    (ticket 06) for a group of checks that has an expected roster: without
+    one, a throw partway through a block silently abandons whatever checks
+    were still to come, and a summary that only counts failures says
+    nothing happened. */
 export function createReporter() {
   let failures = 0;
-  const ok = (name) => console.log('PASS', name);
+  let checks = 0;
+  const ok = (name) => {
+    checks++;
+    console.log('PASS', name);
+  };
   const fail = (name, detail) => {
+    checks++;
     failures++;
     const message = detail instanceof Error ? (detail.message ?? String(detail)).split('\n')[0] : detail;
     console.log('FAIL', name, '—', message);
@@ -48,5 +57,26 @@ export function createReporter() {
     console.log(failures ? `\n${failures} FAILURE(S)` : `\n${passMessage}`);
     return failures;
   };
-  return { ok, fail, finish };
+
+  /** Runs `fn`, which is expected to call `ok`/`fail` `expected` times
+      between them. An exception inside `fn` is still reported once under
+      `label`, exactly as an uninstrumented try/catch would - but whether it
+      threw or just under-ran, a shortfall against `expected` is reported
+      too, so a block that quietly ran fewer checks than it has cannot pass
+      by omission. */
+  const block = async (label, expected, fn) => {
+    const before = checks;
+    try {
+      await fn();
+    } catch (e) {
+      fail(label, e?.message ?? String(e));
+    }
+    const ran = checks - before;
+    if (ran < expected) {
+      failures++;
+      console.log('FAIL', label, `— ran ${ran} of ${expected} checks, the rest never ran`);
+    }
+  };
+
+  return { ok, fail, finish, block };
 }

@@ -15,7 +15,7 @@ import { fakeFileStore } from '../../src/lib/data/photos/test-support/fake-file-
 import { migratedDb } from '../../src/lib/data/sqlite/test-support/migrated-db.ts';
 import { generateLongJournal } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
-import { budgets, breaches, overTarget } from './budgets.mjs';
+import { budgets, breaches, budgetFor, overTarget } from './budgets.mjs';
 import { bytePatternPhoto } from './test-support.ts';
 
 async function measureSmallJournal(): Promise<Measurement[]> {
@@ -122,4 +122,28 @@ test('a baseline past its target is reported, and one under it is not', () => {
 
   expect(overTarget(table)).toHaveLength(1);
   expect(overTarget(table)[0]).toContain('slow');
+});
+
+test('every recorded budget is exactly min(max(5x baseline, 200ms floor), target)', () => {
+  for (const budget of Object.values(budgets.measurements)) {
+    expect(budget.budgetMs).toBe(budgetFor(budget.baselineMs, budget.targetMs));
+  }
+});
+
+test('the target ceiling catches a regression the 200ms floor alone would miss', () => {
+  // calendar-month's baseline (9ms) is tiny enough that 5x it never reaches
+  // the 200ms floor, so the floor alone would let it regress all the way to
+  // 200ms before CI noticed - twice its 100ms target. budgetFor() caps it at
+  // the target instead.
+  const budget = budgets.measurements['calendar-month'];
+  expect(budget.budgetMs).toBeLessThan(200);
+  expect(budget.budgetMs).toBe(budget.targetMs);
+
+  const regressed = { name: 'calendar-month', what: 'x', ms: budget.budgetMs + 1, detail: 'x' };
+  expect(breaches([regressed])).toHaveLength(1);
+});
+
+test('budgetFor leaves a measurement with no recorded target on the floor alone', () => {
+  expect(budgetFor(1, null)).toBe(200);
+  expect(budgetFor(900, null)).toBe(4500);
 });

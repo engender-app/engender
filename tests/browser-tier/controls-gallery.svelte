@@ -15,17 +15,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
-
-  const PALETTES = [
-    'trans',
-    'nonbinary',
-    'genderfluid',
-    'bisexual',
-    'lesbian',
-    'pansexual',
-    'rainbow',
-    'agender'
-  ];
+  import { PALETTES } from '../palettes.mjs';
 
   let palette = $state('trans');
   let theme = $state('dark');
