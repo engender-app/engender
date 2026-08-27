@@ -17,20 +17,11 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { PALETTES } from './palettes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] ?? resolve(here, '../.claude/gate-shots'));
 
-const PALETTES = [
-  'trans',
-  'nonbinary',
-  'genderfluid',
-  'bisexual',
-  'lesbian',
-  'pansexual',
-  'rainbow',
-  'agender'
-];
 const THEMES = ['dark', 'light'];
 
 /* Every state the eleven scenes cover. Shot on the default flag in both

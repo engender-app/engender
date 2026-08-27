@@ -20,6 +20,9 @@
 
 import { markJournalBusy } from '../../src/lib/data/journal-busy.ts';
 import { applyUpdate, updateReady, watchForUpdates } from '../../src/lib/pwa/update.ts';
+import { publish } from '../probe-handshake.mjs';
+
+const NAME = 'update-probe';
 
 /** Resolves once a worker is sitting in `waiting`, which is where a release
     that has finished installing goes while another one still controls the
@@ -106,14 +109,5 @@ async function run() {
 }
 
 run()
-  .then((result) => {
-    (window as unknown as Record<string, unknown>).__updateProbeResult = result;
-  })
-  .catch((error) => {
-    (window as unknown as Record<string, unknown>).__updateProbeResult = {
-      error: String((error as Error)?.message ?? error)
-    };
-  })
-  .finally(() => {
-    document.body.setAttribute('data-update-probe-ready', '');
-  });
+  .then((result) => publish(NAME, result))
+  .catch((error) => publish(NAME, { error: String((error as Error)?.message ?? error) }));

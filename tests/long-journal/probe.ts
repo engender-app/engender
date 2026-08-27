@@ -27,11 +27,10 @@ import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
 import { generateLongJournal, TEN_YEARS_IN_DAYS } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
+import { publish as publishResult } from '../probe-handshake.mjs';
 
-const publish = (value: unknown) => {
-  (window as unknown as { __longJournalResult: unknown }).__longJournalResult = value;
-  document.body.dataset.longJournalReady = 'true';
-};
+const NAME = 'long-journal';
+const publish = (value: unknown) => publishResult(NAME, value);
 
 /** What ADR-0008 normalizes to: 2048px on the long edge, 320px thumbnail. */
 const FULL = { width: 2048, height: 1536 };

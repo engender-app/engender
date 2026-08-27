@@ -18,6 +18,7 @@ import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-store.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
+import { publish } from '../probe-handshake.mjs';
 import { purgeExpiredTrash, TRASH_WINDOW_DAYS } from '../../src/lib/data/journal/entries.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
 import { normalizePhoto, MAX_EDGE, UnsupportedImageError } from '../../src/lib/data/photos/normalize.ts';
@@ -35,6 +36,8 @@ import {
   withFakeIccProfile,
   withoutIccProfile
 } from '../../src/lib/data/photos/test-support/jpeg-metadata.ts';
+
+const NAME = 'photos-probe';
 
 /** A real JPEG of the given size, produced by the same canvas path the app
     uses - the closest this gets to "what a camera handed over". */
@@ -232,8 +235,7 @@ async function run() {
       });
   });
 
-  (window as unknown as { __photosProbeResult: unknown }).__photosProbeResult = result;
-  document.body.dataset.photosProbeReady = 'true';
+  publish(NAME, result);
 }
 
 /** The name and message of whatever a call rejected with, or null if it
@@ -250,9 +252,4 @@ async function refusal(call: () => Promise<unknown>): Promise<{ name: string; me
   }
 }
 
-run().catch((err) => {
-  (window as unknown as { __photosProbeResult: unknown }).__photosProbeResult = {
-    error: String(err?.stack ?? err)
-  };
-  document.body.dataset.photosProbeReady = 'true';
-});
+run().catch((err) => publish(NAME, { error: String(err?.stack ?? err) }));

@@ -27,11 +27,10 @@ import { localStorageCache, BOOT_CACHE_KEY } from '../../src/lib/data/prefs/boot
 import { openPreferences } from '../../src/lib/data/prefs/preferences.ts';
 import { scanOpfs, scanLocalStorage, textSentinel, type Sentinel } from './opfs-scan.ts';
 import { freshOrigin } from './fresh-origin.ts';
+import { publish as publishResult } from '../probe-handshake.mjs';
 
-const publish = (value: unknown) => {
-  (window as unknown as { __encryptionProbeResult: unknown }).__encryptionProbeResult = value;
-  document.body.dataset.encryptionProbeReady = 'true';
-};
+const NAME = 'encryption-probe';
+const publish = (value: unknown) => publishResult(NAME, value);
 
 const PASSPHRASE = 'correct horse battery staple';
 

@@ -20,6 +20,9 @@ import {
   type JourneyFrame
 } from '../../src/lib/data/photos/journey-render.ts';
 import { deliverBlob } from '../../src/lib/data/archive/deliver.ts';
+import { publish } from '../probe-handshake.mjs';
+
+const NAME = 'journey-probe';
 
 /** A real JPEG of one flat colour, made the way a stored photo was made -
     through a canvas encode (ADR-0008). */
@@ -241,13 +244,7 @@ async function run() {
     });
   });
 
-  (window as unknown as { __journeyProbeResult: unknown }).__journeyProbeResult = result;
-  document.body.dataset.journeyProbeReady = 'true';
+  publish(NAME, result);
 }
 
-run().catch((err) => {
-  (window as unknown as { __journeyProbeResult: unknown }).__journeyProbeResult = {
-    error: String(err?.stack ?? err)
-  };
-  document.body.dataset.journeyProbeReady = 'true';
-});
+run().catch((err) => publish(NAME, { error: String(err?.stack ?? err) }));

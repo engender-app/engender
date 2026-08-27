@@ -19,7 +19,10 @@ import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
-import { breaches, budgets, mb, overTarget } from './budgets.mjs';
+import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
+import { breaches, budgetFor, budgets, mb, overTarget } from './budgets.mjs';
+
+const NAME = 'long-journal';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const recording = process.argv.includes('--record');
@@ -38,14 +41,38 @@ page.on('console', (message) => {
   if (message.type() === 'error') console.log('  browser error:', message.text());
 });
 
+/* The browser tier converged on forwarding pageerror (tests/browser-tier/
+   run.mjs), so a module that throws on import fails by name rather than
+   running out a timeout. This runner converges too, for a sharper reason
+   than the browser tier had: its timeout is 5 minutes, not 30 seconds - the
+   ten-year fixture takes a while to generate - so an import-time throw here
+   would otherwise sit silent for most of that before surfacing as an
+   anonymous Timeout. walkthrough.test.mjs stays on its own policy
+   (docs/agents/verification.md explains why: one continuous page across 48
+   flows has no natural per-check boundary to attribute a pageerror to, so it
+   collects them instead of racing each flow against one). */
+let onPageError;
+page.on('pageerror', (error) => onPageError?.(error));
+
 console.log('Generating ten years of Journal and measuring it. Around 45 seconds.\n');
 
 let result;
 try {
-  await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('body[data-long-journal-ready]', { state: 'attached', timeout: 5 * 60_000 });
-  result = await page.evaluate(() => window.__longJournalResult);
+  const failure = new Promise((_resolve, reject) => {
+    onPageError = reject;
+  });
+  await Promise.race([
+    (async () => {
+      await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
+      await page.waitForSelector(`body[${readyAttr(NAME)}]`, { state: 'attached', timeout: 5 * 60_000 });
+    })(),
+    failure
+  ]);
+  result = await page.evaluate((key) => window[key], resultGlobal(NAME));
+} catch (error) {
+  result = { error: error?.message ?? String(error) };
 } finally {
+  onPageError = undefined;
   await browser.close();
   await server.close();
 }
@@ -80,23 +107,24 @@ for (const m of measurements) {
 console.log('');
 
 if (recording) {
-  /* A 5x time budget with a 200ms floor, for the reason budgets.mjs sets
-     out. Computed from the rounded baseline rather than the raw
-     measurement, so the file reproduces its own rule when someone checks
-     it. */
-  console.log('budgets.json measurements, with a 5x time budget and a 200ms floor:\n');
+  /* budgetFor()'s rule, for the reason budgets.mjs sets out: a 5x time
+     budget with a 200ms floor, capped at the target. Computed from the
+     rounded baseline rather than the raw measurement, so the file
+     reproduces its own rule when someone checks it. */
+  console.log('budgets.json measurements, with budgetFor()\'s rule:\n');
   console.log(
     JSON.stringify(
       Object.fromEntries(
         measurements.map((m) => {
           const baselineMs = Math.round(m.ms);
+          const targetMs = budgets.measurements[m.name]?.targetMs ?? null;
           return [
             m.name,
             {
               what: m.what,
               baselineMs,
-              budgetMs: Math.max(200, baselineMs * 5),
-              targetMs: budgets.measurements[m.name]?.targetMs ?? null
+              budgetMs: budgetFor(baselineMs, targetMs),
+              targetMs
             }
           ];
         })
