@@ -544,21 +544,23 @@
     />
   {:else}
     <!-- Every remaining reason is `null`, which is the one that means there is
-         a comparison to show. -->
-    {@const view = scheduleView}
+         a comparison to show. Named rather than read through `scheduleView`
+         so the branch below says `comparison.rows` where it means them; not
+         `view`, which is the tab this screen is on. -->
+    {@const comparison = scheduleView}
     <div class="screen-part">
       <p class="muted small" style="margin:var(--space-3) 0">
-        {m.adherence_for_episode({ drug: view.activeEpisode.drug })}
+        {m.adherence_for_episode({ drug: comparison.activeEpisode.drug })}
       </p>
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
-        {#each [...view.comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
+        {#each [...comparison.comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
           <ListRow
             static
             data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
             title={fmtDayLong(row.slot.epochDay)}
             subtitle={[
-              view.schedule.dosesPerDay > 1 &&
-                m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: view.schedule.dosesPerDay }),
+              comparison.schedule.dosesPerDay > 1 &&
+                m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: comparison.schedule.dosesPerDay }),
               row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
             ]}
           >
@@ -573,11 +575,11 @@
         {/each}
       </ListCard>
 
-      {#if view.pauses.length}
+      {#if comparison.pauses.length}
         <SectionHeading text={m.adherence_paused_heading()} />
         <p class="muted small">{m.adherence_paused_note()}</p>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
-          {#each view.pauses as pause (pause.id)}
+          {#each comparison.pauses as pause (pause.id)}
             <ListRow
               static
               data-pause={pause.id}
@@ -593,11 +595,11 @@
         </ListCard>
       {/if}
 
-      {#if view.comparison.unmatched.length}
+      {#if comparison.comparison.unmatched.length}
         <SectionHeading text={m.adherence_unmatched_heading()} />
         <p class="muted small">{m.adherence_unmatched_note()}</p>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
-          {#each view.comparison.unmatched as dose (dose.id)}
+          {#each comparison.comparison.unmatched as dose (dose.id)}
             <ListRow
               static
               data-unmatched={dose.id}

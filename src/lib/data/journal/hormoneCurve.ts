@@ -142,7 +142,10 @@ export interface QualitativeChart extends QualitativeCurve {
       real meaning in that hormone's unit; before that, scaled to this
       curve's own tallest point instead. Unfitted, the number on one curve
       has nothing to do with the number on another, and a shared scale would
-      imply a comparison this app has no basis for. */
+      imply a comparison this app has no basis for.
+
+      1 where the curve never leaves zero, which is an axis a flat line can
+      still be drawn against - a maximum of 0 would divide by it. */
   axisMax: number;
 }
 
@@ -248,6 +251,44 @@ function axisTop(values: readonly number[]): number | null {
   return top > 0 ? top * 1.1 : null;
 }
 
+/** The results one read of the labs produced, and the window to place them
+    in - what every hormone's placement is a slice of. */
+interface ResultsInWindow {
+  /** Every analyte any curve could be drawn against, and its results. */
+  byAnalyte: ReadonlyMap<string, readonly LabResult[]>;
+  fromEpochDay: number;
+  toEpochDay: number;
+}
+
+/** One hormone's results: clipped to the window, converted onto that
+    hormone's own axis and ordered along it - or counted off the axis, where
+    its unit is one ADR-0026's allowlist cannot convert. Both classes place
+    their points this way, which is why it is one function; it was written
+    twice, once per area, with the loop body identical. */
+function placeResults(
+  results: ResultsInWindow,
+  drug: CurveDrug
+): { points: CurveLabPoint[]; offAxis: number } {
+  const unit = curveUnit(drug);
+  const points: CurveLabPoint[] = [];
+  let offAxis = 0;
+
+  for (const [analyte, ofAnalyte] of results.byAnalyte) {
+    if (!measuredInCurveUnit(analyte, drug)) continue;
+    for (const result of ofAnalyte) {
+      if (result.epochDay < results.fromEpochDay || result.epochDay > results.toEpochDay) continue;
+      const value = convertLabValue(result.analyte, result.value, result.unit, unit);
+      if (value === null) {
+        offAxis += 1;
+        continue;
+      }
+      points.push({ result, day: drawDay(result), value });
+    }
+  }
+  points.sort((a, b) => a.day - b.day);
+  return { points, offAxis };
+}
+
 export function makeHormoneCurveArea(
   doses: DosesArea,
   regimen: RegimenArea,
@@ -278,34 +319,14 @@ export function makeHormoneCurveArea(
       const analytes = usedAnalytes.filter((analyte) =>
         CURVE_DRUGS.some((drug) => measuredInCurveUnit(analyte, drug))
       );
-      const resultsByAnalyte = new Map(
-        await Promise.all(
-          analytes.map(async (analyte) => [analyte, await labs.getResults(analyte)] as const)
-        )
-      );
-
-      /** One hormone's results, clipped to the window, converted onto its own
-          axis and ordered along it - or counted off the axis where its unit
-          does not convert. */
-      const place = (drug: CurveDrug): { points: CurveLabPoint[]; offAxis: number } => {
-        const unit = curveUnit(drug);
-        const points: CurveLabPoint[] = [];
-        let offAxis = 0;
-
-        for (const analyte of analytes) {
-          if (!measuredInCurveUnit(analyte, drug)) continue;
-          for (const result of resultsByAnalyte.get(analyte) ?? []) {
-            if (result.epochDay < fromEpochDay || result.epochDay > toEpochDay) continue;
-            const value = convertLabValue(result.analyte, result.value, result.unit, unit);
-            if (value === null) {
-              offAxis += 1;
-              continue;
-            }
-            points.push({ result, day: drawDay(result), value });
-          }
-        }
-        points.sort((a, b) => a.day - b.day);
-        return { points, offAxis };
+      const inWindow: ResultsInWindow = {
+        byAnalyte: new Map(
+          await Promise.all(
+            analytes.map(async (analyte) => [analyte, await labs.getResults(analyte)] as const)
+          )
+        ),
+        fromEpochDay,
+        toEpochDay
       };
 
       /** A factor, or null. Only worth fitting when the model is drawing
@@ -318,11 +339,20 @@ export function makeHormoneCurveArea(
         modelledAt: (day: number) => number
       ) => (fitToOwnLabs && complete ? fitScaleFactorToLabs(points, modelledAt) : null);
 
-      const placed = new Map(CURVE_DRUGS.map((drug) => [drug, place(drug)]));
+      /* Placed once per hormone and read twice: estradiol's points are what
+         the band is fitted against and also what its own shapes are. Written
+         out drug by drug rather than built from CURVE_DRUGS, so each is a
+         field that is certainly there - `satisfies` is what makes a third
+         curve drug a typecheck failure here rather than an absent key
+         somewhere below. */
+      const placed = {
+        estradiol: placeResults(inWindow, 'estradiol'),
+        testosterone: placeResults(inWindow, 'testosterone')
+      } satisfies Record<CurveDrug, { points: CurveLabPoint[]; offAxis: number }>;
 
       // --- the band: injectable estradiol on one of the four esters --------
 
-      const estradiol = placed.get('estradiol')!;
+      const estradiol = placed.estradiol;
       /* The ester a result belongs to, resolved from the episode in effect at
          the draw rather than from anything stored on the result. */
       const esterAt = (result: LabResult): InjectableEster | null => {
@@ -374,7 +404,7 @@ export function makeHormoneCurveArea(
       let qualitativeDosesWithoutMilligrams = 0;
 
       for (const drug of CURVE_DRUGS) {
-        const own = placed.get(drug)!;
+        const own = placed[drug];
         const shapes = shapeCache.remember(
           `${drug}:${fromEpochDay}:${toEpochDay}`,
           [shapeDoses, episodes],
@@ -410,7 +440,7 @@ export function makeHormoneCurveArea(
       return {
         injectable,
         qualitative: { sections, dosesWithoutMilligrams: qualitativeDosesWithoutMilligrams },
-        labPointsOffAxis: CURVE_DRUGS.reduce((sum, drug) => sum + placed.get(drug)!.offAxis, 0),
+        labPointsOffAxis: CURVE_DRUGS.reduce((sum, drug) => sum + placed[drug].offAxis, 0),
         dosesNoCurveAnywhere: dosesWithNoCurve({ doses: doseEvents, episodes, fromEpochDay, toEpochDay })
       };
     }
