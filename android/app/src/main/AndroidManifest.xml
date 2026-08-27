@@ -18,8 +18,8 @@
          The back destination itself is unchanged and still decided by
          resolveAndroidBackAction; this changes how the gesture is drawn,
          not where it goes. -->
-    <!-- allowBackup, phase 5 security ticket 01 (F-02). Off, with no
-         extraction rules standing in for it.
+    <!-- The platform's backup service, phase 5 security ticket 01 (F-02).
+         Off, by both of the two attributes it takes.
 
          The default is on, and with no dataExtractionRules or
          fullBackupContent to narrow it the whole private directory was
