@@ -53,7 +53,7 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { appWordmark } from '$lib/disguise/identity';
-  import { roleAt } from '$lib/theme/roles';
+  import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import MilestoneCard from '$lib/components/MilestoneCard.svelte';
@@ -74,16 +74,12 @@
 
   const today = todayEpochDay();
 
-  /* Which stripe each area of the screen takes. Named rather than written as
-     a number at the call site, because one of them is not in reading order
-     and the reason lives up in the header comment: the week strip takes role
-     0, the only index guaranteed to be a colour on all 8 palettes, since it
-     is the one area here where the stripe is a value rather than a
-     decoration. The celebration shares the milestones' colour because it is
-     about a milestone; the backup notice takes none, because the flag
-     colours the areas of the journal and that one is the app talking about
-     itself. */
-  const AREA_ROLE = { week: 0, lookBack: 1, milestones: 2, days: 3 };
+  /* Which stripe each area of the screen takes ($lib/theme/roles.ts, where
+     the reason the week strip is out of reading order is written down).
+     The celebration shares the milestones' colour because it is about a
+     milestone; the backup notice takes none, because the flag colours the
+     areas of the journal and that one is the app talking about itself. */
+  const AREA_ROLE = HOME_AREA_ROLE;
 
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
      read; the entry-shaped reads below are the ones that had to become
