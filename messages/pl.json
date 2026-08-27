@@ -1035,6 +1035,7 @@
   "size_log_new_sheet": "Nowy rozmiar",
   "size_log_date_label": "Data",
   "size_log_category_label": "Kategoria",
+  "size_log_category_all": "Wszystkie",
   "size_log_size_label": "Rozmiar",
   "size_log_size_placeholder": "np. M, 32, 38",
   "size_log_brand_label": "Marka",

@@ -13,7 +13,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { garmentCategoryName } from '$lib/data/vocabulary/labels';
-  import { GARMENT_CATEGORIES } from '$lib/data/garmentCategories';
+  import { GARMENT_CATEGORIES, type GarmentCategoryKey } from '$lib/data/garmentCategories';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { SizeRecord } from '$lib/data/types';
@@ -25,6 +25,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -35,11 +36,27 @@
      same reasoning the measurements screen's type picker gives - there is
      nothing here to plot on a numeric axis (size and fit are free text),
      so the trend is this reverse-chronological list within a category
-     rather than a chart. */
-  let category = $state<string>(GARMENT_CATEGORIES[0]);
+     rather than a chart.
 
-  let recordsQuery = liveQuery(['sizeRecord'], (j) => j.sizeRecords.getRecordsByCategory(category));
+     'all' opens on every category at once rather than whichever came
+     first in GARMENT_CATEGORIES (Alicja, 2026-08-27) - a UI-only value
+     the picker offers alongside the real ones, never itself a category a
+     record can be saved under, so it is not in GARMENT_CATEGORIES and
+     never reaches sizeRecords.ts's validation against that list. */
+  let category = $state<'all' | GarmentCategoryKey>('all');
+
+  let recordsQuery = liveQuery(['sizeRecord'], (j) =>
+    category === 'all' ? j.sizeRecords.getRecords() : j.sizeRecords.getRecordsByCategory(category)
+  );
   let records = $derived(recordsQuery.value ?? []);
+  /* Grouped by category, in the fixed catalogue's own order, and only
+     built when 'all' is showing - a single category's own records stay a
+     flat reverse-chronological list, unchanged. */
+  let groups = $derived(
+    GARMENT_CATEGORIES.map((c) => ({ category: c, records: records.filter((r) => r.category === c) })).filter(
+      (g) => g.records.length
+    )
+  );
 
   let editor = $state<{ id?: string; date: string; category: string; size: string; brand: string; fitNote: string } | null>(null);
   let deleteTarget = $state<SizeRecord | null>(null);
@@ -47,7 +64,16 @@
   function openEditor(record: SizeRecord | null) {
     editor = record
       ? { id: record.id, date: dateInputValueFromEpochDay(record.epochDay), category: record.category, size: record.size, brand: record.brand, fitNote: record.fitNote }
-      : { date: dateInputValueFromEpochDay(todayEpochDay()), category, size: '', brand: '', fitNote: '' };
+      : {
+          date: dateInputValueFromEpochDay(todayEpochDay()),
+          // 'all' is the filter showing, never a category a new record can
+          // be saved under - falls back to the catalogue's first entry,
+          // same as the field's own default before 'all' existed.
+          category: category === 'all' ? GARMENT_CATEGORIES[0] : category,
+          size: '',
+          brand: '',
+          fitNote: ''
+        };
   }
 
   async function saveRecord() {
@@ -61,7 +87,11 @@
       brand: editor.brand,
       fitNote: editor.fitNote
     });
-    category = editor.category;
+    // 'all' stays put rather than narrowing to whatever was just saved -
+    // a filter showing everything should still show everything right
+    // after adding to it. A specific category still follows the edit, the
+    // same as before 'all' existed.
+    if (category !== 'all') category = editor.category as GarmentCategoryKey;
     editor = null;
   }
 
@@ -95,8 +125,11 @@
       id="size-log-category-filter"
       labelledBy="size-log-category-filter"
       value={category}
-      options={GARMENT_CATEGORIES.map((c) => ({ value: c, label: garmentCategoryName(c) }))}
-      onPick={(v) => (category = v)}
+      options={[
+        { value: 'all', label: m.size_log_category_all() },
+        ...GARMENT_CATEGORIES.map((c) => ({ value: c, label: garmentCategoryName(c) }))
+      ]}
+      onPick={(v) => (category = v as 'all' | GarmentCategoryKey)}
     />
   </div>
 
@@ -104,19 +137,38 @@
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if records.length}
     <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each [...records].reverse() as r (r.id)}
-          <ListRow
-            key={r.id}
-            data-size-record={r.id}
-            icon="package"
-            title={r.brand ? `${r.size} · ${r.brand}` : r.size}
-            subtitle={r.fitNote ? `${dayLabel(r.epochDay)} · ${r.fitNote}` : dayLabel(r.epochDay)}
-            chevron={false}
-            onclick={() => openEditor(r)}
-          />
+      {#if category === 'all'}
+        {#each groups as g (g.category)}
+          <SectionHeading text={garmentCategoryName(g.category)} />
+          <ListCard role={roleAt(activeFlag.roles, 0)}>
+            {#each [...g.records].reverse() as r (r.id)}
+              <ListRow
+                key={r.id}
+                data-size-record={r.id}
+                icon="package"
+                title={r.brand ? `${r.size} · ${r.brand}` : r.size}
+                subtitle={r.fitNote ? `${dayLabel(r.epochDay)} · ${r.fitNote}` : dayLabel(r.epochDay)}
+                chevron={false}
+                onclick={() => openEditor(r)}
+              />
+            {/each}
+          </ListCard>
         {/each}
-      </ListCard>
+      {:else}
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each [...records].reverse() as r (r.id)}
+            <ListRow
+              key={r.id}
+              data-size-record={r.id}
+              icon="package"
+              title={r.brand ? `${r.size} · ${r.brand}` : r.size}
+              subtitle={r.fitNote ? `${dayLabel(r.epochDay)} · ${r.fitNote}` : dayLabel(r.epochDay)}
+              chevron={false}
+              onclick={() => openEditor(r)}
+            />
+          {/each}
+        </ListCard>
+      {/if}
     </div>
   {:else}
     <div class="screen-part">

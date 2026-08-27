@@ -1001,6 +1001,7 @@
   "size_log_new_sheet": "New size",
   "size_log_date_label": "Date",
   "size_log_category_label": "Category",
+  "size_log_category_all": "All",
   "size_log_size_label": "Size",
   "size_log_size_placeholder": "e.g. M, 32, 8",
   "size_log_brand_label": "Brand",
