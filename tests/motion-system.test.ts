@@ -93,30 +93,8 @@ function normalise(prop: string, value: string | undefined) {
 
 const sheets = SHEETS.map((path) => ({ path, css: stripComments(readFileSync(join(root, path), 'utf8')) }));
 
-/** Every `<style>` block in the app's components and routes, comments
-    stripped, for the one check that has to hold outside the shared sheets. */
-function svelteStyleBlocks(): { path: string; css: string }[] {
-  const out: { path: string; css: string }[] = [];
-  const walk = (dir: string) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith('.svelte')) {
-        const source = readFileSync(full, 'utf8');
-        for (const [, block] of source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
-          out.push({ path: full.slice(root.length), css: stripComments(block) });
-        }
-      }
-    }
-  };
-  walk(join(root, 'src'));
-  return out;
-}
-
-/** Every component's whole source, markup included - for [data-no-press],
-    which is an attribute in a template rather than anything a stylesheet
-    parser sees. */
-function svelteSources(): { path: string; source: string }[] {
+/** Every .svelte file's path and full source, under src/. */
+function svelteFiles(): { path: string; source: string }[] {
   const out: { path: string; source: string }[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -126,6 +104,18 @@ function svelteSources(): { path: string; source: string }[] {
     }
   };
   walk(join(root, 'src'));
+  return out;
+}
+
+/** Every `<style>` block in the app's components and routes, comments
+    stripped, for the one check that has to hold outside the shared sheets. */
+function svelteStyleBlocks(): { path: string; css: string }[] {
+  const out: { path: string; css: string }[] = [];
+  for (const { path, source } of svelteFiles()) {
+    for (const [, block] of source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
+      out.push({ path, css: stripComments(block) });
+    }
+  }
   return out;
 }
 /** The comma-separated parts of one property value, ignoring the commas
@@ -513,7 +503,7 @@ describe('tier 1, response', () => {
      entry here fails, and so does an entry here with nothing left to point
      at - the list can only drift by being wrong in this file. */
   it('enumerates every opt-out from the default press, each with a reason', () => {
-    const files = svelteSources();
+    const files = svelteFiles();
     const actual = files
       .map((f) => ({
         file: f.path,
