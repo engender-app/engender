@@ -30,7 +30,9 @@ import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-store.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
+import { publish } from '../probe-handshake.mjs';
 
+const NAME = 'migration-probe';
 const DATABASE = 'gender-diary.sqlite3';
 
 /** The release after this one, as a database sees it: everything shipped plus
@@ -178,14 +180,5 @@ async function run() {
 }
 
 run()
-  .then((result) => {
-    (window as unknown as Record<string, unknown>).__migrationProbeResult = result;
-  })
-  .catch((error) => {
-    (window as unknown as Record<string, unknown>).__migrationProbeResult = {
-      error: String((error as Error)?.message ?? error)
-    };
-  })
-  .finally(() => {
-    document.body.setAttribute('data-migration-probe-ready', '');
-  });
+  .then((result) => publish(NAME, result))
+  .catch((error) => publish(NAME, { error: String((error as Error)?.message ?? error) }));

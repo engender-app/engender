@@ -7,6 +7,9 @@
 import { deriveKey, randomSalt } from '../../src/lib/crypto/argon2id.ts';
 import { encrypt, decrypt } from '../../src/lib/crypto/aesGcm.ts';
 import { ARCHIVE_ARGON2_PARAMS, PIN_ARGON2_PARAMS } from '../../src/lib/crypto/params.ts';
+import { publish } from '../probe-handshake.mjs';
+
+const NAME = 'crypto-probe';
 
 async function run() {
   const archiveKey = await deriveKey('archive password', randomSalt(), ARCHIVE_ARGON2_PARAMS);
@@ -17,17 +20,11 @@ async function run() {
   const decrypted = await decrypt(archiveKey, nonce, ciphertext);
   const roundTripOk = new TextDecoder().decode(decrypted) === 'folded and tagged, then packed';
 
-  (window as unknown as { __cryptoProbeResult: unknown }).__cryptoProbeResult = {
+  publish(NAME, {
     archiveKeyLength: archiveKey.length,
     pinKeyLength: pinKey.length,
     roundTripOk
-  };
-  document.body.dataset.cryptoProbeReady = 'true';
+  });
 }
 
-run().catch((err) => {
-  (window as unknown as { __cryptoProbeResult: unknown }).__cryptoProbeResult = {
-    error: String(err?.stack ?? err)
-  };
-  document.body.dataset.cryptoProbeReady = 'true';
-});
+run().catch((err) => publish(NAME, { error: String(err?.stack ?? err) }));

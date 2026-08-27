@@ -49,11 +49,10 @@ import {
 import { journalKeystoreExists } from '../../src/lib/data/journal-passphrase.ts';
 import { scanOpfs, scanLocalStorage, textSentinel, type Sentinel } from './opfs-scan.ts';
 import { freshOrigin } from './fresh-origin.ts';
+import { publish as publishResult } from '../probe-handshake.mjs';
 
-const publish = (value: unknown) => {
-  (window as unknown as { __conversionProbeResult: unknown }).__conversionProbeResult = value;
-  document.body.dataset.conversionProbeReady = 'true';
-};
+const NAME = 'conversion-probe';
+const publish = (value: unknown) => publishResult(NAME, value);
 
 const PASSPHRASE = 'the passphrase this journal never had';
 const PROBE_KDF = { memorySize: 1024, iterations: 1, parallelism: 1, hashLength: 32 };

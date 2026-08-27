@@ -12,6 +12,9 @@ import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { LATEST_SCHEMA_VERSION } from '../../src/lib/data/sqlite/schema-version.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
+import { publish } from '../probe-handshake.mjs';
+
+const NAME = 'driver-probe';
 
 async function run() {
   await freshOrigin('driver-probe-cleared');
@@ -22,10 +25,7 @@ async function run() {
   const result = await boot({ createDriver: () => driver, fileOps, requestPersistentStorage });
 
   if (result.phase === 'error') {
-    (window as unknown as { __driverProbeResult: unknown }).__driverProbeResult = {
-      error: String((result.error as Error)?.stack ?? result.error)
-    };
-    document.body.dataset.driverProbeReady = 'true';
+    publish(NAME, { error: String((result.error as Error)?.stack ?? result.error) });
     return;
   }
 
@@ -67,7 +67,7 @@ async function run() {
      SELECT COUNT(*) AS n FROM numbered GROUP BY day - rn ORDER BY n DESC LIMIT 1`
   ).then((rows) => rows[0]?.n ?? 0);
 
-  (window as unknown as { __driverProbeResult: unknown }).__driverProbeResult = {
+  publish(NAME, {
     userVersion,
     latestSchemaVersion: LATEST_SCHEMA_VERSION,
     persistDenied: result.persistDenied,
@@ -80,13 +80,7 @@ async function run() {
       updateChanges: update.changes,
       missChanges: miss.changes
     }
-  };
-  document.body.dataset.driverProbeReady = 'true';
+  });
 }
 
-run().catch((err) => {
-  (window as unknown as { __driverProbeResult: unknown }).__driverProbeResult = {
-    error: String(err?.stack ?? err)
-  };
-  document.body.dataset.driverProbeReady = 'true';
-});
+run().catch((err) => publish(NAME, { error: String(err?.stack ?? err) }));
