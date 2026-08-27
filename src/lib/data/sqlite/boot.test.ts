@@ -10,7 +10,7 @@ import type { SqliteDriver } from './driver.ts';
 import { journalIsBusy } from '../journal-busy.ts';
 import { boot } from './boot.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
-import { LATEST_SCHEMA_VERSION } from './migrations.ts';
+import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 
 function makeFakeDriver(): SqliteDriver {
   const raw = new DatabaseSync(':memory:');
@@ -56,7 +56,7 @@ test('opens the database, runs migrations, and reports ready', async () => {
 
 test('runs steps in the documented order: prefs, then open+migrate, then persist, then reference data, trash purge and photo sweep', async () => {
   const order: string[] = [];
-  await boot({
+  const result = await boot({
     createDriver: () => {
       order.push('open+migrate');
       return makeFakeDriver();
@@ -78,7 +78,65 @@ test('runs steps in the documented order: prefs, then open+migrate, then persist
     }
   });
 
+  assert.equal(result.phase, 'ready');
+  if (result.phase === 'ready') await result.housekeeping;
   assert.deepEqual(order, ['prefs', 'open+migrate', 'persist', 'referenceData', 'trashPurge', 'photoSweep']);
+});
+
+test('reports ready before either housekeeping pass has run', async () => {
+  /* Phase 5 audit finding 03: journalIsOpen() unparks every liveQuery in the
+     app, and it only runs once boot() resolves - so a screen's first read used
+     to wait on two passes whose results no screen needs. The purge and the
+     sweep both grow with the journal; what a screen waits for must not. */
+  const order: string[] = [];
+  let housekeepingScheduled = false;
+  let runHousekeeping: (() => void) | null = null;
+
+  const result = await boot({
+    createDriver: makeFakeDriver,
+    fileOps: noopFileOps(),
+    loadReferenceData: async () => {
+      order.push('referenceData');
+    },
+    purgeExpiredTrash: async () => {
+      order.push('trashPurge');
+    },
+    sweepOrphanPhotos: async () => {
+      order.push('photoSweep');
+    },
+    scheduleHousekeeping: (run) => {
+      housekeepingScheduled = true;
+      runHousekeeping = run;
+    }
+  });
+
+  assert.equal(result.phase, 'ready');
+  assert.ok(housekeepingScheduled, 'the passes have to be scheduled, not dropped');
+  assert.deepEqual(order, ['referenceData'], 'reference data is still waited for; housekeeping is not');
+
+  runHousekeeping!();
+  if (result.phase === 'ready') await result.housekeeping;
+  assert.deepEqual(order, ['referenceData', 'trashPurge', 'photoSweep'], 'and both still run, in order');
+});
+
+test('housekeeping runs on every boot even with no scheduler injected', async () => {
+  // What the probes and the tests that ask nothing of the ordering get: off
+  // the critical path, but started as soon as ready is reported.
+  const order: string[] = [];
+  const result = await boot({
+    createDriver: makeFakeDriver,
+    fileOps: noopFileOps(),
+    purgeExpiredTrash: async () => {
+      order.push('trashPurge');
+    },
+    sweepOrphanPhotos: async () => {
+      order.push('photoSweep');
+    }
+  });
+
+  assert.equal(result.phase, 'ready');
+  if (result.phase === 'ready') await result.housekeeping;
+  assert.deepEqual(order, ['trashPurge', 'photoSweep']);
 });
 
 test('reports persistDenied when persistent storage is refused', async () => {
@@ -178,18 +236,27 @@ test('a failing photo sweep still boots: housekeeping must not cost the app its 
   });
 
   assert.equal(result.phase, 'ready');
+  // And the deferred pass swallows it the same way, rather than surfacing as
+  // an unhandled rejection now that nothing awaits it on the way to a screen.
+  if (result.phase === 'ready') await assert.doesNotReject(() => result.housekeeping);
 });
 
 test('a failing trash purge still boots: housekeeping must not cost the app its screens', async () => {
   // Phase 5 ticket 19, the same reasoning the photo sweep above gets: a
   // failed purge leaves the trash for the next boot to try again.
+  let sweptAnyway = false;
   const result = await boot({
     createDriver: makeFakeDriver,
     fileOps: noopFileOps(),
     purgeExpiredTrash: async () => {
       throw new Error('disk full');
+    },
+    sweepOrphanPhotos: async () => {
+      sweptAnyway = true;
     }
   });
 
   assert.equal(result.phase, 'ready');
+  if (result.phase === 'ready') await assert.doesNotReject(() => result.housekeeping);
+  assert.ok(sweptAnyway, 'and the pass behind it still runs: one failing does not cancel the other');
 });

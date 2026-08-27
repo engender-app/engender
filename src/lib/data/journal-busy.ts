@@ -67,3 +67,26 @@ export function onJournalBusyChange(listener: (busy: boolean) => void): () => vo
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+
+/** For housekeeping that must not run alongside a write (phase 5 audit ticket
+    02). Both boot passes read rows and then act on what they read, and since
+    they moved off boot's critical path they run with the screens live - so a
+    write that lands between the read and the act would make the purge delete
+    an entry somebody restored, or the sweep delete the files of a photo
+    somebody just attached.
+
+    `sawWrite()` answers whether any write has been in flight since the watch
+    started, itself included: a pass asks before every step it cannot take
+    back, and gives up when the answer is yes. Giving up is safe by
+    construction - what a pass does not finish is what the next boot retries,
+    which is what both of their failure paths already do.
+
+    Not a lock. Nothing here can stop a write from starting; a screen saving an
+    entry has priority over housekeeping by any reading. */
+export function watchJournalWrites(): { sawWrite: () => boolean; stop: () => void } {
+  let saw = journalIsBusy();
+  const stop = onJournalBusyChange((busy) => {
+    if (busy) saw = true;
+  });
+  return { sawWrite: () => saw, stop };
+}
