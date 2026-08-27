@@ -52,6 +52,8 @@ public class ReminderNotificationPrivacyTest {
         // dropped for having none.
         notificationManager().createNotificationChannel(new NotificationChannel(
             ReminderScheduler.CHANNEL_REMINDERS, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH));
+        notificationManager().createNotificationChannel(new NotificationChannel(
+            ReminderScheduler.CHANNEL_CHECK_IN, "Check-in", NotificationManager.IMPORTANCE_HIGH));
     }
 
     @After
@@ -82,6 +84,56 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(SENSITIVE_TITLE, notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
     }
 
+    /* Phase 5 security ticket 01 (F-05). hideNotificationTitles above is
+       about the shade, where the OS shows everything whatever the app asks
+       for. This is about the lock screen, where it does not: a notification
+       posted at the default VISIBILITY_PUBLIC shows its title and text to
+       anyone holding the phone, and the title is the reminder the person
+       wrote. The two cover different screens and both are needed. */
+
+    @Test
+    public void reminderNotificationsAreHiddenOnALockedScreen() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, payload(false));
+
+        fireReminderAlarm();
+
+        Notification notification = findNotification();
+        assertNotNull("no notification was posted", notification);
+        assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility);
+    }
+
+    @Test
+    public void checkInNotificationsAreHiddenOnALockedScreen() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+
+        fireCheckInAlarm();
+
+        Notification notification = findCheckInNotification();
+        assertNotNull("no check-in notification was posted", notification);
+        assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility);
+    }
+
+    private JSONObject checkInPayload() throws Exception {
+        return payload(false)
+            .put("checkInEnabled", true)
+            .put("checkInAffirmations", new JSONArray().put("You are allowed to take up space"));
+    }
+
+    private void fireCheckInAlarm() {
+        Intent intent = new Intent(context, ReminderAlarmReceiver.class)
+            .putExtra(ReminderScheduler.EXTRA_KIND, ReminderScheduler.KIND_CHECK_IN);
+        new ReminderAlarmReceiver().onReceive(context, intent);
+    }
+
+    private Notification findCheckInNotification() throws InterruptedException {
+        return await(() -> {
+            for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
+                if (sbn.getId() == ReminderAlarmReceiver.CHECK_IN_NOTIFICATION_ID) return sbn.getNotification();
+            }
+            return null;
+        });
+    }
+
     private JSONObject payload(boolean hideNotificationTitles) throws Exception {
         return new JSONObject()
             .put("reminders", new JSONArray().put(new JSONObject()
@@ -109,11 +161,34 @@ public class ReminderNotificationPrivacyTest {
         new ReminderAlarmReceiver().onReceive(context, intent);
     }
 
-    private Notification findNotification() {
-        for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
-            if (("reminder:" + REMINDER_ID).equals(sbn.getTag())) return sbn.getNotification();
+    private Notification findNotification() throws InterruptedException {
+        return await(() -> {
+            for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
+                if (("reminder:" + REMINDER_ID).equals(sbn.getTag())) return sbn.getNotification();
+            }
+            return null;
+        });
+    }
+
+    /** Posting is a call across to the system's notification service, so a
+        read taken the instant onReceive returns can beat it there. On the
+        Pixel it does, roughly one batch run in two; on an emulator it never
+        seemed to. Polling rather than sleeping a fixed span, so the usual
+        case stays as fast as it was. */
+    private static Notification await(java.util.concurrent.Callable<Notification> lookFor)
+        throws InterruptedException {
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
+        while (true) {
+            Notification found;
+            try {
+                found = lookFor.call();
+            } catch (Exception e) {
+                throw new AssertionError("reading the posted notifications threw", e);
+            }
+            if (found != null) return found;
+            if (System.nanoTime() > deadline) return null;
+            Thread.sleep(50);
         }
-        return null;
     }
 
     private NotificationManager notificationManager() {

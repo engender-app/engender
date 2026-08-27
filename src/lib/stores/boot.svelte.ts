@@ -69,7 +69,8 @@ import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles } from './videoFiles';
 import { setVoiceFiles } from './voiceFiles';
 import { localStorageCache } from '../data/prefs/boot-cache';
-import { wipeLocalData } from '../data/reset';
+import { clearBrowserMirrors, wipeLocalData } from '../data/reset';
+import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
 import { markUnlocked } from './lock.svelte';
@@ -121,6 +122,11 @@ export async function resetApp(): Promise<void> {
           await androidKeystore.erase();
         }
       : undefined,
+    /* The rest of what the phone holds: the three preference files, the
+       alarms scheduled off the reminder one, and the Keystore alias the
+       backup password is wrapped under. The web keeps none of it. */
+    wipeDeviceState: isAndroid() ? () => androidDeviceReset.wipe() : undefined,
+    clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
     clearBootCache: () => bootCache.clear()
   });
   // replace(), so back doesn't return to the lock screen of a journal that
@@ -217,6 +223,7 @@ export function startBoot() {
         await wipeLocalData({
           closeDatabase: async () => {},
           storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
+          clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
           clearBootCache: () => bootCache.clear()
         });
         state = 'first-run';

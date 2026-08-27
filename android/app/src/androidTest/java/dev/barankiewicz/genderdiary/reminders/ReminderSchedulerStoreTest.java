@@ -1,11 +1,15 @@
 package dev.barankiewicz.genderdiary.reminders;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -57,6 +61,96 @@ public class ReminderSchedulerStoreTest {
         JSONObject loaded = ReminderScheduler.loadPayload(context);
         assertNotNull(loaded);
         assertEquals(payload.toString(), loaded.toString());
+    }
+
+    @Test
+    public void wipeCancelsTheAlarmsAndTakesTheTitlesWithThem() throws Exception {
+        /* Phase 5 security ticket 01 (F-01). Nothing used to cancel these:
+           a wiped phone kept posting the person's own reminder titles on
+           schedule, read out of a preference file the reset never touched,
+           and the next app open is what cancelled them - on a phone nobody
+           opens again, never. */
+        ReminderScheduler.saveAndSchedule(context, dailyReminderPayload());
+        assertTrue("nothing was scheduled to begin with", reminderAlarmExists());
+
+        ReminderScheduler.wipe(context);
+
+        assertFalse("an alarm is still scheduled", reminderAlarmExists());
+        assertNull(ReminderScheduler.loadPayload(context));
+        assertTrue(
+            "the reminder titles are still here",
+            context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE).getAll().isEmpty());
+    }
+
+    @Test
+    public void wipeCancelsTheCheckInAlarmEvenWithThePayloadAlreadyGone() throws Exception {
+        /* The check-in alarm is named by a fixed request code, not by
+           anything in the payload, so losing the payload is no reason to
+           leave it scheduled. It used to be: cancelAll returned on a null
+           payload before it reached this alarm, which meant a reminders
+           file that would not parse - or one an interrupted wipe had
+           already cleared - left a check-in alarm nothing could reach. */
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        assertTrue("nothing was scheduled to begin with", checkInAlarmExists());
+        context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE).edit().clear().commit();
+
+        ReminderScheduler.wipe(context);
+
+        assertFalse("the check-in alarm is still scheduled", checkInAlarmExists());
+    }
+
+    @Test
+    public void wipingAPhoneWithNoRemindersOnItIsNotAnError() {
+        // The reset is also reachable straight after onboarding.
+        ReminderScheduler.wipe(context);
+        ReminderScheduler.wipe(context);
+        assertNull(ReminderScheduler.loadPayload(context));
+    }
+
+    private JSONObject checkInPayload() throws Exception {
+        return dailyReminderPayload().put("checkInEnabled", true);
+    }
+
+    private JSONObject dailyReminderPayload() throws Exception {
+        return new JSONObject()
+            .put("reminders", new JSONArray().put(new JSONObject()
+                .put("id", "r-1")
+                .put("title", "Estradiol patch")
+                .put("type", "med")
+                .put("time", "20:00")
+                .put("recurrence", "DAILY")
+                .put("enabled", true)))
+            .put("checkInEnabled", false)
+            .put("checkInTime", "21:00")
+            .put("latestEntryEpochDay", JSONObject.NULL)
+            .put("texts", new JSONObject()
+                .put("channelReminders", "Reminders")
+                .put("channelCheckIn", "Check-in")
+                .put("checkInTitle", "Daily check-in")
+                .put("checkInBody", "How are you today?"));
+    }
+
+    /* The PendingIntents AlarmManager is holding, if it still is: built the
+       way ReminderScheduler's own reminderIntent and checkInIntent build
+       them, and asked for with FLAG_NO_CREATE, which finds nothing once the
+       last reference has been cancelled. The assertion before each wipe is
+       what keeps this honest - a shape that drifted out of step would
+       report "no alarm" for a phone full of them. */
+    private boolean reminderAlarmExists() {
+        return alarmExists(41, "dev.barankiewicz.genderdiary.REMINDER", "genderdiary://reminder/r-1");
+    }
+
+    private boolean checkInAlarmExists() {
+        return alarmExists(42, "dev.barankiewicz.genderdiary.CHECK_IN", "genderdiary://check-in");
+    }
+
+    private boolean alarmExists(int requestCode, String action, String data) {
+        Intent intent = new Intent(context, ReminderAlarmReceiver.class)
+            .setAction(action)
+            .setData(Uri.parse(data));
+        PendingIntent pending = PendingIntent.getBroadcast(
+            context, requestCode, intent, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+        return pending != null;
     }
 
     @Test

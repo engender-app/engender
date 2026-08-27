@@ -1,5 +1,6 @@
 import { test, expect } from 'vitest';
-import { wipeLocalData, type LocalDataTargets } from './reset.ts';
+import { clearBrowserMirrors, wipeLocalData, type LocalDataTargets } from './reset.ts';
+import { BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
 function targets(
@@ -9,6 +10,8 @@ function targets(
     removeFails?: string;
     platform?: boolean;
     platformFails?: boolean;
+    device?: boolean;
+    deviceFails?: boolean;
   } = {}
 ) {
   const log: string[] = [];
@@ -36,6 +39,13 @@ function targets(
           if (options.platformFails) throw new Error('the database file is still held');
         }
       : undefined,
+    wipeDeviceState: options.device
+      ? async () => {
+          log.push('wipe device state');
+          if (options.deviceFails) throw new Error('an alarm is still scheduled');
+        }
+      : undefined,
+    clearBrowserMirrors: () => log.push('clear mirrors'),
     clearBootCache: () => log.push('clear cache')
   };
 
@@ -51,6 +61,7 @@ test('closes the database, empties its storage, then drops the mirror', async ()
     'remove gender-diary.sqlite3 (recursive)',
     'remove gender-diary.sqlite3.pre-migration-backup (recursive)',
     'remove photos (recursive)',
+    'clear mirrors',
     'clear cache'
   ]);
 });
@@ -106,6 +117,26 @@ test('a platform with storage of its own has it wiped too, after the close', asy
   expect(log.at(-1)).toBe('clear cache');
 });
 
+test('a platform with device state of its own has it wiped before the files go', async () => {
+  /* Android: the reminder, auto-export and quick-exit preference files, the
+     alarms scheduled off the first of them, and the Keystore alias the
+     backup password is wrapped under. Before the journal rather than after,
+     so a wipe that fails leaves the journal to try again on instead of
+     taking it and leaving the reminders. */
+  const { deps, log } = targets({ platform: true, device: true });
+  await wipeLocalData(deps);
+
+  expect(log.indexOf('wipe device state')).toBeLessThan(log.indexOf('remove photos (recursive)'));
+  expect(log.at(-1)).toBe('clear cache');
+});
+
+test('device state that will not go stops the reset with the journal intact', async () => {
+  const { deps, log } = targets({ platform: true, device: true, deviceFails: true });
+  await expect(wipeLocalData(deps)).rejects.toThrow('still scheduled');
+  expect(log).not.toContain('remove photos (recursive)');
+  expect(log).not.toContain('clear cache');
+});
+
 test('platform storage that will not go stops the reset before the mirror', async () => {
   /* The same rule the OPFS failure follows, and for the same reason: the
      mirror is what tells the next cold start there is a PIN at all, so
@@ -113,4 +144,59 @@ test('platform storage that will not go stops the reset before the mirror', asyn
   const { deps, log } = targets({ platform: true, platformFails: true });
   await expect(wipeLocalData(deps)).rejects.toThrow('still held');
   expect(log).not.toContain('clear cache');
+});
+
+/** localStorage as far as the sweep is concerned: enumerable by index, and
+    removable by name. */
+function fakeStorage(entries: Record<string, string>): Storage {
+  const values = new Map(Object.entries(entries));
+  return {
+    get length() {
+      return values.size;
+    },
+    key: (index: number) => [...values.keys()][index] ?? null,
+    getItem: (name: string) => values.get(name) ?? null,
+    setItem: (name: string, value: string) => void values.set(name, value),
+    removeItem: (name: string) => void values.delete(name),
+    clear: () => values.clear()
+  } as Storage;
+}
+
+test('a completed reset leaves no key of this app behind in localStorage', async () => {
+  /* The real ports rather than fakes of them, because what this asserts is
+     the sweep itself: the draft mirror holds the note text, mood, tags and
+     body regions of the entry the process died on, and the whole claim of
+     the reset screen is that none of that is still here afterwards. */
+  const storage = fakeStorage({
+    'gender-diary-entry-draft': '{"note":"first day on the patch"}',
+    'gender-diary-pin-attempts': '{"failures":3}',
+    [BOOT_CACHE_KEY]: '{"theme":"dark"}',
+    'unrelated-app-key': 'not ours to take'
+  });
+
+  const { deps } = targets();
+  await wipeLocalData({
+    ...deps,
+    clearBrowserMirrors: () => clearBrowserMirrors(storage),
+    clearBootCache: () => storage.removeItem(BOOT_CACHE_KEY)
+  });
+
+  const left = Array.from({ length: storage.length }, (_, index) => storage.key(index));
+  expect(left.filter((key) => key?.startsWith('gender-diary-'))).toEqual([]);
+  expect(left).toEqual(['unrelated-app-key']);
+});
+
+test('the sweep leaves the boot mirror for clearBootCache to take last', async () => {
+  /* Not tidiness: the sweep runs while the reset can still fail, and the
+     mirror is the one key whose early removal would hand the journal back
+     unlocked. */
+  const storage = fakeStorage({
+    'gender-diary-entry-draft': '{}',
+    [BOOT_CACHE_KEY]: '{"theme":"dark"}'
+  });
+
+  clearBrowserMirrors(storage);
+
+  expect(storage.getItem('gender-diary-entry-draft')).toBeNull();
+  expect(storage.getItem(BOOT_CACHE_KEY)).not.toBeNull();
 });
