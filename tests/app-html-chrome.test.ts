@@ -20,6 +20,7 @@ import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { documentChrome } from '../src/lib/data/prefs/documentChrome.ts';
 import { PREFERENCE_DEFAULTS } from '../src/lib/data/prefs/catalogue.ts';
+import { BOOT_CACHE_KEY } from '../src/lib/data/prefs/boot-cache.ts';
 import fixture from '../src/lib/data/prefs/fixtures/document-chrome.json';
 import type { ChromeCase } from '../src/lib/data/prefs/fixtures/documentChromeCase.ts';
 
@@ -71,7 +72,11 @@ function stamp(boot: unknown, system: { prefersDark: boolean; prefersReducedMoti
   runInNewContext(prePaintScript(), {
     JSON,
     localStorage: {
-      getItem: (key: string) => (key === 'gender-diary-boot-prefs' ? JSON.stringify(boot) : null)
+      /* Answered by the constant boot-cache.ts writes under, not by
+         app.html's own literal: the two are the second thing that file's
+         header says has to be changed together, and a script reading a key
+         nothing writes finds no mirror and silently paints the defaults. */
+      getItem: (key: string) => (key === BOOT_CACHE_KEY ? JSON.stringify(boot) : null)
     },
     matchMedia: (query: string) => ({
       matches: query.includes('prefers-color-scheme: dark') ? system.prefersDark : system.prefersReducedMotion
