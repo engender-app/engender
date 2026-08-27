@@ -198,13 +198,12 @@ describe('what the worker is still fetching', () => {
        its own. A screen arriving is tier 2's - the shell already runs a
        view transition over the whole of it - so a second fade on the
        content a moment later is that content arriving twice. */
+    /* A route that hands its read to ReadGate gets the fade from the gate,
+       asserted once below - which is what took the same arrow function back
+       out of the routes the first pass had written it into. */
     for (const route of ENTRY_DATA) {
       const source = sourceOf.get(route)!;
-      if (source.includes('ReadGate.svelte')) {
-        /* The gate crossfades its own placeholder out, asserted once below,
-           which is what took the same arrow function out of the routes that
-           now hand it their read. */
-      } else {
+      if (!source.includes('ReadGate.svelte')) {
         expect(source, route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
         expect(markupOf.get(route), route).toMatch(/out:crossfade/);
       }

@@ -126,9 +126,9 @@ export interface LiveQuery<T> {
       screen is one round trip old, not absent, and replacing a list with a
       placeholder on every save would be worse than the wait it reports. */
   readonly loading: boolean;
-  /** True when the most recent run rejected (readState.ts). Reading it is a
-      screen's choice: the default rendering of a failed read is the empty
-      state, unchanged by this being here. */
+  /** True when the most recent run rejected; readState.ts states the rule and
+      why the default rendering does not change with it. Reading this is a
+      screen's choice, and most screens do not. */
   readonly failed: boolean;
 }
 
@@ -143,13 +143,10 @@ export interface LiveQuery<T> {
 export interface LiveList<T> {
   /** The rows, `[]` until the first result lands. */
   readonly rows: T[];
-  /** True until the first result lands, as on `LiveQuery`. */
   readonly loading: boolean;
   /** The read answered, and it answered with nothing. False while loading, so
       a screen cannot show its empty state over a read still in flight. */
   readonly empty: boolean;
-  /** True when the most recent run rejected. A failed first read is `empty`
-      too, which is the rendering the default keeps. */
   readonly failed: boolean;
 }
 
@@ -185,7 +182,25 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>): LiveQuery<T
     not answered at all. That is the one default this owns, and it is why no
     screen writes `?? []` any more. */
 export function liveList<T>(run: (journal: Journal) => Promise<T[] | undefined>): LiveList<T> {
-  return listView(query(null, run));
+  const read = query(null, run);
+  /* Rebuilt per access rather than held, so each getter reads the underlying
+     `$state` itself and a template tracking `rows` alone is not woken by a
+     change to `failed`. */
+  const state = (): ReadState<T[]> => ({ value: read.value, loading: read.loading, failed: read.failed });
+  return {
+    get rows() {
+      return rowsOf(state());
+    },
+    get loading() {
+      return read.loading;
+    },
+    get empty() {
+      return emptyOf(state());
+    },
+    get failed() {
+      return read.failed;
+    }
+  };
 }
 
 /** A query that watches only `tables`, whatever its reads actually touch.
@@ -202,26 +217,6 @@ export function liveQueryWatchingOnly<T>(
   run: (journal: Journal) => Promise<T>
 ): LiveQuery<T> {
   return query(tables, run);
-}
-
-/** The list face of a query: `LiveQuery`'s value read through readState's two
-    list rules, so the defaulting exists once rather than at every call site. */
-function listView<T>(read: LiveQuery<T[] | undefined>): LiveList<T> {
-  const state = (): ReadState<T[]> => ({ value: read.value, loading: read.loading, failed: read.failed });
-  return {
-    get rows() {
-      return rowsOf(state());
-    },
-    get loading() {
-      return read.loading;
-    },
-    get empty() {
-      return emptyOf(state());
-    },
-    get failed() {
-      return read.failed;
-    }
-  };
 }
 
 function query<T>(narrowedTo: TableName[] | null, run: (journal: Journal) => Promise<T>): LiveQuery<T> {
