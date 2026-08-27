@@ -52,6 +52,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade } from '$lib/motion/reveal';
@@ -442,18 +443,15 @@
 
     <div class="curve-fit">
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.fit)}>
-        <!-- A plain row rather than a ListRow: a ListRow renders as a link
-             or a button, and a button wrapping the switch's own button is a
-             nested control. Same call ticket 24 made in Settings. -->
-        <div class="kit-row is-static" data-curve-fit>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{m.curve_fit_label()}</span>
-            <span class="kit-row-sub">{m.curve_fit_hint()}</span>
-          </span>
-          <span class="kit-row-trail">
+        <!-- Static rather than an ordinary ListRow: an ordinary one renders
+             as a link or a button, and a button wrapping the switch's own
+             button is a nested control. Same call ticket 24 made in
+             Settings. -->
+        <ListRow static data-curve-fit title={m.curve_fit_label()} subtitle={m.curve_fit_hint()}>
+          {#snippet trailing()}
             <Switch checked={prefs.hormoneCurveFitToOwnLabs} onChange={toggleFit} label={m.curve_fit_label()} />
-          </span>
-        </div>
+          {/snippet}
+        </ListRow>
       </ListCard>
     </div>
 

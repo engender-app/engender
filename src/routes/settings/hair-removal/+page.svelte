@@ -147,14 +147,14 @@
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
         {#each HAIR_REMOVAL_AREAS as area (area)}
           {@const days = recency[area]}
-          <div class="kit-row is-static" data-recency={area}>
-            <span class="kit-row-text">
-              <span class="kit-row-title">{hairRemovalAreaName(area)}</span>
-              <span class="kit-row-sub">
-                {days === null ? m.hair_removal_area_never_used() : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
-              </span>
-            </span>
-          </div>
+          <ListRow
+            static
+            data-recency={area}
+            title={hairRemovalAreaName(area)}
+            subtitle={days === null
+              ? m.hair_removal_area_never_used()
+              : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
+          />
         {/each}
       </ListCard>
 
@@ -263,18 +263,18 @@
           <div style="margin-bottom:var(--space-3)">
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
               {#each photos as p (p.id)}
-                <div class="kit-row is-static" data-hair-removal-photo={p.id}>
-                  <PhotoThumb photo={p} size={48} />
-                  <span class="kit-row-text"></span>
-                  <button
-                    class="kit-row-act press"
-                    data-delete-hair-removal-photo={p.id}
-                    aria-label={m.hair_removal_photo_delete_sheet()}
-                    onclick={() => (photoDeleteTarget = p)}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
-                </div>
+                <ListRow
+                  static
+                  data-hair-removal-photo={p.id}
+                  action={{
+                    icon: 'trash',
+                    label: m.hair_removal_photo_delete_sheet(),
+                    onclick: () => (photoDeleteTarget = p),
+                    attrs: { 'data-delete-hair-removal-photo': p.id }
+                  }}
+                >
+                  {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
+                </ListRow>
               {/each}
             </ListCard>
           </div>

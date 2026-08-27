@@ -41,7 +41,6 @@
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import type { RecapDimChange } from '$lib/data/recapDisplay';
   import type { WrappedStreaks, WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
-  import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
   import RiveSlot from './RiveSlot.svelte';
   import BarRows from './kit/BarRows.svelte';
@@ -49,6 +48,7 @@
   import MoodYear from './kit/MoodYear.svelte';
   import ChartCard from './kit/ChartCard.svelte';
   import ListCard from './kit/ListCard.svelte';
+  import ListRow from './kit/ListRow.svelte';
   import SectionHeading from './kit/SectionHeading.svelte';
 
   let {
@@ -186,13 +186,9 @@
 <SectionHeading text={m.wrapped_year_figures()} />
 <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.figures)}>
   {#each figures as figure (figure.key)}
-    <div class="kit-row is-static" data-wrapped-figure>
-      <span class="kit-row-text">
-        <span class="kit-row-title">{figure.label}</span>
-        {#if figure.note}<span class="kit-row-sub">{figure.note}</span>{/if}
-      </span>
-      <span class="kit-row-trail"><b class="wrapped-figure-value">{figure.value}</b></span>
-    </div>
+    <ListRow static data-wrapped-figure title={figure.label} subtitle={figure.note}>
+      {#snippet trailing()}<b class="wrapped-figure-value">{figure.value}</b>{/snippet}
+    </ListRow>
   {/each}
 </ListCard>
 
@@ -235,13 +231,11 @@
   <SectionHeading text={m.wrapped_milestones()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}>
     {#each recap.milestones as ms (ms.id)}
-      <div class="kit-row is-static" data-wrapped-milestone>
-        <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
-        <span class="kit-row-text"><span class="kit-row-title">{ms.name}</span></span>
-        <span class="kit-row-trail">
+      <ListRow static data-wrapped-milestone icon="flag" title={ms.name}>
+        {#snippet trailing()}
           <span class="wrapped-figure-date">{fmtDay(ms.epochDay, { day: 'numeric', month: 'long' })}</span>
-        </span>
-      </div>
+        {/snippet}
+      </ListRow>
     {/each}
   </ListCard>
 {/if}
