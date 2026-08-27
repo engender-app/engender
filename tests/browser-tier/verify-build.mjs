@@ -29,15 +29,14 @@ import { appVersion } from '../../scripts/app-version.mjs';
    the one the trade turns on: are its bytes still there with no network, after
    the app has loaded it once.
 
-   Driven at the cache rather than through the scanner's own sheet, which
-   cannot be opened in a built app today: the lab screen wraps the OCR machine
-   in `$state(...)`, the machine's methods write to the object the factory
-   closed over rather than to that proxy, and the sheet never learns it was
-   asked to open. That is a pre-existing defect of the screen, not of this
-   worker, and it is nothing this file can route around - so what is asserted
-   here is every step the shell is responsible for, and the step it is not
-   (tesseract reading those files) stays covered by ocr-engine.test.ts, which
-   pins the paths the engine loads from.
+   Driven at the cache rather than through the scanner's own sheet: what this
+   file is responsible for is the shell's caching behaviour, not the screen
+   that triggers it, and a real recognition run would make this slower and
+   less deterministic for no gain here. The screen itself - opening the sheet,
+   running a recognition, the download notice it shows first - is the
+   walkthrough's job (ticket 44). The step neither file drives (tesseract
+   reading those files) stays covered by ocr-engine.test.ts, which pins the
+   paths the engine loads from.
 
    The set the page asks for, as ocr-engine.ts names it. */
 const OCR_ASSETS = [
@@ -359,10 +358,10 @@ try {
   if (precachedOnDemand.length === 0) ok('the OCR engine is not in a fresh install\'s shell');
   else fail("the OCR engine is not in a fresh install's shell", precachedOnDemand.slice(0, 4).join(', '));
 
-  /* The download notice, read off the built bundle rather than off the screen,
-     because the sheet it sits in cannot be opened (see the note by
-     OCR_ASSETS). What can be checked here is that the copy shipped and that
-     both languages of it did; the walkthrough owns the screen. */
+  /* The download notice, read off the built bundle rather than off the
+     screen: what can be checked here is that the copy shipped and that both
+     languages of it did. The walkthrough drives the screen itself and checks
+     the notice is actually on it, in whichever one locale that runs in. */
   const shipped = emittedAssets();
   /* Read out of the catalogues rather than restated here, so a reworded notice
      stays checked instead of quietly failing (ADR-0029's rule, applied to copy
