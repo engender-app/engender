@@ -9,7 +9,7 @@ import {
   type OcrReviewRow
 } from './ocr';
 import { epochDayFromDateInputValue } from '../epochDay';
-import { normalizeUnit } from '../journal/labs';
+import { PREFERRED_UNIT_ANALYTES } from './units';
 
 // ---------------------------------------------------------------------------
 // Adapter interfaces (seams for injection and testing)
@@ -128,14 +128,10 @@ export function createOcrMachine(
         return;
       }
 
-      const parsed = applyPreferredUnitDefaults(
-        parseOcrLabRows(text),
-        {
-          estradiol: saver.getPreferredUnit?.('estradiol') ?? undefined,
-          testosterone: saver.getPreferredUnit?.('testosterone') ?? undefined,
-          prolactin: saver.getPreferredUnit?.('prolactin') ?? undefined
-        }
+      const preferredUnits = Object.fromEntries(
+        PREFERRED_UNIT_ANALYTES.map((analyte) => [analyte, saver.getPreferredUnit?.(analyte) ?? undefined])
       );
+      const parsed = applyPreferredUnitDefaults(parseOcrLabRows(text), preferredUnits);
       if (!parsed.length) {
         machine.state = { tag: 'no-rows' };
         return;
@@ -189,15 +185,7 @@ export function createOcrMachine(
 
       const validation = validateRowsForSave(rows);
       if (!validation.ok) {
-        const error =
-          validation.firstError === 'missing-analyte'
-            ? 'missing-analyte'
-            : validation.firstError === 'invalid-value'
-              ? 'invalid-value'
-              : validation.firstError === 'missing-date'
-                ? 'missing-date'
-                : 'invalid-date';
-        machine.state = { tag: 'save-validation-failed', rows, error };
+        machine.state = { tag: 'save-validation-failed', rows, error: validation.firstError ?? 'invalid-date' };
         return;
       }
 

@@ -1,13 +1,9 @@
 /* The chart kit's arithmetic (phase 5 ticket 20). Kept apart from the
-   components for the same reason $lib/motion/flagSun.ts is: the numbers
-   the ticket pins - the point cap and the re-tween between datasets - are
-   worth testing without a DOM.
-
-   The area chart is a timeline you scroll rather than a range squashed into
-   a card, so a point keeps its own slot at any range and a year is read a
-   week at a time by dragging. That decides the shape of everything here:
-   the chart draws its real points, and the only thing capped is how many
-   of them there can be before neighbouring ones are averaged together. */
+   components for the same reason $lib/motion/flagSun.ts is: the number
+   the ticket pins - the re-tween between datasets - is worth testing
+   without a DOM. The point cap that used to live here moved to
+   charts/grain.ts's MAX_POSITIONS/atGrain, which chooses how coarse a
+   chart draws instead of averaging its real points down. */
 
 import { area as d3area, line as d3line, curveLinear, curveMonotoneX } from 'd3-shape';
 
@@ -15,35 +11,6 @@ export interface Point {
   /** Domain position - an epoch day, an index, whatever the caller counts in. */
   x: number;
   y: number;
-}
-
-/** The most positions a chart will draw, however long a range it is handed.
-
-    Every frame of tier 3's re-tween rebuilds the whole path on the main
-    thread inside a Capacitor WebView, so this is the number that decides
-    what the tween costs at its worst. A year of daily entries is 365 and
-    sits under it; a multi-year range is averaged down into this many
-    buckets rather than drawn point by point, which is also the only
-    honest thing to do once a point is narrower than the stroke. */
-export const MAX_POINTS = 400;
-
-/** `points` averaged into at most `max` evenly spaced buckets.
-
-    Under the cap this is the identity, which is the case that matters: a
-    week is seven days and a year is 365, and neither is touched. */
-export function bucket(points: Point[], max: number = MAX_POINTS): Point[] {
-  if (points.length <= max) return [...points].sort((a, b) => a.x - b.x);
-  const sorted = [...points].sort((a, b) => a.x - b.x);
-  const size = sorted.length / max;
-  const out: Point[] = [];
-  for (let i = 0; i < max; i++) {
-    const slice = sorted.slice(Math.floor(i * size), Math.max(Math.floor((i + 1) * size), Math.floor(i * size) + 1));
-    out.push({
-      x: slice.reduce((sum, p) => sum + p.x, 0) / slice.length,
-      y: slice.reduce((sum, p) => sum + p.y, 0) / slice.length
-    });
-  }
-  return out;
 }
 
 /** Reads `points` onto `n` evenly spaced positions across its own x range.

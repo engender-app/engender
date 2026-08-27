@@ -5,6 +5,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { DoseRoute, LabResult, LabTiming } from '../types';
 import { drawUpperBound, labTimingFor, type LabDraw } from '../labTiming';
 import { assertChanged, mintUuid, now } from './support';
+import { normalizeUnit } from '../labs/units';
 
 /** The analytes offered before any result exists. Lowercase scientific
     names shown as-is, like every stored analyte. Order is cosmetic - it
@@ -36,14 +37,6 @@ export interface LabResultInput {
 export interface LabSeries {
   unit: string;
   results: LabResult[];
-}
-
-/** The unit as a series key. Surrounding whitespace is an artefact of typing,
-    so it goes. Nothing else does: deciding that `ng/dl` and `ng/dL` name the
-    same unit is an interpretation this app does not make, and the one after
-    that would be converting between them (CONTEXT: "Analyte"). */
-export function normalizeUnit(unit: string): string {
-  return unit.trim();
 }
 
 export interface LabsArea {
