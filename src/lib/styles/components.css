@@ -942,6 +942,35 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   opacity: 0; transition: opacity var(--dur-med) var(--ease-out);
 }
 .sheet-scrim.is-open { opacity: 1; }
+
+/* The withdrawal's blur half, missing from whatever sits in its own
+   scrolling region beside the one the scrim is inside (Sheet.svelte's own
+   `lockBackground` already marks every other top-level child `inert` while
+   a sheet is open - the rail on desktop, chiefly). backdrop-filter samples
+   what is visually behind the scrim, and a browser does not reliably
+   flatten two independently-scrolling regions into one bitmap for that
+   sampling - measured directly: the scrim's own rect spans the rail's too,
+   backdrop-filter is applied and reports as applied, and the rail still
+   rendered every icon and word in full sharpness under it (Alicja,
+   2026-08-27, "the blur effect looks bad on web" - confirmed on the
+   desktop rail specifically, screenshot against Cycle's edit sheet).
+   Blurring the rail's own pixels directly sidesteps needing backdrop-filter
+   to see across that boundary at all. Same token as the scrim's own radius,
+   so it reads as one material rather than a second, undocumented blur. */
+@supports (backdrop-filter: blur(1px)) {
+  [data-app-root] > [inert] {
+    filter: blur(var(--blur-withdraw));
+    transition: filter var(--dur-med) var(--ease-out);
+  }
+}
+html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
+  filter: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-app-root] > [inert] {
+    filter: none;
+  }
+}
 /* Carries the drag, so the sheet inside it keeps its transition's transform
    to itself (Sheet.svelte). Sized to the sheet rather than to the scrim, or
    it would swallow the backdrop taps that dismiss.
