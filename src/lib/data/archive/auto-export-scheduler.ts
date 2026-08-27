@@ -23,7 +23,7 @@ async function maybeRun() {
   const status = await androidAutoExport.status();
   if (!isDue(status, now)) return;
 
-  const { password } = await androidAutoExport.revealPassword();
+  const { password } = await androidAutoExport.passwordForScheduledBackup();
   if (!password) return;
 
   running = true;

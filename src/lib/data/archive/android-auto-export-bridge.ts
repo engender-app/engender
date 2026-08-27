@@ -19,7 +19,11 @@ export interface AndroidAutoExportBridge {
   pickDestination(): Promise<{ picked: boolean; destinationUri: string | null; destinationLabel: string | null }>;
   configure(options: { enabled: boolean; schedule: AutoExportSchedule }): Promise<AutoExportStatus>;
   setPassword(options: { password: string }): Promise<void>;
-  revealPassword(): Promise<{ password: string | null }>;
+  /** The scheduler's own call, and no screen's: see the comment on
+      AutoExportPlugin.passwordForScheduledBackup for why it is not
+      behind a prompt, and auto-export-password.test.ts for the check
+      that keeps it out of the screens. */
+  passwordForScheduledBackup(): Promise<{ password: string | null }>;
   clearPassword(): Promise<void>;
   writeBackup(options: { fileName: string; base64: string }): Promise<{ writtenAt: number }>;
   notifyFailure(): Promise<void>;

@@ -13,7 +13,7 @@ vi.mock('./android-auto-export-bridge.ts', () => ({
     configure: vi.fn(),
     writeBackup: vi.fn(),
     setPassword: vi.fn(),
-    revealPassword: vi.fn(),
+    passwordForScheduledBackup: vi.fn(),
     clearPassword: vi.fn(),
     notifyFailure: vi.fn()
   }
