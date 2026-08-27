@@ -188,7 +188,7 @@ export async function everySection(): Promise<Journal> {
     epochDay: null,
     enabled: true
   });
-  await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
+  await journal.tally.log({ epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' });
   await journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]);
   await journal.letters.addLetter({ epochDay: 20000, text: 'read this in a year', unlockEpochDay: 20365 });
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
