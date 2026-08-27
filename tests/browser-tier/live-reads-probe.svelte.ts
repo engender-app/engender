@@ -49,6 +49,18 @@ async function until(settled: () => boolean, what: string): Promise<void> {
   throw new Error(`timed out waiting for ${what}`);
 }
 
+/** The timeout message, or null if the wait landed. A check that failed has to
+    reach run.mjs as a reason rather than as a rejection: the other checks in
+    this probe still have something to say. */
+async function reasonIfNotReached(waiting: Promise<void>): Promise<string | null> {
+  try {
+    await waiting;
+    return null;
+  } catch (e) {
+    return (e as Error).message;
+  }
+}
+
 async function run() {
   await freshOrigin();
   const { driver, fileOps } = createEncryptedWebSqlite('live-reads-probe.sqlite3', PROBE_DATA_KEY);
@@ -114,15 +126,10 @@ async function run() {
   // The first defect: the streak-goal screen declared ['entry'] for a read
   // that also reads journaling pauses, so this write reached nothing.
   await journal.journalingPauses.upsertPause({ startEpochDay: TODAY - 1, endEpochDay: TODAY - 1 });
-  let streakAfter: number | undefined;
-  let streakError: string | null = null;
-  try {
-    await until(() => streakQuery!.value !== streakBefore, 'the streak to be re-read after a pause was declared');
-    streakAfter = streakQuery!.value;
-  } catch (e) {
-    streakError = (e as Error).message;
-    streakAfter = streakQuery!.value;
-  }
+  const streakError = await reasonIfNotReached(
+    until(() => streakQuery!.value !== streakBefore, 'the streak to be re-read after a pause was declared')
+  );
+  const streakAfter = streakQuery!.value;
 
   // The second: the stock screen declared ['stock', 'dose'] for a projection
   // that reads the regimen episode history too.
@@ -136,30 +143,24 @@ async function run() {
     startEpochDay: TODAY - 5,
     endEpochDay: null
   });
-  let projectionError: string | null = null;
-  try {
-    await until(() => projectionRuns > projectionRunsBefore, 'the stock projection to be re-read after an episode edit');
-  } catch (e) {
-    projectionError = (e as Error).message;
-  }
+  const projectionError = await reasonIfNotReached(
+    until(() => projectionRuns > projectionRunsBefore, 'the stock projection to be re-read after an episode edit')
+  );
 
   /* And the escape still narrows: a milestone write is inside what a recap
      reads and outside what this query watches. Given a moment to be wrong in
      - a re-run would land within a flush and a round trip. */
   await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: TODAY - 20 });
-  await until(() => true, 'a flush');
+  flushSync();
   await new Promise((resolve) => setTimeout(resolve, 200));
   const recapRunsAfterMilestone = recapRuns;
 
   // Same query, a write it does watch: the narrowing is a narrowing, not a
   // query that stopped listening.
   await journal.entries.upsertEntry({ epochDay: TODAY - 1, mood: 3 });
-  let recapError: string | null = null;
-  try {
-    await until(() => recapRuns > recapRunsAfterMilestone, 'the narrowed recap to be re-read after an entry write');
-  } catch (e) {
-    recapError = (e as Error).message;
-  }
+  const recapError = await reasonIfNotReached(
+    until(() => recapRuns > recapRunsAfterMilestone, 'the narrowed recap to be re-read after an entry write')
+  );
 
   publish({
     streak: { before: streakBefore, after: streakAfter, error: streakError },
