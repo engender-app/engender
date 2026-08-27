@@ -34,8 +34,8 @@
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import { metricPickerOptions } from '$lib/components/kit/chartPickerOptions';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
-  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -45,7 +45,7 @@
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth());
 
-  let metricName = $derived(vocabulary.metricName);
+  let metricName = $derived(vocabulary.metric.name);
   let monthLabel = $derived(fmtMonthYear(year, month));
 
   /* Mood plus whichever scales this install shows, which is the same list
@@ -56,10 +56,7 @@
      one setting, on the one screen actually showing the colours it changes.
      It became a sheet of its own, and it is the kit's picker now - the same
      control in both places that colour days. */
-  let metricOptions = $derived([
-    { value: 'mood', label: m.mood() },
-    ...vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))
-  ]);
+  let metricOptions = $derived(metricPickerOptions(vocabulary.metric.options));
 
   /* Which way the months are moving, so the label leaves the way the month
      went (ticket 31). Tier 3, change within a screen: the mark moves and its
@@ -168,9 +165,9 @@
       key="calendar-metric"
       id="calendar-metric"
       labelledBy="calendar-metric"
-      value={vocabulary.activeMetric}
+      value={vocabulary.metric.key}
       options={metricOptions}
-      onPick={(value) => selectMetric(value === 'mood' ? null : value)}
+      onPick={vocabulary.metric.select}
     />
   </div>
 
