@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { markJournalBusy, onJournalBusyChange, journalIsBusy } from './journal-busy.ts';
+import { markJournalBusy, onJournalBusyChange, journalIsBusy, watchJournalWrites } from './journal-busy.ts';
 
 test('nothing in flight until something enters', () => {
   assert.equal(journalIsBusy(), false);
@@ -64,4 +64,25 @@ test('a stopped listener hears nothing further', () => {
   markJournalBusy()();
 
   assert.deepEqual(heard, []);
+});
+
+test('the write watch answers yes for a write already in flight, and for one that starts later', () => {
+  // What boot's two housekeeping passes ask before each step they cannot take
+  // back (phase 5 audit ticket 02).
+  const duringAWrite = markJournalBusy();
+  const started = watchJournalWrites();
+  assert.equal(started.sawWrite(), true, 'a write already open counts');
+  started.stop();
+  duringAWrite();
+
+  const quiet = watchJournalWrites();
+  assert.equal(quiet.sawWrite(), false);
+  markJournalBusy()();
+  assert.equal(quiet.sawWrite(), true, 'a write that opened and closed still counts: it landed in the gap');
+  quiet.stop();
+
+  const afterStopping = watchJournalWrites();
+  afterStopping.stop();
+  markJournalBusy()();
+  assert.equal(afterStopping.sawWrite(), false, 'and a stopped watch stops listening');
 });

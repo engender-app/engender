@@ -116,9 +116,9 @@ export async function runMigrations(
 ): Promise<void> {
   await assertFts5Available(db);
 
-  const latestKnown = Array.isArray(source)
-    ? source.reduce((highest, migration) => Math.max(highest, migration.version), 0)
-    : source.latestVersion;
+  const { latestVersion, load } = Array.isArray(source)
+    ? { latestVersion: source.reduce((highest, m) => Math.max(highest, m.version), 0), load: async () => source }
+    : source;
   const current = await db.getUserVersion();
 
   /* Whether this file is the journal at all, asked before what schema it is
@@ -128,26 +128,20 @@ export async function runMigrations(
     throw new InterruptedRestoreError();
   }
 
-  if (current > latestKnown) {
-    throw new SchemaTooNewError(current, latestKnown);
+  if (current > latestVersion) {
+    throw new SchemaTooNewError(current, latestVersion);
   }
 
-  /* A clean boot: nothing to migrate, so any copy left over from a past
-     migration has been proven safe and can go. Answered before the list is
-     asked for, which is the whole point of the lazy source - at the latest
-     version no migration can be pending, so nothing here needs to see them. */
-  if (current === latestKnown) {
-    await fileOps.cleanupPreMigrationCopy();
-    return;
-  }
+  /* At the latest version no migration can be pending, so the list is not
+     asked for at all - which is the whole point of the lazy source. */
+  const pending =
+    current === latestVersion
+      ? []
+      : [...(await load())].sort((a, b) => a.version - b.version).filter((m) => m.version > current);
 
-  const sorted = [...(Array.isArray(source) ? source : await source.load())].sort((a, b) => a.version - b.version);
-  const pending = sorted.filter((m) => m.version > current);
-
-  /* Reachable with a hand-built list whose versions skip the ones between
-     `current` and its highest. Never with the shipped one, which is contiguous
-     (schema.test.ts asserts that). */
   if (pending.length === 0) {
+    // A clean boot: nothing to migrate, so any copy left over from a past
+    // migration has been proven safe and can go.
     await fileOps.cleanupPreMigrationCopy();
     return;
   }
