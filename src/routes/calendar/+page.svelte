@@ -34,8 +34,8 @@
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import { metricPickerOptions } from '$lib/components/kit/chartPickerOptions';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
+  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -45,7 +45,7 @@
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth());
 
-  let metricName = $derived(vocabulary.metric.name);
+  let metricName = $derived(vocabulary.metricName);
   let monthLabel = $derived(fmtMonthYear(year, month));
 
   /* Mood plus whichever scales this install shows, which is the same list
@@ -56,7 +56,10 @@
      one setting, on the one screen actually showing the colours it changes.
      It became a sheet of its own, and it is the kit's picker now - the same
      control in both places that colour days. */
-  let metricOptions = $derived(metricPickerOptions(vocabulary.metric.options));
+  let metricOptions = $derived([
+    { value: 'mood', label: m.mood() },
+    ...vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))
+  ]);
 
   /* Which way the months are moving, so the label leaves the way the month
      went (ticket 31). Tier 3, change within a screen: the mark moves and its
@@ -77,13 +80,13 @@
      swap together, so the delay is what makes it a queue. */
   let dir = $state(1);
 
-  const LEAVE = () => motionDuration('--dur-fast', 150);
+  const LEAVE = () => motionDuration('--dur-fast');
 
   function labelIn(_node: Element) {
     if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     return {
       delay: LEAVE(),
-      duration: motionDuration('--dur-med', 240),
+      duration: motionDuration('--dur-med'),
       easing: EASE_OUT,
       css: (_t: number, u: number) => `transform: translateY(${-dir * u * 100}%)`
     };
@@ -165,9 +168,9 @@
       key="calendar-metric"
       id="calendar-metric"
       labelledBy="calendar-metric"
-      value={vocabulary.metric.key}
+      value={vocabulary.activeMetric}
       options={metricOptions}
-      onPick={vocabulary.metric.select}
+      onPick={(value) => selectMetric(value === 'mood' ? null : value)}
     />
   </div>
 

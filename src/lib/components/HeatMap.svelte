@@ -54,9 +54,8 @@
   /** 1 to 4; level 0 is "nothing logged" and has its own end of the legend. */
   const SHADED = [...HEAT_STEPS.keys()].slice(1);
 
-  let metric = $derived(vocabulary.metric);
-  let metricName = $derived(metric.name);
-  let legend = $derived(metric.legend);
+  let metricName = $derived(vocabulary.metricName);
+  let legend = $derived(vocabulary.metricLegend);
 
   /* One lookup for both, so a cell and its legend swatch cannot disagree.
      `var(--heat-N)` rather than a colour because the fallback is the
@@ -75,7 +74,7 @@
      different questions: the swatch comes from the metric's average, while
      whether a day is a link comes from whether anything was logged at all -
      a day of entries carrying no mood is still a day with entries. */
-  let averages = liveList((j) => j.stats.dayAverages(metric.key, bounds.first, bounds.last));
+  let averages = liveList((j) => j.stats.dayAverages(vocabulary.activeMetric, bounds.first, bounds.last));
   let counts = liveList((j) => j.stats.entryCountsByDay(bounds.first, bounds.last));
 
   /* Both reads are one worker round trip, and the grid draws at its full
@@ -90,7 +89,7 @@
   let cells = $derived.by(() => {
     // The day's value stays native; only the swatch it picks is normalized,
     // so a 0-10 dimension and mood shade comparably (ADR-0012).
-    const range = metric.range;
+    const range = vocabulary.rangeOf(vocabulary.activeMetric);
     const valueByDay = new Map(averages.rows.map((point) => [point.day, point.value]));
     const countByDay = new Map(counts.rows.map((point) => [point.day, point.count]));
     const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();

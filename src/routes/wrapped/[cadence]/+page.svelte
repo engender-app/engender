@@ -37,6 +37,7 @@
   } from '$lib/data/epochDay';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { metricKey } from '$lib/data/prefs/catalogue';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { smartBack } from '$lib/navigation/smart-back';
   import { nameTagInsights, recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
@@ -203,7 +204,7 @@
      or worse days" is measured on is one preference with one control, and it
      is set on the screen that draws the scales. */
   let insightsQuery = liveList((j) =>
-    on && range ? j.stats.tagInsights(vocabulary.metric.key, range.start, range.end) : Promise.resolve([])
+    on && range ? j.stats.tagInsights(metricKey(prefs), range.start, range.end) : Promise.resolve([])
   );
 
   let tallyQuery = liveQuery(async (j) => {

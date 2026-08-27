@@ -64,7 +64,11 @@
   </select>
 </div>
 
-<div class="phone">
+<!-- data-app-root (ticket 15): press.css's default keys off this attribute,
+     the same as the app shell - without it every control below would go
+     back to answering nothing, which is exactly the state this gallery
+     exists to catch. -->
+<div class="phone" data-app-root>
   <h2 class="gallery-head">Sliders</h2>
 
   <div class="card" data-case="slider-ten">
@@ -190,9 +194,11 @@
   <h2 class="gallery-head">Handed to other tickets</h2>
   <div class="card" data-case="handed-on">
     <p class="gallery-note">
-      These are not this ticket's to redesign, and every one of them still answers a touch with
-      colour or with nothing. They are here to be measured rather than assumed, which is what the
-      48px box asks for.
+      Redesigning these is not this ticket's to do. Pressing them is: the tag chips and the
+      toast's undo were two of the 52 controls with no response at all before ticket 15's default,
+      and now answer like everything else. The mood picker was never one of the 52 either - it
+      answers a selection with colour and a pop already - but it is a plain button too, so it now
+      also gets the same compact press on the way down.
     </p>
     <MoodPicker value={mood} onPick={(v) => (mood = v)} />
     <div class="tag-row" style="margin-top: var(--space-4)">

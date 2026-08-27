@@ -240,12 +240,6 @@ export function ongoingWindowRange(todayEpochDay: number, days: number): Ongoing
   };
 }
 
-/** The day-count presets a "how far back" Segmented offers, shared by every
-    screen with that control (stats, tally, the wear trend, body-map) -
-    ticket 07 found the same array and the same `today - range + 1` this
-    already computes copied by hand in each of them. */
-export const RANGE_PRESETS = [7, 14, 30, 90, 180, 365];
-
 /** The inclusive range from local 1 January of this year through today. */
 export function yearToDateRange(todayEpochDay: number): CalendarYearRange {
   const year = localDateFromEpochDay(todayEpochDay).getFullYear();

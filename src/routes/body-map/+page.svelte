@@ -16,7 +16,7 @@
      the calendar's own lesson). Ten regions in a segmented control was
      wider than the screen. */
   import { m } from '$lib/paraglide/messages';
-  import { ongoingWindowRange, RANGE_PRESETS, todayEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { atGrain, type Grain } from '$lib/charts/grain';
@@ -31,7 +31,7 @@
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
 
-  const RANGES = RANGE_PRESETS;
+  const RANGES = [7, 14, 30, 90, 180, 365];
   let range = $state(30);
 
   let regions = $derived(vocabulary.visibleBodyRegions);
@@ -45,7 +45,7 @@
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
   let today = $derived(todayEpochDay());
-  let from = $derived(ongoingWindowRange(today, range).start);
+  let from = $derived(today - range + 1);
 
   let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today));
   let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today));

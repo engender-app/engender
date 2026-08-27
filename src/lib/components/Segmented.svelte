@@ -129,7 +129,8 @@
            undoing them instead of leaving the screen (Alicja, 2026-08-26).
            `screen-transition.ts` already says the same thing about these in
            its own table, where crossing them is tier 3 rather than a
-           navigation. -->
+           navigation. data-no-press (ticket 15): the pill crossing the set
+           is already this control's press response. -->
       <a
         bind:this={buttons[i]}
         class="segment"
@@ -137,6 +138,7 @@
         aria-current={o.value === value ? 'page' : undefined}
         data-segment={o.value}
         data-sveltekit-replacestate
+        data-no-press
         href={o.href}>{o.label}</a
       >
     {/each}
@@ -156,6 +158,9 @@
   >
     {@render pillMark()}
     {#each options as o, i (o.value)}
+      <!-- data-no-press (ticket 15): the pill crossing the set is already
+           this control's press response; scaling the label too would answer
+           the same touch twice. -->
       <button
         bind:this={buttons[i]}
         class="segment"
@@ -163,6 +168,7 @@
         role="radio"
         aria-checked={o.value === value}
         data-segment={o.value}
+        data-no-press
         onclick={() => onChange?.(o.value)}>{o.label}</button
       >
     {/each}

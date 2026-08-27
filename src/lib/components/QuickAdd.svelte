@@ -117,8 +117,8 @@
      then the control takes it. Each beat has the screen to itself, which is
      what makes a 40px disc legible at all. The durations are the same
      tokens as everything else; only the order changed. */
-  const flightDelay = () => motionDuration('--dur-fast', 150);
-  const flightMs = () => motionDuration('--dur-slow', 380);
+  const flightDelay = () => motionDuration('--dur-fast');
+  const flightMs = () => motionDuration('--dur-slow');
   const HOLD_MS = 700;
 
   let announcement = $state('');
@@ -373,12 +373,12 @@
      says they came out of it is the stagger, not a per-row offset invented
      here. The tokens are the one motion language and this is tier 2's own
      distance, the same one a sheet rises by. */
-  const travel = () => motionDistance('--motion-distance-md', 24);
+  const travel = () => motionDistance('--motion-distance-md');
 
   function fanIn(_node: Element) {
     if (isReducedMotion()) return { duration: crossfadeDuration(), css: (t: number) => `opacity: ${t}` };
     return {
-      duration: motionDuration('--dur-med', 240),
+      duration: motionDuration('--dur-med'),
       css: (t: number, u: number) =>
         `opacity: ${t}; transform: translateY(${u * travel()}px) scale(${0.88 + 0.12 * t})`
     };
@@ -387,7 +387,7 @@
   function fanOut(_node: Element) {
     if (isReducedMotion()) return { duration: crossfadeDuration(), css: (t: number) => `opacity: ${t}` };
     return {
-      duration: motionDuration('--dur-fast', 150),
+      duration: motionDuration('--dur-fast'),
       css: (t: number, u: number) => `opacity: ${t}; transform: translateY(${u * travel()}px) scale(${0.9 + 0.1 * t})`
     };
   }
@@ -503,7 +503,7 @@
     class="fan-scrim scrim-withdraw"
     role="presentation"
     data-quick-add
-    transition:fade={{ duration: motionDuration('--dur-fast', 150) }}
+    transition:fade={{ duration: motionDuration('--dur-fast') }}
     onclick={close}
   ></div>
 

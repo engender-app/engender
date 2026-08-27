@@ -66,8 +66,8 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
      which is the "not linear" half - a wipe that arrives at a constant rate
      reads as a wipe rather than as something being revealed. */
   const duration = params?.authored
-    ? motionDuration('--dur-authored', 700)
-    : motionDuration('--dur-slow', 380);
+    ? motionDuration('--dur-authored')
+    : motionDuration('--dur-slow');
   if (!canClip()) return fadeOnly(duration);
 
   return {
@@ -120,7 +120,7 @@ export function disclose(node: Element): TransitionConfig {
   const paddingBottom = parseFloat(style.paddingBottom) || 0;
 
   return {
-    duration: motionDuration('--dur-med', 240),
+    duration: motionDuration('--dur-med'),
     easing: EASE_OUT,
     css: (t) =>
       `overflow: hidden;` +
@@ -182,7 +182,7 @@ export function crossfade(node: Element): TransitionConfig {
   const width = node.getBoundingClientRect().width;
 
   return {
-    duration: motionDuration('--dur-fast', 160),
+    duration: motionDuration('--dur-fast'),
     easing: EASE_OUT,
     css: (t) => `opacity: ${t}; position: absolute; width: ${width}px; z-index: -1; pointer-events: none`
   };
@@ -285,7 +285,7 @@ export const resize: Action<HTMLElement> = (node) => {
     node.style.overflow = 'hidden';
     current = node.animate(
       [{ height: `${oldHeight}px` }, { height: `${newHeight}px` }],
-      { duration: motionDuration('--dur-med', 240), easing: EASE_OUT_CSS }
+      { duration: motionDuration('--dur-med'), easing: EASE_OUT_CSS }
     );
     current.finished
       .catch(() => {

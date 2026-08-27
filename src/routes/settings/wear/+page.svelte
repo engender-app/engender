@@ -33,8 +33,6 @@
     dateInputValueFromEpochDay,
     epochDayFromDateInputValue,
     epochDayFromTimestamp,
-    ongoingWindowRange,
-    RANGE_PRESETS,
     startOfDayTimestamp,
     timestampAtLocalTime,
     todayEpochDay
@@ -67,7 +65,7 @@
   import WearTrendChart from '$lib/components/WearTrendChart.svelte';
 
   const WINDOW_DAYS = 90;
-  const RANGES = RANGE_PRESETS;
+  const RANGES = [7, 14, 30, 90, 180, 365];
   const today = todayEpochDay();
   const from = today - WINDOW_DAYS;
 
@@ -252,7 +250,7 @@
   });
 
   let range = $state(30);
-  let trendFrom = $derived(ongoingWindowRange(today, range).start);
+  let trendFrom = $derived(today - range + 1);
 
   let wearTrendQuery = liveList((j) => j.stats.wearTimeTrend(trendFrom, today));
   /* Dysphoria specifically, which is the axis this chart has always drawn -

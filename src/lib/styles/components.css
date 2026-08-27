@@ -94,7 +94,6 @@
   text-decoration: none;
 }
 .icon-btn:hover { background: var(--surface-2); }
-.icon-btn:active { transform: scale(var(--press-depth)); }
 .icon .muted, .icon.muted { color: var(--text-2); }
 /* A starred toggle reads as filled rather than only outlined - the same
    currentColor treatment every other icon here already uses, so it still
@@ -125,17 +124,10 @@
   transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
   transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out), ease;
 }
-/* The wide depth, which is the 0.97 chosen on a Pixel 10a by ticket 29 after
-   the stuck-hover bug below was fixed. The first comparison there was run
-   against a button whose press was being cancelled, so it was working against
-   broken rather than one depth against another; with both honest, 0.97 was
-   the one chosen.
-
-   Ticket 30 kept the number and took the choice away: .btn is the widest
-   control in the app, --press-depth-wide is the depth for that size class,
-   and press.css is where all three depths are written. A .btn cannot press
-   to a fourth number any more, which is what this used to be. */
-.btn:active { transform: scale(var(--press-depth-wide)); }
+/* The wide depth itself - which is the 0.97 chosen on a Pixel 10a by ticket
+   29, after the stuck-hover bug below was fixed - is set in press.css, the
+   one file allowed to name a depth token (ticket 15). This file only says
+   .btn presses; how deep is not this file's decision to restate. */
 /* What a control that cannot be pressed does instead, which until now was
    nothing: a disabled .btn was pixel-identical to a live one. Onboarding's
    Continue button is disabled until a preset is picked and looked pressable
@@ -247,7 +239,6 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
   cursor: pointer;
   transition: transform var(--dur-press) var(--ease-press);
 }
-.switch:active { transform: scale(var(--press-depth)); }
 .switch-track {
   width: 44px; height: 28px; border-radius: var(--radius-pill);
   background: var(--surface-2); border: 1px solid var(--border);
@@ -581,7 +572,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
 .mood-btn:not(.is-selected) .mood-face { opacity: 0.55; }
 .mood-picker:not(:has(.is-selected)) .mood-face { opacity: 1; }
-.mood-btn:hover .mood-face { transform: translateY(-3px); opacity: 0.9; }
+/* Opacity only - DIRECTION.md tier 4 bans hover-dependent motion, and the
+   lift this used to add never had a touch equivalent to answer to (ticket
+   15). */
+.mood-btn:hover .mood-face { opacity: 0.9; }
 .mood-btn.is-selected .mood-face { transform: scale(1.18); opacity: 1; animation: mood-pop var(--dur-slow) var(--ease-out); }
 @keyframes mood-pop {
   0% { transform: scale(0.9); }
@@ -853,7 +847,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   z-index: 0;
 }
 .entry-side, .entry-main { position: relative; z-index: 1; }
-.entry-card:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
+/* Shadow only, no lift - DIRECTION.md tier 4 bans hover-dependent motion,
+   and the lift never had a touch equivalent to answer to (ticket 15). */
+.entry-card:hover { box-shadow: var(--shadow-2); }
 .entry-card + .entry-card { margin-top: var(--space-3); }
 .entry-side { padding-top: 2px; }
 .mood-dot {
@@ -1679,10 +1675,9 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
   display: flex; align-items: center; justify-content: center;
 }
 .pin-key:hover { background: var(--surface-2); }
-/* A 62px key is a compact control, so it takes the primitive's depth rather
-   than the 0.96 it was given before anyone had written down what the number
-   meant. */
-.pin-key:active { transform: scale(var(--press-depth)); }
+/* A 62px key is a compact control, so it takes the default depth every
+   button gets from press.css now (ticket 15) - there is no reason left to
+   write that down here a second time. */
 .pin-key.is-ghost { background: none; border-color: transparent; }
 .pin-key.is-ghost:hover { background: var(--surface-2); }
 .pin-key:disabled { cursor: default; opacity: 0.45; }
