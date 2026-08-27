@@ -131,9 +131,10 @@ describe("app.html's pre-paint script against the shared fixture", () => {
     /* A first-ever visit reaches the script too, and it must not stamp a
        palette out of an empty object - `undefined` on the element would
        drop the fallback the parser already applied. */
+    const parsed = documentElementDataset();
     const stamped = stamp({}, { prefersDark: false, prefersReducedMotion: false });
-    expect(stamped.dataset.palette).toBe(documentElementDataset().palette);
-    expect(stamped.dataset.moodPreset).toBe(documentElementDataset().moodPreset);
+    expect(stamped.dataset.palette).toBe(parsed.palette);
+    expect(stamped.dataset.moodPreset).toBe(parsed.moodPreset);
     expect(stamped.icon).toBe(fileName(documentLinks().icon));
   });
 });

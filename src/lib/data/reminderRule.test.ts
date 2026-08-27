@@ -1,14 +1,7 @@
-/* The reminder rule (ADR-0010): a wall-clock time plus a recurrence, never
-   a stored next-fire instant.
-
-   Every case lives in src/lib/android/fixtures/reminder-rule.json, which
-   ReminderRuleFixtureTest.java iterates against ReminderPlanner - the Java
-   reimplementation that decides when a notification actually fires. The two
-   are separate implementations in two languages by necessity, so the fixture
-   is the only thing that stops them answering the same question differently,
-   the shape ADR-0028 established for launch routes. Before it, the two
-   suites shared no case at all and already disagreed about an elapsed
-   one-off.
+/* The reminder rule (ADR-0010). Every case lives in
+   src/lib/android/fixtures/reminder-rule.json, which
+   ReminderRuleFixtureTest.java iterates against the Java reimplementation;
+   reminderRule.ts's header says why there are two of those.
 
    The cases carry their own zone, so this file drives Node's TZ rather than
    asserting in whatever zone the machine happens to sit in - a rule about
