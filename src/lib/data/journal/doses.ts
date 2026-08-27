@@ -8,9 +8,13 @@
    re-resolve rather than carry a stale link - `drug` (phase 5 ticket 38)
    only ever breaks a tie that attribution could not resolve on its own.
 
-   Nothing here judges adherence. The comparison is assembled from
-   expectedSlots and adherence (doseSchedule.ts) over what these reads
-   return; this module only knows rows. */
+   Nothing here judges adherence, and getComparison below does not either:
+   the verdict-free comparison itself is expectedSlots and adherence
+   (doseSchedule.ts), which stay pure above this seam. What this area owns is
+   the assembly around them - which episode is in effect, its schedule, its
+   pauses, and which doses are attributed to it - because that assembly is
+   what the dose log screen and the long-journal benchmark each used to do
+   their own way (phase 5 deepening ticket 17). */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
@@ -22,10 +26,21 @@ import type {
   DoseScheduleRecurrence,
   DoseStatus,
   InjectionVehicle,
+  RegimenEpisode,
   ScheduledDose
 } from '../types';
-import { isInjectionDose, isTopicalDose, type ApplicationSiteKey, type InjectionSiteKey } from '../doseSchedule';
+import {
+  adherence,
+  expectedSlots,
+  isInjectionDose,
+  isTopicalDose,
+  type Adherence,
+  type ApplicationSiteKey,
+  type InjectionSiteKey
+} from '../doseSchedule';
 import { startOfDayTimestamp } from '../epochDay';
+import { activeEpisodesAt, attributeDose } from '../regimenEpisode';
+import type { RegimenArea } from './regimen';
 import { assertChanged, mintUuid, now } from './support';
 
 interface DoseInputFields {
@@ -66,6 +81,38 @@ export interface DoseScheduleInput {
 
 export type DosePauseInput = Omit<DosePause, 'id'> & { id?: string };
 
+/** How the dose log sits against what the schedule expected over a range,
+    or why there is nothing to compare - one value for what the dose log
+    screen used to decide across five reads and four branches of markup
+    (phase 5 deepening ticket 17).
+
+    A union rather than a record of nullable fields, so each answer carries
+    exactly the rows that answer has: the "no schedule" notice names the
+    drug it is about, and only the comparison itself carries a schedule. The
+    reason is what a screen decides on, and it cannot forget a case.
+
+    `multipleEpisodes` and `noEpisode` are kept apart because they read
+    differently to someone holding the screen - one is an ambiguity to
+    resolve, the other is nothing to compare against yet - which is the same
+    distinction attributeDose draws for a single dose. One arm each rather
+    than one arm holding both reasons: a caller narrowing on a single literal
+    is left with `never` at the end of the chain, which is what makes
+    forgetting a case a typecheck failure. */
+export type DoseScheduleComparison =
+  | { reason: 'multipleEpisodes' }
+  | { reason: 'noEpisode' }
+  | { reason: 'noSchedule'; activeEpisode: RegimenEpisode }
+  | {
+      reason: null;
+      activeEpisode: RegimenEpisode;
+      schedule: DoseSchedule;
+      /** That episode's own pauses, which are also the ones the comparison
+          filtered its slots by. ADR-0032's rule is untouched: a pause reaches
+          adherence and nothing else. */
+      pauses: DosePause[];
+      comparison: Adherence;
+    };
+
 export interface DosesArea {
   /** Every dose whose timestamp falls on a day in `[fromEpochDay,
       toEpochDay]`, oldest first. Bounded by day rather than unbounded
@@ -88,6 +135,21 @@ export interface DosesArea {
   getPauses(): Promise<DosePause[]>;
   upsertPause(input: DosePauseInput): Promise<string>;
   deletePause(id: string): Promise<void>;
+  /** The dose log over `[fromEpochDay, toEpochDay]` against what the
+      schedule expected of it, assembled here rather than at the caller: the
+      episode in effect, its schedule, its pauses, the doses attributed to it,
+      and expectedSlots/adherence over those.
+
+      Which episode counts as the one in effect is the last day of the range,
+      because that is the day a reader is asking about - and since an episode
+      is in effect for whole days (regimenEpisode.ts), asking on `toEpochDay`
+      is the same question the screen asked with `Date.now()` while its range
+      ended today.
+
+      The slots are anchored on the episode's own start day, so an
+      every-N-days rhythm belongs to the episode rather than shifting with
+      the range. */
+  getComparison(params: { fromEpochDay: number; toEpochDay: number }): Promise<DoseScheduleComparison>;
 }
 
 type DoseRow = {
@@ -167,7 +229,7 @@ function routeColumns(input: DoseEventInput): {
 const DOSE_COLUMNS = `uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
                       status, scheduled_dose, scheduled_route, scheduled_timestamp, drug`;
 
-export function makeDosesArea(driver: SqliteDriver): DosesArea {
+export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): DosesArea {
   /** An episode's rowid, by its travelling uuid. Refused here rather than
       at the foreign key, and worded the way the regimen area words it, so a
       bad episode id reads the same whichever seam caught it. */
@@ -196,7 +258,12 @@ export function makeDosesArea(driver: SqliteDriver): DosesArea {
     return rows.length > 0 ? rows.map((r) => ({ dose: r.dose, doseUnit: r.dose_unit })) : null;
   };
 
-  return {
+  /* Named rather than returned anonymously so getComparison can ask this
+     same area its three reads instead of restating their SQL. Not `this`: the
+     write recorder wraps every operation as a plain function
+     (live/writes.ts), and a receiver is not something an area may depend on
+     surviving that. */
+  const area: DosesArea = {
     async getDoses(fromEpochDay, toEpochDay) {
       const rows = await driver.query<DoseRow>(
         /* Bounded by the next day's local midnight rather than by an end-of-day
@@ -393,6 +460,48 @@ export function makeDosesArea(driver: SqliteDriver): DosesArea {
     async deletePause(id) {
       const result = await driver.run('DELETE FROM dose_pause WHERE uuid = ?', [id]);
       assertChanged(result, `dose pause: ${id}`);
+    },
+
+    async getComparison({ fromEpochDay, toEpochDay }) {
+      const [episodes, doses, schedules, pauses] = await Promise.all([
+        regimen.getEpisodes(),
+        area.getDoses(fromEpochDay, toEpochDay),
+        area.getSchedules(),
+        area.getPauses()
+      ]);
+
+      /* Concurrent episodes for different drugs make this two (phase 5
+         ticket 38), and then there is no single schedule to compare
+         against - the same answer as none at all as far as the comparison
+         goes, worded apart because the two read differently on screen. */
+      const active = activeEpisodesAt(episodes, startOfDayTimestamp(toEpochDay));
+      if (active.length > 1) return { reason: 'multipleEpisodes' };
+      const activeEpisode = active[0];
+      if (!activeEpisode) return { reason: 'noEpisode' };
+
+      const schedule = schedules.find((s) => s.episodeId === activeEpisode.id);
+      if (!schedule) return { reason: 'noSchedule', activeEpisode };
+
+      const episodePauses = pauses.filter((pause) => pause.episodeId === activeEpisode.id);
+      /* Only the doses this episode is responsible for. adherence cannot
+         check this itself - it is handed slots and doses and knows nothing
+         about episodes (doseSchedule.ts) - and handing it the whole window
+         instead puts every earlier episode's doses in `unmatched`, where the
+         wording says they were extras or fell in a pause. Attributed rather
+         than filtered by date, so the split is the one every other screen
+         makes. */
+      const episodeDoses = doses.filter((dose) => attributeDose(episodes, dose).episode?.id === activeEpisode.id);
+      const slots = expectedSlots(schedule, activeEpisode.startEpochDay, fromEpochDay, toEpochDay);
+
+      return {
+        reason: null,
+        activeEpisode,
+        schedule,
+        pauses: episodePauses,
+        comparison: adherence(slots, episodeDoses, episodePauses)
+      };
     }
   };
+
+  return area;
 }

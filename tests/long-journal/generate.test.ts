@@ -256,6 +256,7 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'hairStagings',
       'labResults',
       'lastEpochDay',
+      'lastSingleEpisodeEpochDay',
       'letters',
       'measurements',
       'milestones',
