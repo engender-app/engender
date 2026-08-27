@@ -14,7 +14,14 @@
 
    Reduced motion substitutes rather than deletes: the transform goes, and
    whatever colour or outline change the control also carries stays. The
-   scale is the only part of a press that moves anything. */
+   scale is the only part of a press that moves anything.
+
+   Ticket 15: this used to be opt-in, a `.press` class 81 call sites
+   remembered to add and 52 controls did not. It is opt-out now - any
+   button, link or role="button" inside the app root presses by default,
+   and a control that genuinely should not (the pill already answering for
+   .segment, an invisible SVG hit target) says so with [data-no-press],
+   enumerated with its reason in tests/motion-system.test.ts. */
 
 /* The three depths, and the only place in the app any of them is written.
 
@@ -43,13 +50,32 @@
   --press-depth-add: 0.9;
 }
 
-.press {
+/* The default: any button, link or role="button" inside the app root gets
+   the compact depth, unless it opts out. :where() holds this at zero
+   specificity on purpose - .icon-btn and .btn already declare their own
+   transition-property list (background, box-shadow, filter alongside
+   transform), and a real selector here would outrank and replace that list
+   instead of adding to it. A plain button with no such list of its own,
+   which is the control this exists for, gets the transition from here
+   uncontested. */
+:where([data-app-root] :is(button, a, [role='button']):not([data-no-press])) {
   transition: transform var(--dur-press) var(--ease-press);
 }
-
-.press:active {
+:where([data-app-root] :is(button, a, [role='button']):not([data-no-press])):active {
   transform: scale(var(--press-depth));
 }
+
+/* .btn is the widest control in the app and presses to the wide depth
+   instead - a real selector, so it outranks the default above for this one
+   property. Nothing outside this file names --press-depth-wide; .btn just
+   says it presses, in components.css, same as always. */
+.btn:active {
+  transform: scale(var(--press-depth-wide));
+}
+
+/* .press stays as a marker some markup still carries from before this was
+   opt-out (ticket 15); it names no rule of its own any more; the button or
+   link underneath it is already covered by the default above. */
 
 /* The add button is the app's one floating control and takes the deeper
    press, so the thing most often tapped is also the most physical.

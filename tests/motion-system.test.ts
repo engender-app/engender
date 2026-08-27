@@ -112,6 +112,22 @@ function svelteStyleBlocks(): { path: string; css: string }[] {
   walk(join(root, 'src'));
   return out;
 }
+
+/** Every component's whole source, markup included - for [data-no-press],
+    which is an attribute in a template rather than anything a stylesheet
+    parser sees. */
+function svelteSources(): { path: string; source: string }[] {
+  const out: { path: string; source: string }[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.svelte')) out.push({ path: full.slice(root.length), source: readFileSync(full, 'utf8') });
+    }
+  };
+  walk(join(root, 'src'));
+  return out;
+}
 /** The comma-separated parts of one property value, ignoring the commas
     inside a function like cubic-bezier() or linear(). */
 function splitTopLevel(value: string): string[] {
@@ -218,13 +234,66 @@ describe('the reduced-motion invariant', () => {
   });
 });
 
+/** Ticket 15's opt-outs from the default press, each with why. A new one
+    has to be added here as well as in the markup - the test cross-checks
+    both directions, so an addition or removal on one side without the
+    other fails instead of drifting quietly. */
+const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
+  {
+    file: 'src/lib/components/Segmented.svelte',
+    count: 2,
+    reason: "the pill crossing the set is already the response; scaling the label too answers the same touch twice"
+  },
+  {
+    file: 'src/lib/components/HormoneBandChart.svelte',
+    count: 1,
+    reason: 'fill: transparent - an invisible hit target has nothing visible to press'
+  },
+  {
+    file: 'src/lib/components/LineChart.svelte',
+    count: 1,
+    reason: 'fill: transparent - an invisible hit target has nothing visible to press'
+  }
+];
+
 describe('tier 1, response', () => {
   it('presses on the spring token rather than a hand-written curve', () => {
     const press = readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8');
     expect(press).toContain('var(--ease-press)');
     expect(press).toContain('var(--dur-press)');
-    expect(press).toMatch(/\.press:active\s*\{\s*transform:\s*scale\(var\(--press-depth\)\)/);
-    expect(press).toMatch(/\.press-add:active\s*\{\s*transform:\s*scale\(var\(--press-depth-add\)\)/);
+  });
+
+  /* Ticket 15: press inverted from opt-in to opt-out. A `.press` class 81
+     call sites had to remember and 52 controls did not is replaced by one
+     rule keyed on being an interactive element inside the app root, so a
+     control presses because it is a control - the class is no longer what
+     grants it. [data-no-press] is the escape hatch, enumerated above. */
+  it('presses any button, link or role="button" in the app by default, with no class to remember', () => {
+    const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
+    const DEFAULT_SELECTOR = "[data-app-root] :is(button, a, [role='button']):not([data-no-press])";
+    const wrapped = `:where(${DEFAULT_SELECTOR})`;
+
+    const base = rules(press).find((rule) => rule.prelude === wrapped);
+    expect(base, `${wrapped} should exist, unconditioned`).toBeDefined();
+    expect(declarations(base?.body ?? '').transition).toBe('transform var(--dur-press) var(--ease-press)');
+
+    const active = rules(press).find((rule) => rule.prelude === `${wrapped}:active`);
+    expect(active, `${wrapped}:active should exist`).toBeDefined();
+    expect(declarations(active?.body ?? '').transform).toBe('scale(var(--press-depth))');
+  });
+
+  /* :where() is what makes this opt-out safe: it holds the default at zero
+     specificity, so .icon-btn and .btn's own transition-property lists
+     (background, box-shadow, filter alongside transform) still win outright
+     rather than being replaced by a default that only knows about
+     transform. A real selector here would strand every other property those
+     two classes transition. */
+  it('holds the default at zero specificity, via :where(), so a class with its own transition list still wins', () => {
+    const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
+    for (const rule of rules(press)) {
+      if (!rule.prelude.includes(":is(button, a, [role='button'])")) continue;
+      expect(rule.prelude, rule.prelude).toMatch(/^:where\(/);
+    }
   });
 
   /* Phase 5 ticket 30. The depths used to be literals in four places, and
@@ -365,44 +434,35 @@ describe('tier 1, response', () => {
      same place; ticket 30 found the reason and turned it into a rule. Scale
      is a fraction, so one fraction moves a 320px button's edge several times
      as far as a 48px key's. The three depths are three size classes of one
-     law - the bigger the control, the shallower the fraction - and what is
-     pinned here is that every shipped control names one of them.
+     law - the bigger the control, the shallower the fraction.
 
-     The add button used to be the third number here, restated in app.css
-     as `.nav-fab:active { transform: scale(0.9) }` and asserted equal to
-     .press-add's. Ticket 18 rebuilt the bar and put the class on the button
-     instead, which is what this test was holding the line for: there is no
-     second copy of the depth left to drift, so what is checked now is that
-     the shell reaches for the primitive rather than writing its own. */
-  it('presses each shipped control to the depth that was chosen for it', () => {
+     Ticket 15 dropped .icon-btn, .switch and .pin-key from this list: they
+     used to restate the compact depth themselves and now take it from the
+     default like any other plain control, so there is nothing of theirs
+     left to check here - the "no second owner" test below covers their
+     absence instead. Only the two deliberate exceptions remain. */
+  it('presses .btn and .press-add to the depth chosen for their size, both in press.css', () => {
     const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
-    const depthOf = (selector: string, css: string) =>
-      rules(css).find((rule) => rule.prelude === selector && !isReduceContext(rule))?.body.match(
+    const depthOf = (selector: string) =>
+      rules(press).find((rule) => rule.prelude === selector && !isReduceContext(rule))?.body.match(
         /transform:\s*(scale\([^;]*\))/
       )?.[1];
 
-    const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
-
-    expect(depthOf('.btn:active', components), '.btn is the wide class, not a number of its own').toBe(
+    expect(depthOf('.btn:active'), '.btn is the wide class, not a number of its own').toBe(
       'scale(var(--press-depth-wide))'
     );
-    expect(depthOf('.press:active', press), 'the primitive is the compact class').toBe(
-      'scale(var(--press-depth))'
-    );
-    expect(depthOf('.press-add:active', press), 'the add button is the deeper of the three').toBe(
+    expect(depthOf('.press-add:active'), 'the add button is the deeper of the three').toBe(
       'scale(var(--press-depth-add))'
     );
-    expect(depthOf('.pin-key:active', components), '.pin-key presses to the compact depth').toBe(
-      'scale(var(--press-depth))'
-    );
 
-    /* .segment left this list in phase 5 UX ticket 23. It is the third
-       control that answers a press without shrinking, and DIRECTION.md's
-       tier 1 says every one of those has to say why: the pill crossing the
-       set is already the response, and scaling the label as well is two
-       answers to one press. What is pinned instead is that it still answers
-       at all - a control that does nothing under the finger is the thing
-       tier 1 exists to prevent. */
+    /* .segment opted out (ticket 15, [data-no-press]) rather than being
+       enumerated here: it is the third control that answers a press without
+       shrinking, and DIRECTION.md's tier 1 says every one of those has to
+       say why - the pill crossing the set is already the response, and
+       scaling the label as well is two answers to one press. What is
+       pinned here is that it still answers at all - a control that does
+       nothing under the finger is the thing tier 1 exists to prevent. */
+    const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
     const segment = rules(components).find((rule) => rule.prelude === '.segment:active' && !isReduceContext(rule));
     expect(segment, '.segment still answers a press').toBeDefined();
     expect(segment?.body, '.segment answers with colour, not with a transform').not.toMatch(/transform|scale:/);
@@ -411,20 +471,66 @@ describe('tier 1, response', () => {
 
   it('gives the two add controls the press primitive instead of their own depth', () => {
     const nav = readFileSync(join(root, 'src/lib/components/AppNav.svelte'), 'utf8');
-    const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
 
     for (const handle of ['data-nav-fab', 'data-rail-add']) {
       const tag = nav.match(new RegExp(`<button[^>]*${handle}[^>]*>`, 's'))?.[0];
       expect(tag, `${handle} exists`).toBeDefined();
       expect(tag, `${handle} carries .press-add`).toContain('press-add');
     }
+  });
 
-    /* The shell declaring a depth of its own is the state this replaced.
-       Any :active transform in app.css means a second owner is back. */
-    const restated = rules(app)
-      .filter((rule) => rule.prelude.includes(':active') && /transform:/.test(rule.body))
-      .map((rule) => rule.prelude);
-    expect(restated, 'the shell states no press depth of its own').toEqual([]);
+  /* The shell declaring a depth of its own is the state ticket 15 replaced.
+     This used to read only app.css, which is why it never saw .icon-btn,
+     .btn, .switch and .pin-key's own :active rules living one file over, in
+     components.css - four owners the "shell" check was never pointed at.
+     Every stylesheet, every component <style> block, everything but
+     press.css itself: any :active rule elsewhere that names `transform` is
+     a second owner come back, whether it is app.css's old .nav-fab number
+     or a class this ticket never heard of. */
+  it('is the only stylesheet that presses a control with its own :active rule', () => {
+    const restated: string[] = [];
+    for (const { path, css } of [...sheets, ...svelteStyleBlocks()]) {
+      if (path.endsWith('motion/press.css')) continue;
+      for (const rule of rules(css)) {
+        if (isReduceContext(rule)) continue;
+        /* A selector is only a press rule if :active names the element
+           itself - :not(:active) (the app's hover-vs-press exposure fix,
+           ticket 18) is the opposite of that and has to be stripped first
+           or every hover rule it guards reads as a second press owner. */
+        if (!rule.prelude.replace(/:not\([^)]*\)/g, '').includes(':active')) continue;
+        /* And only a `scale(...)` restates a depth - `transform: none`
+           (the disabled-key guard, harmless and pre-existing) is not one. */
+        if (/scale\(/.test(declarations(rule.body).transform ?? '')) restated.push(`${path}: ${rule.prelude}`);
+      }
+    }
+    expect(restated, 'no stylesheet outside press.css presses a control with its own :active rule').toEqual([]);
+  });
+
+  /* Ticket 15's escape hatch: [data-no-press], a short, known list rather
+     than the unbounded set of participants a class-based allowlist would
+     have to keep pace with. Cross-checked in both directions against
+     PRESS_OPT_OUTS above, so an opt-out added to markup with no matching
+     entry here fails, and so does an entry here with nothing left to point
+     at - the list can only drift by being wrong in this file. */
+  it('enumerates every opt-out from the default press, each with a reason', () => {
+    const files = svelteSources();
+    const actual = files
+      .map((f) => ({
+        file: f.path,
+        /* Markup only - several call sites also explain data-no-press by
+           name in an HTML comment right above it, which would double-count
+           if comments were not stripped first. */
+        count: (f.source.replace(/<!--[\s\S]*?-->/g, '').match(/data-no-press/g) ?? []).length
+      }))
+      .filter((f) => f.count > 0);
+
+    expect(actual.map((a) => a.file).sort(), 'the opt-out list is exactly this enumeration, not a superset').toEqual(
+      PRESS_OPT_OUTS.map((o) => o.file).sort()
+    );
+    for (const expected of PRESS_OPT_OUTS) {
+      const found = actual.find((a) => a.file === expected.file);
+      expect(found?.count, `${expected.file}: ${expected.reason}`).toBe(expected.count);
+    }
   });
 
   it('is loaded by the app shell', () => {

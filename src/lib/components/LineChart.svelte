@@ -119,13 +119,17 @@
            something anyone taps on a phone. Wider than the visible dot and
            narrower than a 44px control, because at 44px the targets on a
            320-wide chart would overlap each other, and a dot that steals its
-           neighbour's taps is worse than a small one. -->
+           neighbour's taps is worse than a small one.
+           data-no-press (ticket 15): fill: transparent below, so there is
+           nothing visible here for a press to move; the selected dot is
+           what answers, drawn separately above. -->
       {#each chart.dots as d, i (i)}<circle
           cx={d.cx}
           cy={d.cy}
           r="13"
           class="chart-hit"
           role="button"
+          data-no-press
           tabindex="0"
           aria-label={pointLabel?.(i)}
           aria-pressed={i === selected}
