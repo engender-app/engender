@@ -55,7 +55,7 @@
   const tryoutId = page.params.id as string;
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
-  let stored = liveQuery([], (j) => (isNew ? Promise.resolve([]) : j.tryouts.getTryouts()));
+  let stored = liveQuery((j) => (isNew ? Promise.resolve([]) : j.tryouts.getTryouts()));
   let existing = $derived(stored.value?.find((t) => t.id === page.params.id));
 
   let draft = $state({
@@ -100,7 +100,7 @@
   /* Only once a tryout has its own id, the same reasoning hair-removal's
      own photo section gives: a photo belongs to one tryout, so there is
      nothing to attach it to before that first save. */
-  let photosQuery = liveQuery(['tryout'], (j) => (isNew ? Promise.resolve([]) : j.tryouts.getPhotos(tryoutId)));
+  let photosQuery = liveQuery((j) => (isNew ? Promise.resolve([]) : j.tryouts.getPhotos(tryoutId)));
   let photos = $derived(photosQuery.value ?? []);
   const photoRecord = recordEditor<TryoutPhoto>({
     remove: (id) => journal.tryouts.deletePhoto(id),
@@ -125,7 +125,7 @@
   );
 
   const HISTORY_LIMIT = 50;
-  let feelingQuery = liveQuery(['feltSense'], (j) => (isNew ? Promise.resolve([]) : j.feltSense.forTryout(tryoutId)));
+  let feelingQuery = liveQuery((j) => (isNew ? Promise.resolve([]) : j.feltSense.forTryout(tryoutId)));
   let feeling = $derived(feelingQuery.value ?? []);
 
   /* Phase 5 performance ticket 07/08: an open-ended tryout's range has no
@@ -146,7 +146,7 @@
     pages = 1;
   });
 
-  let entriesQuery = liveQuery(['entry'], (j) => {
+  let entriesQuery = liveQuery((j) => {
     if (isNew || !existing) return Promise.resolve({ hits: [], total: 0 });
     const range = { startEpochDay: existing.startEpochDay, endEpochDay: existing.endEpochDay };
     return Promise.all([

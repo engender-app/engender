@@ -35,7 +35,7 @@
   import Switch from '$lib/components/Switch.svelte';
   import EffectsTimeline from '$lib/components/EffectsTimeline.svelte';
 
-  let episodesQuery = liveQuery(['regimen'], (j) => j.regimen.getEpisodes());
+  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.value ?? []);
   /* The anchor is HRT's own start, not whichever episode is active right
      now (ticket 07) - activeEpisodesAt is the wrong function here, this is
@@ -45,7 +45,7 @@
   let anchor = $derived(earliestEpisode(episodes));
   let anchorEpochDay = $derived(anchor?.startEpochDay ?? null);
 
-  let markersQuery = liveQuery(['personalEffect'], (j) => j.personalEffects.getMarkers());
+  let markersQuery = liveQuery((j) => j.personalEffects.getMarkers());
   let markers = $derived(markersQuery.value ?? []);
   const markerFor = (effect: string) => markers.find((marker) => marker.effect === effect) ?? null;
 

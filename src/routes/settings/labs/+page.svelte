@@ -62,15 +62,15 @@
      them, because a trend needs data, while the editor offers those plus the
      presets. Both are queries now; neither is mirrored, since a lab result is
      entry-shaped data (ADR-0004). */
-  let usedQuery = liveQuery(['lab'], (j) => j.labs.getUsedAnalytes());
+  let usedQuery = liveQuery((j) => j.labs.getUsedAnalytes());
   let analytes = $derived(usedQuery.value ?? []);
-  let offeredQuery = liveQuery(['lab'], (j) => j.labs.getAnalytes());
+  let offeredQuery = liveQuery((j) => j.labs.getAnalytes());
   /* Which analyte the screen opens on, or falls back to after the one on
      screen stops having results (ticket 37). Gated on both queries loading:
      deciding early off usedQuery alone would settle on analytes[0] before
      mostRecentQuery answers, and never revisit it once analyte is no longer
      "missing". */
-  let mostRecentQuery = liveQuery(['lab'], (j) => j.labs.getMostRecentAnalyte());
+  let mostRecentQuery = liveQuery((j) => j.labs.getMostRecentAnalyte());
   $effect(() => {
     if (usedQuery.loading || mostRecentQuery.loading) return;
     if (analytes.length && !analytes.includes(analyte)) analyte = mostRecentQuery.value ?? analytes[0];
@@ -85,9 +85,9 @@
      the list's order is the query's, down to how two results on one day
      settle, and reconstructing that from the series would be re-implementing
      it. */
-  let resultsQuery = liveQuery(['lab'], (j) => j.labs.getResults(analyte));
+  let resultsQuery = liveQuery((j) => j.labs.getResults(analyte));
   let results = $derived(resultsQuery.value ?? []);
-  let seriesQuery = liveQuery(['lab'], (j) => j.labs.getSeries(analyte));
+  let seriesQuery = liveQuery((j) => j.labs.getSeries(analyte));
   let series = $derived(seriesQuery.value ?? []);
 
   function chartFor(s: LabSeries) {

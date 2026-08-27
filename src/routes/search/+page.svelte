@@ -133,7 +133,7 @@
      The count comes back separately from the page, because the screen states
      how many entries matched and shows a page of them: taking the count from
      the page would have it report thirty for a query with fifty. */
-  let search = liveQuery(['entry', 'tag'], (j) => {
+  let search = liveQuery((j) => {
     const typed = query.trim();
     const limit = PAGE * pages;
     if (!typed && !hasStructuredCriteria) return Promise.resolve({ hits: [], total: 0 });

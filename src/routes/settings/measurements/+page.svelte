@@ -62,7 +62,7 @@
   let type = $state<string>(vocabulary.visibleMeasurementTypes[0]?.key ?? 'waist');
   let typeOptions = $derived(vocabulary.visibleMeasurementTypes.map((t) => ({ value: t.key, label: t.name })));
 
-  let measurementsQuery = liveQuery(['measurement'], (j) => j.measurements.getMeasurements(type));
+  let measurementsQuery = liveQuery((j) => j.measurements.getMeasurements(type));
   let measurements = $derived(measurementsQuery.value ?? []);
 
   /* cm and in are both linear and their factor is exact, unlike a lab

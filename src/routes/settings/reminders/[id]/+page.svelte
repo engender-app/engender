@@ -37,9 +37,9 @@
 
   /* Reminders are tens of rows and not mirrored, so the one being edited comes
      from the list rather than from a query of its own. The draft is filled the
-     moment it arrives and never again - re-running would discard whatever the
-     user has typed since. */
-  let stored = liveQuery([], (j) => (isNew ? Promise.resolve([]) : j.reminders.getReminders()));
+     moment it arrives and never again, which is `onFirstResult`'s job rather
+     than the dependency list's: a re-run cannot discard what the user typed. */
+  let stored = liveQuery((j) => (isNew ? Promise.resolve([]) : j.reminders.getReminders()));
   let existing = $derived(stored.value?.find((r) => r.id === page.params.id));
 
   let draft = $state({ title: '', type: 'med' as Reminder['type'], time: '20:00', choice: 'DAILY' });

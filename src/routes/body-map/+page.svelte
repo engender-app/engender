@@ -47,8 +47,8 @@
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
 
-  let dysphoriaQuery = liveQuery(['entry'], (j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today));
-  let euphoriaQuery = liveQuery(['entry'], (j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today));
+  let dysphoriaQuery = liveQuery((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today));
+  let euphoriaQuery = liveQuery((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today));
   let dysphoria = $derived(dysphoriaQuery.value ?? []);
   let euphoria = $derived(euphoriaQuery.value ?? []);
 

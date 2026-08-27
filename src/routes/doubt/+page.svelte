@@ -24,12 +24,12 @@
 
   let today = $derived(todayEpochDay());
 
-  let counterevidenceQuery = liveQuery(['entry', 'tag'], (j) =>
+  let counterevidenceQuery = liveQuery((j) =>
     j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT)
   );
   let counterevidence = $derived(counterevidenceQuery.value ?? []);
 
-  let snapshotsQuery = liveQuery(['doubtJournal'], (j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
+  let snapshotsQuery = liveQuery((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
   let snapshots = $derived(snapshotsQuery.value ?? []);
 
   async function saveSnapshot() {

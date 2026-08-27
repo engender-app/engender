@@ -22,8 +22,8 @@
 
   const today = todayEpochDay();
 
-  let streakQuery = liveQuery(['entry'], (j) => j.stats.streak(today));
-  let bestStreakEverQuery = liveQuery(['entry'], (j) => j.stats.bestStreakEver(today));
+  let streakQuery = liveQuery((j) => j.stats.streak(today));
+  let bestStreakEverQuery = liveQuery((j) => j.stats.bestStreakEver(today));
   let currentStreak = $derived(streakQuery.value ?? 0);
   let bestStreakEver = $derived(bestStreakEverQuery.value ?? 0);
 

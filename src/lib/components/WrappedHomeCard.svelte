@@ -30,17 +30,19 @@
   import { m } from '$lib/paraglide/messages';
   import { fmtMonthName } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveQueryWatchingOnly } from '$lib/data/live/journal.svelte';
   import { WRAPPED_ENTRY_FLOOR, offeredWrappedPeriod } from '$lib/data/wrapped';
   import Tile from './kit/Tile.svelte';
 
   const period = offeredWrappedPeriod(todayEpochDay());
 
   /* The recap seam, the same one the wrapped screen reads, so the count on
-     the card and the count on the screen cannot disagree. Invalidated on
-     entry writes only: `entryCount` is the one field this card uses, and
-     attaching a photo or renaming a milestone cannot change it. */
-  let recapQuery = liveQuery(['entry'], (j) => j.stats.recap(period.start, period.end));
+     the card and the count on the screen cannot disagree. Narrowed to entry
+     writes on purpose, which is why this asks for its tables where no other
+     screen does: a recap reads dimension values, tags, milestones and photos
+     too, and `entryCount` is the one field this card uses - attaching a photo
+     or renaming a milestone cannot change it. */
+  let recapQuery = liveQueryWatchingOnly(['entry'], (j) => j.stats.recap(period.start, period.end));
   let entryCount = $derived(recapQuery.value?.entryCount ?? 0);
 
   let title = $derived(

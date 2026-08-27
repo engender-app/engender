@@ -65,7 +65,7 @@
 
   let range = $derived(customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput)));
 
-  let summaryQuery = liveQuery(['regimen', 'dose', 'lab', 'sideEffect', 'checklist', 'procedure'], (j) =>
+  let summaryQuery = liveQuery((j) =>
     range ? j.clinicianSummary.getSummary(range.start, range.end) : Promise.resolve(null)
   );
   let summary = $derived(summaryQuery.value);

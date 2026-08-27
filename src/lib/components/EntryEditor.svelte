@@ -54,10 +54,10 @@
      route wraps this component in {#key}, so a different entry or day mounts
      a fresh editor and this loads once.
 
-     `['entry']` is not in the table list on purpose: this query fills a draft,
-     and re-running it because something else wrote an entry would throw away
-     what the user has typed. */
-  let loaded = liveQuery([], (j) => (entryId != null ? j.entries.getEntry(entryId) : Promise.resolve(undefined)));
+     What keeps a re-run from throwing away what the user typed is
+     `onFirstResult`, which fills the draft from the first result and never
+     again - not the query's dependencies, which this no longer names. */
+  let loaded = liveQuery((j) => (entryId != null ? j.entries.getEntry(entryId) : Promise.resolve(undefined)));
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? todayEpochDay());
 

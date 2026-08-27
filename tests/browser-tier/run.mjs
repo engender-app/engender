@@ -1180,6 +1180,53 @@ try {
   fail('phase 5 audit ticket 03 thumbnail grid', e.message ?? String(e));
 }
 
+// --- Phase 5 audit deepening ticket 03: a read declares what it computes --
+try {
+  const live = await load('/live-reads.html', 'data-live-reads-probe-ready', '__liveReadsProbeResult');
+  if (live.error) throw new Error(live.error);
+
+  /* The streak-goal screen's read, against the write it used to miss.
+     `['entry']` was its declaration and `journaling_pause` is the other
+     table the streak reads, so the number stayed as it was for as long as
+     the screen was open. */
+  if (live.streak.after === 2 && live.streak.before === 1)
+    ok('declaring a journaling pause re-reads the streak the streak-goal screen shows (1 -> 2)');
+  else
+    fail(
+      'declaring a journaling pause re-reads the streak the streak-goal screen shows',
+      live.streak.error ?? `before ${live.streak.before}, after ${live.streak.after}`
+    );
+
+  // The stock screen's read, against the write it used to miss: a projection
+  // reads the episode history through regimen.getEpisodes().
+  if (live.projection.runsAfter > live.projection.runsBefore)
+    ok('editing a regimen episode re-reads the stock projection the stock screen shows');
+  else
+    fail(
+      'editing a regimen episode re-reads the stock projection the stock screen shows',
+      live.projection.error ?? `still ${live.projection.runsAfter} run(s)`
+    );
+
+  // And the one deliberate narrowing still narrows, in both directions.
+  if (live.narrowed.afterMilestone === live.narrowed.runsBefore)
+    ok('a narrowed query ignores a write to a table it deliberately does not watch');
+  else
+    fail(
+      'a narrowed query ignores a write to a table it deliberately does not watch',
+      `${live.narrowed.runsBefore} run(s) before the milestone, ${live.narrowed.afterMilestone} after`
+    );
+
+  if (live.narrowed.afterEntry > live.narrowed.afterMilestone)
+    ok('a narrowed query still re-runs for the table it does watch');
+  else
+    fail(
+      'a narrowed query still re-runs for the table it does watch',
+      live.narrowed.error ?? `still ${live.narrowed.afterEntry} run(s)`
+    );
+} catch (e) {
+  fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 

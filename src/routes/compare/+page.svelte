@@ -94,10 +94,10 @@
     };
   }
 
-  let queryA = liveQuery(['entry', 'tag', 'dimension'], (j) =>
+  let queryA = liveQuery((j) =>
     periodA ? sideStats(j, periodA) : Promise.resolve(null)
   );
-  let queryB = liveQuery(['entry', 'tag', 'dimension'], (j) =>
+  let queryB = liveQuery((j) =>
     periodB ? sideStats(j, periodB) : Promise.resolve(null)
   );
 
