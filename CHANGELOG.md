@@ -11,6 +11,11 @@ update, and "none" is a perfectly good answer to any of them.
 Phase 2 is in progress and nothing has been released yet. Rename this heading
 to the version before cutting the tag.
 
+The Android app no longer declares the INTERNET permission. It never made a
+request to another origin, and now the permission list says so too: nothing in
+the app can open a network connection, whether or not you take the rest of this
+on trust.
+
 - Schema changes: none
 - Archive format changes: none
 - Security migrations: F-Droid signs rebuilt APKs with a different key than the GitHub/Play release pipeline, so cross-channel updates are reinstall + Archive restore, not in-place signature-compatible updates
