@@ -21,9 +21,11 @@ import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-store.ts';
+import { purgeExpiredTrash } from '../../src/lib/data/journal/entries.ts';
+import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
 import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
 import { generateLongJournal, TEN_YEARS_IN_DAYS } from './generate.ts';
-import { measureLongJournal } from './measure.ts';
+import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 
 const publish = (value: unknown) => {
@@ -106,15 +108,85 @@ async function run() {
   // On raw OPFS rather than through the encrypting store: what the fixture
   // costs the device is the ciphertext on disk, not the plaintext length.
   let photoBytes = 0;
-  for (const name of await rawFiles.list()) photoBytes += (await rawFiles.size(name)) ?? 0;
+  const fileNames = await rawFiles.list();
+  for (const name of fileNames) photoBytes += (await rawFiles.size(name)) ?? 0;
 
-  const measurements = await measureLongJournal(journal, files, {
+  /* The second open is the one worth timing (phase 5 audit ticket 02). The
+     first one above migrated an empty database; this one is the boot every
+     later one is - a decade of Journal already on the current schema - which
+     is the sequence a person waits through before a screen can read anything.
+
+     The three numbers are separated on purpose: what a screen waits for is
+     `boot-ready`, and the two housekeeping passes are what used to be in front
+     of it. Their cost at this scale is what the ticket wanted written down. */
+  await booted.driver.close();
+
+  const reopenedSqlite = createEncryptedWebSqlite('long-journal.sqlite3', PROBE_DATA_KEY);
+  const reopenedFiles = encryptedFileStore(rawFiles, PROBE_DATA_KEY);
+  const fixtureDetail = `decade fixture already present, schema current; ${summary.entries} entries across ${summary.daysWithEntries} days`;
+  const startup: Measurement[] = [];
+  // From the constant, so the names the budgets are checked against and the
+  // names a run publishes cannot drift apart.
+  const [READY, PURGE, SWEEP] = STARTUP_MEASUREMENT_NAMES;
+
+  let runHousekeeping: (() => void) | null = null;
+  let purgeMs = 0;
+  let purged = 0;
+  let sweepMs = 0;
+
+  const bootStartedAt = performance.now();
+  const reopened = await boot({
+    createDriver: () => reopenedSqlite.driver,
+    fileOps: reopenedSqlite.fileOps,
+    purgeExpiredTrash: async (opened) => {
+      const startedAt = performance.now();
+      purged = await purgeExpiredTrash(opened, reopenedFiles);
+      purgeMs = performance.now() - startedAt;
+    },
+    sweepOrphanPhotos: async (opened) => {
+      const startedAt = performance.now();
+      await sweepOrphanPhotos(opened, reopenedFiles);
+      sweepMs = performance.now() - startedAt;
+    },
+    // Held rather than scheduled, so the housekeeping cost cannot land inside
+    // the ready measurement the way an immediate one could.
+    scheduleHousekeeping: (run) => {
+      runHousekeeping = run;
+    }
+  });
+  const bootReadyMs = performance.now() - bootStartedAt;
+  if (reopened.phase === 'error') throw reopened.error;
+
+  startup.push({
+    name: READY,
+    what: 'cold start, open the journal and report ready',
+    ms: bootReadyMs,
+    detail: fixtureDetail
+  });
+
+  runHousekeeping!();
+  await reopened.housekeeping;
+
+  startup.push({
+    name: PURGE,
+    what: 'boot housekeeping, purge trash past its 30-day window',
+    ms: purgeMs,
+    detail: `${fixtureDetail}; ${purged} entries reclaimed`
+  });
+  startup.push({
+    name: SWEEP,
+    what: 'boot housekeeping, orphan photo sweep over fixture storage',
+    ms: sweepMs,
+    detail: `${fixtureDetail}; ${fileNames.length} attachment files scanned against ${summary.photos} photo rows`
+  });
+
+  const measurements = await measureLongJournal(openJournal(reopened.driver, reopenedFiles), reopenedFiles, {
     today: summary.lastEpochDay,
     summary
   });
 
-  await booted.driver.close();
-  publish({ summary, measurements, generatedInMs, photoBytes });
+  await reopened.driver.close();
+  publish({ summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes });
 }
 
 run().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));

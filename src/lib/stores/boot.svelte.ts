@@ -25,12 +25,14 @@ import {
   deleteAndroidDatabase
 } from '../data/sqlite/android-driver';
 import { isAndroid } from '../platform';
+import { whenIdle } from '../idle';
 import { InterruptedRestoreError, SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
 import { markJournalBusy } from '../data/journal-busy';
 import { openJournal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
+import { bump } from '../data/live/tableVersions.svelte';
 import { hydrateReference } from '../data/live/reference.svelte';
 import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file-store';
 import { appPrivatePhotoFiles } from '../data/photos/android-file-store';
@@ -64,7 +66,7 @@ import {
   webConversionPorts,
   webConversionPrecheckPorts
 } from '../data/conversion/web-ports';
-import { LATEST_SCHEMA_VERSION } from '../data/sqlite/migrations';
+import { LATEST_SCHEMA_VERSION } from '../data/sqlite/schema-version';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles } from './videoFiles';
 import { setVoiceFiles } from './voiceFiles';
@@ -552,10 +554,23 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
       await journal.reconcileBuiltIns();
       await hydrateReference(journal);
     },
-    // Step 4: after the database is open and migrated, so the rows it
-    // compares against are the current ones (ADR-0008).
-    purgeExpiredTrash: (opened) => purgeExpiredTrash(opened, photoFiles),
-    sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles)
+    /* Step 4: after the database is open and migrated, so the rows it
+       compares against are the current ones (ADR-0008), and behind an idle
+       callback since phase 5 audit ticket 02 - nothing on screen reads what
+       either pass produces, and both grow with the journal.
+
+       Which is also why the purge announces itself: it now runs with the
+       screens already live, so a Trash list somebody is looking at would
+       otherwise keep showing entries the purge has taken. The tables are the
+       ones deleteEntry announces (writes.ts), because that is the delete this
+       is finishing. The sweep needs no announcement - it only ever removes
+       files no row references. */
+    purgeExpiredTrash: async (opened) => {
+      const reclaimed = await purgeExpiredTrash(opened, photoFiles);
+      if (reclaimed > 0) bump(['entry', 'photo', 'voiceRecording', 'videoNote']);
+    },
+    sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
+    scheduleHousekeeping: whenIdle
   }).then(async (result) => {
     if (result.phase === 'error') {
       /* The rollback direction (ticket 04): older code has met a Journal a

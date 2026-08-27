@@ -23,7 +23,8 @@
    handles belong to one worker at a time (ADR-0020). */
 
 import { runMigrations, SchemaTooNewError } from '../../src/lib/data/sqlite/migration-runner.ts';
-import { migrations, LATEST_SCHEMA_VERSION } from '../../src/lib/data/sqlite/migrations.ts';
+import { migrations } from '../../src/lib/data/sqlite/migrations.ts';
+import { LATEST_SCHEMA_VERSION } from '../../src/lib/data/sqlite/schema-version.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
