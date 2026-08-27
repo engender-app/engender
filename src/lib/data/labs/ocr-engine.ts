@@ -43,12 +43,15 @@ export function tesseractLabOcrEngine(): LabOcrEngine {
 
       const bytes = new Uint8Array(image);
       const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      /* A Blob passed straight to tesseract.js, not an object URL: the worker
+         reads a Blob with FileReader, but a URL string it fetches - and this
+         document's CSP has no `blob:` in connect-src, so that fetch is
+         refused before recognition ever runs (found only once ticket 44 made
+         the sheet reachable enough to try). */
       const blob = new Blob([buffer], { type: 'image/*' });
-      const url = URL.createObjectURL(blob);
       try {
-        return await worker.recognize(url);
+        return await worker.recognize(blob);
       } finally {
-        URL.revokeObjectURL(url);
         await worker.terminate();
       }
     }
