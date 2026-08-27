@@ -78,16 +78,19 @@ describe('phase 2 accessibility seams', () => {
     expect(components).toMatch(/html\[data-a11y-motion='reduce'\]\s+\.skeleton::after\s*\{\s*display:\s*none;/);
   });
 
-  it('keeps accessibility tuning controls and document wiring in place', () => {
+  it('keeps the accessibility tuning controls on the settings screen', () => {
     const settings = read('src/routes/settings/+page.svelte');
-    const layout = read('src/routes/+layout.svelte');
 
     expect(settings).toContain('m.a11y_text_size_boost()');
     expect(settings).toContain('m.a11y_legibility_boost()');
     expect(settings).toContain('m.a11y_motion_reduce_override()');
-    expect(layout).toContain("root.dataset.a11yTextSize");
-    expect(layout).toContain("root.dataset.a11yLegibility");
-    expect(layout).toContain("root.dataset.a11yMotion");
+    /* What the three controls then do to the document is asserted by
+       running both adapters over prefs/fixtures/document-chrome.json
+       (documentChrome.test.ts, app-html-chrome.test.ts), not by grepping
+       the layout for three dataset writes as this used to. The grep could
+       not see that the pre-paint script exists at all, so a preference the
+       layout stamped and app.html did not was a flash of the wrong chrome
+       on every cold start with this green. */
   });
 
   /* The range picker this used to check belonged to `/recap`, which phase 5
