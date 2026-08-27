@@ -13,7 +13,10 @@
 
      Every domain by name rather than "root" alone: the domains are
      addressed separately by the backup service, and a list that says all of
-     them cannot be read as covering only the top directory. -->
+     them cannot be read as covering only the top directory. The two
+     sections repeat each other because the schema gives no way to say it
+     once, so a domain added here has to be added twice - the test in
+     tests/android-manifest-backup.test.ts checks both lists rather than one. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" />

@@ -3,9 +3,11 @@ package dev.barankiewicz.genderdiary.backup;
 import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.UriPermission;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -284,8 +286,32 @@ public class AutoExportPlugin extends Plugin {
      * back.
      */
     public static void wipe(Context context) throws Exception {
+        releaseDestinationGrants(context);
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
         PasswordStore.deleteKey();
+    }
+
+    /**
+     * The SAF grant outlives the preference that recorded it. Forgetting
+     * the destination URI is not the same as giving it up: the grant stays
+     * in the system's own table, where {@code getPersistedUriPermissions}
+     * reads it back with the folder's name and path in it, and it is still
+     * write access to a folder on a phone the person has just wiped.
+     *
+     * <p>Every grant this app holds rather than the one the preferences
+     * name, and the two are usually the same one - {@code pickedDestination}
+     * is the only place anything is taken. A grant whose preference row has
+     * already gone is exactly the one a list read from preferences would
+     * miss.
+     */
+    private static void releaseDestinationGrants(Context context) {
+        ContentResolver resolver = context.getContentResolver();
+        for (UriPermission held : resolver.getPersistedUriPermissions()) {
+            int modes =
+                (held.isReadPermission() ? Intent.FLAG_GRANT_READ_URI_PERMISSION : 0)
+                    | (held.isWritePermission() ? Intent.FLAG_GRANT_WRITE_URI_PERMISSION : 0);
+            if (modes != 0) resolver.releasePersistableUriPermission(held.getUri(), modes);
+        }
     }
 
     private void verifyBytes(Uri uri, byte[] expected) throws Exception {

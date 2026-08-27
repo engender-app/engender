@@ -22,6 +22,11 @@ import java.time.ZonedDateTime;
 
 public class ReminderAlarmReceiver extends BroadcastReceiver {
 
+    /** Named because the privacy test has to find this notification again
+        to read what it was posted with, and the reminder one beside it is
+        found by its tag instead. */
+    static final int CHECK_IN_NOTIFICATION_ID = 7999;
+
     @Override
     public void onReceive(Context context, Intent intent) {
         JSONObject payload = ReminderScheduler.loadPayload(context);
@@ -109,7 +114,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body + "\n" + affirmation));
         }
 
-        NotificationManagerCompat.from(context).notify(7999, builder.build());
+        NotificationManagerCompat.from(context).notify(CHECK_IN_NOTIFICATION_ID, builder.build());
     }
 
     /** The affirming line for this day (phase 4 features ticket 22), or null
