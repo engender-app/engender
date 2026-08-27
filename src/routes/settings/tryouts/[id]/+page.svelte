@@ -137,6 +137,17 @@
   const PAGE = 30;
   let pages = $state(1);
 
+  /* Reset by anything that changes what range is being read, the same
+     reason search/+page.svelte's own `pages` reset gives: page three of
+     one range is not page three of a different one, and leaving it where
+     it was after an edit would silently ask for pages*PAGE entries in what
+     might now be a much smaller range. */
+  $effect(() => {
+    existing?.startEpochDay;
+    existing?.endEpochDay;
+    pages = 1;
+  });
+
   let entriesQuery = liveQuery(['entry'], (j) => {
     if (isNew || !existing) return Promise.resolve({ hits: [], total: 0 });
     const range = { startEpochDay: existing.startEpochDay, endEpochDay: existing.endEpochDay };
