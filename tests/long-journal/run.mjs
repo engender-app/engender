@@ -19,7 +19,10 @@ import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
+import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 import { breaches, budgetFor, budgets, mb, overTarget } from './budgets.mjs';
+
+const NAME = 'long-journal';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const recording = process.argv.includes('--record');
@@ -43,8 +46,8 @@ console.log('Generating ten years of Journal and measuring it. Around 45 seconds
 let result;
 try {
   await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('body[data-long-journal-ready]', { state: 'attached', timeout: 5 * 60_000 });
-  result = await page.evaluate(() => window.__longJournalResult);
+  await page.waitForSelector(`body[${readyAttr(NAME)}]`, { state: 'attached', timeout: 5 * 60_000 });
+  result = await page.evaluate((key) => window[key], resultGlobal(NAME));
 } finally {
   await browser.close();
   await server.close();

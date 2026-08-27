@@ -15,6 +15,9 @@ import '../../src/lib/theme/palettes.css';
 import '../../src/lib/styles/app.css';
 import '../../src/lib/styles/components.css';
 import '../../src/lib/styles/screens.css';
+import { publish } from '../probe-handshake.mjs';
+
+const NAME = 'share-card-probe';
 
 document.documentElement.dataset.palette = 'trans';
 document.documentElement.dataset.theme = 'light';
@@ -77,13 +80,7 @@ async function run() {
   emptyBitmap.close();
   unmount(empty);
 
-  (window as unknown as { __shareCardProbeResult: unknown }).__shareCardProbeResult = result;
-  document.body.dataset.shareCardProbeReady = 'true';
+  publish(NAME, result);
 }
 
-run().catch((err) => {
-  (window as unknown as { __shareCardProbeResult: unknown }).__shareCardProbeResult = {
-    error: String(err?.stack ?? err)
-  };
-  document.body.dataset.shareCardProbeReady = 'true';
-});
+run().catch((err) => publish(NAME, { error: String(err?.stack ?? err) }));

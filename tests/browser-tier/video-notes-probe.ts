@@ -27,7 +27,9 @@ import {
 } from '../../src/lib/data/videoNotes/limits.ts';
 import { videoFileName } from '../../src/lib/data/videoNotes/names.ts';
 import { startVideoRecording } from '../../src/lib/stores/videoRecording.ts';
+import { publish } from '../probe-handshake.mjs';
 
+const NAME = 'video-note-probe';
 const MIME = 'video/webm';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -129,11 +131,7 @@ async function run() {
   const captured = await captureThroughTheApp(2000);
   result.captured = captured !== null;
   if (!captured) {
-    (window as unknown as { __videoNoteProbeResult: unknown }).__videoNoteProbeResult = {
-      ...result,
-      error: 'startVideoRecording() refused, so there is nothing to re-encode'
-    };
-    document.body.dataset.videoNoteProbeReady = 'true';
+    publish(NAME, { ...result, error: 'startVideoRecording() refused, so there is nothing to re-encode' });
     return;
   }
 
@@ -183,13 +181,7 @@ async function run() {
   result.undecodableGivesNull =
     (await reencodeVideo(rubbish, { videoBitsPerSecond: 400_000, audioBitsPerSecond: 64_000 }, MIME)) === null;
 
-  (window as unknown as { __videoNoteProbeResult: unknown }).__videoNoteProbeResult = result;
-  document.body.dataset.videoNoteProbeReady = 'true';
+  publish(NAME, result);
 }
 
-run().catch((err) => {
-  (window as unknown as { __videoNoteProbeResult: unknown }).__videoNoteProbeResult = {
-    error: String(err?.stack ?? err)
-  };
-  document.body.dataset.videoNoteProbeReady = 'true';
-});
+run().catch((err) => publish(NAME, { error: String(err?.stack ?? err) }));

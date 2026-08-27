@@ -13,11 +13,10 @@ import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
+import { publish as publishResult } from '../probe-handshake.mjs';
 
-const publish = (value: unknown) => {
-  (window as unknown as { __searchProbeResult: unknown }).__searchProbeResult = value;
-  document.body.dataset.searchProbeReady = 'true';
-};
+const NAME = 'search-probe';
+const publish = (value: unknown) => publishResult(NAME, value);
 
 async function run() {
   // A fresh origin per load: this probe is about folding, and run.mjs has

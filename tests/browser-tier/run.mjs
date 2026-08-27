@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
+import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { ok, fail, finish } = createReporter();
@@ -34,18 +35,20 @@ const browser = await launchChromium({
 });
 const page = await (await browser.newContext()).newPage();
 
-/** Loads `path`, waits for `[data-...-ready]` to appear, and reads `resultGlobal`
-    off `window`. Reload the same page and call again to check persistence. */
-async function load(path, readyAttr, resultGlobal) {
+/** Loads `path`, waits for `name`'s ready attribute to appear, and reads
+    `name`'s result global off `window` (tests/probe-handshake.mjs derives
+    both from `name`, the same way the probe page publishing them does).
+    Reload the same page and call again to check persistence. */
+async function load(path, name) {
   await page.goto(`http://localhost:${port}${path}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector(`body[${readyAttr}]`, { state: 'attached' });
-  return page.evaluate((key) => window[key], resultGlobal);
+  await page.waitForSelector(`body[${readyAttr(name)}]`, { state: 'attached' });
+  return page.evaluate((key) => window[key], resultGlobal(name));
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
 // --- Ticket 03: FTS5 + OPFS mechanics, against a synthetic table -----------
 try {
-  const first = await load('/', 'data-probe-ready', '__probeResult');
+  const first = await load('/', 'probe');
   if (first.error) throw new Error(first.error);
 
   if (first.markerExisted === false) ok('SQLocal opens a fresh database backed by OPFS');
@@ -62,7 +65,7 @@ try {
   else fail("'zazolc' finds nothing without app-level folding, confirming ADR-0005's premise", `got ${fts5.zazolc} match(es)`);
 
   await reload();
-  const second = await load('/', 'data-probe-ready', '__probeResult');
+  const second = await load('/', 'probe');
   if (second.error) throw new Error(second.error);
   if (second.markerExisted === true) ok('OPFS survives a full page reload');
   else fail('OPFS survives a full page reload', 'marker row was gone after reload');
@@ -72,7 +75,7 @@ try {
 
 // --- Ticket 04: the real driver + boot() against the real schema -----------
 try {
-  const first = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
+  const first = await load('/driver.html', 'driver-probe');
   if (first.error) throw new Error(first.error);
 
   /* Compared against the migration list rather than a literal. This read
@@ -109,7 +112,7 @@ try {
   else fail('the WASM build has the window functions the streak counts runs with', JSON.stringify(first.windowFunctionRun));
 
   await reload();
-  const second = await load('/driver.html', 'data-driver-probe-ready', '__driverProbeResult');
+  const second = await load('/driver.html', 'driver-probe');
   if (second.error) throw new Error(second.error);
   if (second.markerExisted === true) ok('data written before a reload is still there after boot() re-runs');
   else fail('data written before a reload is still there after boot() re-runs', 'marker entry was gone after reload');
@@ -119,7 +122,7 @@ try {
 
 // --- Ticket 09: folded search against the WASM SQLite, via the journal ----
 try {
-  const r = await load('/search.html', 'data-search-probe-ready', '__searchProbeResult');
+  const r = await load('/search.html', 'search-probe');
   if (r.error) throw new Error(r.error);
 
   const eq = (label, actual, expected) => {
@@ -155,7 +158,7 @@ try {
   const onRequest = (req) => requestUrls.push(req.url());
   page.on('request', onRequest);
 
-  const result = await load('/crypto.html', 'data-crypto-probe-ready', '__cryptoProbeResult');
+  const result = await load('/crypto.html', 'crypto-probe');
   page.off('request', onRequest);
   if (result.error) throw new Error(result.error);
 
@@ -174,7 +177,7 @@ try {
 
 // --- Ticket 11: normalize() against a real canvas, and the OPFS store -----
 try {
-  const r = await load('/photos.html', 'data-photos-probe-ready', '__photosProbeResult');
+  const r = await load('/photos.html', 'photos-probe');
   if (r.error) throw new Error(r.error);
 
   const size = (s) => `${s.width}x${s.height}`;
@@ -326,7 +329,7 @@ try {
 
 // --- Ticket 13: the archive, packed on the real platform and downloaded --
 try {
-  const r = await load('/archive.html', 'data-archive-probe-ready', '__archiveProbeResult');
+  const r = await load('/archive.html', 'archive-probe');
   if (r.error) throw new Error(r.error);
 
   /* Format version 2 (phase 5 ticket 35): the payload's preferences
@@ -420,7 +423,7 @@ try {
 
 // --- Ticket 09 (phase 2): at-rest encryption, gated by the closed-app scan -
 try {
-  const r = await load('/encryption.html', 'data-encryption-probe-ready', '__encryptionProbeResult');
+  const r = await load('/encryption.html', 'encryption-probe');
   if (r.error) throw new Error(r.error);
 
   if (r.keystoreRoundTrips) ok('the keystore file round-trips: unlock returns the same data key that was created');
@@ -488,7 +491,7 @@ try {
 
 // --- Ticket 10 (phase 2): converting a plaintext-era journal --------------
 try {
-  const r = await load('/conversion.html', 'data-conversion-probe-ready', '__conversionProbeResult');
+  const r = await load('/conversion.html', 'conversion-probe');
   if (r.error) throw new Error(r.error);
 
   /* The fixture first, or nothing below it means anything: this journal was
@@ -582,7 +585,7 @@ try {
 
 // --- Ticket 04 (phase 2): when a waiting release may take over ------------
 try {
-  const r = await load('/update.html', 'data-update-probe-ready', '__updateProbeResult');
+  const r = await load('/update.html', 'update-probe');
   if (r.error) throw new Error(r.error);
 
   /* The fixture first. Without a second release genuinely installed and
@@ -632,7 +635,7 @@ try {
 
 // --- Ticket 04 (phase 2): forward migration, refusal and the copy ---------
 try {
-  const r = await load('/migration.html', 'data-migration-probe-ready', '__migrationProbeResult');
+  const r = await load('/migration.html', 'migration-probe');
   if (r.error) throw new Error(r.error);
 
   const before = ['sentinel-migration-note-before-the-update-5514'];
@@ -720,7 +723,7 @@ try {
 
 // --- Ticket 27: the photo journey export, against a real canvas and MediaRecorder ---
 try {
-  const r = await load('/journey.html', 'data-journey-probe-ready', '__journeyProbeResult');
+  const r = await load('/journey.html', 'journey-probe');
   if (r.error) throw new Error(r.error);
 
   const size = (s) => `${s.width}x${s.height}`;
@@ -835,7 +838,7 @@ try {
 
 // --- Phase 5 ticket 22: the video note re-encode ---------------------------
 try {
-  const r = await load('/video-notes.html', 'data-video-note-probe-ready', '__videoNoteProbeResult');
+  const r = await load('/video-notes.html', 'video-note-probe');
   if (r.error) throw new Error(r.error);
 
   if (r.fileName === '11111111-2222-3333-4444-555555555555.webm')
@@ -901,7 +904,7 @@ try {
 
 // --- Phase 5 ticket 18: rasterizing the wrapped share card -----------------
 try {
-  const r = await load('/share-card.html', 'data-share-card-probe-ready', '__shareCardProbeResult');
+  const r = await load('/share-card.html', 'share-card-probe');
   if (r.error) throw new Error(r.error);
 
   if (r.fullType === 'image/png') ok('the wrapped card rasterizes to a real PNG, not a canvas nobody encoded');
@@ -1133,7 +1136,7 @@ try {
 // --- Phase 5 audit ticket 03: what a grid of photos actually reads ---------
 try {
   await page.setViewportSize({ width: 400, height: 600 });
-  const thumbs = await load('/thumbs.html', 'data-thumbs-ready', '__thumbsResult');
+  const thumbs = await load('/thumbs.html', 'thumbs');
   if (thumbs.error) throw new Error(thumbs.error);
 
   const { onMount, atBottom, backAtTop } = thumbs;

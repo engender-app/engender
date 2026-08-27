@@ -15,6 +15,9 @@
    interface, which doesn't exist yet - it's a probe of the WASM SQLite
    build itself, not of the app's driver. */
 import { SQLocal } from 'sqlocal';
+import { publish } from '../probe-handshake.mjs';
+
+const NAME = 'probe';
 
 async function run() {
   const { sql } = new SQLocal('probe.sqlite3');
@@ -49,11 +52,7 @@ async function run() {
     zazolc: await matchCount('zazolc')
   };
 
-  (window as unknown as { __probeResult: unknown }).__probeResult = { markerExisted, fts5 };
-  document.body.dataset.probeReady = 'true';
+  publish(NAME, { markerExisted, fts5 });
 }
 
-run().catch((err) => {
-  (window as unknown as { __probeResult: unknown }).__probeResult = { error: String(err?.stack ?? err) };
-  document.body.dataset.probeReady = 'true';
-});
+run().catch((err) => publish(NAME, { error: String(err?.stack ?? err) }));
