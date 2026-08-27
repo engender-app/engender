@@ -41,7 +41,18 @@
 
 import sqlite3InitModule, { type Database, type Sqlite3Static, type SAHPoolUtil } from '@evolu/sqlite-wasm';
 
-const MC_VFS = 'multipleciphers-opfs-sahpool';
+// Exported for tests/browser-tier/legacy-cipher-worker.ts (ticket 04): the
+// compatibility check needs to land in the exact same pool directory this
+// worker would use for the same database path.
+export const MC_VFS = 'multipleciphers-opfs-sahpool';
+
+/* F-08: named explicitly rather than left to sqlite3mc's compiled default,
+   for the reason ADR-0013 already gives the KDF sets - a dependency bump
+   that changes the default would turn every Journal on disk into a file
+   this build cannot open. Measured against the current build: sqlite3mc
+   defaults to chacha20 unasked, so pinning it here changes nothing about
+   what is already on disk, only whether the next default bump can. */
+const MC_CIPHER = 'chacha20';
 
 let sqlite3: Sqlite3Static | null = null;
 let poolUtil: SAHPoolUtil | null = null;
@@ -59,7 +70,7 @@ let openError: Error | null = null;
 // keep the journal's contents unreadable at rest (ADR-0018), and a
 // directory literally named after "gender-diary.sqlite3" would defeat the
 // same closed-app OPFS scan that proves nothing plaintext survives there.
-function poolDirectory(path: string): string {
+export function poolDirectory(path: string): string {
   let hash = 2166136261; // FNV-1a, just for a short stable non-identifying tag.
   for (let i = 0; i < path.length; i++) {
     hash ^= path.charCodeAt(i);
@@ -73,6 +84,7 @@ function poolDirectory(path: string): string {
     keystore) and proves it by reading, so a wrong key fails here as
     SQLITE_NOTADB rather than on some later query. */
 function keyAndVerify(target: Database, key: string): void {
+  target.exec(`PRAGMA cipher='${MC_CIPHER}'`);
   target.exec(`PRAGMA hexkey='${key}'`);
   target.exec('SELECT count(*) FROM sqlite_master');
 }
@@ -150,6 +162,7 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     await poolUtil!.importDb(target, args.bytes);
     const imported = new api.oo1.DB({ filename: target, flags: 'c', vfs: MC_VFS });
     try {
+      imported.exec(`PRAGMA cipher='${MC_CIPHER}'`);
       imported.exec(`PRAGMA hexrekey='${args.hexKey}'`);
     } finally {
       imported.close();
