@@ -84,3 +84,63 @@ export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
   const todayAt = occurrenceOn(today, rule.time);
   return todayAt > now ? todayAt : occurrenceOn(today + step, rule.time);
 }
+
+/* The editor's own vocabulary (F25). The segmented control offers five
+   options where the stored rule has three shapes: a one-off, the two
+   plain recurrences, and an anchored EVERY_N_DAYS split into the two
+   intervals worth a button. The pair below is the whole of that
+   translation, and it lived in settings/reminders/[id]/+page.svelte where
+   nothing could run it.
+
+   Here rather than in the screen for the reason the header above gives
+   about the Java side: a rule this app writes and a rule the scheduler
+   reads have to be the same rule, so everything that builds one belongs
+   next to `assertValidRule` and to the fixture. */
+export type RecurrenceChoice = 'ONCE' | 'DAILY' | 'EVERY_3_DAYS' | 'EVERY_7_DAYS' | 'WEEKLY';
+
+const CHOICE_INTERVAL: Record<'EVERY_3_DAYS' | 'EVERY_7_DAYS', number> = { EVERY_3_DAYS: 3, EVERY_7_DAYS: 7 };
+
+/** Which option a stored rule reads back as. An EVERY_N_DAYS interval the
+    control does not offer - a stock reminder's, or an older journal's -
+    reads back as the 3-day option rather than as no selection at all. */
+export function choiceFromRule(rule: ReminderRule): RecurrenceChoice {
+  if (rule.recurrence === null) return 'ONCE';
+  if (rule.recurrence === 'EVERY_N_DAYS') return rule.interval === 7 ? 'EVERY_7_DAYS' : 'EVERY_3_DAYS';
+  return rule.recurrence;
+}
+
+/** The rule an option writes back, against `now` and whatever rule was
+    already stored.
+
+    `existing` is only ever consulted for its anchor: an EVERY_N_DAYS rule
+    keeps the progression it is already on when the interval is unchanged,
+    because editing a reminder's title must not silently move which third
+    day it fires on. Changing the interval starts a fresh one, since the
+    old anchor would describe a different set of days than the person just
+    asked for. */
+export function ruleFromChoice(
+  choice: RecurrenceChoice,
+  time: string,
+  existing: ReminderRule | null,
+  now: Date
+): ReminderRule {
+  const none = { interval: null, anchorEpochDay: null, epochDay: null };
+  if (choice === 'ONCE') {
+    /* "Once" means the next moment the chosen time comes around, and
+       nextOccurrence decides whether that is today or tomorrow. A DAILY
+       rule always has one - only an elapsed one-off comes back empty - so
+       this is the day the rule is dated from, and is why the editor's
+       preview never has to say a saved one-off has passed. */
+    const at = nextOccurrence({ ...none, time, recurrence: 'DAILY' }, now)!;
+    return { ...none, time, recurrence: null, epochDay: epochDayFromLocalDate(at) };
+  }
+  if (choice === 'EVERY_3_DAYS' || choice === 'EVERY_7_DAYS') {
+    const interval = CHOICE_INTERVAL[choice];
+    const anchorEpochDay =
+      existing?.recurrence === 'EVERY_N_DAYS' && existing.interval === interval
+        ? existing.anchorEpochDay
+        : epochDayFromLocalDate(now);
+    return { ...none, time, recurrence: 'EVERY_N_DAYS', interval, anchorEpochDay };
+  }
+  return { ...none, time, recurrence: choice };
+}
