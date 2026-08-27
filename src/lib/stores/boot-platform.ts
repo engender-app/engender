@@ -113,7 +113,10 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
         dispatch({ type: 'device-key-unavailable' });
         return;
       }
-      dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound' });
+      /* Nobody authenticated for this one - the browser handed the key over
+         because the device is the device. App lock still has its question to
+         ask (ADR-0014). */
+      dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound', unlocked: false });
       return;
     }
 
@@ -170,7 +173,8 @@ async function performDemoEffect(
       dispatch({
         type: 'key-obtained',
         dataKey: await setupJournalPassphrase(DEMO_PASSPHRASE),
-        accessMode: 'passphrase'
+        accessMode: 'passphrase',
+        unlocked: false
       });
       return;
 
@@ -184,7 +188,7 @@ async function performDemoEffect(
         dispatch({ type: 'demo-unlock-failed' });
         return;
       }
-      dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase' });
+      dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: false });
       return;
     }
   }

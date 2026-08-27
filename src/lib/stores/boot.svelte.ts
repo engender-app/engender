@@ -29,7 +29,7 @@ import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
 import { createAndroidSqlite, deleteAndroidDatabase } from '../data/sqlite/android-driver';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
-import { InterruptedRestoreError, SchemaTooNewError, type MigrationFileOps } from '../data/sqlite/migration-runner';
+import type { MigrationFileOps } from '../data/sqlite/migration-runner';
 import { openJournal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
@@ -68,6 +68,7 @@ import type { PreferenceKey } from '../data/prefs/catalogue';
 import type { BootState } from './boot-state';
 import { performPlatformEffect } from './boot-platform';
 import {
+  describeError,
   initialBoot,
   reduce,
   skipSetupOutcome,
@@ -77,15 +78,25 @@ import {
   type SkipSetupResult
 } from './boot-machine';
 
-export const bootState = $state<BootState>(initialBoot().boot);
-
 let machine: BootMachine = initialBoot();
+
+export const bootState = $state<BootState>({ ...machine.boot });
 
 /** One event in, the reducer's answer mirrored out, and whatever it asked for
     started. Synchronous on purpose: by the time a caller's dispatch returns,
     the screen it renders has already changed. */
 function dispatch(event: BootEvent): void {
-  const step = reduce(machine, event);
+  let step;
+  try {
+    step = reduce(machine, event);
+  } catch (error) {
+    /* An event that cannot be taken from where the boot is - a second submit
+       landing while the first is already converting, say. The gates make it
+       hard to reach, but on the way here it surfaced as "that passphrase is
+       not right", which is a lie about somebody's journal. The failure screen
+       says what actually happened. */
+    step = reduce(machine, { type: 'boot-failed', message: describeError(error) });
+  }
   machine = step.machine;
   Object.assign(bootState, machine.boot);
   for (const effect of step.effects) void run(effect);
@@ -100,10 +111,6 @@ async function run(effect: BootEffect): Promise<void> {
   } catch (error) {
     dispatch({ type: 'boot-failed', message: describeError(error) });
   }
-}
-
-function describeError(error: unknown): string {
-  return String((error as Error)?.message ?? error);
 }
 
 let started = false;
@@ -192,16 +199,14 @@ export function startBoot() {
     unlocked key is available - a key unlocked by hand is the strong case). */
 export async function submitPassphraseSetup(passphrase: string): Promise<void> {
   const dataKey = await setupJournalPassphrase(passphrase);
-  markUnlocked();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase' });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
 }
 
 /** The unlock screen's submit. Throws DecryptionFailedError back to the
     screen on a wrong passphrase; the screen owns the copy. */
 export async function submitPassphraseUnlock(passphrase: string): Promise<void> {
   const dataKey = await unlockJournalPassphrase(passphrase);
-  markUnlocked();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase' });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
 }
 
 /** The setup screen's "skip the passphrase" (ADR-0018). Whether the platform
@@ -216,16 +221,17 @@ export async function submitSkipSetup(): Promise<SkipSetupResult> {
       deviceCredential: false
     });
     const outcome = skipSetupOutcome(result);
+    /* The one place a refusal is not dispatched: skipping is an offer on the
+       setup gate, and turning it down leaves that gate exactly where it was
+       with an answer for the screen. */
     if (result.kind !== 'key') return outcome;
-    markUnlocked();
-    dispatch({ type: 'key-obtained', dataKey: result.dataKey, accessMode: 'device-bound' });
+    dispatch({ type: 'android-key-answered', result });
     return outcome;
   }
 
   try {
     const dataKey = await setupDeviceBoundJournal();
-    markUnlocked();
-    dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound' });
+    dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound', unlocked: true });
     return 'ok';
   } catch (error) {
     if (error instanceof DeviceBoundKeyUnavailableError) return 'device-bound-unavailable';
@@ -267,25 +273,20 @@ export async function openAndroidJournal(request: UnlockRequest): Promise<void> 
     return;
   }
 
-  if (result.kind !== 'key') {
-    dispatch({ type: 'android-key-refused', refusal: result });
-    return;
-  }
-
-  /* The authentication that unwrapped the key satisfies the casual-access
-     gate too, the same way a typed passphrase does on the web: this is the
-     strong case the spec allows app lock to stand down for. */
-  markUnlocked();
-  dispatch({ type: 'key-obtained', dataKey: result.dataKey, accessMode: 'device-bound' });
+  dispatch({ type: 'android-key-answered', result });
 }
 
-/** The three effects that need a rune, an open journal or a driver this
-    module is holding. Everything else is the platform's side of the boot and
-    lives in boot-platform.ts. */
+/** The effects that need a rune, an open journal or a driver this module is
+    holding. Everything else is the platform's side of the boot and lives in
+    boot-platform.ts. */
 async function perform(effect: BootEffect): Promise<void> {
   switch (effect.type) {
     case 'apply-cached-preferences':
       applyCachedBootPreferences(bootCache.read());
+      return;
+
+    case 'mark-unlocked':
+      markUnlocked();
       return;
 
     case 'open-journal':
@@ -408,15 +409,7 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   });
 
   if (result.phase === 'error') {
-    if (result.error instanceof SchemaTooNewError) {
-      dispatch({ type: 'journal-schema-too-new' });
-      return;
-    }
-    if (result.error instanceof InterruptedRestoreError) {
-      dispatch({ type: 'restore-interrupted' });
-      return;
-    }
-    dispatch({ type: 'journal-open-failed', message: describeError(result.error) });
+    dispatch({ type: 'journal-open-failed', error: result.error });
     return;
   }
 
