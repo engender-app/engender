@@ -1178,7 +1178,7 @@ await block('phase 5 audit ticket 03 thumbnail grid', 5, async () => {
 
 // --- Phase 5 audit deepening ticket 03: a read declares what it computes --
 try {
-  const live = await load('/live-reads.html', 'data-live-reads-probe-ready', '__liveReadsProbeResult');
+  const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
 
   /* The streak-goal screen's read, against the write it used to miss.
