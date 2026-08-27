@@ -11,8 +11,10 @@
        a repository function.
      - every write announces its tables (writes.ts); tableVersions.svelte.ts
        turns that into a version bump per table and a notify.
-     - `liveQuery` re-runs when a table it named bumps, and holds the result in
-       `$state` so a template can read it synchronously.
+     - `liveQuery` re-runs when a table the read itself touched bumps, and
+       holds the result in `$state` so a template can read it synchronously.
+       Which tables those are comes from the same registry the write half
+       announces from, not from the call site (phase 5 audit ticket 03).
 
    Invalidation is per table rather than global because the alternative is
    visibly wasteful: saving one lab result would re-run the stats charts, the
@@ -26,8 +28,10 @@
    Nothing here is tested in the Node tier: `$state` is not defined there
    (ADR-0017), which is why the parts with a rule in them live rune-free
    elsewhere - writes.ts for the table mapping, tableVersions.notify.ts for the
-   write-announcement notify. What this file adds beyond that is covered by
-   `tests/walkthrough.test.mjs` driving the real screens. */
+   write-announcement notify. What this file adds beyond that is covered from
+   the browser: `tests/walkthrough.test.mjs` driving the real screens, and
+   `tests/browser-tier/live-reads-probe.svelte.ts` for the dependency
+   resolution, which needs a real scheduler to be seen re-running at all. */
 
 import { observeWrites, tablesReadBy, type TableName } from './writes';
 import type { Journal } from '../journal/journal';
