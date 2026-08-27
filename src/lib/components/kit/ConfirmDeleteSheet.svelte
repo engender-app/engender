@@ -39,16 +39,18 @@
     <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
   {/if}
   <div class="stack-3">
-    <!-- The kit's own handles, beside whatever the screen already named its
+    <!-- The kit's own handle, beside whatever the screen already named its
          danger button (ADR-0029, the contract Notice and ListRow keep). The
-         cancel button never had one on any screen, so this is the first
-         thing that can address it. -->
-    <!-- Spelled `=""` rather than left bare: an element carrying a spread
+         cancel button keeps the nothing it had on all sixteen screens - no
+         flow grips it, and this ticket is not the place to widen what the
+         walkthrough can reach.
+
+         Spelled `=""` rather than left bare: an element carrying a spread
          serializes a bare attribute as "true", and the screens this replaces
          wrote theirs bare, which is "". -->
     <button class="btn btn-danger" data-confirm-delete="" {...confirmAttrs} onclick={onConfirm}>
       <span>{confirmLabel}</span>
     </button>
-    <button class="btn btn-ghost" data-cancel-delete onclick={onCancel}><span>{cancelLabel}</span></button>
+    <button class="btn btn-ghost" onclick={onCancel}><span>{cancelLabel}</span></button>
   </div>
 </Sheet>
