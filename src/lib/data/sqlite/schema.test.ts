@@ -7,7 +7,8 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
 import { runMigrations } from './migration-runner.ts';
-import { migrations, LATEST_SCHEMA_VERSION } from './migrations.ts';
+import { migrations } from './migrations.ts';
+import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
@@ -772,4 +773,18 @@ test('v42 leaves an install that never chose a preset on the default set', async
   // everything, and this install has said nothing at all, so the preference
   // default is what should answer for it.
   assert.equal(activeScales(db), null);
+});
+
+test('the hand-written latest version and the migration list agree', async () => {
+  /* LATEST_SCHEMA_VERSION stopped being derived from the array in phase 5
+     audit ticket 02, so that a boot on the current schema never loads it.
+     Two places now write the number down, and this is what catches a
+     migration appended without the constant moving - including the merge
+     case, where two branches each add a version and the loser renumbers. */
+  assert.equal(LATEST_SCHEMA_VERSION, Math.max(...migrations.map((migration) => migration.version)));
+  assert.deepEqual(
+    migrations.map((migration) => migration.version),
+    Array.from({ length: LATEST_SCHEMA_VERSION }, (_, index) => index + 1),
+    'the list is contiguous from 1, in order, with no version applied twice'
+  );
 });

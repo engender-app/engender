@@ -22,7 +22,11 @@
                           whose baseline is over its target is a release
                           problem and gets its own ticket with the
                           measurement attached; optimization is not this
-                          ticket's job.
+                          ticket's job. The two housekeeping passes get a
+                          loose one on purpose: nothing on screen waits for
+                          them since phase 5 audit ticket 02, so what their
+                          target asks is whether the pass is still small
+                          enough to run in one go on an idle machine.
 
   Memory is intentionally not watched here.
 

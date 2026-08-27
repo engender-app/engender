@@ -898,14 +898,19 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
 /** Reclaims every entry trashed more than TRASH_WINDOW_DAYS ago, the same
     hard delete deleteEntry used to do directly (dimension values, tag
     links, body regions, photo/recording rows and files), run once at boot
-    after migrations (boot.ts), mirroring sweepOrphanPhotos's shape. */
-export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
+    after migrations (boot.ts), mirroring sweepOrphanPhotos's shape.
+
+    Returns how many entries it took. The caller announces the write when that
+    is not zero (phase 5 audit ticket 02): this runs after the screens are live
+    now, so a Trash list already on screen would otherwise keep showing rows
+    that are gone. */
+export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileStore): Promise<number> {
   const cutoff = now() - TRASH_WINDOW_MS;
   const expired = await driver.query<{ id: number }>(
     'SELECT id FROM entry WHERE trashed_at IS NOT NULL AND trashed_at <= ?',
     [cutoff]
   );
-  if (expired.length === 0) return;
+  if (expired.length === 0) return 0;
   const ids = expired.map((row) => row.id);
   const placeholders = ids.map(() => '?').join(', ');
 
@@ -937,4 +942,5 @@ export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileSt
   await removeFilesOf(files, photos);
   await removeRecordingFilesOf(files, recordings);
   await removeVideoFilesOf(files, videos);
+  return ids.length;
 }

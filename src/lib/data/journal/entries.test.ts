@@ -283,7 +283,7 @@ test('purgeExpiredTrash reclaims trash past the 30-day window and leaves fresher
   const justOverWindow = Date.now() - TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000 - 1;
   db.raw.prepare('UPDATE entry SET trashed_at = ? WHERE id = ?').run(justOverWindow, expiredId);
 
-  await purgeExpiredTrash(db, files);
+  assert.equal(await purgeExpiredTrash(db, files), 1, 'reports what it took, so boot can announce the write');
 
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(expiredId) as { n: number }).n, 0);
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0);
@@ -291,6 +291,8 @@ test('purgeExpiredTrash reclaims trash past the 30-day window and leaves fresher
 
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(freshId) as { n: number }).n, 1);
   assert.deepEqual((await journal.entries.trashedEntries()).map((e) => e.id), [freshId]);
+
+  assert.equal(await purgeExpiredTrash(db, files), 0, 'and nothing to take is nothing to announce');
 });
 
 test('a trashed entry drops out of entriesForDay, recentDays and entriesWithTag, and cannot be edited', async () => {

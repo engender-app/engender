@@ -14,7 +14,7 @@ import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { fakeFileStore } from '../../src/lib/data/photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../../src/lib/data/sqlite/test-support/migrated-db.ts';
 import { generateLongJournal } from './generate.ts';
-import { measureLongJournal, type Measurement } from './measure.ts';
+import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
 import { budgets, breaches, overTarget } from './budgets.mjs';
 import { bytePatternPhoto } from './test-support.ts';
 
@@ -79,7 +79,9 @@ test("archive-restore's phases account for the whole of it", async () => {
 });
 
 test('budgets.json covers exactly what the harness measures', async () => {
-  const measured = (await measureSmallJournal()).map((m) => m.name).sort();
+  /* The cold-start names come from the constant rather than from a run: the
+     probe takes them around a real boot, which this tier has no driver for. */
+  const measured = [...(await measureSmallJournal()).map((m) => m.name), ...STARTUP_MEASUREMENT_NAMES].sort();
   expect(Object.keys(budgets.measurements).sort()).toEqual(measured);
 });
 

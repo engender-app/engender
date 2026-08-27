@@ -8,6 +8,20 @@ export interface Migration {
   sql: string;
 }
 
+/** Where the runner gets the migrations from.
+
+    An array is the plain case and what every test hands over. The lazy form is
+    what boot passes (phase 5 audit ticket 02): the latest version as a plain
+    integer, and the array itself behind a loader only a journal that is behind
+    the schema ever pays for. The list is 27KB of SQL text, and a journal on the
+    current version needs one integer comparison to know it has nothing to do. */
+export type MigrationSource =
+  | Migration[]
+  | {
+      latestVersion: number;
+      load: () => Promise<Migration[]>;
+    };
+
 export interface MigrationDb {
   exec(sql: string): void | Promise<void>;
   getUserVersion(): number | Promise<number>;
@@ -98,12 +112,13 @@ export async function assertFts5Available(db: MigrationDb): Promise<void> {
 export async function runMigrations(
   db: MigrationDb,
   fileOps: MigrationFileOps,
-  migrations: Migration[]
+  source: MigrationSource
 ): Promise<void> {
   await assertFts5Available(db);
 
-  const sorted = [...migrations].sort((a, b) => a.version - b.version);
-  const latestKnown = sorted.length > 0 ? sorted[sorted.length - 1].version : 0;
+  const latestKnown = Array.isArray(source)
+    ? source.reduce((highest, migration) => Math.max(highest, migration.version), 0)
+    : source.latestVersion;
   const current = await db.getUserVersion();
 
   /* Whether this file is the journal at all, asked before what schema it is
@@ -117,11 +132,22 @@ export async function runMigrations(
     throw new SchemaTooNewError(current, latestKnown);
   }
 
+  /* A clean boot: nothing to migrate, so any copy left over from a past
+     migration has been proven safe and can go. Answered before the list is
+     asked for, which is the whole point of the lazy source - at the latest
+     version no migration can be pending, so nothing here needs to see them. */
+  if (current === latestKnown) {
+    await fileOps.cleanupPreMigrationCopy();
+    return;
+  }
+
+  const sorted = [...(Array.isArray(source) ? source : await source.load())].sort((a, b) => a.version - b.version);
   const pending = sorted.filter((m) => m.version > current);
 
+  /* Reachable with a hand-built list whose versions skip the ones between
+     `current` and its highest. Never with the shipped one, which is contiguous
+     (schema.test.ts asserts that). */
   if (pending.length === 0) {
-    // A clean boot: nothing to migrate, so any copy left over from a past
-    // migration has been proven safe and can go.
     await fileOps.cleanupPreMigrationCopy();
     return;
   }

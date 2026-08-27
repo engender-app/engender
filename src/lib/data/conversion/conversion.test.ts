@@ -21,7 +21,7 @@ import {
   type JournalState
 } from './conversion.ts';
 import { fakeWorld, KILL_POINTS, ProcessKilled, type FakeWorld, type KillPoint } from './test-support/fake-world.ts';
-import { LATEST_SCHEMA_VERSION } from '../sqlite/migrations.ts';
+import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
 
 const NOTES = ['woke up early', 'zażółć gęślą jaźń', 'first appointment'];
 const PHOTOS = ['aaa.jpg', 'bbb.jpg', 'ccc.jpg', 'ddd.jpg'];

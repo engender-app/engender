@@ -40,6 +40,14 @@ export interface Measurement {
   detail: string;
 }
 
+/** The cold-start measurements the probe takes around boot() itself, before
+    it hands the journal to the harness below (phase 5 audit ticket 02). They
+    live in the probe rather than here because they need a real driver over
+    real storage - what boot costs is the driver opening, not a fake one being
+    constructed - and they are named here so budgets.json can be checked
+    against the whole set of names a run produces (measure.test.ts). */
+export const STARTUP_MEASUREMENT_NAMES = ['boot-ready', 'boot-purge', 'boot-sweep'] as const;
+
 export interface MeasureOptions {
   /** As an epoch day, never from a clock (ADR-0001). */
   today: number;
