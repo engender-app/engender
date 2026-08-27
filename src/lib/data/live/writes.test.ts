@@ -3,11 +3,11 @@
    that announces them (ticket 08). */
 
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { expect, test } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support.ts';
 import type { Journal } from '../journal/journal.ts';
 import { journalIsBusy } from '../journal-busy.ts';
-import { observeWrites, TABLE_NAMES, type TableName } from './writes.ts';
+import { observeWrites, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
 
 async function observed() {
   const { journal, db } = await journalWithBuiltIns();
@@ -230,4 +230,12 @@ test('a whole area this module does not know about is rejected too', async () =>
   // the wrapper silently, so `journal.exports` would have been undefined at
   // every call site that reached for it.
   assert.throws(() => observeWrites(journal, () => {}), /journal\.exports is an area/);
+});
+
+test('tablesWrittenBy answers with the classified tables, and refuses anything else', () => {
+  // Boot's trash purge reads this rather than carrying its own copy of
+  // deleteEntry's tables (phase 5 audit ticket 02).
+  expect(tablesWrittenBy('entries', 'deleteEntry')).toEqual(['entry', 'photo', 'voiceRecording', 'videoNote']);
+  expect(() => tablesWrittenBy('entries', 'getEntry')).toThrow(/not a classified write/);
+  expect(() => tablesWrittenBy('nosuchArea', 'deleteEntry')).toThrow(/not a classified write/);
 });

@@ -51,6 +51,7 @@ import {
   type StagedVideo
 } from './videoNotes';
 import { assertChanged, bool, domainIdOf, mintUuid, now, rowidByUuid } from './support';
+import { watchJournalWrites } from '../journal-busy';
 
 /** How long a trashed entry survives before purgeExpiredTrash reclaims it
     (phase 5 ticket 19). Fixed, like the hair-photo schedule's 28 days
@@ -898,14 +899,40 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
 /** Reclaims every entry trashed more than TRASH_WINDOW_DAYS ago, the same
     hard delete deleteEntry used to do directly (dimension values, tag
     links, body regions, photo/recording rows and files), run once at boot
-    after migrations (boot.ts), mirroring sweepOrphanPhotos's shape. */
-export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
+    after migrations (boot.ts), mirroring sweepOrphanPhotos's shape.
+
+    Returns how many entries it took. The caller announces the write when that
+    is not zero (phase 5 audit ticket 02): this runs after the screens are live
+    now, so a Trash list already on screen would otherwise keep showing rows
+    that are gone. */
+export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileStore): Promise<number> {
+  /* Not alongside a write, the same rule and the same mechanism the orphan
+     sweep now works under (watchJournalWrites, journal-busy.ts): this reads
+     which entries are past the window and then deletes them, and since it
+     moved off boot's critical path a restore could land in that gap - which
+     would delete an entry somebody had just taken back out of the trash. An
+     entry that stays trashed one more boot has 30 days of grace behind it;
+     one deleted after a restore is gone. */
+  const writes = watchJournalWrites();
+  try {
+    return await purgeTrashedBefore(driver, files, writes.sawWrite);
+  } finally {
+    writes.stop();
+  }
+}
+
+async function purgeTrashedBefore(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  sawWrite: () => boolean
+): Promise<number> {
+  if (sawWrite()) return 0;
   const cutoff = now() - TRASH_WINDOW_MS;
   const expired = await driver.query<{ id: number }>(
     'SELECT id FROM entry WHERE trashed_at IS NOT NULL AND trashed_at <= ?',
     [cutoff]
   );
-  if (expired.length === 0) return;
+  if (expired.length === 0) return 0;
   const ids = expired.map((row) => row.id);
   const placeholders = ids.map(() => '?').join(', ');
 
@@ -922,6 +949,8 @@ export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileSt
     ids
   );
 
+  // The last moment before this is irreversible.
+  if (sawWrite()) return 0;
   await driver.transaction(async () => {
     await driver.run(`DELETE FROM photo WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM voice_recording WHERE entry_id IN (${placeholders})`, ids);
@@ -937,4 +966,5 @@ export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileSt
   await removeFilesOf(files, photos);
   await removeRecordingFilesOf(files, recordings);
   await removeVideoFilesOf(files, videos);
+  return ids.length;
 }
