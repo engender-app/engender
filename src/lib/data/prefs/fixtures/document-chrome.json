@@ -1,0 +1,73 @@
+[
+  {
+    "name": "the catalogue's defaults on a light system",
+    "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "system", "a11yTextSizeBoost": false, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": false },
+    "system": { "prefersDark": false, "prefersReducedMotion": false },
+    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon.svg", "manifest": "manifest.webmanifest" }
+  },
+  {
+    "name": "theme system folds to the system's answer",
+    "why": "The only preference value the document never carries: `system` is a stored choice, and what is stamped is always a resolved light or dark.",
+    "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "system", "a11yTextSizeBoost": false, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": false },
+    "system": { "prefersDark": true, "prefersReducedMotion": false },
+    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "dark", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon.svg", "manifest": "manifest.webmanifest" }
+  },
+  {
+    "name": "an explicit light theme ignores a dark system",
+    "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSizeBoost": false, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": false },
+    "system": { "prefersDark": true, "prefersReducedMotion": false },
+    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon.svg", "manifest": "manifest.webmanifest" }
+  },
+  {
+    "name": "an explicit dark theme ignores a light system",
+    "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "dark", "a11yTextSizeBoost": false, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": false },
+    "system": { "prefersDark": false, "prefersReducedMotion": false },
+    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "dark", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon.svg", "manifest": "manifest.webmanifest" }
+  },
+  {
+    "name": "a palette and a mood preset that are not the defaults",
+    "why": "Mood keeps its own scale (ADR-0025), so the two travel separately and a case that moves only one would not notice them being crossed.",
+    "prefs": { "palette": "nonbinary", "moodPreset": "plum", "theme": "dark", "a11yTextSizeBoost": false, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": false },
+    "system": { "prefersDark": false, "prefersReducedMotion": false },
+    "expected": { "palette": "nonbinary", "moodPreset": "plum", "theme": "dark", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon.svg", "manifest": "manifest.webmanifest" }
+  },
+  {
+    "name": "the text size boost",
+    "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSizeBoost": true, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": false },
+    "system": { "prefersDark": false, "prefersReducedMotion": false },
+    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSize": "boost", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon.svg", "manifest": "manifest.webmanifest" }
+  },
+  {
+    "name": "the legibility boost",
+    "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSizeBoost": false, "a11yLegibilityBoost": true, "a11yMotionReduce": false, "disguise": false },
+    "system": { "prefersDark": false, "prefersReducedMotion": false },
+    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSize": "normal", "a11yLegibility": "boost", "a11yMotion": "normal", "icon": "favicon.svg", "manifest": "manifest.webmanifest" }
+  },
+  {
+    "name": "all three accessibility preferences at once",
+    "why": "Three separate attributes rather than one: a case moving them together would pass just as well if an adapter stamped one value into all three.",
+    "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSizeBoost": true, "a11yLegibilityBoost": true, "a11yMotionReduce": true, "disguise": false },
+    "system": { "prefersDark": false, "prefersReducedMotion": false },
+    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSize": "boost", "a11yLegibility": "boost", "a11yMotion": "reduce", "icon": "favicon.svg", "manifest": "manifest.webmanifest" }
+  },
+  {
+    "name": "the system reduces motion while the preference is off",
+    "why": "Either source reducing motion reduces it. The preference can only turn motion down, never back on over the system's answer.",
+    "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSizeBoost": false, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": false },
+    "system": { "prefersDark": false, "prefersReducedMotion": true },
+    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "reduce", "icon": "favicon.svg", "manifest": "manifest.webmanifest" }
+  },
+  {
+    "name": "the disguise swaps both the tab icon and the manifest",
+    "why": "The manifest is the installed app's identity and the icon is the tab's, and they are the two stamps that have to be right in the same parse tick as first paint - a flag in the tab strip for as long as boot takes, or an install started in that window taking the app's real name with it, are both the disguise failing (F24).",
+    "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSizeBoost": false, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": true },
+    "system": { "prefersDark": false, "prefersReducedMotion": false },
+    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon-notes.svg", "manifest": "manifest-notes.webmanifest" }
+  },
+  {
+    "name": "the disguise on a dark system, with everything else moved too",
+    "prefs": { "palette": "lesbian", "moodPreset": "moss", "theme": "system", "a11yTextSizeBoost": true, "a11yLegibilityBoost": false, "a11yMotionReduce": true, "disguise": true },
+    "system": { "prefersDark": true, "prefersReducedMotion": false },
+    "expected": { "palette": "lesbian", "moodPreset": "moss", "theme": "dark", "a11yTextSize": "boost", "a11yLegibility": "normal", "a11yMotion": "reduce", "icon": "favicon-notes.svg", "manifest": "manifest-notes.webmanifest" }
+  }
+]
