@@ -54,7 +54,10 @@
     if (draft.choice === 'ONCE') {
       // "Once" means the next moment the chosen time comes around; the
       // shared rule function decides whether that is today or tomorrow.
-      const at = nextOccurrence({ ...none, time: draft.time, recurrence: 'DAILY' }, new Date());
+      // A DAILY rule always has a next occurrence - only an elapsed one-off
+      // comes back empty - so this is the day the draft is dated from, and
+      // is why the preview below never has to say a saved one-off has passed.
+      const at = nextOccurrence({ ...none, time: draft.time, recurrence: 'DAILY' }, new Date())!;
       return { ...none, time: draft.time, recurrence: null, epochDay: epochDayFromLocalDate(at) };
     }
     if (draft.choice === 'EVERY_3_DAYS' || draft.choice === 'EVERY_7_DAYS') {
@@ -69,16 +72,21 @@
     return { ...none, time: draft.time, recurrence: draft.choice as 'DAILY' | 'WEEKLY' };
   }
 
-  /* The same function the scheduler uses (ADR-0010): the preview cannot
-     disagree with what will actually fire. */
+  /* The rule the Android scheduler is held to case for case
+     (reminder-rule.json): the preview cannot promise a moment that will not
+     fire. Empty means the rule has no occurrence left, and the line goes
+     rather than printing a date in the past - which is what it did before
+     the rule had a way to say so. */
   let nextPreview = $derived.by(() => {
+    const at = nextOccurrence(ruleFromDraft(), new Date());
+    if (!at) return null;
     return new Intl.DateTimeFormat(intlLocale(), {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
       hour: 'numeric',
       minute: '2-digit',
-    }).format(nextOccurrence(ruleFromDraft(), new Date()));
+    }).format(at);
   });
 
   function saveReminder() {
@@ -113,7 +121,9 @@
       <span class="field-label">{m.rem_repeats_label()}</span>
       <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v)} />
     </div>
-    <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
+    {#if nextPreview}
+      <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
+    {/if}
   </div>
 
   <div class="notice notice-info">

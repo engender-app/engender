@@ -9,48 +9,26 @@ import org.junit.Test;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+/**
+ * What nextReminder() decides on top of the rule: whether the row is
+ * switched on, and whether its JSON says anything this build understands.
+ * The rule arithmetic itself is ReminderRuleFixtureTest's, against the
+ * fixture the TypeScript side reads too - cases duplicated here would be
+ * a second place for the two languages to disagree.
+ */
 public class ReminderPlannerTest {
 
     private static final ZoneId ZONE = ZoneId.of("Europe/Warsaw");
 
     @Test
-    public void oneOffInThePastIsNotScheduledAgain() throws Exception {
+    public void aDisabledReminderIsNotScheduled() throws Exception {
         JSONObject rule = new JSONObject()
-            .put("enabled", true)
-            .put("time", "08:00")
-            .put("recurrence", JSONObject.NULL)
-            .put("epochDay", 20300);
-
-        ZonedDateTime now = ZonedDateTime.of(2026, 8, 13, 10, 0, 0, 0, ZONE);
-        assertNull(ReminderPlanner.nextReminder(rule, now));
-    }
-
-    @Test
-    public void dailyMovesToTomorrowWhenTodaysTimePassed() throws Exception {
-        JSONObject rule = new JSONObject()
-            .put("enabled", true)
+            .put("enabled", false)
             .put("time", "08:00")
             .put("recurrence", "DAILY");
 
         ZonedDateTime now = ZonedDateTime.of(2026, 8, 13, 10, 0, 0, 0, ZONE);
-        ZonedDateTime next = ReminderPlanner.nextReminder(rule, now);
-
-        assertEquals(ZonedDateTime.of(2026, 8, 14, 8, 0, 0, 0, ZONE), next);
-    }
-
-    @Test
-    public void everyNDaysUsesItsAnchorProgression() throws Exception {
-        JSONObject rule = new JSONObject()
-            .put("enabled", true)
-            .put("time", "20:00")
-            .put("recurrence", "EVERY_N_DAYS")
-            .put("interval", 3)
-            .put("anchorEpochDay", 20670);
-
-        ZonedDateTime now = ZonedDateTime.of(2026, 8, 13, 21, 0, 0, 0, ZONE);
-        ZonedDateTime next = ReminderPlanner.nextReminder(rule, now);
-
-        assertEquals(ZonedDateTime.of(2026, 8, 16, 20, 0, 0, 0, ZONE), next);
+        assertNull(ReminderPlanner.nextReminder(rule, now));
     }
 
     @Test
