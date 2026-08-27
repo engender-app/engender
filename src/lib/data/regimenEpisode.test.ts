@@ -18,8 +18,7 @@ const episode = (
   route: 'oral',
   interval: 'daily',
   startEpochDay,
-  endEpochDay,
-  hidden: false
+  endEpochDay
 });
 
 test('activeEpisodesAt resolves to the one episode covering the timestamp, like the old single-episode model', () => {

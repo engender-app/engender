@@ -542,11 +542,19 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
   align-items: stretch;
   gap: 0 var(--space-3);
   padding: 0 var(--space-4);
+  position: relative;
   color: inherit;
   text-decoration: none;
   min-height: var(--touch-target);
   transition-property: background-color;
   transition-duration: var(--dur-fast);
+}
+/* The container transform's own layer (DayEntry.svelte) - out of grid flow
+   (absolute, so it takes no track and the three columns beside it are
+   unaffected) and carrying no text of its own, the same reason
+   .entry-card-bg exists in components.css. */
+.kit-entry-bg {
+  position: absolute; inset: 0;
 }
 
 /* Tier 1, response, and the same answer a list row gives for the same
@@ -1573,8 +1581,18 @@ a.kit-entry:active {
      back, because the cell is square and the width is what it has: the only
      thing that makes a face bigger is fewer of them per row. Eleven puts it
      near 27px, which is comfortably inside the size ticket 31 tuned the
-     faces to be read at. */
-  grid-template-columns: repeat(11, minmax(0, 1fr));
+     faces to be read at.
+
+     That 27px was tuned against a ~340px mobile card. `1fr` columns divide
+     whatever width the card actually has, and at desktop's wider column
+     (screens.css) eleven of them run past 50px each - well outside the size
+     the faces were tuned to, and past what MoodYear.svelte's own `CELL`
+     constant draws them at, so an empty cell's outline (sized to the track)
+     and a logged day's face (sized to the constant) stopped matching
+     (Alicja, 2026-08-27: "month by month must be much smaller... empty
+     days should be the same size as the icons"). Capped at the tuned size
+     instead of left to the card's own width. */
+  grid-template-columns: repeat(11, minmax(0, 27px));
   gap: 3px;
 }
 

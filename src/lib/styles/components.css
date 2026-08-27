@@ -292,6 +292,23 @@ a.list-row:hover, button.list-row:hover { background: var(--surface-2); }
 }
 .segmented::-webkit-scrollbar { display: none; }
 
+/* The hint the hidden scrollbar above took away: a fade over whichever edge
+   still has segments past it, on only whichever side that is true
+   (Segmented.svelte tracks scroll position for these two classes). No fade
+   at all when the track holds everything already, which is most of them. */
+.segmented.can-scroll-end:not(.can-scroll-start) {
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+}
+.segmented.can-scroll-start:not(.can-scroll-end) {
+  mask-image: linear-gradient(to right, transparent, black 28px);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 28px);
+}
+.segmented.can-scroll-start.can-scroll-end {
+  mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent 100%);
+}
+
 /* A flex scroll container drops its trailing padding at the end of the
    scroll, so the last segment ran flush into the track's rounded edge and
    read as a label that did not fit its background (Alicja, 2026-08-26, on a
@@ -818,12 +835,24 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   display: flex; gap: var(--space-3);
   padding: var(--space-4);
   min-height: 96px;
+  position: relative;
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-1);
   color: var(--text); text-decoration: none;
   transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
+/* The container transform's own layer (EntryCard.svelte) - a plain fill the
+   same shape as the card, behind its real content, and the only thing that
+   carries the transition name. Content stays out of the scaled snapshot,
+   which is the whole reason this layer exists. */
+.entry-card-bg {
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  z-index: 0;
+}
+.entry-side, .entry-main { position: relative; z-index: 1; }
 .entry-card:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
 .entry-card + .entry-card { margin-top: var(--space-3); }
 .entry-side { padding-top: 2px; }
@@ -896,13 +925,61 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .chart-too-little { color: var(--text-2); font-size: var(--text-sm); padding: var(--space-6); text-align: center; }
 
 /* ---------- sheets, toasts ---------- */
+/* Fixed rather than absolute, and against the app frame rather than the
+   real window: `.app-main` scrolls, and an `inset: 0` sized to a scrolling
+   ancestor is sized to its scrolled content, not the screen - a sheet's
+   scrim centred that way sat in the middle of the content instead of the
+   middle of what was actually on screen, and on a content column taller
+   than the viewport that middle could be scrolled out of view entirely
+   (Alicja, 2026-08-27: doesn't centre in Cycle or the wear log). `position:
+   fixed` fixes to the nearest ancestor with a transform, which `.app` in
+   app.css now is - so this still respects the phone-frame demo preview and
+   the walkthrough's own frame, not just the true window. */
 .sheet-scrim {
-  position: absolute; inset: 0; z-index: 40;
+  position: fixed; inset: 0; z-index: 40;
   background: var(--scrim);
   display: flex; align-items: flex-end; justify-content: center;
   opacity: 0; transition: opacity var(--dur-med) var(--ease-out);
 }
 .sheet-scrim.is-open { opacity: 1; }
+
+/* The withdrawal's blur half, missing from whatever sits in its own
+   scrolling region beside the one the scrim is inside (Sheet.svelte's own
+   `lockBackground` already marks every other top-level child `inert` while
+   a sheet is open - the rail on desktop, chiefly). backdrop-filter samples
+   what is visually behind the scrim, and a browser does not reliably
+   flatten two independently-scrolling regions into one bitmap for that
+   sampling - measured directly: the scrim's own rect spans the rail's too,
+   backdrop-filter is applied and reports as applied, and the rail still
+   rendered every icon and word in full sharpness under it (Alicja,
+   2026-08-27, "the blur effect looks bad on web" - confirmed on the
+   desktop rail specifically, screenshot against Cycle's edit sheet).
+   Blurring the rail's own pixels directly sidesteps needing backdrop-filter
+   to see across that boundary at all. Same token as the scrim's own radius,
+   so it reads as one material rather than a second, undocumented blur.
+
+   No transition on it, on purpose: materials.css's own withdrawal states
+   the radius is constant and never animates - a radius that changes
+   re-blurs the region every frame, which is a cost the scrim itself avoids
+   by crossfading a fixed blur through opacity instead. `filter` doesn't
+   have an opacity-only equivalent for a whole subtree the way a
+   background-image scrim does, so the honest way to keep the same rule
+   here is to not transition it at all: the blur snaps with `inert`, and
+   the scrim's own opacity fade is what still carries the felt sense of the
+   withdrawal arriving gradually. */
+@supports (backdrop-filter: blur(1px)) {
+  [data-app-root] > [inert] {
+    filter: blur(var(--blur-withdraw));
+  }
+}
+html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
+  filter: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-app-root] > [inert] {
+    filter: none;
+  }
+}
 /* Carries the drag, so the sheet inside it keeps its transition's transform
    to itself (Sheet.svelte). Sized to the sheet rather than to the scrim, or
    it would swallow the backdrop taps that dismiss.

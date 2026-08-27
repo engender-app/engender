@@ -361,8 +361,7 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       route: 'im',
       interval: 'every 2 weeks',
       startEpochDay: 19000,
-      endEpochDay: null,
-      hidden: false
+      endEpochDay: null
     }
   ]);
 });
@@ -609,8 +608,7 @@ const CARRIED: Record<string, string[]> = {
     'route',
     'interval',
     'start_epoch_day',
-    'end_epoch_day',
-    'hidden'
+    'end_epoch_day'
   ],
   dose_event: [
     'uuid',
@@ -699,8 +697,13 @@ const CARRIED: Record<string, string[]> = {
    `tally_event.context` (register finding 32.4) is the same shape: nothing
    in the app writes it any more, so it stays in the schema for rows that
    already have it but never travels for a device that has stopped
-   producing it. */
-const LEFT_BEHIND = ['id', 'updated_at', 'trashed_at', 'context'];
+   producing it. `regimen_episode.hidden` is that same shape again: the
+   only control that ever set it is gone (Alicja, 2026-08-27, "get rid of
+   the show/hide progesterone button" - it never did more than add a badge
+   to the row), and every other table's own `hidden` column stays carried
+   as before - this is scoped to `regimen_episode` alone by the per-table
+   CARRIED lists above, not by this flat list. */
+const LEFT_BEHIND = ['id', 'updated_at', 'trashed_at', 'context', 'hidden'];
 
 test('every column in the schema is either carried or deliberately left behind', async () => {
   const { db } = await populated();

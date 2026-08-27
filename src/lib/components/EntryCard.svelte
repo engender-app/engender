@@ -21,14 +21,28 @@
      entry: three screens still draw this card and all three link into the
      editor, so leaving it out would make the transform depend on which
      surface the entry happened to be tapped on
-     ($lib/motion/container.svelte). -->
+     ($lib/motion/container.svelte).
+
+     The name lives on `.entry-card-bg`, a plain fill with no text of its
+     own, rather than on this element - a view transition captures a named
+     element as one rasterised image and scales that image between the
+     card's rect and the editor's, and this card's own mood dot, time and
+     note travelled inside that image too. Scaled up to a full screen from
+     a 96px-tall card is roughly a 4-8x zoom, so a line of body text spent
+     part of every open blown up to the size a heading would be (Alicja,
+     2026-08-27: "the ridiculous huge text transition"). Pulling the name
+     onto a background-only layer keeps the shape's grow-into-a-screen
+     motion and drops the part that was never meant to zoom: the real
+     content now sits outside the named element entirely, so it takes the
+     screen's own crossfade (already wired for the container pattern,
+     app.css) instead of riding the shape's scale. -->
 <a
   class="entry-card"
   data-entry-card
   href="/entry/{entry.id}"
-  style:view-transition-name={entryContainerName(String(entry.id))}
   onclick={(event) => { if (opensHere(event)) openEntryContainer(String(entry.id)); }}
 >
+  <div class="entry-card-bg" style:view-transition-name={entryContainerName(String(entry.id))}></div>
   <div class="entry-side">
     {#if entry.mood != null}
       <span

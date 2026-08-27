@@ -552,7 +552,7 @@ export async function applyRegimenEpisodes({ driver, journal, ts }: Restoring): 
   await insertRows(
     driver,
     `INSERT INTO regimen_episode
-       (uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, hidden, updated_at)`,
+       (uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, updated_at)`,
     inserting.map((episode) => [
       episode.id,
       episode.drug,
@@ -565,7 +565,6 @@ export async function applyRegimenEpisodes({ driver, journal, ts }: Restoring): 
       // Absent on an archive from before ticket 38 - read as still
       // ongoing, the same as every pre-existing episode's backfill (v40).
       episode.endEpochDay ?? null,
-      flag(episode.hidden),
       ts
     ])
   );

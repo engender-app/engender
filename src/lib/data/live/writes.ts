@@ -440,7 +440,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     reads: ['getEvents']
   },
   regimen: {
-    writes: { upsertEpisode: ['regimen'], setEpisodeHidden: ['regimen'], endEpisode: ['regimen'] },
+    writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'] },
     reads: ['getEpisodes']
   },
   doses: {

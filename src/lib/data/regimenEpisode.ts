@@ -109,10 +109,10 @@ export function attributeDrug(
     timeline anchors against this and nothing else, so the anchor does not
     shift when a second, different episode starts later. `episodes` must be
     sorted ascending by startEpochDay (ties broken by insertion order, the
-    order journal.regimen.getEpisodes() returns); hidden episodes still
-    count, the same as they still resolve. Null when there is no episode at
-    all yet. Unaffected by episodes overlapping: "first ever" only ever
-    meant the earliest start day, never that it was the only one active.
+    order journal.regimen.getEpisodes() returns). Null when there is no
+    episode at all yet. Unaffected by episodes overlapping: "first ever"
+    only ever meant the earliest start day, never that it was the only one
+    active.
 
     The whole episode rather than only its start day, which is what this
     returned until phase 5 ticket 27: the effects timeline reads the
