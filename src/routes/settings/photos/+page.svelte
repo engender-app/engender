@@ -3,9 +3,9 @@
 
      The compare view's measurement summary was a `.card` holding a heading
      and a `.list-group` of rows that could not be pressed - two containers
-     for one list. It is a heading over a list card now, with the rows
-     written out as `.kit-row.is-static`, which is what a row that states a
-     reading and goes nowhere is (the call WrappedCompact already makes).
+     for one list. It is a heading over a list card now, with the rows as
+     `<ListRow static>`, which is what a row that states a reading and goes
+     nowhere is.
 
      The picking grid stays a grid. A photo is chosen by looking at it, so
      the cell is the photograph; nothing about that was the old world's. */
@@ -26,6 +26,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade } from '$lib/motion/reveal';
@@ -110,18 +111,14 @@
       <SectionHeading text={m.ph_measurements_title()} />
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each rangeSummaries as s (s.type)}
-          <div class="kit-row is-static" data-range-measurement={s.type}>
-            <span class="kit-row-text">
-              <span class="kit-row-title">{vocabulary.measurementTypeName(s.type)}</span>
-              <span class="kit-row-sub">
-                {#if s.first.id === s.last.id}
-                  {s.first.value} {s.first.unit}
-                {:else}
-                  {s.first.value} {s.first.unit} → {s.last.value} {s.last.unit}
-                {/if}
-              </span>
-            </span>
-          </div>
+          <ListRow
+            static
+            data-range-measurement={s.type}
+            title={vocabulary.measurementTypeName(s.type)}
+            subtitle={s.first.id === s.last.id
+              ? `${s.first.value} ${s.first.unit}`
+              : `${s.first.value} ${s.first.unit} → ${s.last.value} ${s.last.unit}`}
+          />
         {/each}
       </ListCard>
     {/if}
