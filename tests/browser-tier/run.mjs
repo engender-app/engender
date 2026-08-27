@@ -1240,7 +1240,8 @@ await block('ticket 09 detail draft', 3, async () => {
       `branches were ${detail.rawBranches?.join(' -> ')}`
     );
 
-  // And what detailDraft.ts's waitingOn puts in its place.
+  // And what detailDraft.ts's answersFor puts in its place: an answer read
+  // for anything but the record on screen is still loading.
   if (detail.gatedEmptyBeforeRecord === false)
     ok('waiting on the record shows the placeholder over that gap, never the empty state');
   else
