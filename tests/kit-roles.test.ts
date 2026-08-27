@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromaOf, colorMixOklab, contrast, lightnessOf, toRgb } from '../src/lib/theme/colour';
+import { PALETTES } from './palettes.mjs';
 import {
   HEAT_STEPS,
   ROLE_TINT_PCT,
@@ -36,16 +37,6 @@ function distance(a: string, b: string): number {
   return Math.abs(lightnessOf(a) - lightnessOf(b));
 }
 
-const PALETTES = [
-  'trans',
-  'nonbinary',
-  'genderfluid',
-  'bisexual',
-  'lesbian',
-  'pansexual',
-  'rainbow',
-  'agender'
-];
 const THEMES = ['light', 'dark'] as const;
 
 function block(selector: string): string {

@@ -13,6 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { PALETTES } from './palettes.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -48,7 +49,7 @@ describe('what Settings is built from', () => {
 
   it('previews all 8 gender palettes and all 4 mood presets', () => {
     const paletteKeys = [...settings.matchAll(/\['(\w+)', m\.palette_\w+\]/g)].map((mm) => mm[1]);
-    expect(paletteKeys).toEqual(['trans', 'nonbinary', 'genderfluid', 'bisexual', 'lesbian', 'pansexual', 'rainbow', 'agender']);
+    expect(paletteKeys).toEqual(PALETTES);
     const moodKeys = [...settings.matchAll(/\['(\w+)', m\.mood_preset_\w+\]/g)].map((mm) => mm[1]);
     expect(moodKeys).toEqual(['amber', 'teal', 'plum', 'moss']);
   });

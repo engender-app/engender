@@ -28,17 +28,7 @@
   import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
   import { readFlagFill, readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
-
-  const PALETTES = [
-    'trans',
-    'nonbinary',
-    'genderfluid',
-    'bisexual',
-    'lesbian',
-    'pansexual',
-    'rainbow',
-    'agender'
-  ];
+  import { PALETTES } from '../palettes.mjs';
 
   let palette = $state('trans');
   let theme = $state('dark');

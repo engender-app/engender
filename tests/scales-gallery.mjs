@@ -15,19 +15,10 @@ import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchChromium } from './browser-harness.mjs';
+import { PALETTES } from './palettes.mjs';
 
 const outDir = resolve(process.argv[2] ?? '.claude/scale-shots');
 
-const PALETTES = [
-  'trans',
-  'nonbinary',
-  'genderfluid',
-  'bisexual',
-  'lesbian',
-  'pansexual',
-  'rainbow',
-  'agender'
-];
 const THEMES = ['dark', 'light'];
 
 await mkdir(outDir, { recursive: true });

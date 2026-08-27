@@ -20,17 +20,7 @@
   import MoodFace from '$lib/components/MoodFace.svelte';
   import { PATHS } from '$lib/components/icons';
   import { measure } from '../icon-ink';
-
-  const PALETTES = [
-    'trans',
-    'nonbinary',
-    'genderfluid',
-    'bisexual',
-    'lesbian',
-    'pansexual',
-    'rainbow',
-    'agender'
-  ];
+  import { PALETTES } from '../palettes.mjs';
 
   let palette = $state('trans');
   let theme = $state('dark');
