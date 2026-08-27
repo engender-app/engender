@@ -1,5 +1,7 @@
 import { dev } from '$app/environment';
 import { base } from '$app/paths';
+import { isAndroid } from '$lib/platform';
+import { SHELL_CACHE_PREFIX } from './shell-assets';
 import { watchForUpdates } from './update';
 
 /** Installs the offline shell (phase 2 ticket 03), which is also what makes
@@ -8,9 +10,18 @@ import { watchForUpdates } from './update';
 
     Not in development, where the precached shell would be served ahead of
     every edit and no change would reach the browser until the worker was
-    unregistered by hand. */
+    unregistered by hand.
+
+    Not on Android either (phase 5 performance ticket 01). Neither half of what
+    this does has a job there: every asset the WebView loads is already a local
+    file inside the APK, so there is no offline shell to build, and a new
+    release arrives as an APK rather than as a worker script, so there is no
+    update to watch for. Registering anyway copied about 50 MB of the app's own
+    assets into WebView cache storage - a second copy of what was already on
+    the device. */
 export function registerServiceWorker() {
   if (dev || !('serviceWorker' in navigator)) return;
+  if (isAndroid()) return void removeAndroidServiceWorker();
 
   navigator.serviceWorker
     .register(`${base}/service-worker.js`, { updateViaCache: 'none' })
@@ -38,4 +49,31 @@ export function registerServiceWorker() {
          start. Nothing about the journal itself changes, and there is nothing
          to tell the user that they could act on. */
     });
+}
+
+/** Undoes an install made before the rule above existed. Leaving that worker
+    in place would be worse than the storage it wastes: it goes on answering
+    navigations from the release it precached, so the WebView would keep
+    showing the old app after an APK update had replaced the assets underneath
+    it. Its caches go with it, and they are the ~50 MB second copy of the APK's
+    own assets that this early return exists to stop making.
+
+    A no-op on an install that never had one, which is every install from here.
+    Nothing is awaited or reported: a WebView that will not give up its worker
+    is not something a person can act on, and the app opens either way. */
+function removeAndroidServiceWorker() {
+  void navigator.serviceWorker
+    .getRegistrations()
+    .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+    .catch(() => {});
+
+  /* Only this app's own caches, by the same prefix the worker deletes by:
+     another key on this origin would belong to something that is not ours. */
+  if (typeof caches === 'undefined') return;
+  void caches
+    .keys()
+    .then((keys) =>
+      Promise.all(keys.filter((key) => key.startsWith(SHELL_CACHE_PREFIX)).map((key) => caches.delete(key)))
+    )
+    .catch(() => {});
 }

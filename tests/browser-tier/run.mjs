@@ -1130,6 +1130,56 @@ try {
   fail('phase 5 ticket 30 control kit', e.message ?? String(e));
 }
 
+// --- Phase 5 audit ticket 03: what a grid of photos actually reads ---------
+try {
+  await page.setViewportSize({ width: 400, height: 600 });
+  const thumbs = await load('/thumbs.html', 'data-thumbs-ready', '__thumbsResult');
+  if (thumbs.error) throw new Error(thumbs.error);
+
+  const { onMount, atBottom, backAtTop } = thumbs;
+
+  /* The claim the ticket is about: a tile far below the fold has not been
+     read, so the screen costs a screenful rather than a journal. */
+  if (!thumbs.lastTileReadOnMount && onMount.names.length < thumbs.tiles)
+    ok(`only tiles near the viewport read on mount (${onMount.names.length} of ${thumbs.tiles})`);
+  else
+    fail(
+      'only tiles near the viewport read on mount',
+      `${onMount.names.length} of ${thumbs.tiles} read, last tile read: ${thumbs.lastTileReadOnMount}`
+    );
+
+  /* And they leave together. One observer callback, one Svelte flush, one
+     readMany - the same property the Node tier counts against a fake, here
+     against a real layout crossing a real margin. */
+  if (onMount.batches === 1) ok('the whole screenful leaves as a single readMany');
+  else fail('the whole screenful leaves as a single readMany', `${onMount.batches} batches`);
+
+  /* The photo whose file is gone still draws: a placeholder, not a gap. */
+  if (onMount.drawn === onMount.names.length - 1 && onMount.placeholders >= 1)
+    ok('a photo with no stored file still renders as a placeholder');
+  else
+    fail(
+      'a photo with no stored file still renders as a placeholder',
+      `${onMount.drawn} images, ${onMount.placeholders} placeholders, ${onMount.names.length} read`
+    );
+
+  if (atBottom.names.length > onMount.names.length)
+    ok(`scrolling down reads the tiles it reaches (${atBottom.names.length} of ${thumbs.tiles})`);
+  else fail('scrolling down reads the tiles it reaches', `still ${atBottom.names.length}`);
+
+  /* No leak, and no unbounded growth either: a tile scrolled well past
+     revokes its URL, so a pass over the whole grid ends where it began. */
+  if (backAtTop.live === onMount.live)
+    ok(`a scroll through the grid and back leaves the blob URLs where they were (${backAtTop.live})`);
+  else
+    fail(
+      'a scroll through the grid and back leaves the blob URLs where they were',
+      `${onMount.live} on mount, ${atBottom.live} at the bottom, ${backAtTop.live} back at the top`
+    );
+} catch (e) {
+  fail('phase 5 audit ticket 03 thumbnail grid', e.message ?? String(e));
+}
+
 await browser.close();
 await server.close();
 
