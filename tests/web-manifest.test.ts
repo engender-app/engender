@@ -126,8 +126,13 @@ describe('the disguised manifest', () => {
       "manifest.href = manifest.href.replace('manifest.webmanifest', 'manifest-notes.webmanifest');"
     );
 
-    // app.html swaps it before first paint; the layout keeps it in step when
-    // the toggle moves after boot.
-    expect(read('src/routes/+layout.svelte')).toContain("prefs.disguise ? 'manifest-notes.webmanifest' : 'manifest.webmanifest'");
+    /* app.html swaps it before first paint; the layout keeps it in step
+       when the toggle moves after boot. Which name each of them should
+       land on is the shared rule's answer, asserted against
+       prefs/fixtures/document-chrome.json by documentChrome.test.ts and
+       app-html-chrome.test.ts. All that is left for a source read is that
+       the layout takes its href from that rule rather than deciding again
+       on its own. */
+    expect(read('src/routes/+layout.svelte')).toContain('`${assets}/${chrome.manifest}`');
   });
 });
