@@ -255,6 +255,14 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 .quicklog-title { font-weight: var(--weight-bold); margin-bottom: var(--space-3); }
 
 /* ---------- Entry editor ---------- */
+/* The container transform's own layer (EntryEditor.svelte) - a plain fill
+   behind the real screen, carrying no text, the same fix as
+   .entry-card-bg/.kit-entry-bg in components.css/kit.css. `.screen` is
+   already `position: relative` (app.css), so this only needs its own. */
+.editor-bg {
+  position: absolute; inset: 0;
+  background: var(--bg);
+}
 .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
 /* Still here for the settings screens that carry a form in a card - the
    milestone editor, labs, the dimension editor and three more. The entry

@@ -516,11 +516,19 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
   align-items: stretch;
   gap: 0 var(--space-3);
   padding: 0 var(--space-4);
+  position: relative;
   color: inherit;
   text-decoration: none;
   min-height: var(--touch-target);
   transition-property: background-color;
   transition-duration: var(--dur-fast);
+}
+/* The container transform's own layer (DayEntry.svelte) - out of grid flow
+   (absolute, so it takes no track and the three columns beside it are
+   unaffected) and carrying no text of its own, the same reason
+   .entry-card-bg exists in components.css. */
+.kit-entry-bg {
+  position: absolute; inset: 0;
 }
 
 /* Tier 1, response, and the same answer a list row gives for the same

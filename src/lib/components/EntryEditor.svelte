@@ -350,8 +350,19 @@
      photographs the new screen as soon as the navigation settles, and the
      entry itself is a worker round trip behind that, so a name waiting on
      `existing` would arrive after the picture was taken. The route knows
-     which entry this is without asking anybody. -->
-<div class="screen editor" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}>
+     which entry this is without asking anybody.
+
+     The name itself lives on `.editor-bg`, not on this element - see
+     EntryCard.svelte's comment, the other half of the same fix: a view
+     transition scales its named element's whole rasterised image between
+     the card's rect and this screen's, and this screen's own heading and
+     fields rode inside that image too, at whatever size the small card
+     was, before growing into a screen (Alicja, 2026-08-27: "the ridiculous
+     huge text transition"). The plain fill grows now; the real content
+     sits outside the named element and crossfades in place through the
+     screen's own transition instead. -->
+<div class="screen editor">
+  <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
   <!-- Back goes wherever you opened it from, not to the entry's own day. An
        entry is drawn on Home, on a day, in search, on the timeline, inside a
        tryout and in the counterevidence journal, and every one of those sent
