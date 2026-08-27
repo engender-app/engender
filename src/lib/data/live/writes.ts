@@ -150,16 +150,54 @@ export const TABLE_NAMES = [
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
 export type TableName = (typeof TABLE_NAMES)[number];
 
-/** Every operation each area offers, split by whether it changes anything.
-    `writes` maps to the tables the operation writes; `reads` is a plain list
-    so that adding either kind is a deliberate act.
+/** Every operation on one area, by name: the tables it writes, or the tables
+    it reads. */
+type Operation<Area> = Extract<
+  { [K in keyof Area]: Area[K] extends (...args: never[]) => unknown ? K : never }[keyof Area],
+  string
+>;
 
-    Keyed loosely rather than by `keyof Journal`, and read against the areas
-    the journal actually has: an entry here for an area a build does not carry
-    is harmless, while an area with no entry here is the failure this exists to
-    raise. */
-const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>; reads: string[] }> = {
-  entries: {
+interface Classified<Area> {
+  writes: Partial<Record<Operation<Area>, TableName[]>>;
+  reads: Partial<Record<Operation<Area>, TableName[]>>;
+}
+
+/** One area's classification, checked against the area's own type: every
+    method has to appear under `writes` or under `reads`, and a name that is
+    neither is a compile error rather than a boot-time throw.
+
+    The missing ones arrive as a required `unclassified` property naming
+    them, which is the only way to get TypeScript to say *which* method was
+    forgotten. `observeWrites` still throws at boot for the case no type can
+    see - a build carrying an area or a method this file has never heard of. */
+function classify<Area>() {
+  return <const Spec extends Classified<Area>>(
+    spec: Spec &
+      (Exclude<Operation<Area>, keyof Spec['writes'] | keyof Spec['reads']> extends never
+        ? unknown
+        : { unclassified: Exclude<Operation<Area>, keyof Spec['writes'] | keyof Spec['reads']> })
+  ): Classified<Area> => spec;
+}
+
+/** What every read of an entry depends on, stated once: `hydrate` fills each
+    row's dimension values, tag links, photos, recordings and video notes, so
+    a write to any of those changes what an entry list shows. */
+const HYDRATED_ENTRY: TableName[] = ['entry', 'dimension', 'tag', 'photo', 'voiceRecording', 'videoNote'];
+
+/** Every operation each area offers, split by whether it changes anything.
+    `writes` maps to the tables the operation writes; `reads` to the tables
+    the operation reads - the same shape, because both halves answer the same
+    question and a screen should have to ask neither (phase 5 audit ticket
+    03). A read's list is what the read's own SQL touches, transitively
+    through the areas it composes: `stock.getProjections` reads the episode
+    history through `regimen.getEpisodes`, so `regimen` is on its list.
+
+    Keyed by `keyof Journal`, so a new area is a compile error here rather
+    than a boot-time throw; the throw in `observeWrites` stays for the case
+    the types cannot see, a build whose journal carries an area this file has
+    never heard of. */
+const OPERATIONS: { [Area in keyof Omit<Journal, 'reconcileBuiltIns'>]: Classified<Journal[Area]> } = {
+  entries: classify<Journal['entries']>()({
     writes: {
       // Photos, recordings and video notes as well as the entry: a save
       // carries additions and removals of all three.
@@ -171,18 +209,20 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       restoreEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
       setEntryStarred: ['entry']
     },
-    reads: [
-      'getEntry',
-      'entriesForDay',
-      'recentDays',
-      'entriesWithTag',
-      'counterevidencePool',
-      'searchEntries',
-      'countSearchMatches',
-      'trashedEntries'
-    ]
-  },
-  tags: {
+    reads: {
+      getEntry: HYDRATED_ENTRY,
+      entriesForDay: HYDRATED_ENTRY,
+      recentDays: HYDRATED_ENTRY,
+      entriesWithTag: HYDRATED_ENTRY,
+      counterevidencePool: HYDRATED_ENTRY,
+      searchEntries: HYDRATED_ENTRY,
+      // A count, so no hydration: the search clause itself joins the tag
+      // tables, and nothing else is read back.
+      countSearchMatches: ['entry', 'tag'],
+      trashedEntries: HYDRATED_ENTRY
+    }
+  }),
+  tags: classify<Journal['tags']>()({
     writes: {
       addGroup: ['tag'],
       setGroupEnabled: ['tag'],
@@ -194,42 +234,44 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       // reads change even though no entry row was touched.
       deleteTag: ['tag', 'entry']
     },
-    reads: ['getTagGroups']
-  },
-  affirmations: {
+    reads: { getTagGroups: ['tag'] }
+  }),
+  affirmations: classify<Journal['affirmations']>()({
     writes: {
       addLine: ['affirmation'],
       editLine: ['affirmation'],
       setHidden: ['affirmation'],
       deleteLine: ['affirmation']
     },
-    reads: ['getAffirmations']
-  },
-  bodyRegions: {
+    reads: { getAffirmations: ['affirmation'] }
+  }),
+  bodyRegions: classify<Journal['bodyRegions']>()({
     writes: {
       addCustomRegion: ['bodyRegion'],
       setRegionHidden: ['bodyRegion']
     },
-    reads: ['getBodyRegions']
-  },
-  dimensions: {
+    reads: { getBodyRegions: ['bodyRegion'] }
+  }),
+  dimensions: classify<Journal['dimensions']>()({
     writes: {
       addCustomDimension: ['dimension'],
       addPreset: ['preset'],
       setDimensionHidden: ['dimension']
     },
-    reads: ['getDimensions', 'getPresets']
-  },
-  milestones: {
+    reads: { getDimensions: ['dimension'], getPresets: ['dimension', 'preset'] }
+  }),
+  milestones: classify<Journal['milestones']>()({
     writes: {
       // A milestone save can preserve, remove or replace its photo.
       upsertMilestone: ['milestone', 'photo'],
       // Takes its felt-sense history along too (phase 5 ticket 24).
       deleteMilestone: ['milestone', 'photo', 'feltSense']
     },
-    reads: ['getMilestones']
-  },
-  photos: {
+    // A milestone is read back with its photos on it, the same way an entry
+    // is.
+    reads: { getMilestones: ['milestone', 'photo'] }
+  }),
+  photos: classify<Journal['photos']>()({
     /* An entry and a milestone both carry their photos on the shape they are
        read back as, so a photo row changing changes what an entry list and the
        mirrored milestones should show. Which of the two owns this photo is a
@@ -241,65 +283,82 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       remove: ['photo', 'entry', 'milestone'],
       setStarred: ['photo', 'entry', 'milestone']
     },
-    reads: ['inJournal', 'starredPhotos']
-  },
+    // Both reads join the owners, to date each photo and to say which record
+    // it hangs off.
+    reads: { inJournal: ['photo', 'entry', 'milestone'], starredPhotos: ['photo', 'entry', 'milestone'] }
+  }),
   // Read-only, the same reason exposure and stats are: a recording's row is
   // owned by upsertEntry/deleteEntry (voiceRecording is already announced
   // there), and this area only reads it back dated for the compare picker
   // (ticket 25).
-  voice: {
+  voice: classify<Journal['voice']>()({
     writes: {},
-    reads: ['inJournal']
-  },
+    reads: { inJournal: ['voiceRecording', 'entry'] }
+  }),
   // Read-only for the same reason `voice` is: a video note's row is owned by
   // upsertEntry/deleteEntry, which already announce 'videoNote'.
-  videos: {
+  videos: classify<Journal['videos']>()({
     writes: {},
-    reads: ['inJournal']
-  },
-  labs: {
+    reads: { inJournal: ['videoNote', 'entry'] }
+  }),
+  labs: classify<Journal['labs']>()({
     writes: { upsertResult: ['lab'], deleteResult: ['lab'] },
-    reads: ['getAnalytes', 'getUsedAnalytes', 'getMostRecentAnalyte', 'getResults', 'getSeries']
-  },
-  measurements: {
+    /* All five read `lab_result` and nothing else. `dose_event` is read on
+       the write path only - a result's dosing context is derived when it is
+       saved and frozen there (labs.ts), so a later dose edit cannot change
+       what any of these answers. */
+    reads: {
+      getAnalytes: ['lab'],
+      getUsedAnalytes: ['lab'],
+      getMostRecentAnalyte: ['lab'],
+      getResults: ['lab'],
+      getSeries: ['lab']
+    }
+  }),
+  measurements: classify<Journal['measurements']>()({
     writes: {
       upsertMeasurement: ['measurement'],
       deleteMeasurement: ['measurement'],
       addCustomMeasurementType: ['measurementType'],
       setMeasurementTypeHidden: ['measurementType']
     },
-    reads: ['getMeasurements', 'getSeries', 'getMeasurementsInRange', 'getMeasurementTypes']
-  },
-  sizeRecords: {
+    reads: {
+      getMeasurements: ['measurement'],
+      getSeries: ['measurement'],
+      getMeasurementsInRange: ['measurement'],
+      getMeasurementTypes: ['measurementType']
+    }
+  }),
+  sizeRecords: classify<Journal['sizeRecords']>()({
     writes: { upsertRecord: ['sizeRecord'], deleteRecord: ['sizeRecord'] },
-    reads: ['getRecords', 'getRecordsByCategory']
-  },
-  sideEffects: {
+    reads: { getRecords: ['sizeRecord'], getRecordsByCategory: ['sizeRecord'] }
+  }),
+  sideEffects: classify<Journal['sideEffects']>()({
     writes: { upsertSideEffect: ['sideEffect'], deleteSideEffect: ['sideEffect'] },
-    reads: ['getSideEffects', 'getSideEffectsInRange']
-  },
-  personalEffects: {
+    reads: { getSideEffects: ['sideEffect'], getSideEffectsInRange: ['sideEffect'] }
+  }),
+  personalEffects: classify<Journal['personalEffects']>()({
     writes: {
       upsertMarker: ['personalEffect'],
       clearMarker: ['personalEffect'],
       addCustomEffectType: ['personalEffectType'],
       setEffectTypeHidden: ['personalEffectType']
     },
-    reads: ['getMarkers', 'getEffectTypes']
-  },
-  effectCategories: {
+    reads: { getMarkers: ['personalEffect'], getEffectTypes: ['personalEffectType'] }
+  }),
+  effectCategories: classify<Journal['effectCategories']>()({
     writes: { setCategoryEnabled: ['effectCategory'] },
-    reads: ['getEffectCategories']
-  },
-  cycleEvents: {
+    reads: { getEffectCategories: ['effectCategory'] }
+  }),
+  cycleEvents: classify<Journal['cycleEvents']>()({
     writes: { upsertCycleEvent: ['cycleEvent'], deleteCycleEvent: ['cycleEvent'] },
-    reads: ['getCycleEvents', 'getCycleEventsInRange']
-  },
-  journalingPauses: {
+    reads: { getCycleEvents: ['cycleEvent'], getCycleEventsInRange: ['cycleEvent'] }
+  }),
+  journalingPauses: classify<Journal['journalingPauses']>()({
     writes: { upsertPause: ['journalingPause'], deletePause: ['journalingPause'] },
-    reads: ['getPauses']
-  },
-  wearSessions: {
+    reads: { getPauses: ['journalingPause'] }
+  }),
+  wearSessions: classify<Journal['wearSessions']>()({
     writes: {
       // A save can also create, move or clear this session's own reminder
       // (wearSessions.ts), the same reason stock's deleteEntry announces
@@ -307,30 +366,30 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       upsertSession: ['wearSession', 'reminder'],
       deleteSession: ['wearSession', 'reminder']
     },
-    reads: ['getSessions', 'getRunningSession']
-  },
-  hairProgress: {
+    reads: { getSessions: ['wearSession'], getRunningSession: ['wearSession'] }
+  }),
+  hairProgress: classify<Journal['hairProgress']>()({
     writes: {
       upsertStage: ['hairProgress'],
       deleteStage: ['hairProgress'],
       addPhoto: ['hairProgress'],
       deletePhoto: ['hairProgress']
     },
-    reads: ['getStages', 'getPhotos']
-  },
-  hairRemoval: {
+    reads: { getStages: ['hairProgress'], getPhotos: ['hairProgress'] }
+  }),
+  hairRemoval: classify<Journal['hairRemoval']>()({
     writes: {
       upsertSession: ['hairRemoval'],
       deleteSession: ['hairRemoval'],
       addPhoto: ['hairRemoval'],
       deletePhoto: ['hairRemoval']
     },
-    reads: ['getSessions', 'getPhotos']
-  },
+    reads: { getSessions: ['hairRemoval'], getPhotos: ['hairRemoval'] }
+  }),
   /* deleteProcedure and addChecklistItem write 'checklist' as well as
      'procedure': the recovery checklist is an ordinary checklist row, so a
      screen watching checklists has to hear about it. */
-  procedures: {
+  procedures: classify<Journal['procedures']>()({
     writes: {
       upsertProcedure: ['procedure'],
       deleteProcedure: ['procedure', 'checklist'],
@@ -341,20 +400,23 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       deletePhoto: ['procedure'],
       addChecklistItem: ['procedure', 'checklist']
     },
-    reads: ['getProcedures', 'getPhotos', 'getChecklist']
-  },
-  reminders: {
+    // getChecklist reads the checklist table alone, through the checklists
+    // area: the recovery checklist is an ordinary owned Checklist and the
+    // procedure row is not read to find it.
+    reads: { getProcedures: ['procedure'], getPhotos: ['procedure'], getChecklist: ['checklist'] }
+  }),
+  reminders: classify<Journal['reminders']>()({
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },
-    reads: ['getReminders']
-  },
-  doubtJournal: {
+    reads: { getReminders: ['reminder'] }
+  }),
+  doubtJournal: classify<Journal['doubtJournal']>()({
     writes: {
       saveSnapshot: ['doubtJournal'],
       deleteSnapshot: ['doubtJournal']
     },
-    reads: ['getSnapshots']
-  },
-  tryouts: {
+    reads: { getSnapshots: ['doubtJournal'] }
+  }),
+  tryouts: classify<Journal['tryouts']>()({
     writes: {
       upsertTryout: ['tryout'],
       // Takes its felt-sense history along too.
@@ -362,9 +424,9 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       addPhoto: ['tryout'],
       deletePhoto: ['tryout']
     },
-    reads: ['getTryouts', 'getPhotos']
-  },
-  feltSense: {
+    reads: { getTryouts: ['tryout'], getPhotos: ['tryout'] }
+  }),
+  feltSense: classify<Journal['feltSense']>()({
     /* Which owner a felt-sense write belongs to is a property of the call,
        not of the method, so both `feltSense` and the owner's own name are
        announced - the same reasoning `photos` gives for `entry`/`milestone`. */
@@ -372,21 +434,23 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       add: ['feltSense', 'tryout', 'milestone'],
       remove: ['feltSense', 'tryout', 'milestone']
     },
-    reads: ['forTryout', 'forMilestone']
-  },
-  letters: {
+    // A read knows its owner, unlike a write: the history is joined to the
+    // one record it hangs off.
+    reads: { forTryout: ['feltSense', 'tryout'], forMilestone: ['feltSense', 'milestone'] }
+  }),
+  letters: classify<Journal['letters']>()({
     writes: { addLetter: ['letter'], deleteLetter: ['letter'] },
-    reads: ['getLetters']
-  },
-  roadmap: {
+    reads: { getLetters: ['letter'] }
+  }),
+  roadmap: classify<Journal['roadmap']>()({
     writes: {
       setGoalStatus: ['roadmapCheck'],
       addCustomGoal: ['roadmapGoal'],
       setCustomGoalStatus: ['roadmapGoal']
     },
-    reads: ['getGoalStatuses', 'getCustomGoals']
-  },
-  checklists: {
+    reads: { getGoalStatuses: ['roadmapCheck'], getCustomGoals: ['roadmapGoal'] }
+  }),
+  checklists: classify<Journal['checklists']>()({
     writes: {
       createChecklist: ['checklist'],
       deleteChecklist: ['checklist'],
@@ -399,17 +463,21 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       deleteItem: ['checklist'],
       reorder: ['checklist']
     },
-    reads: ['getChecklist', 'getChecklistByOwner', 'getStandaloneChecklist']
-  },
-  tally: {
+    reads: {
+      getChecklist: ['checklist'],
+      getChecklistByOwner: ['checklist'],
+      getStandaloneChecklist: ['checklist']
+    }
+  }),
+  tally: classify<Journal['tally']>()({
     writes: { log: ['tally'], deleteEvent: ['tally'] },
-    reads: ['getEvents']
-  },
-  regimen: {
+    reads: { getEvents: ['tally'] }
+  }),
+  regimen: classify<Journal['regimen']>()({
     writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'] },
-    reads: ['getEpisodes']
-  },
-  doses: {
+    reads: { getEpisodes: ['regimen'] }
+  }),
+  doses: classify<Journal['doses']>()({
     writes: {
       upsertDose: ['dose'],
       deleteDose: ['dose'],
@@ -417,9 +485,11 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       upsertPause: ['dose'],
       deletePause: ['dose']
     },
-    reads: ['getDoses', 'getSchedules', 'getPauses']
-  },
-  stock: {
+    // A schedule and a pause both hang off an episode, and are read back
+    // joined to it (doses.ts), so ending an episode changes what they answer.
+    reads: { getDoses: ['dose'], getSchedules: ['dose', 'regimen'], getPauses: ['dose', 'regimen'] }
+  }),
+  stock: classify<Journal['stock']>()({
     writes: {
       upsertEntry: ['stock'],
       deleteEntry: ['stock', 'reminder'],
@@ -427,65 +497,108 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
       // Reminder as well as this drug's own bookkeeping.
       reconcileRunOutReminders: ['stock', 'reminder']
     },
-    reads: ['getEntries', 'getProjections']
-  },
+    /* A projection is the count, the dose log and the episode history
+       (stockProjection.ts) - the third of those is what the stock screen
+       used to leave out, so editing a Regimen episode left the old run-out
+       date on screen. */
+    reads: { getEntries: ['stock'], getProjections: ['stock', 'dose', 'regimen'] }
+  }),
   // Read-only, like stats below: exposure counters never write (phase 4
   // ticket 05).
-  exposure: {
+  exposure: classify<Journal['exposure']>()({
     writes: {},
-    reads: ['getCounters']
-  },
+    reads: { getCounters: ['dose', 'regimen'] }
+  }),
   // Read-only too: a hormone curve is recomputed from the dose log on every
   // read and stored nowhere (phase 4 ticket 10, ADR-0010).
-  hormoneCurve: {
+  hormoneCurve: classify<Journal['hormoneCurve']>()({
     writes: {},
-    reads: ['getCurves']
-  },
+    reads: { getCurves: ['dose', 'regimen', 'lab'] }
+  }),
   // Read-only for the same reason: a qualitative curve is recomputed on
   // every read too (phase 4 ticket 11, ADR-0010).
-  qualitativeCurve: {
+  qualitativeCurve: classify<Journal['qualitativeCurve']>()({
     writes: {},
-    reads: ['getCurves']
-  },
+    reads: { getCurves: ['dose', 'regimen', 'lab'] }
+  }),
   // Read-only, the same reason exposure is: a clinician summary assembles
   // rows other areas own and stores nothing of its own (phase 4 ticket 12).
-  clinicianSummary: {
+  clinicianSummary: classify<Journal['clinicianSummary']>()({
     writes: {},
-    reads: ['getSummary']
-  },
+    // One table per registered section (clinicianSummary.ts): episodes,
+    // doses, results, exposure's two, side effects, procedures and the
+    // appointment prep checklist.
+    reads: { getSummary: ['regimen', 'dose', 'lab', 'sideEffect', 'procedure', 'checklist'] }
+  }),
   // Read-only, the same reason clinicianSummary is: a book is assembled
   // from entries, milestones, the doubt journal and side effects on every
   // read and stored nowhere (phase 5 ticket 17).
-  journalBook: {
+  journalBook: classify<Journal['journalBook']>()({
     writes: {},
-    reads: ['getBook']
-  },
+    // The entry half is a hydrated read, so it carries everything an entry
+    // is read back with; the opening page adds the recap's milestones.
+    reads: { getBook: [...HYDRATED_ENTRY, 'milestone', 'sideEffect'] }
+  }),
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
-  stats: {
+  stats: classify<Journal['stats']>()({
     writes: {},
-    reads: ['dayAverages', 'bodyRegionTrend', 'wearTimeTrend', 'tallyTrend', 'entryCountsByDay', 'tagInsights', 'streak', 'bestStreakEver', 'recap', 'isGoodDay']
-  },
+    /* A metric that is not mood is read through `entry_dimension_value` and
+       `gender_dimension`, so every average, insight and recap depends on the
+       dimension vocabulary as well as on entries. */
+    reads: {
+      dayAverages: ['entry', 'dimension'],
+      bodyRegionTrend: ['entry'],
+      wearTimeTrend: ['wearSession'],
+      tallyTrend: ['tally'],
+      entryCountsByDay: ['entry'],
+      tagInsights: ['entry', 'dimension', 'tag'],
+      // A pause bridges a gap without extending the count (phase 5 ticket
+      // 21), which is the second table the streak-goal screen forgot.
+      streak: ['entry', 'journalingPause'],
+      // Deliberately entry-only: "best streak" is the gaps-and-islands
+      // question over entries, which ticket 21 left alone.
+      bestStreakEver: ['entry'],
+      recap: ['entry', 'dimension', 'tag', 'milestone', 'photo'],
+      isGoodDay: ['entry', 'tag']
+    }
+  }),
   // Read-only, the same reason exposure is: a card is recomputed from
   // stats, the dose log and dimensions on every read (phase 4 ticket 21).
-  correlationCards: {
+  correlationCards: classify<Journal['correlationCards']>()({
     writes: {},
-    reads: ['getCards']
-  },
+    reads: { getCards: ['entry', 'dimension', 'tag', 'dose'] }
+  }),
   // Read-only, the same reason correlationCards is: a pattern is
   // recomputed from stats and the dose log on every read (phase 5 ticket 09).
-  intervalMoodPattern: {
+  intervalMoodPattern: classify<Journal['intervalMoodPattern']>()({
     writes: {},
-    reads: ['dayOfInterval', 'byCustomInterval']
-  },
+    // The custom fold reads no dose log: it folds by the epoch day itself,
+    // which is the whole of its "no claim that a cycle exists".
+    reads: {
+      dayOfInterval: ['entry', 'dimension', 'dose'],
+      byCustomInterval: ['entry', 'dimension']
+    }
+  }),
   /* An import rewrites the journal (ticket 14), so it invalidates all of it -
      every query and every mirrored slice. Naming the tables one at a time
      would be a list to keep in step with what a restore happens to touch,
      and a Replace touches everything by definition. */
-  archive: {
+  archive: classify<Journal['archive']>()({
     writes: { replace: [...TABLE_NAMES], merge: [...TABLE_NAMES], commitDaylioImport: [...TABLE_NAMES] },
-    reads: ['snapshot', 'previewDaylioImport']
-  }
+    // And a snapshot reads all of it, for the same reason: every section of
+    // the archive is one area's rows (archiveSections.ts). The Daylio
+    // preview resolves against a snapshot, so it reads the same set.
+    reads: { snapshot: [...TABLE_NAMES], previewDaylioImport: [...TABLE_NAMES] }
+  })
 };
+
+/** Every area's classification by name, for the two lookups that arrive as
+    plain strings: the wrapper walks the journal it is handed, and a query
+    resolves the operation its closure called. */
+const BY_NAME = OPERATIONS as unknown as Record<
+  string,
+  { writes: Partial<Record<string, TableName[]>>; reads: Partial<Record<string, TableName[]>> }
+>;
 
 /** The journal, with every mutation announcing the tables it wrote after it
     resolves - never before, and never when it rejects: a write that threw
@@ -510,8 +623,22 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
     somewhere else to be announced. Throws on an unclassified name, the same
     way observeWrites does. */
 export function tablesWrittenBy(area: string, operation: string): TableName[] {
-  const tables = OPERATIONS[area]?.writes[operation];
+  const tables = BY_NAME[area]?.writes[operation];
   if (!tables) throw new Error(`journal.${area}.${operation} is not a classified write`);
+  return tables;
+}
+
+/** The tables one classified read depends on, for the caller this half of the
+    registry exists for: `liveQuery` resolves a query's dependencies from the
+    operations its closure called, so no screen declares a table (phase 5
+    audit ticket 03).
+
+    Throws on anything that is not a declared read - a write among them. A
+    query closure that performs a write is a bug in the closure, and it should
+    say so rather than quietly taking the write's tables as dependencies. */
+export function tablesReadBy(area: string, operation: string): TableName[] {
+  const tables = BY_NAME[area]?.reads[operation];
+  if (!tables) throw new Error(`journal.${area}.${operation} is not a classified read`);
   return tables;
 }
 
@@ -522,7 +649,7 @@ export function observeWrites(journal: Journal, onWrite: (tables: TableName[]) =
 
   for (const [areaName, area] of Object.entries(journal)) {
     if (areaName === 'reconcileBuiltIns') continue;
-    const classified = OPERATIONS[areaName];
+    const classified = BY_NAME[areaName];
     if (!classified) throw new Error(`journal.${areaName} is an area writes.ts does not classify`);
     const { writes, reads } = classified;
     const wrappedArea: Record<string, unknown> = {};
@@ -533,7 +660,7 @@ export function observeWrites(journal: Journal, onWrite: (tables: TableName[]) =
         continue;
       }
       const tables = writes[operation];
-      if (!tables && !reads.includes(operation)) {
+      if (!tables && !reads[operation]) {
         throw new Error(`journal.${areaName}.${operation} is neither a declared read nor a declared write`);
       }
       wrappedArea[operation] = tables
