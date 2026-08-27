@@ -6,7 +6,12 @@
    What is left over is mechanical, and all of it is something the craft
    floor or DIRECTION.md names outright - which means it is exactly the kind
    of thing that creeps back in one screen ticket at a time unless something
-   is watching. */
+   is watching.
+
+   A stylesheet has no interface to call, so these are greps and stay
+   greps (ticket 08). The kit's arithmetic is the part that does have one,
+   and it is held to values in chart-geometry.test.ts rather than read out
+   of a component here. */
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';

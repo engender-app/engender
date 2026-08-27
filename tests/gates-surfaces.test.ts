@@ -6,7 +6,13 @@
    one of these is something a later ticket could quietly put back: a sixth
    copy of the gate frame, a shadow on a screen the redesign gave no
    shadows, a journal read on a screen that renders before the journal is
-   open, or the flag showing on a screen someone reached while disguised. */
+   open, or the flag showing on a screen someone reached while disguised.
+
+   All of those are greps because all of them are negatives: a screen may
+   not draw this, may not import that. There is nothing to call. The one
+   rule these screens do state - which steps onboarding offers under
+   disguise - is asserted by calling onboardingSteps, which is the shape
+   ticket 08 asks every rule to take. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
