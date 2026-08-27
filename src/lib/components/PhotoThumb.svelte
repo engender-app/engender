@@ -15,22 +15,43 @@
      the scrolling.
 
      The margin is roughly a screenful, so scrolling arrives at a loaded
-     tile rather than at a placeholder that then fills in. */
+     tile rather than at a placeholder that then fills in - and it is why
+     the root has to be the element that scrolls rather than the implicit
+     viewport. A margin only widens the root's own rectangle; an ancestor
+     that clips still clips at its real edge, so with the app shell
+     scrolling (.app-main, app.css) the implicit root loaded a tile exactly
+     as it appeared and the margin bought nothing. Found by walking up to
+     the first scrollable ancestor rather than by naming the shell, so a
+     tile in a probe page or a scrolling sheet gets the right one too. */
   const watchers = new Map<Element, (near: boolean) => void>();
-  let observer: IntersectionObserver | null = null;
+  const observers = new Map<Element | null, IntersectionObserver>();
+
+  function scrollRoot(target: Element): Element | null {
+    for (let node = target.parentElement; node; node = node.parentElement) {
+      const overflow = getComputedStyle(node).overflowY;
+      if (overflow === 'auto' || overflow === 'scroll') return node;
+    }
+    // Nothing in between scrolls, so the viewport is the root.
+    return null;
+  }
 
   function watchViewport(target: Element, onChange: (near: boolean) => void): () => void {
-    observer ??= new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) watchers.get(entry.target)?.(entry.isIntersecting);
-      },
-      { rootMargin: '400px' }
-    );
+    const root = scrollRoot(target);
+    let observer = observers.get(root);
+    if (!observer) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) watchers.get(entry.target)?.(entry.isIntersecting);
+        },
+        { root, rootMargin: '400px' }
+      );
+      observers.set(root, observer);
+    }
     watchers.set(target, onChange);
     observer.observe(target);
     return () => {
       watchers.delete(target);
-      observer?.unobserve(target);
+      observer.unobserve(target);
     };
   }
 </script>
