@@ -130,12 +130,23 @@
   let feelingQuery = liveQuery(['feltSense'], (j) => (isNew ? Promise.resolve([]) : j.feltSense.forTryout(tryoutId)));
   let feeling = $derived(feelingQuery.value ?? []);
 
-  let entriesQuery = liveQuery(['entry'], (j) =>
-    isNew || !existing
-      ? Promise.resolve([])
-      : j.entries.searchEntries('', [], { startEpochDay: existing.startEpochDay, endEpochDay: existing.endEpochDay })
-  );
-  let entriesInRange = $derived(entriesQuery.value ?? []);
+  /* Phase 5 performance ticket 07/08: an open-ended tryout's range has no
+     upper bound, so a page limit is the only thing that keeps this bounded.
+     Newest first, same as the query's own ORDER BY - "load more" reaches
+     further back, the same shape search/+page.svelte already uses. */
+  const PAGE = 30;
+  let pages = $state(1);
+
+  let entriesQuery = liveQuery(['entry'], (j) => {
+    if (isNew || !existing) return Promise.resolve({ hits: [], total: 0 });
+    const range = { startEpochDay: existing.startEpochDay, endEpochDay: existing.endEpochDay };
+    return Promise.all([
+      j.entries.searchEntries('', [], range, PAGE * pages),
+      j.entries.countSearchMatches('', [], range)
+    ]).then(([hits, total]) => ({ hits, total }));
+  });
+  let entriesInRange = $derived(entriesQuery.value?.hits ?? []);
+  let entriesRemaining = $derived(Math.max(0, (entriesQuery.value?.total ?? 0) - entriesInRange.length));
 
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
@@ -324,6 +335,11 @@
         {#each entriesInRange as e (e.id)}
           <EntryCard entry={e} />
         {/each}
+        {#if entriesRemaining > 0}
+          <button class="btn btn-soft search-more" data-tryout-entries-more onclick={() => (pages += 1)}>
+            <span>{m.search_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
+          </button>
+        {/if}
       </div>
     {:else}
       <div class="screen-part">

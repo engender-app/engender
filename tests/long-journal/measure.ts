@@ -503,19 +503,25 @@ export async function measureLongJournal(
     };
   });
 
-  // Tryout detail (settings/tryouts/[id]/+page.svelte): searchEntries('', [],
-  // {startEpochDay, endEpochDay}) with no word and no page limit over a
-  // tryout's whole date span (entries.ts:677-690) - a materially different
-  // call shape from the three search-* measurements above, which all pass a
-  // word and a page limit. An open-ended tryout (generate.ts's
-  // endEpochDay: null) reads every entry from its start to the end of the
-  // fixture, which is most of the decade.
-  await measure('tryout-detail-entries', 'tryout detail, every entry across its open-ended span', async () => {
-    const entries = await journal.entries.searchEntries('', [], {
-      startEpochDay: summary.tryoutWideOpenStartEpochDay,
-      endEpochDay: null
-    });
-    return { result: entries, detail: `${entries.length} entries across the tryout's open-ended span` };
+  // Tryout detail (settings/tryouts/[id]/+page.svelte): performance ticket 07
+  // found searchEntries('', [], {startEpochDay, endEpochDay}) ran with no
+  // word and no page limit over a tryout's whole date span - 3634ms/3518ms
+  // on Android for the fixture's open-ended tryout, too slow to ship
+  // (Alicja, 2026-08-27). Ticket 08 bounded the real screen's call with
+  // `PAGE * pages` and a "load more" control, the same shape the three
+  // search-* measurements above already use; this measurement now mirrors
+  // that bounded call rather than the unbounded one it used to guard, since
+  // the unbounded shape is exactly what's gone from the app.
+  await measure('tryout-detail-entries', 'tryout detail, one page and the total across its open-ended span', async () => {
+    const range = { startEpochDay: summary.tryoutWideOpenStartEpochDay, endEpochDay: null };
+    const [entries, total] = await Promise.all([
+      journal.entries.searchEntries('', [], range, SEARCH_PAGE),
+      journal.entries.countSearchMatches('', [], range)
+    ]);
+    return {
+      result: [entries, total],
+      detail: `${entries.length} shown of ${total} entries across the tryout's open-ended span`
+    };
   });
 
   // --- write paths -------------------------------------------------------
