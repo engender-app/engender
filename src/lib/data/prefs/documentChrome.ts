@@ -42,6 +42,12 @@ export interface SystemPreferences {
   prefersReducedMotion: boolean;
 }
 
+/** The tab icon that says nothing about the app: the disguised face, and
+    also what the quick-exit blank wears over an undisguised tab
+    (disguise/identity.ts). Named because two rules reach for the same
+    asset and neither owns it more than the other. */
+export const NEUTRAL_TAB_ICON = 'favicon-notes.svg';
+
 export interface DocumentChrome {
   palette: string;
   moodPreset: string;
@@ -65,7 +71,7 @@ export function documentChrome(prefs: ChromePreferences, system: SystemPreferenc
     /* Either source reducing motion reduces it; the preference can only
        turn it off, never back on against the system's answer. */
     a11yMotion: prefs.a11yMotionReduce || system.prefersReducedMotion ? 'reduce' : 'normal',
-    icon: prefs.disguise ? 'favicon-notes.svg' : 'favicon.svg',
+    icon: prefs.disguise ? NEUTRAL_TAB_ICON : 'favicon.svg',
     manifest: prefs.disguise ? 'manifest-notes.webmanifest' : 'manifest.webmanifest'
   };
 }

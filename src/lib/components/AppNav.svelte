@@ -17,6 +17,7 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { activeTabKey } from '$lib/navigation/active-tab';
+  import { appWordmark } from '$lib/disguise/identity';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { boxesMatch, squash, stretch, type Axis, type Box } from '$lib/motion/indicator';
@@ -203,10 +204,10 @@
   <!-- The disguised name, same as the tab title and the launcher entry
        (F24): the rail is the one piece of chrome that says the app's name
        out loud, so it follows the preference like every other surface that
-       does. -->
+       does - through the module all of them read (disguise/identity.ts). -->
   <div class="rail-brand">
     <span class="brand-mark"><Icon name="brand" size={22} /></span><span translate="no"
-      >{prefs.disguise ? 'Notes' : m.app_name()}</span
+      >{appWordmark(prefs.disguise, m.app_name())}</span
     >
   </div>
   <button

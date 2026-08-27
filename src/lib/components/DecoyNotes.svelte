@@ -16,6 +16,7 @@
      palette is exactly what it is trying not to look like. */
 
   import { m } from '$lib/paraglide/messages';
+  import { DECOY_NAME } from '$lib/disguise/identity';
   import { lockState } from '$lib/stores/lock.svelte';
 
   const notes = [
@@ -30,9 +31,11 @@
   <!-- Decoration, not UI: a screen reader meets one button, "Back to the
        app", never a list of notes that do not exist. -->
   <span class="decoy-page" aria-hidden="true">
-    <!-- An expression, not a text node: the disguise name is "Notes" in
-         every language, and check-copy counts bare text as untranslated. -->
-    <span class="decoy-brand" translate="no">{'Notes'}</span>
+    <!-- An expression, not a text node: the disguise name is the same word
+         in every language, and check-copy counts bare text as
+         untranslated. The decoy only exists disguised, so it asks for the
+         disguised wordmark rather than passing a real name to discard. -->
+    <span class="decoy-brand" translate="no">{DECOY_NAME}</span>
     <span class="decoy-search">{m.decoy_search()}</span>
     <span class="decoy-list">
       {#each notes as note (note.title)}
