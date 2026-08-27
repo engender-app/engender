@@ -239,7 +239,8 @@ export type BuiltInEffectCategoryKey = (typeof BUILT_IN_EFFECT_CATEGORIES)[numbe
    2026-08-19, citing WPATH Standards of Care v7). Each row names a
    category and a direction; whether an effect is tier 1 is derived from
    whether personalEffectWindow.ts's literature-window map lists its key,
-   not stored here a second time (personalEffectCatalog.ts joins the two).
+   not stored here a second time (personalEffectWindow.ts's `effectTier`
+   joins the two).
 
    Excluded, recorded here rather than only in the implementation note:
    genderdysphoria.fyi's "Cyclical Period-like Symptoms" section (a

@@ -9,5 +9,4 @@
 # production builds, so its copy never reaches a reader.
 
 15 src/lib/components/DemoBar.svelte
-1 src/routes/settings/+page.svelte
 2 src/routes/settings/export/+page.svelte

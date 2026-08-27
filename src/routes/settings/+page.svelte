@@ -15,6 +15,7 @@
      .kit-row, the same move Home's milestone-empty state already makes. */
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
+  import { DECOY_NAME } from '$lib/disguise/identity';
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
@@ -560,7 +561,12 @@
       <div class="disguise-preview" class:is-on={prefs.disguise}>
         <span class="disguise-icon"><Icon name="book" size={22} /></span>
         <span>
-          <strong>Notes</strong><br />
+          <!-- The disguise's own name, from the module every surface that
+               names the app reads (disguise/identity.ts). An expression
+               rather than a text node for the reason DecoyNotes gives:
+               check-copy counts bare text as untranslated, and this word
+               is the same in every language. -->
+          <strong>{DECOY_NAME}</strong><br />
           <span class="muted small">{isAndroid() ? m.disguise_preview_android() : m.disguise_preview_web()}</span>
         </span>
       </div>

@@ -9,11 +9,23 @@
    the walkthrough, a preference gate collapsed into one condition.
 
    The list of card surfaces is the reason spec 08 exists. Home could render
-   twelve at once. */
+   twelve at once.
+
+   What is left here is greps, and deliberately so (ticket 08). A class
+   that may not appear, an import that has to be there, a handle the
+   walkthrough grips: those are negatives and wirings over a file, and
+   there is no call that answers them. The rules Home used to state inline
+   are not here any more - the wordmark's swap is
+   disguise/identity.test.ts's and the area-to-stripe table is a value this
+   file reads, because an assertion that matches source text passes on
+   broken behaviour that keeps the string and fails on a correct refactor
+   that moves it. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+import { HOME_AREA_ROLE } from '../src/lib/theme/roles';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -48,10 +60,12 @@ describe('what Home is built from', () => {
        where the stripe is a value rather than a decoration. On trans, whose
        flag yields three roles for four areas, reading order handed the strip
        the white band. */
+    expect(HOME_AREA_ROLE.week).toBe(0);
+    /* The rest is a grep because it is about wiring: that the strip is
+       handed that area's role rather than another's. */
     const strip = markup.match(/<WeekStrip[^>]*>/s)?.[0];
     expect(strip).toBeDefined();
     expect(strip).toContain('AREA_ROLE.week');
-    expect(home).toMatch(/AREA_ROLE = \{ week: 0\b/);
   });
 
   it('publishes no flag at all under disguise', () => {
@@ -66,9 +80,12 @@ describe('what Home is built from', () => {
     expect(read('src/routes/+layout.svelte')).toContain('refreshActiveFlag(document, prefs.disguise)');
     // And Home still gates the sun itself, which is the belt to that braces.
     expect(markup).toContain('{#if !prefs.disguise}<FlagSun />');
-    /* SCREENS.md: disguise changes the app's name app-wide, not per screen,
-       and the hero is the largest text on this one. */
-    expect(markup).toContain("{prefs.disguise ? 'Notes' : m.app_name()}");
+    /* The hero is the largest text on the screen and SCREENS.md says
+       disguise changes the app's name app-wide, so it swaps too - but
+       both halves of that are disguise/identity.test.ts's now, the rule
+       by calling it and the wiring by holding all four naming surfaces to
+       reading the module. Asserting it a second time here would be the
+       same string in two files. */
   });
 });
 

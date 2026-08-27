@@ -8,13 +8,13 @@
   import { openArchive } from '$lib/data/archive/pack';
   import { archivePasswordProblem } from '$lib/data/archive/password';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { CorruptArchiveError, UnsupportedArchiveError } from '$lib/data/archive/container';
+  import { archiveFailureKind, type ArchiveFailureKind } from '$lib/data/archive/failure';
+  import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
   import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
   import { verifyArchive } from '$lib/data/journal/restore';
   import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
   import { chooseFiles } from '$lib/data/fileDialog';
   import { dimensionName, moodName, tagLabel, tagLabels } from '$lib/data/vocabulary/labels';
-  import { DecryptionFailedError } from '$lib/crypto/aesGcm';
   import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -40,8 +40,11 @@
   let impError = $state('');
   /* Walkthrough handle for which catalogued sentence impError holds, so the
      suite can tell import failures apart without matching on the wording
-     itself (ADR: the walkthrough grips handles, never wording). */
-  let impErrorKind = $state('');
+     itself (ADR: the walkthrough grips handles, never wording). The
+     archive's own four kinds come from archive/failure.ts; the two below
+     are this screen's pre-flight guards, which never reach a file. */
+  type ImportGuardKind = '' | 'pick-first' | 'password-needed';
+  let impErrorKind = $state<ArchiveFailureKind | ImportGuardKind>('');
   let plainSheet = $state<'csv' | 'json' | null>(null);
   let daylioSheet = $state(false);
   let daylioName = $state('');
@@ -325,27 +328,11 @@
       }
     } catch (error) {
       console.error('the import failed', error);
-      ({ message: impError, kind: impErrorKind } = importFailure(error));
+      impErrorKind = archiveFailureKind(error);
+      impError = importFailureMessage(impErrorKind);
     } finally {
       importing = false;
     }
-  }
-
-  /* One branch per catalogued sentence rather than an error message: the
-     archive errors carry English diagnostics for the console, and a Polish
-     reader must not get one of those spliced into a Polish paragraph
-     (docs/ui-copy.md). The stable `kind` alongside each sentence is a
-     walkthrough handle, not a second copy of the catalogue - the branches
-     stay in one place so the two can't drift apart. */
-  function importFailure(error: unknown): { message: string; kind: string } {
-    if (error instanceof DecryptionFailedError) return { message: m.imp_wrong_password(), kind: 'wrong-password' };
-    if (error instanceof UnsupportedArchiveError) {
-      return error.kind === 'newer-version'
-        ? { message: m.imp_newer_version(), kind: 'newer-version' }
-        : { message: m.imp_not_an_archive(), kind: 'not-an-archive' };
-    }
-    if (error instanceof CorruptArchiveError) return { message: m.imp_corrupt(), kind: 'corrupt' };
-    return { message: m.imp_failed(), kind: 'failed' };
   }
 
   /* The backup health drill (ticket 28): the same picked file and password
@@ -369,22 +356,10 @@
       toast(m.verify_ok_toast());
     } catch (error) {
       console.error('the verify drill failed', error);
-      impError = verifyFailure(error);
+      impError = verifyFailureMessage(archiveFailureKind(error));
     } finally {
       verifying = false;
     }
-  }
-
-  /* Same catalogued-sentence rule as importFailure, and privacy shape as the
-     scheduled-backup failure notification (AutoExportPlugin.notifyFailure):
-     what went wrong with the file, never the journal or folder it came from. */
-  function verifyFailure(error: unknown): string {
-    if (error instanceof DecryptionFailedError) return m.verify_wrong_password();
-    if (error instanceof UnsupportedArchiveError) {
-      return error.kind === 'newer-version' ? m.verify_newer_version() : m.verify_not_an_archive();
-    }
-    if (error instanceof CorruptArchiveError) return m.verify_corrupt();
-    return m.verify_failed();
   }
 
   function openDaylio() {

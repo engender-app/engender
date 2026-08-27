@@ -52,7 +52,8 @@
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
+  import { appWordmark } from '$lib/disguise/identity';
+  import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import MilestoneCard from '$lib/components/MilestoneCard.svelte';
@@ -73,16 +74,12 @@
 
   const today = todayEpochDay();
 
-  /* Which stripe each area of the screen takes. Named rather than written as
-     a number at the call site, because one of them is not in reading order
-     and the reason lives up in the header comment: the week strip takes role
-     0, the only index guaranteed to be a colour on all 8 palettes, since it
-     is the one area here where the stripe is a value rather than a
-     decoration. The celebration shares the milestones' colour because it is
-     about a milestone; the backup notice takes none, because the flag
-     colours the areas of the journal and that one is the app talking about
-     itself. */
-  const AREA_ROLE = { week: 0, lookBack: 1, milestones: 2, days: 3 };
+  /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
+     ($lib/theme/roles.ts, where the reason the week strip is out of
+     reading order is written down). The celebration shares the
+     milestones' colour because it is about a milestone; the backup notice
+     takes none, because the flag colours the areas of the journal and
+     that one is the app talking about itself. */
 
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
      read; the entry-shaped reads below are the ones that had to become
@@ -231,14 +228,14 @@
          that decides whether the sun renders at all matches every other
          disguise gate in the app. -->
     {#if !prefs.disguise}<FlagSun />{/if}
-    <!-- The same swap AppNav.svelte makes on the rail's wordmark, and for
-         the reason SCREENS.md gives: disguise changes the app's name and
-         icon app-wide, not per screen. The hero is the largest text on the
-         screen, so leaving it saying "Gender Diary" while the tab, the
-         launcher and the rail all say "Notes" undoes the rest of the
-         disguise in one line. Two sites in Settings still name the app under
-         disguise; those are ticket 24's screen. -->
-    <h1 class="home-hero" data-home-hero translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</h1>
+    <!-- The same swap AppNav.svelte makes on the rail's wordmark, out of
+         the same module, and for the reason SCREENS.md gives: disguise
+         changes the app's name and icon app-wide, not per screen. The hero
+         is the largest text on the screen, so leaving it saying "Gender
+         Diary" while the tab, the launcher and the rail all say "Notes"
+         undoes the rest of the disguise in one line. Two sites in Settings
+         still name the app under disguise; those are ticket 24's screen. -->
+    <h1 class="home-hero" data-home-hero translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
     <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     <!-- Under the greeting rather than under the week strip. Still not the
          hero-metric template the craft floor names - no pill, no accent, no
@@ -271,7 +268,7 @@
       <Notice
         icon="sparkle"
         key="celebration"
-        role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}
+        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.milestones)}
         aria-live="polite"
         title={landing?.s.years
           ? m.home_anniv_years({
@@ -309,7 +306,7 @@
        children and so no height, and the air around it belongs to its
        neighbours rather than to itself. -->
   <TileGrid
-    role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}
+    role={roleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
     flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
   >
     {#if prefs.wrappedEnabled}
@@ -328,7 +325,7 @@
       <a class="kit-heading-action" href="/timeline">{m.timeline()}</a>
     {/snippet}
   </SectionHeading>
-  <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}>
+  <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.milestones)}>
     {#if upcoming.length}
       {#each upcoming.slice(0, 4) as x (x.m.id)}
         <MilestoneCard milestone={x.m} s={x.s} />
@@ -354,7 +351,7 @@
       />
     {/snippet}
   </SectionHeading>
-  <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, AREA_ROLE.week)} />
+  <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
   <!-- The streak, as the caption on the week it describes. -->
   {#if streak > 1 && !pausedToday}
     <p class="home-week-caption" data-home-streak="week">{streak} {m.streak_row()}</p>
@@ -372,7 +369,7 @@
           {#each dayGroups as group (group.epochDay)}
             <DayCard
               key={String(group.epochDay)}
-              role={roleAt(activeFlag.roles, AREA_ROLE.days)}
+              role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
               date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
               aside={group.dayCount > 1 ? m.entry_day_count({ count: String(group.dayCount) }) : undefined}
             >
@@ -399,7 +396,7 @@
           <Notice
             icon="book"
             key="no-entries"
-            role={roleAt(activeFlag.roles, AREA_ROLE.days)}
+            role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
             title={m.empty_home_title()}
             text={m.empty_home_body()}
             action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }}

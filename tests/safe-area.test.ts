@@ -24,7 +24,10 @@ import { describe, expect, it } from 'vitest';
    suite and reports zero inset on the one device that has one.
 
    So this file asserts the two declarations, and only those. Everything
-   about the resulting layout is checked by measuring it instead. */
+   about the resulting layout is checked by measuring it instead.
+
+   So these two are greps because the browser they would run in cannot see
+   the thing (ticket 08), not because a rule was left in markup. */
 
 const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8');
 

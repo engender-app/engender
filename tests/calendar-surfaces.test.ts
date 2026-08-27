@@ -10,7 +10,13 @@
 
    Two of them are the ticket's own load-bearing warnings, and both are
    invisible to a typecheck: the `{#key}` wrapper on /entry/[id] that fixes a
-   stale-params bug class, and `?seedMood` on a pinned Android launch route. */
+   stale-params bug class, and `?seedMood` on a pinned Android launch route.
+
+   Everything below is a grep on purpose (ticket 08). Each one is a
+   negative over a whole file, a wiring, or a construct a typecheck cannot
+   see - none of which a function call can answer. A rule with an answer
+   worth asserting belongs in a module with a test that calls it, not in a
+   string match against markup. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

@@ -129,6 +129,37 @@ export function share(value: number, max: number): number {
   return (value / max) * 100;
 }
 
+export interface PaddedSeries {
+  points: Point[];
+  min: number;
+  max: number;
+  from: number;
+  to: number;
+}
+
+/** A series of readings with a scale to draw it against, or null when
+    there are fewer than two and there is no line to draw.
+
+    The scale is padded off the readings rather than starting at zero: a
+    waist measured in centimetres moves within a few percent of itself,
+    and a zero-based axis draws that as a flat line. A fifth of the spread
+    on each side, and `minPad` where a flat run leaves no spread to take a
+    fifth of - which is the one thing the two callers disagree about, a
+    lab analyte running in the hundreds wanting ten where a measurement in
+    centimetres wants one.
+
+    The ends come off the series order, not off a sort: both callers hand
+    over a query result whose order is also the order of the list beside
+    the chart, down to how two readings on one day settle. */
+export function paddedSeries(points: Point[], minPad: number): PaddedSeries | null {
+  if (points.length < 2) return null;
+  const values = points.map((p) => p.y);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const pad = (max - min) * 0.2 || minPad;
+  return { points, min: min - pad, max: max + pad, from: points[0].x, to: points[points.length - 1].x };
+}
+
 /** Three decimals is finer than a device pixel at any chart size the app
     draws, and it keeps the path strings short enough to diff by eye. */
 function round(n: number): number {

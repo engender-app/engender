@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import {
   areaPath,
   lerpSamples,
+  paddedSeries,
   resample,
   share
 } from '../src/lib/charts/geometry';
@@ -147,5 +148,53 @@ describe('share', () => {
 
   it('never goes negative', () => {
     expect(share(-3, 10)).toBe(0);
+  });
+});
+
+describe('paddedSeries', () => {
+  const points = [
+    { x: 10, y: 4 },
+    { x: 12, y: 6 },
+    { x: 20, y: 5 }
+  ];
+
+  it('pads the scale by a fifth of the readings own spread', () => {
+    /* Not zero-based: a waist measured in centimetres moves within a few
+       percent of itself, and a zero-based axis draws that as a flat
+       line. What the top and the bottom of the plot mean is the whole of
+       what this decides - there is no axis furniture. */
+    expect(paddedSeries(points, 1)).toEqual({
+      points,
+      min: 4 - 0.4,
+      max: 6 + 0.4,
+      from: 10,
+      to: 20
+    });
+  });
+
+  it('falls back to the callers own floor when every reading is the same', () => {
+    /* A flat run has no spread to take a fifth of, so the padding comes
+       from the scale the caller is drawing in: whole units for a waist in
+       centimetres, ten for a lab analyte whose values run in the
+       hundreds. Without a floor the band would be zero tall. */
+    const flat = [
+      { x: 1, y: 100 },
+      { x: 2, y: 100 }
+    ];
+    expect(paddedSeries(flat, 10)).toMatchObject({ min: 90, max: 110 });
+    expect(paddedSeries(flat, 1)).toMatchObject({ min: 99, max: 101 });
+  });
+
+  it('has nothing to draw below two readings', () => {
+    expect(paddedSeries([], 1)).toBeNull();
+    expect(paddedSeries([{ x: 1, y: 2 }], 1)).toBeNull();
+  });
+
+  it('reads its ends off the series order rather than sorting it', () => {
+    /* Both callers hand over a query result, and the query's order is
+       what the list beside the chart shows - down to how two readings on
+       one day settle. Reordering here would put the chart's date range
+       out of step with the rows under it. */
+    expect(paddedSeries(points, 1)).toMatchObject({ from: 10, to: 20 });
   });
 });
