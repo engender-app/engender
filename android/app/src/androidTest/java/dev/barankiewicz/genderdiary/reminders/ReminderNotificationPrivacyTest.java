@@ -127,7 +127,7 @@ public class ReminderNotificationPrivacyTest {
 
     private Notification findCheckInNotification() {
         for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
-            if (sbn.getId() == 7999) return sbn.getNotification();
+            if (sbn.getId() == ReminderAlarmReceiver.CHECK_IN_NOTIFICATION_ID) return sbn.getNotification();
         }
         return null;
     }

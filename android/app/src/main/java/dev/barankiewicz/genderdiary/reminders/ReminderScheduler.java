@@ -68,6 +68,15 @@ public final class ReminderScheduler {
      *
      * <p>{@code commit} rather than {@code apply}: the reset tells the
      * person it is done, and it should be done rather than queued.
+     *
+     * <p>One residual, bounded rather than fixed: a reminder alarm can only
+     * be cancelled by name, so a payload that will not parse leaves its
+     * reminder alarms scheduled. What they wake into is
+     * {@link ReminderAlarmReceiver#onReceive}, which returns on a missing
+     * payload without posting and without rescheduling - so each fires once
+     * more, silently, and is then gone. The check-in alarm has no such
+     * limit: it is cancelled by its fixed request code whatever the payload
+     * says.
      */
     public static void wipe(Context context) {
         cancelAll(context, loadPayload(context));
@@ -207,9 +216,14 @@ public final class ReminderScheduler {
 
     private static void cancelAll(Context context, JSONObject payload) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager == null || payload == null) return;
+        if (alarmManager == null) return;
 
-        JSONArray reminders = payload.optJSONArray("reminders");
+        /* A missing payload used to return here, taking the check-in alarm
+           below with it - and that one needs no payload to name, only its
+           fixed request code. The reset is where that matters: a reminders
+           file that will not parse left a check-in alarm scheduled that
+           nothing could reach afterwards. */
+        JSONArray reminders = payload == null ? null : payload.optJSONArray("reminders");
         if (reminders != null) {
             for (int i = 0; i < reminders.length(); i++) {
                 JSONObject reminder = reminders.optJSONObject(i);
