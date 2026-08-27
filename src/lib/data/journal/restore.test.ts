@@ -273,30 +273,21 @@ test('merge adds what this device does not have and leaves what it has alone', a
   ]);
 });
 
-test('merging the same archive twice duplicates no counterevidence snapshot', async () => {
-  const source = await populated();
-  const target = await device();
-
-  await target.journal.archive.merge(await exported(source.journal));
-  await target.journal.archive.merge(await exported(source.journal));
-
-  assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
-});
-
-/* A tick travels as a pack/goal pair, not a uuid, so merging twice has to
-   land on the row already there rather than a second copy of it - and a
-   tick the importing device made itself must survive a merge that has
-   never heard of it. A custom goal is uuid-identified instead, so the same
-   claim is checked the way a checklist item's is: merging twice must not
-   duplicate the source's own custom goal, and the target's own custom
-   goal must survive a merge that has never heard of it either. */
-test('merging carries a roadmap tick, twice over, without disturbing the target own ticks or custom goals', async () => {
+/* Not "merging twice duplicates nothing": archive-golden-merge.test.ts's
+   registry-driven sweep now covers that generically for every section,
+   including this one. What stays hand-written is content the sweep cannot
+   state, because it only checks that a row's id survives, never what is on
+   it: a tick travels as a pack/goal pair, not a uuid, and the claim here is
+   that the target's own tick on a goal the source archive has never heard
+   of keeps its status through a merge, not merely that the row is still
+   there. A custom goal is uuid-identified instead, so the same claim is
+   checked the way a checklist item's is. */
+test('a target own roadmap tick and custom goal survive a merge that has never heard of them', async () => {
   const source = await populated();
   const target = await device();
   await target.journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'checked');
   await target.journal.roadmap.addCustomGoal('legal', 'Ask about remote hearings');
 
-  await target.journal.archive.merge(await exported(source.journal));
   await target.journal.archive.merge(await exported(source.journal));
 
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), {
@@ -307,18 +298,6 @@ test('merging carries a roadmap tick, twice over, without disturbing the target 
     (await target.journal.roadmap.getCustomGoals()).map((g) => g.text).sort(),
     ['Ask about remote hearings', 'Tell my sister']
   );
-});
-
-test('merging the same archive twice duplicates neither a tryout nor its felt-sense entry', async () => {
-  const source = await populated();
-  const target = await device();
-
-  await target.journal.archive.merge(await exported(source.journal));
-  await target.journal.archive.merge(await exported(source.journal));
-
-  const tryouts = await target.journal.tryouts.getTryouts();
-  assert.equal(tryouts.length, 1);
-  assert.equal((await target.journal.feltSense.forTryout(tryouts[0].id)).length, 1);
 });
 
 test('a dose log travels with its schedule and pauses, still hung off the right episode', async () => {
@@ -374,18 +353,6 @@ test('a weekday schedule and its dose amounts survive an export/import round tri
   ]);
 });
 
-test('merging the same archive twice duplicates neither a dose, a schedule nor a pause', async () => {
-  const source = await populated();
-  const target = await device();
-
-  await target.journal.archive.merge(await exported(source.journal));
-  await target.journal.archive.merge(await exported(source.journal));
-
-  assert.equal((await target.journal.doses.getDoses(19000, 20500)).length, 1);
-  assert.equal((await target.journal.doses.getSchedules()).length, 1);
-  assert.equal((await target.journal.doses.getPauses()).length, 1);
-});
-
 test('a restored dose resolves its episode from its own timestamp, having carried no episode link', async () => {
   const source = await populated();
   const target = await device();
@@ -423,18 +390,6 @@ test('a restored dose resolves its episode from its own timestamp, having carrie
     endEpochDay: null
   });
   assert.equal(attributeDose(await target.journal.regimen.getEpisodes(), dose).episode?.drug, 'estradiol enanthate');
-});
-
-test('merging the same archive twice does not duplicate a regimen episode', async () => {
-  const source = await populated();
-  const target = await device();
-
-  await target.journal.archive.merge(await exported(source.journal));
-  await target.journal.archive.merge(await exported(source.journal));
-
-  const episodes = await target.journal.regimen.getEpisodes();
-  assert.equal(episodes.length, 1);
-  assert.equal(episodes[0].id, source.episode);
 });
 
 test("a merged entry's note is in the search index, not just in the table", async () => {
@@ -554,6 +509,11 @@ test('replace keeps built-in rows by key rather than deleting them, and never du
   assert.equal(measurementTypes.filter((t) => t.key === 'waist').length, 1);
 });
 
+/* Not a repeat-merge test - one merge only. archive-golden-merge.test.ts's
+   sweep covers repeated merges generically; what this checks is narrower and
+   still its own: that a *first* merge matches a built-in this device already
+   reconciled by key rather than treating the archive's copy as new, which a
+   row-count-only sweep run once could not tell apart from a coincidence. */
 test('merge does not duplicate built-ins either, however they arrived', async () => {
   const source = await populated();
   const target = await device();
