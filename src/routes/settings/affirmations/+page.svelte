@@ -35,7 +35,7 @@
     <h2 class="editor-heading" style="margin-bottom:var(--space-3)">{m.affirmations_builtin_heading()}</h2>
     <div class="managed-tags">
       {#each builtIns as a (a.id)}
-        <div class="managed-tag" class:is-hidden={a.hidden}>
+        <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
           <span class="managed-label">{a.text}</span>
           {#if a.hidden}<span class="muted small">{m.affirmations_hidden()}</span>{/if}
           <span class="managed-actions">
@@ -71,7 +71,7 @@
     {/if}
     <div class="managed-tags">
       {#each customs as a (a.id)}
-        <div class="managed-tag">
+        <div class="rows-divide managed-tag">
           <span class="managed-label">{a.text}</span>
           <span class="managed-actions">
             <button

@@ -29,7 +29,7 @@
   } = $props();
 </script>
 
-<section class="kit-day" data-day-card={key} {...roleAttrs(role)}>
+<section class="kit-day" data-kit-surface data-day-card={key} {...roleAttrs(role)}>
   <h3 class="kit-day-bar">
     {date}
     {#if aside}<span class="kit-day-aside">{aside}</span>{/if}

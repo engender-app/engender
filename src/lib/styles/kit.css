@@ -221,12 +221,38 @@
   transition-duration: var(--dur-fast);
 }
 
-.kit-row + .kit-row::before {
+/* One hairline between adjacent rows of a repeated list. .kit-row gets it
+   for being a kit row; anything else opts in with .rows-divide (ticket 42).
+
+   The idea had been invented three separate times - this rule, a plain `+`
+   border-top, and a border-bottom with a :last-child override to take it
+   back off the final row - so a new list screen had three precedents to
+   choose between and no reason to prefer one. Both selectors share one
+   declaration block here rather than the utility restating this one four
+   lines down, which would have made it a fourth copy of the thing it exists
+   to consolidate.
+
+   The overlay kind, because a border sits inside the row's own box: it adds
+   a pixel to the row's height, and it draws under the last row unless a
+   second rule removes it. An inset ::before does neither.
+
+   --hairline rather than --border, which is what the three border-based
+   rows were still using: a separator inside a surface is exactly what
+   --hairline is for (palettes.css). --border is --text at 24% where
+   --hairline is 14%, so those rows had been drawing a visibly heavier line
+   than the same separator one card over. */
+.kit-row + .kit-row::before,
+.rows-divide + .rows-divide::before {
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
   height: 1px;
   background: var(--hairline);
+}
+
+/* .kit-row sets this in its own block above. */
+.rows-divide {
+  position: relative;
 }
 
 /* Tier 1, response: a row is the width of the screen, and scaling one
@@ -1199,9 +1225,42 @@ a.kit-entry:active {
    control reads as part of the card. Was --space-5 against the old
    --space-4 two-surfaces gap; kept one step above it rather than left even
    with it now that gap has grown. */
-:is(.segmented, .stats-caption, .stats-note, .wrapped-note, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
-  + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-day, .kit-moods, .wrapped-figure-list, .skeleton-stack) {
+/* The right-hand side is [data-kit-surface] rather than a list of surface
+   classes, for the reason [data-kit-role] above is (ticket 41, ADR-0038):
+   the list went stale silently. .kit-strip was in the two-surface rule below
+   but had never been added here, so a week strip under a segmented control
+   got no gap at all - the same shape of bug as a surface handed --role and
+   left off the colour list, and just as invisible until someone looked.
+
+   The left-hand side stays a list on purpose. Those are screen-level
+   presentational names with no owning component root (.tag-row alone is 14
+   ad-hoc call sites across 7 files), and a class opts every instance in for
+   free - an attribute there would be one more thing to remember per call
+   site rather than one less.
+
+   .skeleton-stack is named on both sides because it is a lead but not a
+   surface: it stands where a surface will be and takes a surface's gap under
+   a control, but a surface *followed* by a skeleton keeps skeleton's own
+   --space-5 rule above. Stamping it [data-kit-surface] would hand that pair
+   to the two-surface rule instead, which is a different number. */
+:is(.segmented, .stats-caption, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
+  + :is([data-kit-surface], .skeleton-stack) {
   margin-top: var(--space-7);
+}
+
+/* A note is a remark about the block above it, not a control for the block
+   below. It sits tight to what it explains (its own small margin-top) and
+   then takes the ordinary two-things gap to whatever follows, rather than
+   the wider gap a control takes to the thing it drives.
+
+   This was already written down twice, in screens.css, and never once
+   applied: kit.css is imported last (+layout.svelte), both rules matched at
+   the same specificity, so the --space-7 above won and the --space-4 those
+   two rules asked for never rendered. Stating it here, next to the rule it
+   is an exception to, is what makes it hold - and is why the pair in
+   screens.css is gone rather than moved. */
+:is(.stats-note, .wrapped-note) + :is([data-kit-surface], .skeleton-stack) {
+  margin-top: var(--space-4);
 }
 
 /* And the other way round: a surface with a chip row or a photo strip under
@@ -1228,14 +1287,13 @@ a.kit-entry:active {
    screen: where a heading is present it still owns the space. */
 /* The wrapped figures are a list card inside a wrapper that carries the
    handle four walkthrough flows grip, so the wrapper is what sits beside the
-   next surface and has to be in this set: without it the figures and the
-   mood chart met with no gap at all.
+   next surface and stamps the attribute itself: without it the figures and
+   the mood chart met with no gap at all.
 
    --space-6, matching the floor `.screen > * + *` gives elsewhere (32.14):
    this is the same gap by another route, where a heading isn't between
    the two blocks to already own the space. */
-:is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods, .wrapped-figure-list)
-  + :is(.kit-chart, .kit-list, .kit-tiles, .kit-notice, .kit-strip, .kit-day, .kit-moods, .wrapped-figure-list) {
+[data-kit-surface] + [data-kit-surface] {
   margin-top: var(--space-6);
 }
 

@@ -295,7 +295,7 @@
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.measurement_manage_types_intro()}</p>
     <div class="managed-tags">
       {#each vocabulary.measurementTypes as t (t.key)}
-        <div class="managed-tag" class:is-hidden={t.hidden}>
+        <div class="rows-divide managed-tag" class:is-hidden={t.hidden}>
           <span class="managed-label">
             {t.name}{#if !t.builtIn}<span class="muted small"> · {m.custom_suffix()}</span>{/if}
           </span>
