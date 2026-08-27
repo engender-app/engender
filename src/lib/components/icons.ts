@@ -143,14 +143,19 @@ export const PATHS: Record<string, string> = {
    a habit: src/lib/components/icons.test.ts. */
 
 /** A positive, finite pixel size, or the default. */
-const pixels = (size: number): number => (Number.isFinite(Number(size)) && Number(size) > 0 ? Number(size) : 24);
+function pixelSize(size: number): number {
+  const px = Number(size);
+  return Number.isFinite(px) && px > 0 ? px : 24;
+}
 
-/** Class tokens and the spaces between them; anything else is dropped. */
+/** Class tokens and the spaces between them; anything else is dropped. A class
+    with a colon or a slash in it would come back mangled rather than rejected,
+    which is worth knowing if this app ever grows utility class names. */
 const classTokens = (cls: string): string => String(cls).replace(/[^A-Za-z0-9_ -]/g, '');
 
 export function icon(name: string, size = 24, cls = ''): string {
   const d = PATHS[name] || PATHS.info;
-  const px = pixels(size);
+  const px = pixelSize(size);
   return `<svg class="icon ${classTokens(cls)}" width="${px}" height="${px}" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
     aria-hidden="true" focusable="false">${d}</svg>`;

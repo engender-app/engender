@@ -13,12 +13,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.barankiewicz.genderdiary.MainActivity;
+import dev.barankiewicz.genderdiary.webview.WebViewProbe;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -58,11 +58,11 @@ public class WebViewPrintAdapterTest {
     @Test
     public void callingThePluginPutsAJobInAndroidsPrintSpooler() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            awaitTrue(scenario, "!!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Print)");
+            WebViewProbe webView = new WebViewProbe(scenario, TIMEOUT_SECONDS);
+            webView.awaitTrue("!!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Print)");
 
             // The same call src/lib/print/android-bridge.ts makes.
-            evaluate(
-                scenario,
+            webView.evaluate(
                 "(function(){"
                     + "window.__printOutcome='pending';"
                     + "window.Capacitor.Plugins.Print.print({jobName:'" + JOB_NAME + "'})"
@@ -74,7 +74,7 @@ public class WebViewPrintAdapterTest {
             assertEquals(
                 "the plugin did not resolve",
                 "\"resolved\"",
-                awaitValue(scenario, "window.__printOutcome", "\"resolved\""));
+                webView.awaitValue("window.__printOutcome", "\"resolved\""));
 
             try {
                 assertTrue(
@@ -115,42 +115,5 @@ public class WebViewPrintAdapterTest {
 
     private static PrintManager printManager(MainActivity activity) {
         return (PrintManager) activity.getSystemService(Context.PRINT_SERVICE);
-    }
-
-    private static void awaitTrue(ActivityScenario<MainActivity> scenario, String expression)
-        throws InterruptedException {
-        assertEquals("never became true: " + expression, "true", awaitValue(scenario, expression, "true"));
-    }
-
-    /** Polls `expression` until it equals `wanted`, then returns what it last saw. */
-    private static String awaitValue(ActivityScenario<MainActivity> scenario, String expression, String wanted)
-        throws InterruptedException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
-        String seen = null;
-        while (System.nanoTime() < deadline) {
-            seen = evaluate(scenario, expression);
-            if (wanted.equals(seen)) return seen;
-            Thread.sleep(250);
-        }
-        return seen;
-    }
-
-    private static String evaluate(ActivityScenario<MainActivity> scenario, String expression)
-        throws InterruptedException {
-        AtomicReference<String> value = new AtomicReference<>();
-        CountDownLatch evaluated = new CountDownLatch(1);
-        scenario.onActivity(
-            activity ->
-                activity
-                    .getBridge()
-                    .getWebView()
-                    .evaluateJavascript(
-                        expression,
-                        result -> {
-                            value.set(result);
-                            evaluated.countDown();
-                        }));
-        if (!evaluated.await(10, TimeUnit.SECONDS)) throw new AssertionError("the WebView stopped answering");
-        return value.get();
     }
 }

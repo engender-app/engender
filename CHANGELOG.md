@@ -11,10 +11,13 @@ update, and "none" is a perfectly good answer to any of them.
 Phase 2 is in progress and nothing has been released yet. Rename this heading
 to the version before cutting the tag.
 
+The Android app now enforces the same Content Security Policy the web app does.
+It used to enforce only the part of it about scripts, because the rest arrived
+in a web server header the Android build never sees.
+
 The Android app no longer declares the INTERNET permission. It never made a
-request to another origin, and now the permission list says so too: nothing in
-the app can open a network connection, whether or not you take the rest of this
-on trust.
+request to another origin, and now the permission list says so as well, which is
+something a person can check for themselves rather than take on trust.
 
 - Schema changes: none
 - Archive format changes: none
