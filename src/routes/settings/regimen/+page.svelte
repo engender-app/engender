@@ -462,6 +462,10 @@
             {#if schedule.doseAmounts.length}
               <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
                 {#each schedule.doseAmounts as amount, index (index)}
+                  <!-- Hand-rolled rather than `<ListRow static>` (ticket 40):
+                       the row's text is a pair of bound inputs under the
+                       screen's own two-column class, not a title and a
+                       subtitle. -->
                   <div class="kit-row is-static">
                     <span class="kit-row-text cd-endpoints">
                       <span class="field">
