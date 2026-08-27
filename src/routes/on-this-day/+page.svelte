@@ -72,7 +72,7 @@
      this used to run three aggregate recaps. Both are bounded by the day
      rather than by the journal's length, and the day read only happens for a
      day that already qualified. */
-  let daysQuery = liveQuery(['entry', 'tag', 'photo'], async (j) => {
+  let daysQuery = liveQuery(async (j) => {
     if (!prefs.onThisDayEnabled) return [];
     const results = await Promise.all(
       candidates.map(async (c): Promise<QualifyingDay | null> => {

@@ -47,10 +47,10 @@
      below assumes there is one. */
   const pack = POLISH_PACK;
 
-  let statusQuery = liveQuery(['roadmapCheck'], (j) => j.roadmap.getGoalStatuses(pack.key));
+  let statusQuery = liveQuery((j) => j.roadmap.getGoalStatuses(pack.key));
   let statuses = $derived(statusQuery.value ?? {});
 
-  let customQuery = liveQuery(['roadmapGoal'], (j) => j.roadmap.getCustomGoals());
+  let customQuery = liveQuery((j) => j.roadmap.getCustomGoals());
   let customGoals = $derived(customQuery.value ?? []);
 
   /* CONTEXT: "Lean" (phase 5 ticket 43, ADR-0030) - the active preset

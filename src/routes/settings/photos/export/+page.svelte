@@ -48,7 +48,7 @@
      until somebody shares it or leaves the screen, which is what keeps the
      export off the device unless a person asked for it. */
 
-  let photosQuery = liveQuery(['photo', 'entry', 'milestone'], (j) => j.photos.inJournal());
+  let photosQuery = liveQuery((j) => j.photos.inJournal());
   let photos = $derived(photosQuery.value ?? []);
   let bounds = $derived(journeyRangeBounds(photos));
 

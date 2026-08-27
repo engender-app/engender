@@ -35,7 +35,7 @@
      dose log from other angles. */
   const SECTION_ROLE = { episodes: 0, elsewhere: 1 };
 
-  let episodesQuery = liveQuery(['regimen'], (j) => j.regimen.getEpisodes());
+  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.value ?? []);
   /* A set, not one episode (phase 5 ticket 38): more than one can be
      active at once for different drugs, and every one of them still gets
@@ -45,8 +45,8 @@
   /* The schedule and the pauses belong to an episode, so they are edited
      here beside it rather than on the dose log: the log holds events, this
      screen holds what an episode expects of them (phase 4 ticket 02). */
-  let schedulesQuery = liveQuery(['dose'], (j) => j.doses.getSchedules());
-  let pausesQuery = liveQuery(['dose'], (j) => j.doses.getPauses());
+  let schedulesQuery = liveQuery((j) => j.doses.getSchedules());
+  let pausesQuery = liveQuery((j) => j.doses.getPauses());
   let editorSchedule = $derived((schedulesQuery.value ?? []).find((s) => s.episodeId === editor?.id) ?? null);
   let editorPauses = $derived((pausesQuery.value ?? []).filter((p) => p.episodeId === editor?.id));
 

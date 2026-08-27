@@ -24,7 +24,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  let tryoutsQuery = liveQuery(['tryout'], (j) => j.tryouts.getTryouts());
+  let tryoutsQuery = liveQuery((j) => j.tryouts.getTryouts());
   let tryouts = $derived(tryoutsQuery.value ?? []);
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });

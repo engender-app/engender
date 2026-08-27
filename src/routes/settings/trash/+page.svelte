@@ -10,7 +10,7 @@
 
   const DAY_MS = 24 * 60 * 60 * 1000;
 
-  let trashQuery = liveQuery(['entry'], (j) => j.entries.trashedEntries());
+  let trashQuery = liveQuery((j) => j.entries.trashedEntries());
   let trashed = $derived(trashQuery.value ?? []);
 
   function daysLeft(trashedAt: number): number {

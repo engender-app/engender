@@ -47,7 +47,7 @@
      never reaches sizeRecords.ts's validation against that list. */
   let category = $state<'all' | GarmentCategoryKey>('all');
 
-  let recordsQuery = liveQuery(['sizeRecord'], (j) =>
+  let recordsQuery = liveQuery((j) =>
     category === 'all' ? j.sizeRecords.getRecords() : j.sizeRecords.getRecordsByCategory(category)
   );
   let records = $derived(recordsQuery.value ?? []);

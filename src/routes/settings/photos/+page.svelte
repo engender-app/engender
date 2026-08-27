@@ -37,7 +37,7 @@
      milestone photos are rows in the same table (ADR-0008), already dated and
      ordered oldest first by the journal. Thumbnails only - PhotoThumb never
      decodes a full photo to draw a 104px tile. */
-  let photosQuery = liveQuery(['photo', 'entry', 'milestone'], (j) => j.photos.inJournal());
+  let photosQuery = liveQuery((j) => j.photos.inJournal());
   let photos = $derived(photosQuery.value ?? []);
 
   let selected = $state<string[]>([]);
@@ -55,7 +55,7 @@
   /* The measurement combined view (ticket 08): the same date range the two
      anchor photos span, so a number and an image answer "what changed"
      side by side. */
-  let rangeQuery = liveQuery(['measurement'], (j) =>
+  let rangeQuery = liveQuery((j) =>
     pair ? j.measurements.getMeasurementsInRange(photos[pair.left].epochDay, photos[pair.right].epochDay) : Promise.resolve([])
   );
   let rangeMeasurements = $derived(rangeQuery.value ?? []);

@@ -111,20 +111,20 @@
   let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
   let shown = $derived(metrics.find((mt) => mt.key === vocabulary.activeMetric) ?? metrics[0]);
 
-  let streakQuery = liveQuery(['entry', 'journalingPause'], (j) => j.stats.streak(today));
+  let streakQuery = liveQuery((j) => j.stats.streak(today));
   let streak = $derived(streakQuery.value ?? 0);
 
   /* The streak line goes quiet while a pause covers today, the same rule
      Home's does (phase 5 features ticket 21): it is a nudge, and a frozen
      number with nothing to explain it is worse than no number. */
-  let pausesQuery = liveQuery(['journalingPause'], (j) => j.journalingPauses.getPauses());
+  let pausesQuery = liveQuery((j) => j.journalingPauses.getPauses());
   let pausedToday = $derived(isPausedOn(pausesQuery.value ?? [], today));
 
   /* One query for every metric on screen rather than one per chart: the
      day-by-day chart plots one at a time but the bars card needs all of
      them, and asking per card would mean a round trip per active dimension
      every time the range changes. */
-  let seriesQuery = liveQuery(['entry', 'dimension'], async (j) => {
+  let seriesQuery = liveQuery(async (j) => {
     const keys = metrics.map((mt) => mt.key);
     const [rangeFrom, rangeTo] = [from, today];
     const series = await Promise.all(keys.map((key) => j.stats.dayAverages(key, rangeFrom, rangeTo)));
@@ -132,7 +132,7 @@
   });
   let seriesFor = $derived((key: string): DayAverage[] => seriesQuery.value?.get(key) ?? []);
 
-  let insightsQuery = liveQuery(['entry', 'tag'], (j) => j.stats.tagInsights(vocabulary.activeMetric, from, today));
+  let insightsQuery = liveQuery((j) => j.stats.tagInsights(vocabulary.activeMetric, from, today));
   let insights = $derived(insightsQuery.value ?? []);
 
   let lastMonth = $derived(previousCalendarMonthRange(today));
@@ -207,7 +207,7 @@
       }))
   );
 
-  let insightEntriesQuery = liveQuery(['entry', 'tag'], (j) => {
+  let insightEntriesQuery = liveQuery((j) => {
     const sheet = insightSheet;
     if (!sheet) return Promise.resolve([]);
     return j.entries.entriesWithTag(sheet.id, INSIGHT_ENTRIES);
@@ -218,7 +218,7 @@
      phase 3's explicit exclusion of correlation analysis, not scope
      drift the phase 3 decision missed. Ranked and capped by the journal
      area itself; this screen only renders what it returns. */
-  let correlationCardsQuery = liveQuery(['entry', 'tag', 'dimension', 'dose'], (j) =>
+  let correlationCardsQuery = liveQuery((j) =>
     j.correlationCards.getCards(from, today)
   );
   let correlationCards = $derived(correlationCardsQuery.value ?? []);
@@ -233,7 +233,7 @@
      bestStreakEver uses for "ever"), not just the visible window: an
      injection interval is commonly 14-28 days, so a completed one rarely
      recurs three times inside even the 90-day preset. */
-  let intervalMoodQuery = liveQuery(['entry', 'dose'], (j) =>
+  let intervalMoodQuery = liveQuery((j) =>
     j.intervalMoodPattern.dayOfInterval(Number.MIN_SAFE_INTEGER, today)
   );
   let intervalMoodPattern = $derived(intervalMoodQuery.value ?? []);
@@ -245,7 +245,7 @@
   let safeCustomIntervalLength = $derived(
     Number.isFinite(customIntervalLength) && customIntervalLength >= 2 ? Math.floor(customIntervalLength) : 28
   );
-  let customIntervalQuery = liveQuery(['entry'], (j) =>
+  let customIntervalQuery = liveQuery((j) =>
     j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, safeCustomIntervalLength)
   );
   let customIntervalPattern = $derived(customIntervalQuery.value ?? []);

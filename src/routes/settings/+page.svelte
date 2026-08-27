@@ -61,7 +61,7 @@
 
   /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
      count of the enabled ones - which only the Android build displays at all. */
-  let reminders = liveQuery(['reminder'], (j) => j.reminders.getReminders());
+  let reminders = liveQuery((j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.value ?? []).filter((r) => r.enabled).length);
 
   let scalesSheet = $state(false);
