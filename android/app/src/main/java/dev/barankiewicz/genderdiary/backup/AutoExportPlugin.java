@@ -108,8 +108,33 @@ public class AutoExportPlugin extends Plugin {
         }
     }
 
+    /**
+     * The saved backup password, handed back to the scheduler and to nobody
+     * else (phase 5 security ticket 02, F-04).
+     *
+     * <p>The audit asked for one of two things here: a
+     * {@code KeystorePlugin.confirm} prompt in front of this, or no reveal
+     * at all. Neither is what shipped, because both break the scheduler,
+     * which is this method's only caller: {@code auto-export-scheduler.ts}
+     * packs the archive in the WebView, so it needs the cleartext, and it
+     * runs unattended by design - a prompt in front of it means no backup
+     * happens unless somebody is watching.
+     *
+     * <p>What shipped instead is the name and this comment. No screen reads
+     * the password: the export screen asks {@code status()} whether one is
+     * saved, which {@code hasPassword} answers with no secret in it, and it
+     * can only replace or clear the password from there. Gating this call
+     * while leaving the scheduler a second ungated one would have been two
+     * doors with one lock: the bridge is reachable from the page either way,
+     * and both would be reachable the same way.
+     *
+     * <p>So the exposure is bounded rather than closed, and what closes it
+     * is moving the archive's Argon2id derivation native, so the password
+     * never reaches JavaScript at all. That is its own ticket - it splits
+     * {@code pack.ts} across the bridge - and it is not this one.
+     */
     @PluginMethod
-    public void revealPassword(PluginCall call) {
+    public void passwordForScheduledBackup(PluginCall call) {
         JSObject out = new JSObject();
         try {
             String password = passwordStore().read();

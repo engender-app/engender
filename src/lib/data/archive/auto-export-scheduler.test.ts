@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const {
   status,
-  revealPassword,
+  passwordForScheduledBackup,
   runAndroidAutoExport,
   snapshot,
   toast
 } = vi.hoisted(() => ({
   status: vi.fn(),
-  revealPassword: vi.fn(),
+  passwordForScheduledBackup: vi.fn(),
   runAndroidAutoExport: vi.fn(),
   snapshot: vi.fn(),
   toast: vi.fn()
@@ -24,7 +24,7 @@ vi.mock('$lib/data/live/journal.svelte', () => ({
 vi.mock('./android-auto-export-bridge', () => ({
   androidAutoExport: {
     status,
-    revealPassword
+    passwordForScheduledBackup
   }
 }));
 vi.mock('./android-auto-export', () => ({
@@ -64,7 +64,7 @@ describe('auto-export scheduler', () => {
       lastFailureAt: null,
       lastFailureReason: null
     });
-    revealPassword.mockResolvedValue({ password: 'secret' });
+    passwordForScheduledBackup.mockResolvedValue({ password: 'secret' });
     snapshot.mockResolvedValue({ journal: { entries: [], dimensions: [], presets: [], tagGroups: [], milestones: [], labResults: [], measurements: [], sideEffects: [], reminders: [] }, files: [], readFile: async () => new Uint8Array() });
     vi.mocked(isDue).mockReturnValue(true);
     runAndroidAutoExport.mockResolvedValue({ outcome: 'ok', writtenAt: 10 });
@@ -83,13 +83,13 @@ describe('auto-export scheduler', () => {
     await flush();
 
     expect(status).toHaveBeenCalled();
-    expect(revealPassword).toHaveBeenCalled();
+    expect(passwordForScheduledBackup).toHaveBeenCalled();
     expect(snapshot).toHaveBeenCalled();
     expect(runAndroidAutoExport).toHaveBeenCalled();
   });
 
   test('does nothing when no password is available', async () => {
-    revealPassword.mockResolvedValue({ password: null });
+    passwordForScheduledBackup.mockResolvedValue({ password: null });
 
     startAutoExportScheduler();
     await flush();
