@@ -531,8 +531,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, 'reconcileBuiltIns'>]: Classifi
     reads: { getSummary: ['regimen', 'dose', 'lab', 'sideEffect', 'procedure', 'checklist'] }
   }),
   // Read-only, the same reason clinicianSummary is: a book is assembled
-  // from entries, milestones, the doubt journal and side effects on every
-  // read and stored nowhere (phase 5 ticket 17).
+  // from entries, milestones, side effects and a recap on every read and
+  // stored nowhere (phase 5 ticket 17). It has never read the doubt journal,
+  // which this comment used to claim it did.
   journalBook: classify<Journal['journalBook']>()({
     writes: {},
     // The entry half is a hydrated read, so it carries everything an entry
