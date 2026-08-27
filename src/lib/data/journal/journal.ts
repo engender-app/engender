@@ -272,7 +272,7 @@ export interface Journal {
 export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journal {
   const reminders = makeRemindersArea(driver);
   const regimen = makeRegimenArea(driver);
-  const doses = makeDosesArea(driver);
+  const doses = makeDosesArea(driver, regimen);
   const labs = makeLabsArea(driver);
   const exposure = makeExposureArea(doses, regimen);
   const sideEffects = makeSideEffectsArea(driver);

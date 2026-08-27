@@ -26,7 +26,6 @@ import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
 import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
 import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
 import { hairAnchorEpochDay } from '../../src/lib/data/hairAnchor.ts';
-import { expectedSlots, adherence } from '../../src/lib/data/doseSchedule.ts';
 import { CURVE_DRUGS } from '../../src/lib/data/hormoneDrug.ts';
 import type { LongJournalSummary } from './generate.ts';
 
@@ -395,29 +394,38 @@ export async function measureLongJournal(
     };
   });
 
-  // Dose schedules (schema v38, ADR-0027, phase 5 ticket 40): the dose log
-  // screen's own reads (doses/+page.svelte) - a 90-day window of doses and
-  // pauses, every schedule and every episode - fed into expectedSlots and
-  // adherence, which is where the new weekday recurrence and doseAmounts
-  // cycle actually run. Nothing here reuses the fixture's own episode id;
-  // it reads it back the same way the screen does, off getEpisodes().
+  // Dose schedules (schema v38, ADR-0027, phase 5 ticket 40): the one call
+  // the dose log screen's schedule view makes, getComparison - four reads,
+  // the episode in effect, its schedule and pauses, the doses attributed to
+  // it, then expectedSlots and adherence over those, which is where the
+  // weekday recurrence and the doseAmounts cycle actually run. The same
+  // function the screen calls rather than a second copy of its steps: this
+  // block used to assemble them itself off episodes[0] with unattributed
+  // doses, so the figure below was not the screen's figure (phase 5
+  // deepening ticket 17).
+  //
+  // Its window ends on the fixture's last single-episode day rather than on
+  // `today`, and that is the fixture's own shape: its final stretch runs two
+  // concurrent episodes for different drugs, where the screen has nothing to
+  // compare and says so. Behind that day sit the fixture's richest
+  // schedule - three cycling dose amounts on a Monday/Wednesday/Friday
+  // recurrence. The reason is asserted rather than reported, so a fixture
+  // that stops meeting that precondition fails here instead of quietly
+  // measuring four reads and an early return.
   await measure('dose-schedule-adherence', 'dose log, 90 days of the log against its schedule', async () => {
     const ADHERENCE_WINDOW_DAYS = 90;
-    const from = today - ADHERENCE_WINDOW_DAYS;
-    const [episodes, doses, schedules, pauses] = await Promise.all([
-      journal.regimen.getEpisodes(),
-      journal.doses.getDoses(from, today),
-      journal.doses.getSchedules(),
-      journal.doses.getPauses()
-    ]);
-    const episode = episodes[0];
-    if (!episode) throw new Error('long-journal fixture did not produce a regimen episode for dose-schedule-adherence');
-    const schedule = schedules.find((s) => s.episodeId === episode.id) ?? null;
-    if (!schedule) throw new Error('long-journal fixture did not produce a dose schedule for dose-schedule-adherence');
-
-    const slots = expectedSlots(schedule, episode.startEpochDay, from, today);
-    const result = adherence(slots, doses, pauses);
-    return { result, detail: `${result.rows.length} expected slots, ${result.unmatched.length} unmatched doses` };
+    const toEpochDay = summary.lastSingleEpisodeEpochDay;
+    const result = await journal.doses.getComparison({
+      fromEpochDay: toEpochDay - ADHERENCE_WINDOW_DAYS,
+      toEpochDay
+    });
+    if (result.reason !== null) {
+      throw new Error(`long-journal fixture left nothing to compare for dose-schedule-adherence: ${result.reason}`);
+    }
+    return {
+      result,
+      detail: `${result.comparison.rows.length} expected slots, ${result.comparison.unmatched.length} unmatched doses`
+    };
   });
 
   // --- phase 5 ticket 36 features (ticket 05) ------------------------------
