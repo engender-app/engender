@@ -82,7 +82,7 @@
 
   <SectionHeading text={m.letters_yours_title()} />
   <ReadGate read={lettersQuery} variant="line" count={3}>
-    {#snippet rows(letters)}
+    {#snippet rows()}
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, 0)}>
           {#each letters as letter (letter.id)}

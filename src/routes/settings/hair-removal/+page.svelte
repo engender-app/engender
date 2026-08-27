@@ -119,7 +119,7 @@
   </ScreenHeader>
 
   <ReadGate read={sessionsQuery} variant="line" count={3}>
-    {#snippet rows(sessions)}
+    {#snippet rows()}
       <div class="screen-part">
         <SectionHeading text={m.hair_removal_recency_title()} />
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
@@ -238,7 +238,7 @@
         </div>
 
         <ReadGate read={photosQuery} variant="line" count={1}>
-          {#snippet rows(photos)}
+          {#snippet rows()}
             <div style="margin-bottom:var(--space-3)">
               <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
                 {#each photos as p (p.id)}

@@ -249,7 +249,6 @@
   let customIntervalQuery = liveList((j) =>
     j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, safeCustomIntervalLength)
   );
-  let customIntervalPattern = $derived(customIntervalQuery.rows);
 
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
@@ -448,7 +447,7 @@
     role={roleAt(activeFlag.roles, AREA_ROLE.patterns)}
   >
     <ReadGate read={intervalMoodQuery} variant="block" count={3}>
-      {#snippet rows(intervalMoodPattern)}
+      {#snippet rows()}
         <AreaChart
           points={positionPoints(intervalMoodPattern)}
           min={1}

@@ -90,6 +90,8 @@
   "trash_intro": "Usunięte wpisy czekają tu 30 dni, zanim znikną na stałe.",
   "trash_empty_title": "Kosz jest pusty",
   "trash_empty_body": "Usunięty wpis trafia tutaj na 30 dni, zanim zniknie na stałe.",
+  "trash_read_failed_title": "Nie udało się odczytać kosza",
+  "trash_read_failed_body": "To nie to samo, co pusty kosz. Błąd odczytu niczego nie usunął, więc to, co tu czekało, nadal czeka. Wyjdź z ekranu i wróć, żeby ponowić odczyt.",
   "trash_restore": "Przywróć",
   "trash_restored_toast": "Wpis przywrócony",
   "trash_days_left": [
@@ -1566,6 +1568,8 @@
   "ph_cell_aria": "Zdjęcie z {date}",
   "ph_empty_title": "Jeszcze bez zdjęć",
   "ph_empty_body": "Zdjęcia dodane do wpisów i kamieni milowych zbierają się tutaj. Kiedyś zestawienie „kiedyś i teraz” będzie tego warte.",
+  "pj_read_failed_title": "Nie udało się odczytać zdjęć",
+  "pj_read_failed_body": "To nie to samo, co brak zdjęć. Nic nie zostało usunięte i nie ma tu nic do naprawienia. Wyjdź z ekranu i wróć, żeby ponowić odczyt.",
   "photo_picker_failed": "Nie udało się otworzyć wyboru zdjęć.",
   "voice_compare_sub": "dwa nagrania, obok siebie",
   "vc_compare": "Porównaj",

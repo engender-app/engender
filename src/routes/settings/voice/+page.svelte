@@ -82,7 +82,7 @@
   {:else}
     <ScreenHeader title={m.recordings_label()} back="/more" />
     <ReadGate read={recordingsQuery} variant="line" count={4}>
-      {#snippet rows(recordings)}
+      {#snippet rows()}
         <div class="screen-part">
           {#if comparing && !pair}
             <p class="muted small" style="margin-bottom:var(--space-2)">{m.vc_compare_reset()}</p>

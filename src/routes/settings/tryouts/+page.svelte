@@ -48,7 +48,7 @@
   </ScreenHeader>
 
   <ReadGate read={tryoutsQuery} variant="line" count={3}>
-    {#snippet rows(tryouts)}
+    {#snippet rows()}
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, 0)}>
           {#each tryouts as t (t.id)}

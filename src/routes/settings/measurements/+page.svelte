@@ -201,7 +201,7 @@
   {/if}
 
   <ReadGate read={measurementsQuery} variant="block" count={1}>
-    {#snippet rows(measurements)}
+    {#snippet rows()}
       <div class="screen-part">
         <ChartCard
           heading={vocabulary.measurementTypeName(type)}

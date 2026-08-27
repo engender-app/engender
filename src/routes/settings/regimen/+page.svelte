@@ -248,7 +248,7 @@
   </ScreenHeader>
 
   <ReadGate read={episodesQuery} variant="line" count={3}>
-    {#snippet rows(episodes)}
+    {#snippet rows()}
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
           {#each [...episodes].reverse() as episode (episode.id)}

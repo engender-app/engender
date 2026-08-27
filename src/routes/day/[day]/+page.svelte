@@ -55,7 +55,7 @@
   />
 
   <ReadGate read={dayEntries} variant="card" count={2}>
-    {#snippet rows(entries)}
+    {#snippet rows()}
       <DayCard
         key={String(epochDay)}
         {role}

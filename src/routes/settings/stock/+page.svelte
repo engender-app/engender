@@ -22,14 +22,14 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   let rowsQuery = liveList((j) => j.stock.getProjections(todayEpochDay()));
-  let rows = $derived(rowsQuery.rows);
+  let projections = $derived(rowsQuery.rows);
 
   /* The excluded-dose caveat is about every projection on the screen - its
      own wording says "every projection above" - and it was being rendered
      as a third line inside each row, which said the same thing once per
      drug and made the row three lines deep. One statement, under the list,
      summing what was left out. */
-  let excludedDoses = $derived(rows.reduce((total, row) => total + row.projection.excludedDoses, 0));
+  let excludedDoses = $derived(projections.reduce((total, row) => total + row.projection.excludedDoses, 0));
 
   function runOutText(row: StockProjectionRow): string {
     const { remaining, runOutEpochDay } = row.projection;
@@ -97,10 +97,10 @@
   </ScreenHeader>
 
   <ReadGate read={rowsQuery} variant="line" count={3}>
-    {#snippet rows(rows)}
+    {#snippet rows()}
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, 0)}>
-          {#each rows as row (row.entry.id)}
+          {#each projections as row (row.entry.id)}
             <ListRow
               key={row.entry.id}
               data-stock={row.entry.id}

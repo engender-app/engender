@@ -79,7 +79,7 @@
   </ScreenHeader>
 
   <ReadGate read={effectsQuery} variant="line" count={3}>
-    {#snippet rows(effects)}
+    {#snippet rows()}
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, 0)}>
           {#each [...effects].reverse() as effect (effect.id)}

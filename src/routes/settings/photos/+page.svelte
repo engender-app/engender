@@ -131,7 +131,7 @@
   {:else}
     <ScreenHeader title={m.progress_photos()} back="/more" />
     <ReadGate read={photosQuery} variant="block" count={2}>
-      {#snippet rows(photos)}
+      {#snippet rows()}
         {#if comparing && !pair}
           <p class="muted small" style="margin-bottom:var(--space-2)">{m.ph_compare_reset()}</p>
         {/if}
