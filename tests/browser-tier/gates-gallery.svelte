@@ -22,17 +22,7 @@
   import LockScreen from '$lib/components/LockScreen.svelte';
   import PassphraseGate from '$lib/components/PassphraseGate.svelte';
   import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
-
-  const PALETTES = [
-    'trans',
-    'nonbinary',
-    'genderfluid',
-    'bisexual',
-    'lesbian',
-    'pansexual',
-    'rainbow',
-    'agender'
-  ];
+  import { PALETTES } from '../palettes.mjs';
 
   const SCENES = [
     'lock-unlock',
