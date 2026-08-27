@@ -7,7 +7,7 @@ import { expect, test } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support.ts';
 import type { Journal } from '../journal/journal.ts';
 import { journalIsBusy } from '../journal-busy.ts';
-import { observeWrites, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
+import { observeWrites, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
 
 async function observed() {
   const { journal, db } = await journalWithBuiltIns();
@@ -238,4 +238,59 @@ test('tablesWrittenBy answers with the classified tables, and refuses anything e
   expect(tablesWrittenBy('entries', 'deleteEntry')).toEqual(['entry', 'photo', 'voiceRecording', 'videoNote']);
   expect(() => tablesWrittenBy('entries', 'getEntry')).toThrow(/not a classified write/);
   expect(() => tablesWrittenBy('nosuchArea', 'deleteEntry')).toThrow(/not a classified write/);
+});
+
+test('tablesReadBy answers with the tables a read depends on, and refuses anything else', () => {
+  // What a liveQuery resolves its dependencies from, instead of asking the
+  // screen to name tables (phase 5 audit ticket 03).
+  expect(tablesReadBy('journalingPauses', 'getPauses')).toEqual(['journalingPause']);
+  expect(() => tablesReadBy('entries', 'upsertEntry')).toThrow(/not a classified read/);
+  expect(() => tablesReadBy('nosuchArea', 'getEntry')).toThrow(/not a classified read/);
+});
+
+/* The two live defects the audit found, as the invariant that catches the
+   class rather than the two instances: a write's tables and the tables of
+   every read whose answer that write changes have to overlap, or the screen
+   holding that read shows its old number forever with nothing to see. */
+test('editing a journaling pause re-runs the streak read, the number the streak-goal screen shows', () => {
+  // The screen declared ['entry'] for this read while Home declared both
+  // tables, so the same streak went stale on one screen and not the other.
+  const dependsOn = new Set(tablesReadBy('stats', 'streak'));
+  for (const operation of ['upsertPause', 'deletePause'] as const) {
+    const written = tablesWrittenBy('journalingPauses', operation);
+    assert.ok(
+      written.some((table) => dependsOn.has(table)),
+      `journalingPauses.${operation} leaves stats.streak stale: writes ${written.join(', ')}, read depends on ${[...dependsOn].join(', ')}`
+    );
+  }
+});
+
+test('editing a regimen episode re-runs the stock projection, the run-out date the stock screen shows', () => {
+  // The screen declared ['stock', 'dose'], and the projection reads the
+  // episode history too - so ending an episode left the old run-out date up.
+  const dependsOn = new Set(tablesReadBy('stock', 'getProjections'));
+  for (const operation of ['upsertEpisode', 'endEpisode'] as const) {
+    const written = tablesWrittenBy('regimen', operation);
+    assert.ok(
+      written.some((table) => dependsOn.has(table)),
+      `regimen.${operation} leaves stock.getProjections stale: writes ${written.join(', ')}, read depends on ${[...dependsOn].join(', ')}`
+    );
+  }
+});
+
+test('every read the journal actually has declares at least one table', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const [areaName, area] of Object.entries(journal)) {
+    if (areaName === 'reconcileBuiltIns') continue;
+    for (const [operation, implementation] of Object.entries(area as Record<string, unknown>)) {
+      if (typeof implementation !== 'function') continue;
+      let tables: TableName[];
+      try {
+        tables = tablesReadBy(areaName, operation);
+      } catch {
+        continue; // a write; tablesWrittenBy covers those
+      }
+      assert.ok(tables.length > 0, `journal.${areaName}.${operation} declares no table, so nothing re-runs it`);
+    }
+  }
 });
