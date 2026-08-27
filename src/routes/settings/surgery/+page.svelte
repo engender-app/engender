@@ -223,7 +223,7 @@
   </ScreenHeader>
 
   <ReadGate read={proceduresQuery} variant="line" count={3}>
-    {#snippet rows(procedures)}
+    {#snippet rows()}
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
           {#each procedures as procedure (procedure.id)}
@@ -331,7 +331,7 @@
 
       <SectionHeading text={m.surgery_photos_title()} />
       <ReadGate read={photosQuery} variant="line" count={1}>
-        {#snippet rows(photos)}
+        {#snippet rows()}
           <div style="margin-bottom:var(--space-3)">
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
               {#each photos as photo (photo.id)}

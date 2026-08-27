@@ -347,7 +347,7 @@
   </ScreenHeader>
 
   <ReadGate read={usedQuery} variant="block" count={1}>
-    {#snippet rows(analytes)}
+    {#snippet rows()}
       <div class="screen-part">
         <Segmented
           name={m.labs_analyte_group()}

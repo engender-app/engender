@@ -268,7 +268,7 @@
       <span>{m.tryout_feeling_save()}</span>
     </button>
     <ReadGate read={feelingQuery} variant="line" count={2}>
-      {#snippet rows(feeling)}
+      {#snippet rows()}
         <div class="screen-part">
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
             {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
@@ -310,7 +310,7 @@
       </button>
     </div>
     <ReadGate read={photosQuery} variant="line" count={1}>
-      {#snippet rows(photos)}
+      {#snippet rows()}
         <div style="margin-bottom:var(--space-3)">
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
             {#each photos as p (p.id)}

@@ -11,7 +11,6 @@
   const DAY_MS = 24 * 60 * 60 * 1000;
 
   let trashQuery = liveList((j) => j.entries.trashedEntries());
-  let trashed = $derived(trashQuery.rows);
 
   function daysLeft(trashedAt: number): number {
     const elapsedDays = Math.floor((Date.now() - trashedAt) / DAY_MS);
@@ -48,6 +47,13 @@
     {/snippet}
     {#snippet empty()}
       <EmptyState title={m.trash_empty_title()} text={m.trash_empty_body()} />
+    {/snippet}
+    {#snippet failed()}
+      <!-- One of the two surfaces that say more than "nothing here" when a
+           read fails (phase 5 audit ticket 04). A person on this screen came
+           to get something back, and "Trash is empty" would send them away
+           believing a deleted entry is gone for good. -->
+      <EmptyState title={m.trash_read_failed_title()} text={m.trash_read_failed_body()} />
     {/snippet}
   </ReadGate>
 </div>

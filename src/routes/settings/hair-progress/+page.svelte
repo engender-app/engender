@@ -218,7 +218,7 @@
     </SectionHeading>
 
     <ReadGate read={stagesQuery} variant="line" count={2}>
-      {#snippet rows(stages)}
+      {#snippet rows()}
         <div class="screen-part">
           {#each stageGroups as group (group.scale)}
             <!-- Each scale keeps its own card and its own name above it. A run
@@ -294,7 +294,7 @@
     </div>
 
     <ReadGate read={photosQuery} variant="line" count={2}>
-      {#snippet rows(photos)}
+      {#snippet rows()}
         <div class="screen-part">
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
             {#each [...photos].reverse() as p (p.id)}

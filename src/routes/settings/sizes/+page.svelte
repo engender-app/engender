@@ -133,7 +133,7 @@
   {/snippet}
 
   <ReadGate read={recordsQuery} variant="line" count={3}>
-    {#snippet rows(records)}
+    {#snippet rows()}
       <div class="screen-part">
         {#if category === 'all'}
           {#each groups as g (g.category)}
