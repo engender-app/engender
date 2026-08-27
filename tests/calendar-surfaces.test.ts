@@ -354,16 +354,16 @@ describe('an entry takes media it already has, not only media it makes', () => {
 });
 
 describe('loading states, since all six read entry data', () => {
+  /* Two ways to draw the same placeholder since phase 5 audit ticket 04:
+     the screen draws it, or the gate the screen hands its read to draws it.
+     Each screen names which read it is waiting on either way, so that a gate
+     over some other list on the same screen cannot stand in for this one. */
   it.each([
-    ['day', SCREENS.day],
-    ['search', SCREENS.search],
-    ['starred', SCREENS.starred]
-  ])('%s waits with a skeleton', (_name, path) => {
-    /* Drawn by the screen, or by the gate the screen hands its read to
-       (phase 5 audit ticket 04) - the placeholder is the same one either
-       way, and which of the two draws it is not what this is about. */
-    const markup = markupOf(read(path));
-    expect(markup.includes('<Skeleton') || markup.includes('<ReadGate')).toBe(true);
+    ['day', SCREENS.day, /<ReadGate\s+read=\{dayEntries\}/],
+    ['search', SCREENS.search, /<Skeleton/],
+    ['starred', SCREENS.starred, /<Skeleton/]
+  ])('%s waits with a skeleton', (_name, path, waits) => {
+    expect(markupOf(read(path))).toMatch(waits);
   });
 
   it('the editor waits rather than filling a form under the reader', () => {
