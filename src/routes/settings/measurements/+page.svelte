@@ -18,6 +18,7 @@
      an inches one still draws a single continuous line instead of two
      that stop and start where the habit changed. */
   import { m } from '$lib/paraglide/messages';
+  import { paddedSeries } from '$lib/charts/geometry';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -80,26 +81,10 @@
   let chartPoints = $derived(
     measurements.map((r) => ({ x: r.epochDay, y: toChartUnit(r.value, r.unit, prefs.measurementUnit) }))
   );
-  let chart = $derived(chartFor(chartPoints));
-
-  /* The scale is padded off the readings rather than starting at zero: a
-     waist measured in centimetres moves within a few percent of itself,
-     and a zero-based axis draws that as a flat line. Not axis furniture -
-     there is none - only what the top and the bottom of the plot mean. */
-  function chartFor(points: { x: number; y: number }[]) {
-    if (points.length < 2) return null;
-    const values = points.map((p) => p.y);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const pad = (max - min) * 0.2 || 1;
-    return {
-      points,
-      min: min - pad,
-      max: max + pad,
-      from: points[0].x,
-      to: points[points.length - 1].x
-    };
-  }
+  /* One centimetre or one inch as the flat-run floor: a body measurement
+     that has not moved is still worth a band that wide. Labs pass ten,
+     for values that run in the hundreds. */
+  let chart = $derived(paddedSeries(chartPoints, 1));
 
   /** The unit this type was last logged in, so a new entry defaults to
       whatever the person has been using rather than forcing 'cm' back on

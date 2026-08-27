@@ -17,6 +17,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { LabSeries } from '$lib/data/journal/labs';
+  import { paddedSeries } from '$lib/charts/geometry';
   import { seriesComparability } from '$lib/data/labTiming';
   import { comparabilityLabels, labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -90,20 +91,14 @@
   let seriesQuery = liveList((j) => j.labs.getSeries(analyte));
   let series = $derived(seriesQuery.rows);
 
-  function chartFor(s: LabSeries) {
-    if (s.results.length < 2) return null;
-    const values = s.results.map((r) => r.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const pad = (max - min) * 0.2 || 10;
-    return {
-      points: s.results.map((r) => ({ x: r.epochDay, y: r.value })),
-      min: min - pad,
-      max: max + pad,
-      from: s.results[0].epochDay,
-      to: s.results[s.results.length - 1].epochDay
-    };
-  }
+  /* Ten as the flat-run floor rather than measurements' one: an analyte's
+     values run in the hundreds, so a whole unit either side would still
+     draw as a flat line. */
+  const chartFor = (s: LabSeries) =>
+    paddedSeries(
+      s.results.map((r) => ({ x: r.epochDay, y: r.value })),
+      10
+    );
 
   /** What the scrub says above a reading: when it was drawn, and the
       context it was drawn in. The value itself is on the other half of the
