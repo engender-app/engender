@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-const recognize = vi.fn(async () => ({ data: { text: 'ok' } }));
+const recognize = vi.fn(async (_image: unknown) => ({ data: { text: 'ok' } }));
 const terminate = vi.fn(async () => undefined);
 const createWorker = vi.fn(async () => ({ recognize, terminate }));
 
@@ -37,25 +37,25 @@ describe('tesseractLabOcrEngine', () => {
   });
 
   test('uses local-only Tesseract paths and both PL/EN languages', async () => {
-    const originalCreateObjectURL = URL.createObjectURL;
-    const originalRevokeObjectURL = URL.revokeObjectURL;
-    URL.createObjectURL = vi.fn(() => 'blob:test');
-    URL.revokeObjectURL = vi.fn();
+    const result = await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
+    expect(result.data.text).toBe('ok');
+    expect(createWorker).toHaveBeenCalledWith(['eng', 'pol'], 1, {
+      workerPath: '/tesseract/worker.min.js',
+      corePath: '/tesseract/tesseract-core.wasm.js',
+      langPath: '/tesseract/lang-data'
+    });
+    expect(terminate).toHaveBeenCalledTimes(1);
+  });
 
-    try {
-      const result = await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
-      expect(result.data.text).toBe('ok');
-      expect(createWorker).toHaveBeenCalledWith(['eng', 'pol'], 1, {
-        workerPath: '/tesseract/worker.min.js',
-        corePath: '/tesseract/tesseract-core.wasm.js',
-        langPath: '/tesseract/lang-data'
-      });
-      expect(recognize).toHaveBeenCalledWith('blob:test');
-      expect(terminate).toHaveBeenCalledTimes(1);
-    } finally {
-      URL.createObjectURL = originalCreateObjectURL;
-      URL.revokeObjectURL = originalRevokeObjectURL;
-    }
+  /* A Blob passed straight to the worker, not an object URL: the worker reads
+     a Blob with FileReader, but fetches a URL string - and this document's
+     CSP has no `blob:` in connect-src, so that fetch would be refused before
+     recognition ever ran (ticket 44). */
+  test('passes the image as a Blob rather than an object URL', async () => {
+    await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
+    const [passedImage] = recognize.mock.calls[0];
+    expect(passedImage).toBeInstanceOf(Blob);
+    expect(typeof passedImage).not.toBe('string');
   });
 
   test('asks the offline shell to keep the engine once it has loaded', async () => {
