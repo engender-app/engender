@@ -40,10 +40,10 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -116,23 +116,22 @@
   const contextLine = (r: LabResult) =>
     [r.timing ? labTimingLabel(r.timing) : '', r.provider.trim()].filter(Boolean).join(' · ');
 
-  const record = recordEditor<
-    LabResult,
-    {
-      id?: string;
-      date: string;
-      time: string;
-      analyte: string;
-      customAnalyte: string;
-      value: string;
-      unit: string;
-      note: string;
-      provider: string;
-      /** Read-only: the context is frozen when the result is saved, so the
-          sheet shows what was recorded rather than offering to change it. */
-      timing: LabResult['timing'];
-    }
-  >({
+  type LabDraft = {
+    id?: string;
+    date: string;
+    time: string;
+    analyte: string;
+    customAnalyte: string;
+    value: string;
+    unit: string;
+    note: string;
+    provider: string;
+    /** Read-only: the context is frozen when the result is saved, so the
+        sheet shows what was recorded rather than offering to change it. */
+    timing: LabResult['timing'];
+  };
+
+  const record = recordEditor<LabResult, LabDraft>({
     blank: () => ({
       date: dateInputValueFromEpochDay(todayEpochDay()),
       time: '',
@@ -202,8 +201,6 @@
     remove: (id) => journal.labs.deleteResult(id),
     findById: (id) => results.find((result) => result.id === id)
   });
-  let editor = $derived(record.editor);
-  let deleteTarget = $derived(record.deleteTarget);
 
   // ---------------------------------------------------------------------------
   // OCR state machine
@@ -302,24 +299,24 @@
     prefs.preferredLabUnits = next;
   }
 
-  function changeEditorAnalyte(next: string) {
-    if (!editor) return;
-    const previousAnalyte = editor.analyte === 'custom' ? editor.customAnalyte : editor.analyte;
-    const nextAnalyte = next === 'custom' ? '' : next;
-    editor.unit = nextUnitAfterAnalyteChange({
-      previousAnalyte,
-      nextAnalyte,
-      currentUnit: editor.unit,
+  /** What the analyte select is set to, spelled out: the custom option
+      carries its name in a field of its own. */
+  const analyteOf = (draft: LabDraft) => (draft.analyte === 'custom' ? draft.customAnalyte : draft.analyte);
+
+  function changeEditorAnalyte(draft: LabDraft, next: string) {
+    draft.unit = nextUnitAfterAnalyteChange({
+      previousAnalyte: analyteOf(draft),
+      nextAnalyte: next === 'custom' ? '' : next,
+      currentUnit: draft.unit,
       preferredUnits: prefs.preferredLabUnits
     });
-    editor.analyte = next;
+    draft.analyte = next;
   }
 
   /* Ticket 11's other entry point into the appointment prep list: a one-tap
      add, seeded from the analyte already on screen. */
-  async function addToAppointmentPrep() {
-    if (!editor) return;
-    const resultAnalyte = editor.analyte === 'custom' ? editor.customAnalyte : editor.analyte;
+  async function addToAppointmentPrep(draft: LabDraft) {
+    const resultAnalyte = analyteOf(draft);
     if (!resultAnalyte) return;
     await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_lab_item({ analyte: resultAnalyte }));
     toast(m.appointment_prep_added_toast());
@@ -458,9 +455,22 @@
     {/each}
   </Sheet>
 
-  <Sheet open={editor !== null} title={editor?.id ? m.labs_edit_sheet() : m.labs_new_sheet()} onClose={() => (record.editor = null)}>
-    {#if editor}
-      <h3>{editor.id ? m.labs_edit_sheet() : m.labs_new_sheet()}</h3>
+  <RecordSheet
+    {record}
+    handle="lab"
+    newTitle={m.labs_new_sheet()}
+    editTitle={m.labs_edit_sheet()}
+    saveLabel={m.labs_save()}
+    deleteLabel={m.labs_delete()}
+    confirm={{
+      title: m.labs_delete_sheet(),
+      question: (result) => m.labs_delete_q({ analyte: result.analyte }),
+      hint: () => m.labs_delete_hint(),
+      confirmLabel: m.labs_delete(),
+      cancelLabel: m.keep_it()
+    }}
+  >
+    {#snippet fields(editor)}
       <div class="cd-endpoints">
         <div class="field">
           <label class="field-label" for="lab-date">{m.labs_date_label()}</label>
@@ -475,7 +485,7 @@
       </div>
       <div class="field">
         <label class="field-label" for="lab-analyte">{m.labs_analyte_label()}</label>
-        <select class="input" id="lab-analyte" value={editor.analyte} onchange={(e) => changeEditorAnalyte((e.target as HTMLSelectElement).value)}>
+        <select class="input" id="lab-analyte" value={editor.analyte} onchange={(e) => changeEditorAnalyte(editor, (e.target as HTMLSelectElement).value)}>
           {#if !editor.analyte}
             <option value="">{m.labs_analyte_choose()}</option>
           {/if}
@@ -530,28 +540,13 @@
           {/if}
         </div>
       {/if}
-
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-lab onclick={record.save}><span>{m.labs_save()}</span></button>
-        {#if editor.id}
-          <button class="btn btn-soft" data-add-to-appointment-prep onclick={addToAppointmentPrep}><span>{m.appointment_prep_add_button()}</span></button>
-          <button class="btn btn-ghost" data-delete-lab onclick={() => record.askToDelete()}><span>{m.labs_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
-
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.labs_delete_sheet()}
-    question={deleteTarget ? m.labs_delete_q({ analyte: deleteTarget.analyte }) : ''}
-    hint={m.labs_delete_hint()}
-    confirmLabel={m.labs_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-lab': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
-  />
+    {/snippet}
+    {#snippet extraActions(editor)}
+      <button class="btn btn-soft" data-add-to-appointment-prep onclick={() => addToAppointmentPrep(editor)}>
+        <span>{m.appointment_prep_add_button()}</span>
+      </button>
+    {/snippet}
+  </RecordSheet>
 
   <Sheet
     open={ocrSheetOpen}

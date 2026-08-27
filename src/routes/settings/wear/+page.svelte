@@ -43,15 +43,14 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -166,7 +165,7 @@
       };
     },
     async upsert(draft) {
-      if (!editorCanSave) return false;
+      if (!canSave(draft)) return false;
       const note = draft.note.trim() || null;
       const reminderHoursAfterStart = reminderHoursOf(draft);
 
@@ -194,8 +193,6 @@
     remove: (id) => journal.wearSessions.deleteSession(id),
     findById: (id) => sessions.find((s) => s.id === id) ?? (running?.id === id ? running : undefined)
   });
-  let editor = $derived(record.editor);
-  let deleteTarget = $derived(record.deleteTarget);
 
   let modeOptions = $derived(
     running
@@ -206,28 +203,29 @@
         ]
   );
 
-  let editorCanSave = $derived.by(() => {
-    if (!editor) return false;
-    if (editor.reminderEnabled) {
-      const hours = parseFloat(editor.reminderHours);
-      if (editor.reminderHours.trim() === '' || isNaN(hours)) return false;
+  /* A predicate over the draft rather than a derived off the open editor,
+     so the sheet's disabled state and `upsert`'s own refusal are the same
+     rule read twice. */
+  function canSave(draft: Editor): boolean {
+    if (draft.reminderEnabled) {
+      const hours = parseFloat(draft.reminderHours);
+      if (draft.reminderHours.trim() === '' || isNaN(hours)) return false;
     }
-    if (editor.isRunning) return true;
-    if (editor.mode === 'live' && !editor.id) return true;
-    const duration = parseFloat(editor.durationHours);
-    return editor.durationHours.trim() !== '' && !isNaN(duration) && duration > 0;
-  });
+    if (draft.isRunning) return true;
+    if (draft.mode === 'live' && !draft.id) return true;
+    const duration = parseFloat(draft.durationHours);
+    return draft.durationHours.trim() !== '' && !isNaN(duration) && duration > 0;
+  }
 
   const reminderHoursOf = (editor: Editor): number | null => (editor.reminderEnabled ? parseFloat(editor.reminderHours) : null);
 
-  async function stopRunning() {
-    if (!editor || !editor.isRunning) return;
+  async function stopRunning(draft: Editor) {
     await journal.wearSessions.upsertSession({
-      id: editor.id,
-      startTimestamp: editor.startTimestamp,
-      durationMs: Date.now() - editor.startTimestamp,
-      note: editor.note.trim() || null,
-      reminderHoursAfterStart: reminderHoursOf(editor),
+      id: draft.id,
+      startTimestamp: draft.startTimestamp,
+      durationMs: Date.now() - draft.startTimestamp,
+      note: draft.note.trim() || null,
+      reminderHoursAfterStart: reminderHoursOf(draft),
       reminderTitle: m.wear_log()
     });
     record.editor = null;
@@ -379,13 +377,22 @@
     </div>
   {/if}
 
-  <Sheet
-    open={editor !== null}
-    title={editor?.isRunning ? m.wear_session_running_sheet() : editor?.id ? m.wear_session_edit_sheet() : m.wear_session_new_sheet()}
-    onClose={() => (record.editor = null)}
+  <RecordSheet
+    {record}
+    handle="wear-session"
+    newTitle={m.wear_session_new_sheet()}
+    editTitle={record.editor?.isRunning ? m.wear_session_running_sheet() : m.wear_session_edit_sheet()}
+    deleteLabel={m.wear_session_delete()}
+    confirm={{
+      title: m.wear_session_delete_sheet(),
+      question: (session) =>
+        m.wear_session_delete_q({ date: fmtDayLong(epochDayFromTimestamp(session.startTimestamp)) }),
+      hint: () => m.wear_session_delete_hint(),
+      confirmLabel: m.wear_session_delete(),
+      cancelLabel: m.keep_it()
+    }}
   >
-    {#if editor}
-      <h3>{editor.isRunning ? m.wear_session_running_sheet() : editor.id ? m.wear_session_edit_sheet() : m.wear_session_new_sheet()}</h3>
+    {#snippet fields(editor)}
 
       {#if editor.isRunning}
         <p class="muted small">{m.wear_session_running_since({ time: fmtTime(editor.startTimestamp) })}</p>
@@ -393,7 +400,7 @@
         {#if !editor.id}
           <div class="field">
             <span class="field-label">{m.wear_session_mode_group()}</span>
-            <Segmented name={m.wear_session_mode_group()} options={modeOptions} value={editor.mode} onChange={(v) => editor && (editor.mode = v as Mode)} />
+            <Segmented name={m.wear_session_mode_group()} options={modeOptions} value={editor.mode} onChange={(v) => (editor.mode = v as Mode)} />
           </div>
         {/if}
 
@@ -427,7 +434,7 @@
 
       <div class="field spread">
         <span class="field-label" id="wear-reminder-label">{m.wear_session_reminder_toggle()}</span>
-        <Switch checked={editor.reminderEnabled} label={m.wear_session_reminder_toggle()} onChange={(v) => editor && (editor.reminderEnabled = v)} />
+        <Switch checked={editor.reminderEnabled} label={m.wear_session_reminder_toggle()} onChange={(v) => (editor.reminderEnabled = v)} />
       </div>
       {#if editor.reminderEnabled}
         <div class="disclosed" transition:disclose>
@@ -445,37 +452,26 @@
           <p class="muted small">{m.wear_session_reminder_hint()}</p>
         </div>
       {/if}
-
-      <div class="stack-3">
-        {#if editor.isRunning}
-          <button class="btn btn-primary" data-stop-wear-session onclick={stopRunning}><span>{m.wear_session_stop_action()}</span></button>
-        {:else if editor.mode === 'live' && !editor.id}
-          <button class="btn btn-primary" data-start-wear-session disabled={!editorCanSave} onclick={record.save}>
-            <span>{m.wear_session_start_action()}</span>
-          </button>
-        {:else}
-          <button class="btn btn-primary" data-save-wear-session disabled={!editorCanSave} onclick={record.save}>
-            <span>{m.wear_session_save()}</span>
-          </button>
-        {/if}
-        {#if editor.id}
-          <button class="btn btn-ghost" data-delete-wear-session onclick={() => record.askToDelete()}><span>{m.wear_session_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
-
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.wear_session_delete_sheet()}
-    question={deleteTarget ? m.wear_session_delete_q({ date: fmtDayLong(epochDayFromTimestamp(deleteTarget.startTimestamp)) }) : ''}
-    hint={m.wear_session_delete_hint()}
-    confirmLabel={m.wear_session_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-wear-session': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
-  />
+    {/snippet}
+    <!-- The one screen whose primary action is not always a save: a live
+         session is started and then stopped, and each of the three carries
+         its own handle. -->
+    {#snippet primary(editor)}
+      {#if editor.isRunning}
+        <button class="btn btn-primary" data-stop-wear-session onclick={() => stopRunning(editor)}>
+          <span>{m.wear_session_stop_action()}</span>
+        </button>
+      {:else if editor.mode === 'live' && !editor.id}
+        <button class="btn btn-primary" data-start-wear-session disabled={!canSave(editor)} onclick={record.save}>
+          <span>{m.wear_session_start_action()}</span>
+        </button>
+      {:else}
+        <button class="btn btn-primary" data-save-wear-session disabled={!canSave(editor)} onclick={record.save}>
+          <span>{m.wear_session_save()}</span>
+        </button>
+      {/if}
+    {/snippet}
+  </RecordSheet>
 </div>
 
 <style>

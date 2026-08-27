@@ -96,6 +96,13 @@ describe('the surfaces', () => {
          have for a read that failed - and renders the screen's snippet for
          it. The rule it renders is readGate.ts, node-tested beside it. */
       'ReadGate.svelte',
+      /* The other half of what a record-logging screen used to hand-write
+         (phase 5 audit ticket 09): the editor sheet around ConfirmDeleteSheet
+         above, with its new-or-edit title, its save-and-delete pair and the
+         three walkthrough handles that go with them. Not a surface either -
+         a screen passes its fields as a snippet and this owns no field of
+         its own. */
+      'RecordSheet.svelte',
       'SectionHeading.svelte',
       'Tile.svelte',
       'TileGrid.svelte'
@@ -128,6 +135,12 @@ describe('the surfaces', () => {
       const html = markup(file);
       const interactive = /<(a|button)\b/.test(html);
       if (!interactive) continue;
+      /* Spelled out in the markup, or built from the screen's own record
+         name by recordHandles.ts, which is where the vocabulary for a record
+         sheet's three buttons lives (phase 5 audit ticket 09). Either way
+         the handle exists; tests/walkthrough-handles-exist.ts is what
+         resolves a generated one back to the screen that named it. */
+      if (source(file).includes('recordHandles')) continue;
       expect(html, file).toMatch(/data-[a-z-]+/);
     }
   });
