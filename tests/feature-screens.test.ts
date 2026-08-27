@@ -170,9 +170,15 @@ describe('what the worker is still fetching', () => {
   );
 
   it('keeps a loading state on every screen that reads the journal', () => {
+    /* Two ways to hold one, since phase 5 audit ticket 04: a screen either
+       hands its read to ReadGate, which owns the placeholder and the branch
+       around it, or it draws a Skeleton against a `.loading` of its own where
+       what it is waiting on is not a list. What must not happen is neither. */
     for (const route of ENTRY_DATA) {
-      expect(sourceOf.get(route), route).toContain('Skeleton.svelte');
-      expect(sourceOf.get(route), route).toMatch(/\.loading/);
+      const source = sourceOf.get(route)!;
+      const gated = source.includes('ReadGate.svelte');
+      expect(gated || source.includes('Skeleton.svelte'), `${route} waits for nothing`).toBe(true);
+      if (!gated) expect(source, route).toMatch(/\.loading/);
     }
   });
 
@@ -192,13 +198,26 @@ describe('what the worker is still fetching', () => {
        its own. A screen arriving is tier 2's - the shell already runs a
        view transition over the whole of it - so a second fade on the
        content a moment later is that content arriving twice. */
+    /* A route that hands its read to ReadGate gets the fade from the gate,
+       asserted once below - which is what took the same arrow function back
+       out of the routes the first pass had written it into. */
     for (const route of ENTRY_DATA) {
-      expect(sourceOf.get(route), route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
-      expect(markupOf.get(route), route).toMatch(/out:crossfade/);
+      const source = sourceOf.get(route)!;
+      if (!source.includes('ReadGate.svelte')) {
+        expect(source, route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
+        expect(markupOf.get(route), route).toMatch(/out:crossfade/);
+      }
       expect(markupOf.get(route), `${route} fades its content in on top of the navigation`).not.toMatch(
         /in:crossfade/
       );
     }
+  });
+
+  it('fades the gate\'s own placeholder out, on the one file that draws it', () => {
+    const gate = readFileSync(root + 'src/lib/components/kit/ReadGate.svelte', 'utf8');
+    expect(gate).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
+    expect(gate).toMatch(/out:crossfade/);
+    expect(gate).not.toMatch(/in:crossfade/);
   });
 });
 

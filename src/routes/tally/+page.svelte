@@ -12,7 +12,7 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
   import { atGrain, type Grain } from '$lib/charts/grain';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -31,10 +31,10 @@
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
 
-  let misgenderedQuery = liveQuery((j) => j.stats.tallyTrend('misgendered', from, today));
-  let misgendered = $derived(misgenderedQuery.value ?? []);
-  let correctlyGenderedQuery = liveQuery((j) => j.stats.tallyTrend('correctly_gendered', from, today));
-  let correctlyGendered = $derived(correctlyGenderedQuery.value ?? []);
+  let misgenderedQuery = liveList((j) => j.stats.tallyTrend('misgendered', from, today));
+  let misgendered = $derived(misgenderedQuery.rows);
+  let correctlyGenderedQuery = liveList((j) => j.stats.tallyTrend('correctly_gendered', from, today));
+  let correctlyGendered = $derived(correctlyGenderedQuery.rows);
 
   let maxCount = $derived(
     Math.max(1, ...misgendered.map((p) => p.value), ...correctlyGendered.map((p) => p.value))

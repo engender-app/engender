@@ -15,12 +15,12 @@
      that remain each get a full touch target, which the 28px squares and
      the buttons packed against them did not have. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import type { ChecklistItem } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -29,8 +29,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  let checklistQuery = liveQuery((j) => j.checklists.getStandaloneChecklist());
-  let items = $derived(checklistQuery.value?.items ?? []);
+  let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
+  let items = $derived(checklistQuery.rows);
 
   let addSheet = $state(false);
   let newItemText = $state('');
@@ -71,68 +71,69 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if checklistQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if items.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each items as item (item.id)}
-          <div class="kit-row is-split" data-appointment-item={item.id}>
-            <button
-              class="kit-row-main"
-              role="checkbox"
-              aria-checked={item.checked}
-              aria-label={item.checked ? m.appointment_prep_uncheck_aria({ content: item.content }) : m.appointment_prep_check_aria({ content: item.content })}
-              onclick={() => toggleChecked(item)}
-            >
-              <span class="ap-box" class:ap-ticked={item.checked}>
-                {#if item.checked}<Icon name="check" size={20} />{/if}
-              </span>
-              <span class="kit-row-text">
-                <span class="kit-row-title" class:ap-done={item.checked}>{item.content}</span>
-              </span>
-            </button>
-            <button
-              class="kit-row-act press"
-              class:ap-flagged={item.carriedForward}
-              data-carry-forward={item.id}
-              aria-pressed={item.carriedForward}
-              aria-label={item.carriedForward ? m.appointment_prep_uncarry_aria({ content: item.content }) : m.appointment_prep_carry_aria({ content: item.content })}
-              onclick={() => toggleCarriedForward(item)}
-            >
-              <Icon name="flag" size={18} />
-            </button>
-            <button
-              class="kit-row-act press"
-              data-delete-appointment-item={item.id}
-              aria-label={m.appointment_prep_delete_aria({ content: item.content })}
-              onclick={() => record.askToDelete(item)}
-            >
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
-        {/each}
-      </ListCard>
-      <!-- What the flag beside each row does. It was a bare icon with an
-           aria-label, so the only people the app told were the ones using a
-           screen reader (Alicja, 2026-08-26: "what does the flag do in
-           appointment check list?"). Under the list rather than in the
-           screen's own intro, because it is about a control that is only on
-           screen once there is something to flag. -->
-      <p class="muted small">{m.appointment_prep_flag_hint()}</p>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="check"
-        key="appointment-prep-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.appointment_prep_empty_title()}
-        text={m.appointment_prep_empty_body()}
-        action={{ label: m.appointment_prep_empty_action(), primary: true, onclick: openAddSheet }}
-      />
-    </div>
-  {/if}
+  <ReadGate read={checklistQuery} variant="line" count={3}>
+    {#snippet rows()}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each items as item (item.id)}
+            <div class="kit-row is-split" data-appointment-item={item.id}>
+              <button
+                class="kit-row-main"
+                role="checkbox"
+                aria-checked={item.checked}
+                aria-label={item.checked ? m.appointment_prep_uncheck_aria({ content: item.content }) : m.appointment_prep_check_aria({ content: item.content })}
+                onclick={() => toggleChecked(item)}
+              >
+                <span class="ap-box" class:ap-ticked={item.checked}>
+                  {#if item.checked}<Icon name="check" size={20} />{/if}
+                </span>
+                <span class="kit-row-text">
+                  <span class="kit-row-title" class:ap-done={item.checked}>{item.content}</span>
+                </span>
+              </button>
+              <button
+                class="kit-row-act press"
+                class:ap-flagged={item.carriedForward}
+                data-carry-forward={item.id}
+                aria-pressed={item.carriedForward}
+                aria-label={item.carriedForward ? m.appointment_prep_uncarry_aria({ content: item.content }) : m.appointment_prep_carry_aria({ content: item.content })}
+                onclick={() => toggleCarriedForward(item)}
+              >
+                <Icon name="flag" size={18} />
+              </button>
+              <button
+                class="kit-row-act press"
+                data-delete-appointment-item={item.id}
+                aria-label={m.appointment_prep_delete_aria({ content: item.content })}
+                onclick={() => record.askToDelete(item)}
+              >
+                <Icon name="trash" size={18} />
+              </button>
+            </div>
+          {/each}
+        </ListCard>
+        <!-- What the flag beside each row does. It was a bare icon with an
+             aria-label, so the only people the app told were the ones using a
+             screen reader (Alicja, 2026-08-26: "what does the flag do in
+             appointment check list?"). Under the list rather than in the
+             screen's own intro, because it is about a control that is only on
+             screen once there is something to flag. -->
+        <p class="muted small">{m.appointment_prep_flag_hint()}</p>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="check"
+          key="appointment-prep-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.appointment_prep_empty_title()}
+          text={m.appointment_prep_empty_body()}
+          action={{ label: m.appointment_prep_empty_action(), primary: true, onclick: openAddSheet }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <Sheet open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
     <h3>{m.appointment_prep_new_sheet()}</h3>

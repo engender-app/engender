@@ -84,6 +84,13 @@ describe('the surfaces', () => {
          for a size; the picker asks for a blink. */
       'Notice.svelte',
       'PairedDots.svelte',
+      /* Not a surface either, and the only kit component that draws no
+         pixels of its own: the three-state gate thirty-one screens used to
+         hand-write over a journal read (phase 5 audit ticket 04). It picks
+         a branch - placeholder, rows, empty state, or the words two screens
+         have for a read that failed - and renders the screen's snippet for
+         it. The rule it renders is readGate.ts, node-tested beside it. */
+      'ReadGate.svelte',
       'SectionHeading.svelte',
       'Tile.svelte',
       'TileGrid.svelte'

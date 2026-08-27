@@ -24,7 +24,7 @@
      behind anything - the checklist is whatever the person writes, and the
      app contributes the dates and the structure around it. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { recoveryDay } from '$lib/data/recoveryDay';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
@@ -39,7 +39,6 @@
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -49,29 +48,30 @@
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   /* The procedures, and the record kept against whichever one is open. */
   const SECTION_ROLE = { procedures: 0, recovery: 1 };
 
   const today = todayEpochDay();
 
-  let proceduresQuery = liveQuery((j) => j.procedures.getProcedures());
-  let procedures = $derived(proceduresQuery.value ?? []);
+  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
+  let procedures = $derived(proceduresQuery.rows);
 
   let selectedId = $state<string | null>(null);
   /* Read off the live list rather than held as its own copy, so an edit or a
      delete elsewhere on this screen cannot leave a stale procedure open. */
   let selected = $derived(procedures.find((p) => p.id === selectedId) ?? null);
 
-  let photosQuery = liveQuery((j) =>
+  let photosQuery = liveList((j) =>
     selectedId ? j.procedures.getPhotos(selectedId) : Promise.resolve([])
   );
-  let photos = $derived(photosQuery.value ?? []);
+  let photos = $derived(photosQuery.rows);
 
-  let checklistQuery = liveQuery((j) =>
-    selectedId ? j.procedures.getChecklist(selectedId) : Promise.resolve(undefined)
+  let checklistQuery = liveList((j) =>
+    selectedId ? j.procedures.getChecklist(selectedId).then((c) => c?.items) : Promise.resolve([])
   );
-  let checklistItems = $derived(checklistQuery.value?.items ?? []);
+  let checklistItems = $derived(checklistQuery.rows);
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -222,51 +222,52 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if proceduresQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if procedures.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
-        {#each procedures as procedure (procedure.id)}
-          <div class="kit-row is-split" data-procedure={procedure.id}>
-            <button
-              class="kit-row-main"
-              aria-expanded={selectedId === procedure.id}
-              aria-label={m.surgery_row_aria({ name: procedure.name })}
-              onclick={() => select(procedure)}
-            >
-              <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
-              <span class="kit-row-text">
-                <span class="kit-row-title">{procedure.name}</span>
-                <span class="kit-row-sub">
-                  {procedure.surgeryEpochDay === null ? m.surgery_date_none() : dayLabel(procedure.surgeryEpochDay)} · {recoveryText(procedure)}
+  <ReadGate read={proceduresQuery} variant="line" count={3}>
+    {#snippet rows()}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
+          {#each procedures as procedure (procedure.id)}
+            <div class="kit-row is-split" data-procedure={procedure.id}>
+              <button
+                class="kit-row-main"
+                aria-expanded={selectedId === procedure.id}
+                aria-label={m.surgery_row_aria({ name: procedure.name })}
+                onclick={() => select(procedure)}
+              >
+                <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
+                <span class="kit-row-text">
+                  <span class="kit-row-title">{procedure.name}</span>
+                  <span class="kit-row-sub">
+                    {procedure.surgeryEpochDay === null ? m.surgery_date_none() : dayLabel(procedure.surgeryEpochDay)} · {recoveryText(procedure)}
+                  </span>
                 </span>
-              </span>
-            </button>
-            <button
-              class="kit-row-act press"
-              data-edit-procedure={procedure.id}
-              aria-label={m.surgery_edit_sheet()}
-              onclick={() => record.openEditor(procedure)}
-            >
-              <Icon name="pencil" size={18} />
-            </button>
-          </div>
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="flag"
-        key="surgery-empty"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
-        title={m.surgery_empty_title()}
-        text={m.surgery_empty_body()}
-        action={{ label: m.surgery_add(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-    </div>
-  {/if}
+              </button>
+              <button
+                class="kit-row-act press"
+                data-edit-procedure={procedure.id}
+                aria-label={m.surgery_edit_sheet()}
+                onclick={() => record.openEditor(procedure)}
+              >
+                <Icon name="pencil" size={18} />
+              </button>
+            </div>
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="flag"
+          key="surgery-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
+          title={m.surgery_empty_title()}
+          text={m.surgery_empty_body()}
+          action={{ label: m.surgery_add(), primary: true, onclick: () => record.openEditor(null) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   {#if selected}
     <div class="recovery" data-recovery-log={selected.id}>
@@ -329,31 +330,32 @@
       </button>
 
       <SectionHeading text={m.surgery_photos_title()} />
-      {#if photosQuery.loading}
-        <Skeleton variant="line" count={1} />
-      {:else if photos.length}
-        <div style="margin-bottom:var(--space-3)">
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-            {#each photos as photo (photo.id)}
-              <ListRow
-                static
-                data-procedure-photo={photo.id}
-                subtitle={dayLabel(photo.epochDay)}
-                action={{
-                  icon: 'trash',
-                  label: m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) }),
-                  onclick: () => photoRecord.askToDelete(photo),
-                  attrs: { 'data-delete-procedure-photo': photo.id }
-                }}
-              >
-                {#snippet leading()}<PhotoThumb photo={photo} size={48} />{/snippet}
-              </ListRow>
-            {/each}
-          </ListCard>
-        </div>
-      {:else}
-        <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_photos_empty()}</p>
-      {/if}
+      <ReadGate read={photosQuery} variant="line" count={1}>
+        {#snippet rows()}
+          <div style="margin-bottom:var(--space-3)">
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
+              {#each photos as photo (photo.id)}
+                <ListRow
+                  static
+                  data-procedure-photo={photo.id}
+                  subtitle={dayLabel(photo.epochDay)}
+                  action={{
+                    icon: 'trash',
+                    label: m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) }),
+                    onclick: () => photoRecord.askToDelete(photo),
+                    attrs: { 'data-delete-procedure-photo': photo.id }
+                  }}
+                >
+                  {#snippet leading()}<PhotoThumb photo={photo} size={48} />{/snippet}
+                </ListRow>
+              {/each}
+            </ListCard>
+          </div>
+        {/snippet}
+        {#snippet empty()}
+          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_photos_empty()}</p>
+        {/snippet}
+      </ReadGate>
       <button class="btn btn-soft press" data-add-procedure-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
         <span>{m.add_photo()}</span>
       </button>

@@ -133,18 +133,25 @@
      The count comes back separately from the page, because the screen states
      how many entries matched and shows a page of them: taking the count from
      the page would have it report thirty for a query with fifty. */
+  /* One default for the whole answer rather than one per field. The page and
+     its count come back together or not at all, and defaulting them
+     separately was two chances for a screen to report a total over hits that
+     were not from the same read. */
+  const NOTHING_ASKED = { hits: [], total: 0 };
+
   let search = liveQuery((j) => {
     const typed = query.trim();
     const limit = PAGE * pages;
-    if (!typed && !hasStructuredCriteria) return Promise.resolve({ hits: [], total: 0 });
+    if (!typed && !hasStructuredCriteria) return Promise.resolve(NOTHING_ASKED);
     const tagIds = tagIdsMatching(typed, vocabulary.tags);
     return Promise.all([
       j.entries.searchEntries(typed, tagIds, filters, limit),
       j.entries.countSearchMatches(typed, tagIds, filters)
     ]).then(([hits, total]) => ({ hits, total }));
   });
-  let hits = $derived(search.value?.hits ?? []);
-  let total = $derived(search.value?.total ?? 0);
+  let results = $derived(search.value ?? NOTHING_ASKED);
+  let hits = $derived(results.hits);
+  let total = $derived(results.total);
   let groups = $derived(entryDayGroups(hits));
   /* What is left, and therefore whether there is anything to ask for. Read
      off the count rather than off "the page came back full", which cannot

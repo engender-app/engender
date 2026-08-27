@@ -6,7 +6,7 @@
      is drawn. */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { heatLevel } from '$lib/data/metricRange';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -24,13 +24,13 @@
      through the worker to draw seven squares is the shape of read the port
      exists to avoid. Empty until it lands, so the strip draws at its full
      size with every day at level 0 and never reflows. */
-  let averages = liveQuery((j) => j.stats.dayAverages(metric, week.first, week.last));
+  let averages = liveList((j) => j.stats.dayAverages(metric, week.first, week.last));
 
   let days = $derived.by(() => {
     // Native value in, swatch out: the strip and the calendar shade the
     // same day the same way whatever the metric's range is (ADR-0012).
     const range = vocabulary.rangeOf(metric);
-    const byDay = new Map((averages.value ?? []).map((point) => [point.day, point.value]));
+    const byDay = new Map(averages.rows.map((point) => [point.day, point.value]));
     return Array.from({ length: 7 }, (_, idx) => {
       const day = week.first + idx;
       const level = heatLevel(byDay.get(day) ?? null, range);

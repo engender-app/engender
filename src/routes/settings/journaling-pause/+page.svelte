@@ -7,7 +7,7 @@
      distinct from deleting the row outright, which erases that the pause
      ever happened rather than closing it out. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { pauseCoversDay } from '$lib/data/journalingPause';
@@ -17,8 +17,8 @@
 
   const today = todayEpochDay();
 
-  let pausesQuery = liveQuery((j) => j.journalingPauses.getPauses());
-  let pauses = $derived(pausesQuery.value ?? []);
+  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
+  let pauses = $derived(pausesQuery.rows);
   let current = $derived(pauses.find((p) => pauseCoversDay(p, today)) ?? null);
   let history = $derived(pauses.filter((p) => p.id !== current?.id));
 

@@ -5,7 +5,7 @@
      session photos state something and go nowhere, so they are static
      rows, and the sessions themselves open the editor. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { hairRemovalAreaName, hairRemovalMethodName, severityName } from '$lib/data/vocabulary/labels';
   import { daysSinceLastSession } from '$lib/data/hairRemovalSchedule';
   import { HAIR_REMOVAL_AREAS } from '$lib/data/hairRemovalAreas';
@@ -23,7 +23,6 @@
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -33,6 +32,7 @@
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   /* Two areas: how long since each area was last worked on, and the
      sessions themselves. */
@@ -42,8 +42,8 @@
 
   const today = todayEpochDay();
 
-  let sessionsQuery = liveQuery((j) => j.hairRemoval.getSessions());
-  let sessions = $derived(sessionsQuery.value ?? []);
+  let sessionsQuery = liveList((j) => j.hairRemoval.getSessions());
+  let sessions = $derived(sessionsQuery.rows);
 
   let recency = $derived(daysSinceLastSession(sessions, today));
 
@@ -83,8 +83,8 @@
   /* Only once a session has its own id: a photo belongs to one session
      (hairRemoval.ts's own foreign key), so there is nothing to attach it to
      before that first save. */
-  let photosQuery = liveQuery((j) => (editor?.id ? j.hairRemoval.getPhotos(editor.id) : Promise.resolve([])));
-  let photos = $derived(photosQuery.value ?? []);
+  let photosQuery = liveList((j) => (editor?.id ? j.hairRemoval.getPhotos(editor.id) : Promise.resolve([])));
+  let photos = $derived(photosQuery.rows);
 
   async function storePhoto(photo: NormalizedPhoto | null) {
     if (!editor?.id || !photo) return;
@@ -118,52 +118,53 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if sessionsQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if sessions.length}
-    <div class="screen-part">
-      <SectionHeading text={m.hair_removal_recency_title()} />
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
-        {#each HAIR_REMOVAL_AREAS as area (area)}
-          {@const days = recency[area]}
-          <ListRow
-            static
-            data-recency={area}
-            title={hairRemovalAreaName(area)}
-            subtitle={days === null
-              ? m.hair_removal_area_never_used()
-              : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
-          />
-        {/each}
-      </ListCard>
+  <ReadGate read={sessionsQuery} variant="line" count={3}>
+    {#snippet rows()}
+      <div class="screen-part">
+        <SectionHeading text={m.hair_removal_recency_title()} />
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
+          {#each HAIR_REMOVAL_AREAS as area (area)}
+            {@const days = recency[area]}
+            <ListRow
+              static
+              data-recency={area}
+              title={hairRemovalAreaName(area)}
+              subtitle={days === null
+                ? m.hair_removal_area_never_used()
+                : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
+            />
+          {/each}
+        </ListCard>
 
-      <SectionHeading text={m.hair_removal()} />
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-        {#each [...sessions].reverse() as session (session.id)}
-          <ListRow
-            key={session.id}
-            data-hair-removal-session={session.id}
-            icon="shuffle"
-            title={hairRemovalAreaName(session.area)}
-            subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
-            chevron={false}
-            onclick={() => record.openEditor(session)}
-          />
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="shuffle"
-        key="hair-removal-empty"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-        title={m.hair_removal_empty_title()}
-        text={m.hair_removal_empty_body()}
-        action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-    </div>
-  {/if}
+        <SectionHeading text={m.hair_removal()} />
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+          {#each [...sessions].reverse() as session (session.id)}
+            <ListRow
+              key={session.id}
+              data-hair-removal-session={session.id}
+              icon="shuffle"
+              title={hairRemovalAreaName(session.area)}
+              subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
+              chevron={false}
+              onclick={() => record.openEditor(session)}
+            />
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="shuffle"
+          key="hair-removal-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
+          title={m.hair_removal_empty_title()}
+          text={m.hair_removal_empty_body()}
+          action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <Sheet
     open={editor !== null}
@@ -236,35 +237,36 @@
           </button>
         </div>
 
-        {#if photosQuery.loading}
-          <Skeleton variant="line" count={1} />
-        {:else if photos.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-              {#each photos as p (p.id)}
-                <ListRow
-                  static
-                  data-hair-removal-photo={p.id}
-                  action={{
-                    icon: 'trash',
-                    label: m.hair_removal_photo_delete_sheet(),
-                    onclick: () => photoRecord.askToDelete(p),
-                    attrs: { 'data-delete-hair-removal-photo': p.id }
-                  }}
-                >
-                  {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
-                </ListRow>
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <Notice
-            icon="camera"
-            key="hair-removal-photos-empty"
-            title={m.hair_removal_photo_empty_title()}
-            text={m.hair_removal_photo_empty_body()}
-          />
-        {/if}
+        <ReadGate read={photosQuery} variant="line" count={1}>
+          {#snippet rows()}
+            <div style="margin-bottom:var(--space-3)">
+              <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+                {#each photos as p (p.id)}
+                  <ListRow
+                    static
+                    data-hair-removal-photo={p.id}
+                    action={{
+                      icon: 'trash',
+                      label: m.hair_removal_photo_delete_sheet(),
+                      onclick: () => photoRecord.askToDelete(p),
+                      attrs: { 'data-delete-hair-removal-photo': p.id }
+                    }}
+                  >
+                    {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
+                  </ListRow>
+                {/each}
+              </ListCard>
+            </div>
+          {/snippet}
+          {#snippet empty()}
+            <Notice
+              icon="camera"
+              key="hair-removal-photos-empty"
+              title={m.hair_removal_photo_empty_title()}
+              text={m.hair_removal_photo_empty_body()}
+            />
+          {/snippet}
+        </ReadGate>
       {/if}
 
       <div class="stack-3">

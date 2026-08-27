@@ -1,6 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { reminderScheduleLabel, reminderTypeLabel } from '$lib/data/vocabulary/reminderLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -13,7 +13,7 @@
   const TYPE_ICON: Record<string, string> = { med: 'heart', injection: 'zap', appointment: 'calendar', other: 'bell' };
   let isWeb = $derived(!isAndroid());
 
-  let reminders = liveQuery((j) => j.reminders.getReminders());
+  let reminders = liveList((j) => j.reminders.getReminders());
   let status = $state<AndroidReminderStatus>({ notifications: 'not-required', exactAlarms: 'not-required' });
 
   async function refreshStatus() {
@@ -147,7 +147,7 @@
     {/if}
 
     <div class="list-group">
-      {#each reminders.value ?? [] as r (r.id)}
+      {#each reminders.rows as r (r.id)}
         <div class="list-row">
           <span class="row-icon"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
           <a class="row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">

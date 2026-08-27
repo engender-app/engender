@@ -5,7 +5,7 @@
      place the projection is surfaced directly rather than only through
      an Android prompt (box 4, +layout.svelte's reconcileStockRunOutReminders). */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { RUN_OUT_LEAD_DAYS } from '$lib/data/stockProjection';
@@ -13,23 +13,23 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
-  let rowsQuery = liveQuery((j) => j.stock.getProjections(todayEpochDay()));
-  let rows = $derived(rowsQuery.value ?? []);
+  let rowsQuery = liveList((j) => j.stock.getProjections(todayEpochDay()));
+  let projections = $derived(rowsQuery.rows);
 
   /* The excluded-dose caveat is about every projection on the screen - its
      own wording says "every projection above" - and it was being rendered
      as a third line inside each row, which said the same thing once per
      drug and made the row three lines deep. One statement, under the list,
      summing what was left out. */
-  let excludedDoses = $derived(rows.reduce((total, row) => total + row.projection.excludedDoses, 0));
+  let excludedDoses = $derived(projections.reduce((total, row) => total + row.projection.excludedDoses, 0));
 
   function runOutText(row: StockProjectionRow): string {
     const { remaining, runOutEpochDay } = row.projection;
@@ -96,55 +96,56 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if rowsQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if rows.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each rows as row (row.entry.id)}
-          <ListRow
-            key={row.entry.id}
-            data-stock={row.entry.id}
-            icon="package"
-            title={row.entry.drug}
-            subtitle={`${m.stock_remaining({ count: row.projection.remaining, unit: row.entry.unit })} · ${m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}`}
-            chevron={false}
-            onclick={() => openEditor(row)}
-          >
-            {#snippet trailing()}
-              <!-- The projection is the reason to be on this screen, so it
-                   sits at the end of the row where a count or a date does
-                   rather than as a pill wedged into the title. It takes the
-                   warning colour only where there is something to be warned
-                   about; otherwise it is a reading like any other. -->
-              <span
-                class="stock-run-out"
-                class:notice-warn={isApproaching(row) || row.projection.remaining <= 0}
-              >
-                {runOutText(row)}
-              </span>
-            {/snippet}
-          </ListRow>
-        {/each}
-      </ListCard>
-      {#if excludedDoses > 0}
-        <div class="screen-part">
-          <Notice icon="info" key="stock-excluded" text={m.stock_excluded_note({ count: String(excludedDoses) })} />
-        </div>
-      {/if}
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="package"
-        key="stock-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.stock_empty_title()}
-        text={m.stock_empty_body()}
-        action={{ label: m.stock_empty_action(), primary: true, onclick: () => openEditor(null) }}
-      />
-    </div>
-  {/if}
+  <ReadGate read={rowsQuery} variant="line" count={3}>
+    {#snippet rows()}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each projections as row (row.entry.id)}
+            <ListRow
+              key={row.entry.id}
+              data-stock={row.entry.id}
+              icon="package"
+              title={row.entry.drug}
+              subtitle={`${m.stock_remaining({ count: row.projection.remaining, unit: row.entry.unit })} · ${m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}`}
+              chevron={false}
+              onclick={() => openEditor(row)}
+            >
+              {#snippet trailing()}
+                <!-- The projection is the reason to be on this screen, so it
+                     sits at the end of the row where a count or a date does
+                     rather than as a pill wedged into the title. It takes the
+                     warning colour only where there is something to be warned
+                     about; otherwise it is a reading like any other. -->
+                <span
+                  class="stock-run-out"
+                  class:notice-warn={isApproaching(row) || row.projection.remaining <= 0}
+                >
+                  {runOutText(row)}
+                </span>
+              {/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+        {#if excludedDoses > 0}
+          <div class="screen-part">
+            <Notice icon="info" key="stock-excluded" text={m.stock_excluded_note({ count: String(excludedDoses) })} />
+          </div>
+        {/if}
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="package"
+          key="stock-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.stock_empty_title()}
+          text={m.stock_empty_body()}
+          action={{ label: m.stock_empty_action(), primary: true, onclick: () => openEditor(null) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <Sheet open={editor !== null} title={editor?.id ? m.stock_edit_sheet() : m.stock_new_sheet()} onClose={() => (editor = null)}>
     {#if editor}

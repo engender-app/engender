@@ -90,6 +90,8 @@
   "trash_intro": "Deleted entries stay here for 30 days before they're gone for good.",
   "trash_empty_title": "Trash is empty",
   "trash_empty_body": "A deleted entry shows up here for 30 days before it's gone for good.",
+  "trash_read_failed_title": "Couldn't read the trash",
+  "trash_read_failed_body": "This is not the same as an empty trash. Nothing was deleted by the failure, so whatever was waiting here is still waiting. Leave the screen and come back to try again.",
   "trash_restore": "Restore",
   "trash_restored_toast": "Entry restored",
   "trash_days_left": [
@@ -1530,6 +1532,8 @@
   "ph_cell_aria": "Photo from {date}",
   "ph_empty_title": "No photos yet",
   "ph_empty_body": "Photos you attach to entries and milestones gather here, and one day “then vs now” will be worth it.",
+  "pj_read_failed_title": "Couldn't read your photos",
+  "pj_read_failed_body": "This is not the same as having no photos. Leave the screen and come back to try again.",
   "photo_picker_failed": "Couldn’t open the photo picker.",
   "voice_compare_sub": "two recordings, side by side",
   "vc_compare": "Compare",
