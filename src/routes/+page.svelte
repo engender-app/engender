@@ -52,6 +52,7 @@
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { appWordmark } from '$lib/disguise/identity';
   import { roleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
   import FlagSun from '$lib/components/FlagSun.svelte';
@@ -231,14 +232,14 @@
          that decides whether the sun renders at all matches every other
          disguise gate in the app. -->
     {#if !prefs.disguise}<FlagSun />{/if}
-    <!-- The same swap AppNav.svelte makes on the rail's wordmark, and for
-         the reason SCREENS.md gives: disguise changes the app's name and
-         icon app-wide, not per screen. The hero is the largest text on the
-         screen, so leaving it saying "Gender Diary" while the tab, the
-         launcher and the rail all say "Notes" undoes the rest of the
-         disguise in one line. Two sites in Settings still name the app under
-         disguise; those are ticket 24's screen. -->
-    <h1 class="home-hero" data-home-hero translate="no">{prefs.disguise ? 'Notes' : m.app_name()}</h1>
+    <!-- The same swap AppNav.svelte makes on the rail's wordmark, out of
+         the same module, and for the reason SCREENS.md gives: disguise
+         changes the app's name and icon app-wide, not per screen. The hero
+         is the largest text on the screen, so leaving it saying "Gender
+         Diary" while the tab, the launcher and the rail all say "Notes"
+         undoes the rest of the disguise in one line. Two sites in Settings
+         still name the app under disguise; those are ticket 24's screen. -->
+    <h1 class="home-hero" data-home-hero translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
     <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     <!-- Under the greeting rather than under the week strip. Still not the
          hero-metric template the craft floor names - no pill, no accent, no

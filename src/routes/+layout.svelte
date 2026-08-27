@@ -26,6 +26,7 @@
   import { journal, onTablesWritten } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { documentChrome } from '$lib/data/prefs/documentChrome';
+  import { tabIdentity } from '$lib/disguise/identity';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
@@ -253,17 +254,10 @@
     root.dataset.a11yTextSize = chrome.a11yTextSize;
     root.dataset.a11yLegibility = chrome.a11yLegibility;
     root.dataset.a11yMotion = chrome.a11yMotion;
-    /* The tab's identity, decided once: a tab called "Notes" next to a trans
-       flag is not disguised at all, and the icon is the half of it that
-       survives a narrow tab strip, a background tab and the bookmark list.
-       The blank is this side's alone - app.html has no notion of a quick
-       exit - so it sits on top of the shared icon rather than inside it. */
-    const tab = lockState.blanked
-      ? /* Disguised, the quick-exit face is the decoy notes screen (ticket
-           30), so the tab says what the page shows; undisguised it stays an
-           empty tab over the blank. */
-        { title: prefs.disguise ? 'Notes' : 'New tab', icon: 'favicon-notes.svg' }
-      : { title: prefs.disguise ? 'Notes' : 'enGender', icon: chrome.icon };
+    /* The tab's identity, from the module every surface that names the app
+       reads (disguise/identity.ts) - the rule and its reasons are there,
+       and this is the wiring. */
+    const tab = tabIdentity({ disguised: prefs.disguise, blanked: lockState.blanked, icon: chrome.icon });
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
     /* The installed app's identity (ticket 25). Follows the preference and

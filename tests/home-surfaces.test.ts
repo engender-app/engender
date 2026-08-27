@@ -67,8 +67,10 @@ describe('what Home is built from', () => {
     // And Home still gates the sun itself, which is the belt to that braces.
     expect(markup).toContain('{#if !prefs.disguise}<FlagSun />');
     /* SCREENS.md: disguise changes the app's name app-wide, not per screen,
-       and the hero is the largest text on this one. */
-    expect(markup).toContain("{prefs.disguise ? 'Notes' : m.app_name()}");
+       and the hero is the largest text on this one. What the swap produces
+       is disguise/identity.test.ts's; what this checks is that Home asks
+       rather than deciding for itself. */
+    expect(markup).toContain('{appWordmark(prefs.disguise, m.app_name())}');
   });
 });
 
