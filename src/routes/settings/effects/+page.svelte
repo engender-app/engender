@@ -13,7 +13,7 @@
      The group is a list card rather than a `.card` holding a `.list-group`,
      which was two containers deep for one list. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { earliestEpisode } from '$lib/data/regimenEpisode';
   import { literatureWindow, literatureWindowDays } from '$lib/data/personalEffectWindow';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -35,8 +35,8 @@
   import Switch from '$lib/components/Switch.svelte';
   import EffectsTimeline from '$lib/components/EffectsTimeline.svelte';
 
-  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
-  let episodes = $derived(episodesQuery.value ?? []);
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let episodes = $derived(episodesQuery.rows);
   /* The anchor is HRT's own start, not whichever episode is active right
      now (ticket 07) - activeEpisodesAt is the wrong function here, this is
      the one place earliestEpisode is called from. Its drug decides which
@@ -45,8 +45,8 @@
   let anchor = $derived(earliestEpisode(episodes));
   let anchorEpochDay = $derived(anchor?.startEpochDay ?? null);
 
-  let markersQuery = liveQuery((j) => j.personalEffects.getMarkers());
-  let markers = $derived(markersQuery.value ?? []);
+  let markersQuery = liveList((j) => j.personalEffects.getMarkers());
+  let markers = $derived(markersQuery.rows);
   const markerFor = (effect: string) => markers.find((marker) => marker.effect === effect) ?? null;
 
   const today = todayEpochDay();

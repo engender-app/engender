@@ -35,7 +35,7 @@
     epochDayFromDateInputValue,
     todayEpochDay
   } from '$lib/data/epochDay';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -194,16 +194,16 @@
   );
   let recap = $derived(recapQuery.value);
 
-  let moodTrendQuery = liveQuery((j) =>
+  let moodTrendQuery = liveList((j) =>
     on && range ? j.stats.dayAverages('mood', range.start, range.end) : Promise.resolve([])
   );
-  let moodTrend = $derived((moodTrendQuery.value ?? []) as DayAverage[]);
+  let moodTrend = $derived((moodTrendQuery.rows) as DayAverage[]);
 
   /* The four reads spec 06 adds. Tag insights follow the selected metric,
      the same one the stats hub's own insight card reads: which scale "better
      or worse days" is measured on is one preference with one control, and it
      is set on the screen that draws the scales. */
-  let insightsQuery = liveQuery((j) =>
+  let insightsQuery = liveList((j) =>
     on && range ? j.stats.tagInsights(metricKey(prefs), range.start, range.end) : Promise.resolve([])
   );
 
@@ -224,7 +224,7 @@
     on && range ? j.stats.bestStreakEver(today) : Promise.resolve(0)
   );
 
-  let insights = $derived(nameTagInsights(wrappedTagInsights(insightsQuery.value ?? []) ?? []));
+  let insights = $derived(nameTagInsights(wrappedTagInsights(insightsQuery.rows) ?? []));
   let tally = $derived(
     tallyQuery.value ? wrappedTallyCounts(tallyQuery.value.misgendered, tallyQuery.value.correctlyGendered) : null
   );

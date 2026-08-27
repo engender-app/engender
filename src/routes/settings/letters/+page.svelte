@@ -18,7 +18,7 @@
      is waiting for - a row that answers a press with nothing is worse than
      a row that cannot be pressed. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { isLetterSealed } from '$lib/data/letterStatus';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -26,7 +26,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -37,6 +36,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   const HISTORY_LIMIT = 100;
 
@@ -48,8 +48,8 @@
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let milestones = $derived(vocabulary.milestones);
 
-  let lettersQuery = liveQuery((j) => j.letters.getLetters(HISTORY_LIMIT));
-  let letters = $derived(lettersQuery.value ?? []);
+  let lettersQuery = liveList((j) => j.letters.getLetters(HISTORY_LIMIT));
+  let letters = $derived(lettersQuery.rows);
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -81,40 +81,41 @@
   </ScreenHeader>
 
   <SectionHeading text={m.letters_yours_title()} />
-  {#if lettersQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if letters.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each letters as letter (letter.id)}
-          {@const sealed = isLetterSealed(letter, today)}
-          <ListRow
-            key={letter.id}
-            data-letter={letter.id}
-            icon={sealed ? 'lock' : 'book'}
-            title={sealed ? m.letters_sealed_title() : dayLabel(letter.epochDay)}
-            subtitle={sealed
-              ? m.letters_sealed_until({ date: dayLabel(letter.unlockEpochDay) })
-              : letter.text}
-            chevron={false}
-            onclick={() => (reading = letter)}
-            action={{ icon: 'trash', label: m.letters_delete_sheet(), onclick: () => record.askToDelete(letter) }}
-          />
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="book"
-        key="letters-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.letters_empty_title()}
-        text={m.letters_empty_body()}
-        action={{ label: m.letters_compose_title(), primary: true, onclick: () => (composing = true) }}
-      />
-    </div>
-  {/if}
+  <ReadGate read={lettersQuery} variant="line" count={3}>
+    {#snippet rows(letters)}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each letters as letter (letter.id)}
+            {@const sealed = isLetterSealed(letter, today)}
+            <ListRow
+              key={letter.id}
+              data-letter={letter.id}
+              icon={sealed ? 'lock' : 'book'}
+              title={sealed ? m.letters_sealed_title() : dayLabel(letter.epochDay)}
+              subtitle={sealed
+                ? m.letters_sealed_until({ date: dayLabel(letter.unlockEpochDay) })
+                : letter.text}
+              chevron={false}
+              onclick={() => (reading = letter)}
+              action={{ icon: 'trash', label: m.letters_delete_sheet(), onclick: () => record.askToDelete(letter) }}
+            />
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="book"
+          key="letters-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.letters_empty_title()}
+          text={m.letters_empty_body()}
+          action={{ label: m.letters_compose_title(), primary: true, onclick: () => (composing = true) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <Sheet open={composing} title={m.letters_compose_title()} onClose={() => (composing = false)}>
     <SectionHeading text={m.letters_compose_title()} />

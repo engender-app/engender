@@ -13,7 +13,7 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { tryoutKindName } from '$lib/data/vocabulary/labels';
@@ -38,6 +38,7 @@
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   /* Three areas below the form: how it has felt, what it looked like, and
      what was written while it ran. */
@@ -100,8 +101,8 @@
   /* Only once a tryout has its own id, the same reasoning hair-removal's
      own photo section gives: a photo belongs to one tryout, so there is
      nothing to attach it to before that first save. */
-  let photosQuery = liveQuery((j) => (isNew ? Promise.resolve([]) : j.tryouts.getPhotos(tryoutId)));
-  let photos = $derived(photosQuery.value ?? []);
+  let photosQuery = liveList((j) => (isNew ? Promise.resolve([]) : j.tryouts.getPhotos(tryoutId)));
+  let photos = $derived(photosQuery.rows);
   const photoRecord = recordEditor<TryoutPhoto>({
     remove: (id) => journal.tryouts.deletePhoto(id),
     findById: (id) => photos.find((p) => p.id === id)
@@ -125,8 +126,8 @@
   );
 
   const HISTORY_LIMIT = 50;
-  let feelingQuery = liveQuery((j) => (isNew ? Promise.resolve([]) : j.feltSense.forTryout(tryoutId)));
-  let feeling = $derived(feelingQuery.value ?? []);
+  let feelingQuery = liveList((j) => (isNew ? Promise.resolve([]) : j.feltSense.forTryout(tryoutId)));
+  let feeling = $derived(feelingQuery.rows);
 
   /* Phase 5 performance ticket 07/08: an open-ended tryout's range has no
      upper bound, so a page limit is the only thing that keeps this bounded.
@@ -146,16 +147,22 @@
     pages = 1;
   });
 
+  /* One default for the whole answer, as on the search screen: the page and
+     its count are one read, and defaulting them apart let the two disagree. */
+  const NOTHING_IN_RANGE = { hits: [], total: 0 };
+
   let entriesQuery = liveQuery((j) => {
-    if (isNew || !existing) return Promise.resolve({ hits: [], total: 0 });
+    if (isNew || !existing) return Promise.resolve(NOTHING_IN_RANGE);
     const range = { startEpochDay: existing.startEpochDay, endEpochDay: existing.endEpochDay };
     return Promise.all([
       j.entries.searchEntries('', [], range, PAGE * pages),
       j.entries.countSearchMatches('', [], range)
     ]).then(([hits, total]) => ({ hits, total }));
   });
-  let entriesInRange = $derived(entriesQuery.value?.hits ?? []);
-  let entriesRemaining = $derived(Math.max(0, (entriesQuery.value?.total ?? 0) - entriesInRange.length));
+  let entriesInRange = $derived((entriesQuery.value ?? NOTHING_IN_RANGE).hits);
+  let entriesRemaining = $derived(
+    Math.max(0, (entriesQuery.value ?? NOTHING_IN_RANGE).total - entriesInRange.length)
+  );
 
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
@@ -260,37 +267,38 @@
     >
       <span>{m.tryout_feeling_save()}</span>
     </button>
-    {#if feelingQuery.loading}
-      <div out:crossfade><Skeleton variant="line" count={2} /></div>
-    {:else if feeling.length}
-      <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
-          {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
-            <ListRow
-              static
-              data-feeling={f.id}
-              title={dayLabel(f.epochDay)}
-              subtitle={f.note}
-              action={{
-                icon: 'trash',
-                label: m.tryout_feeling_delete_sheet(),
-                onclick: () => feelingRecord.askToDelete(f),
-                attrs: { 'data-delete-feeling': f.id }
-              }}
-            />
-          {/each}
-        </ListCard>
-      </div>
-    {:else}
-      <div class="screen-part">
-        <Notice
-          icon="heart"
-          key="tryout-feeling-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}
-          text={m.tryout_feeling_none()}
-        />
-      </div>
-    {/if}
+    <ReadGate read={feelingQuery} variant="line" count={2}>
+      {#snippet rows(feeling)}
+        <div class="screen-part">
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
+            {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
+              <ListRow
+                static
+                data-feeling={f.id}
+                title={dayLabel(f.epochDay)}
+                subtitle={f.note}
+                action={{
+                  icon: 'trash',
+                  label: m.tryout_feeling_delete_sheet(),
+                  onclick: () => feelingRecord.askToDelete(f),
+                  attrs: { 'data-delete-feeling': f.id }
+                }}
+              />
+            {/each}
+          </ListCard>
+        </div>
+      {/snippet}
+      {#snippet empty()}
+        <div class="screen-part">
+          <Notice
+            icon="heart"
+            key="tryout-feeling-empty"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}
+            text={m.tryout_feeling_none()}
+          />
+        </div>
+      {/snippet}
+    </ReadGate>
 
     <SectionHeading text={m.tryout_photo_section_title()} />
     <div class="photo-row" style="margin-bottom:var(--space-3)">
@@ -301,38 +309,39 @@
         <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
       </button>
     </div>
-    {#if photosQuery.loading}
-      <div out:crossfade><Skeleton variant="line" count={1} /></div>
-    {:else if photos.length}
-      <div style="margin-bottom:var(--space-3)">
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
-          {#each photos as p (p.id)}
-            <ListRow
-              static
-              data-tryout-photo={p.id}
-              action={{
-                icon: 'trash',
-                label: m.tryout_photo_delete_sheet(),
-                onclick: () => photoRecord.askToDelete(p),
-                attrs: { 'data-delete-tryout-photo': p.id }
-              }}
-            >
-              {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
-            </ListRow>
-          {/each}
-        </ListCard>
-      </div>
-    {:else}
-      <div class="screen-part">
-        <Notice
-          icon="camera"
-          key="tryout-photos-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
-          title={m.tryout_photo_empty_title()}
-          text={m.tryout_photo_empty_body()}
-        />
-      </div>
-    {/if}
+    <ReadGate read={photosQuery} variant="line" count={1}>
+      {#snippet rows(photos)}
+        <div style="margin-bottom:var(--space-3)">
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
+            {#each photos as p (p.id)}
+              <ListRow
+                static
+                data-tryout-photo={p.id}
+                action={{
+                  icon: 'trash',
+                  label: m.tryout_photo_delete_sheet(),
+                  onclick: () => photoRecord.askToDelete(p),
+                  attrs: { 'data-delete-tryout-photo': p.id }
+                }}
+              >
+                {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
+              </ListRow>
+            {/each}
+          </ListCard>
+        </div>
+      {/snippet}
+      {#snippet empty()}
+        <div class="screen-part">
+          <Notice
+            icon="camera"
+            key="tryout-photos-empty"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
+            title={m.tryout_photo_empty_title()}
+            text={m.tryout_photo_empty_body()}
+          />
+        </div>
+      {/snippet}
+    </ReadGate>
 
     <SectionHeading text={m.tryout_entries_title()} />
     {#if entriesQuery.loading}

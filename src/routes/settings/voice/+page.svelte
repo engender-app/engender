@@ -7,7 +7,7 @@
      chevron. One screen wants that shape, so it stays here rather than
      becoming a prop the other twenty-five would never pass. */
   import { m } from '$lib/paraglide/messages';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import { calendarDuration } from '$lib/data/epochDay';
   import {
@@ -19,20 +19,20 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   /* The audio counterpart to settings/photos (ticket 25): same picker and
      compare interaction over journal.voice.inJournal's dated, oldest-first
      list instead of journal.photos.inJournal's. Recordings are entry-only
      (CONTEXT: "Voice recording"), so there is no milestone-vs-entry caption
      to show under each side the way the photo compare view does. */
-  let recordingsQuery = liveQuery((j) => j.voice.inJournal());
-  let recordings = $derived(recordingsQuery.value ?? []);
+  let recordingsQuery = liveList((j) => j.voice.inJournal());
+  let recordings = $derived(recordingsQuery.rows);
 
   let selected = $state<string[]>([]);
   let comparing = $state(false);
@@ -81,57 +81,58 @@
     </div>
   {:else}
     <ScreenHeader title={m.recordings_label()} back="/more" />
-    {#if recordingsQuery.loading}
-      <div out:crossfade><Skeleton variant="line" count={4} /></div>
-    {:else if recordings.length}
-      <div class="screen-part">
-        {#if comparing && !pair}
-          <p class="muted small" style="margin-bottom:var(--space-2)">{m.vc_compare_reset()}</p>
-        {/if}
-        <p class="muted small" style="margin-bottom:var(--space-4)">
-          {orderedSelected.length === 0
-            ? m.vc_pick_two()
-            : orderedSelected.length === 1
-              ? m.vc_one_selected()
-              : m.vc_two_selected()}
-        </p>
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          {#each recordings as r (r.id)}
-            <button
-              class="kit-row"
-              data-voice-cell={r.id}
-              aria-pressed={orderedSelected.includes(r.id)}
-              aria-label={m.vc_cell_aria({ date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-              onclick={() => toggle(r.id)}
-            >
-              <span class="kit-row-ico"><Icon name="mic" size={20} /></span>
-              <span class="kit-row-text">
-                <span class="kit-row-title">{fmtDay(r.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-              </span>
-              <span class="kit-row-trail">
-                {#if orderedSelected.includes(r.id)}<Icon name="check" size={20} />{/if}
-              </span>
-            </button>
-          {/each}
-        </ListCard>
-      </div>
-      {#if pair}
-        <div class="editor-savebar">
-          <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
-            <Icon name="columns" size={20} /><span>{m.vc_compare()}</span>
-          </button>
+    <ReadGate read={recordingsQuery} variant="line" count={4}>
+      {#snippet rows(recordings)}
+        <div class="screen-part">
+          {#if comparing && !pair}
+            <p class="muted small" style="margin-bottom:var(--space-2)">{m.vc_compare_reset()}</p>
+          {/if}
+          <p class="muted small" style="margin-bottom:var(--space-4)">
+            {orderedSelected.length === 0
+              ? m.vc_pick_two()
+              : orderedSelected.length === 1
+                ? m.vc_one_selected()
+                : m.vc_two_selected()}
+          </p>
+          <ListCard role={roleAt(activeFlag.roles, 0)}>
+            {#each recordings as r (r.id)}
+              <button
+                class="kit-row"
+                data-voice-cell={r.id}
+                aria-pressed={orderedSelected.includes(r.id)}
+                aria-label={m.vc_cell_aria({ date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+                onclick={() => toggle(r.id)}
+              >
+                <span class="kit-row-ico"><Icon name="mic" size={20} /></span>
+                <span class="kit-row-text">
+                  <span class="kit-row-title">{fmtDay(r.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </span>
+                <span class="kit-row-trail">
+                  {#if orderedSelected.includes(r.id)}<Icon name="check" size={20} />{/if}
+                </span>
+              </button>
+            {/each}
+          </ListCard>
         </div>
-      {/if}
-    {:else}
-      <div class="screen-part">
-        <Notice
-          icon="mic"
-          key="voice-empty"
-          role={roleAt(activeFlag.roles, 0)}
-          title={m.vc_empty_title()}
-          text={m.vc_empty_body()}
-        />
-      </div>
-    {/if}
+        {#if pair}
+          <div class="editor-savebar">
+            <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
+              <Icon name="columns" size={20} /><span>{m.vc_compare()}</span>
+            </button>
+          </div>
+        {/if}
+      {/snippet}
+      {#snippet empty()}
+        <div class="screen-part">
+          <Notice
+            icon="mic"
+            key="voice-empty"
+            role={roleAt(activeFlag.roles, 0)}
+            title={m.vc_empty_title()}
+            text={m.vc_empty_body()}
+          />
+        </div>
+      {/snippet}
+    </ReadGate>
   {/if}
 </div>

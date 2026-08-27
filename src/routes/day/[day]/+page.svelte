@@ -21,25 +21,25 @@
   import { smartBack } from '$lib/navigation/smart-back';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   let epochDay = $derived(page.params.day === 'today' ? todayEpochDay() : Number(page.params.day));
   let isToday = $derived(epochDay === todayEpochDay());
 
   /* The query reads `epochDay` before its first await, which is what makes it
      re-run on navigation - see liveQuery's contract. */
-  let dayEntries = liveQuery((j) => j.entries.entriesForDay(epochDay));
-  let entries = $derived(dayEntries.value ?? []);
+  let dayEntries = liveList((j) => j.entries.entriesForDay(epochDay));
+  let entries = $derived(dayEntries.rows);
 
   /* One area, so one role, and role 0 - the only index guaranteed to be a
      colour on all 8 palettes. A screen with a single coloured area has no
@@ -54,36 +54,37 @@
     back={() => smartBack('/calendar')}
   />
 
-  {#if dayEntries.loading}
-    <Skeleton variant="card" count={2} />
-  {:else if entries.length}
-    <DayCard
-      key={String(epochDay)}
-      {role}
-      date={fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-      aside={m.entries_this_day({ count: entries.length })}
-    >
-      {#each entries as e (e.id)}
-        <DayEntry
-          key={String(e.id)}
-          href={`/entry/${e.id}`}
-          time={fmtTime(e.timestamp)}
-          mood={e.mood}
-          note={e.note ?? undefined}
-          tags={entryTags(e)}
-          marks={entryMarks(e)}
-        />
-      {/each}
-    </DayCard>
-  {:else}
-    <Notice
-      icon="book"
-      key="day-empty"
-      {role}
-      title={m.nothing_logged()}
-      text={m.nothing_logged_body()}
-    />
-  {/if}
+  <ReadGate read={dayEntries} variant="card" count={2}>
+    {#snippet rows(entries)}
+      <DayCard
+        key={String(epochDay)}
+        {role}
+        date={fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+        aside={m.entries_this_day({ count: entries.length })}
+      >
+        {#each entries as e (e.id)}
+          <DayEntry
+            key={String(e.id)}
+            href={`/entry/${e.id}`}
+            time={fmtTime(e.timestamp)}
+            mood={e.mood}
+            note={e.note ?? undefined}
+            tags={entryTags(e)}
+            marks={entryMarks(e)}
+          />
+        {/each}
+      </DayCard>
+    {/snippet}
+    {#snippet empty()}
+      <Notice
+        icon="book"
+        key="day-empty"
+        {role}
+        title={m.nothing_logged()}
+        text={m.nothing_logged_body()}
+      />
+    {/snippet}
+  </ReadGate>
 
   <div class="day-add">
     <button class="btn btn-soft" data-add onclick={() => goto(`/entry/new/${epochDay}`)}>

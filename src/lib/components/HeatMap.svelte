@@ -29,7 +29,7 @@
      same five steps: two things reading one ramp is how a legend ends up
      describing a chart it no longer matches. */
   import { m } from '$lib/paraglide/messages';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -74,8 +74,8 @@
      different questions: the swatch comes from the metric's average, while
      whether a day is a link comes from whether anything was logged at all -
      a day of entries carrying no mood is still a day with entries. */
-  let averages = liveQuery((j) => j.stats.dayAverages(vocabulary.activeMetric, bounds.first, bounds.last));
-  let counts = liveQuery((j) => j.stats.entryCountsByDay(bounds.first, bounds.last));
+  let averages = liveList((j) => j.stats.dayAverages(vocabulary.activeMetric, bounds.first, bounds.last));
+  let counts = liveList((j) => j.stats.entryCountsByDay(bounds.first, bounds.last));
 
   /* Both reads are one worker round trip, and the grid draws at its full
      size the whole time - a month is 30 cells of known shape, so there is
@@ -90,8 +90,8 @@
     // The day's value stays native; only the swatch it picks is normalized,
     // so a 0-10 dimension and mood shade comparably (ADR-0012).
     const range = vocabulary.rangeOf(vocabulary.activeMetric);
-    const valueByDay = new Map((averages.value ?? []).map((point) => [point.day, point.value]));
-    const countByDay = new Map((counts.value ?? []).map((point) => [point.day, point.count]));
+    const valueByDay = new Map((averages.rows).map((point) => [point.day, point.value]));
+    const countByDay = new Map((counts.rows).map((point) => [point.day, point.count]));
     const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
     const startDow = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7; // Monday-first
     const today = todayEpochDay();

@@ -10,7 +10,7 @@
      controls above it. It sits on the page now at the width of the screen,
      which is also the width the collage was made at. */
   import { m } from '$lib/paraglide/messages';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
   import {
@@ -48,8 +48,8 @@
      until somebody shares it or leaves the screen, which is what keeps the
      export off the device unless a person asked for it. */
 
-  let photosQuery = liveQuery((j) => j.photos.inJournal());
-  let photos = $derived(photosQuery.value ?? []);
+  let photosQuery = liveList((j) => j.photos.inJournal());
+  let photos = $derived(photosQuery.rows);
   let bounds = $derived(journeyRangeBounds(photos));
 
   let startInput = $state('');

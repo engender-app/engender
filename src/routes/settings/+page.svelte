@@ -16,7 +16,7 @@
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -61,8 +61,8 @@
 
   /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
      count of the enabled ones - which only the Android build displays at all. */
-  let reminders = liveQuery((j) => j.reminders.getReminders());
-  let activeReminders = $derived((reminders.value ?? []).filter((r) => r.enabled).length);
+  let reminders = liveList((j) => j.reminders.getReminders());
+  let activeReminders = $derived((reminders.rows).filter((r) => r.enabled).length);
 
   let scalesSheet = $state(false);
 

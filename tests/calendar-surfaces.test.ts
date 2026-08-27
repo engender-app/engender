@@ -359,7 +359,11 @@ describe('loading states, since all six read entry data', () => {
     ['search', SCREENS.search],
     ['starred', SCREENS.starred]
   ])('%s waits with a skeleton', (_name, path) => {
-    expect(markupOf(read(path))).toContain('<Skeleton');
+    /* Drawn by the screen, or by the gate the screen hands its read to
+       (phase 5 audit ticket 04) - the placeholder is the same one either
+       way, and which of the two draws it is not what this is about. */
+    const markup = markupOf(read(path));
+    expect(markup.includes('<Skeleton') || markup.includes('<ReadGate')).toBe(true);
   });
 
   it('the editor waits rather than filling a form under the reader', () => {

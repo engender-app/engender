@@ -177,8 +177,13 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>): LiveQuery<T
 
 /** `liveQuery` for a read that answers with a list: the same query, seen
     through `rows`/`loading`/`empty`/`failed` (readState.ts). What ReadGate
-    takes, and what a screen holding rows of its own should ask for. */
-export function liveList<T>(run: (journal: Journal) => Promise<T[]>): LiveList<T> {
+    takes, and what a screen holding rows of its own should ask for.
+
+    A read that answers `undefined` - the checklist screens ask for a list
+    that may not have been made yet - is no rows, the same as one that has
+    not answered at all. That is the one default this owns, and it is why no
+    screen writes `?? []` any more. */
+export function liveList<T>(run: (journal: Journal) => Promise<T[] | undefined>): LiveList<T> {
   return listView(query(null, run));
 }
 
@@ -200,7 +205,7 @@ export function liveQueryWatchingOnly<T>(
 
 /** The list face of a query: `LiveQuery`'s value read through readState's two
     list rules, so the defaulting exists once rather than at every call site. */
-function listView<T>(read: LiveQuery<T[]>): LiveList<T> {
+function listView<T>(read: LiveQuery<T[] | undefined>): LiveList<T> {
   const state = (): ReadState<T[]> => ({ value: read.value, loading: read.loading, failed: read.failed });
   return {
     get rows() {

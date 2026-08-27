@@ -46,7 +46,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
   import { isPausedOn } from '$lib/data/journalingPause';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { RECENT_ENTRY_CAP, entryMarks, recentDayGroups } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
@@ -101,8 +101,8 @@
      drawn (recentEntries.ts), and the rest are one tap away on the
      calendar. */
   const RECENT_DAYS = 5;
-  let recent = liveQuery((j) => j.entries.recentDays(RECENT_DAYS));
-  let dayGroups = $derived(recentDayGroups(recent.value ?? [], RECENT_ENTRY_CAP));
+  let recent = liveList((j) => j.entries.recentDays(RECENT_DAYS));
+  let dayGroups = $derived(recentDayGroups(recent.rows, RECENT_ENTRY_CAP));
 
   let streakQuery = liveQuery((j) => j.stats.streak(today));
   let streak = $derived(streakQuery.value ?? 0);
@@ -111,8 +111,8 @@
      a nudge, the same as the check-in prompt, so it goes quiet while a pause
      covers today rather than showing a frozen number with nothing to
      explain it. */
-  let pausesQuery = liveQuery((j) => j.journalingPauses.getPauses());
-  let pausedToday = $derived(isPausedOn(pausesQuery.value ?? [], today));
+  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
+  let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
 
   /* A second authored moment, and the only one besides the sun: past a
      week's run, opening Home throws a little confetti over the streak line.

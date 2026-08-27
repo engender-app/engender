@@ -13,7 +13,7 @@
      no prediction of a next period, no fertility framing, no assumption
      that a regular cycle exists. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { cycleEventKindName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
   import {
@@ -50,11 +50,11 @@
     customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput))
   );
 
-  let eventsQuery = liveQuery((j) => j.cycleEvents.getCycleEvents());
-  let events = $derived(eventsQuery.value ?? []);
+  let eventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
+  let events = $derived(eventsQuery.rows);
 
-  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
-  let episodes = $derived(episodesQuery.value ?? []);
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let episodes = $derived(episodesQuery.rows);
 
   let chartEvents = $derived(
     range ? events.filter((e) => e.epochDay >= range!.start && e.epochDay <= range!.end) : []

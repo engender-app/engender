@@ -9,7 +9,7 @@
      action on it, and the protocol's dismiss is the notice's own rather
      than an icon button wired into a header row. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { hairAnchorEpochDay } from '$lib/data/hairAnchor';
   import { isHairPhotoDue } from '$lib/data/hairPhotoSchedule';
@@ -37,6 +37,7 @@
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   /* Two areas, two stripes: the staging and the photographs. The notices
      that talk about the app rather than about the journal take no role at
@@ -48,8 +49,8 @@
   /* Bounded from epoch day 0 rather than from the anchor itself: getDoses
      needs a range (doses.ts has no unbounded read). No dose can predate
      1970-01-01, so this is unbounded in practice. */
-  let dosesQuery = liveQuery((j) => j.doses.getDoses(0, today));
-  let doses = $derived(dosesQuery.value ?? []);
+  let dosesQuery = liveList((j) => j.doses.getDoses(0, today));
+  let doses = $derived(dosesQuery.rows);
 
   /* The day this screen counts weeks from: whatever the person set, else
      their earliest logged dose of anything, else nothing (hairAnchor.ts,
@@ -58,16 +59,16 @@
   let anchorEpochDay = $derived(hairAnchorEpochDay(prefs.hairAnchorEpochDay, doses));
   let anchorIsUserSet = $derived(prefs.hairAnchorEpochDay !== null);
 
-  let stagesQuery = liveQuery((j) => j.hairProgress.getStages());
-  let stages = $derived(stagesQuery.value ?? []);
+  let stagesQuery = liveList((j) => j.hairProgress.getStages());
+  let stages = $derived(stagesQuery.rows);
 
   /* Grouped so that no list, and no run of subtitles, ever reads as one
      series across two scales (ticket 33, hairStageScales.ts). Newest first
      within each scale, which is the order the single list used to be in. */
   let stageGroups = $derived(stagesByScale([...stages].reverse()));
 
-  let photosQuery = liveQuery((j) => j.hairProgress.getPhotos());
-  let photos = $derived(photosQuery.value ?? []);
+  let photosQuery = liveList((j) => j.hairProgress.getPhotos());
+  let photos = $derived(photosQuery.rows);
 
   let lastPhotoEpochDay = $derived(photos.at(-1)?.epochDay ?? null);
   let photoDue = $derived(isHairPhotoDue(anchorEpochDay, lastPhotoEpochDay, today));
@@ -216,43 +217,44 @@
       {/snippet}
     </SectionHeading>
 
-    {#if stagesQuery.loading}
-      <div out:crossfade><Skeleton variant="line" count={2} /></div>
-    {:else if stages.length}
-      <div class="screen-part">
-        {#each stageGroups as group (group.scale)}
-          <!-- Each scale keeps its own card and its own name above it. A run
-               of subtitles across two scales reads as one series, which is
-               the thing ticket 33 split these groups apart to stop. -->
-          <p class="hair-scale-name" data-scale-group={group.scale}>{hairScaleName(group.scale)}</p>
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
-            {#each group.stages as s (s.id)}
-              {@const graded = isGradedScale(s.scale)}
-              <ListRow
-                key={s.id}
-                data-hair-stage={s.id}
-                icon="comb"
-                title={graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}
-                subtitle={stageSubtitle(s.epochDay)}
-                chevron={false}
-                onclick={() => stageRecord.openEditor(s)}
-              />
-            {/each}
-          </ListCard>
-        {/each}
-      </div>
-    {:else}
-      <div class="screen-part">
-        <Notice
-          icon="comb"
-          key="hair-stages-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}
-          title={m.hair_stage_empty_title()}
-          text={m.hair_stage_empty_body()}
-          action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => stageRecord.openEditor(null) }}
-        />
-      </div>
-    {/if}
+    <ReadGate read={stagesQuery} variant="line" count={2}>
+      {#snippet rows(stages)}
+        <div class="screen-part">
+          {#each stageGroups as group (group.scale)}
+            <!-- Each scale keeps its own card and its own name above it. A run
+                 of subtitles across two scales reads as one series, which is
+                 the thing ticket 33 split these groups apart to stop. -->
+            <p class="hair-scale-name" data-scale-group={group.scale}>{hairScaleName(group.scale)}</p>
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
+              {#each group.stages as s (s.id)}
+                {@const graded = isGradedScale(s.scale)}
+                <ListRow
+                  key={s.id}
+                  data-hair-stage={s.id}
+                  icon="comb"
+                  title={graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}
+                  subtitle={stageSubtitle(s.epochDay)}
+                  chevron={false}
+                  onclick={() => stageRecord.openEditor(s)}
+                />
+              {/each}
+            </ListCard>
+          {/each}
+        </div>
+      {/snippet}
+      {#snippet empty()}
+        <div class="screen-part">
+          <Notice
+            icon="comb"
+            key="hair-stages-empty"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}
+            title={m.hair_stage_empty_title()}
+            text={m.hair_stage_empty_body()}
+            action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => stageRecord.openEditor(null) }}
+          />
+        </div>
+      {/snippet}
+    </ReadGate>
 
     <p class="muted small">{m.hair_scale_source()}</p>
 
@@ -291,41 +293,42 @@
       </button>
     </div>
 
-    {#if photosQuery.loading}
-      <div out:crossfade><Skeleton variant="line" count={2} /></div>
-    {:else if photos.length}
-      <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
-          {#each [...photos].reverse() as p (p.id)}
-            {@const since = sinceStart(p.epochDay)}
-            <ListRow
-              static
-              data-hair-photo={p.id}
-              title={dayLabel(p.epochDay)}
-              subtitle={since}
-              action={{
-                icon: 'trash',
-                label: m.hair_photo_delete_sheet(),
-                onclick: () => photoRecord.askToDelete(p),
-                attrs: { 'data-delete-hair-photo': p.id }
-              }}
-            >
-              {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
-            </ListRow>
-          {/each}
-        </ListCard>
-      </div>
-    {:else}
-      <div class="screen-part">
-        <Notice
-          icon="camera"
-          key="hair-photos-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
-          title={m.hair_photo_empty_title()}
-          text={m.hair_photo_empty_body()}
-        />
-      </div>
-    {/if}
+    <ReadGate read={photosQuery} variant="line" count={2}>
+      {#snippet rows(photos)}
+        <div class="screen-part">
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
+            {#each [...photos].reverse() as p (p.id)}
+              {@const since = sinceStart(p.epochDay)}
+              <ListRow
+                static
+                data-hair-photo={p.id}
+                title={dayLabel(p.epochDay)}
+                subtitle={since}
+                action={{
+                  icon: 'trash',
+                  label: m.hair_photo_delete_sheet(),
+                  onclick: () => photoRecord.askToDelete(p),
+                  attrs: { 'data-delete-hair-photo': p.id }
+                }}
+              >
+                {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
+              </ListRow>
+            {/each}
+          </ListCard>
+        </div>
+      {/snippet}
+      {#snippet empty()}
+        <div class="screen-part">
+          <Notice
+            icon="camera"
+            key="hair-photos-empty"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
+            title={m.hair_photo_empty_title()}
+            text={m.hair_photo_empty_body()}
+          />
+        </div>
+      {/snippet}
+    </ReadGate>
   {/if}
 
   <Sheet open={anchorEditor !== null} title={m.hair_anchor_sheet()} onClose={() => (anchorEditor = null)}>
