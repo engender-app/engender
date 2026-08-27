@@ -1244,9 +1244,24 @@ a.kit-entry:active {
    a control, but a surface *followed* by a skeleton keeps skeleton's own
    --space-5 rule above. Stamping it [data-kit-surface] would hand that pair
    to the two-surface rule instead, which is a different number. */
-:is(.segmented, .stats-caption, .stats-note, .wrapped-note, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
+:is(.segmented, .stats-caption, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
   + :is([data-kit-surface], .skeleton-stack) {
   margin-top: var(--space-7);
+}
+
+/* A note is a remark about the block above it, not a control for the block
+   below. It sits tight to what it explains (its own small margin-top) and
+   then takes the ordinary two-things gap to whatever follows, rather than
+   the wider gap a control takes to the thing it drives.
+
+   This was already written down twice, in screens.css, and never once
+   applied: kit.css is imported last (+layout.svelte), both rules matched at
+   the same specificity, so the --space-7 above won and the --space-4 those
+   two rules asked for never rendered. Stating it here, next to the rule it
+   is an exception to, is what makes it hold - and is why the pair in
+   screens.css is gone rather than moved. */
+:is(.stats-note, .wrapped-note) + :is([data-kit-surface], .skeleton-stack) {
+  margin-top: var(--space-4);
 }
 
 /* And the other way round: a surface with a chip row or a photo strip under
