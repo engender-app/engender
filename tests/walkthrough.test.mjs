@@ -1380,30 +1380,6 @@ try {
   await booted();
   const metric = await page.locator('[data-chart-picker="home-metric"]').inputValue();
   if (metric !== 'mood') throw new Error('Home is still coloured by ' + metric + ' with nothing ticked');
-
-  /* Home resolving to mood is necessary but not sufficient (ticket 07):
-     Stats and the calendar already read the same validated key Home does,
-     but Wrapped read `metricKind`/`metricDimension` off preferences
-     directly and could still be coloured by the scale nothing ticks any
-     more. Stats shares Home's picker, so it is checked the same way;
-     Wrapped has no picker to read, so its tag-insight numbers are the only
-     visible tell - one decimal for mood, rounded for a dimension
-     (wrappedDisplay.ts's nativeValue). */
-  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
-  await booted();
-  const statsMetric = await page.locator('[data-chart-picker="stats-metric"]').inputValue();
-  if (statsMetric !== 'mood') throw new Error('Stats is still coloured by ' + statsMetric + ' with nothing ticked');
-
-  await page.goto(BASE + '/wrapped/range?named=d90', { waitUntil: 'networkidle' });
-  await booted();
-  await page.waitForSelector('[data-wrapped-stats]');
-  const insightValue = await page
-    .locator('[data-chart-card="wrapped-insights"] [data-bar-value]')
-    .first()
-    .textContent();
-  if (insightValue && !/\.\d$/.test(insightValue)) {
-    throw new Error('wrapped tag insight reads as a dimension with nothing ticked: ' + insightValue);
-  }
   ok('settings scales sheet ticks through to the editor, empty included');
 } catch (e) { fail('settings scales sheet', e); }
 
@@ -2512,6 +2488,58 @@ try {
   ok('every More-hub area shows real content once "Fill every feature" has run, not just its empty state');
 } catch (e) {
   fail('fill every feature', e);
+}
+
+/* Ticket 07: Wrapped read `metricKey(prefs)` directly instead of the
+   validated key Stats, Home and the calendar already used, so unticking
+   the dimension a journal was coloured by left Wrapped still reading it
+   while every picker showed mood - two screens disagreeing about the same
+   period. Run after "Fill every feature" rather than beside the onboarding
+   flows above: those run on a deliberately near-empty just-onboarded
+   journal (first-run), which has nothing for a wrapped period to report
+   and cannot exercise the bug either way. Femininity is re-ticked at the
+   end so later flows meet the journal exactly as "Fill every feature" left
+   it. */
+try {
+  await fresh('/');
+  await page.locator('[data-chart-picker="home-metric"]').selectOption('femininity');
+  await page.waitForFunction(
+    () => document.querySelector('[data-chart-picker="home-metric"]')?.value === 'femininity'
+  );
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Gender scales/i }).click();
+  await page.locator('[data-list-row="scale-femininity"]').click();
+  await page.waitForSelector('[data-list-row="scale-femininity"][aria-checked="false"]');
+  await page.keyboard.press('Escape');
+
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await booted();
+  const statsMetric = await page.locator('[data-chart-picker="stats-metric"]').inputValue();
+  if (statsMetric !== 'mood') throw new Error('Stats is still coloured by ' + statsMetric + ' with femininity unticked');
+
+  await page.goto(BASE + '/wrapped/range?named=d90', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-wrapped-stats]');
+  const insightValue = await page
+    .locator('[data-chart-card="wrapped-insights"] [data-bar-value]')
+    .first()
+    .textContent();
+  if (insightValue && !/\.\d$/.test(insightValue)) {
+    throw new Error('wrapped tag insight reads as a dimension with femininity unticked: ' + insightValue);
+  }
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Gender scales/i }).click();
+  await page.locator('[data-list-row="scale-femininity"]').click();
+  await page.waitForSelector('[data-list-row="scale-femininity"][aria-checked="true"]');
+  await page.keyboard.press('Escape');
+
+  ok('unticking the Metric dimension leaves Stats and Wrapped agreeing on mood');
+} catch (e) {
+  fail('metric agreement after unticking the active dimension', e);
 }
 
 /* Quick add, rebuilt (phase 5 ticket 18, closing spec 04).
