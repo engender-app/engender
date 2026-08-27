@@ -88,13 +88,19 @@
 {/snippet}
 
 {#if href}
+  <!-- The transition name lives on `.kit-entry-bg`, not on this element -
+       see EntryCard.svelte's own comment, the same fix for the same reason
+       (a row's note text does not want to be part of a rasterised image
+       scaled 4-8x into a full screen). -->
   <a
     class="kit-entry"
     data-entry-card={key}
     {href}
-    style:view-transition-name={entryContainerName(key)}
-    onclick={(event) => { if (key && opensHere(event)) openEntryContainer(key); }}>{@render body()}</a
+    onclick={(event) => { if (key && opensHere(event)) openEntryContainer(key); }}
   >
+    <span class="kit-entry-bg" style:view-transition-name={entryContainerName(key)}></span>
+    {@render body()}
+  </a>
 {:else}
   <article class="kit-entry" data-entry-card={key}>{@render body()}</article>
 {/if}

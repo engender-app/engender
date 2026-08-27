@@ -835,12 +835,24 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   display: flex; gap: var(--space-3);
   padding: var(--space-4);
   min-height: 96px;
+  position: relative;
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-1);
   color: var(--text); text-decoration: none;
   transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
+/* The container transform's own layer (EntryCard.svelte) - a plain fill the
+   same shape as the card, behind its real content, and the only thing that
+   carries the transition name. Content stays out of the scaled snapshot,
+   which is the whole reason this layer exists. */
+.entry-card-bg {
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  z-index: 0;
+}
+.entry-side, .entry-main { position: relative; z-index: 1; }
 .entry-card:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
 .entry-card + .entry-card { margin-top: var(--space-3); }
 .entry-side { padding-top: 2px; }
