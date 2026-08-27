@@ -692,12 +692,25 @@ try {
     await page.locator('[data-ocr-field="value"]').first().fill('123.4');
     await page.locator('[data-ocr-field="unit"]').first().fill('pg/mL');
     await page.locator('[data-ocr-field="date"]').first().fill('2026-08-12');
+
+    // A blanked analyte first, so save-validation-failed renders too - the
+    // sheet's own re-edit path, not just the machine's transition into it.
+    await page.locator('[data-ocr-field="analyte"]').first().fill('');
     await page.locator('[data-ocr-save]').click();
+    await page.waitForSelector('[data-ocr-state="save-validation-failed"]');
+
+    await page.locator('[data-ocr-field="analyte"]').first().fill('estradiol');
+    await page.locator('[data-ocr-save]').click();
+    /* "saving" itself is not asserted: the local write it names can resolve
+       inside a single Playwright poll, and how long it takes to lose that
+       race depends on machine load this file has no control over - it was
+       flaky under the full suite even though it held reliably alone. The
+       toast below is what proves the save actually landed. */
     await page.waitForFunction(
       () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Imported'))
     );
     await page.waitForSelector('[data-ocr-state]', { state: 'detached' });
-    ok('the scanner opens, shows its download notice, and a picked slip reaches review and saves');
+    ok('the scanner opens, shows its download notice, and a picked slip reaches review, save-validation-failed and saved in turn');
   }
 } catch (e) { fail('lab scanner import (ticket 44)', e); }
 
