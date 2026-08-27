@@ -245,6 +245,8 @@
   "lab_results_sub": "your numbers, your trend",
   "body_measurements": "Body measurements",
   "body_measurements_sub": "waist, hips, chest and underbust over time",
+  "settings_measurement_unit_title": "Measurement units",
+  "settings_measurement_unit_sub": "what body measurement charts convert every reading to",
   "size_log": "Sizes & fit",
   "size_log_sub": "what you bought, the size, and how it fit",
   "side_effects": "Side effects",

@@ -267,6 +267,8 @@
   "lab_results_sub": "twoje liczby, twój trend",
   "body_measurements": "Pomiary ciała",
   "body_measurements_sub": "talia, biodra, klatka i pod biustem w czasie",
+  "settings_measurement_unit_title": "Jednostki pomiarów",
+  "settings_measurement_unit_sub": "na jaką jednostkę przeliczane są wykresy pomiarów ciała",
   "size_log": "Rozmiary i dopasowanie",
   "size_log_sub": "co kupiono, w jakim rozmiarze i jak leżało",
   "side_effects": "Skutki uboczne",
