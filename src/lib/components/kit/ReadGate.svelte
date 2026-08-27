@@ -39,8 +39,13 @@
     /** The placeholder's shape, as Skeleton means it. */
     variant?: 'card' | 'block' | 'line';
     count?: number;
-    /** What the screen draws when the read has rows. Handed them, so the
-        screen does not read `read.rows` a second time. */
+    /** What the screen draws when the read has rows.
+
+        Handed them, so a snippet cannot render a different list than the one
+        the gate branched on. Most screens take no parameter: they already
+        hold a `$derived` of the same read for a count or a sheet elsewhere in
+        the file, and a snippet may declare fewer parameters than it is
+        offered. It is the screens with nothing but the list that take it. */
     rows: Snippet<[T[]]>;
     /** What the screen says when the read came back with nothing. */
     empty: Snippet;
