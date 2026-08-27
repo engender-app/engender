@@ -381,3 +381,141 @@ test('a dose can be deleted', async () => {
   assert.deepEqual(await journal.doses.getDoses(100, 100), []);
   await assert.rejects(journal.doses.deleteDose(id), /unknown dose event/);
 });
+
+/* The schedule comparison (phase 5 deepening ticket 17). The six-step
+   assembly the dose log screen used to do in markup, and which the
+   long-journal benchmark used to do a second, drifted way: which episode is
+   in effect, its schedule, its pauses, the doses attributed to it, and the
+   slots-against-doses comparison over them. */
+
+async function injectableEpisode(journal: Journal, startEpochDay: number, drug: string, endEpochDay: number | null = null) {
+  return journal.regimen.upsertEpisode({
+    drug,
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay,
+    endEpochDay
+  });
+}
+
+async function takeOral(journal: Journal, epochDay: number, hour = 8) {
+  return journal.doses.upsertDose({ timestamp: at(epochDay, hour), route: 'oral', dose: 2, doseUnit: 'mg' });
+}
+
+test('the comparison is the active episode’s schedule against the doses attributed to it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await injectableEpisode(journal, 19000, 'estradiol');
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+  await takeOral(journal, 19001);
+  await takeOral(journal, 19002);
+
+  const result = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003 });
+
+  assert.equal(result.reason, null);
+  assert.ok(result.reason === null);
+  assert.equal(result.activeEpisode.id, episodeId);
+  assert.equal(result.schedule.episodeId, episodeId);
+  // One slot a day across the whole window, two of them logged.
+  assert.equal(result.comparison.rows.length, 4);
+  assert.deepEqual(
+    result.comparison.rows.map((row) => row.dose !== null),
+    [false, true, true, false]
+  );
+  assert.deepEqual(result.comparison.unmatched, []);
+});
+
+test('an earlier episode’s doses are not compared against the active one’s schedule', async () => {
+  /* The reason the screen filters through attributeDose rather than by date:
+     handing a whole window's doses to one episode's slots puts the earlier
+     episode's doses in `unmatched`, where the wording calls them extras. */
+  const { journal } = await journalWithBuiltIns();
+  await injectableEpisode(journal, 19000, 'estradiol valerate', 19001);
+  const currentId = await injectableEpisode(journal, 19002, 'estradiol');
+  await journal.doses.upsertSchedule({
+    episodeId: currentId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+  await takeOral(journal, 19000);
+  await takeOral(journal, 19003);
+
+  const result = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003 });
+
+  assert.ok(result.reason === null);
+  assert.equal(result.activeEpisode.id, currentId);
+  // Slots from the episode's own start day, not from the window's edge.
+  assert.deepEqual(
+    result.comparison.rows.map((row) => row.slot.epochDay),
+    [19002, 19003]
+  );
+  assert.deepEqual(result.comparison.unmatched, []);
+});
+
+test('only the active episode’s own pauses suppress its slots', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await injectableEpisode(journal, 19000, 'estradiol');
+  const otherId = await injectableEpisode(journal, 18000, 'testosterone', 18100);
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+  await journal.doses.upsertPause({ episodeId, startEpochDay: 19002, endEpochDay: 19003, reason: 'planned' });
+  await journal.doses.upsertPause({ episodeId: otherId, startEpochDay: 19000, endEpochDay: null, reason: 'planned' });
+
+  const result = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003 });
+
+  assert.ok(result.reason === null);
+  assert.deepEqual(result.pauses.map((pause) => pause.episodeId), [episodeId]);
+  assert.deepEqual(
+    result.comparison.rows.map((row) => row.slot.epochDay),
+    [19000, 19001]
+  );
+});
+
+test('two episodes in effect on the last day of the range leave nothing to compare', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await injectableEpisode(journal, 19000, 'estradiol');
+  await injectableEpisode(journal, 19000, 'spironolactone');
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+
+  const result = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003 });
+
+  assert.equal(result.reason, 'multipleEpisodes');
+});
+
+test('no episode in effect on the last day of the range leaves nothing to compare', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await injectableEpisode(journal, 19000, 'estradiol', 19001);
+
+  const result = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003 });
+
+  assert.equal(result.reason, 'noEpisode');
+});
+
+test('an episode with no schedule says so, and names the episode the notice is about', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await injectableEpisode(journal, 19000, 'estradiol');
+
+  const result = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003 });
+
+  assert.equal(result.reason, 'noSchedule');
+  assert.ok(result.reason === 'noSchedule');
+  assert.equal(result.activeEpisode.id, episodeId);
+  assert.equal(result.activeEpisode.drug, 'estradiol');
+});
