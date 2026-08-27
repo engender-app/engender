@@ -28,124 +28,15 @@ import { markJournalBusy } from '../journal-busy';
 import type { Journal } from '../journal/journal';
 import { RECONCILE_TABLES } from '../journal/reconcile';
 
-/** The tables a query can depend on. Coarser than the schema - one name
-    covers a row and everything hanging off it, so `entry` means the entry
-    and its dimension values, tag links, body-region values and search
-    index. Finer would be precision no screen can use: nothing reads
-    `entry_tag` without reading the entry it belongs to. */
-export type TableName =
-  | 'entry'
-  | 'tag'
-  | 'dimension'
-  | 'preset'
-  | 'milestone'
-  | 'photo'
-  | 'lab'
-  | 'measurement'
-  /* The sizes-and-fit log (phase 5 ticket 23). */
-  | 'sizeRecord'
-  | 'reminder'
-  | 'tally'
-  | 'regimen'
-  /* One name for dose events, schedules and pauses alike. Nothing reads a
-     schedule or a pause without the doses they are compared against - the
-     adherence view needs all three - so splitting them would be precision
-     no screen can use. */
-  | 'dose'
-  /* Medication stock (phase 4 ticket 04). Its projection reads doses and
-     regimen episodes too, but those are announced under their own names
-     already - a stock-only screen re-running on a dose write is exactly
-     the point. */
-  | 'stock'
-  | 'sideEffect'
-  | 'personalEffect'
-  /* Cycle events (phase 5 ticket 03). */
-  | 'cycleEvent'
-  /* The journaling pause (phase 5 ticket 21) - Streak's own reads key on
-     this too, since a pause changes what Streak answers. */
-  | 'journalingPause'
-  /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
-     nothing reads one without the other, the same reasoning 'dose' gives -
-     the screen shows both against the same anchor. */
-  | 'hairProgress'
-  /* One name for hair-removal sessions and their photos alike (phase 5
-     ticket 08): nothing reads one without the other, the same reasoning
-     'hairProgress' gives. */
-  | 'hairRemoval'
-  /* One name for a procedure, its consult dates and its recovery photos
-     (phase 5 ticket 07): nothing reads one without the others, the same
-     reasoning 'hairProgress' gives. A procedure's recovery checklist is not
-     in here - that is an ordinary 'checklist' row, and a write to it has to
-     invalidate the appointment prep list's reads too. */
-  | 'procedure'
-  /* Counterevidence snapshots (phase 4 ticket 11; the doubt-entry half of
-     this screen's writes retired by phase 5 ticket 16). */
-  | 'doubtJournal'
-  /* A tryout's own fields (phase 4 ticket 16). Its felt-sense history is
-     'feltSense' instead, below: once a milestone could own one too (phase
-     5 ticket 24), folding it into 'tryout' the way 'doubtJournal' folds
-     its own two tables would make every milestone read stale whenever a
-     tryout's felt-sense history changed, and vice versa. */
-  | 'tryout'
-  /* A felt-sense entry's own name, the same reason 'photo' gets one
-     instead of folding into 'entry'/'milestone': either owner's screen
-     has to invalidate on a write to this table, and which one is a
-     property of the call, not of the method (phase 5 ticket 24). */
-  | 'feltSense'
-  /* Time-capsule letters (phase 4 ticket 19). */
-  | 'letter'
-  /* Voice recordings (phase 4 ticket 24). Its own name rather than folded
-     into 'entry' the way `hairProgress`/`doubtJournal`/`tryout` fold two
-     tables into one name: unlike those, a screen elsewhere - a future
-     voice-notes browsing view, or ticket 25's compare mode - could read
-     recordings without reading the rest of an entry, the same reason
-     'photo' gets its own name instead of folding into 'entry' too. */
-  | 'voiceRecording'
-  /* Video notes (phase 5 ticket 22). Its own name rather than folded into
-     'entry' or shared with 'voiceRecording', for the reason that one gives:
-     a screen could read video notes without reading recordings or the rest
-     of an entry, and a shared name would make every recording read stale
-     whenever a video note changed. */
-  | 'videoNote'
-  /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
-     pack's ticks: they live in one table and a screen shows one pack at a
-     time, so there is nothing a per-pack name would let a query skip. */
-  | 'roadmapCheck'
-  /* Custom roadmap goals (phase 5 ticket 20), kept apart from
-     'roadmapCheck': a screen reading the custom goals someone added
-     should not re-query just because a bundled goal's tick changed, and
-     the reverse. */
-  | 'roadmapGoal'
-  /* Checklists and their items alike (phase 5 ticket 05): nothing reads a
-     checklist without its items, the same reasoning 'dose' gives. */
-  | 'checklist'
-  /* The binder/tucking wear log (phase 5 ticket 04). */
-  | 'wearSession'
-  /* The check-in's affirmation pool (phase 5 ticket 15). */
-  | 'affirmation'
-  /* The body-region reference-data area (phase 5 ticket 30). An entry's
-     own body-region intensities are still announced under 'entry' - this
-     is only the region rows themselves: built-in hide/unhide and a custom
-     region being added. */
-  | 'bodyRegion'
-  /* Measurement types (phase 5 ticket 29): the vocabulary a measurement's
-     `type` names, built-in and custom alike. Its own name rather than
-     folded into 'measurement': a screen adding or hiding a type has not
-     touched a single logged reading, and the reverse. */
-  | 'measurementType'
-  /* The effect catalogue's toggleable categories (phase 5 ticket 41,
-     CONTEXT: "Effect category") - tag_group's own semantics, over the
-     effect vocabulary rather than tags. */
-  | 'effectCategory'
-  /* The effect vocabulary itself (phase 5 ticket 41): the open catalogue
-     'personalEffect' markers name, built-in and custom alike. Its own
-     name for the same reason 'measurementType' has one - hiding or adding
-     an effect type has not touched a single marker, and the reverse. */
-  | 'personalEffectType';
-
 /** Every table there is, in one place: what an import rewrites, and what
-    journal.svelte.ts keeps a version per. */
-export const TABLE_NAMES: TableName[] = [
+    journal.svelte.ts keeps a version per.
+
+    Coarser than the schema - one name covers a row and everything hanging
+    off it, so `entry` means the entry and its dimension values, tag links,
+    body-region values and search index. Finer would be precision no screen
+    can use: nothing reads `entry_tag` without reading the entry it belongs
+    to. */
+export const TABLE_NAMES = [
   'entry',
   'tag',
   'dimension',
@@ -154,35 +45,110 @@ export const TABLE_NAMES: TableName[] = [
   'photo',
   'lab',
   'measurement',
+  /* The sizes-and-fit log (phase 5 ticket 23). */
   'sizeRecord',
   'reminder',
   'tally',
   'regimen',
+  /* One name for dose events, schedules and pauses alike. Nothing reads a
+     schedule or a pause without the doses they are compared against - the
+     adherence view needs all three - so splitting them would be precision
+     no screen can use. */
   'dose',
+  /* Medication stock (phase 4 ticket 04). Its projection reads doses and
+     regimen episodes too, but those are announced under their own names
+     already - a stock-only screen re-running on a dose write is exactly
+     the point. */
   'stock',
   'sideEffect',
   'personalEffect',
+  /* Cycle events (phase 5 ticket 03). */
   'cycleEvent',
+  /* The journaling pause (phase 5 ticket 21) - Streak's own reads key on
+     this too, since a pause changes what Streak answers. */
   'journalingPause',
+  /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
+     nothing reads one without the other, the same reasoning 'dose' gives -
+     the screen shows both against the same anchor. */
   'hairProgress',
+  /* One name for hair-removal sessions and their photos alike (phase 5
+     ticket 08): nothing reads one without the other, the same reasoning
+     'hairProgress' gives. */
   'hairRemoval',
+  /* One name for a procedure, its consult dates and its recovery photos
+     (phase 5 ticket 07): nothing reads one without the others, the same
+     reasoning 'hairProgress' gives. A procedure's recovery checklist is not
+     in here - that is an ordinary 'checklist' row, and a write to it has to
+     invalidate the appointment prep list's reads too. */
   'procedure',
+  /* Counterevidence snapshots (phase 4 ticket 11; the doubt-entry half of
+     this screen's writes retired by phase 5 ticket 16). */
   'doubtJournal',
+  /* A tryout's own fields (phase 4 ticket 16). Its felt-sense history is
+     'feltSense' instead, below: once a milestone could own one too (phase
+     5 ticket 24), folding it into 'tryout' the way 'doubtJournal' folds
+     its own two tables would make every milestone read stale whenever a
+     tryout's felt-sense history changed, and vice versa. */
   'tryout',
+  /* A felt-sense entry's own name, the same reason 'photo' gets one
+     instead of folding into 'entry'/'milestone': either owner's screen
+     has to invalidate on a write to this table, and which one is a
+     property of the call, not of the method (phase 5 ticket 24). */
   'feltSense',
+  /* Time-capsule letters (phase 4 ticket 19). */
   'letter',
+  /* Voice recordings (phase 4 ticket 24). Its own name rather than folded
+     into 'entry' the way `hairProgress`/`doubtJournal`/`tryout` fold two
+     tables into one name: unlike those, a screen elsewhere - a future
+     voice-notes browsing view, or ticket 25's compare mode - could read
+     recordings without reading the rest of an entry, the same reason
+     'photo' gets its own name instead of folding into 'entry' too. */
   'voiceRecording',
+  /* Video notes (phase 5 ticket 22). Its own name rather than folded into
+     'entry' or shared with 'voiceRecording', for the reason that one gives:
+     a screen could read video notes without reading recordings or the rest
+     of an entry, and a shared name would make every recording read stale
+     whenever a video note changed. */
   'videoNote',
+  /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
+     pack's ticks: they live in one table and a screen shows one pack at a
+     time, so there is nothing a per-pack name would let a query skip. */
   'roadmapCheck',
+  /* Custom roadmap goals (phase 5 ticket 20), kept apart from
+     'roadmapCheck': a screen reading the custom goals someone added
+     should not re-query just because a bundled goal's tick changed, and
+     the reverse. */
   'roadmapGoal',
+  /* Checklists and their items alike (phase 5 ticket 05): nothing reads a
+     checklist without its items, the same reasoning 'dose' gives. */
   'checklist',
+  /* The binder/tucking wear log (phase 5 ticket 04). */
   'wearSession',
+  /* The check-in's affirmation pool (phase 5 ticket 15). */
   'affirmation',
+  /* The body-region reference-data area (phase 5 ticket 30). An entry's
+     own body-region intensities are still announced under 'entry' - this
+     is only the region rows themselves: built-in hide/unhide and a custom
+     region being added. */
   'bodyRegion',
+  /* Measurement types (phase 5 ticket 29): the vocabulary a measurement's
+     `type` names, built-in and custom alike. Its own name rather than
+     folded into 'measurement': a screen adding or hiding a type has not
+     touched a single logged reading, and the reverse. */
   'measurementType',
+  /* The effect catalogue's toggleable categories (phase 5 ticket 41,
+     CONTEXT: "Effect category") - tag_group's own semantics, over the
+     effect vocabulary rather than tags. */
   'effectCategory',
+  /* The effect vocabulary itself (phase 5 ticket 41): the open catalogue
+     'personalEffect' markers name, built-in and custom alike. Its own
+     name for the same reason 'measurementType' has one - hiding or adding
+     an effect type has not touched a single marker, and the reverse. */
   'personalEffectType'
-];
+] as const;
+
+/** The tables a query can depend on, derived from TABLE_NAMES above. */
+export type TableName = (typeof TABLE_NAMES)[number];
 
 /** Every operation each area offers, split by whether it changes anything.
     `writes` maps to the tables the operation writes; `reads` is a plain list
@@ -516,7 +482,7 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
      would be a list to keep in step with what a restore happens to touch,
      and a Replace touches everything by definition. */
   archive: {
-    writes: { replace: TABLE_NAMES, merge: TABLE_NAMES, commitDaylioImport: TABLE_NAMES },
+    writes: { replace: [...TABLE_NAMES], merge: [...TABLE_NAMES], commitDaylioImport: [...TABLE_NAMES] },
     reads: ['snapshot', 'previewDaylioImport']
   }
 };

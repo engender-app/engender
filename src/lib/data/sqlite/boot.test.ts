@@ -10,6 +10,7 @@ import type { SqliteDriver } from './driver.ts';
 import { journalIsBusy } from '../journal-busy.ts';
 import { boot } from './boot.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
+import { LATEST_SCHEMA_VERSION } from './migrations.ts';
 
 function makeFakeDriver(): SqliteDriver {
   const raw = new DatabaseSync(':memory:');
@@ -49,7 +50,7 @@ test('opens the database, runs migrations, and reports ready', async () => {
 
   assert.equal(result.phase, 'ready');
   if (result.phase === 'ready') {
-    assert.equal(await result.driver.getUserVersion(), 42);
+    assert.equal(await result.driver.getUserVersion(), LATEST_SCHEMA_VERSION);
   }
 });
 
