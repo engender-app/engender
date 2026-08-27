@@ -14,13 +14,10 @@ import java.time.ZonedDateTime;
  * because the alarm is scheduled before any WebView exists and Java has no
  * import path into TypeScript.
  *
- * The two are held to the same answers by reminder-rule.json -
- * src/lib/android/fixtures/reminder-rule.json, put on this module's test
- * classpath by build.gradle's sourceSets.test addition - which
- * ReminderRuleFixtureTest reads here and reminderRule.test.ts reads on the
- * other side (ADR-0028's shape). Changing the rule in one language without
- * adding the case there is how the two came to disagree about an elapsed
- * one-off with both suites green.
+ * What holds the two to the same answers is
+ * src/lib/android/fixtures/reminder-rule.json, read by
+ * ReminderRuleFixtureTest on this side. Change the rule here and add the
+ * case there; reminderRule.ts's header says why.
  */
 final class ReminderPlanner {
 

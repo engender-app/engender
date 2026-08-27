@@ -74,19 +74,17 @@
 
   /* The rule the Android scheduler is held to case for case
      (reminder-rule.json): the preview cannot promise a moment that will not
-     fire. Empty means the rule has no occurrence left, and the line goes
-     rather than printing a date in the past - which is what it did before
-     the rule had a way to say so. */
+     fire. Only an elapsed one-off has no occurrence left, and ruleFromDraft()
+     dates a one-off forward every time it is called, so there is always a
+     moment here to show. */
   let nextPreview = $derived.by(() => {
-    const at = nextOccurrence(ruleFromDraft(), new Date());
-    if (!at) return null;
     return new Intl.DateTimeFormat(intlLocale(), {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
       hour: 'numeric',
       minute: '2-digit',
-    }).format(at);
+    }).format(nextOccurrence(ruleFromDraft(), new Date())!);
   });
 
   function saveReminder() {
@@ -121,9 +119,7 @@
       <span class="field-label">{m.rem_repeats_label()}</span>
       <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v)} />
     </div>
-    {#if nextPreview}
-      <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
-    {/if}
+    <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
   </div>
 
   <div class="notice notice-info">

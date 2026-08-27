@@ -21,10 +21,6 @@ import org.junit.Test;
  * side (ADR-0028). A rule that fires at one moment in the editor's preview
  * and another in the alarm the scheduler sets fails here rather than as a
  * notification that arrives on the wrong day.
- *
- * Each case carries its own zone, because the rule is about local
- * wall-clock time and a rule asserted in one offset proves very little
- * about the next one.
  */
 public class ReminderRuleFixtureTest {
 
