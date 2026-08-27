@@ -1,191 +1,245 @@
 {
-  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026081301:user/release-keys. All thirty-one baselines are from one real-device run on 2026-08-19, ticket 02's re-run of the extended probe ticket 01 added the five new measurements to. The fixture grew alongside it - 3244 entries and 1473 dose events where the previous recording had 3231 entries and none - so every baseline here reflects the larger dataset rather than mixing old and new numbers. One run rather than several, matching ticket 01's reasoning: nothing here sits close enough to its target to need run-to-run spread to defend it. targetMs for the five new measurements is picked by analogy to an existing measurement's own device-observed cost, not copied from the web probe's targets, since the web-to-android relationship isn't a fixed multiplier; see ticket 02's verification note for the reasoning per number.",
-  "fixture": "seed 1, 3653 days ending epoch day 20676: 3244 entries over 2632 days with entries, 396 photos (360MB on disk), 129 lab results, 12 milestones, 24 tags. 249 entries carry a body-region euphoria or dysphoria value. One regimen episode with a Monday/Wednesday/Friday, two-amount dose schedule: 1473 dose events, 95% of its expected slots. 19 hair-progress stagings and 5 dated photos. Encryption on: SQLCipher under the Android Keystore data key, photos through app-private file storage.",
+  "measuredOn": "Google Pixel 10a, API 37, fingerprint google/stallion/stallion:17/CP2A.260805.005/2026081301:user/release-keys. Every baseline here is from one real-device run on 2026-08-27 (phase 5 ticket 06), re-recorded wholesale against the redesign and ticket 36's full fixture rebuild rather than mixing old and new numbers. The device sat idle and cooling for 15 minutes before this run (battery temperature 26.3C at the start of the wait, 25.9C at the end, screen off throughout) - the rested-device methodology ticket 03 asked for, folded into this recording per ticket 06's own scope. Every one of the 31 pre-existing measurements moved by -33% to +24% against the 2026-08-19 recording, consistent, mixed-direction and explainable by fixture growth and ordinary device noise - none of the broad, mostly one-directional +5%-to-+360% drift ticket 03 found on a warm device reproduced here, which answers what ticket 03 was asking for by construction. targetMs for the 9 new measurements is picked by analogy to an existing measurement's own device-observed cost, not derived from the web probe's targets, the same reasoning ticket 02's verification note gives for the original five.",
+  "fixture": "seed 1, 3653 days ending epoch day 20676: 3291 entries over 2634 days with entries, 422 photos (394MB on disk), 125 lab results, 12 milestones, 24 tags. 265 entries carry a body-region euphoria or dysphoria value. Three regimen episodes (phase 5 ticket 36/38): oral Estradiol from day 30 (Monday/Wednesday/Friday, two-amount schedule, 1475 dose events, 95% of expected slots), Spironolactone for ~500 days in the middle (daily, ends well before the fixture's last 90 days), and injectable Estradiol valerate for the final 150 days (weekly, im) - the last two overlap the first, so a stretch of the fixture has two concurrently active episodes. 19 hair-progress stagings and 5 dated photos. A year each (irregular cadence, ending at the fixture's last day) of measurements, size records, hair-removal sessions, wear sessions and cycle events; a handful of side effects, personal effects, roadmap checks, letters, tryouts and one surgical procedure across the whole decade; ~16 voice recordings; one drug's stock count recorded years ago (so its projection reads the whole dose log) and one recorded near the end (so it doesn't). Encryption on: SQLCipher under the Android Keystore data key, photos through app-private file storage.",
   "measurements": {
     "unlock": {
       "what": "cold start, passphrase unlock (Argon2id + data key unwrap)",
-      "baselineMs": 173,
-      "budgetMs": 865,
+      "baselineMs": 188,
+      "budgetMs": 940,
       "targetMs": 1500
     },
     "boot-migrations": {
       "what": "cold start, open driver and run migrations",
-      "baselineMs": 81,
-      "budgetMs": 405,
+      "baselineMs": 87,
+      "budgetMs": 435,
       "targetMs": 500
     },
     "boot-sweep": {
       "what": "cold start, orphan photo sweep over fixture storage",
-      "baselineMs": 216,
-      "budgetMs": 1080,
+      "baselineMs": 192,
+      "budgetMs": 960,
       "targetMs": 800
     },
     "first-paint": {
       "what": "cold start, boot reference reads + Home queries before first usable screen",
-      "baselineMs": 328,
-      "budgetMs": 1640,
+      "baselineMs": 290,
+      "budgetMs": 1450,
       "targetMs": 1000
     },
     "calendar-month": {
       "what": "calendar, one month of heat map",
-      "baselineMs": 58,
-      "budgetMs": 290,
+      "baselineMs": 45,
+      "budgetMs": 225,
       "targetMs": 100
     },
     "stats-year-streak": {
       "what": "stats screen, the streak",
-      "baselineMs": 138,
-      "budgetMs": 690,
+      "baselineMs": 136,
+      "budgetMs": 680,
       "targetMs": 100
     },
     "stats-year-series": {
       "what": "stats screen, 365 days of every chart",
-      "baselineMs": 242,
-      "budgetMs": 1210,
+      "baselineMs": 178,
+      "budgetMs": 890,
       "targetMs": 350
     },
     "stats-month-insights": {
       "what": "stats screen, 30 days of tag insights",
-      "baselineMs": 25,
+      "baselineMs": 21,
       "budgetMs": 200,
       "targetMs": 250
     },
     "stats-year-insights": {
       "what": "stats screen, 365 days of tag insights",
-      "baselineMs": 22,
+      "baselineMs": 17,
       "budgetMs": 200,
       "targetMs": 250
     },
     "stats-year-insights-dimension": {
       "what": "stats screen, 365 days of tag insights on a dimension",
-      "baselineMs": 26,
+      "baselineMs": 23,
       "budgetMs": 200,
       "targetMs": 250
     },
     "stats-recap-year": {
       "what": "recap, one year",
-      "baselineMs": 99,
-      "budgetMs": 495,
+      "baselineMs": 75,
+      "budgetMs": 375,
       "targetMs": 400
     },
     "stats-decade": {
       "what": "stats, the whole decade in one range",
-      "baselineMs": 197,
-      "budgetMs": 985,
+      "baselineMs": 188,
+      "budgetMs": 940,
       "targetMs": 600
     },
     "search-common": {
       "what": "search \"lustro\", one page and the total",
-      "baselineMs": 139,
-      "budgetMs": 695,
+      "baselineMs": 154,
+      "budgetMs": 770,
       "targetMs": 150
     },
     "search-rare": {
       "what": "search \"endokrynolog\", one page and the total",
-      "baselineMs": 151,
-      "budgetMs": 755,
+      "baselineMs": 131,
+      "budgetMs": 655,
       "targetMs": 150
     },
     "search-tag-word": {
       "what": "search \"basen\", one page and the total",
-      "baselineMs": 177,
-      "budgetMs": 885,
+      "baselineMs": 141,
+      "budgetMs": 705,
       "targetMs": 150
     },
     "photo-grid-list": {
       "what": "photo grid, listing every photo",
-      "baselineMs": 100,
-      "budgetMs": 500,
+      "baselineMs": 96,
+      "budgetMs": 480,
       "targetMs": 300
     },
     "photo-grid-thumbs": {
       "what": "photo grid, reading every thumbnail",
-      "baselineMs": 675,
-      "budgetMs": 3375,
+      "baselineMs": 702,
+      "budgetMs": 3510,
       "targetMs": 3000
     },
     "archive-snapshot": {
       "what": "Archive export, reading the journal out",
-      "baselineMs": 3794,
-      "budgetMs": 18970,
+      "baselineMs": 4210,
+      "budgetMs": 21050,
       "targetMs": 5000
     },
     "archive-pack": {
       "what": "Archive export, encrypting the container",
-      "baselineMs": 3073,
-      "budgetMs": 15365,
+      "baselineMs": 3369,
+      "budgetMs": 16845,
       "targetMs": 20000
     },
     "on-this-day-good-day": {
       "what": "on-this-day, whether each lookback day clears the bar",
-      "baselineMs": 36,
+      "baselineMs": 24,
       "budgetMs": 200,
       "targetMs": 200
     },
     "doubt-counterevidence": {
       "what": "doubt journal, the counterevidence pool",
-      "baselineMs": 120,
-      "budgetMs": 600,
+      "baselineMs": 106,
+      "budgetMs": 530,
       "targetMs": 250
     },
     "body-region-trend": {
       "what": "body map, 365 days of one region, both axes",
-      "baselineMs": 29,
+      "baselineMs": 22,
       "budgetMs": 200,
       "targetMs": 350
     },
     "hair-progress-anchor": {
       "what": "hair progress, every dose since day zero plus every staging and photo",
-      "baselineMs": 527,
-      "budgetMs": 2635,
+      "baselineMs": 653,
+      "budgetMs": 3265,
       "targetMs": 900
     },
     "dose-schedule-adherence": {
       "what": "dose log, 90 days of the log against its schedule",
-      "baselineMs": 69,
-      "budgetMs": 345,
+      "baselineMs": 62,
+      "budgetMs": 310,
       "targetMs": 300
+    },
+    "hormone-curve": {
+      "what": "hormone curve, injectable plus qualitative models, 180 days",
+      "baselineMs": 479,
+      "budgetMs": 2395,
+      "targetMs": 900
+    },
+    "labs-series": {
+      "what": "labs screen, one analyte across every query the screen runs",
+      "baselineMs": 92,
+      "budgetMs": 460,
+      "targetMs": 300
+    },
+    "measurements-series": {
+      "what": "measurements screen, one type across both queries the screen runs",
+      "baselineMs": 17,
+      "budgetMs": 200,
+      "targetMs": 250
+    },
+    "hair-removal-sessions": {
+      "what": "hair removal, every session",
+      "baselineMs": 5,
+      "budgetMs": 200,
+      "targetMs": 300
+    },
+    "cycle-events-log": {
+      "what": "cycle events, every event",
+      "baselineMs": 8,
+      "budgetMs": 200,
+      "targetMs": 300
+    },
+    "side-effects-log": {
+      "what": "side effects, every entry",
+      "baselineMs": 7,
+      "budgetMs": 200,
+      "targetMs": 300
+    },
+    "voice-recordings": {
+      "what": "voice recordings, every one in the journal",
+      "baselineMs": 14,
+      "budgetMs": 200,
+      "targetMs": 350
+    },
+    "stock-projection": {
+      "what": "stock screen, every drug projected against the whole dose log",
+      "baselineMs": 632,
+      "budgetMs": 3160,
+      "targetMs": 900
+    },
+    "tryout-detail-entries": {
+      "what": "tryout detail, every entry across its open-ended span",
+      "baselineMs": 3634,
+      "budgetMs": 18170,
+      "targetMs": 5000
     },
     "entry-save": {
       "what": "save button, one entry with realistic dimensions and tags",
-      "baselineMs": 125,
-      "budgetMs": 625,
+      "baselineMs": 122,
+      "budgetMs": 610,
       "targetMs": 500
     },
     "photo-add": {
       "what": "save button, normalize and attach one realistic photo",
-      "baselineMs": 568,
-      "budgetMs": 2840,
+      "baselineMs": 627,
+      "budgetMs": 3135,
       "targetMs": 900
     },
     "archive-restore": {
       "what": "Archive import, replacing the decade fixture",
-      "baselineMs": 16822,
-      "budgetMs": 84110,
+      "baselineMs": 17472,
+      "budgetMs": 87360,
       "targetMs": 40000
     },
     "archive-restore-read": {
       "what": "Archive import, reading the archive photo bytes back out",
-      "baselineMs": 3498,
-      "budgetMs": 17490,
+      "baselineMs": 3522,
+      "budgetMs": 17610,
       "targetMs": 10000
     },
     "archive-restore-files": {
       "what": "Archive import, streaming every photo file in",
-      "baselineMs": 5149,
-      "budgetMs": 25745,
+      "baselineMs": 5141,
+      "budgetMs": 25705,
       "targetMs": 16000
     },
     "archive-restore-db": {
       "what": "Archive import, installing every row in one transaction",
-      "baselineMs": 11674,
-      "budgetMs": 58370,
+      "baselineMs": 12332,
+      "budgetMs": 61660,
       "targetMs": 20000
     },
     "daylio-import": {
       "what": "Daylio import, commit preview through merge restore",
-      "baselineMs": 11616,
-      "budgetMs": 58080,
+      "baselineMs": 12299,
+      "budgetMs": 61495,
       "targetMs": 30000
     }
   }
