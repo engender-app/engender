@@ -19,7 +19,7 @@ import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
-import { breaches, budgets, mb, overTarget } from './budgets.mjs';
+import { breaches, budgetFor, budgets, mb, overTarget } from './budgets.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const recording = process.argv.includes('--record');
@@ -80,23 +80,24 @@ for (const m of measurements) {
 console.log('');
 
 if (recording) {
-  /* A 5x time budget with a 200ms floor, for the reason budgets.mjs sets
-     out. Computed from the rounded baseline rather than the raw
-     measurement, so the file reproduces its own rule when someone checks
-     it. */
-  console.log('budgets.json measurements, with a 5x time budget and a 200ms floor:\n');
+  /* budgetFor()'s rule, for the reason budgets.mjs sets out: a 5x time
+     budget with a 200ms floor, capped at the target. Computed from the
+     rounded baseline rather than the raw measurement, so the file
+     reproduces its own rule when someone checks it. */
+  console.log('budgets.json measurements, with budgetFor()\'s rule:\n');
   console.log(
     JSON.stringify(
       Object.fromEntries(
         measurements.map((m) => {
           const baselineMs = Math.round(m.ms);
+          const targetMs = budgets.measurements[m.name]?.targetMs ?? null;
           return [
             m.name,
             {
               what: m.what,
               baselineMs,
-              budgetMs: Math.max(200, baselineMs * 5),
-              targetMs: budgets.measurements[m.name]?.targetMs ?? null
+              budgetMs: budgetFor(baselineMs, targetMs),
+              targetMs
             }
           ];
         })
