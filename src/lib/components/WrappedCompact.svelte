@@ -29,8 +29,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { atGrain, type Grain } from '$lib/charts/grain';
   import { MOOD_RANGE } from '$lib/data/metricRange';
-  import { metricKey } from '$lib/data/prefs/catalogue';
-  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import {
     WRAPPED_AREA_ROLE,
     nativeValue,
@@ -89,7 +88,7 @@
      reading differently. */
   const AREA_ROLE = WRAPPED_AREA_ROLE;
 
-  const fmtNative = (v: number) => nativeValue(metricKey(prefs), v);
+  const fmtNative = (v: number) => nativeValue(vocabulary.metric.key, v);
 
   let plotted = $derived(
     atGrain(
@@ -106,7 +105,7 @@
     return `${fmtDay(point.x, short)} - ${fmtDay(point.x + GRAIN_WEEK_SPAN, short)}`;
   };
 
-  let insightRows = $derived(tagInsightRows(insights, metricKey(prefs)));
+  let insightRows = $derived(tagInsightRows(insights, vocabulary.metric.key));
   let tally_rows = $derived(tallyRows(tally));
 </script>
 

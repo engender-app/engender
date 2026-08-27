@@ -50,7 +50,7 @@
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { RECENT_ENTRY_CAP, entryMarks, recentDayGroups } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
-  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
@@ -150,10 +150,7 @@
      line, which is where DIRECTION.md puts a section's switch. The choice is
      shared with the calendar's heat map, which keeps a sheet of its own
      until ticket 22 reaches it. */
-  let metricOptions = $derived([
-    { value: 'mood', label: m.mood() },
-    ...vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))
-  ]);
+  let metricOptions = $derived(vocabulary.metric.options.map((o) => ({ value: o.key, label: o.name })));
 
   function onQuickLog(v: number | null) {
     if (v == null) return;
@@ -348,13 +345,13 @@
       <ChartPicker
         key="home-metric"
         label={m.colour_days_by()}
-        value={vocabulary.activeMetric}
+        value={vocabulary.metric.key}
         options={metricOptions}
-        onPick={(value) => selectMetric(value === 'mood' ? null : value)}
+        onPick={vocabulary.metric.select}
       />
     {/snippet}
   </SectionHeading>
-  <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, AREA_ROLE.week)} />
+  <WeekStrip metric={vocabulary.metric.key} role={roleAt(activeFlag.roles, AREA_ROLE.week)} />
   <!-- The streak, as the caption on the week it describes. -->
   {#if streak > 1 && !pausedToday}
     <p class="home-week-caption" data-home-streak="week">{streak} {m.streak_row()}</p>
