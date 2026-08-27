@@ -38,7 +38,13 @@
     <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
   {/if}
   <div class="stack-3">
-    <button class="btn btn-danger" {...confirmAttrs} onclick={onConfirm}><span>{confirmLabel}</span></button>
-    <button class="btn btn-ghost" onclick={onCancel}><span>{cancelLabel}</span></button>
+    <!-- The kit's own handles, beside whatever the screen already named its
+         danger button (ADR-0029, the contract Notice and ListRow keep). The
+         cancel button never had one on any screen, so this is the first
+         thing that can address it. -->
+    <button class="btn btn-danger" data-confirm-delete {...confirmAttrs} onclick={onConfirm}>
+      <span>{confirmLabel}</span>
+    </button>
+    <button class="btn btn-ghost" data-cancel-delete onclick={onCancel}><span>{cancelLabel}</span></button>
   </div>
 </Sheet>

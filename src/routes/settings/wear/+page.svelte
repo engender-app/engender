@@ -47,9 +47,11 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -137,8 +139,63 @@
     reminderHours: string;
   };
 
-  let editor = $state<Editor | null>(null);
-  let deleteTarget = $state<WearSession | null>(null);
+  const record = recordEditor<WearSession, Editor>({
+    blank: () => ({
+      isRunning: false,
+      startTimestamp: startOfDayTimestamp(today),
+      mode: running ? 'backfill' : 'live',
+      day: dateInputValueFromEpochDay(today),
+      durationHours: '',
+      note: '',
+      reminderEnabled: false,
+      reminderHours: ''
+    }),
+    fromRecord: (session) => {
+      const isRunning = session.durationMs === null;
+      const reminder = reminderFor(session.id);
+      return {
+        id: session.id,
+        isRunning,
+        startTimestamp: session.startTimestamp,
+        mode: isRunning ? 'live' : 'backfill',
+        day: dateInputValueFromEpochDay(epochDayFromTimestamp(session.startTimestamp)),
+        durationHours: session.durationMs !== null ? String(session.durationMs / 3600000) : '',
+        note: session.note ?? '',
+        reminderEnabled: reminder !== null,
+        reminderHours: reminder ? String(hoursAfterStart(session.startTimestamp, reminder)) : ''
+      };
+    },
+    async upsert(draft) {
+      if (!editorCanSave) return false;
+      const note = draft.note.trim() || null;
+      const reminderHoursAfterStart = reminderHoursOf(draft);
+
+      if (draft.mode === 'live' && !draft.id) {
+        await journal.wearSessions.upsertSession({
+          startTimestamp: Date.now(),
+          durationMs: null,
+          note,
+          reminderHoursAfterStart,
+          reminderTitle: m.wear_log()
+        });
+        return;
+      }
+
+      const newDay = epochDayFromDateInputValue(draft.day) ?? today;
+      await journal.wearSessions.upsertSession({
+        id: draft.id,
+        startTimestamp: shiftStartToDay(draft.startTimestamp, newDay),
+        durationMs: Math.round(parseFloat(draft.durationHours) * 3600000),
+        note,
+        reminderHoursAfterStart,
+        reminderTitle: m.wear_log()
+      });
+    },
+    remove: (id) => journal.wearSessions.deleteSession(id),
+    findById: (id) => sessions.find((s) => s.id === id) ?? (running?.id === id ? running : undefined)
+  });
+  let editor = $derived(record.editor);
+  let deleteTarget = $derived(record.deleteTarget);
 
   let modeOptions = $derived(
     running
@@ -148,35 +205,6 @@
           { value: 'backfill', label: m.wear_session_mode_backfill() }
         ]
   );
-
-  function openNewEditor() {
-    editor = {
-      isRunning: false,
-      startTimestamp: startOfDayTimestamp(today),
-      mode: running ? 'backfill' : 'live',
-      day: dateInputValueFromEpochDay(today),
-      durationHours: '',
-      note: '',
-      reminderEnabled: false,
-      reminderHours: ''
-    };
-  }
-
-  function openEditor(session: WearSession) {
-    const isRunning = session.durationMs === null;
-    const reminder = reminderFor(session.id);
-    editor = {
-      id: session.id,
-      isRunning,
-      startTimestamp: session.startTimestamp,
-      mode: isRunning ? 'live' : 'backfill',
-      day: dateInputValueFromEpochDay(epochDayFromTimestamp(session.startTimestamp)),
-      durationHours: session.durationMs !== null ? String(session.durationMs / 3600000) : '',
-      note: session.note ?? '',
-      reminderEnabled: reminder !== null,
-      reminderHours: reminder ? String(hoursAfterStart(session.startTimestamp, reminder)) : ''
-    };
-  }
 
   let editorCanSave = $derived.by(() => {
     if (!editor) return false;
@@ -192,35 +220,6 @@
 
   const reminderHoursOf = (editor: Editor): number | null => (editor.reminderEnabled ? parseFloat(editor.reminderHours) : null);
 
-  async function saveEditor() {
-    if (!editor || !editorCanSave) return;
-    const note = editor.note.trim() || null;
-    const reminderHoursAfterStart = reminderHoursOf(editor);
-
-    if (editor.mode === 'live' && !editor.id) {
-      await journal.wearSessions.upsertSession({
-        startTimestamp: Date.now(),
-        durationMs: null,
-        note,
-        reminderHoursAfterStart,
-        reminderTitle: m.wear_log()
-      });
-      editor = null;
-      return;
-    }
-
-    const newDay = epochDayFromDateInputValue(editor.day) ?? today;
-    await journal.wearSessions.upsertSession({
-      id: editor.id,
-      startTimestamp: shiftStartToDay(editor.startTimestamp, newDay),
-      durationMs: Math.round(parseFloat(editor.durationHours) * 3600000),
-      note,
-      reminderHoursAfterStart,
-      reminderTitle: m.wear_log()
-    });
-    editor = null;
-  }
-
   async function stopRunning() {
     if (!editor || !editor.isRunning) return;
     await journal.wearSessions.upsertSession({
@@ -231,20 +230,7 @@
       reminderHoursAfterStart: reminderHoursOf(editor),
       reminderTitle: m.wear_log()
     });
-    editor = null;
-  }
-
-  function askToDelete() {
-    if (!editor?.id) return;
-    deleteTarget = sessions.find((s) => s.id === editor!.id) ?? (running?.id === editor!.id ? running : null);
-    if (deleteTarget) editor = null;
-  }
-
-  async function deleteEditorTarget() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.wearSessions.deleteSession(id);
+    record.editor = null;
   }
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -282,7 +268,7 @@
 <div class="screen">
   <ScreenHeader title={m.wear_log()} back="/more" subtitle={m.wear_log_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.wear_session_add_aria()} onclick={openNewEditor}>
+      <button class="icon-btn press" data-add aria-label={m.wear_session_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -303,7 +289,7 @@
               ? `${m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })} · ${m.wear_session_duration_hm({ hours: String(runningElapsed.hours), minutes: String(runningElapsed.minutes) })}`
               : m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })}
             chevron={false}
-            onclick={() => openEditor(running)}
+            onclick={() => record.openEditor(running)}
           >
             {#snippet trailing()}
               <Icon name="stop" size={20} />
@@ -326,7 +312,7 @@
                   ? `${fmtDayLong(epochDayFromTimestamp(session.startTimestamp))} · ${session.note}`
                   : fmtDayLong(epochDayFromTimestamp(session.startTimestamp))}
                 chevron={false}
-                onclick={() => openEditor(session)}
+                onclick={() => record.openEditor(session)}
               />
             {/each}
           </ListCard>
@@ -338,7 +324,7 @@
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
           title={m.wear_session_empty_title()}
           text={m.wear_session_empty_body()}
-          action={{ label: m.wear_session_empty_action(), primary: true, onclick: openNewEditor }}
+          action={{ label: m.wear_session_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       {/if}
 
@@ -396,7 +382,7 @@
   <Sheet
     open={editor !== null}
     title={editor?.isRunning ? m.wear_session_running_sheet() : editor?.id ? m.wear_session_edit_sheet() : m.wear_session_new_sheet()}
-    onClose={() => (editor = null)}
+    onClose={() => (record.editor = null)}
   >
     {#if editor}
       <h3>{editor.isRunning ? m.wear_session_running_sheet() : editor.id ? m.wear_session_edit_sheet() : m.wear_session_new_sheet()}</h3>
@@ -464,31 +450,32 @@
         {#if editor.isRunning}
           <button class="btn btn-primary" data-stop-wear-session onclick={stopRunning}><span>{m.wear_session_stop_action()}</span></button>
         {:else if editor.mode === 'live' && !editor.id}
-          <button class="btn btn-primary" data-start-wear-session disabled={!editorCanSave} onclick={saveEditor}>
+          <button class="btn btn-primary" data-start-wear-session disabled={!editorCanSave} onclick={record.save}>
             <span>{m.wear_session_start_action()}</span>
           </button>
         {:else}
-          <button class="btn btn-primary" data-save-wear-session disabled={!editorCanSave} onclick={saveEditor}>
+          <button class="btn btn-primary" data-save-wear-session disabled={!editorCanSave} onclick={record.save}>
             <span>{m.wear_session_save()}</span>
           </button>
         {/if}
         {#if editor.id}
-          <button class="btn btn-ghost" data-delete-wear-session onclick={askToDelete}><span>{m.wear_session_delete()}</span></button>
+          <button class="btn btn-ghost" data-delete-wear-session onclick={() => record.askToDelete()}><span>{m.wear_session_delete()}</span></button>
         {/if}
       </div>
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.wear_session_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.wear_session_delete_q({ date: fmtDayLong(epochDayFromTimestamp(deleteTarget.startTimestamp)) })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.wear_session_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-wear-session onclick={deleteEditorTarget}><span>{m.wear_session_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.wear_session_delete_sheet()}
+    question={deleteTarget ? m.wear_session_delete_q({ date: fmtDayLong(epochDayFromTimestamp(deleteTarget.startTimestamp)) }) : ''}
+    hint={m.wear_session_delete_hint()}
+    confirmLabel={m.wear_session_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-wear-session': true }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 </div>
 
 <style>

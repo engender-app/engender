@@ -14,11 +14,12 @@
   import type { Tryout } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -32,13 +33,11 @@
       ? m.tryout_since({ start: dayLabel(t.startEpochDay) })
       : m.tryout_range({ start: dayLabel(t.startEpochDay), end: dayLabel(t.endEpochDay) });
 
-  let deleteTarget = $state<Tryout | null>(null);
-  async function deleteTryout() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.tryouts.deleteTryout(id);
-  }
+  const record = recordEditor<Tryout>({
+    remove: (id) => journal.tryouts.deleteTryout(id),
+    findById: (id) => tryouts.find((t) => t.id === id)
+  });
+  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
@@ -61,7 +60,7 @@
             title={t.label}
             subtitle={`${tryoutKindName(t.kind)} · ${rangeLabel(t)}`}
             href="/settings/tryouts/{t.id}"
-            action={{ icon: 'trash', label: m.tryout_delete_sheet(), onclick: () => (deleteTarget = t) }}
+            action={{ icon: 'trash', label: m.tryout_delete_sheet(), onclick: () => record.askToDelete(t) }}
           />
         {/each}
       </ListCard>
@@ -79,14 +78,15 @@
     </div>
   {/if}
 
-  <Sheet open={deleteTarget !== null} title={m.tryout_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.tryout_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.tryout_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-tryout onclick={deleteTryout}><span>{m.tryout_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.tryout_delete_sheet()}
+    question={m.tryout_delete_q()}
+    hint={m.tryout_delete_hint()}
+    confirmLabel={m.tryout_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-tryout': true }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 </div>

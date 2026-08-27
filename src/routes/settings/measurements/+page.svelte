@@ -27,9 +27,11 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -89,56 +91,40 @@
     return measurements.at(-1)?.unit ?? 'cm';
   }
 
-  let editor = $state<{ id?: string; date: string; type: string; value: string; unit: string } | null>(null);
-  let deleteTarget = $state<Measurement | null>(null);
+  const record = recordEditor<Measurement, { id?: string; date: string; type: string; value: string; unit: string }>({
+    blank: () => ({
+      date: dateInputValueFromEpochDay(todayEpochDay()),
+      type,
+      value: '',
+      unit: lastUnit()
+    }),
+    fromRecord: (measurement) => ({
+      id: measurement.id,
+      date: dateInputValueFromEpochDay(measurement.epochDay),
+      type: measurement.type,
+      value: String(measurement.value),
+      unit: measurement.unit
+    }),
+    async upsert(draft) {
+      const value = parseFloat(draft.value);
+      if (isNaN(value)) return false;
+
+      await journal.measurements.upsertMeasurement({
+        id: draft.id,
+        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+        type: draft.type,
+        value,
+        unit: draft.unit
+      });
+      type = draft.type;
+    },
+    remove: (id) => journal.measurements.deleteMeasurement(id),
+    findById: (id) => measurements.find((r) => r.id === id)
+  });
+  let editor = $derived(record.editor);
+  let deleteTarget = $derived(record.deleteTarget);
   let manageOpen = $state(false);
   let newTypeName = $state('');
-
-  function openEditor(measurement: Measurement | null) {
-    editor = measurement
-      ? {
-          id: measurement.id,
-          date: dateInputValueFromEpochDay(measurement.epochDay),
-          type: measurement.type,
-          value: String(measurement.value),
-          unit: measurement.unit
-        }
-      : {
-          date: dateInputValueFromEpochDay(todayEpochDay()),
-          type,
-          value: '',
-          unit: lastUnit()
-        };
-  }
-
-  async function saveMeasurement() {
-    if (!editor) return;
-    const value = parseFloat(editor.value);
-    if (isNaN(value)) return;
-
-    await journal.measurements.upsertMeasurement({
-      id: editor.id,
-      epochDay: epochDayFromDateInputValue(editor.date) ?? todayEpochDay(),
-      type: editor.type,
-      value,
-      unit: editor.unit
-    });
-    type = editor.type;
-    editor = null;
-  }
-
-  function askToDelete() {
-    if (!editor?.id) return;
-    deleteTarget = measurements.find((r) => r.id === editor!.id) ?? null;
-    if (deleteTarget) editor = null;
-  }
-
-  async function deleteMeasurement() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.measurements.deleteMeasurement(id);
-  }
 
   /** Hiding never deletes (CONTEXT: "Hidden") - it only takes the type out
       of the picker above. If that was the type on screen, fall back to
@@ -174,7 +160,7 @@
       <button class="icon-btn press" data-manage-types aria-label={m.measurement_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
       </button>
-      <button class="icon-btn press" data-add aria-label={m.measurement_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.measurement_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -236,7 +222,7 @@
             title={`${r.value} ${r.unit}`}
             subtitle={fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
             chevron={false}
-            onclick={() => openEditor(r)}
+            onclick={() => record.openEditor(r)}
           />
         {/each}
       </ListCard>
@@ -249,12 +235,12 @@
         role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
         title={m.measurement_empty_title()}
         text={m.measurement_empty_body()}
-        action={{ label: m.measurement_empty_action(), primary: true, onclick: () => openEditor(null) }}
+        action={{ label: m.measurement_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
       />
     </div>
   {/if}
 
-  <Sheet open={editor !== null} title={editor?.id ? m.measurement_edit_sheet() : m.measurement_new_sheet()} onClose={() => (editor = null)}>
+  <Sheet open={editor !== null} title={editor?.id ? m.measurement_edit_sheet() : m.measurement_new_sheet()} onClose={() => (record.editor = null)}>
     {#if editor}
       <h3>{editor.id ? m.measurement_edit_sheet() : m.measurement_new_sheet()}</h3>
       <div class="field">
@@ -284,24 +270,25 @@
         </div>
       </div>
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-measurement onclick={saveMeasurement}><span>{m.measurement_save()}</span></button>
+        <button class="btn btn-primary" data-save-measurement onclick={record.save}><span>{m.measurement_save()}</span></button>
         {#if editor.id}
-          <button class="btn btn-ghost" data-delete-measurement onclick={askToDelete}><span>{m.measurement_delete()}</span></button>
+          <button class="btn btn-ghost" data-delete-measurement onclick={() => record.askToDelete()}><span>{m.measurement_delete()}</span></button>
         {/if}
       </div>
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.measurement_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.measurement_delete_q({ type: vocabulary.measurementTypeName(deleteTarget.type) })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.measurement_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-measurement onclick={deleteMeasurement}><span>{m.measurement_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.measurement_delete_sheet()}
+    question={deleteTarget ? m.measurement_delete_q({ type: vocabulary.measurementTypeName(deleteTarget.type) }) : ''}
+    hint={m.measurement_delete_hint()}
+    confirmLabel={m.measurement_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-measurement': true }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 
   <Sheet open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.measurement_manage_types()}</h3>

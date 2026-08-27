@@ -24,10 +24,12 @@
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -47,64 +49,42 @@
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  let editor = $state<{
-    id?: string;
-    date: string;
-    area: string;
-    method: HairRemovalMethod;
-    painRating: string;
-    cost: string;
-    provider: string;
-  } | null>(null);
-  let deleteTarget = $state<HairRemovalSession | null>(null);
-
-  function openEditor(session: HairRemovalSession | null) {
-    editor = session
-      ? {
-          id: session.id,
-          date: dateInputValueFromEpochDay(session.epochDay),
-          area: session.area,
-          method: session.method,
-          painRating: String(session.painRating),
-          cost: session.cost,
-          provider: session.provider
-        }
-      : { date: dateInputValueFromEpochDay(today), area: HAIR_REMOVAL_AREAS[0], method: 'laser', painRating: '3', cost: '', provider: '' };
-  }
-
-  async function saveSession() {
-    if (!editor) return;
-    await journal.hairRemoval.upsertSession({
-      id: editor.id,
-      epochDay: epochDayFromDateInputValue(editor.date) ?? today,
-      area: editor.area,
-      method: editor.method,
-      painRating: Number(editor.painRating),
-      cost: editor.cost,
-      provider: editor.provider
-    });
-    editor = null;
-  }
-
-  function askToDelete() {
-    if (!editor?.id) return;
-    deleteTarget = sessions.find((session) => session.id === editor!.id) ?? null;
-    if (deleteTarget) editor = null;
-  }
-
-  async function deleteSession() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.hairRemoval.deleteSession(id);
-  }
+  const record = recordEditor<
+    HairRemovalSession,
+    { id?: string; date: string; area: string; method: HairRemovalMethod; painRating: string; cost: string; provider: string }
+  >({
+    blank: () => ({ date: dateInputValueFromEpochDay(today), area: HAIR_REMOVAL_AREAS[0], method: 'laser', painRating: '3', cost: '', provider: '' }),
+    fromRecord: (session) => ({
+      id: session.id,
+      date: dateInputValueFromEpochDay(session.epochDay),
+      area: session.area,
+      method: session.method,
+      painRating: String(session.painRating),
+      cost: session.cost,
+      provider: session.provider
+    }),
+    async upsert(draft) {
+      await journal.hairRemoval.upsertSession({
+        id: draft.id,
+        epochDay: epochDayFromDateInputValue(draft.date) ?? today,
+        area: draft.area,
+        method: draft.method,
+        painRating: Number(draft.painRating),
+        cost: draft.cost,
+        provider: draft.provider
+      });
+    },
+    remove: (id) => journal.hairRemoval.deleteSession(id),
+    findById: (id) => sessions.find((session) => session.id === id)
+  });
+  let editor = $derived(record.editor);
+  let deleteTarget = $derived(record.deleteTarget);
 
   /* Only once a session has its own id: a photo belongs to one session
      (hairRemoval.ts's own foreign key), so there is nothing to attach it to
      before that first save. */
   let photosQuery = liveQuery(['hairRemoval'], (j) => (editor?.id ? j.hairRemoval.getPhotos(editor.id) : Promise.resolve([])));
   let photos = $derived(photosQuery.value ?? []);
-  let photoDeleteTarget = $state<HairRemovalPhoto | null>(null);
 
   async function storePhoto(photo: NormalizedPhoto | null) {
     if (!editor?.id || !photo) return;
@@ -122,18 +102,17 @@
     storePhoto
   );
 
-  async function deletePhoto() {
-    if (!photoDeleteTarget) return;
-    const id = photoDeleteTarget.id;
-    photoDeleteTarget = null;
-    await journal.hairRemoval.deletePhoto(id);
-  }
+  const photoRecord = recordEditor<HairRemovalPhoto>({
+    remove: (id) => journal.hairRemoval.deletePhoto(id),
+    findById: (id) => photos.find((p) => p.id === id)
+  });
+  let photoDeleteTarget = $derived(photoRecord.deleteTarget);
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.hair_removal()} back="/more" subtitle={m.hair_removal_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.hair_removal_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.hair_removal_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -168,7 +147,7 @@
             title={hairRemovalAreaName(session.area)}
             subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
             chevron={false}
-            onclick={() => openEditor(session)}
+            onclick={() => record.openEditor(session)}
           />
         {/each}
       </ListCard>
@@ -181,7 +160,7 @@
         role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
         title={m.hair_removal_empty_title()}
         text={m.hair_removal_empty_body()}
-        action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => openEditor(null) }}
+        action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
       />
     </div>
   {/if}
@@ -189,7 +168,7 @@
   <Sheet
     open={editor !== null}
     title={editor?.id ? m.hair_removal_edit_sheet() : m.hair_removal_new_sheet()}
-    onClose={() => (editor = null)}
+    onClose={() => (record.editor = null)}
   >
     {#if editor}
       <h3>{editor.id ? m.hair_removal_edit_sheet() : m.hair_removal_new_sheet()}</h3>
@@ -270,7 +249,7 @@
                     class="kit-row-act press"
                     data-delete-hair-removal-photo={p.id}
                     aria-label={m.hair_removal_photo_delete_sheet()}
-                    onclick={() => (photoDeleteTarget = p)}
+                    onclick={() => photoRecord.askToDelete(p)}
                   >
                     <Icon name="trash" size={18} />
                   </button>
@@ -289,35 +268,37 @@
       {/if}
 
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-hair-removal-session onclick={saveSession}><span>{m.hair_removal_save()}</span></button>
+        <button class="btn btn-primary" data-save-hair-removal-session onclick={record.save}><span>{m.hair_removal_save()}</span></button>
         {#if editor.id}
-          <button class="btn btn-ghost" data-delete-hair-removal-session onclick={askToDelete}><span>{m.hair_removal_delete()}</span></button>
+          <button class="btn btn-ghost" data-delete-hair-removal-session onclick={() => record.askToDelete()}><span>{m.hair_removal_delete()}</span></button>
         {/if}
       </div>
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.hair_removal_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.hair_removal_delete_q({ area: hairRemovalAreaName(deleteTarget.area) })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_removal_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-hair-removal-session onclick={deleteSession}><span>{m.hair_removal_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.hair_removal_delete_sheet()}
+    question={deleteTarget ? m.hair_removal_delete_q({ area: hairRemovalAreaName(deleteTarget.area) }) : ''}
+    hint={m.hair_removal_delete_hint()}
+    confirmLabel={m.hair_removal_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-hair-removal-session': true }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 
-  <Sheet open={photoDeleteTarget !== null} title={m.hair_removal_photo_delete_sheet()} onClose={() => (photoDeleteTarget = null)}>
-    {#if photoDeleteTarget}
-      <h3>{m.hair_removal_photo_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_removal_photo_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-hair-removal-photo onclick={deletePhoto}><span>{m.hair_removal_photo_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (photoDeleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={photoDeleteTarget !== null}
+    title={m.hair_removal_photo_delete_sheet()}
+    question={photoDeleteTarget ? m.hair_removal_photo_delete_q() : ''}
+    hint={m.hair_removal_photo_delete_hint()}
+    confirmLabel={m.hair_removal_photo_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-hair-removal-photo': true }}
+    onConfirm={photoRecord.confirmDelete}
+    onCancel={photoRecord.cancelDelete}
+  />
 
   <PhotoAlignmentReview
     photo={sessionPhotoReview.photo}

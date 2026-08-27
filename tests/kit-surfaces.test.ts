@@ -57,6 +57,12 @@ describe('the surfaces', () => {
          chip - but its mark draws itself in and that motion wants one file
          to live in rather than being inlined in a row's markup. */
       'Check.svelte',
+      /* The delete-confirm every record-logging screen drew for itself
+         (phase 5 UX ticket 39a). Not a surface either - it is a Sheet with
+         a fixed arrangement inside it - but sixteen screens held
+         byte-for-byte the same markup, and the question, the hint and both
+         button labels are props, so it owns no copy. */
+      'ConfirmDeleteSheet.svelte',
       'DayCard.svelte',
       'DayEntry.svelte',
       'Distribution.svelte',
