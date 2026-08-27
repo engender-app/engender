@@ -22,9 +22,11 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -41,48 +43,33 @@
   let recordsQuery = liveQuery(['sizeRecord'], (j) => j.sizeRecords.getRecordsByCategory(category));
   let records = $derived(recordsQuery.value ?? []);
 
-  let editor = $state<{ id?: string; date: string; category: string; size: string; brand: string; fitNote: string } | null>(null);
-  let deleteTarget = $state<SizeRecord | null>(null);
+  const record = recordEditor<SizeRecord, { id?: string; date: string; category: string; size: string; brand: string; fitNote: string }>({
+    blank: () => ({ date: dateInputValueFromEpochDay(todayEpochDay()), category, size: '', brand: '', fitNote: '' }),
+    fromRecord: (r) => ({ id: r.id, date: dateInputValueFromEpochDay(r.epochDay), category: r.category, size: r.size, brand: r.brand, fitNote: r.fitNote }),
+    async upsert(draft) {
+      if (!draft.size.trim()) return false;
 
-  function openEditor(record: SizeRecord | null) {
-    editor = record
-      ? { id: record.id, date: dateInputValueFromEpochDay(record.epochDay), category: record.category, size: record.size, brand: record.brand, fitNote: record.fitNote }
-      : { date: dateInputValueFromEpochDay(todayEpochDay()), category, size: '', brand: '', fitNote: '' };
-  }
-
-  async function saveRecord() {
-    if (!editor || !editor.size.trim()) return;
-
-    await journal.sizeRecords.upsertRecord({
-      id: editor.id,
-      epochDay: epochDayFromDateInputValue(editor.date) ?? todayEpochDay(),
-      category: editor.category,
-      size: editor.size,
-      brand: editor.brand,
-      fitNote: editor.fitNote
-    });
-    category = editor.category;
-    editor = null;
-  }
-
-  function askToDelete() {
-    if (!editor?.id) return;
-    deleteTarget = records.find((r) => r.id === editor!.id) ?? null;
-    if (deleteTarget) editor = null;
-  }
-
-  async function deleteRecord() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.sizeRecords.deleteRecord(id);
-  }
+      await journal.sizeRecords.upsertRecord({
+        id: draft.id,
+        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+        category: draft.category,
+        size: draft.size,
+        brand: draft.brand,
+        fitNote: draft.fitNote
+      });
+      category = draft.category;
+    },
+    remove: (id) => journal.sizeRecords.deleteRecord(id),
+    findById: (id) => records.find((r) => r.id === id)
+  });
+  let editor = $derived(record.editor);
+  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.size_log()} back="/more" subtitle={m.size_log_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.size_log_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.size_log_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -113,7 +100,7 @@
             title={r.brand ? `${r.size} · ${r.brand}` : r.size}
             subtitle={r.fitNote ? `${dayLabel(r.epochDay)} · ${r.fitNote}` : dayLabel(r.epochDay)}
             chevron={false}
-            onclick={() => openEditor(r)}
+            onclick={() => record.openEditor(r)}
           />
         {/each}
       </ListCard>
@@ -126,12 +113,12 @@
         role={roleAt(activeFlag.roles, 0)}
         title={m.size_log_empty_title()}
         text={m.size_log_empty_body()}
-        action={{ label: m.size_log_empty_action(), primary: true, onclick: () => openEditor(null) }}
+        action={{ label: m.size_log_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
       />
     </div>
   {/if}
 
-  <Sheet open={editor !== null} title={editor?.id ? m.size_log_edit_sheet() : m.size_log_new_sheet()} onClose={() => (editor = null)}>
+  <Sheet open={editor !== null} title={editor?.id ? m.size_log_edit_sheet() : m.size_log_new_sheet()} onClose={() => (record.editor = null)}>
     {#if editor}
       <h3>{editor.id ? m.size_log_edit_sheet() : m.size_log_new_sheet()}</h3>
       <div class="field">
@@ -159,22 +146,23 @@
         <input class="input" id="size-log-fit-note" name="size-log-fit-note" placeholder={m.size_log_fit_note_placeholder()} bind:value={editor.fitNote} />
       </div>
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-size-record disabled={!editor.size.trim()} onclick={saveRecord}><span>{m.size_log_save()}</span></button>
+        <button class="btn btn-primary" data-save-size-record disabled={!editor.size.trim()} onclick={record.save}><span>{m.size_log_save()}</span></button>
         {#if editor.id}
-          <button class="btn btn-ghost" data-delete-size-record onclick={askToDelete}><span>{m.size_log_delete()}</span></button>
+          <button class="btn btn-ghost" data-delete-size-record onclick={() => record.askToDelete()}><span>{m.size_log_delete()}</span></button>
         {/if}
       </div>
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.size_log_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.size_log_delete_q({ category: garmentCategoryName(deleteTarget.category) })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.size_log_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-size-record onclick={deleteRecord}><span>{m.size_log_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.size_log_delete_sheet()}
+    question={deleteTarget ? m.size_log_delete_q({ category: garmentCategoryName(deleteTarget.category) }) : ''}
+    hint={m.size_log_delete_hint()}
+    confirmLabel={m.size_log_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-size-record': '' }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 </div>
