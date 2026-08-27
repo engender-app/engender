@@ -3,8 +3,13 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
-  import { nextOccurrence, type ReminderRule } from '$lib/data/reminderRule';
-  import { epochDayFromLocalDate, todayEpochDay } from '$lib/data/epochDay';
+  import {
+    choiceFromRule,
+    nextOccurrence,
+    ruleFromChoice,
+    type RecurrenceChoice,
+    type ReminderRule
+  } from '$lib/data/reminderRule';
   import { intlLocale } from '$lib/data/dates';
   import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -19,19 +24,13 @@
   ];
   /* What the segmented control offers; the stored rule is reminderRule.ts's
      shape (a one-off day, DAILY/WEEKLY, or an anchored EVERY_N_DAYS). */
-  const RECURRENCES = [
+  const RECURRENCES: { value: RecurrenceChoice; label: string }[] = [
     { value: 'ONCE', label: m.rem_rec_once() },
     { value: 'DAILY', label: m.rem_rec_daily() },
     { value: 'EVERY_3_DAYS', label: m.rem_rec_every_3() },
     { value: 'EVERY_7_DAYS', label: m.rem_rec_every_7() },
     { value: 'WEEKLY', label: m.rem_rec_weekly() },
   ];
-
-  function choiceFromRule(r: Reminder): string {
-    if (r.recurrence === null) return 'ONCE';
-    if (r.recurrence === 'EVERY_N_DAYS') return r.interval === 7 ? 'EVERY_7_DAYS' : 'EVERY_3_DAYS';
-    return r.recurrence;
-  }
 
   const isNew = page.params.id === 'new';
 
@@ -42,35 +41,20 @@
   let stored = liveQuery((j) => (isNew ? Promise.resolve([]) : j.reminders.getReminders()));
   let existing = $derived(stored.value?.find((r) => r.id === page.params.id));
 
-  let draft = $state({ title: '', type: 'med' as Reminder['type'], time: '20:00', choice: 'DAILY' });
+  let draft = $state({
+    title: '',
+    type: 'med' as Reminder['type'],
+    time: '20:00',
+    choice: 'DAILY' as RecurrenceChoice
+  });
 
   onFirstResult(stored, (reminders) => {
     const found = reminders?.find((r) => r.id === page.params.id);
     if (found) draft = { title: found.title, type: found.type, time: found.time, choice: choiceFromRule(found) };
   });
 
-  function ruleFromDraft(): ReminderRule {
-    const none = { interval: null, anchorEpochDay: null, epochDay: null };
-    if (draft.choice === 'ONCE') {
-      // "Once" means the next moment the chosen time comes around; the
-      // shared rule function decides whether that is today or tomorrow.
-      // A DAILY rule always has a next occurrence - only an elapsed one-off
-      // comes back empty - so this is the day the draft is dated from, and
-      // is why the preview below never has to say a saved one-off has passed.
-      const at = nextOccurrence({ ...none, time: draft.time, recurrence: 'DAILY' }, new Date())!;
-      return { ...none, time: draft.time, recurrence: null, epochDay: epochDayFromLocalDate(at) };
-    }
-    if (draft.choice === 'EVERY_3_DAYS' || draft.choice === 'EVERY_7_DAYS') {
-      const interval = draft.choice === 'EVERY_3_DAYS' ? 3 : 7;
-      // An existing progression keeps its anchor; a new one starts today.
-      const anchorEpochDay =
-        existing?.recurrence === 'EVERY_N_DAYS' && existing.interval === interval
-          ? existing.anchorEpochDay
-          : todayEpochDay();
-      return { ...none, time: draft.time, recurrence: 'EVERY_N_DAYS', interval, anchorEpochDay };
-    }
-    return { ...none, time: draft.time, recurrence: draft.choice as 'DAILY' | 'WEEKLY' };
-  }
+  const ruleFromDraft = (): ReminderRule =>
+    ruleFromChoice(draft.choice, draft.time, existing ?? null, new Date());
 
   /* The rule the Android scheduler is held to case for case
      (reminder-rule.json): the preview cannot promise a moment that will not
@@ -117,7 +101,7 @@
     </div>
     <div class="field">
       <span class="field-label">{m.rem_repeats_label()}</span>
-      <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v)} />
+      <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v as RecurrenceChoice)} />
     </div>
     <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
   </div>
