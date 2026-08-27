@@ -17,7 +17,6 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
     interval: 'every 2 weeks',
     startEpochDay: DAY_0,
     endEpochDay: null,
-    hidden: false,
     ...overrides
   };
 }
@@ -160,14 +159,6 @@ test('an episode entirely before the range contributes nothing', () => {
     rows.map((r) => r.episodeId),
     ['ep-2']
   );
-});
-
-test('a hidden episode still counts: hiding is a picker filter, not a deletion from history', () => {
-  const hidden = episode({ startEpochDay: DAY_0, hidden: true });
-
-  const rows = timeOnEachRegimen([hidden], DAY_0, DAY_0 + 9);
-
-  assert.equal(rows[0].days, 10);
 });
 
 test('daysOnEachRoute sums overlap days across every episode that used the route', () => {
