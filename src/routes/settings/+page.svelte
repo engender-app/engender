@@ -17,7 +17,7 @@
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -56,7 +56,7 @@
      beat; with the preset gone the names are all there is to say, and they
      are also the only way to see the set without opening the sheet. */
   let tickedNames = $derived(vocabulary.activeDimensions.map((d) => d.name).join(', '));
-  let metricName = $derived(vocabulary.metricName);
+  let metricName = $derived(vocabulary.metric.name);
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
 
   /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
@@ -524,16 +524,16 @@
            `reference.activeMetric` now resolves straight back to mood - a
            choice that looked like it did nothing. A picker offers what the
            app can honour (phase 5 ticket 35). -->
-      {#each [{ key: null, name: m.mood() }, ...vocabulary.activeDimensions] as d (d.key ?? 'mood')}
+      {#each vocabulary.metric.options as d (d.key)}
         <button
           class="list-row"
           onclick={() => {
-            selectMetric(d.key);
+            vocabulary.metric.select(d.key);
             metricSheet = false;
           }}
         >
           <span class="row-text"><span class="row-title">{d.name}</span></span>
-          {#if vocabulary.activeMetric === (d.key ?? 'mood')}<Icon name="check" size={20} />{/if}
+          {#if vocabulary.metric.key === d.key}<Icon name="check" size={20} />{/if}
         </button>
       {/each}
     </div>

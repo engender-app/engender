@@ -27,8 +27,7 @@
   import { moodYear } from '$lib/charts/moodYear';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { MOOD_RANGE } from '$lib/data/metricRange';
-  import { metricKey } from '$lib/data/prefs/catalogue';
-  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import {
     WRAPPED_AREA_ROLE,
     nativeValue,
@@ -104,7 +103,7 @@
     return step === null ? day : `${day} · ${moodName(step)}`;
   };
 
-  let insightRows = $derived(tagInsightRows(insights, metricKey(prefs)));
+  let insightRows = $derived(tagInsightRows(insights, vocabulary.metric.key));
   let tally_rows = $derived(tallyRows(tally));
 
   let figures = $derived([
