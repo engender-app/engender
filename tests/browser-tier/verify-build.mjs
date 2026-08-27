@@ -88,31 +88,25 @@ async function openScreen(page, origin, path) {
   await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
 }
 
-/** Opens the lab scanner and reads one image through it, from whatever state
-    the page is in. Returns the state the machine settled in. */
-async function readOneImage(page, origin) {
-  await openScreen(page, origin, '/settings/labs');
-  await page.locator('[data-import-lab]').click();
-  await page.waitForSelector('[data-ocr-pick="gallery"]', { timeout: 10000 });
+/** What the release cache holds right now: its name, every path in it, and the
+    bytes it adds up to.
 
-  const [chooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.locator('[data-ocr-pick="gallery"]').click()
-  ]);
-  await chooser.setFiles({ name: 'lab-slip.png', mimeType: 'image/png', buffer: await labSlipImage(page) });
-
-  /* Either end of a recognition that ran: rows were found, or the text held
-     none. recognition-failed is the engine not loading, which is the failure
-     this whole section exists to catch. */
-  await page.waitForFunction(
-    () => {
-      const state = document.querySelector('[data-ocr-state]')?.getAttribute('data-ocr-state');
-      return state === 'review' || state === 'no-rows' || state === 'recognition-failed';
-    },
-    null,
-    { timeout: 180000 }
-  );
-  return await page.locator('[data-ocr-state]').getAttribute('data-ocr-state');
+    Measured rather than derived from the file list, because what a first visit
+    actually costs is what the browser stored, and the two came apart once
+    already: the audit found a 54.06 MB shell whose asset list read as
+    unremarkable (phase 5 performance ticket 01). */
+async function measureCache(page) {
+  return await page.evaluate(async () => {
+    const names = await caches.keys();
+    const cache = await caches.open(names[0]);
+    const entries = await cache.keys();
+    let bytes = 0;
+    for (const request of entries) {
+      const response = await cache.match(request);
+      if (response) bytes += (await response.blob()).size;
+    }
+    return { names, bytes, paths: entries.map((request) => new URL(request.url).pathname) };
+  });
 }
 
 /** Every file under `path`, recursively. */
@@ -345,21 +339,7 @@ try {
     null,
     { timeout: 30000 }
   );
-  const shell = await cold.evaluate(async () => {
-    const names = await caches.keys();
-    const cache = await caches.open(names[0]);
-    const entries = await cache.keys();
-    /* Measured rather than derived from the file list, because what a first
-       visit actually costs is what the browser stored, and the two came apart
-       once already: the audit found a 54.06 MB shell whose asset list read as
-       unremarkable (phase 5 performance ticket 01). */
-    let bytes = 0;
-    for (const request of entries) {
-      const response = await cache.match(request);
-      if (response) bytes += (await response.blob()).size;
-    }
-    return { names, bytes, paths: entries.map((request) => new URL(request.url).pathname) };
-  });
+  const shell = await measureCache(cold);
   const megabytes = (shell.bytes / 1e6).toFixed(2);
 
   if (shell.names.length === 1 && shell.names[0].startsWith('gender-diary-shell-'))
@@ -384,7 +364,12 @@ try {
      OCR_ASSETS). What can be checked here is that the copy shipped and that
      both languages of it did; the walkthrough owns the screen. */
   const shipped = emittedAssets();
-  const notice = ['The first read downloads 21 MB', 'Pierwszy odczyt pobiera 21 MB'].filter((line) => shipped.includes(line));
+  /* Read out of the catalogues rather than restated here, so a reworded notice
+     stays checked instead of quietly failing (ADR-0029's rule, applied to copy
+     this file has to name). */
+  const notice = ['messages/en.json', 'messages/pl.json']
+    .map((catalogue) => JSON.parse(readFileSync(catalogue, 'utf8')).labs_ocr_download_title)
+    .filter((line) => shipped.includes(line));
   if (notice.length === 2) ok('the scanner ships the line that says what it is about to download, in both languages');
   else fail('the scanner ships its download notice in both languages', `found ${notice.length} of 2`);
 
@@ -411,22 +396,15 @@ try {
     await cold.waitForTimeout(1000);
   }
 
-  const afterUse = await cold.evaluate(async () => {
-    const cache = await caches.open((await caches.keys())[0]);
-    const entries = await cache.keys();
-    let bytes = 0;
-    for (const request of entries) {
-      const response = await cache.match(request);
-      if (response) bytes += (await response.blob()).size;
-    }
-    const paths = entries.map((request) => new URL(request.url).pathname);
-    return { ocr: paths.filter((path) => path.startsWith('/tesseract/')).length, entries: paths.length, bytes };
-  });
-  if (afterUse.ocr === OCR_ASSETS.length)
+  const afterUse = await measureCache(cold);
+  const cachedOcr = afterUse.paths.filter((path) => path.startsWith('/tesseract/')).length;
+  if (cachedOcr === OCR_ASSETS.length)
     ok(
-      `loading the engine adds it to the same release cache (${afterUse.entries} entries, ${(afterUse.bytes / 1e6).toFixed(2)} MB)`
+      `loading the engine adds it to the same release cache (${afterUse.paths.length} entries, ${(
+        afterUse.bytes / 1e6
+      ).toFixed(2)} MB)`
     );
-  else fail('loading the engine adds it to the release cache', `${afterUse.ocr} of ${OCR_ASSETS.length} OCR files cached`);
+  else fail('loading the engine adds it to the release cache', `${cachedOcr} of ${OCR_ASSETS.length} OCR files cached`);
 
   /* The whole release, file by file, against what is actually in the cache.
      Four files are deliberately outside the shell: the fallback document,

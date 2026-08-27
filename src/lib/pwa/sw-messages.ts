@@ -3,7 +3,9 @@
 
    Imported by both sides - src/service-worker.ts installs the listeners,
    update.ts and labs/ocr-engine.ts send them - and by the browser tier's
-   probe workers, so no side can drift apart from another on a string. */
+   fixture worker, so none of those can drift apart from another on a string.
+   The release gate cannot import from here, being plain .mjs against a built
+   app, so verify-build.mjs writes the one it sends out in full. */
 
 /** Sent to a waiting worker to let it take over. The page only sends it when
     the journal is idle, which is the whole of the guard: the worker itself
