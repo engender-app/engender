@@ -28,9 +28,11 @@
   import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -59,7 +61,6 @@
     originalPhoto: Photo | null;
     templateKey: string | null;
   } | null>(null);
-  let deleteTarget = $state<Milestone | null>(null);
   /* Offered, never required, right after a brand-new milestone is created
      (CONTEXT: "Felt-sense entry") - editing an existing one never opens
      this, the same reasoning ticket 24 gives for the anniversary showing
@@ -68,6 +69,12 @@
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let sorted = $derived(vocabulary.milestones);
+
+  const record = recordEditor<Milestone>({
+    remove: (id) => journal.milestones.deleteMilestone(id),
+    findById: (id) => sorted.find((mi) => mi.id === id)
+  });
+  let deleteTarget = $derived(record.deleteTarget);
 
   function statusText(mi: Milestone): string {
     const s = milestoneStatus(mi, todayEpochDay());
@@ -159,7 +166,7 @@
           subtitle={`${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`}
           chevron={false}
           onclick={() => openEditor(mi, null)}
-          action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => (deleteTarget = mi) }}
+          action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => record.askToDelete(mi) }}
         >
           {#snippet leading()}
             <!-- A milestone that has a photograph of itself shows it. The
@@ -254,18 +261,16 @@
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.ms_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.ms_delete_q({ name: deleteTarget.name })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.ms_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" onclick={() => { journal.milestones.deleteMilestone(deleteTarget!.id); deleteTarget = null; }}>
-          <span>{m.ms_delete_sheet()}</span>
-        </button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.ms_delete_sheet()}
+    question={deleteTarget ? m.ms_delete_q({ name: deleteTarget.name }) : ''}
+    hint={m.ms_delete_hint()}
+    confirmLabel={m.ms_delete_sheet()}
+    cancelLabel={m.keep_it()}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 
   <PhotoAlignmentReview
     photo={milestonePhotoReview.photo}

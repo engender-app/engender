@@ -4,11 +4,21 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
 
   let renameTarget = $state<{ id: string; label: string } | null>(null);
-  let deleteTarget = $state<{ id: string; label: string } | null>(null);
+
+  const record = recordEditor<{ id: string; label: string }>({
+    remove: (id) => journal.tags.deleteTag(id),
+    findById: (id) => {
+      const tg = vocabulary.tagGroups.flatMap((g) => g.tags).find((t) => t.id === id);
+      return tg && { id: tg.id, label: tg.label };
+    }
+  });
+  let deleteTarget = $derived(record.deleteTarget);
 
   /* The journal speaks whole orders (a drag), so the up-button builds
      the order it wants and hands it over. */
@@ -56,7 +66,7 @@
                 </button>
               {:else}
                 <button class="icon-btn" data-del aria-label={m.tags_delete_aria({ label: tg.label })}
-                  onclick={() => (deleteTarget = { id: tg.id, label: tg.label })}>
+                  onclick={() => record.askToDelete({ id: tg.id, label: tg.label })}>
                   <Icon name="trash" size={16} />
                 </button>
               {/if}
@@ -87,23 +97,17 @@
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.tags_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.tags_delete_q({ label: deleteTarget.label })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.tags_delete_hint()}</p>
-      <div class="stack-3">
-        <button
-          class="btn btn-danger"
-          data-confirm
-          onclick={() => {
-            journal.tags.deleteTag(deleteTarget!.id);
-            deleteTarget = null;
-          }}><span>{m.tags_delete_confirm()}</span></button
-        >
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.tags_delete_sheet()}
+    question={deleteTarget ? m.tags_delete_q({ label: deleteTarget.label }) : ''}
+    hint={m.tags_delete_hint()}
+    confirmLabel={m.tags_delete_confirm()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm': true }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 
   <Sheet open={addTarget !== null} title={m.tags_new_tag()} onClose={() => (addTarget = null)}>
     {#if addTarget}

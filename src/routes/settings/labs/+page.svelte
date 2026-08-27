@@ -39,8 +39,10 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -118,21 +120,94 @@
   const contextLine = (r: LabResult) =>
     [r.timing ? labTimingLabel(r.timing) : '', r.provider.trim()].filter(Boolean).join(' · ');
 
-  let editor = $state<{
-    id?: string;
-    date: string;
-    time: string;
-    analyte: string;
-    customAnalyte: string;
-    value: string;
-    unit: string;
-    note: string;
-    provider: string;
-    /** Read-only: the context is frozen when the result is saved, so the
-        sheet shows what was recorded rather than offering to change it. */
-    timing: LabResult['timing'];
-  } | null>(null);
-  let deleteTarget = $state<LabResult | null>(null);
+  const record = recordEditor<
+    LabResult,
+    {
+      id?: string;
+      date: string;
+      time: string;
+      analyte: string;
+      customAnalyte: string;
+      value: string;
+      unit: string;
+      note: string;
+      provider: string;
+      /** Read-only: the context is frozen when the result is saved, so the
+          sheet shows what was recorded rather than offering to change it. */
+      timing: LabResult['timing'];
+    }
+  >({
+    blank: () => ({
+      date: dateInputValueFromEpochDay(todayEpochDay()),
+      time: '',
+      /* Whatever the screen is already showing - itself the most
+         recently logged analyte, or none - rather than a hormone
+         (ticket 37). Unit likewise: a set preferred unit wins, then the
+         last unit this analyte was actually recorded in, the same
+         fallback the measurements screen uses for its own unit. */
+      analyte,
+      customAnalyte: '',
+      value: '',
+      unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results.at(-1)?.unit ?? ''),
+      note: '',
+      provider: '',
+      timing: null
+    }),
+    fromRecord: (result) => ({
+      id: result.id,
+      date: dateInputValueFromEpochDay(result.epochDay),
+      time: result.drawTime ?? '',
+      analyte: result.analyte,
+      customAnalyte: '',
+      value: String(result.value),
+      unit: result.unit,
+      note: result.note,
+      provider: result.provider,
+      timing: result.timing
+    }),
+    async upsert(draft) {
+      const value = parseFloat(draft.value);
+      const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
+      if (isNaN(value) || !resultAnalyte) return false;
+
+      /* Which units this analyte already has, ignoring the result being edited,
+         so that changing the unit on an analyte's only result does not announce
+         a second trend that will not exist. */
+      const unit = normalizeUnit(draft.unit);
+      const otherUnits = new Set(
+        (await journal.labs.getSeries(resultAnalyte))
+          .filter((s) => s.results.some((r) => r.id !== draft.id))
+          .map((s) => s.unit)
+      );
+
+      await journal.labs.upsertResult({
+        id: draft.id,
+        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+        analyte: resultAnalyte,
+        value,
+        unit: draft.unit,
+        note: draft.note,
+        /* An empty time input is "not recorded", not midnight. The journal
+           derives the timing context from this; a blank one means no hours
+           figure rather than a zero (labTiming.ts). */
+        drawTime: draft.time || null,
+        provider: draft.provider
+      });
+      analyte = resultAnalyte;
+
+      /* Stated, not warned about: a new unit is a normal thing for a lab to
+         report, and all that follows from it is a second line. */
+      if (otherUnits.size && !otherUnits.has(unit)) {
+        toast(unit ? m.labs_new_unit_toast({ unit, analyte: resultAnalyte }) : m.labs_no_unit_toast(), {
+          kind: 'lab-new-unit'
+        });
+      }
+    },
+    remove: (id) => journal.labs.deleteResult(id),
+    findById: (id) => results.find((result) => result.id === id)
+  });
+  let editor = $derived(record.editor);
+  let deleteTarget = $derived(record.deleteTarget);
 
   // ---------------------------------------------------------------------------
   // OCR state machine
@@ -211,38 +286,6 @@
     ocr.updateRows(rows);
   }
 
-  function openEditor(result: LabResult | null) {
-    editor = result
-      ? {
-          id: result.id,
-          date: dateInputValueFromEpochDay(result.epochDay),
-          time: result.drawTime ?? '',
-          analyte: result.analyte,
-          customAnalyte: '',
-          value: String(result.value),
-          unit: result.unit,
-          note: result.note,
-          provider: result.provider,
-          timing: result.timing
-        }
-      : {
-          date: dateInputValueFromEpochDay(todayEpochDay()),
-          time: '',
-          /* Whatever the screen is already showing - itself the most
-             recently logged analyte, or none - rather than a hormone
-             (ticket 37). Unit likewise: a set preferred unit wins, then the
-             last unit this analyte was actually recorded in, the same
-             fallback the measurements screen uses for its own unit. */
-          analyte,
-          customAnalyte: '',
-          value: '',
-          unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results.at(-1)?.unit ?? ''),
-          note: '',
-          provider: '',
-          timing: null
-        };
-  }
-
   function setPreferredUnit(analyteName: PreferredUnitAnalyte, unit: string) {
     const next = { ...prefs.preferredLabUnits };
     if (unit) next[analyteName] = unit;
@@ -261,61 +304,6 @@
       preferredUnits: prefs.preferredLabUnits
     });
     editor.analyte = next;
-  }
-
-  async function saveResult() {
-    if (!editor) return;
-    const draft = { ...editor };
-    const value = parseFloat(draft.value);
-    const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
-    if (isNaN(value) || !resultAnalyte) return;
-
-    /* Which units this analyte already has, ignoring the result being edited,
-       so that changing the unit on an analyte's only result does not announce
-       a second trend that will not exist. */
-    const unit = normalizeUnit(draft.unit);
-    const otherUnits = new Set(
-      (await journal.labs.getSeries(resultAnalyte))
-        .filter((s) => s.results.some((r) => r.id !== draft.id))
-        .map((s) => s.unit)
-    );
-
-    await journal.labs.upsertResult({
-      id: draft.id,
-      epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
-      analyte: resultAnalyte,
-      value,
-      unit: draft.unit,
-      note: draft.note,
-      /* An empty time input is "not recorded", not midnight. The journal
-         derives the timing context from this; a blank one means no hours
-         figure rather than a zero (labTiming.ts). */
-      drawTime: draft.time || null,
-      provider: draft.provider
-    });
-    analyte = resultAnalyte;
-    editor = null;
-
-    /* Stated, not warned about: a new unit is a normal thing for a lab to
-       report, and all that follows from it is a second line. */
-    if (otherUnits.size && !otherUnits.has(unit)) {
-      toast(unit ? m.labs_new_unit_toast({ unit, analyte: resultAnalyte }) : m.labs_no_unit_toast(), {
-        kind: 'lab-new-unit'
-      });
-    }
-  }
-
-  function askToDelete() {
-    if (!editor?.id) return;
-    deleteTarget = results.find((result) => result.id === editor!.id) ?? null;
-    if (deleteTarget) editor = null;
-  }
-
-  async function deleteResult() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.labs.deleteResult(id);
   }
 
   /* Ticket 11's other entry point into the appointment prep list: a one-tap
@@ -338,7 +326,7 @@
       <button class="icon-btn press" data-import-lab aria-label={m.labs_ocr_import_aria()} onclick={openOcrImport}>
         <Icon name="camera" size={20} />
       </button>
-      <button class="icon-btn press" data-add aria-label={m.labs_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.labs_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -407,7 +395,7 @@
             class="kit-row"
             data-lab-result={r.id}
             aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-            onclick={() => openEditor(r)}
+            onclick={() => record.openEditor(r)}
           >
             <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
             <span class="kit-row-text">
@@ -434,7 +422,7 @@
         role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
         title={m.labs_empty_title()}
         text={m.labs_empty_body()}
-        action={{ label: m.labs_empty_action(), primary: true, onclick: () => openEditor(null) }}
+        action={{ label: m.labs_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
       />
     </div>
   {/if}
@@ -460,7 +448,7 @@
     {/each}
   </Sheet>
 
-  <Sheet open={editor !== null} title={editor?.id ? m.labs_edit_sheet() : m.labs_new_sheet()} onClose={() => (editor = null)}>
+  <Sheet open={editor !== null} title={editor?.id ? m.labs_edit_sheet() : m.labs_new_sheet()} onClose={() => (record.editor = null)}>
     {#if editor}
       <h3>{editor.id ? m.labs_edit_sheet() : m.labs_new_sheet()}</h3>
       <div class="cd-endpoints">
@@ -534,25 +522,26 @@
       {/if}
 
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-lab onclick={saveResult}><span>{m.labs_save()}</span></button>
+        <button class="btn btn-primary" data-save-lab onclick={record.save}><span>{m.labs_save()}</span></button>
         {#if editor.id}
           <button class="btn btn-soft" data-add-to-appointment-prep onclick={addToAppointmentPrep}><span>{m.appointment_prep_add_button()}</span></button>
-          <button class="btn btn-ghost" data-delete-lab onclick={askToDelete}><span>{m.labs_delete()}</span></button>
+          <button class="btn btn-ghost" data-delete-lab onclick={() => record.askToDelete()}><span>{m.labs_delete()}</span></button>
         {/if}
       </div>
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.labs_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.labs_delete_q({ analyte: deleteTarget.analyte })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-lab onclick={deleteResult}><span>{m.labs_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.labs_delete_sheet()}
+    question={deleteTarget ? m.labs_delete_q({ analyte: deleteTarget.analyte }) : ''}
+    hint={m.labs_delete_hint()}
+    confirmLabel={m.labs_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-lab': true }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 
   <Sheet
     open={ocrSheetOpen}
@@ -591,7 +580,7 @@
       <h3>{m.labs_ocr_empty_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_no_rows_body()}</p>
       <div class="stack-3">
-        <button class="btn btn-primary" onclick={() => { ocr.close(); openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
+        <button class="btn btn-primary" onclick={() => { ocr.close(); record.openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
         <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
       </div>
     {:else if ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving' || ocr.state.tag === 'save-failed'}

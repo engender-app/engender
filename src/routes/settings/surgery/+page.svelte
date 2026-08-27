@@ -40,9 +40,11 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -83,62 +85,60 @@
     return m.surgery_day_since({ days: m.n_days({ n: day.days }) });
   }
 
-  let editor = $state<{ id?: string; name: string; date: string } | null>(null);
-  let deleteTarget = $state<Procedure | null>(null);
+  const record = recordEditor<Procedure, { id?: string; name: string; date: string }>({
+    blank: () => ({ name: '', date: '' }),
+    fromRecord: (procedure) => ({
+      id: procedure.id,
+      name: procedure.name,
+      date: procedure.surgeryEpochDay === null ? '' : dateInputValueFromEpochDay(procedure.surgeryEpochDay)
+    }),
+    async upsert(draft) {
+      const name = draft.name.trim();
+      if (!name) return false;
+      const id = await journal.procedures.upsertProcedure({
+        id: draft.id,
+        name,
+        // An empty date field clears the date rather than defaulting to today:
+        // a procedure without one yet is an ordinary state here.
+        surgeryEpochDay: epochDayFromDateInputValue(draft.date) ?? null
+      });
+      selectedId = id;
+      /* Falls back to empty rather than to the draft in hand: the live list has
+         not re-run yet, so a procedure just created is not in it - and empty is
+         exactly what its notes are. Keeping the draft would open the new
+         record showing the previously selected one's notes, and Save notes
+         would then write them onto it. */
+      notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
+    },
+    async remove(id) {
+      if (selectedId === id) selectedId = null;
+      await journal.procedures.deleteProcedure(id);
+    },
+    findById: (id) => procedures.find((p) => p.id === id)
+  });
+  let editor = $derived(record.editor);
+  let deleteTarget = $derived(record.deleteTarget);
   let consultSheet = $state(false);
   let consultDate = $state('');
   let notesDraft = $state('');
   let photoSheet = $state(false);
   let photoDate = $state('');
-  let photoDeleteTarget = $state<ProcedurePhoto | null>(null);
+  const photoRecord = recordEditor<ProcedurePhoto>({
+    remove: (id) => journal.procedures.deletePhoto(id),
+    findById: (id) => photos.find((p) => p.id === id)
+  });
+  let photoDeleteTarget = $derived(photoRecord.deleteTarget);
   let itemSheet = $state(false);
   let itemText = $state('');
-  let itemDeleteTarget = $state<ChecklistItem | null>(null);
-
-  function openEditor(procedure: Procedure | null) {
-    editor = procedure
-      ? { id: procedure.id, name: procedure.name, date: procedure.surgeryEpochDay === null ? '' : dateInputValueFromEpochDay(procedure.surgeryEpochDay) }
-      : { name: '', date: '' };
-  }
+  const itemRecord = recordEditor<ChecklistItem>({
+    remove: (id) => journal.checklists.deleteItem(id),
+    findById: (id) => checklistItems.find((i) => i.id === id)
+  });
+  let itemDeleteTarget = $derived(itemRecord.deleteTarget);
 
   function select(procedure: Procedure) {
     selectedId = selectedId === procedure.id ? null : procedure.id;
     notesDraft = selectedId ? procedure.notes : '';
-  }
-
-  async function saveProcedure() {
-    if (!editor) return;
-    const name = editor.name.trim();
-    if (!name) return;
-    const id = await journal.procedures.upsertProcedure({
-      id: editor.id,
-      name,
-      // An empty date field clears the date rather than defaulting to today:
-      // a procedure without one yet is an ordinary state here.
-      surgeryEpochDay: epochDayFromDateInputValue(editor.date) ?? null
-    });
-    editor = null;
-    selectedId = id;
-    /* Falls back to empty rather than to the draft in hand: the live list has
-       not re-run yet, so a procedure just created is not in it - and empty is
-       exactly what its notes are. Keeping the draft would open the new
-       record showing the previously selected one's notes, and Save notes
-       would then write them onto it. */
-    notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
-  }
-
-  function askToDelete() {
-    if (!editor?.id) return;
-    deleteTarget = procedures.find((p) => p.id === editor!.id) ?? null;
-    if (deleteTarget) editor = null;
-  }
-
-  async function deleteProcedure() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    if (selectedId === id) selectedId = null;
-    await journal.procedures.deleteProcedure(id);
   }
 
   /* Offered, never automatic: a surgery date produces a milestone only on
@@ -198,13 +198,6 @@
     storePhoto
   );
 
-  async function deletePhoto() {
-    if (!photoDeleteTarget) return;
-    const id = photoDeleteTarget.id;
-    photoDeleteTarget = null;
-    await journal.procedures.deletePhoto(id);
-  }
-
   function openItemSheet() {
     itemText = '';
     itemSheet = true;
@@ -217,18 +210,12 @@
     await journal.procedures.addChecklistItem(selectedId, content);
   }
 
-  async function confirmDeleteItem() {
-    if (!itemDeleteTarget) return;
-    const id = itemDeleteTarget.id;
-    itemDeleteTarget = null;
-    await journal.checklists.deleteItem(id);
-  }
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.surgery_journey_title()} back="/more" subtitle={m.surgery_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.surgery_add()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.surgery_add()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -259,7 +246,7 @@
               class="kit-row-act press"
               data-edit-procedure={procedure.id}
               aria-label={m.surgery_edit_sheet()}
-              onclick={() => openEditor(procedure)}
+              onclick={() => record.openEditor(procedure)}
             >
               <Icon name="pencil" size={18} />
             </button>
@@ -275,7 +262,7 @@
         role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
         title={m.surgery_empty_title()}
         text={m.surgery_empty_body()}
-        action={{ label: m.surgery_add(), primary: true, onclick: () => openEditor(null) }}
+        action={{ label: m.surgery_add(), primary: true, onclick: () => record.openEditor(null) }}
       />
     </div>
   {/if}
@@ -294,7 +281,7 @@
         role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
         title={recoveryText(selected)}
         action={selected.surgeryEpochDay === null
-          ? { label: m.surgery_set_date(), onclick: () => openEditor(selected) }
+          ? { label: m.surgery_set_date(), onclick: () => record.openEditor(selected) }
           : { label: m.surgery_milestone_add(), onclick: () => addAsMilestone(selected) }}
         data-add-as-milestone-notice
       />
@@ -354,7 +341,7 @@
                   class="kit-row-act press"
                   data-delete-procedure-photo={photo.id}
                   aria-label={m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
-                  onclick={() => (photoDeleteTarget = photo)}
+                  onclick={() => photoRecord.askToDelete(photo)}
                 >
                   <Icon name="trash" size={18} />
                 </button>
@@ -403,7 +390,7 @@
                   class="kit-row-act press"
                   data-delete-procedure-item={item.id}
                   aria-label={m.surgery_checklist_delete_aria({ content: item.content })}
-                  onclick={() => (itemDeleteTarget = item)}
+                  onclick={() => itemRecord.askToDelete(item)}
                 >
                   <Icon name="trash" size={18} />
                 </button>
@@ -423,7 +410,7 @@
   <Sheet
     open={editor !== null}
     title={editor?.id ? m.surgery_edit_sheet() : m.surgery_new_sheet()}
-    onClose={() => (editor = null)}
+    onClose={() => (record.editor = null)}
   >
     {#if editor}
       <h3>{editor.id ? m.surgery_edit_sheet() : m.surgery_new_sheet()}</h3>
@@ -442,24 +429,25 @@
         <input class="input" type="date" id="surgery-date" name="surgery-date" bind:value={editor.date} />
       </div>
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-procedure onclick={saveProcedure}><span>{m.surgery_save()}</span></button>
+        <button class="btn btn-primary" data-save-procedure onclick={record.save}><span>{m.surgery_save()}</span></button>
         {#if editor.id}
-          <button class="btn btn-ghost" data-delete-procedure onclick={askToDelete}><span>{m.surgery_delete()}</span></button>
+          <button class="btn btn-ghost" data-delete-procedure onclick={() => record.askToDelete()}><span>{m.surgery_delete()}</span></button>
         {/if}
       </div>
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.surgery_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.surgery_delete_q({ name: deleteTarget.name })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.surgery_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-procedure onclick={deleteProcedure}><span>{m.surgery_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.surgery_delete_sheet()}
+    question={deleteTarget ? m.surgery_delete_q({ name: deleteTarget.name }) : ''}
+    hint={m.surgery_delete_hint()}
+    confirmLabel={m.surgery_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-procedure': true }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 
   <Sheet open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
     <h3>{m.surgery_consult_sheet()}</h3>
@@ -486,16 +474,17 @@
     </div>
   </Sheet>
 
-  <Sheet open={photoDeleteTarget !== null} title={m.surgery_photo_delete_sheet()} onClose={() => (photoDeleteTarget = null)}>
-    {#if photoDeleteTarget}
-      <h3>{m.surgery_photo_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.surgery_photo_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-procedure-photo onclick={deletePhoto}><span>{m.surgery_photo_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (photoDeleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={photoDeleteTarget !== null}
+    title={m.surgery_photo_delete_sheet()}
+    question={photoDeleteTarget ? m.surgery_photo_delete_q() : ''}
+    hint={m.surgery_photo_delete_hint()}
+    confirmLabel={m.surgery_photo_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-procedure-photo': true }}
+    onConfirm={photoRecord.confirmDelete}
+    onCancel={photoRecord.cancelDelete}
+  />
 
   <Sheet open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
     <h3>{m.surgery_checklist_sheet()}</h3>
@@ -511,16 +500,17 @@
     <button class="btn btn-primary" data-save-procedure-item onclick={addItem}><span>{m.surgery_checklist_add()}</span></button>
   </Sheet>
 
-  <Sheet open={itemDeleteTarget !== null} title={m.surgery_checklist_delete_sheet()} onClose={() => (itemDeleteTarget = null)}>
-    {#if itemDeleteTarget}
-      <h3>{m.surgery_checklist_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{itemDeleteTarget.content}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-procedure-item onclick={confirmDeleteItem}><span>{m.surgery_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (itemDeleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={itemDeleteTarget !== null}
+    title={m.surgery_checklist_delete_sheet()}
+    question={itemDeleteTarget ? m.surgery_checklist_delete_q() : ''}
+    hint={itemDeleteTarget ? itemDeleteTarget.content : null}
+    confirmLabel={m.surgery_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-procedure-item': true }}
+    onConfirm={itemRecord.confirmDelete}
+    onCancel={itemRecord.cancelDelete}
+  />
 
   <PhotoAlignmentReview
     photo={recoveryPhotoReview.photo}
