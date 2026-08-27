@@ -93,6 +93,10 @@
     {/snippet}
   </ScreenHeader>
 
+  <!-- Not ReadGate's shape, for the reason the starred screen is not
+       (phase 5 audit ticket 04): the gate branches on one read, and the rows
+       here need the regimen episodes as well as the events, so drawing them
+       the moment the events land would draw the chart without its bands. -->
   {#if eventsQuery.loading || episodesQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if events.length}

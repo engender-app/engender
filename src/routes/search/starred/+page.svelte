@@ -32,6 +32,10 @@
   let photosQuery = liveList((j) => j.photos.starredPhotos());
   let photos = $derived(photosQuery.rows);
 
+  /* Not ReadGate's shape, and deliberately so (phase 5 audit ticket 04): the
+     gate branches on one read, and this screen is empty only when both of
+     its two come back with nothing. Starred entries with no starred photos
+     is not an empty screen. */
   let loading = $derived(entriesQuery.loading || photosQuery.loading);
   let empty = $derived(!loading && entries.length === 0 && photos.length === 0);
 

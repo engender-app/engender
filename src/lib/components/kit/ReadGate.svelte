@@ -61,8 +61,8 @@
   <div out:crossfade><Skeleton {variant} {count} /></div>
 {:else if branch === 'rows'}
   {@render rows(read.rows)}
-{:else if branch === 'failed'}
-  {@render failed?.()}
+{:else if branch === 'failed' && failed}
+  {@render failed()}
 {:else}
   {@render empty()}
 {/if}

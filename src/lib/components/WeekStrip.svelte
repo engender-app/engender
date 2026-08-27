@@ -30,7 +30,7 @@
     // Native value in, swatch out: the strip and the calendar shade the
     // same day the same way whatever the metric's range is (ADR-0012).
     const range = vocabulary.rangeOf(metric);
-    const byDay = new Map((averages.rows).map((point) => [point.day, point.value]));
+    const byDay = new Map(averages.rows.map((point) => [point.day, point.value]));
     return Array.from({ length: 7 }, (_, idx) => {
       const day = week.first + idx;
       const level = heatLevel(byDay.get(day) ?? null, range);
