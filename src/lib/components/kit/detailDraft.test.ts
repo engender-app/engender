@@ -48,6 +48,48 @@ describe('draftFor', () => {
   });
 });
 
+/* The bug the module exists to make unwriteable, played out as a sequence.
+   A screen that captured `page.params.id` into a const kept feeding the
+   same id in when SvelteKit reused the component for a different record, so
+   the decision was 'keep' forever and Beta's editor showed Alpha. The two
+   runs below differ only in whether the id follows the route. */
+describe('a route that moves from one record to the next', () => {
+  const blank = (): Draft => ({ name: '' });
+  const fromRecord = (r: Rec): Draft => ({ name: r.name });
+  const stored: Rec[] = [
+    { id: 'a', name: 'Alpha' },
+    { id: 'b', name: 'Beta' }
+  ];
+
+  /** What ends up on screen after the route visits `route`, reading the id
+      through `idSeenBy`. */
+  function drafts(route: string[], idSeenBy: (routeId: string) => string): Draft[] {
+    let filledFor: string | null = null;
+    let draft = blank();
+    return route.map((routeId) => {
+      const id = idSeenBy(routeId);
+      if (fillDecision(filledFor, id, false) === 'fill') {
+        filledFor = id;
+        draft = draftFor(
+          stored.find((r) => r.id === id),
+          blank,
+          fromRecord
+        );
+      }
+      return draft;
+    });
+  }
+
+  it('shows the second record once the id follows the route', () => {
+    expect(drafts(['a', 'b'], (routeId) => routeId)).toEqual([{ name: 'Alpha' }, { name: 'Beta' }]);
+  });
+
+  it('is what a captured id gets wrong: the first record, still on screen', () => {
+    const captured = 'a';
+    expect(drafts(['a', 'b'], () => captured)).toEqual([{ name: 'Alpha' }, { name: 'Alpha' }]);
+  });
+});
+
 describe('answersFor', () => {
   /* The tryout entries race: the entries read has nothing to look up while
      the tryout itself is still loading, so it answers with nothing - and a
