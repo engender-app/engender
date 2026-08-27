@@ -313,21 +313,20 @@
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
           {#each [...photos].reverse() as p (p.id)}
             {@const since = sinceStart(p.epochDay)}
-            <div class="kit-row is-static" data-hair-photo={p.id}>
-              <PhotoThumb photo={p} size={48} />
-              <span class="kit-row-text">
-                <span class="kit-row-title">{dayLabel(p.epochDay)}</span>
-                {#if since}<span class="kit-row-sub">{since}</span>{/if}
-              </span>
-              <button
-                class="kit-row-act press"
-                data-delete-hair-photo={p.id}
-                aria-label={m.hair_photo_delete_sheet()}
-                onclick={() => (photoDeleteTarget = p)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
+            <ListRow
+              static
+              data-hair-photo={p.id}
+              title={dayLabel(p.epochDay)}
+              subtitle={since}
+              action={{
+                icon: 'trash',
+                label: m.hair_photo_delete_sheet(),
+                onclick: () => (photoDeleteTarget = p),
+                attrs: { 'data-delete-hair-photo': p.id }
+              }}
+            >
+              {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
+            </ListRow>
           {/each}
         </ListCard>
       </div>
