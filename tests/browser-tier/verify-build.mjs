@@ -23,6 +23,92 @@ import { preview } from 'vite';
 import { createReporter, launchChromium, launchPersistentChromium } from '../browser-harness.mjs';
 import { appVersion } from '../../scripts/app-version.mjs';
 
+/* --- Phase 5 performance ticket 01: the OCR engine, online then offline ---
+
+   The shell no longer precaches that engine, so the question this answers is
+   the one the trade turns on: are its bytes still there with no network, after
+   the app has loaded it once.
+
+   Driven at the cache rather than through the scanner's own sheet, which
+   cannot be opened in a built app today: the lab screen wraps the OCR machine
+   in `$state(...)`, the machine's methods write to the object the factory
+   closed over rather than to that proxy, and the sheet never learns it was
+   asked to open. That is a pre-existing defect of the screen, not of this
+   worker, and it is nothing this file can route around - so what is asserted
+   here is every step the shell is responsible for, and the step it is not
+   (tesseract reading those files) stays covered by ocr-engine.test.ts, which
+   pins the paths the engine loads from.
+
+   The set the page asks for, as ocr-engine.ts names it. */
+const OCR_ASSETS = [
+  '/tesseract/worker.min.js',
+  '/tesseract/tesseract-core.wasm.js',
+  '/tesseract/tesseract-core.wasm',
+  '/tesseract/lang-data/eng.traineddata.gz',
+  '/tesseract/lang-data/pol.traineddata.gz'
+];
+
+/** Loads the engine's files the way a first recognition does, then sends the
+    ask ocr-engine.ts sends once they are in. Returns what each file measured,
+    which is what the offline half is compared against - not the bytes on
+    disk, since the two language files are served .gz and a blob of one is its
+    decompressed size. */
+async function loadAndKeepOcrEngine(page, assets, message) {
+  return await page.evaluate(
+    async ({ assets, message }) => {
+      const sizes = {};
+      for (const asset of assets) {
+        const response = await fetch(asset);
+        if (!response.ok) return `fetching ${asset} answered ${response.status}`;
+        sizes[asset] = (await response.blob()).size;
+      }
+      /* Through the registration, the way ocr-engine.ts sends it: this page
+         installed the worker, so it is not controlled by it. */
+      const registration = await navigator.serviceWorker.getRegistration();
+      registration?.active?.postMessage(message);
+      return registration?.active ? { sizes } : 'no active worker to ask';
+    },
+    { assets, message }
+  );
+}
+
+/** Any screen, from whatever state the page is in.
+
+    Loaded by URL rather than walked to. Both would be fair - the walkthrough
+    suite is what covers the taps that get a person there, and ADR-0036 moved
+    Settings behind a More hub since these checks were written - but a load is
+    the one that works from a page that has just started cold offline, which is
+    where half the calls below are made. A load is a reload, and a reload ends
+    the unlocked session (ADR-0018), so the gate is met again on the way in. */
+async function openScreen(page, origin, path) {
+  await page.goto(`${origin}${path}`);
+  await page.waitForSelector('#journal-passphrase', { timeout: 30000 }).catch(() => {});
+  await page.fill('#journal-passphrase', 'verify-build passphrase').catch(() => {});
+  await page.click('[data-passphrase-submit]').catch(() => {});
+  await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+}
+
+/** What the release cache holds right now: its name, every path in it, and the
+    bytes it adds up to.
+
+    Measured rather than derived from the file list, because what a first visit
+    actually costs is what the browser stored, and the two came apart once
+    already: the audit found a 54.06 MB shell whose asset list read as
+    unremarkable (phase 5 performance ticket 01). */
+async function measureCache(page) {
+  return await page.evaluate(async () => {
+    const names = await caches.keys();
+    const cache = await caches.open(names[0]);
+    const entries = await cache.keys();
+    let bytes = 0;
+    for (const request of entries) {
+      const response = await cache.match(request);
+      if (response) bytes += (await response.blob()).size;
+    }
+    return { names, bytes, paths: entries.map((request) => new URL(request.url).pathname) };
+  });
+}
+
 /** Every file under `path`, recursively. */
 function walk(path, files = []) {
   for (const entry of readdirSync(path, { withFileTypes: true })) {
@@ -180,7 +266,15 @@ try {
      gate. Walking it is what puts a journal on the device, and the quick log
      after it is the entry the offline start has to read back. Five steps then
      finish, the same six screens walkthrough.test.mjs flow 13 walks. */
-  for (let i = 0; i < 5; i++) await cold.locator('[data-next]').click();
+  /* Walked to the end rather than counted out. It was five clicks and a
+     finish, which stopped being the flow when 7d11edfd made the first run
+     seven steps, and failed here as an anonymous 30s wait for [data-finish] -
+     the same shape ADR-0029 is about. The bound is a runaway guard, not the
+     step count: onboarding-steps has seven today and the flow is one shorter
+     under disguise. */
+  for (let step = 0; step < 12 && (await cold.locator('[data-next]').count()); step++) {
+    await cold.locator('[data-next]').click();
+  }
   await cold.locator('[data-finish]').click();
   await cold.waitForSelector('[data-home-hello]');
   await cold.locator('[data-mood="4"]').click();
@@ -202,8 +296,8 @@ try {
      it would install. That keeps this from passing only because the profile
      happens to be sitting at the passphrase gate and boot never got as far as
      opening preferences again. */
-  await cold.locator('a[href="/settings"]:visible').first().click();
-  await cold.getByRole('button', { name: /Disguise/i }).click();
+  await openScreen(cold, origin, '/settings');
+  await cold.locator('[data-list-row="disguise"]').click();
   await cold.getByRole('switch', { name: 'Disguise app' }).click();
   await cold.waitForFunction(() => {
     const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
@@ -245,15 +339,72 @@ try {
     null,
     { timeout: 30000 }
   );
-  const shell = await cold.evaluate(async () => {
-    const names = await caches.keys();
-    const cache = await caches.open(names[0]);
-    return { names, paths: (await cache.keys()).map((request) => new URL(request.url).pathname) };
-  });
+  const shell = await measureCache(cold);
+  const megabytes = (shell.bytes / 1e6).toFixed(2);
 
   if (shell.names.length === 1 && shell.names[0].startsWith('gender-diary-shell-'))
-    ok(`the shell is one cache per release (${shell.names[0]})`);
+    ok(`the shell is one cache per release (${shell.names[0]}), ${shell.paths.length} entries, ${megabytes} MB`);
   else fail('the shell is one cache per release', JSON.stringify(shell.names));
+
+  /* The whole of ticket 01's first finding, as the one number a person feels:
+     the shell was 54.06 MB across 324 entries, 49.7 MB of it an OCR engine
+     that a first visit has no use for. The ceiling is deliberately loose - it
+     is here to catch another feature's assets being precached wholesale, not
+     to make an ordinary release fail because a font was added. */
+  const SHELL_CEILING_MB = 15;
+  if (shell.bytes < SHELL_CEILING_MB * 1e6) ok(`a first visit stores ${megabytes} MB, under the ${SHELL_CEILING_MB} MB ceiling`);
+  else fail(`a first visit stores under ${SHELL_CEILING_MB} MB`, `${megabytes} MB across ${shell.paths.length} entries`);
+
+  const precachedOnDemand = shell.paths.filter((path) => path.startsWith('/tesseract/'));
+  if (precachedOnDemand.length === 0) ok('the OCR engine is not in a fresh install\'s shell');
+  else fail("the OCR engine is not in a fresh install's shell", precachedOnDemand.slice(0, 4).join(', '));
+
+  /* The download notice, read off the built bundle rather than off the screen,
+     because the sheet it sits in cannot be opened (see the note by
+     OCR_ASSETS). What can be checked here is that the copy shipped and that
+     both languages of it did; the walkthrough owns the screen. */
+  const shipped = emittedAssets();
+  /* Read out of the catalogues rather than restated here, so a reworded notice
+     stays checked instead of quietly failing (ADR-0029's rule, applied to copy
+     this file has to name). */
+  const notice = ['messages/en.json', 'messages/pl.json']
+    .map((catalogue) => JSON.parse(readFileSync(catalogue, 'utf8')).labs_ocr_download_title)
+    .filter((line) => shipped.includes(line));
+  if (notice.length === 2) ok('the scanner ships the line that says what it is about to download, in both languages');
+  else fail('the scanner ships its download notice in both languages', `found ${notice.length} of 2`);
+
+  /* Loading the engine, which is what puts it in the cache: the same files
+     ocr-engine.ts fetches, then the same ask it sends afterwards. */
+  const online = await loadAndKeepOcrEngine(cold, OCR_ASSETS, 'gender-diary:cache-on-demand');
+  if (typeof online === 'string') fail('the OCR engine loads from the app origin', online);
+  else ok('the OCR engine loads from the app origin');
+  const onlineSizes = typeof online === 'string' ? {} : online.sizes;
+
+  /* The worker fills its cache off the message, so the wait is for the cache
+     rather than for a reply: the ask is deliberately one-way. Polled with
+     plain evaluates rather than waitForFunction, whose default polling runs on
+     animation frames - which a page that is not the frontmost tab does not
+     get, and this one has had a second page opened over it. */
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const cached = await cold.evaluate(async (assets) => {
+      const cache = await caches.open((await caches.keys())[0]);
+      let found = 0;
+      for (const asset of assets) if (await cache.match(asset)) found++;
+      return found;
+    }, OCR_ASSETS);
+    if (cached === OCR_ASSETS.length) break;
+    await cold.waitForTimeout(1000);
+  }
+
+  const afterUse = await measureCache(cold);
+  const cachedOcr = afterUse.paths.filter((path) => path.startsWith('/tesseract/')).length;
+  if (cachedOcr === OCR_ASSETS.length)
+    ok(
+      `loading the engine adds it to the same release cache (${afterUse.paths.length} entries, ${(
+        afterUse.bytes / 1e6
+      ).toFixed(2)} MB)`
+    );
+  else fail('loading the engine adds it to the release cache', `${cachedOcr} of ${OCR_ASSETS.length} OCR files cached`);
 
   /* The whole release, file by file, against what is actually in the cache.
      Four files are deliberately outside the shell: the fallback document,
@@ -263,9 +414,18 @@ try {
      release.json, which describes the directory on the server rather than the
      app in the browser - nothing in the app reads it, and a cached copy would
      go on answering for the release that was live when it was cached
-     (ticket 05). */
+     (ticket 05).
+
+     The OCR engine is outside it for a different reason, and the assertion is
+     narrowed rather than weakened: /tesseract/ belongs to a feature the app
+     loads on demand, so an install that has never opened the lab scanner is
+     supposed not to hold it, and what is checked below is every file of the
+     release except that set (phase 5 performance ticket 01). The set is named
+     by its directory rather than listed, so a sixth OCR file would join it
+     silently - which is right, since the whole directory is what ships and
+     what a page later asks the worker for. */
   const outsideShell = new Set(['/index.html', '/_app/version.json', '/service-worker.js', '/release.json']);
-  const release = releasePaths().filter((path) => !outsideShell.has(path));
+  const release = releasePaths().filter((path) => !outsideShell.has(path) && !path.startsWith('/tesseract/'));
   const missing = release.filter((path) => !shell.paths.includes(path));
   if (missing.length === 0 && shell.paths.includes('/'))
     ok(`the precached shell holds the fallback document and all ${release.length} other files of the release`);
@@ -332,7 +492,7 @@ try {
      the same function. The walkthrough suite holds the other half - it
      builds under a GENDER_DIARY_VERSION nobody derives and insists on seeing
      exactly that string - and the rules live in tests/app-version.test.ts. */
-  await cold.locator('a[href="/settings"]:visible').first().click();
+  await openScreen(cold, origin, '/settings');
   /* Phase 5 ticket 24: the About row is a ListRow now, whose own handle is
      data-list-row="about" rather than a settings-specific attribute. */
   await cold.locator('[data-list-row="about"]').click();
@@ -406,6 +566,35 @@ try {
     fail(
       'an offline start on a nested route opens that screen',
       deepBooted ? 'the entry editor did not render' : 'the app never booted - check the asset URLs in the cached document'
+    );
+
+  /* The half of ticket 01 the whole trade rests on: the engine was loaded once
+     while there was a network, and this is a different browser process against
+     an origin that is gone. Every byte below can only come from the cache the
+     page asked the worker to fill.
+
+     Sizes compared against the files on disk, because a 200 proves less than
+     it looks: an offline fetch that fell through to a cached error page would
+     also be ok. */
+  const offlineEngine = await deep.evaluate(async (assets) => {
+    const sizes = {};
+    for (const asset of assets) {
+      const response = await fetch(asset).catch(() => null);
+      sizes[asset] = response && response.ok ? (await response.blob()).size : 0;
+    }
+    return sizes;
+  }, OCR_ASSETS);
+  const short = OCR_ASSETS.filter((asset) => !offlineEngine[asset] || offlineEngine[asset] !== onlineSizes[asset]);
+  if (short.length === 0)
+    ok(
+      `with the network gone the OCR engine still loads whole from the shell (${(
+        Object.values(onlineSizes).reduce((a, b) => a + b, 0) / 1e6
+      ).toFixed(1)} MB across ${OCR_ASSETS.length} files)`
+    );
+  else
+    fail(
+      'with the network gone the OCR engine still loads whole from the shell',
+      short.map((asset) => `${asset}: ${offlineEngine[asset]} of ${onlineSizes[asset]} bytes`).join(', ')
     );
 
   const offOrigin = offlineRequests.filter((url) => new URL(url).origin !== origin);
