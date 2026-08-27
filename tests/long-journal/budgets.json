@@ -141,7 +141,7 @@
       "targetMs": 300
     },
     "dose-schedule-adherence": {
-      "what": "dose log, 90 days of the log against its schedule",
+      "what": "dose log, 90 days against its schedule, single-episode window",
       "baselineMs": 3,
       "budgetMs": 200,
       "targetMs": 300

@@ -526,16 +526,25 @@
         />
       </div>
     {/if}
-  {:else if !scheduleView}
+  {:else if comparisonQuery.loading}
     <!-- The comparison is one read, so the schedule view waits for it rather
          than deciding on half an answer: the old shape read four lists and
          showed "no schedule yet" for as long as the schedules were in
-         flight. -->
+         flight. On `loading` alone, though, and not on "no value yet" - a
+         read that failed reports itself done with nothing, and a placeholder
+         held forever tells the reader less than a statement does
+         (kit/readGate.ts). -->
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
+  {:else if !scheduleView || scheduleView.reason === 'noEpisode'}
+    <!-- Either nothing is in effect to compare against, or the read did not
+         work. readGate.ts's rule for a screen that passes no failed snippet
+         is that the two share the empty state, and this is the schedule
+         view's: there is nothing to compare. Telling them apart here would
+         be a fourth notice and its own copy, which is a call for the ticket
+         that wants it. -->
+    <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
   {:else if scheduleView.reason === 'multipleEpisodes'}
     <Notice icon="info" key="adherence-multiple" text={m.adherence_multiple_episodes()} />
-  {:else if scheduleView.reason === 'noEpisode'}
-    <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
   {:else if scheduleView.reason === 'noSchedule'}
     <Notice
       icon="info"

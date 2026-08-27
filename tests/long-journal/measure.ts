@@ -411,7 +411,7 @@ export async function measureLongJournal(
   // recurrence. The reason is asserted rather than reported, so a fixture
   // that stops meeting that precondition fails here instead of quietly
   // measuring four reads and an early return.
-  await measure('dose-schedule-adherence', 'dose log, 90 days of the log against its schedule', async () => {
+  await measure('dose-schedule-adherence', 'dose log, 90 days against its schedule, single-episode window', async () => {
     const ADHERENCE_WINDOW_DAYS = 90;
     const toEpochDay = summary.lastSingleEpisodeEpochDay;
     const result = await journal.doses.getComparison({

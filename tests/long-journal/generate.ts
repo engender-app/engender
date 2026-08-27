@@ -768,6 +768,12 @@ export async function generateLongJournal(
       break;
     }
   }
+  /* Stated here rather than left as a zero for a caller to trip over: the
+     three episodes above always leave such a day, and a fixture that stopped
+     doing so has a measurement it can no longer make. */
+  if (summary.lastSingleEpisodeEpochDay === 0) {
+    throw new Error('long-journal fixture has no day with exactly one regimen episode in effect');
+  }
 
   return summary;
 }
