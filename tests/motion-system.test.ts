@@ -14,7 +14,12 @@
    So: every animation's end state has to be the element's resting state.
    The three ways an animation is allowed to satisfy that are all accepted
    below - stop under reduced motion, fill forwards so the end state is the
-   resting state, or end on the same values the base rule already declares. */
+   resting state, or end on the same values the base rule already declares.
+
+   Greps, and nothing else is possible (ticket 08): a stylesheet has no
+   interface to call. What is asserted is that a declaration is present or
+   absent in a CSS file, which is the only form the invariant takes until
+   something renders. */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

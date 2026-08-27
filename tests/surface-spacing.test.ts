@@ -13,7 +13,11 @@
    screen-level presentational names with no owning component root
    (`.tag-row` alone is 14 ad-hoc call sites across 7 files), and a class
    opts every instance in for free - an attribute there would be one more
-   thing to remember per call site, not one less. */
+   thing to remember per call site, not one less.
+
+   Greps by design (ticket 08). The rule is which selectors a stylesheet
+   carries and which surfaces opt in, so both halves are facts about a
+   file's text with no call form. */
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';

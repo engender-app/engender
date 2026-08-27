@@ -6,7 +6,11 @@
 
    What Chromium itself makes of the file is checked where a browser is
    available: tests/browser-tier/verify-build.mjs asks it whether the built
-   app is installable. */
+   app is installable.
+
+   Greps by design (ticket 08). A manifest is data: the check is that a
+   field holds a value, read off the file the build ships, and there is
+   nothing to run. */
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';

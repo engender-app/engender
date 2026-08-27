@@ -25,12 +25,6 @@ import { NEUTRAL_TAB_ICON } from '../data/prefs/documentChrome';
     why it is a literal here rather than a catalogue entry. */
 export const DECOY_NAME = 'Notes';
 
-/** The app's own name in the tab strip. Not the catalogue's `app_name`,
-    because the tab is stamped from an effect that has already resolved
-    the disguise; the two are the same string and docs/ui-copy.md is what
-    keeps them that way. */
-const APP_NAME = 'enGender';
-
 /** What a surface writes where the app's name goes. `appName` is the
     catalogue's, supplied by the caller. */
 export function appWordmark(disguised: boolean, appName: string): string {
@@ -41,6 +35,10 @@ export interface TabState {
   disguised: boolean;
   /** Quick exit is holding the tab over the app. */
   blanked: boolean;
+  /** The app's own name, from the catalogue - the same parameter and the
+      same reason as `appWordmark`, so the real name has one owner rather
+      than a second copy spelled out here. */
+  appName: string;
   /** The icon the preferences resolved to (documentChrome), which the
       blank overrides and nothing else does. */
   icon: string;
@@ -61,7 +59,10 @@ export interface TabIdentity {
 export function tabIdentity(state: TabState): TabIdentity {
   if (state.disguised) return { title: DECOY_NAME, icon: state.icon };
   /* Undisguised, quick exit is a blank page rather than the decoy, so the
-     tab says what an unused tab says and drops the flag with it. */
+     tab says what an unused tab says and drops the flag with it. English
+     in both catalogues for the reason "Notes" is (docs/ui-copy.md): it is
+     the browser's own wording for an empty tab, and a tab strip that says
+     something else is a tab strip worth a second look. */
   if (state.blanked) return { title: 'New tab', icon: NEUTRAL_TAB_ICON };
-  return { title: APP_NAME, icon: state.icon };
+  return { title: state.appName, icon: state.icon };
 }
