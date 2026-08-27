@@ -91,4 +91,20 @@ describe('where the decoy name is allowed to appear', () => {
       .filter((path) => readFileSync(root + path, 'utf8').includes("'Notes'"));
     expect(naming).toEqual(['src/lib/disguise/identity.ts']);
   });
+
+  it('is asked by every surface that says the app name out loud', () => {
+    /* The other half of the check above: nobody hardcodes the decoy name,
+       and these four do print a name, so they have to be getting it from
+       here. The rail's wordmark is why this test exists - it was the one
+       of the five sites nothing asserted at all, so a disguise that
+       stopped reaching the desktop rail would have shipped green. */
+    const wordmark = ['src/lib/components/AppNav.svelte', 'src/routes/+page.svelte'];
+    for (const path of wordmark) {
+      expect(readFileSync(root + path, 'utf8'), path).toContain(
+        'appWordmark(prefs.disguise, m.app_name())'
+      );
+    }
+    expect(readFileSync(root + 'src/routes/+layout.svelte', 'utf8')).toContain('tabIdentity({');
+    expect(readFileSync(root + 'src/lib/components/DecoyNotes.svelte', 'utf8')).toContain('{DECOY_NAME}');
+  });
 });
