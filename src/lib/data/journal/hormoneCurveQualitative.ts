@@ -25,7 +25,8 @@ import {
   qualitativeCurves,
   qualitativeValueAt,
   scaleQualitativeCurves,
-  type QualitativeCurve
+  type QualitativeCurve,
+  type QualitativeCurves
 } from '../hormoneCurveQualitative';
 import { drawInstant } from '../labTiming';
 import { timestampAtLocalTime } from '../epochDay';
@@ -33,6 +34,7 @@ import type { LabResult } from '../types';
 import type { DosesArea } from './doses';
 import type { LabsArea } from './labs';
 import type { RegimenArea } from './regimen';
+import { createModelMemo } from './curveModelMemo';
 
 /** One of the user's own results, placed on the curve's axis. Shown against
     every curve drawn (see the file header) rather than carrying a route of
@@ -107,6 +109,12 @@ export function makeQualitativeCurveArea(
   regimen: RegimenArea,
   labs: LabsArea
 ): QualitativeCurveArea {
+  /* One journal, one cache (ticket 04) - see curveModelMemo.ts for what this
+     guards and why it is keyed and invalidated the way it is. Keyed by drug
+     as well as window: one area serves both hormones, and each is a
+     separate model call over the same dose log. */
+  const populationCache = createModelMemo<QualitativeCurves>();
+
   return {
     async getCurves({ drug, fromEpochDay, toEpochDay, fitToOwnLabs }) {
       const unit = curveUnit(drug);
@@ -134,7 +142,9 @@ export function makeQualitativeCurveArea(
       }
       labPoints.sort((a, b) => a.day - b.day);
 
-      const population = qualitativeCurves({ drug, doses: doseEvents, episodes, fromEpochDay, toEpochDay });
+      const population = populationCache.remember(`${drug}:${fromEpochDay}:${toEpochDay}`, [doseEvents, episodes], () =>
+        qualitativeCurves({ drug, doses: doseEvents, episodes, fromEpochDay, toEpochDay })
+      );
 
       /* Same rule as the injectable model: a fit is only worth taking when
          every dose that went in is drawn. A dose left out for its unit
