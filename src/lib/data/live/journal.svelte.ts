@@ -182,7 +182,35 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>): LiveQuery<T
     not answered at all. That is the one default this owns, and it is why no
     screen writes `?? []` any more. */
 export function liveList<T>(run: (journal: Journal) => Promise<T[] | undefined>): LiveList<T> {
-  const read = query(null, run);
+  return listOf(query(null, run));
+}
+
+/** The list inside a wider answer, gated like any other list.
+
+    Not every read that a screen gates answers with a list. The exposure
+    counters are one read holding three, and a tryout's entries are a page of
+    rows beside a count that is not the page's length. Asking the journal a
+    separate question per list would be three round trips where the screen
+    needs one, so the read stays whole and this is the face of it ReadGate
+    takes. `rows` is not called until there is an answer to call it on. */
+export function liveListIn<T, V>(read: LiveQuery<V>, rows: (answer: V) => T[]): LiveList<T> {
+  return listOf({
+    get value() {
+      const answer = read.value;
+      return answer === undefined ? undefined : rows(answer);
+    },
+    get loading() {
+      return read.loading;
+    },
+    get failed() {
+      return read.failed;
+    }
+  });
+}
+
+/** `LiveQuery`'s value seen through readState's two list rules, so the
+    defaulting exists once rather than in each of the two callers above. */
+function listOf<T>(read: LiveQuery<T[] | undefined>): LiveList<T> {
   /* Rebuilt per access rather than held, so each getter reads the underlying
      `$state` itself and a template tracking `rows` alone is not woken by a
      change to `failed`. */

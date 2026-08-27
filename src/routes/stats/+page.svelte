@@ -131,7 +131,11 @@
     const series = await Promise.all(keys.map((key) => j.stats.dayAverages(key, rangeFrom, rangeTo)));
     return new Map(keys.map((key, i) => [key, series[i]]));
   });
-  let seriesFor = $derived((key: string): DayAverage[] => seriesQuery.value?.get(key) ?? []);
+  /* One default for the whole answer: a metric with no days in range is a
+     missing key in a Map that exists, not a missing Map, and defaulting at
+     the lookup made the two look like the same thing. */
+  let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
+  let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
 
   let insightsQuery = liveList((j) => j.stats.tagInsights(vocabulary.activeMetric, from, today));
   let insights = $derived(insightsQuery.rows);

@@ -13,7 +13,7 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveList, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveListIn, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { tryoutKindName } from '$lib/data/vocabulary/labels';
@@ -159,7 +159,10 @@
       j.entries.countSearchMatches('', [], range)
     ]).then(([hits, total]) => ({ hits, total }));
   });
-  let entriesInRange = $derived((entriesQuery.value ?? NOTHING_IN_RANGE).hits);
+  /* The page of hits, gated like any list; the count beside it is the read's
+     other half and is not the page's length. */
+  let entriesInRangeRead = liveListIn(entriesQuery, (page) => page.hits);
+  let entriesInRange = $derived(entriesInRangeRead.rows);
   let entriesRemaining = $derived(
     Math.max(0, (entriesQuery.value ?? NOTHING_IN_RANGE).total - entriesInRange.length)
   );
@@ -344,30 +347,31 @@
     </ReadGate>
 
     <SectionHeading text={m.tryout_entries_title()} />
-    {#if entriesQuery.loading}
-      <div out:crossfade><Skeleton variant="card" count={2} /></div>
-    {:else if entriesInRange.length}
-      <div class="screen-part">
-        {#each entriesInRange as e (e.id)}
-          <EntryCard entry={e} />
-        {/each}
-        {#if entriesRemaining > 0}
-          <button class="btn btn-soft search-more" data-tryout-entries-more onclick={() => (pages += 1)}>
-            <span>{m.search_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
-          </button>
-        {/if}
-      </div>
-    {:else}
-      <div class="screen-part">
-        <Notice
-          icon="book"
-          key="tryout-entries-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
-          title={m.tryout_entries_none()}
-          text={m.tryout_entries_none_body()}
-        />
-      </div>
-    {/if}
+    <ReadGate read={entriesInRangeRead} variant="card" count={2}>
+      {#snippet rows()}
+        <div class="screen-part">
+          {#each entriesInRange as e (e.id)}
+            <EntryCard entry={e} />
+          {/each}
+          {#if entriesRemaining > 0}
+            <button class="btn btn-soft search-more" data-tryout-entries-more onclick={() => (pages += 1)}>
+              <span>{m.search_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
+            </button>
+          {/if}
+        </div>
+      {/snippet}
+      {#snippet empty()}
+        <div class="screen-part">
+          <Notice
+            icon="book"
+            key="tryout-entries-empty"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
+            title={m.tryout_entries_none()}
+            text={m.tryout_entries_none_body()}
+          />
+        </div>
+      {/snippet}
+    </ReadGate>
   {/if}
 
   <ConfirmDeleteSheet

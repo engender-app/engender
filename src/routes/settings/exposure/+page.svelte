@@ -16,15 +16,15 @@
      is (phase 5 UX ticket 40): the row renders as a plain container rather
      than a link or a button, since neither is what a figure is. */
   import { m } from '$lib/paraglide/messages';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { routeLabel } from '$lib/data/vocabulary/doseLabels';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -36,8 +36,14 @@
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
 
+  /* One read, three lists on it. Each section gates on its own, through the
+     one answer rather than through three reads of the same counters. */
   let countersQuery = liveQuery((j) => j.exposure.getCounters(from, today));
+  /* The whole answer, for the one figure on this screen that is not a list. */
   let counters = $derived(countersQuery.value);
+  let doseTotals = liveListIn(countersQuery, (c) => c.doseTotals);
+  let routeDays = liveListIn(countersQuery, (c) => c.routeDays);
+  let regimenDays = liveListIn(countersQuery, (c) => c.regimenDays);
 </script>
 
 <div class="screen">
@@ -53,24 +59,25 @@
   />
 
   <SectionHeading text={m.exposure_dose_totals_title()} />
-  {#if countersQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={2} /></div>
-  {:else if counters && counters.doseTotals.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each counters.doseTotals as t (`${t.drug}-${t.route}-${t.doseUnit}`)}
-          <ListRow
-            static
-            data-dose-total={`${t.drug}-${t.route}`}
-            title={t.drug}
-            subtitle={m.exposure_dose_total_sub({ route: routeLabel(t.route), total: String(t.total), unit: t.doseUnit })}
-          />
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <p class="muted small">{m.exposure_dose_totals_empty()}</p>
-  {/if}
+  <ReadGate read={doseTotals} variant="line" count={2}>
+    {#snippet rows(totals)}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each totals as t (`${t.drug}-${t.route}-${t.doseUnit}`)}
+            <ListRow
+              static
+              data-dose-total={`${t.drug}-${t.route}`}
+              title={t.drug}
+              subtitle={m.exposure_dose_total_sub({ route: routeLabel(t.route), total: String(t.total), unit: t.doseUnit })}
+            />
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <p class="muted small">{m.exposure_dose_totals_empty()}</p>
+    {/snippet}
+  </ReadGate>
   {#if counters && counters.excludedDoses > 0}
     <div class="screen-part">
       <Notice icon="info" key="exposure-excluded" text={m.exposure_excluded_note({ count: String(counters.excludedDoses) })} />
@@ -78,44 +85,46 @@
   {/if}
 
   <SectionHeading text={m.exposure_route_days_title()} />
-  {#if countersQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={2} /></div>
-  {:else if counters && counters.routeDays.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 1)}>
-        {#each counters.routeDays as r (r.route)}
-          <!-- A regimen episode's own route is free text (types.ts), unlike a
-               dose event's closed route union - shown raw here the same way
-               settings/regimen already shows it, not run through routeLabel. -->
-          <ListRow static data-route-days={r.route} title={r.route}>
-            {#snippet trailing()}{m.exposure_days_count({ days: String(r.days) })}{/snippet}
-          </ListRow>
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <p class="muted small">{m.exposure_route_days_empty()}</p>
-  {/if}
+  <ReadGate read={routeDays} variant="line" count={2}>
+    {#snippet rows(days)}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 1)}>
+          {#each days as r (r.route)}
+            <!-- A regimen episode's own route is free text (types.ts), unlike a
+                 dose event's closed route union - shown raw here the same way
+                 settings/regimen already shows it, not run through routeLabel. -->
+            <ListRow static data-route-days={r.route} title={r.route}>
+              {#snippet trailing()}{m.exposure_days_count({ days: String(r.days) })}{/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <p class="muted small">{m.exposure_route_days_empty()}</p>
+    {/snippet}
+  </ReadGate>
 
   <SectionHeading text={m.exposure_regimen_days_title()} />
-  {#if countersQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={2} /></div>
-  {:else if counters && counters.regimenDays.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 2)}>
-        {#each counters.regimenDays as rd (rd.episodeId)}
-          <ListRow
-            static
-            data-regimen-days={rd.episodeId}
-            title={rd.drug}
-            subtitle={m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}
-          >
-            {#snippet trailing()}{m.exposure_days_count({ days: String(rd.days) })}{/snippet}
-          </ListRow>
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <p class="muted small">{m.exposure_regimen_days_empty()}</p>
-  {/if}
+  <ReadGate read={regimenDays} variant="line" count={2}>
+    {#snippet rows(days)}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 2)}>
+          {#each days as rd (rd.episodeId)}
+            <ListRow
+              static
+              data-regimen-days={rd.episodeId}
+              title={rd.drug}
+              subtitle={m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}
+            >
+              {#snippet trailing()}{m.exposure_days_count({ days: String(rd.days) })}{/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <p class="muted small">{m.exposure_regimen_days_empty()}</p>
+    {/snippet}
+  </ReadGate>
 </div>

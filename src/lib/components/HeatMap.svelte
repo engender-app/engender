@@ -90,8 +90,8 @@
     // The day's value stays native; only the swatch it picks is normalized,
     // so a 0-10 dimension and mood shade comparably (ADR-0012).
     const range = vocabulary.rangeOf(vocabulary.activeMetric);
-    const valueByDay = new Map((averages.rows).map((point) => [point.day, point.value]));
-    const countByDay = new Map((counts.rows).map((point) => [point.day, point.count]));
+    const valueByDay = new Map(averages.rows.map((point) => [point.day, point.value]));
+    const countByDay = new Map(counts.rows.map((point) => [point.day, point.count]));
     const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
     const startDow = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7; // Monday-first
     const today = todayEpochDay();
