@@ -123,6 +123,20 @@ body {
      hair removal). */
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
+  /* Scroll position here is scroll-region.ts's own to manage - it remembers
+     and restores per path deliberately, because this element rather than
+     the window is what scrolls, so the browser's default handling never
+     sees it (that file's own comment). Scroll anchoring is a second,
+     competing authority over the same number: it nudges scrollTop on its
+     own whenever content already above the viewport changes size, which
+     several stacked `{#if query.loading}` sections each resolving at a
+     slightly different moment does continuously for the first few hundred
+     ms after a screen mounts. Restoring to 767 and then watching the
+     browser walk it back down toward 598 over the next several frames,
+     unprompted, is exactly that fight (Alicja, 2026-08-27, on the
+     transition roadmap: "the fade-in jumps a lot of pixels"; measured with
+     a scroll listener across a real back navigation to /more). */
+  overflow-anchor: none;
   padding-top: var(--inset-top);
   padding-left: var(--inset-left);
   padding-right: var(--inset-right);
