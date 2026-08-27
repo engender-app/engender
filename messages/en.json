@@ -931,6 +931,8 @@
   "labs_ocr_review_sheet": "Review imported rows",
   "labs_ocr_empty_sheet": "Nothing to import",
   "labs_ocr_pick_intro": "Pick a photo from gallery or camera. OCR runs on this device.",
+  "labs_ocr_download_title": "The first read downloads 21 MB",
+  "labs_ocr_download_body": "That is the reading engine and its two languages. After that the scanner works with no network.",
   "labs_ocr_pick_gallery": "Choose from gallery",
   "labs_ocr_pick_camera": "Take a photo",
   "labs_ocr_running": "Reading…",

@@ -19,6 +19,22 @@ Install these files:
 - `deploy/nginx/journal-site.conf` -> `/etc/nginx/snippets/gender-diary-journal-site.conf`
 - `deploy/nginx/journal.conf` -> `/etc/nginx/sites-available/gender-diary-journal.conf`
 
+`deploy/nginx/journal-brotli.conf` is optional and goes in last, because it
+needs a module stock nginx does not have. Install the module first, check that
+nginx still starts, and only then copy the snippet in:
+
+```bash
+sudo apt install libnginx-mod-http-brotli
+sudo cp deploy/nginx/journal-brotli.conf /etc/nginx/snippets/gender-diary-journal-brotli.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+If the module is not available on the box, skip both steps. `journal-site.conf`
+includes the snippet by wildcard, so its absence is not an error, and the
+origin serves gzip as before. Getting the order wrong is what to avoid: the
+snippet without the module is an unknown directive, and nginx refuses to start
+rather than ignoring it.
+
 Enable the site and reload nginx:
 
 ```bash
