@@ -125,11 +125,13 @@ public class ReminderNotificationPrivacyTest {
         new ReminderAlarmReceiver().onReceive(context, intent);
     }
 
-    private Notification findCheckInNotification() {
-        for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
-            if (sbn.getId() == ReminderAlarmReceiver.CHECK_IN_NOTIFICATION_ID) return sbn.getNotification();
-        }
-        return null;
+    private Notification findCheckInNotification() throws InterruptedException {
+        return await(() -> {
+            for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
+                if (sbn.getId() == ReminderAlarmReceiver.CHECK_IN_NOTIFICATION_ID) return sbn.getNotification();
+            }
+            return null;
+        });
     }
 
     private JSONObject payload(boolean hideNotificationTitles) throws Exception {
@@ -159,11 +161,34 @@ public class ReminderNotificationPrivacyTest {
         new ReminderAlarmReceiver().onReceive(context, intent);
     }
 
-    private Notification findNotification() {
-        for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
-            if (("reminder:" + REMINDER_ID).equals(sbn.getTag())) return sbn.getNotification();
+    private Notification findNotification() throws InterruptedException {
+        return await(() -> {
+            for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
+                if (("reminder:" + REMINDER_ID).equals(sbn.getTag())) return sbn.getNotification();
+            }
+            return null;
+        });
+    }
+
+    /** Posting is a call across to the system's notification service, so a
+        read taken the instant onReceive returns can beat it there. On the
+        Pixel it does, roughly one batch run in two; on an emulator it never
+        seemed to. Polling rather than sleeping a fixed span, so the usual
+        case stays as fast as it was. */
+    private static Notification await(java.util.concurrent.Callable<Notification> lookFor)
+        throws InterruptedException {
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
+        while (true) {
+            Notification found;
+            try {
+                found = lookFor.call();
+            } catch (Exception e) {
+                throw new AssertionError("reading the posted notifications threw", e);
+            }
+            if (found != null) return found;
+            if (System.nanoTime() > deadline) return null;
+            Thread.sleep(50);
         }
-        return null;
     }
 
     private NotificationManager notificationManager() {
