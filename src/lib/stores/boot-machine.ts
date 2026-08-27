@@ -31,7 +31,8 @@ import {
   type JournalAccessMode
 } from '../data/journal-access-mode.ts';
 import type { Journal } from '../data/journal/journal.ts';
-import type { AndroidKeyRefusal, AndroidKeyResult } from '../lock/android-key.ts';
+import { InterruptedRestoreError, SchemaTooNewError } from '../data/sqlite/migration-runner.ts';
+import type { AndroidKeyResult } from '../lock/android-key.ts';
 import { bootStates, bootTransitions, type BootState } from './boot-state.ts';
 
 export type BootPlatform = 'web' | 'android';
@@ -65,14 +66,19 @@ export type BootEvent =
   | { type: 'demo-unlock-failed' }
   | { type: 'conversion-prechecked'; result: PrecheckResult }
   | { type: 'device-key-unavailable' }
-  | { type: 'android-key-refused'; refusal: AndroidKeyRefusal }
-  | { type: 'key-obtained'; dataKey: DataKey; accessMode: JournalAccessMode }
+  /** What Android Keystore answered, whole. Which of the two destinations it
+      means is decided here, not by the caller reading `kind`. */
+  | { type: 'android-key-answered'; result: AndroidKeyResult }
+  /** `unlocked` is whether somebody authenticated to get this key. A typed
+      passphrase and an Android prompt both satisfy the casual-access gate;
+      a key the platform handed over unasked does not. */
+  | { type: 'key-obtained'; dataKey: DataKey; accessMode: JournalAccessMode; unlocked: boolean }
   | { type: 'conversion-progressed'; progress: ConversionProgress }
   | { type: 'converted'; dataKey: DataKey; accessMode: JournalAccessMode }
   | { type: 'journal-opened'; journal: Journal; persistDenied: boolean }
-  | { type: 'journal-schema-too-new' }
-  | { type: 'restore-interrupted' }
-  | { type: 'journal-open-failed'; message: string }
+  /** However boot() ended badly, unread. Three very different destinations
+      hide in this one value, and telling them apart is an ordering decision. */
+  | { type: 'journal-open-failed'; error: unknown }
   | { type: 'pre-migration-copy-checked'; usable: boolean }
   | { type: 'boot-failed'; message: string }
   /** Settings, not boot: a device-bound journal grew a passphrase. */
@@ -80,6 +86,7 @@ export type BootEvent =
 
 export type BootEffect =
   | { type: 'apply-cached-preferences' }
+  | { type: 'mark-unlocked' }
   | { type: 'survey-web' }
   | { type: 'survey-android' }
   /** Delete the plaintext files a finished conversion left, then survey again. */
@@ -132,17 +139,30 @@ function step(machine: BootMachine, boot: BootState, effects: BootEffect[] = [])
     waiting, otherwise open. Shared by the passphrase gates, the Android gate,
     the device-bound auto-unlock and the demo build - the point where the four
     sequences became one. */
-function withDataKey(machine: BootMachine, dataKey: DataKey, accessMode: JournalAccessMode): BootStep {
+function withDataKey(
+  machine: BootMachine,
+  dataKey: DataKey,
+  accessMode: JournalAccessMode,
+  unlocked: boolean
+): BootStep {
+  const unlocking: BootEffect[] = unlocked ? [{ type: 'mark-unlocked' }] : [];
   if (machine.boot.conversion !== null) {
     return step(machine, bootTransitions.toConverting(machine.boot), [
+      ...unlocking,
       { type: 'run-conversion', dataKey, accessMode }
     ]);
   }
-  return openingJournal(machine, dataKey, accessMode);
+  return openingJournal(machine, dataKey, accessMode, unlocking);
 }
 
-function openingJournal(machine: BootMachine, dataKey: DataKey, accessMode: JournalAccessMode): BootStep {
+function openingJournal(
+  machine: BootMachine,
+  dataKey: DataKey,
+  accessMode: JournalAccessMode,
+  before: BootEffect[] = []
+): BootStep {
   return step(machine, bootTransitions.toBooting(bootTransitions.setAccessMode(machine.boot, accessMode)), [
+    ...before,
     { type: 'open-journal', dataKey, accessMode }
   ]);
 }
@@ -263,17 +283,23 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
     case 'device-key-unavailable':
       return step(machine, bootTransitions.toNeedsDeviceRecovery(machine.boot));
 
-    case 'android-key-refused':
-      return step(machine, bootTransitions.toNeedsAuthentication(machine.boot, event.refusal));
+    /* The authentication that unwrapped the key satisfies the casual-access
+       gate too, the same way a typed passphrase does on the web: this is the
+       strong case the spec allows app lock to stand down for. */
+    case 'android-key-answered':
+      return event.result.kind === 'key'
+        ? withDataKey(machine, event.result.dataKey, 'device-bound', true)
+        : step(machine, bootTransitions.toNeedsAuthentication(machine.boot, event.result));
 
     case 'key-obtained':
-      return withDataKey(machine, event.dataKey, event.accessMode);
+      return withDataKey(machine, event.dataKey, event.accessMode, event.unlocked);
 
     case 'conversion-progressed':
       return step(machine, bootTransitions.updateConversionProgress(machine.boot, event.progress));
 
     case 'converted':
       return openingJournal(machine, event.dataKey, event.accessMode);
+
 
     case 'journal-opened':
       return step(
@@ -285,25 +311,29 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
         event.persistDenied ? [{ type: 'warn-persist-denied' }] : []
       );
 
-    /* The rollback direction: older code has met a journal a newer build
-       already migrated. Not the generic failure, because nothing is wrong with
-       the journal and there is something to do about it. */
-    case 'journal-schema-too-new':
-      return step(machine, bootTransitions.toSchemaTooNew(machine.boot));
+    case 'journal-open-failed': {
+      /* The rollback direction: older code has met a journal a newer build
+         already migrated. Not the generic failure, because nothing is wrong
+         with the journal and there is something to do about it. */
+      if (event.error instanceof SchemaTooNewError) {
+        return step(machine, bootTransitions.toSchemaTooNew(machine.boot));
+      }
 
-    /* A restore that was interrupted between unlinking the database and
-       writing the copy over it. Finished rather than shown to anybody: the
-       decision to restore was already made, and this is it reaching its end. */
-    case 'restore-interrupted':
-      return step(machine, machine.boot, [{ type: 'restore-previous-journal' }]);
+      /* A restore that was interrupted between unlinking the database and
+         writing the copy over it. Finished rather than shown to anybody: the
+         decision to restore was already made, and this is it reaching its
+         end. */
+      if (event.error instanceof InterruptedRestoreError) {
+        return step(machine, machine.boot, [{ type: 'restore-previous-journal' }]);
+      }
 
-    /* Whether the failure screen can offer a way back is asked of the disk
-       rather than assumed from the failure, so the error lands first and the
-       answer follows. */
-    case 'journal-open-failed':
-      return step(machine, bootTransitions.toError(machine.boot, event.message), [
+      /* Whether the failure screen can offer a way back is asked of the disk
+         rather than assumed from the failure, so the error lands first and
+         the answer follows. */
+      return step(machine, bootTransitions.toError(machine.boot, describeError(event.error)), [
         { type: 'check-pre-migration-copy' }
       ]);
+    }
 
     case 'pre-migration-copy-checked':
       return step(machine, bootTransitions.markErrorRecoverable(machine.boot, event.usable));
@@ -314,6 +344,11 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
     case 'passphrase-added':
       return step(machine, bootTransitions.setAccessMode(machine.boot, 'passphrase'));
   }
+}
+
+/** The one place a thrown value becomes a sentence for the error screen. */
+export function describeError(error: unknown): string {
+  return String((error as Error)?.message ?? error);
 }
 
 export type SkipSetupResult = 'ok' | 'needs-device-lock' | 'device-bound-unavailable';

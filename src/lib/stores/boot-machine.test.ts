@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { InterruptedRestoreError, SchemaTooNewError } from '../data/sqlite/migration-runner.ts';
 import { interpretAuthentication } from '../lock/biometric-outcome.ts';
 import {
   initialBoot,
@@ -216,7 +217,7 @@ test('a refused android key leaves the gate the refusal to render', () => {
   const { machine } = walk(
     started('android'),
     surveyedAndroid({ nativeDeviceKeyExists: true }),
-    { type: 'android-key-refused', refusal }
+    { type: 'android-key-answered', result: refusal }
   );
 
   expect(machine.boot.status).toBe('needs-authentication');
@@ -225,16 +226,40 @@ test('a refused android key leaves the gate the refusal to render', () => {
   const invalidated = walk(
     started('android'),
     surveyedAndroid({ nativeDeviceKeyExists: true }),
-    { type: 'android-key-refused', refusal: { kind: 'invalidated' } }
+    { type: 'android-key-answered', result: { kind: 'invalidated' } }
   );
   expect(invalidated.machine.boot.androidKey).toEqual({ kind: 'invalidated' });
+});
+
+test('an android key that is handed over opens the journal and stands the lock down', () => {
+  const { machine, effects } = walk(
+    started('android'),
+    surveyedAndroid({ nativeDeviceKeyExists: true }),
+    { type: 'android-key-answered', result: { kind: 'key', dataKey: KEY } }
+  );
+
+  expect(machine.boot.status).toBe('booting');
+  expect(effects).toEqual([
+    { type: 'mark-unlocked' },
+    { type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }
+  ]);
+});
+
+test('a key nobody authenticated for leaves app lock its own question to ask', () => {
+  const { effects } = walk(
+    started('web'),
+    surveyedWeb({ deviceBoundKeystoreExists: true }),
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'device-bound', unlocked: false }
+  );
+
+  expect(effects).toEqual([{ type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }]);
 });
 
 test('a key with no conversion waiting opens the journal straight away', () => {
   const { machine, effects } = walk(
     started('android'),
     surveyedAndroid({ nativeDeviceKeyExists: true }),
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'device-bound' }
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'device-bound', unlocked: false }
   );
 
   expect(machine.boot.status).toBe('booting');
@@ -247,12 +272,13 @@ test('a key with a conversion waiting converts first, reporting progress, then o
     started('web'),
     surveyedWeb({ plaintextJournalPresent: true }),
     { type: 'conversion-prechecked', result: { ok: true } },
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase' }
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }
   ];
 
   const converting = walk(...upToKey);
   expect(converting.machine.boot.status).toBe('converting');
   expect(converting.effects).toEqual([
+    { type: 'mark-unlocked' },
     { type: 'run-conversion', dataKey: KEY, accessMode: 'passphrase' }
   ]);
 
@@ -275,7 +301,7 @@ test('an opened journal is ready, and a browser that refused storage gets a warn
   const quiet = walk(
     started('web'),
     surveyedWeb({ passphraseKeystoreExists: true }),
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase' },
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
     { type: 'journal-opened', journal: {} as never, persistDenied: false }
   );
 
@@ -286,43 +312,40 @@ test('an opened journal is ready, and a browser that refused storage gets a warn
   const denied = walk(
     started('web'),
     surveyedWeb({ passphraseKeystoreExists: true }),
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase' },
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
     { type: 'journal-opened', journal: {} as never, persistDenied: true }
   );
   expect(denied.machine.boot.persistDenied).toBe(true);
   expect(denied.effects).toEqual([{ type: 'warn-persist-denied' }]);
 });
 
-test('a journal a newer build already migrated reaches the rollback screen', () => {
-  const { machine } = walk(
+/** The three very different endings that arrive as one failed boot. */
+function failedOpen(error: unknown, ...after: BootEvent[]) {
+  return walk(
     started('web'),
     surveyedWeb({ passphraseKeystoreExists: true }),
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase' },
-    { type: 'journal-schema-too-new' }
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
+    { type: 'journal-open-failed', error },
+    ...after
   );
+}
+
+test('a journal a newer build already migrated reaches the rollback screen', () => {
+  const { machine, effects } = failedOpen(new SchemaTooNewError(44, 43));
 
   expect(machine.boot.status).toBe('schema-too-new');
+  expect(effects).toEqual([]);
 });
 
 test('an interrupted restore finishes itself instead of reaching a screen', () => {
-  const { machine, effects } = walk(
-    started('web'),
-    surveyedWeb({ passphraseKeystoreExists: true }),
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase' },
-    { type: 'restore-interrupted' }
-  );
+  const { machine, effects } = failedOpen(new InterruptedRestoreError());
 
   expect(machine.boot.status).toBe('booting');
   expect(effects).toEqual([{ type: 'restore-previous-journal' }]);
 });
 
-test('a failed open asks the disk whether it can offer a way back', () => {
-  const failed = walk(
-    started('web'),
-    surveyedWeb({ passphraseKeystoreExists: true }),
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase' },
-    { type: 'journal-open-failed', message: 'no such table' }
-  );
+test('any other failed open asks the disk whether it can offer a way back', () => {
+  const failed = failedOpen(new Error('no such table'));
 
   expect(failed.machine.boot).toMatchObject({
     status: 'error',
@@ -331,14 +354,15 @@ test('a failed open asks the disk whether it can offer a way back', () => {
   });
   expect(failed.effects).toEqual([{ type: 'check-pre-migration-copy' }]);
 
-  const recoverable = walk(
-    started('web'),
-    surveyedWeb({ passphraseKeystoreExists: true }),
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase' },
-    { type: 'journal-open-failed', message: 'no such table' },
-    { type: 'pre-migration-copy-checked', usable: true }
-  );
-  expect(recoverable.machine.boot.recoverable).toBe(true);
+  expect(
+    failedOpen(new Error('no such table'), { type: 'pre-migration-copy-checked', usable: true })
+      .machine.boot.recoverable
+  ).toBe(true);
+
+  expect(
+    failedOpen(new Error('no such table'), { type: 'pre-migration-copy-checked', usable: false })
+      .machine.boot.recoverable
+  ).toBe(false);
 });
 
 test('anything else that goes wrong is the plain failure screen, with nothing to offer', () => {
@@ -355,7 +379,7 @@ test('adding a passphrase to an open journal moves its access mode', () => {
   const { machine } = walk(
     started('web'),
     surveyedWeb({ deviceBoundKeystoreExists: true }),
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'device-bound' },
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'device-bound', unlocked: false },
     { type: 'journal-opened', journal: {} as never, persistDenied: false },
     { type: 'passphrase-added' }
   );
@@ -376,6 +400,17 @@ test('illegal events throw rather than moving the boot somewhere it cannot be', 
   expect(() => reduce(setup, { type: 'pre-migration-copy-checked', usable: true })).toThrow(
     /invalid transition/i
   );
+  /* The one the gates make hardest to reach and the adapter now nets: a
+     second submit landing while the first is already converting. */
+  const converting = walk(
+    started('web'),
+    surveyedWeb({ plaintextJournalPresent: true }),
+    { type: 'conversion-prechecked', result: { ok: true } },
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }
+  ).machine;
+  expect(() =>
+    reduce(converting, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true })
+  ).toThrow(/invalid transition/i);
 });
 
 test('skipping setup names what the android refusal leaves to do', () => {
