@@ -29,7 +29,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  let checklistQuery = liveQuery(['checklist'], (j) => j.checklists.getStandaloneChecklist());
+  let checklistQuery = liveQuery((j) => j.checklists.getStandaloneChecklist());
   let items = $derived(checklistQuery.value?.items ?? []);
 
   let addSheet = $state(false);

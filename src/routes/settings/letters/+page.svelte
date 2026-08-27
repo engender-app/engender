@@ -48,7 +48,7 @@
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let milestones = $derived(vocabulary.milestones);
 
-  let lettersQuery = liveQuery(['letter'], (j) => j.letters.getLetters(HISTORY_LIMIT));
+  let lettersQuery = liveQuery((j) => j.letters.getLetters(HISTORY_LIMIT));
   let letters = $derived(lettersQuery.value ?? []);
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });

@@ -48,7 +48,7 @@
   /* Bounded from epoch day 0 rather than from the anchor itself: getDoses
      needs a range (doses.ts has no unbounded read). No dose can predate
      1970-01-01, so this is unbounded in practice. */
-  let dosesQuery = liveQuery(['dose'], (j) => j.doses.getDoses(0, today));
+  let dosesQuery = liveQuery((j) => j.doses.getDoses(0, today));
   let doses = $derived(dosesQuery.value ?? []);
 
   /* The day this screen counts weeks from: whatever the person set, else
@@ -58,7 +58,7 @@
   let anchorEpochDay = $derived(hairAnchorEpochDay(prefs.hairAnchorEpochDay, doses));
   let anchorIsUserSet = $derived(prefs.hairAnchorEpochDay !== null);
 
-  let stagesQuery = liveQuery(['hairProgress'], (j) => j.hairProgress.getStages());
+  let stagesQuery = liveQuery((j) => j.hairProgress.getStages());
   let stages = $derived(stagesQuery.value ?? []);
 
   /* Grouped so that no list, and no run of subtitles, ever reads as one
@@ -66,7 +66,7 @@
      within each scale, which is the order the single list used to be in. */
   let stageGroups = $derived(stagesByScale([...stages].reverse()));
 
-  let photosQuery = liveQuery(['hairProgress'], (j) => j.hairProgress.getPhotos());
+  let photosQuery = liveQuery((j) => j.hairProgress.getPhotos());
   let photos = $derived(photosQuery.value ?? []);
 
   let lastPhotoEpochDay = $derived(photos.at(-1)?.epochDay ?? null);

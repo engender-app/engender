@@ -17,7 +17,7 @@
 
   const today = todayEpochDay();
 
-  let pausesQuery = liveQuery(['journalingPause'], (j) => j.journalingPauses.getPauses());
+  let pausesQuery = liveQuery((j) => j.journalingPauses.getPauses());
   let pauses = $derived(pausesQuery.value ?? []);
   let current = $derived(pauses.find((p) => pauseCoversDay(p, today)) ?? null);
   let history = $derived(pauses.filter((p) => p.id !== current?.id));

@@ -25,11 +25,11 @@
   /* Unbounded, like photos.inJournal() (settings/photos/+page.svelte): a
      starred list is self-limiting by how much a person actually stars,
      not by how large the journal is (ADR-0004's concern). */
-  let entriesQuery = liveQuery(['entry'], (j) => j.entries.searchEntries('', [], { starred: true }));
+  let entriesQuery = liveQuery((j) => j.entries.searchEntries('', [], { starred: true }));
   let entries = $derived(entriesQuery.value ?? []);
   let groups = $derived(entryDayGroups(entries));
 
-  let photosQuery = liveQuery(['photo'], (j) => j.photos.starredPhotos());
+  let photosQuery = liveQuery((j) => j.photos.starredPhotos());
   let photos = $derived(photosQuery.value ?? []);
 
   let loading = $derived(entriesQuery.loading || photosQuery.loading);

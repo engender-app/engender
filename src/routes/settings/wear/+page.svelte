@@ -69,9 +69,9 @@
   const today = todayEpochDay();
   const from = today - WINDOW_DAYS;
 
-  let sessionsQuery = liveQuery(['wearSession'], (j) => j.wearSessions.getSessions(from, today));
-  let runningQuery = liveQuery(['wearSession'], (j) => j.wearSessions.getRunningSession());
-  let remindersQuery = liveQuery(['reminder'], (j) => j.reminders.getReminders());
+  let sessionsQuery = liveQuery((j) => j.wearSessions.getSessions(from, today));
+  let runningQuery = liveQuery((j) => j.wearSessions.getRunningSession());
+  let remindersQuery = liveQuery((j) => j.reminders.getReminders());
 
   let sessions = $derived(sessionsQuery.value ?? []);
   let running = $derived(runningQuery.value ?? null);
@@ -252,11 +252,11 @@
   let range = $state(30);
   let trendFrom = $derived(today - range + 1);
 
-  let wearTrendQuery = liveQuery(['wearSession'], (j) => j.stats.wearTimeTrend(trendFrom, today));
+  let wearTrendQuery = liveQuery((j) => j.stats.wearTimeTrend(trendFrom, today));
   /* Dysphoria specifically, which is the axis this chart has always drawn -
      ticket 31 gave a region a second one but did not widen what wear time is
      compared against. */
-  let regionTrendQuery = liveQuery(['entry'], (j) =>
+  let regionTrendQuery = liveQuery((j) =>
     j.stats.bodyRegionTrend(trendRegion, 'dysphoria', trendFrom, today)
   );
   let wearTrend = $derived(wearTrendQuery.value ?? []);

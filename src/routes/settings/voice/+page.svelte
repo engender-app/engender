@@ -31,7 +31,7 @@
      list instead of journal.photos.inJournal's. Recordings are entry-only
      (CONTEXT: "Voice recording"), so there is no milestone-vs-entry caption
      to show under each side the way the photo compare view does. */
-  let recordingsQuery = liveQuery(['voiceRecording', 'entry'], (j) => j.voice.inJournal());
+  let recordingsQuery = liveQuery((j) => j.voice.inJournal());
   let recordings = $derived(recordingsQuery.value ?? []);
 
   let selected = $state<string[]>([]);

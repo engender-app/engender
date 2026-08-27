@@ -38,7 +38,7 @@
 
   /* The query reads `epochDay` before its first await, which is what makes it
      re-run on navigation - see liveQuery's contract. */
-  let dayEntries = liveQuery(['entry'], (j) => j.entries.entriesForDay(epochDay));
+  let dayEntries = liveQuery((j) => j.entries.entriesForDay(epochDay));
   let entries = $derived(dayEntries.value ?? []);
 
   /* One area, so one role, and role 0 - the only index guaranteed to be a

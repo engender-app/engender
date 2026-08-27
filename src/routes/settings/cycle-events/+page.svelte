@@ -50,10 +50,10 @@
     customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput))
   );
 
-  let eventsQuery = liveQuery(['cycleEvent'], (j) => j.cycleEvents.getCycleEvents());
+  let eventsQuery = liveQuery((j) => j.cycleEvents.getCycleEvents());
   let events = $derived(eventsQuery.value ?? []);
 
-  let episodesQuery = liveQuery(['regimen'], (j) => j.regimen.getEpisodes());
+  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.value ?? []);
 
   let chartEvents = $derived(

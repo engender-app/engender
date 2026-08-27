@@ -36,7 +36,7 @@
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
 
-  let countersQuery = liveQuery(['regimen', 'dose'], (j) => j.exposure.getCounters(from, today));
+  let countersQuery = liveQuery((j) => j.exposure.getCounters(from, today));
   let counters = $derived(countersQuery.value);
 </script>
 

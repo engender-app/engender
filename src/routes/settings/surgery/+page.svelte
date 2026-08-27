@@ -55,7 +55,7 @@
 
   const today = todayEpochDay();
 
-  let proceduresQuery = liveQuery(['procedure'], (j) => j.procedures.getProcedures());
+  let proceduresQuery = liveQuery((j) => j.procedures.getProcedures());
   let procedures = $derived(proceduresQuery.value ?? []);
 
   let selectedId = $state<string | null>(null);
@@ -63,12 +63,12 @@
      delete elsewhere on this screen cannot leave a stale procedure open. */
   let selected = $derived(procedures.find((p) => p.id === selectedId) ?? null);
 
-  let photosQuery = liveQuery(['procedure'], (j) =>
+  let photosQuery = liveQuery((j) =>
     selectedId ? j.procedures.getPhotos(selectedId) : Promise.resolve([])
   );
   let photos = $derived(photosQuery.value ?? []);
 
-  let checklistQuery = liveQuery(['checklist', 'procedure'], (j) =>
+  let checklistQuery = liveQuery((j) =>
     selectedId ? j.procedures.getChecklist(selectedId) : Promise.resolve(undefined)
   );
   let checklistItems = $derived(checklistQuery.value?.items ?? []);

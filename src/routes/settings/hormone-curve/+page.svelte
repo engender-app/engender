@@ -76,7 +76,7 @@
   const today = todayEpochDay();
   let fromEpochDay = $derived(today - windowDays + 1);
 
-  let injectableQuery = liveQuery(['dose', 'regimen', 'lab'], (j) =>
+  let injectableQuery = liveQuery((j) =>
     j.hormoneCurve.getCurves({
       fromEpochDay: today - windowDays + 1,
       toEpochDay: today,
@@ -91,7 +91,7 @@
      its curves may share all differ between the two. CURVE_DRUGS is a closed
      vocabulary, so these are created once and not in a reactive loop. */
   const qualQueries = CURVE_DRUGS.map((drug) =>
-    liveQuery(['dose', 'regimen', 'lab'], (j) =>
+    liveQuery((j) =>
       j.qualitativeCurve.getCurves({
         drug,
         fromEpochDay: today - windowDays + 1,

@@ -31,9 +31,9 @@
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
 
-  let misgenderedQuery = liveQuery(['tally'], (j) => j.stats.tallyTrend('misgendered', from, today));
+  let misgenderedQuery = liveQuery((j) => j.stats.tallyTrend('misgendered', from, today));
   let misgendered = $derived(misgenderedQuery.value ?? []);
-  let correctlyGenderedQuery = liveQuery(['tally'], (j) => j.stats.tallyTrend('correctly_gendered', from, today));
+  let correctlyGenderedQuery = liveQuery((j) => j.stats.tallyTrend('correctly_gendered', from, today));
   let correctlyGendered = $derived(correctlyGenderedQuery.value ?? []);
 
   let maxCount = $derived(
