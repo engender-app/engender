@@ -1274,7 +1274,7 @@ a.kit-entry:active {
 /* And the other way round: a surface with a chip row or a photo strip under
    it. The heading above those carries their top space, so what is missing is
    the space beneath. */
-:is(.kit-chart, .kit-list, .kit-day, .wrapped-figure-list) + :is(.tag-row, .wrapped-photos, .otd-photos) {
+[data-kit-surface] + :is(.tag-row, .wrapped-photos, .otd-photos) {
   margin-top: var(--space-4);
 }
 
