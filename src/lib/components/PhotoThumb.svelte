@@ -1,3 +1,40 @@
+<script module lang="ts">
+  /* One observer for every tile on the page, not one observer each.
+
+     A browser delivers all of an observer's entries in a single callback,
+     so a screenful of tiles crossing the margin together becomes one
+     state flush and, downstream of that, one batched read in
+     photoFiles.ts. Separate observers get separate callbacks with a
+     microtask checkpoint between them, and the queue would drain once per
+     tile - which is the batching this ticket added, undone.
+
+     It lives on PhotoThumb rather than on the photo grid because a tile
+     is what knows it is about to read: the timeline, the milestone list
+     and the compare view would each need their own copy otherwise, and
+     the implicit root already accounts for whichever ancestor is doing
+     the scrolling.
+
+     The margin is roughly a screenful, so scrolling arrives at a loaded
+     tile rather than at a placeholder that then fills in. */
+  const watchers = new Map<Element, (near: boolean) => void>();
+  let observer: IntersectionObserver | null = null;
+
+  function watchViewport(target: Element, onChange: (near: boolean) => void): () => void {
+    observer ??= new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) watchers.get(entry.target)?.(entry.isIntersecting);
+      },
+      { rootMargin: '400px' }
+    );
+    watchers.set(target, onChange);
+    observer.observe(target);
+    return () => {
+      watchers.delete(target);
+      observer?.unobserve(target);
+    };
+  }
+</script>
+
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import Icon from './Icon.svelte';
@@ -31,16 +68,40 @@
   } = $props();
 
   let url = $state<string | null>(null);
+  let element = $state<HTMLElement | null>(null);
+  let near = $state(false);
+
+  /* A tile reads nothing until it comes near the screen, and lets its
+     bytes go once it is well past (phase 5 audit ticket 03, finding 04).
+     A grid of hundreds of photos otherwise reads and decodes every one of
+     them on mount and holds a blob URL and a decoded thumbnail for each,
+     so the screen costs what the journal holds instead of what is on it. */
+  $effect(() => {
+    const target = element;
+    if (!target) return;
+    // No observer means no way to tell: draw everything, as before.
+    if (typeof IntersectionObserver === 'undefined') {
+      near = true;
+      return;
+    }
+    return watchViewport(target, (visible) => {
+      near = visible;
+    });
+  });
 
   /* Loading bytes and holding an object URL is exactly the external
      resource an effect is for: the URL has to be revoked when this
      unmounts or the photo changes, or a scrolling list leaks one blob per
-     tile. */
+     tile. Scrolling far away runs the same teardown, which is what keeps
+     a grid's memory to what is on screen rather than to what has been. */
   $effect(() => {
     const given = bytes;
     const fileName = photo.fileName;
+    const visible = near;
     url = null;
-    if (!given && !fileName) return;
+    // Given bytes are already in hand - a photo the editor just picked,
+    // which has no stored file to read and nothing to gate.
+    if (!given && !(fileName && visible)) return;
 
     let objectUrl: string | null = null;
     let stale = false;
@@ -69,6 +130,7 @@
 </script>
 
 <div
+  bind:this={element}
   class="photo-thumb"
   style:width="{size}px"
   style:height="{size}px"
