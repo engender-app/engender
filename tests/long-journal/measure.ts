@@ -21,6 +21,7 @@ import { dateInputValueFromEpochDay } from '../../src/lib/data/epochDay.ts';
 import { PREFERENCE_DEFAULTS } from '../../src/lib/data/prefs/catalogue.ts';
 import { normalizePhoto } from '../../src/lib/data/photos/normalize.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
+import { readThumbnail, setPhotoFiles } from '../../src/lib/stores/photoFiles.ts';
 import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
 import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
 import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
@@ -238,33 +239,29 @@ export async function measureLongJournal(
 
   // --- photo grid ---------------------------------------------------------
   // The rows first, which is one query however many photos there are, and
-  // then the bytes, which is one read per thumbnail through the encrypting
-  // store. The grid decodes thumbnails only (PhotoThumb), so this reads
-  // thumbnails only.
+  // then the bytes, through the same queue the screen reads through
+  // (stores/photoFiles.ts). It used to call files.readMany in batches of 32
+  // of its own, which was the fast path no screen could reach - a 65 ms
+  // number standing in for a screen that read one thumbnail at a time.
+  //
+  // Still an upper bound on the screen rather than a picture of it: the
+  // grid gates each tile on the viewport now (PhotoThumb), so it reads a
+  // screenful and this reads the journal. What the two share is the path.
   let photos!: Awaited<ReturnType<Journal['photos']['inJournal']>>;
   await measure('photo-grid-list', 'photo grid, listing every photo', async () => {
     photos = await journal.photos.inJournal();
     return { result: photos, detail: `${photos.length} photos` };
   });
 
+  setPhotoFiles(files);
   await measure('photo-grid-thumbs', 'photo grid, reading every thumbnail', async () => {
     /* Kept rather than counted. A mounted grid holds decoded thumbnails
        (PhotoThumb), so returning only a byte total would let this
        measurement do less than the screen it claims to represent. */
-    const thumbs: Uint8Array[] = [];
-    const names = photos.flatMap((photo) => (photo.fileName ? [thumbFileName(photo.fileName)] : []));
-    if (files.readMany) {
-      const BATCH_SIZE = 32;
-      for (let i = 0; i < names.length; i += BATCH_SIZE) {
-        const batch = await files.readMany(names.slice(i, i + BATCH_SIZE));
-        for (const thumb of batch) if (thumb) thumbs.push(thumb);
-      }
-    } else {
-      for (const name of names) {
-        const thumb = await files.read(name);
-        if (thumb) thumbs.push(thumb);
-      }
-    }
+    const loaded = await Promise.all(
+      photos.flatMap((photo) => (photo.fileName ? [readThumbnail(photo.fileName)] : []))
+    );
+    const thumbs = loaded.filter((thumb) => thumb !== null);
     const bytes = thumbs.reduce((total, thumb) => total + thumb.length, 0);
     return { result: thumbs, detail: `${thumbs.length} thumbnails, ${mb(bytes)}` };
   });
