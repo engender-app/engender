@@ -52,6 +52,8 @@ public class ReminderNotificationPrivacyTest {
         // dropped for having none.
         notificationManager().createNotificationChannel(new NotificationChannel(
             ReminderScheduler.CHANNEL_REMINDERS, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH));
+        notificationManager().createNotificationChannel(new NotificationChannel(
+            ReminderScheduler.CHANNEL_CHECK_IN, "Check-in", NotificationManager.IMPORTANCE_HIGH));
     }
 
     @After
@@ -80,6 +82,54 @@ public class ReminderNotificationPrivacyTest {
         Notification notification = findNotification();
         assertNotNull("no notification was posted", notification);
         assertEquals(SENSITIVE_TITLE, notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
+    }
+
+    /* Phase 5 security ticket 01 (F-05). hideNotificationTitles above is
+       about the shade, where the OS shows everything whatever the app asks
+       for. This is about the lock screen, where it does not: a notification
+       posted at the default VISIBILITY_PUBLIC shows its title and text to
+       anyone holding the phone, and the title is the reminder the person
+       wrote. The two cover different screens and both are needed. */
+
+    @Test
+    public void reminderNotificationsAreHiddenOnALockedScreen() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, payload(false));
+
+        fireReminderAlarm();
+
+        Notification notification = findNotification();
+        assertNotNull("no notification was posted", notification);
+        assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility);
+    }
+
+    @Test
+    public void checkInNotificationsAreHiddenOnALockedScreen() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+
+        fireCheckInAlarm();
+
+        Notification notification = findCheckInNotification();
+        assertNotNull("no check-in notification was posted", notification);
+        assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility);
+    }
+
+    private JSONObject checkInPayload() throws Exception {
+        return payload(false)
+            .put("checkInEnabled", true)
+            .put("checkInAffirmations", new JSONArray().put("You are allowed to take up space"));
+    }
+
+    private void fireCheckInAlarm() {
+        Intent intent = new Intent(context, ReminderAlarmReceiver.class)
+            .putExtra(ReminderScheduler.EXTRA_KIND, ReminderScheduler.KIND_CHECK_IN);
+        new ReminderAlarmReceiver().onReceive(context, intent);
+    }
+
+    private Notification findCheckInNotification() {
+        for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
+            if (sbn.getId() == 7999) return sbn.getNotification();
+        }
+        return null;
     }
 
     private JSONObject payload(boolean hideNotificationTitles) throws Exception {

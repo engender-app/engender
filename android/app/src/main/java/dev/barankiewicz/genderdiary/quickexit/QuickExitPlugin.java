@@ -17,7 +17,10 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "QuickExit")
 public class QuickExitPlugin extends Plugin {
 
-    private static final String PREFS = "gender-diary-quick-exit";
+    /** Named rather than private for the same reason as
+        AutoExportPlugin.PREFS: the reset's test has to name the file it
+        claims to have cleared. */
+    public static final String PREFS = "gender-diary-quick-exit";
     private static final String KEY_ENABLED = "enabled";
 
     @PluginMethod
@@ -29,6 +32,12 @@ public class QuickExitPlugin extends Plugin {
 
     public static boolean isEnabled(Context context) {
         return prefs(context).getBoolean(KEY_ENABLED, false);
+    }
+
+    /** The reset path (ADR-0014). Whether quick exit was on says something
+        about the person's situation, and the reset claims to leave nothing. */
+    public static void wipe(Context context) {
+        prefs(context).edit().clear().commit();
     }
 
     private static SharedPreferences prefs(Context context) {
