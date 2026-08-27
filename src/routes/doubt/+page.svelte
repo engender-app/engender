@@ -2,7 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
@@ -24,13 +24,13 @@
 
   let today = $derived(todayEpochDay());
 
-  let counterevidenceQuery = liveQuery((j) =>
+  let counterevidenceQuery = liveList((j) =>
     j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT)
   );
-  let counterevidence = $derived(counterevidenceQuery.value ?? []);
+  let counterevidence = $derived(counterevidenceQuery.rows);
 
-  let snapshotsQuery = liveQuery((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
-  let snapshots = $derived(snapshotsQuery.value ?? []);
+  let snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
+  let snapshots = $derived(snapshotsQuery.rows);
 
   async function saveSnapshot() {
     if (counterevidence.length === 0) return;

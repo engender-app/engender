@@ -15,7 +15,7 @@
      that remain each get a full touch target, which the 28px squares and
      the buttons packed against them did not have. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import type { ChecklistItem } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -29,8 +29,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  let checklistQuery = liveQuery((j) => j.checklists.getStandaloneChecklist());
-  let items = $derived(checklistQuery.value?.items ?? []);
+  let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
+  let items = $derived(checklistQuery.rows);
 
   let addSheet = $state(false);
   let newItemText = $state('');

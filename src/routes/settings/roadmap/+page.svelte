@@ -14,7 +14,7 @@
      is a three-state tick whose accessible name is the goal and its state
      together, and a ListRow announces a title and goes somewhere. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
   import { POLISH_PACK, ROADMAP_TRACKS, goalsInTrack, type RoadmapTrack } from '$lib/data/roadmap';
@@ -50,8 +50,8 @@
   let statusQuery = liveQuery((j) => j.roadmap.getGoalStatuses(pack.key));
   let statuses = $derived(statusQuery.value ?? {});
 
-  let customQuery = liveQuery((j) => j.roadmap.getCustomGoals());
-  let customGoals = $derived(customQuery.value ?? []);
+  let customQuery = liveList((j) => j.roadmap.getCustomGoals());
+  let customGoals = $derived(customQuery.rows);
 
   /* CONTEXT: "Lean" (phase 5 ticket 43, ADR-0030) - the active preset
      reorders each track's built-in goals, matching ones first. Custom

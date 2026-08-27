@@ -17,7 +17,7 @@
      one grid instead, which is a thing the eye reads without a wash. */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
   import { onThisDayCandidates } from '$lib/data/on-this-day';
   import Tile from './kit/Tile.svelte';
 
@@ -25,11 +25,11 @@
 
   /* Invalidated on entry or tag writes: those are the only two things the
      good-day rule reads (day average mood, the euphoria tag). */
-  let goodDaysQuery = liveQuery(async (j) => {
+  let goodDaysQuery = liveList(async (j) => {
     const results = await Promise.all(candidates.map((c) => j.stats.isGoodDay(c.epochDay)));
     return candidates.filter((_, i) => results[i]);
   });
-  let qualifying = $derived(goodDaysQuery.value ?? []);
+  let qualifying = $derived(goodDaysQuery.rows);
 
   /* The tile's reading: how far back the furthest qualifying day is.
      `qualifying` keeps onThisDayCandidates' order, which is longest first, so

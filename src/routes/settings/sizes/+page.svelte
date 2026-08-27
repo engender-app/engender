@@ -11,7 +11,7 @@
      The rows keep doing exactly what they did: tapping one opens the
      record in the editor sheet, where its delete lives. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { garmentCategoryName } from '$lib/data/vocabulary/labels';
   import { GARMENT_CATEGORIES, type GarmentCategoryKey } from '$lib/data/garmentCategories';
   import { fmtDay } from '$lib/data/dates';
@@ -20,7 +20,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -31,6 +30,7 @@
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -47,10 +47,10 @@
      never reaches sizeRecords.ts's validation against that list. */
   let category = $state<'all' | GarmentCategoryKey>('all');
 
-  let recordsQuery = liveQuery((j) =>
+  let recordsQuery = liveList((j) =>
     category === 'all' ? j.sizeRecords.getRecords() : j.sizeRecords.getRecordsByCategory(category)
   );
-  let records = $derived(recordsQuery.value ?? []);
+  let records = $derived(recordsQuery.rows);
   /* Grouped by category, in the fixed catalogue's own order, and only
      built when 'all' is showing - a single category's own records stay a
      flat reverse-chronological list, unchanged. */
@@ -132,39 +132,40 @@
     />
   {/snippet}
 
-  {#if recordsQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if records.length}
-    <div class="screen-part">
-      {#if category === 'all'}
-        {#each groups as g (g.category)}
-          <SectionHeading text={garmentCategoryName(g.category)} />
+  <ReadGate read={recordsQuery} variant="line" count={3}>
+    {#snippet rows(records)}
+      <div class="screen-part">
+        {#if category === 'all'}
+          {#each groups as g (g.category)}
+            <SectionHeading text={garmentCategoryName(g.category)} />
+            <ListCard role={roleAt(activeFlag.roles, 0)}>
+              {#each [...g.records].reverse() as r (r.id)}
+                {@render sizeRow(r)}
+              {/each}
+            </ListCard>
+          {/each}
+        {:else}
           <ListCard role={roleAt(activeFlag.roles, 0)}>
-            {#each [...g.records].reverse() as r (r.id)}
+            {#each [...records].reverse() as r (r.id)}
               {@render sizeRow(r)}
             {/each}
           </ListCard>
-        {/each}
-      {:else}
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          {#each [...records].reverse() as r (r.id)}
-            {@render sizeRow(r)}
-          {/each}
-        </ListCard>
-      {/if}
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="package"
-        key="sizes-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.size_log_empty_title()}
-        text={m.size_log_empty_body()}
-        action={{ label: m.size_log_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-    </div>
-  {/if}
+        {/if}
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="package"
+          key="sizes-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.size_log_empty_title()}
+          text={m.size_log_empty_body()}
+          action={{ label: m.size_log_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <Sheet open={editor !== null} title={editor?.id ? m.size_log_edit_sheet() : m.size_log_new_sheet()} onClose={() => (record.editor = null)}>
     {#if editor}

@@ -10,7 +10,7 @@
      journal got the empty state and never saw it. It is the notice's own
      text there instead. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { severityName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -20,7 +20,6 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -29,11 +28,12 @@
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   const SEVERITIES = [1, 2, 3, 4, 5];
 
-  let effectsQuery = liveQuery((j) => j.sideEffects.getSideEffects());
-  let effects = $derived(effectsQuery.value ?? []);
+  let effectsQuery = liveList((j) => j.sideEffects.getSideEffects());
+  let effects = $derived(effectsQuery.rows);
 
   const record = recordEditor<SideEffect, { id?: string; date: string; name: string; severity: string }>({
     blank: () => ({ date: dateInputValueFromEpochDay(todayEpochDay()), name: '', severity: '3' }),
@@ -78,36 +78,37 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if effectsQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if effects.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each [...effects].reverse() as effect (effect.id)}
-          <ListRow
-            key={effect.id}
-            data-side-effect={effect.id}
-            icon="zap"
-            title={effect.name}
-            subtitle={`${fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })} · ${severityName(effect.severity)}`}
-            chevron={false}
-            onclick={() => record.openEditor(effect)}
-          />
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="zap"
-        key="side-effects-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.side_effect_empty_title()}
-        text={m.side_effect_empty_body()}
-        action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-    </div>
-  {/if}
+  <ReadGate read={effectsQuery} variant="line" count={3}>
+    {#snippet rows(effects)}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each [...effects].reverse() as effect (effect.id)}
+            <ListRow
+              key={effect.id}
+              data-side-effect={effect.id}
+              icon="zap"
+              title={effect.name}
+              subtitle={`${fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })} · ${severityName(effect.severity)}`}
+              chevron={false}
+              onclick={() => record.openEditor(effect)}
+            />
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="zap"
+          key="side-effects-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.side_effect_empty_title()}
+          text={m.side_effect_empty_body()}
+          action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <Sheet
     open={editor !== null}
