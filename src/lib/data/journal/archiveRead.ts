@@ -744,9 +744,8 @@ export async function readRegimenEpisodes({ driver }: SectionRead): Promise<Arch
     interval: string;
     start_epoch_day: number;
     end_epoch_day: number | null;
-    hidden: number;
   }>(
-    `SELECT uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, hidden
+    `SELECT uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day
      FROM regimen_episode ORDER BY start_epoch_day, id`
   );
   return rows.map((r) => ({
@@ -758,8 +757,7 @@ export async function readRegimenEpisodes({ driver }: SectionRead): Promise<Arch
     route: r.route,
     interval: r.interval,
     startEpochDay: r.start_epoch_day,
-    endEpochDay: r.end_epoch_day,
-    hidden: bool(r.hidden)
+    endEpochDay: r.end_epoch_day
   }));
 }
 

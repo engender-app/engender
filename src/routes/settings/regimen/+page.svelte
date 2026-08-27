@@ -67,7 +67,6 @@
     startDate: string;
     /** `''` while the episode is still ongoing (types.ts's null). */
     endDate: string;
-    hidden: boolean;
   } | null>(null);
   /* Offered above manual entry when adding a new episode (CONTEXT: "Regimen
      template") - picking one only pre-fills drug/ester/route in the editor
@@ -87,8 +86,7 @@
           route: episode.route,
           interval: episode.interval,
           startDate: dateInputValueFromEpochDay(episode.startEpochDay),
-          endDate: episode.endEpochDay === null ? '' : dateInputValueFromEpochDay(episode.endEpochDay),
-          hidden: episode.hidden
+          endDate: episode.endEpochDay === null ? '' : dateInputValueFromEpochDay(episode.endEpochDay)
         }
       : {
           drug: template?.drug ?? '',
@@ -98,8 +96,7 @@
           route: template?.route ?? '',
           interval: '',
           startDate: dateInputValueFromEpochDay(todayEpochDay()),
-          endDate: '',
-          hidden: false
+          endDate: ''
         };
   }
 
@@ -239,12 +236,6 @@
     await journal.doses.deletePause(id);
   }
 
-  async function toggleHidden() {
-    if (!editor?.id) return;
-    const nextHidden = !editor.hidden;
-    await journal.regimen.setEpisodeHidden(editor.id, nextHidden);
-    editor = { ...editor, hidden: nextHidden };
-  }
 </script>
 
 <div class="screen">
@@ -272,15 +263,13 @@
             onclick={() => openEditor(episode)}
           >
             {#snippet trailing()}
-              <!-- Which episodes are running, and which have been hidden,
-                   at the end of the row rather than wedged into the drug's
-                   own name. A badge inside a title pushes the name it
-                   belongs to onto a second line as soon as the name is long,
-                   which every ester is. -->
+              <!-- Which episodes are running, at the end of the row rather
+                   than wedged into the drug's own name. A badge inside a
+                   title pushes the name it belongs to onto a second line as
+                   soon as the name is long, which every ester is. -->
               {#if activeIds.has(episode.id)}
                 <span class="notice-warn regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
               {/if}
-              {#if episode.hidden}<span class="muted small">{m.regimen_hidden()}</span>{/if}
             {/snippet}
           </ListRow>
         {/each}
@@ -601,9 +590,6 @@
               <span>{m.regimen_end_action()}</span>
             </button>
           {/if}
-          <button class="btn btn-ghost" data-toggle-hidden onclick={toggleHidden}>
-            <span>{editor.hidden ? m.regimen_show_aria({ drug: editor.drug }) : m.regimen_hide_aria({ drug: editor.drug })}</span>
-          </button>
         {/if}
       </div>
     {/if}
@@ -613,6 +599,26 @@
 <style>
   .regimen-elsewhere {
     margin-top: var(--space-6);
+  }
+
+  /* Short values in a wide field read as adrift rather than centred on it -
+     "2" and "mg" sitting flush against the field's left edge with most of
+     its width empty beside them (Alicja, 2026-08-27). */
+  [data-amount-dose],
+  [data-amount-unit] {
+    text-align: center;
+  }
+
+  /* The schedule section opens inside `.disclosed` (components.css), which
+     is a plain flow-root wrapper with no spacing of its own - every field
+     in it carries its own `margin-bottom` and self-spaces, but the dose
+     amounts list is a ListCard, which does not, so it sat flush against
+     "Add an amount" beneath it with nothing between them (Alicja,
+     2026-08-27: "the buttons row below is too close to the list's end").
+     `--space-4` matches what `.field`'s own margin already gives every
+     other pair of rows in this same disclosed block. */
+  .disclosed :global(.kit-list) {
+    margin-bottom: var(--space-4);
   }
 
   /* Small enough to sit at the end of a row without pushing the reading

@@ -31,8 +31,7 @@ test('an episode gets a minted uuid id and round-trips every field', async () =>
       route: 'im',
       interval: 'every 2 weeks',
       startEpochDay: 19000,
-      endEpochDay: null,
-      hidden: false
+      endEpochDay: null
     }
   ]);
 });
@@ -170,33 +169,7 @@ test('a retroactive correction (a past start date) changes what an existing epis
   assert.equal(attributeDose(afterCorrection, record).episode?.drug, 'estradiol patch');
 });
 
-test('hiding an episode preserves it and its identity; an unknown id throws', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.regimen.upsertEpisode({
-    drug: 'estradiol',
-    ester: null,
-    dose: 2,
-    doseUnit: 'mg',
-    route: 'oral',
-    interval: 'daily',
-    startEpochDay: 100,
-    endEpochDay: null
-  });
-
-  await journal.regimen.setEpisodeHidden(id, true);
-
-  const episodes = await journal.regimen.getEpisodes();
-  assert.equal(episodes.length, 1);
-  assert.equal(episodes[0].id, id);
-  assert.equal(episodes[0].hidden, true);
-
-  await journal.regimen.setEpisodeHidden(id, false);
-  assert.equal((await journal.regimen.getEpisodes())[0].hidden, false);
-
-  await assert.rejects(journal.regimen.setEpisodeHidden('nope', true), /unknown regimen episode/);
-});
-
-test('no delete operation exists: episodes hide, they never delete', async () => {
+test('no delete operation exists: episodes are never removed', async () => {
   const { journal } = await journalWithBuiltIns();
   assert.ok(!('deleteEpisode' in journal.regimen), 'no delete operation exists');
 });
