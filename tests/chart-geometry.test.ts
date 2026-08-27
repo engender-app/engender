@@ -1,42 +1,18 @@
 /* The chart kit's arithmetic (phase 5 ticket 20), kept out of the Svelte
-   components so the three things the ticket pins numbers to - the point
-   cap, the re-tween between datasets, and the single-hue bar ramp's
-   leader - can be held to a value without mounting anything.
-
-   The area chart is scrolled rather than squashed: every point keeps its
-   own slot, and a year is read a week at a time by dragging. So the cap is
-   on how many points can exist before neighbours are averaged, and the
-   resampling exists for the tween alone - to count two datasets the same
-   way for as long as one is turning into the other. */
+   components so the numbers the ticket pins - the re-tween between
+   datasets and the single-hue bar ramp's leader - can be held to a value
+   without mounting anything. The point cap lives in charts/grain.ts
+   instead (MAX_POSITIONS/atGrain) and kit-surfaces.test.ts holds it to a
+   value; the resampling here exists for the tween alone - to count two
+   datasets the same way for as long as one is turning into the other. */
 
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_POINTS,
   areaPath,
-  bucket,
   lerpSamples,
   resample,
   share
 } from '../src/lib/charts/geometry';
-
-describe('bucket', () => {
-  it('leaves a year of daily points exactly as they are', () => {
-    const year = Array.from({ length: 365 }, (_, i) => ({ x: i, y: i % 7 }));
-    expect(bucket(year)).toEqual(year);
-  });
-
-  it('averages a longer range down to the cap', () => {
-    const threeYears = Array.from({ length: 1095 }, (_, i) => ({ x: i, y: 10 }));
-    const capped = bucket(threeYears);
-    expect(capped.length).toBe(MAX_POINTS);
-    expect(capped.every((p) => p.y === 10)).toBe(true);
-    expect(capped[0].x).toBeLessThan(capped[capped.length - 1].x);
-  });
-
-  it('sorts by position, so an out-of-order write does not fold the line back', () => {
-    expect(bucket([{ x: 3, y: 1 }, { x: 1, y: 2 }])).toEqual([{ x: 1, y: 2 }, { x: 3, y: 1 }]);
-  });
-});
 
 describe('resample', () => {
   it('reproduces a straight line exactly, whatever the count', () => {
