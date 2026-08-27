@@ -18,7 +18,7 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
   import { atGrain, type Grain } from '$lib/charts/grain';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -47,10 +47,10 @@
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
 
-  let dysphoriaQuery = liveQuery((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today));
-  let euphoriaQuery = liveQuery((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today));
-  let dysphoria = $derived(dysphoriaQuery.value ?? []);
-  let euphoria = $derived(euphoriaQuery.value ?? []);
+  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today));
+  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today));
+  let dysphoria = $derived(dysphoriaQuery.rows);
+  let euphoria = $derived(euphoriaQuery.rows);
 
   let plottedDysphoria = $derived(atGrain(dysphoria.map((p) => ({ x: p.day, y: p.value })), range));
   let plottedEuphoria = $derived(atGrain(euphoria.map((p) => ({ x: p.day, y: p.value })), range));

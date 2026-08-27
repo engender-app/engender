@@ -46,12 +46,11 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
   import { isPausedOn } from '$lib/data/journalingPause';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { RECENT_ENTRY_CAP, entryMarks, recentDayGroups } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
@@ -59,7 +58,7 @@
   import MilestoneCard from '$lib/components/MilestoneCard.svelte';
   import WeekStrip from '$lib/components/WeekStrip.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
   import OnThisDayHomeCard from '$lib/components/OnThisDayHomeCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
@@ -101,8 +100,8 @@
      drawn (recentEntries.ts), and the rest are one tap away on the
      calendar. */
   const RECENT_DAYS = 5;
-  let recent = liveQuery((j) => j.entries.recentDays(RECENT_DAYS));
-  let dayGroups = $derived(recentDayGroups(recent.value ?? [], RECENT_ENTRY_CAP));
+  let recent = liveList((j) => j.entries.recentDays(RECENT_DAYS));
+  let dayGroups = $derived(recentDayGroups(recent.rows, RECENT_ENTRY_CAP));
 
   let streakQuery = liveQuery((j) => j.stats.streak(today));
   let streak = $derived(streakQuery.value ?? 0);
@@ -111,8 +110,8 @@
      a nudge, the same as the check-in prompt, so it goes quiet while a pause
      covers today rather than showing a frozen number with nothing to
      explain it. */
-  let pausesQuery = liveQuery((j) => j.journalingPauses.getPauses());
-  let pausedToday = $derived(isPausedOn(pausesQuery.value ?? [], today));
+  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
+  let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
 
   /* A second authored moment, and the only one besides the sun: past a
      week's run, opening Home throws a little confetti over the streak line.
@@ -160,13 +159,6 @@
     if (v == null) return;
     goto(`/entry/new/today?seedMood=${v}`);
   }
-
-  /* Tier 3, change within a screen: the skeleton crossfades into the day
-     cards rather than being cut away under them. Reduced motion takes the
-     duration to zero, which is tier 3's substitute - an instant cut, not
-     tier 2's crossfade, because a change inside a screen has no journey for
-     a fade to stand in for. */
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
 
   /* The tally widget's two buttons (phase 4 ticket 33) deep-link here with
      the kind as a query param, since neither button opens a route of its
@@ -374,46 +366,47 @@
     {/snippet}
   </SectionHeading>
   <div class="home-swap">
-    {#if recent.loading}
-      <div out:crossfade><Skeleton variant="card" count={3} /></div>
-    {:else if dayGroups.length}
-      <div class="home-days">
-        {#each dayGroups as group (group.epochDay)}
-          <DayCard
-            key={String(group.epochDay)}
+    <ReadGate read={recent} variant="card" count={3}>
+      {#snippet rows()}
+        <div class="home-days">
+          {#each dayGroups as group (group.epochDay)}
+            <DayCard
+              key={String(group.epochDay)}
+              role={roleAt(activeFlag.roles, AREA_ROLE.days)}
+              date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
+              aside={group.dayCount > 1 ? m.entry_day_count({ count: String(group.dayCount) }) : undefined}
+            >
+              {#each group.entries as entry (entry.id)}
+                <DayEntry
+                  key={String(entry.id)}
+                  href={`/entry/${entry.id}`}
+                  time={fmtTime(entry.timestamp)}
+                  mood={entry.mood}
+                  note={entry.note ?? undefined}
+                  tags={entryTags(entry)}
+                  marks={entryMarks(entry)}
+                />
+              {/each}
+            </DayCard>
+          {/each}
+        </div>
+      {/snippet}
+      {#snippet empty()}
+        <!-- Wrapped because a transition goes on an element, not a component,
+             and the empty state is the branch a first-run journal lands on -
+             it owes the same crossfade the day cards get. -->
+        <div>
+          <Notice
+            icon="book"
+            key="no-entries"
             role={roleAt(activeFlag.roles, AREA_ROLE.days)}
-            date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
-            aside={group.dayCount > 1 ? m.entry_day_count({ count: String(group.dayCount) }) : undefined}
-          >
-            {#each group.entries as entry (entry.id)}
-              <DayEntry
-                key={String(entry.id)}
-                href={`/entry/${entry.id}`}
-                time={fmtTime(entry.timestamp)}
-                mood={entry.mood}
-                note={entry.note ?? undefined}
-                tags={entryTags(entry)}
-                marks={entryMarks(entry)}
-              />
-            {/each}
-          </DayCard>
-        {/each}
-      </div>
-    {:else}
-      <!-- Wrapped because a transition goes on an element, not a component,
-           and the empty state is the branch a first-run journal lands on -
-           it owes the same crossfade the day cards get. -->
-      <div>
-        <Notice
-          icon="book"
-          key="no-entries"
-          role={roleAt(activeFlag.roles, AREA_ROLE.days)}
-          title={m.empty_home_title()}
-          text={m.empty_home_body()}
-          action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }}
-        />
-      </div>
-    {/if}
+            title={m.empty_home_title()}
+            text={m.empty_home_body()}
+            action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }}
+          />
+        </div>
+      {/snippet}
+    </ReadGate>
   </div>
 
   <Sheet

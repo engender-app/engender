@@ -26,7 +26,7 @@
   import { page } from '$app/state';
   import { replaceState } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt, attributeDose } from '$lib/data/regimenEpisode';
   import {
     adherence,
@@ -85,20 +85,20 @@
   const today = todayEpochDay();
   const from = today - WINDOW_DAYS;
 
-  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
-  let dosesQuery = liveQuery((j) => j.doses.getDoses(from, today));
-  let schedulesQuery = liveQuery((j) => j.doses.getSchedules());
-  let pausesQuery = liveQuery((j) => j.doses.getPauses());
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let dosesQuery = liveList((j) => j.doses.getDoses(from, today));
+  let schedulesQuery = liveList((j) => j.doses.getSchedules());
+  let pausesQuery = liveList((j) => j.doses.getPauses());
   /** Read separately from the windowed `dosesQuery` above (ticket 10): a
       rotation site's last use routinely predates the log's 90-day window,
       and "never used" has to mean never, not merely not in that window. */
-  let allInjectionDosesQuery = liveQuery((j) => j.doses.getDoses(0, today));
+  let allInjectionDosesQuery = liveList((j) => j.doses.getDoses(0, today));
 
-  let episodes = $derived(episodesQuery.value ?? []);
-  let doses = $derived(dosesQuery.value ?? []);
-  let schedules = $derived(schedulesQuery.value ?? []);
-  let pauses = $derived(pausesQuery.value ?? []);
-  let siteRecencyByKey = $derived(siteRecency(allInjectionDosesQuery.value ?? [], today));
+  let episodes = $derived(episodesQuery.rows);
+  let doses = $derived(dosesQuery.rows);
+  let schedules = $derived(schedulesQuery.rows);
+  let pauses = $derived(pausesQuery.rows);
+  let siteRecencyByKey = $derived(siteRecency(allInjectionDosesQuery.rows, today));
   let loading = $derived(episodesQuery.loading || dosesQuery.loading);
 
   let view = $state<'log' | 'schedule'>('log');

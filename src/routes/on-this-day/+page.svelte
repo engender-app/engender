@@ -32,7 +32,7 @@
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
   import { entryMarks } from '$lib/data/recentEntries';
@@ -72,7 +72,7 @@
      this used to run three aggregate recaps. Both are bounded by the day
      rather than by the journal's length, and the day read only happens for a
      day that already qualified. */
-  let daysQuery = liveQuery(async (j) => {
+  let daysQuery = liveList(async (j) => {
     if (!prefs.onThisDayEnabled) return [];
     const results = await Promise.all(
       candidates.map(async (c): Promise<QualifyingDay | null> => {
@@ -84,7 +84,7 @@
   });
 
   let days = $derived(
-    (daysQuery.value ?? []).map((d) => ({
+    (daysQuery.rows).map((d) => ({
       ...d,
       title: LOOKBACK_TITLE[d.key](),
       date: fmtDay(d.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }),

@@ -10,7 +10,7 @@
      query's own note below. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { entryDayGroups } from '$lib/data/recentEntries';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -25,13 +25,17 @@
   /* Unbounded, like photos.inJournal() (settings/photos/+page.svelte): a
      starred list is self-limiting by how much a person actually stars,
      not by how large the journal is (ADR-0004's concern). */
-  let entriesQuery = liveQuery((j) => j.entries.searchEntries('', [], { starred: true }));
-  let entries = $derived(entriesQuery.value ?? []);
+  let entriesQuery = liveList((j) => j.entries.searchEntries('', [], { starred: true }));
+  let entries = $derived(entriesQuery.rows);
   let groups = $derived(entryDayGroups(entries));
 
-  let photosQuery = liveQuery((j) => j.photos.starredPhotos());
-  let photos = $derived(photosQuery.value ?? []);
+  let photosQuery = liveList((j) => j.photos.starredPhotos());
+  let photos = $derived(photosQuery.rows);
 
+  /* Not ReadGate's shape, and deliberately so (phase 5 audit ticket 04): the
+     gate branches on one read, and this screen is empty only when both of
+     its two come back with nothing. Starred entries with no starred photos
+     is not an empty screen. */
   let loading = $derived(entriesQuery.loading || photosQuery.loading);
   let empty = $derived(!loading && entries.length === 0 && photos.length === 0);
 

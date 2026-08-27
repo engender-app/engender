@@ -8,13 +8,12 @@
      kit's split row now, which is the same two controls with the row's own
      padding and press behind the first of them. */
   import { m } from '$lib/paraglide/messages';
-  import { liveQuery, journal } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { tryoutKindName } from '$lib/data/vocabulary/labels';
   import type { Tryout } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -23,9 +22,10 @@
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
-  let tryoutsQuery = liveQuery((j) => j.tryouts.getTryouts());
-  let tryouts = $derived(tryoutsQuery.value ?? []);
+  let tryoutsQuery = liveList((j) => j.tryouts.getTryouts());
+  let tryouts = $derived(tryoutsQuery.rows);
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
   const rangeLabel = (t: Tryout) =>
@@ -47,36 +47,37 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if tryoutsQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if tryouts.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each tryouts as t (t.id)}
-          <ListRow
-            key={t.id}
-            data-tryout={t.id}
-            icon="tag"
-            title={t.label}
-            subtitle={`${tryoutKindName(t.kind)} · ${rangeLabel(t)}`}
-            href="/settings/tryouts/{t.id}"
-            action={{ icon: 'trash', label: m.tryout_delete_sheet(), onclick: () => record.askToDelete(t) }}
-          />
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="tag"
-        key="tryouts-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.tryout_none()}
-        text={m.tryout_intro()}
-        action={{ label: m.tryout_add(), primary: true, href: '/settings/tryouts/new' }}
-      />
-    </div>
-  {/if}
+  <ReadGate read={tryoutsQuery} variant="line" count={3}>
+    {#snippet rows()}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each tryouts as t (t.id)}
+            <ListRow
+              key={t.id}
+              data-tryout={t.id}
+              icon="tag"
+              title={t.label}
+              subtitle={`${tryoutKindName(t.kind)} · ${rangeLabel(t)}`}
+              href="/settings/tryouts/{t.id}"
+              action={{ icon: 'trash', label: m.tryout_delete_sheet(), onclick: () => record.askToDelete(t) }}
+            />
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="tag"
+          key="tryouts-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.tryout_none()}
+          text={m.tryout_intro()}
+          action={{ label: m.tryout_add(), primary: true, href: '/settings/tryouts/new' }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <ConfirmDeleteSheet
     open={deleteTarget !== null}

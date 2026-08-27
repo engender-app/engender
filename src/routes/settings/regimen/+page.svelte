@@ -13,7 +13,7 @@
      flags as a decision rather than an oversight, and no ticket in this
      phase gives either an inbound link from the hub. Unchanged here. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -23,20 +23,20 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   /* Two areas: what is being taken, and the three screens that read the
      dose log from other angles. */
   const SECTION_ROLE = { episodes: 0, elsewhere: 1 };
 
-  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
-  let episodes = $derived(episodesQuery.value ?? []);
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let episodes = $derived(episodesQuery.rows);
   /* A set, not one episode (phase 5 ticket 38): more than one can be
      active at once for different drugs, and every one of them still gets
      the "current" badge below. */
@@ -45,10 +45,10 @@
   /* The schedule and the pauses belong to an episode, so they are edited
      here beside it rather than on the dose log: the log holds events, this
      screen holds what an episode expects of them (phase 4 ticket 02). */
-  let schedulesQuery = liveQuery((j) => j.doses.getSchedules());
-  let pausesQuery = liveQuery((j) => j.doses.getPauses());
-  let editorSchedule = $derived((schedulesQuery.value ?? []).find((s) => s.episodeId === editor?.id) ?? null);
-  let editorPauses = $derived((pausesQuery.value ?? []).filter((p) => p.episodeId === editor?.id));
+  let schedulesQuery = liveList((j) => j.doses.getSchedules());
+  let pausesQuery = liveList((j) => j.doses.getPauses());
+  let editorSchedule = $derived((schedulesQuery.rows).find((s) => s.episodeId === editor?.id) ?? null);
+  let editorPauses = $derived((pausesQuery.rows).filter((p) => p.episodeId === editor?.id));
 
   function rangeLabel(episode: RegimenEpisode): string {
     const start = fmtDay(episode.startEpochDay, { month: 'short', year: 'numeric' });
@@ -247,46 +247,47 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if episodesQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if episodes.length}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
-        {#each [...episodes].reverse() as episode (episode.id)}
-          <ListRow
-            key={episode.id}
-            data-episode={episode.id}
-            icon="flask"
-            title={episode.drug}
-            subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
-            chevron={false}
-            onclick={() => openEditor(episode)}
-          >
-            {#snippet trailing()}
-              <!-- Which episodes are running, at the end of the row rather
-                   than wedged into the drug's own name. A badge inside a
-                   title pushes the name it belongs to onto a second line as
-                   soon as the name is long, which every ester is. -->
-              {#if activeIds.has(episode.id)}
-                <span class="notice-warn regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
-              {/if}
-            {/snippet}
-          </ListRow>
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="flask"
-        key="regimen-empty"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
-        title={m.regimen_empty_title()}
-        text={m.regimen_empty_body()}
-        action={{ label: m.regimen_empty_action(), primary: true, onclick: () => (templatePicker = true) }}
-      />
-    </div>
-  {/if}
+  <ReadGate read={episodesQuery} variant="line" count={3}>
+    {#snippet rows()}
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+          {#each [...episodes].reverse() as episode (episode.id)}
+            <ListRow
+              key={episode.id}
+              data-episode={episode.id}
+              icon="flask"
+              title={episode.drug}
+              subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
+              chevron={false}
+              onclick={() => openEditor(episode)}
+            >
+              {#snippet trailing()}
+                <!-- Which episodes are running, at the end of the row rather
+                     than wedged into the drug's own name. A badge inside a
+                     title pushes the name it belongs to onto a second line as
+                     soon as the name is long, which every ester is. -->
+                {#if activeIds.has(episode.id)}
+                  <span class="notice-warn regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
+                {/if}
+              {/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="flask"
+          key="regimen-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
+          title={m.regimen_empty_title()}
+          text={m.regimen_empty_body()}
+          action={{ label: m.regimen_empty_action(), primary: true, onclick: () => (templatePicker = true) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <!-- No heading over these three. The catalogue's only wording for the
        area is the name of the first row in it, which would be the row

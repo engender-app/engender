@@ -18,7 +18,7 @@
      an inches one still draws a single continuous line instead of two
      that stop and start where the habit changed. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
@@ -28,7 +28,6 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
@@ -39,6 +38,7 @@
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   /* Colour that carries a value takes role 0 (DIRECTION.md): roles run a
      flag's colours before its shades, so index 0 is the only one
@@ -62,8 +62,8 @@
   let type = $state<string>(vocabulary.visibleMeasurementTypes[0]?.key ?? 'waist');
   let typeOptions = $derived(vocabulary.visibleMeasurementTypes.map((t) => ({ value: t.key, label: t.name })));
 
-  let measurementsQuery = liveQuery((j) => j.measurements.getMeasurements(type));
-  let measurements = $derived(measurementsQuery.value ?? []);
+  let measurementsQuery = liveList((j) => j.measurements.getMeasurements(type));
+  let measurements = $derived(measurementsQuery.rows);
 
   /* cm and in are both linear and their factor is exact, unlike a lab
      analyte's per-substance molar mass (labs/units.ts) - so a straight
@@ -200,61 +200,62 @@
     </div>
   {/if}
 
-  {#if measurementsQuery.loading}
-    <div out:crossfade><Skeleton variant="block" count={1} /></div>
-  {:else if measurements.length}
-    <div class="screen-part">
-      <ChartCard
-        heading={vocabulary.measurementTypeName(type)}
-        kind="measurements-{type}"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
-      >
-        {#if chart}
-          {@const ends = fmtRangeEnds(chart.from, chart.to)}
-          <AreaChart
-            points={chart.points}
-            min={chart.min}
-            max={chart.max}
-            from={ends.from}
-            to={ends.to}
-            formatValue={(v) => `${Math.round(v * 10) / 10} ${prefs.measurementUnit}`}
-            scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
-            ariaLabel={m.measurement_row_aria({
-              type: vocabulary.measurementTypeName(type),
-              date: fmtDay(chart.to, { day: 'numeric', month: 'long', year: 'numeric' })
-            })}
-          />
-        {:else}
-          <p class="kit-chart-empty">{m.measurement_too_little()}</p>
-        {/if}
-      </ChartCard>
+  <ReadGate read={measurementsQuery} variant="block" count={1}>
+    {#snippet rows()}
+      <div class="screen-part">
+        <ChartCard
+          heading={vocabulary.measurementTypeName(type)}
+          kind="measurements-{type}"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
+        >
+          {#if chart}
+            {@const ends = fmtRangeEnds(chart.from, chart.to)}
+            <AreaChart
+              points={chart.points}
+              min={chart.min}
+              max={chart.max}
+              from={ends.from}
+              to={ends.to}
+              formatValue={(v) => `${Math.round(v * 10) / 10} ${prefs.measurementUnit}`}
+              scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
+              ariaLabel={m.measurement_row_aria({
+                type: vocabulary.measurementTypeName(type),
+                date: fmtDay(chart.to, { day: 'numeric', month: 'long', year: 'numeric' })
+              })}
+            />
+          {:else}
+            <p class="kit-chart-empty">{m.measurement_too_little()}</p>
+          {/if}
+        </ChartCard>
 
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
-        {#each [...measurements].reverse() as r (r.id)}
-          <ListRow
-            key={r.id}
-            data-measurement={r.id}
-            icon="ruler"
-            title={`${r.value} ${r.unit}`}
-            subtitle={fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-            chevron={false}
-            onclick={() => record.openEditor(r)}
-          />
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="ruler"
-        key="measurements-empty"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
-        title={m.measurement_empty_title()}
-        text={m.measurement_empty_body()}
-        action={{ label: m.measurement_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-    </div>
-  {/if}
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
+          {#each [...measurements].reverse() as r (r.id)}
+            <ListRow
+              key={r.id}
+              data-measurement={r.id}
+              icon="ruler"
+              title={`${r.value} ${r.unit}`}
+              subtitle={fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+              chevron={false}
+              onclick={() => record.openEditor(r)}
+            />
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="ruler"
+          key="measurements-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
+          title={m.measurement_empty_title()}
+          text={m.measurement_empty_body()}
+          action={{ label: m.measurement_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <Sheet open={editor !== null} title={editor?.id ? m.measurement_edit_sheet() : m.measurement_new_sheet()} onClose={() => (record.editor = null)}>
     {#if editor}

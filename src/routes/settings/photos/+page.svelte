@@ -10,7 +10,7 @@
      The picking grid stays a grid. A photo is chosen by looking at it, so
      the cell is the photograph; nothing about that was the old world's. */
   import { m } from '$lib/paraglide/messages';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import { calendarDuration } from '$lib/data/epochDay';
   import {
@@ -24,7 +24,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -32,13 +31,14 @@
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   /* One query, not a union of a table and a column: entry photos and
      milestone photos are rows in the same table (ADR-0008), already dated and
      ordered oldest first by the journal. Thumbnails only - PhotoThumb never
      decodes a full photo to draw a 104px tile. */
-  let photosQuery = liveQuery((j) => j.photos.inJournal());
-  let photos = $derived(photosQuery.value ?? []);
+  let photosQuery = liveList((j) => j.photos.inJournal());
+  let photos = $derived(photosQuery.rows);
 
   let selected = $state<string[]>([]);
   let comparing = $state(false);
@@ -55,10 +55,10 @@
   /* The measurement combined view (ticket 08): the same date range the two
      anchor photos span, so a number and an image answer "what changed"
      side by side. */
-  let rangeQuery = liveQuery((j) =>
+  let rangeQuery = liveList((j) =>
     pair ? j.measurements.getMeasurementsInRange(photos[pair.left].epochDay, photos[pair.right].epochDay) : Promise.resolve([])
   );
-  let rangeMeasurements = $derived(rangeQuery.value ?? []);
+  let rangeMeasurements = $derived(rangeQuery.rows);
 
   let rangeSummaries = $derived.by(() => {
     const byType = new Map<string, Measurement[]>();
@@ -130,52 +130,53 @@
     </div>
   {:else}
     <ScreenHeader title={m.progress_photos()} back="/more" />
-    {#if photosQuery.loading}
-      <div out:crossfade><Skeleton variant="block" count={2} /></div>
-    {:else if photos.length}
-      {#if comparing && !pair}
-        <p class="muted small" style="margin-bottom:var(--space-2)">{m.ph_compare_reset()}</p>
-      {/if}
-      <p class="muted small" style="margin-bottom:var(--space-4)">
-        {orderedSelected.length === 0
-          ? m.ph_pick_two()
-          : orderedSelected.length === 1
-            ? m.ph_one_selected()
-            : m.ph_two_selected()}
-      </p>
-      <div class="photo-grid">
-        {#each photos as p, i (p.id + String(p.epochDay))}
-          <button class="photo-cell" data-photo-cell class:is-selected={orderedSelected.includes(p.id)} aria-pressed={orderedSelected.includes(p.id)}
-            aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-            onclick={() => toggle(p.id)}>
-            <PhotoThumb photo={p} size={104} />
-            <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
-            {#if orderedSelected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
-          </button>
-        {/each}
-      </div>
-      <div>
-        <a class="btn btn-soft press" href="/settings/photos/export" data-journey-export>
-          <Icon name="image" size={20} /><span>{m.pj_open()}</span>
-        </a>
-      </div>
-      {#if pair}
-        <div class="editor-savebar">
-          <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
-            <Icon name="columns" size={20} /><span>{m.ph_compare()}</span>
-          </button>
+    <ReadGate read={photosQuery} variant="block" count={2}>
+      {#snippet rows()}
+        {#if comparing && !pair}
+          <p class="muted small" style="margin-bottom:var(--space-2)">{m.ph_compare_reset()}</p>
+        {/if}
+        <p class="muted small" style="margin-bottom:var(--space-4)">
+          {orderedSelected.length === 0
+            ? m.ph_pick_two()
+            : orderedSelected.length === 1
+              ? m.ph_one_selected()
+              : m.ph_two_selected()}
+        </p>
+        <div class="photo-grid">
+          {#each photos as p, i (p.id + String(p.epochDay))}
+            <button class="photo-cell" data-photo-cell class:is-selected={orderedSelected.includes(p.id)} aria-pressed={orderedSelected.includes(p.id)}
+              aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+              onclick={() => toggle(p.id)}>
+              <PhotoThumb photo={p} size={104} />
+              <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+              {#if orderedSelected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+            </button>
+          {/each}
         </div>
-      {/if}
-    {:else}
-      <div class="screen-part">
-        <Notice
-          icon="image"
-          key="photos-empty"
-          role={roleAt(activeFlag.roles, 0)}
-          title={m.ph_empty_title()}
-          text={m.ph_empty_body()}
-        />
-      </div>
-    {/if}
+        <div>
+          <a class="btn btn-soft press" href="/settings/photos/export" data-journey-export>
+            <Icon name="image" size={20} /><span>{m.pj_open()}</span>
+          </a>
+        </div>
+        {#if pair}
+          <div class="editor-savebar">
+            <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
+              <Icon name="columns" size={20} /><span>{m.ph_compare()}</span>
+            </button>
+          </div>
+        {/if}
+      {/snippet}
+      {#snippet empty()}
+        <div class="screen-part">
+          <Notice
+            icon="image"
+            key="photos-empty"
+            role={roleAt(activeFlag.roles, 0)}
+            title={m.ph_empty_title()}
+            text={m.ph_empty_body()}
+          />
+        </div>
+      {/snippet}
+    </ReadGate>
   {/if}
 </div>

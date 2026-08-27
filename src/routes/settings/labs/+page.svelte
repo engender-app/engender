@@ -15,7 +15,7 @@
      draw's context - the timing figure and the lab - rides on the scrub's
      own label, so it is still the same three facts as before. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { LabSeries } from '$lib/data/journal/labs';
   import { seriesComparability } from '$lib/data/labTiming';
   import { comparabilityLabels, labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
@@ -37,7 +37,6 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
@@ -47,6 +46,7 @@
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   /* Colour that carries a value takes role 0 (DIRECTION.md). The results
      list takes the stripe after it. */
@@ -62,9 +62,9 @@
      them, because a trend needs data, while the editor offers those plus the
      presets. Both are queries now; neither is mirrored, since a lab result is
      entry-shaped data (ADR-0004). */
-  let usedQuery = liveQuery((j) => j.labs.getUsedAnalytes());
-  let analytes = $derived(usedQuery.value ?? []);
-  let offeredQuery = liveQuery((j) => j.labs.getAnalytes());
+  let usedQuery = liveList((j) => j.labs.getUsedAnalytes());
+  let analytes = $derived(usedQuery.rows);
+  let offeredQuery = liveList((j) => j.labs.getAnalytes());
   /* Which analyte the screen opens on, or falls back to after the one on
      screen stops having results (ticket 37). Gated on both queries loading:
      deciding early off usedQuery alone would settle on analytes[0] before
@@ -85,10 +85,10 @@
      the list's order is the query's, down to how two results on one day
      settle, and reconstructing that from the series would be re-implementing
      it. */
-  let resultsQuery = liveQuery((j) => j.labs.getResults(analyte));
-  let results = $derived(resultsQuery.value ?? []);
-  let seriesQuery = liveQuery((j) => j.labs.getSeries(analyte));
-  let series = $derived(seriesQuery.value ?? []);
+  let resultsQuery = liveList((j) => j.labs.getResults(analyte));
+  let results = $derived(resultsQuery.rows);
+  let seriesQuery = liveList((j) => j.labs.getSeries(analyte));
+  let series = $derived(seriesQuery.rows);
 
   function chartFor(s: LabSeries) {
     if (s.results.length < 2) return null;
@@ -346,100 +346,101 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if usedQuery.loading}
-    <div out:crossfade><Skeleton variant="block" count={1} /></div>
-  {:else if analytes.length}
-    <div class="screen-part">
-      <Segmented
-        name={m.labs_analyte_group()}
-        options={analytes.map((a) => ({ value: a, label: a }))}
-        value={analyte}
-        onChange={(v) => (analyte = v)}
-        key="labs-analyte"
-      />
+  <ReadGate read={usedQuery} variant="block" count={1}>
+    {#snippet rows()}
+      <div class="screen-part">
+        <Segmented
+          name={m.labs_analyte_group()}
+          options={analytes.map((a) => ({ value: a, label: a }))}
+          value={analyte}
+          onChange={(v) => (analyte = v)}
+          key="labs-analyte"
+        />
 
-      {#each series as s (s.unit)}
-        {@const chart = chartFor(s)}
-        {@const mixed = comparabilityLabels(seriesComparability(s.results))}
-        <div data-lab-series={s.unit}>
-          <ChartCard heading={analyte} kind="labs-{s.unit}" role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}>
-            {#snippet control()}
-              <!-- The unit on the heading's line, which is the one thing
-                   about this chart that is not the analyte above it. A
-                   series exists per unit precisely because a value in
-                   ng/dL and one in nmol/L differ by a factor of about 29. -->
-              <span class="muted small" data-series-unit>{s.unit || m.labs_no_unit()}</span>
-            {/snippet}
-            {#if chart}
-              {@const ends = fmtRangeEnds(chart.from, chart.to)}
-              <AreaChart
-                points={chart.points}
-                min={chart.min}
-                max={chart.max}
-                from={ends.from}
-                to={ends.to}
-                formatValue={(v) => `${Math.round(v * 100) / 100} ${s.unit || m.labs_no_unit()}`}
-                scrubLabel={(_point, index) => scrubLine(s.results[index])}
-                ariaLabel={m.values_title({ name: analyte })}
-              />
-            {:else}
-              <p class="kit-chart-empty">{m.labs_too_little()}</p>
-            {/if}
-          </ChartCard>
-          <!-- Stated, not warned about: the series is drawn whole, and this
-               says what it is made of (ticket 03). -->
-          {#if mixed.length}
-            <Notice
-              icon="info"
-              key="lab-mixed"
-              data-lab-mixed={s.unit}
-              title={m.labs_mixed_title()}
-              text={m.labs_mixed_body()}
-            />
-            <ul class="lab-mixed-list">
-              {#each mixed as reason (reason)}<li>{reason}</li>{/each}
-            </ul>
-          {/if}
-        </div>
-      {/each}
-
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
-        {#each [...results].reverse() as r (r.id)}
-          <button
-            class="kit-row"
-            data-lab-result={r.id}
-            aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-            onclick={() => record.openEditor(r)}
-          >
-            <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
-            <span class="kit-row-text">
-              <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
-              <span class="kit-row-sub">
-                {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
-              </span>
-              <!-- The context on its own line, not appended to the date: it is
-                   two more facts about the draw, and three of them run together
-                   stop being readable at 390px. -->
-              {#if contextLine(r)}
-                <span class="kit-row-sub lab-context">{contextLine(r)}</span>
+        {#each series as s (s.unit)}
+          {@const chart = chartFor(s)}
+          {@const mixed = comparabilityLabels(seriesComparability(s.results))}
+          <div data-lab-series={s.unit}>
+            <ChartCard heading={analyte} kind="labs-{s.unit}" role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}>
+              {#snippet control()}
+                <!-- The unit on the heading's line, which is the one thing
+                     about this chart that is not the analyte above it. A
+                     series exists per unit precisely because a value in
+                     ng/dL and one in nmol/L differ by a factor of about 29. -->
+                <span class="muted small" data-series-unit>{s.unit || m.labs_no_unit()}</span>
+              {/snippet}
+              {#if chart}
+                {@const ends = fmtRangeEnds(chart.from, chart.to)}
+                <AreaChart
+                  points={chart.points}
+                  min={chart.min}
+                  max={chart.max}
+                  from={ends.from}
+                  to={ends.to}
+                  formatValue={(v) => `${Math.round(v * 100) / 100} ${s.unit || m.labs_no_unit()}`}
+                  scrubLabel={(_point, index) => scrubLine(s.results[index])}
+                  ariaLabel={m.values_title({ name: analyte })}
+                />
+              {:else}
+                <p class="kit-chart-empty">{m.labs_too_little()}</p>
               {/if}
-            </span>
-          </button>
+            </ChartCard>
+            <!-- Stated, not warned about: the series is drawn whole, and this
+                 says what it is made of (ticket 03). -->
+            {#if mixed.length}
+              <Notice
+                icon="info"
+                key="lab-mixed"
+                data-lab-mixed={s.unit}
+                title={m.labs_mixed_title()}
+                text={m.labs_mixed_body()}
+              />
+              <ul class="lab-mixed-list">
+                {#each mixed as reason (reason)}<li>{reason}</li>{/each}
+              </ul>
+            {/if}
+          </div>
         {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="flask"
-        key="labs-empty"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
-        title={m.labs_empty_title()}
-        text={m.labs_empty_body()}
-        action={{ label: m.labs_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-    </div>
-  {/if}
+
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
+          {#each [...results].reverse() as r (r.id)}
+            <button
+              class="kit-row"
+              data-lab-result={r.id}
+              aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+              onclick={() => record.openEditor(r)}
+            >
+              <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
+              <span class="kit-row-text">
+                <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
+                <span class="kit-row-sub">
+                  {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
+                </span>
+                <!-- The context on its own line, not appended to the date: it is
+                     two more facts about the draw, and three of them run together
+                     stop being readable at 390px. -->
+                {#if contextLine(r)}
+                  <span class="kit-row-sub lab-context">{contextLine(r)}</span>
+                {/if}
+              </span>
+            </button>
+          {/each}
+        </ListCard>
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="flask"
+          key="labs-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
+          title={m.labs_empty_title()}
+          text={m.labs_empty_body()}
+          action={{ label: m.labs_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
 
   <Sheet open={unitsOpen} title={m.labs_preferred_units_title()} onClose={() => (unitsOpen = false)}>
     <h3>{m.labs_preferred_units_title()}</h3>
@@ -483,7 +484,7 @@
           {#if !editor.analyte}
             <option value="">{m.labs_analyte_choose()}</option>
           {/if}
-          {#each offeredQuery.value ?? [] as a (a)}
+          {#each offeredQuery.rows as a (a)}
             <option value={a}>{a}</option>
           {/each}
           <option value="custom">{m.labs_analyte_custom()}</option>

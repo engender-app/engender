@@ -2,7 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
@@ -13,7 +13,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   // Same limit the stats screen's tag-insight sheet reads a tag's entries
   // with (INSIGHT_ENTRIES, +page.svelte) - counterevidence started as that
@@ -24,13 +24,13 @@
 
   let today = $derived(todayEpochDay());
 
-  let counterevidenceQuery = liveQuery((j) =>
+  let counterevidenceQuery = liveList((j) =>
     j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT)
   );
-  let counterevidence = $derived(counterevidenceQuery.value ?? []);
+  let counterevidence = $derived(counterevidenceQuery.rows);
 
-  let snapshotsQuery = liveQuery((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
-  let snapshots = $derived(snapshotsQuery.value ?? []);
+  let snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
+  let snapshots = $derived(snapshotsQuery.rows);
 
   async function saveSnapshot() {
     if (counterevidence.length === 0) return;
@@ -58,18 +58,19 @@
 
   <SectionTitle text={m.doubt_counterevidence_title()} />
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.doubt_counterevidence_sub()}</p>
-  {#if counterevidenceQuery.loading}
-    <Skeleton variant="card" count={2} />
-  {:else if counterevidence.length}
-    {#each counterevidence as e (e.id)}
-      <EntryCard entry={e} />
-    {/each}
-    <button class="btn btn-soft btn-block" onclick={saveSnapshot}>
-      <Icon name="heart" size={18} /> <span>{m.doubt_save_snapshot()}</span>
-    </button>
-  {:else}
-    <EmptyState title={m.doubt_no_counterevidence_title()} text={m.doubt_no_counterevidence_body()} />
-  {/if}
+  <ReadGate read={counterevidenceQuery} variant="card" count={2}>
+    {#snippet rows()}
+      {#each counterevidence as e (e.id)}
+        <EntryCard entry={e} />
+      {/each}
+      <button class="btn btn-soft btn-block" onclick={saveSnapshot}>
+        <Icon name="heart" size={18} /> <span>{m.doubt_save_snapshot()}</span>
+      </button>
+    {/snippet}
+    {#snippet empty()}
+      <EmptyState title={m.doubt_no_counterevidence_title()} text={m.doubt_no_counterevidence_body()} />
+    {/snippet}
+  </ReadGate>
 
   {#if snapshots.length}
     <SectionTitle text={m.doubt_snapshots_title()} />

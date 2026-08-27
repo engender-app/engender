@@ -32,7 +32,7 @@
     previousCalendarYearRange,
     todayEpochDay
   } from '$lib/data/epochDay';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { isPausedOn } from '$lib/data/journalingPause';
   import { atGrain, type Grain } from '$lib/charts/grain';
@@ -60,6 +60,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DayAverage } from '$lib/data/journal/stats';
   import type { CorrelationCard } from '$lib/data/correlationCards';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
   /** How many entries the sheet behind a tag insight lists. */
@@ -117,8 +118,8 @@
   /* The streak line goes quiet while a pause covers today, the same rule
      Home's does (phase 5 features ticket 21): it is a nudge, and a frozen
      number with nothing to explain it is worse than no number. */
-  let pausesQuery = liveQuery((j) => j.journalingPauses.getPauses());
-  let pausedToday = $derived(isPausedOn(pausesQuery.value ?? [], today));
+  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
+  let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
 
   /* One query for every metric on screen rather than one per chart: the
      day-by-day chart plots one at a time but the bars card needs all of
@@ -130,10 +131,14 @@
     const series = await Promise.all(keys.map((key) => j.stats.dayAverages(key, rangeFrom, rangeTo)));
     return new Map(keys.map((key, i) => [key, series[i]]));
   });
-  let seriesFor = $derived((key: string): DayAverage[] => seriesQuery.value?.get(key) ?? []);
+  /* One default for the whole answer: a metric with no days in range is a
+     missing key in a Map that exists, not a missing Map, and defaulting at
+     the lookup made the two look like the same thing. */
+  let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
+  let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
 
-  let insightsQuery = liveQuery((j) => j.stats.tagInsights(vocabulary.activeMetric, from, today));
-  let insights = $derived(insightsQuery.value ?? []);
+  let insightsQuery = liveList((j) => j.stats.tagInsights(vocabulary.activeMetric, from, today));
+  let insights = $derived(insightsQuery.rows);
 
   let lastMonth = $derived(previousCalendarMonthRange(today));
   let lastYear = $derived(previousCalendarYearRange(today).year);
@@ -207,21 +212,21 @@
       }))
   );
 
-  let insightEntriesQuery = liveQuery((j) => {
+  let insightEntriesQuery = liveList((j) => {
     const sheet = insightSheet;
     if (!sheet) return Promise.resolve([]);
     return j.entries.entriesWithTag(sheet.id, INSIGHT_ENTRIES);
   });
-  let insightEntries = $derived(insightEntriesQuery.value ?? []);
+  let insightEntries = $derived(insightEntriesQuery.rows);
 
   /* Correlation cards (phase 4 ticket 21) - a deliberate reversal of
      phase 3's explicit exclusion of correlation analysis, not scope
      drift the phase 3 decision missed. Ranked and capped by the journal
      area itself; this screen only renders what it returns. */
-  let correlationCardsQuery = liveQuery((j) =>
+  let correlationCardsQuery = liveList((j) =>
     j.correlationCards.getCards(from, today)
   );
-  let correlationCards = $derived(correlationCardsQuery.value ?? []);
+  let correlationCards = $derived(correlationCardsQuery.rows);
 
   /* Interval mood pattern (phase 5 ticket 09) - two bucket-and-average
      shapes over a cyclical position, kept apart from correlation cards on
@@ -233,10 +238,10 @@
      bestStreakEver uses for "ever"), not just the visible window: an
      injection interval is commonly 14-28 days, so a completed one rarely
      recurs three times inside even the 90-day preset. */
-  let intervalMoodQuery = liveQuery((j) =>
+  let intervalMoodQuery = liveList((j) =>
     j.intervalMoodPattern.dayOfInterval(Number.MIN_SAFE_INTEGER, today)
   );
-  let intervalMoodPattern = $derived(intervalMoodQuery.value ?? []);
+  let intervalMoodPattern = $derived(intervalMoodQuery.rows);
 
   let customIntervalLength = $state(28);
   // A boundary clamp, not a save-time validation: the field can sit blank or
@@ -245,10 +250,9 @@
   let safeCustomIntervalLength = $derived(
     Number.isFinite(customIntervalLength) && customIntervalLength >= 2 ? Math.floor(customIntervalLength) : 28
   );
-  let customIntervalQuery = liveQuery((j) =>
+  let customIntervalQuery = liveList((j) =>
     j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, safeCustomIntervalLength)
   );
-  let customIntervalPattern = $derived(customIntervalQuery.value ?? []);
 
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
@@ -401,17 +405,18 @@
   </ChartCard>
 
   <ChartCard heading={m.tag_insights()} kind="tag-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-    {#if insightsQuery.loading}
-      <Skeleton variant="line" count={3} />
-    {:else if insightRows.length}
-      <BarRows
-        rows={insightRows}
-        onPick={(key) =>
-          (insightSheet = { id: key, label: vocabulary.tag(key)?.label ?? key })}
-      />
-    {:else}
-      <p class="kit-chart-empty">{m.insights_empty()}</p>
-    {/if}
+    <ReadGate read={insightsQuery} variant="line" count={3}>
+      {#snippet rows()}
+        <BarRows
+          rows={insightRows}
+          onPick={(key) =>
+            (insightSheet = { id: key, label: vocabulary.tag(key)?.label ?? key })}
+        />
+      {/snippet}
+      {#snippet empty()}
+        <p class="kit-chart-empty">{m.insights_empty()}</p>
+      {/snippet}
+    </ReadGate>
   </ChartCard>
   {#if insightRows.length}
     <p class="stats-note">{m.insights_note()}</p>
@@ -430,13 +435,14 @@
     kind="correlations"
     role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
   >
-    {#if correlationCardsQuery.loading}
-      <Skeleton variant="line" count={3} />
-    {:else if correlationRows.length}
-      <PairedDots rows={correlationRows} />
-    {:else}
-      <p class="kit-chart-empty">{m.correlation_cards_empty()}</p>
-    {/if}
+    <ReadGate read={correlationCardsQuery} variant="line" count={3}>
+      {#snippet rows()}
+        <PairedDots rows={correlationRows} />
+      {/snippet}
+      {#snippet empty()}
+        <p class="kit-chart-empty">{m.correlation_cards_empty()}</p>
+      {/snippet}
+    </ReadGate>
   </ChartCard>
 
   <ChartCard
@@ -444,24 +450,25 @@
     kind="interval-mood"
     role={roleAt(activeFlag.roles, AREA_ROLE.patterns)}
   >
-    {#if intervalMoodQuery.loading}
-      <Skeleton variant="block" />
-    {:else if intervalMoodPattern.length}
-      <AreaChart
-        points={positionPoints(intervalMoodPattern)}
-        min={1}
-        max={5}
-        formatValue={(v) => v.toFixed(1)}
-        scrubLabel={positionLabel}
-        ariaLabel={m.interval_mood_chart_aria({
-          count: String(intervalMoodPattern.length),
-          from: String(intervalMoodPattern[0].position),
-          to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
-        })}
-      />
-    {:else}
-      <p class="kit-chart-empty">{m.interval_mood_empty()}</p>
-    {/if}
+    <ReadGate read={intervalMoodQuery} variant="block" count={3}>
+      {#snippet rows()}
+        <AreaChart
+          points={positionPoints(intervalMoodPattern)}
+          min={1}
+          max={5}
+          formatValue={(v) => v.toFixed(1)}
+          scrubLabel={positionLabel}
+          ariaLabel={m.interval_mood_chart_aria({
+            count: String(intervalMoodPattern.length),
+            from: String(intervalMoodPattern[0].position),
+            to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
+          })}
+        />
+      {/snippet}
+      {#snippet empty()}
+        <p class="kit-chart-empty">{m.interval_mood_empty()}</p>
+      {/snippet}
+    </ReadGate>
   </ChartCard>
   <p class="stats-note">{m.interval_mood_sub()}</p>
 
@@ -484,25 +491,26 @@
         />
       </span>
     {/snippet}
-    {#if customIntervalQuery.loading}
-      <Skeleton variant="block" />
-    {:else if customIntervalPattern.length}
-      <AreaChart
-        points={positionPoints(customIntervalPattern)}
-        min={1}
-        max={5}
-        formatValue={(v) => v.toFixed(1)}
-        scrubLabel={positionLabel}
-        ariaLabel={m.custom_interval_chart_aria({
-          days: String(safeCustomIntervalLength),
-          count: String(customIntervalPattern.length),
-          from: String(customIntervalPattern[0].position),
-          to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
-        })}
-      />
-    {:else}
-      <p class="kit-chart-empty">{m.custom_interval_empty()}</p>
-    {/if}
+    <ReadGate read={customIntervalQuery} variant="block" count={3}>
+      {#snippet rows(customIntervalPattern)}
+        <AreaChart
+          points={positionPoints(customIntervalPattern)}
+          min={1}
+          max={5}
+          formatValue={(v) => v.toFixed(1)}
+          scrubLabel={positionLabel}
+          ariaLabel={m.custom_interval_chart_aria({
+            days: String(safeCustomIntervalLength),
+            count: String(customIntervalPattern.length),
+            from: String(customIntervalPattern[0].position),
+            to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
+          })}
+        />
+      {/snippet}
+      {#snippet empty()}
+        <p class="kit-chart-empty">{m.custom_interval_empty()}</p>
+      {/snippet}
+    </ReadGate>
   </ChartCard>
   <p class="stats-note">{m.custom_interval_sub()}</p>
 

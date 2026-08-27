@@ -27,7 +27,7 @@
      that was started live keeps its real hour even if its day is corrected
      later, and a backfilled one stays anchored at local midnight. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import {
     dateInputValueFromEpochDay,
@@ -69,13 +69,13 @@
   const today = todayEpochDay();
   const from = today - WINDOW_DAYS;
 
-  let sessionsQuery = liveQuery((j) => j.wearSessions.getSessions(from, today));
+  let sessionsQuery = liveList((j) => j.wearSessions.getSessions(from, today));
   let runningQuery = liveQuery((j) => j.wearSessions.getRunningSession());
-  let remindersQuery = liveQuery((j) => j.reminders.getReminders());
+  let remindersQuery = liveList((j) => j.reminders.getReminders());
 
-  let sessions = $derived(sessionsQuery.value ?? []);
+  let sessions = $derived(sessionsQuery.rows);
   let running = $derived(runningQuery.value ?? null);
-  let reminders = $derived(remindersQuery.value ?? []);
+  let reminders = $derived(remindersQuery.rows);
   let loading = $derived(sessionsQuery.loading);
 
   // Newest first - the running session (if any) gets its own card above this list.
@@ -252,15 +252,15 @@
   let range = $state(30);
   let trendFrom = $derived(today - range + 1);
 
-  let wearTrendQuery = liveQuery((j) => j.stats.wearTimeTrend(trendFrom, today));
+  let wearTrendQuery = liveList((j) => j.stats.wearTimeTrend(trendFrom, today));
   /* Dysphoria specifically, which is the axis this chart has always drawn -
      ticket 31 gave a region a second one but did not widen what wear time is
      compared against. */
-  let regionTrendQuery = liveQuery((j) =>
+  let regionTrendQuery = liveList((j) =>
     j.stats.bodyRegionTrend(trendRegion, 'dysphoria', trendFrom, today)
   );
-  let wearTrend = $derived(wearTrendQuery.value ?? []);
-  let regionTrend = $derived(regionTrendQuery.value ?? []);
+  let wearTrend = $derived(wearTrendQuery.rows);
+  let regionTrend = $derived(regionTrendQuery.rows);
   let wearMax = $derived(Math.max(4, 1, ...wearTrend.map((p) => Math.ceil(p.value))));
   let trendRegionLabel = $derived(trendRegionOptions.find((r) => r.value === trendRegion)?.label ?? '');
 </script>
