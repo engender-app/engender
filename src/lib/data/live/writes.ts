@@ -592,9 +592,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, 'reconcileBuiltIns'>]: Classifi
   })
 };
 
-/** Every area's classification by name, for the two lookups that arrive as
-    plain strings: the wrapper walks the journal it is handed, and a query
-    resolves the operation its closure called. */
+/** The same map, keyed by plain strings, for the callers that only have
+    strings: `observeWrites` walks the journal object it is handed, and a query
+    resolves the operation name its closure called. The authored form above is
+    the checked one - this view exists to index it, not to loosen it, and
+    nothing here writes to it. */
 const BY_NAME = OPERATIONS as unknown as Record<
   string,
   { writes: Partial<Record<string, TableName[]>>; reads: Partial<Record<string, TableName[]>> }

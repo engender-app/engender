@@ -140,8 +140,8 @@ export interface LiveQuery<T> {
     after an await are invisible to Svelte; take them in the synchronous part.
     A journal operation called after an await is still picked up, one re-run
     later: it is recorded on the query rather than on the effect, so nothing
-    goes stale, but a round trip is spent for nothing and the synchronous form is
-    the one to write.
+    goes stale, but a round trip is spent for nothing and the synchronous form
+    is the one to write.
 
     Must be called while a component is initialising, like any `$effect`: the
     query lives and dies with the component that asked for it. */
@@ -256,9 +256,15 @@ function recordingJournal(ready: Journal, dependOn: (area: string, operation: st
         {},
         {
           get(_areaTarget, operation: string) {
+            /* Anything that is not an operation is handed back as it stands,
+               the same way observeWrites leaves a non-function property alone:
+               a proxy that answered every property with a function would make
+               `await` on an area look like a thenable. */
+            const implementation = area[operation];
+            if (typeof implementation !== 'function') return implementation;
             return (...args: unknown[]) => {
               dependOn(areaName, operation);
-              return area[operation](...args);
+              return implementation.call(area, ...args);
             };
           }
         }
