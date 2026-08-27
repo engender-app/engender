@@ -320,6 +320,25 @@ export async function measureLongJournal(
     };
   });
 
+  /* On-this-day's own screen (phase 5 UX ticket 23, spec 05) reads
+     `entriesForDay` only for a lookback that already cleared the bar above
+     - but this measures all three unconditionally, the same way
+     `on-this-day-good-day` does, because the screen fires from a
+     notification (phase 4 features ticket 04): whichever day resurfaces is
+     not chosen by this run, so the worst case is that a decade-scale
+     journal makes every one of the three cost something. `entriesForDay`
+     replaced two one-day aggregates (`recap`, `dayAverages`) per candidate;
+     nothing here measures those, because they no longer run. */
+  await measure('on-this-day-entries', 'on-this-day, entries and attachments for each lookback day', async () => {
+    const candidates = onThisDayCandidates(today);
+    const entries = await Promise.all(candidates.map((c) => journal.entries.entriesForDay(c.epochDay)));
+    const photos = entries.reduce((total, day) => total + day.reduce((n, e) => n + e.photos.length, 0), 0);
+    return {
+      result: entries,
+      detail: `${entries.map((day) => day.length).join('+')} entries across the three lookback days, ${photos} photos`
+    };
+  });
+
   // The doubt journal (doubt/+page.svelte) always runs this pool, not from
   // a sheet someone opens: the same EUPHORIA_TAG_KEYS and limit (20) the
   // screen itself uses. Widened by the same ticket 44 to include a
