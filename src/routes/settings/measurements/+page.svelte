@@ -10,12 +10,16 @@
      so the gutter at the ends of the scale says "82 cm" and nothing on the
      card has to repeat it.
 
-     A series still exists per unit, because a measurement is never
-     converted (ADR-0012) and 82 cm and 32 in on one axis is a lie. */
+     One chart, not one per unit ever logged in (Alicja, 2026-08-27: "there
+     are two graphs for some reason - we want only one"). A measurement is
+     still stored in whatever unit it was typed in and never converted
+     (measurements.ts) - `prefs.measurementUnit` only decides what every
+     reading converts to for this chart, so switching from a wrist-cm era to
+     an inches one still draws a single continuous line instead of two
+     that stop and start where the habit changed. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import type { MeasurementSeries } from '$lib/data/journal/measurements';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -60,25 +64,40 @@
 
   let measurementsQuery = liveQuery(['measurement'], (j) => j.measurements.getMeasurements(type));
   let measurements = $derived(measurementsQuery.value ?? []);
-  let seriesQuery = liveQuery(['measurement'], (j) => j.measurements.getSeries(type));
-  let series = $derived(seriesQuery.value ?? []);
+
+  /* cm and in are both linear and their factor is exact, unlike a lab
+     analyte's per-substance molar mass (labs/units.ts) - so a straight
+     multiply is the whole of it, and an unrecognised unit is left as
+     logged rather than guessed at. */
+  const CM_PER_IN = 2.54;
+  function toChartUnit(value: number, fromUnit: string, toUnit: string): number {
+    if (fromUnit === toUnit) return value;
+    if (fromUnit === 'cm' && toUnit === 'in') return value / CM_PER_IN;
+    if (fromUnit === 'in' && toUnit === 'cm') return value * CM_PER_IN;
+    return value;
+  }
+
+  let chartPoints = $derived(
+    measurements.map((r) => ({ x: r.epochDay, y: toChartUnit(r.value, r.unit, prefs.measurementUnit) }))
+  );
+  let chart = $derived(chartFor(chartPoints));
 
   /* The scale is padded off the readings rather than starting at zero: a
      waist measured in centimetres moves within a few percent of itself,
      and a zero-based axis draws that as a flat line. Not axis furniture -
      there is none - only what the top and the bottom of the plot mean. */
-  function chartFor(s: MeasurementSeries) {
-    if (s.measurements.length < 2) return null;
-    const values = s.measurements.map((r) => r.value);
+  function chartFor(points: { x: number; y: number }[]) {
+    if (points.length < 2) return null;
+    const values = points.map((p) => p.y);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const pad = (max - min) * 0.2 || 1;
     return {
-      points: s.measurements.map((r) => ({ x: r.epochDay, y: r.value })),
+      points,
       min: min - pad,
       max: max + pad,
-      from: s.measurements[0].epochDay,
-      to: s.measurements[s.measurements.length - 1].epochDay
+      from: points[0].x,
+      to: points[points.length - 1].x
     };
   }
 
@@ -185,33 +204,30 @@
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if measurements.length}
     <div class="screen-part">
-      {#each series as s (s.unit)}
-        {@const chart = chartFor(s)}
-        <ChartCard
-          heading={vocabulary.measurementTypeName(type)}
-          kind="measurements-{s.unit}"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
-        >
-          {#if chart}
-            {@const ends = fmtRangeEnds(chart.from, chart.to)}
-            <AreaChart
-              points={chart.points}
-              min={chart.min}
-              max={chart.max}
-              from={ends.from}
-              to={ends.to}
-              formatValue={(v) => `${Math.round(v * 10) / 10} ${s.unit}`}
-              scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
-              ariaLabel={m.measurement_row_aria({
-                type: vocabulary.measurementTypeName(type),
-                date: fmtDay(chart.to, { day: 'numeric', month: 'long', year: 'numeric' })
-              })}
-            />
-          {:else}
-            <p class="kit-chart-empty">{m.measurement_too_little()}</p>
-          {/if}
-        </ChartCard>
-      {/each}
+      <ChartCard
+        heading={vocabulary.measurementTypeName(type)}
+        kind="measurements-{type}"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
+      >
+        {#if chart}
+          {@const ends = fmtRangeEnds(chart.from, chart.to)}
+          <AreaChart
+            points={chart.points}
+            min={chart.min}
+            max={chart.max}
+            from={ends.from}
+            to={ends.to}
+            formatValue={(v) => `${Math.round(v * 10) / 10} ${prefs.measurementUnit}`}
+            scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
+            ariaLabel={m.measurement_row_aria({
+              type: vocabulary.measurementTypeName(type),
+              date: fmtDay(chart.to, { day: 'numeric', month: 'long', year: 'numeric' })
+            })}
+          />
+        {:else}
+          <p class="kit-chart-empty">{m.measurement_too_little()}</p>
+        {/if}
+      </ChartCard>
 
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
         {#each [...measurements].reverse() as r (r.id)}

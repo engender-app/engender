@@ -378,10 +378,6 @@ export interface RegimenEpisode {
   interval: string;
   startEpochDay: number;
   endEpochDay: number | null;
-  /** Hidden episodes leave the picker downstream tickets offer for new
-      records; records already attributed to one keep resolving to it
-      (CONTEXT: "Hidden"). */
-  hidden: boolean;
 }
 
 /* The routes a dose can be taken by (phase 4 ticket 02). A closed set,

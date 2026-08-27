@@ -485,7 +485,6 @@ export interface ArchiveRegimenEpisode {
       before this field existed, which restore.ts reads as null the same
       way it already reads any other field a pre-ticket build never wrote. */
   endEpochDay: number | null;
-  hidden: boolean;
 }
 
 /* Flat and nullable, the way ArchiveReminder carries its recurrence

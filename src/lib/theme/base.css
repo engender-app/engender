@@ -203,14 +203,6 @@
   --content-max: 640px;      /* centred column at desktop width */
   --rail-width: 220px;       /* desktop navigation rail */
   --bottom-nav-height: 64px;
-  /* The whole app's own frame on the web, past which the page shows
-     (phase 5 ticket 32.11). Room for the rail and the column with a real
-     margin between them and the frame's own edge - the rail (220px) plus
-     the column (680px) is 900px with nothing to spare, which read as the
-     frame and the column fighting for the same edge. 1200px leaves that
-     margin without approaching a width this single-column app would ever
-     ask a reader to read across. */
-  --app-frame-max: 1200px;
 }
 
 html {

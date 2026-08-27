@@ -1489,8 +1489,7 @@
       "route": "im",
       "interval": "every 2 weeks",
       "startEpochDay": 19000,
-      "endEpochDay": null,
-      "hidden": false
+      "endEpochDay": null
     }
   ],
   "doseEvents": [

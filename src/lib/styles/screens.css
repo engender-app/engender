@@ -255,6 +255,14 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
 .quicklog-title { font-weight: var(--weight-bold); margin-bottom: var(--space-3); }
 
 /* ---------- Entry editor ---------- */
+/* The container transform's own layer (EntryEditor.svelte) - a plain fill
+   behind the real screen, carrying no text, the same fix as
+   .entry-card-bg/.kit-entry-bg in components.css/kit.css. `.screen` is
+   already `position: relative` (app.css), so this only needs its own. */
+.editor-bg {
+  position: absolute; inset: 0;
+  background: var(--bg);
+}
 .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
 /* Still here for the settings screens that carry a form in a card - the
    milestone editor, labs, the dimension editor and three more. The entry
@@ -1668,6 +1676,28 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   .compare-wrap { max-width: 560px; margin-left: auto; margin-right: auto; }
   .home-hero { font-size: 3rem; }
   .editor-savebar { bottom: var(--space-4); }
+
+  /* Home's own frame on the web (phase 5 ticket 32.11, redone). Drawn on
+     `.home` itself rather than the whole app: this box is already the exact
+     edge `.home-header` bleeds its sun against - the negative margin above
+     cancels precisely this element's own padding - so the sun's existing
+     clip and this frame land on the same line, and the rounded corner
+     reads as cutting the sun rather than as a frame drawn somewhere past
+     where it already stopped.
+
+     An outline, not a border, for the same reason app.css's own removed
+     whole-app version used one: a border takes its width out of the
+     content box under global border-box sizing, which would have narrowed
+     `.home`'s content by 1px a side and, with it, the exact alignment with
+     `.home-header`'s own edge this comment calls load-bearing. An outline
+     draws in the same place without taking any of that space - unaffected
+     by this element's own `overflow: hidden`, which clips descendants, not
+     the box's own outline. */
+  .home {
+    outline: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
 }
 
 /* ---------- Stats hub (phase 5 UX ticket 23) ---------- */
