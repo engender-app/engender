@@ -36,7 +36,8 @@ import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 import type { BodyRegionFeeling, TryoutKind } from '../../src/lib/data/types.ts';
 import type { InjectionSiteKey } from '../../src/lib/data/doseSchedule.ts';
-import { weekdayOfEpochDay } from '../../src/lib/data/epochDay.ts';
+import { startOfDayTimestamp, weekdayOfEpochDay } from '../../src/lib/data/epochDay.ts';
+import { activeEpisodesAt } from '../../src/lib/data/regimenEpisode.ts';
 import { BUILT_IN_DIMENSIONS, BUILT_IN_MEASUREMENT_TYPES, BUILT_IN_PERSONAL_EFFECT_TYPES } from '../../src/lib/data/vocabulary/builtins.ts';
 import { GARMENT_CATEGORIES } from '../../src/lib/data/garmentCategories.ts';
 import { HAIR_REMOVAL_AREAS } from '../../src/lib/data/hairRemovalAreas.ts';
@@ -116,6 +117,12 @@ export interface LongJournalSummary {
       the widest possible span `searchEntries` can be asked to read for one
       tryout's detail screen. */
   tryoutWideOpenStartEpochDay: number;
+  /** The latest day exactly one regimen episode is in effect, which is the
+      latest day the schedule comparison has anything to compare (doses.ts:
+      two concurrent episodes leave no single schedule to compare against).
+      This fixture's final stretch deliberately runs two, so the measurement
+      of that comparison asks about this day rather than about the last one. */
+  lastSingleEpisodeEpochDay: number;
 }
 
 /* Deterministic and cheap. Not a cryptographic generator and does not need
@@ -332,7 +339,8 @@ export async function generateLongJournal(
     stockEntries: 0,
     checklistItems: 0,
     voiceRecordings: 0,
-    tryoutWideOpenStartEpochDay: 0
+    tryoutWideOpenStartEpochDay: 0,
+    lastSingleEpisodeEpochDay: 0
   };
 
   const customTags = await Promise.all(
@@ -747,6 +755,25 @@ export async function generateLongJournal(
   });
   await journal.stock.upsertEntry({ drug: 'Estradiol valerate', quantity: 6, unit: 'mL', recordedEpochDay: lastEpochDay - 3 });
   summary.stockEntries += 2;
+
+  /* Read back off the episodes that were written rather than derived from
+     the start days above, and through the same activeEpisodesAt the
+     comparison itself asks, so it stays true whatever the episode layout
+     becomes - including at the four months measure.test.ts generates, where
+     the three episodes land differently than they do across a decade. */
+  const writtenEpisodes = await journal.regimen.getEpisodes();
+  for (let day = lastEpochDay; day >= firstEpochDay; day--) {
+    if (activeEpisodesAt(writtenEpisodes, startOfDayTimestamp(day)).length === 1) {
+      summary.lastSingleEpisodeEpochDay = day;
+      break;
+    }
+  }
+  /* Stated here rather than left as a zero for a caller to trip over: the
+     three episodes above always leave such a day, and a fixture that stopped
+     doing so has a measurement it can no longer make. */
+  if (summary.lastSingleEpisodeEpochDay === 0) {
+    throw new Error('long-journal fixture has no day with exactly one regimen episode in effect');
+  }
 
   return summary;
 }

@@ -26,8 +26,6 @@ import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
 import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
 import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
 import { hairAnchorEpochDay } from '../../src/lib/data/hairAnchor.ts';
-import { expectedSlots, adherence } from '../../src/lib/data/doseSchedule.ts';
-import { CURVE_DRUGS } from '../../src/lib/data/hormoneDrug.ts';
 import type { LongJournalSummary } from './generate.ts';
 
 export interface Measurement {
@@ -395,29 +393,38 @@ export async function measureLongJournal(
     };
   });
 
-  // Dose schedules (schema v38, ADR-0027, phase 5 ticket 40): the dose log
-  // screen's own reads (doses/+page.svelte) - a 90-day window of doses and
-  // pauses, every schedule and every episode - fed into expectedSlots and
-  // adherence, which is where the new weekday recurrence and doseAmounts
-  // cycle actually run. Nothing here reuses the fixture's own episode id;
-  // it reads it back the same way the screen does, off getEpisodes().
-  await measure('dose-schedule-adherence', 'dose log, 90 days of the log against its schedule', async () => {
+  // Dose schedules (schema v38, ADR-0027, phase 5 ticket 40): the one call
+  // the dose log screen's schedule view makes, getComparison - four reads,
+  // the episode in effect, its schedule and pauses, the doses attributed to
+  // it, then expectedSlots and adherence over those, which is where the
+  // weekday recurrence and the doseAmounts cycle actually run. The same
+  // function the screen calls rather than a second copy of its steps: this
+  // block used to assemble them itself off episodes[0] with unattributed
+  // doses, so the figure below was not the screen's figure (phase 5
+  // deepening ticket 17).
+  //
+  // Its window ends on the fixture's last single-episode day rather than on
+  // `today`, and that is the fixture's own shape: its final stretch runs two
+  // concurrent episodes for different drugs, where the screen has nothing to
+  // compare and says so. Behind that day sit the fixture's richest
+  // schedule - three cycling dose amounts on a Monday/Wednesday/Friday
+  // recurrence. The reason is asserted rather than reported, so a fixture
+  // that stops meeting that precondition fails here instead of quietly
+  // measuring four reads and an early return.
+  await measure('dose-schedule-adherence', 'dose log, 90 days against its schedule, single-episode window', async () => {
     const ADHERENCE_WINDOW_DAYS = 90;
-    const from = today - ADHERENCE_WINDOW_DAYS;
-    const [episodes, doses, schedules, pauses] = await Promise.all([
-      journal.regimen.getEpisodes(),
-      journal.doses.getDoses(from, today),
-      journal.doses.getSchedules(),
-      journal.doses.getPauses()
-    ]);
-    const episode = episodes[0];
-    if (!episode) throw new Error('long-journal fixture did not produce a regimen episode for dose-schedule-adherence');
-    const schedule = schedules.find((s) => s.episodeId === episode.id) ?? null;
-    if (!schedule) throw new Error('long-journal fixture did not produce a dose schedule for dose-schedule-adherence');
-
-    const slots = expectedSlots(schedule, episode.startEpochDay, from, today);
-    const result = adherence(slots, doses, pauses);
-    return { result, detail: `${result.rows.length} expected slots, ${result.unmatched.length} unmatched doses` };
+    const toEpochDay = summary.lastSingleEpisodeEpochDay;
+    const result = await journal.doses.getComparison({
+      fromEpochDay: toEpochDay - ADHERENCE_WINDOW_DAYS,
+      toEpochDay
+    });
+    if (result.reason !== null) {
+      throw new Error(`long-journal fixture left nothing to compare for dose-schedule-adherence: ${result.reason}`);
+    }
+    return {
+      result,
+      detail: `${result.comparison.rows.length} expected slots, ${result.comparison.unmatched.length} unmatched doses`
+    };
   });
 
   // --- phase 5 ticket 36 features (ticket 05) ------------------------------
@@ -426,25 +433,25 @@ export async function measureLongJournal(
   // sizes, wear and the overlapping-episode fan-out were surveyed too and
   // found not to need a line here - see ticket 05's Comments for why.
 
-  // Hormone curve (settings/hormone-curve/+page.svelte): the screen's three
-  // concurrent queries at once - the injectable model plus one qualitative
-  // curve per CURVE_DRUGS entry (estradiol, testosterone) - at the screen's
-  // widest window (180 days). Each shares hormoneCurve.ts's own fan-out:
-  // regimen.getEpisodes() (all episodes, every read) and one
-  // labs.getResults(analyte) call per analyte drawn in that model's unit.
+  // Hormone curve (settings/hormone-curve/+page.svelte): the one call the
+  // screen makes, at its widest window (180 days) - the injectable band model
+  // plus one qualitative model per hormone this app curves (estradiol,
+  // testosterone), over one read of the dose log and one read per analyte any
+  // of them can be drawn against. It used to be the screen's three concurrent
+  // queries, which read the dose log three times between them and asked for
+  // the used analytes three times (phase 5 deepening ticket 17).
   const curveFrom = today - 179;
   await measure('hormone-curve', 'hormone curve, injectable plus qualitative models, 180 days', async () => {
-    const [injectable, ...qualitative] = await Promise.all([
-      journal.hormoneCurve.getCurves({ fromEpochDay: curveFrom, toEpochDay: today, fitToOwnLabs: true }),
-      ...CURVE_DRUGS.map((drug) =>
-        journal.qualitativeCurve.getCurves({ drug, fromEpochDay: curveFrom, toEpochDay: today, fitToOwnLabs: true })
-      )
-    ]);
-    const qualCurves = qualitative.reduce((n, q) => n + q.curves.length, 0);
-    const qualPoints = qualitative.reduce((n, q) => n + q.labPoints.length, 0);
+    const view = await journal.hormoneCurve.getCurves({
+      fromEpochDay: curveFrom,
+      toEpochDay: today,
+      fitToOwnLabs: true
+    });
+    const qualCurves = view.qualitative.sections.reduce((n, section) => n + section.charts.length, 0);
+    const qualPoints = view.qualitative.sections.reduce((n, section) => n + section.labPoints.length, 0);
     return {
-      result: [injectable, ...qualitative],
-      detail: `${injectable.curves.length} injectable curves + ${qualCurves} qualitative curves, ${injectable.labPoints.length + qualPoints} lab points`
+      result: view,
+      detail: `${view.injectable.charts.length} injectable curves + ${qualCurves} qualitative curves, ${view.injectable.labPoints.length + qualPoints} lab points`
     };
   });
 

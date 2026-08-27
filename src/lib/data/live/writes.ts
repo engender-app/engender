@@ -487,7 +487,14 @@ const OPERATIONS: { [Area in keyof Omit<Journal, 'reconcileBuiltIns'>]: Classifi
     },
     // A schedule and a pause both hang off an episode, and are read back
     // joined to it (doses.ts), so ending an episode changes what they answer.
-    reads: { getDoses: ['dose'], getSchedules: ['dose', 'regimen'], getPauses: ['dose', 'regimen'] }
+    reads: {
+      getDoses: ['dose'],
+      getSchedules: ['dose', 'regimen'],
+      getPauses: ['dose', 'regimen'],
+      // The comparison reads the episode history as well: which episode is in
+      // effect, and which of them each dose is attributed to (doses.ts).
+      getComparison: ['dose', 'regimen']
+    }
   }),
   stock: classify<Journal['stock']>()({
     writes: {
@@ -509,15 +516,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, 'reconcileBuiltIns'>]: Classifi
     writes: {},
     reads: { getCounters: ['dose', 'regimen'] }
   }),
-  // Read-only too: a hormone curve is recomputed from the dose log on every
-  // read and stored nowhere (phase 4 ticket 10, ADR-0010).
+  // Read-only too: every hormone curve, band and shape alike, is recomputed
+  // from the dose log on every read and stored nowhere (phase 4 tickets 10
+  // and 11, ADR-0010).
   hormoneCurve: classify<Journal['hormoneCurve']>()({
-    writes: {},
-    reads: { getCurves: ['dose', 'regimen', 'lab'] }
-  }),
-  // Read-only for the same reason: a qualitative curve is recomputed on
-  // every read too (phase 4 ticket 11, ADR-0010).
-  qualitativeCurve: classify<Journal['qualitativeCurve']>()({
     writes: {},
     reads: { getCurves: ['dose', 'regimen', 'lab'] }
   }),
