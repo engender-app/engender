@@ -34,6 +34,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import { metricPickerOptions } from '$lib/components/kit/chartPickerOptions';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -55,7 +56,7 @@
      one setting, on the one screen actually showing the colours it changes.
      It became a sheet of its own, and it is the kit's picker now - the same
      control in both places that colour days. */
-  let metricOptions = $derived(vocabulary.metric.options.map((o) => ({ value: o.key, label: o.name })));
+  let metricOptions = $derived(metricPickerOptions(vocabulary.metric.options));
 
   /* Which way the months are moving, so the label leaves the way the month
      went (ticket 31). Tier 3, change within a screen: the mark moves and its

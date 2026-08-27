@@ -61,6 +61,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
   import OnThisDayHomeCard from '$lib/components/OnThisDayHomeCard.svelte';
+  import { metricPickerOptions } from '$lib/components/kit/chartPickerOptions';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
@@ -150,7 +151,7 @@
      line, which is where DIRECTION.md puts a section's switch. The choice is
      shared with the calendar's heat map, which keeps a sheet of its own
      until ticket 22 reaches it. */
-  let metricOptions = $derived(vocabulary.metric.options.map((o) => ({ value: o.key, label: o.name })));
+  let metricOptions = $derived(metricPickerOptions(vocabulary.metric.options));
 
   function onQuickLog(v: number | null) {
     if (v == null) return;
