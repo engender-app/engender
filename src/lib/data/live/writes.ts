@@ -516,15 +516,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, 'reconcileBuiltIns'>]: Classifi
     writes: {},
     reads: { getCounters: ['dose', 'regimen'] }
   }),
-  // Read-only too: a hormone curve is recomputed from the dose log on every
-  // read and stored nowhere (phase 4 ticket 10, ADR-0010).
+  // Read-only too: every hormone curve, band and shape alike, is recomputed
+  // from the dose log on every read and stored nowhere (phase 4 tickets 10
+  // and 11, ADR-0010).
   hormoneCurve: classify<Journal['hormoneCurve']>()({
-    writes: {},
-    reads: { getCurves: ['dose', 'regimen', 'lab'] }
-  }),
-  // Read-only for the same reason: a qualitative curve is recomputed on
-  // every read too (phase 4 ticket 11, ADR-0010).
-  qualitativeCurve: classify<Journal['qualitativeCurve']>()({
     writes: {},
     reads: { getCurves: ['dose', 'regimen', 'lab'] }
   }),

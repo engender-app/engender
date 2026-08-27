@@ -27,7 +27,6 @@ import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
 import { makeHormoneCurveArea, type HormoneCurveArea } from './hormoneCurve';
-import { makeQualitativeCurveArea, type QualitativeCurveArea } from './hormoneCurveQualitative';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
 import { makeIntervalMoodPatternArea, type IntervalMoodPatternArea } from './intervalMoodPattern';
@@ -134,16 +133,13 @@ export interface Journal {
       purely descriptive (phase 4 ticket 05). A view over rows `doses` and
       `regimen` own, not a third owner for either one. */
   exposure: ExposureArea;
-  /** Estradiol level bands per injectable ester, with the user's own lab
-      results overlaid (phase 4 ticket 10). A view over rows `doses`,
-      `regimen` and `labs` own, computed on every read - the bands are the
-      published posterior's, not a stored estimate. */
+  /** Every hormone curve the screen draws, in one read (phase 4 tickets 10
+      and 11): estradiol level bands per injectable ester where a published
+      posterior exists, illustrative rise/plateau/fall shapes per hormone
+      where none does, and the user's own lab results placed against both. A
+      view over rows `doses`, `regimen` and `labs` own, computed on every
+      read - nothing here is a stored estimate. */
   hormoneCurve: HormoneCurveArea;
-  /** Illustrative rise/plateau/fall shapes for oral, sublingual, patch and
-      gel estradiol (phase 4 ticket 11) - the routes hormoneCurve has no
-      published fit for. Same view shape and the same read-only-derived
-      rule, over the same dose log and lab results. */
-  qualitativeCurve: QualitativeCurveArea;
   sideEffects: SideEffectsArea;
   /** Period occurred, spotting or nothing this month (phase 5 ticket 03,
       CONTEXT: "Cycle event"). No episode reference of its own, the same
@@ -305,7 +301,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     stock: makeStockArea(driver, doses, regimen, reminders),
     exposure,
     hormoneCurve: makeHormoneCurveArea(doses, regimen, labs),
-    qualitativeCurve: makeQualitativeCurveArea(doses, regimen, labs),
     sideEffects,
     cycleEvents: makeCycleEventsArea(driver),
     journalingPauses: makeJournalingPausesArea(driver),
