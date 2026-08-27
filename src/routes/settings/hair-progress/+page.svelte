@@ -28,9 +28,11 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -113,22 +115,33 @@
      until it is picked. No scale is preselected on purpose: defaulting to
      either one would be the app guessing which pattern the person has, which
      is the assumption ticket 33 exists to remove. */
-  let stageEditor = $state<{ id?: string; date: string; scale: string | null; stage: string; description: string } | null>(
-    null
-  );
-  let stageDeleteTarget = $state<HairStage | null>(null);
-
-  function openStageEditor(existing: HairStage | null) {
-    stageEditor = existing
-      ? {
-          id: existing.id,
-          date: dateInputValueFromEpochDay(existing.epochDay),
-          scale: existing.scale,
-          stage: existing.stage,
-          description: existing.description
-        }
-      : { date: dateInputValueFromEpochDay(today), scale: null, stage: '', description: '' };
-  }
+  const stageRecord = recordEditor<
+    HairStage,
+    { id?: string; date: string; scale: string | null; stage: string; description: string }
+  >({
+    blank: () => ({ date: dateInputValueFromEpochDay(today), scale: null, stage: '', description: '' }),
+    fromRecord: (existing) => ({
+      id: existing.id,
+      date: dateInputValueFromEpochDay(existing.epochDay),
+      scale: existing.scale,
+      stage: existing.stage,
+      description: existing.description
+    }),
+    async upsert(draft) {
+      if (!draft.scale) return false;
+      await journal.hairProgress.upsertStage({
+        id: draft.id,
+        epochDay: epochDayFromDateInputValue(draft.date) ?? today,
+        scale: draft.scale,
+        stage: draft.stage,
+        description: draft.description
+      });
+    },
+    remove: (id) => journal.hairProgress.deleteStage(id),
+    findById: (id) => stages.find((s) => s.id === id)
+  });
+  let stageEditor = $derived(stageRecord.editor);
+  let stageDeleteTarget = $derived(stageRecord.deleteTarget);
 
   /** Picking a scale clears both the grade and the prose rather than
       carrying either over. The two scales share codes and mean different
@@ -144,32 +157,11 @@
     stageEditor.description = '';
   }
 
-  async function saveStage() {
-    if (!stageEditor?.scale) return;
-    await journal.hairProgress.upsertStage({
-      id: stageEditor.id,
-      epochDay: epochDayFromDateInputValue(stageEditor.date) ?? today,
-      scale: stageEditor.scale,
-      stage: stageEditor.stage,
-      description: stageEditor.description
-    });
-    stageEditor = null;
-  }
-
-  function askToDeleteStage() {
-    if (!stageEditor?.id) return;
-    stageDeleteTarget = stages.find((s) => s.id === stageEditor!.id) ?? null;
-    if (stageDeleteTarget) stageEditor = null;
-  }
-
-  async function deleteStage() {
-    if (!stageDeleteTarget) return;
-    const id = stageDeleteTarget.id;
-    stageDeleteTarget = null;
-    await journal.hairProgress.deleteStage(id);
-  }
-
-  let photoDeleteTarget = $state<HairPhoto | null>(null);
+  const photoRecord = recordEditor<HairPhoto>({
+    remove: (id) => journal.hairProgress.deletePhoto(id),
+    findById: (id) => photos.find((p) => p.id === id)
+  });
+  let photoDeleteTarget = $derived(photoRecord.deleteTarget);
 
   async function storePhoto(photo: NormalizedPhoto | null) {
     if (!photo) return;
@@ -188,13 +180,6 @@
     () => (photos.length ? { fileName: photos[photos.length - 1].fileName } : null),
     storePhoto
   );
-
-  async function deletePhoto() {
-    if (!photoDeleteTarget) return;
-    const id = photoDeleteTarget.id;
-    photoDeleteTarget = null;
-    await journal.hairProgress.deletePhoto(id);
-  }
 
   function dismissProtocol() {
     prefs.hairPhotoProtocolDismissed = true;
@@ -225,7 +210,7 @@
 
     <SectionHeading text={m.hair_stage_section_title()}>
       {#snippet action()}
-        <button class="icon-btn press" data-add-stage aria-label={m.hair_stage_add_aria()} onclick={() => openStageEditor(null)}>
+        <button class="icon-btn press" data-add-stage aria-label={m.hair_stage_add_aria()} onclick={() => stageRecord.openEditor(null)}>
           <Icon name="plus" size={20} />
         </button>
       {/snippet}
@@ -250,7 +235,7 @@
                 title={graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}
                 subtitle={stageSubtitle(s.epochDay)}
                 chevron={false}
-                onclick={() => openStageEditor(s)}
+                onclick={() => stageRecord.openEditor(s)}
               />
             {/each}
           </ListCard>
@@ -264,7 +249,7 @@
           role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}
           title={m.hair_stage_empty_title()}
           text={m.hair_stage_empty_body()}
-          action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => openStageEditor(null) }}
+          action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => stageRecord.openEditor(null) }}
         />
       </div>
     {/if}
@@ -313,21 +298,20 @@
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
           {#each [...photos].reverse() as p (p.id)}
             {@const since = sinceStart(p.epochDay)}
-            <div class="kit-row is-static" data-hair-photo={p.id}>
-              <PhotoThumb photo={p} size={48} />
-              <span class="kit-row-text">
-                <span class="kit-row-title">{dayLabel(p.epochDay)}</span>
-                {#if since}<span class="kit-row-sub">{since}</span>{/if}
-              </span>
-              <button
-                class="kit-row-act press"
-                data-delete-hair-photo={p.id}
-                aria-label={m.hair_photo_delete_sheet()}
-                onclick={() => (photoDeleteTarget = p)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
+            <ListRow
+              static
+              data-hair-photo={p.id}
+              title={dayLabel(p.epochDay)}
+              subtitle={since}
+              action={{
+                icon: 'trash',
+                label: m.hair_photo_delete_sheet(),
+                onclick: () => photoRecord.askToDelete(p),
+                attrs: { 'data-delete-hair-photo': p.id }
+              }}
+            >
+              {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
+            </ListRow>
           {/each}
         </ListCard>
       </div>
@@ -364,7 +348,7 @@
   <Sheet
     open={stageEditor !== null}
     title={stageEditor?.id ? m.hair_stage_edit_sheet() : m.hair_stage_new_sheet()}
-    onClose={() => (stageEditor = null)}
+    onClose={() => (stageRecord.editor = null)}
   >
     {#if stageEditor}
       <h3>{stageEditor.id ? m.hair_stage_edit_sheet() : m.hair_stage_new_sheet()}</h3>
@@ -423,37 +407,39 @@
         </div>
       {/if}
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-hair-stage disabled={!stageEditor.scale} onclick={saveStage}>
+        <button class="btn btn-primary" data-save-hair-stage disabled={!stageEditor.scale} onclick={stageRecord.save}>
           <span>{m.hair_stage_save()}</span>
         </button>
         {#if stageEditor.id}
-          <button class="btn btn-ghost" data-delete-hair-stage onclick={askToDeleteStage}><span>{m.hair_stage_delete()}</span></button>
+          <button class="btn btn-ghost" data-delete-hair-stage onclick={() => stageRecord.askToDelete()}><span>{m.hair_stage_delete()}</span></button>
         {/if}
       </div>
     {/if}
   </Sheet>
 
-  <Sheet open={stageDeleteTarget !== null} title={m.hair_stage_delete_sheet()} onClose={() => (stageDeleteTarget = null)}>
-    {#if stageDeleteTarget}
-      <h3>{m.hair_stage_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_stage_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-hair-stage onclick={deleteStage}><span>{m.hair_stage_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (stageDeleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={stageDeleteTarget !== null}
+    title={m.hair_stage_delete_sheet()}
+    question={m.hair_stage_delete_q()}
+    hint={m.hair_stage_delete_hint()}
+    confirmLabel={m.hair_stage_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-hair-stage': '' }}
+    onConfirm={stageRecord.confirmDelete}
+    onCancel={stageRecord.cancelDelete}
+  />
 
-  <Sheet open={photoDeleteTarget !== null} title={m.hair_photo_delete_sheet()} onClose={() => (photoDeleteTarget = null)}>
-    {#if photoDeleteTarget}
-      <h3>{m.hair_photo_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_photo_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-hair-photo onclick={deletePhoto}><span>{m.hair_photo_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (photoDeleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={photoDeleteTarget !== null}
+    title={m.hair_photo_delete_sheet()}
+    question={m.hair_photo_delete_q()}
+    hint={m.hair_photo_delete_hint()}
+    confirmLabel={m.hair_photo_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-hair-photo': '' }}
+    onConfirm={photoRecord.confirmDelete}
+    onCancel={photoRecord.cancelDelete}
+  />
 
   <PhotoAlignmentReview
     photo={hairPhotoReview.photo}

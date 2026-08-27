@@ -21,8 +21,10 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -32,7 +34,12 @@
 
   let addSheet = $state(false);
   let newItemText = $state('');
-  let deleteTarget = $state<ChecklistItem | null>(null);
+
+  const record = recordEditor<ChecklistItem>({
+    remove: (id) => journal.checklists.deleteItem(id),
+    findById: (id) => items.find((item) => item.id === id)
+  });
+  let deleteTarget = $derived(record.deleteTarget);
 
   function openAddSheet() {
     newItemText = '';
@@ -52,13 +59,6 @@
 
   function toggleCarriedForward(item: ChecklistItem) {
     journal.checklists.setItemCarriedForward(item.id, !item.carriedForward);
-  }
-
-  async function confirmDelete() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.checklists.deleteItem(id);
   }
 </script>
 
@@ -106,7 +106,7 @@
               class="kit-row-act press"
               data-delete-appointment-item={item.id}
               aria-label={m.appointment_prep_delete_aria({ content: item.content })}
-              onclick={() => (deleteTarget = item)}
+              onclick={() => record.askToDelete(item)}
             >
               <Icon name="trash" size={18} />
             </button>
@@ -148,16 +148,17 @@
     <button class="btn btn-primary" data-save-appointment-item onclick={addItem}><span>{m.appointment_prep_add()}</span></button>
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.appointment_prep_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.appointment_prep_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{deleteTarget.content}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-appointment-item onclick={confirmDelete}><span>{m.appointment_prep_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.appointment_prep_delete_sheet()}
+    question={deleteTarget ? m.appointment_prep_delete_q() : ''}
+    hint={deleteTarget?.content ?? null}
+    confirmLabel={m.appointment_prep_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-appointment-item': '' }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 </div>
 
 <style>
