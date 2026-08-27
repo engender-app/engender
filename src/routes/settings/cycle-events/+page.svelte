@@ -183,7 +183,7 @@
     hint={m.cycle_event_delete_hint()}
     confirmLabel={m.cycle_event_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-cycle-event': true }}
+    confirmAttrs={{ 'data-confirm-delete-cycle-event': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

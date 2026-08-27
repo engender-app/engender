@@ -25,10 +25,11 @@
     cancelLabel: string;
     onConfirm: () => void;
     onCancel: () => void;
-    /** e.g. `{ 'data-confirm-delete-side-effect': true }` - the walkthrough
+    /** e.g. `{ 'data-confirm-delete-side-effect': '' }` - the walkthrough
         handle a screen's danger button carried before this component
-        existed, which has to survive unchanged. */
-    confirmAttrs?: Record<string, string | boolean>;
+        existed, which has to survive unchanged. Empty string rather than
+        `true` so it serializes as the bare attribute the screens wrote. */
+    confirmAttrs?: Record<string, string>;
   } = $props();
 </script>
 
@@ -42,7 +43,10 @@
          danger button (ADR-0029, the contract Notice and ListRow keep). The
          cancel button never had one on any screen, so this is the first
          thing that can address it. -->
-    <button class="btn btn-danger" data-confirm-delete {...confirmAttrs} onclick={onConfirm}>
+    <!-- Spelled `=""` rather than left bare: an element carrying a spread
+         serializes a bare attribute as "true", and the screens this replaces
+         wrote theirs bare, which is "". -->
+    <button class="btn btn-danger" data-confirm-delete="" {...confirmAttrs} onclick={onConfirm}>
       <span>{confirmLabel}</span>
     </button>
     <button class="btn btn-ghost" data-cancel-delete onclick={onCancel}><span>{cancelLabel}</span></button>

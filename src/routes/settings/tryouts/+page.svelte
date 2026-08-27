@@ -85,7 +85,7 @@
     hint={m.tryout_delete_hint()}
     confirmLabel={m.tryout_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-tryout': true }}
+    confirmAttrs={{ 'data-confirm-delete-tryout': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

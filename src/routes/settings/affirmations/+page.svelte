@@ -144,7 +144,7 @@
     question={deleteTarget ? m.affirmations_delete_q() : ''}
     confirmLabel={m.affirmations_delete_confirm()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm': true }}
+    confirmAttrs={{ 'data-confirm': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

@@ -161,7 +161,7 @@
     hint={m.size_log_delete_hint()}
     confirmLabel={m.size_log_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-size-record': true }}
+    confirmAttrs={{ 'data-confirm-delete-size-record': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

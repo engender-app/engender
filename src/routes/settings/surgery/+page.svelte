@@ -444,7 +444,7 @@
     hint={m.surgery_delete_hint()}
     confirmLabel={m.surgery_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-procedure': true }}
+    confirmAttrs={{ 'data-confirm-delete-procedure': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />
@@ -481,7 +481,7 @@
     hint={m.surgery_photo_delete_hint()}
     confirmLabel={m.surgery_photo_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-procedure-photo': true }}
+    confirmAttrs={{ 'data-confirm-delete-procedure-photo': '' }}
     onConfirm={photoRecord.confirmDelete}
     onCancel={photoRecord.cancelDelete}
   />
@@ -507,7 +507,7 @@
     hint={itemDeleteTarget ? itemDeleteTarget.content : null}
     confirmLabel={m.surgery_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-procedure-item': true }}
+    confirmAttrs={{ 'data-confirm-delete-procedure-item': '' }}
     onConfirm={itemRecord.confirmDelete}
     onCancel={itemRecord.cancelDelete}
   />
