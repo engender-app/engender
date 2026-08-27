@@ -4,8 +4,8 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
 
@@ -18,7 +18,6 @@
       return tg && { id: tg.id, label: tg.label };
     }
   });
-  let deleteTarget = $derived(record.deleteTarget);
 
   /* The journal speaks whole orders (a drag), so the up-button builds
      the order it wants and hands it over. */
@@ -97,16 +96,16 @@
     {/if}
   </Sheet>
 
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.tags_delete_sheet()}
-    question={deleteTarget ? m.tags_delete_q({ label: deleteTarget.label }) : ''}
-    hint={m.tags_delete_hint()}
-    confirmLabel={m.tags_delete_confirm()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
+  <RecordSheet
+    {record}
+    handle="tag"
+    confirm={{
+      title: m.tags_delete_sheet(),
+      question: (tag) => m.tags_delete_q({ label: tag.label }),
+      hint: () => m.tags_delete_hint(),
+      confirmLabel: m.tags_delete_confirm(),
+      cancelLabel: m.keep_it()
+    }}
   />
 
   <Sheet open={addTarget !== null} title={m.tags_new_tag()} onClose={() => (addTarget = null)}>

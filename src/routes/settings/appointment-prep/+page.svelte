@@ -21,10 +21,10 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -39,7 +39,6 @@
     remove: (id) => journal.checklists.deleteItem(id),
     findById: (id) => items.find((item) => item.id === id)
   });
-  let deleteTarget = $derived(record.deleteTarget);
 
   function openAddSheet() {
     newItemText = '';
@@ -149,16 +148,16 @@
     <button class="btn btn-primary" data-save-appointment-item onclick={addItem}><span>{m.appointment_prep_add()}</span></button>
   </Sheet>
 
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.appointment_prep_delete_sheet()}
-    question={deleteTarget ? m.appointment_prep_delete_q() : ''}
-    hint={deleteTarget?.content ?? null}
-    confirmLabel={m.appointment_prep_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-appointment-item': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
+  <RecordSheet
+    {record}
+    handle="appointment-item"
+    confirm={{
+      title: m.appointment_prep_delete_sheet(),
+      question: () => m.appointment_prep_delete_q(),
+      hint: (item) => item.content,
+      confirmLabel: m.appointment_prep_delete(),
+      cancelLabel: m.keep_it()
+    }}
   />
 </div>
 
