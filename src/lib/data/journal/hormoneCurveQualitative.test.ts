@@ -1,13 +1,18 @@
 /* The qualitative curve area (phase 4 ticket 11): illustrative shapes over
    the dose log for oral, sublingual, patch and gel estradiol, with the
    user's own lab results overlaid the same way journal/hormoneCurve.ts's
-   band is. */
+   band is.
 
-import { test } from 'vitest';
+   The caching tests below (ticket 04, phase 5 performance audit finding 06)
+   spy on qualitativeCurves the same way hormoneCurve.test.ts's own caching
+   tests spy on esterCurves - see that file's header for why. */
+
+import { test, vi } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
 import type { Journal } from './journal.ts';
+import * as qualitativeCurveModel from '../hormoneCurveQualitative.ts';
 
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
 
@@ -311,4 +316,115 @@ test('a weekly testosterone injection gets a shape, fitted against testosterone 
      is what separates it from the topical shapes. */
   const at2 = (day: number) => view.curves[0].points.find((point) => point.day >= day)!.value;
   assert.ok(at2(FROM + 1.5) > at2(FROM + 0.1));
+});
+
+test('asking for the same drug and window twice models it once', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 5);
+  await doseDaily(journal, 8);
+
+  const spy = vi.spyOn(qualitativeCurveModel, 'qualitativeCurves');
+  try {
+    await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    assert.equal(spy.mock.calls.length, 1);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('the two hormones are cached separately, one drug never reuses the other’s slot', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 5, { drug: 'testosterone', route: 'gel' });
+  await journal.doses.upsertDose({ timestamp: at(FROM), route: 'gel', dose: 50, doseUnit: 'mg', applicationSite: 'shoulder' });
+
+  const spy = vi.spyOn(qualitativeCurveModel, 'qualitativeCurves');
+  try {
+    await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    await journal.qualitativeCurve.getCurves({ drug: 'testosterone', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    assert.equal(spy.mock.calls.length, 2, 'a different drug at the same window is still a genuine miss');
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('switching windows twice does not model the curve twice', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 5);
+  await doseDaily(journal, 8);
+
+  const spy = vi.spyOn(qualitativeCurveModel, 'qualitativeCurves');
+  try {
+    await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM + 3, toEpochDay: TO + 3, fitToOwnLabs: false });
+    assert.equal(spy.mock.calls.length, 2);
+
+    await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    assert.equal(spy.mock.calls.length, 2);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('an episode write invalidates the cached model for that window', async () => {
+  // The population model reads episodes too (attributeDose), so an edited
+  // regimen must not be served a curve set drawn against the old one.
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await episode(journal, FROM - 5);
+  await journal.doses.upsertDose({ timestamp: at(FROM + 2), route: 'oral', dose: 2, doseUnit: 'mg' });
+
+  const spy = vi.spyOn(qualitativeCurveModel, 'qualitativeCurves');
+  try {
+    const before = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    assert.equal(before.curves.length, 1);
+
+    // Ending the episode before the dose was drawn leaves it with no active
+    // episode to attribute to, so it drops out of the curve entirely - a
+    // change this app can only see by re-reading episodes.
+    await journal.regimen.endEpisode(episodeId, FROM + 1);
+    const after = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+
+    assert.equal(spy.mock.calls.length, 2, 'an episode write must not be served from the stale cache');
+    assert.deepEqual(after.curves, []);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('a dose write invalidates the cached model for that window', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 5);
+  await doseDaily(journal, 8);
+
+  const spy = vi.spyOn(qualitativeCurveModel, 'qualitativeCurves');
+  try {
+    const before = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    await journal.doses.upsertDose({ timestamp: at(FROM + 9), route: 'oral', dose: 2, doseUnit: 'mg' });
+    const after = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+
+    assert.equal(spy.mock.calls.length, 2, 'a dose write must not be served from the stale cache');
+    assert.equal(after.curves[0].doseCount, before.curves[0].doseCount + 1);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('a lab result write changes the fit without re-modelling the population', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 5);
+  await doseDaily(journal, 8);
+
+  const spy = vi.spyOn(qualitativeCurveModel, 'qualitativeCurves');
+  try {
+    const before = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: true });
+    assert.equal(before.labPoints.length, 0);
+
+    await journal.labs.upsertResult({ epochDay: FROM + 4, analyte: 'estradiol', value: 80, unit: 'pg/mL', drawTime: '09:30' });
+    const after = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: true });
+
+    assert.equal(after.labPoints.length, 1);
+    assert.equal(spy.mock.calls.length, 1, 'a lab write changes what the fit reads, not the doses the population is drawn from');
+  } finally {
+    spy.mockRestore();
+  }
 });
