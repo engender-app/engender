@@ -388,10 +388,11 @@ try {
   if (!notes.includes('Day detail proof A') || !notes.includes('Day detail proof B')) {
     throw new Error('day detail did not keep separate entries');
   }
-  if (await page.locator('[data-day-average]').count()) {
-    throw new Error('day detail still shows a day-average block');
-  }
-  ok('day detail keeps separate entries and no average summary');
+  /* Used to also assert [data-day-average] absent here. No component has
+     ever owned that handle - day detail (routes/day/[day]/+page.svelte)
+     shows no day-average block and never has - so the assertion could not
+     fail either way it went (ticket 01). Deleted rather than repointed. */
+  ok('day detail keeps separate entries');
 } catch (e) { fail('day detail truthfulness', e); }
 
 /* 5. search */
@@ -2549,6 +2550,12 @@ try {
 
   await page.goto(BASE + '/settings/wear', { waitUntil: 'networkidle' });
   await booted();
+  /* [data-skeleton] used to match nothing - Skeleton.svelte only ever wrote
+     `class="skeleton"` - so this wait was a no-op from its first tick
+     (ticket 01). Skeleton.svelte now stamps data-skeleton on its own root,
+     chosen over pointing this wait at something wear-log-specific because
+     every other screen that shows a Skeleton while loading gets the same
+     real wait for free. */
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   if (!(await page.getByRole('heading', { level: 1 }).count())) throw new Error('the wear log did not render');
   ok('quick add: a wear session starts and stops in place, and the row says which');
