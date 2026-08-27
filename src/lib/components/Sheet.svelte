@@ -165,7 +165,7 @@
     class="sheet-scrim scrim-withdraw is-open"
     role="presentation"
     data-sheet-scrim
-    transition:fade={{ duration: motionDuration('--dur-med', 240) }}
+    transition:fade={{ duration: motionDuration('--dur-med') }}
     onclick={(e) => {
       if (e.target === e.currentTarget) close();
     }}

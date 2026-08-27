@@ -54,6 +54,27 @@ function readCssNumber(token: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored';
+type DistanceToken = '--motion-distance-sm' | '--motion-distance-md';
+
+/** The values base.css authors each token at, for the no-DOM path -
+    exported so tokens.test.ts can hold this table against base.css itself
+    rather than trusting it not to drift. Ticket 15 (MO-004): 27 call sites
+    used to restate one of these by hand, and --dur-fast (150ms) had
+    already drifted to 160 at two of them. One table, read once. */
+export const DURATION_FALLBACK: Record<DurationToken, number> = {
+  '--dur-fast': 150,
+  '--dur-med': 240,
+  '--dur-slow': 380,
+  '--dur-press': 260,
+  '--dur-authored': 700
+};
+
+export const DISTANCE_FALLBACK: Record<DistanceToken, number> = {
+  '--motion-distance-sm': 10,
+  '--motion-distance-md': 24
+};
+
 /** A duration token in milliseconds, whatever unit it is written in.
 
     The unit has to be read rather than assumed, and this cost the app every
@@ -90,15 +111,12 @@ function readCssMs(token: string, fallback: number): number {
     this function returns 0 under reduced motion, so routing it through here
     would reintroduce the instant cut it was added to prevent. Read it with
     crossfadeDuration() instead. */
-export function motionDuration(
-  token: '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored',
-  fallback: number
-): number {
-  return isReducedMotion() ? 0 : readCssMs(token, fallback);
+export function motionDuration(token: DurationToken): number {
+  return isReducedMotion() ? 0 : readCssMs(token, DURATION_FALLBACK[token]);
 }
 
-export function motionDistance(token: '--motion-distance-sm' | '--motion-distance-md', fallback: number): number {
-  return readCssNumber(token, fallback);
+export function motionDistance(token: DistanceToken): number {
+  return readCssNumber(token, DISTANCE_FALLBACK[token]);
 }
 
 /** How long a reduced-motion substitute crossfades for.

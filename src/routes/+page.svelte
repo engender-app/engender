@@ -166,7 +166,7 @@
      duration to zero, which is tier 3's substitute - an instant cut, not
      tier 2's crossfade, because a change inside a screen has no journey for
      a fade to stand in for. */
-  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast', 160));
+  const crossfade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
   /* The tally widget's two buttons (phase 4 ticket 33) deep-link here with
      the kind as a query param, since neither button opens a route of its

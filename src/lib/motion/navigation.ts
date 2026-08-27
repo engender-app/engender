@@ -54,7 +54,7 @@ const crossfadeOnly = (): TransitionConfig => fadeOnly(crossfadeDuration());
 function tier2(css: (t: number, u: number) => string, direction?: Direction): TransitionConfig {
   if (isReducedMotion()) return crossfadeOnly();
   const duration =
-    direction === 'out' ? motionDuration('--dur-fast', 150) : motionDuration('--dur-med', 240);
+    direction === 'out' ? motionDuration('--dur-fast') : motionDuration('--dur-med');
   return { duration, easing: EASE_OUT, css };
 }
 
@@ -89,7 +89,7 @@ export function sharedAxisX(
   params: { back?: boolean } = {},
   options: { direction?: Direction } = {}
 ): TransitionConfig {
-  const distance = motionDistance('--motion-distance-md', 24);
+  const distance = motionDistance('--motion-distance-md');
   const away = params.back ? -1 : 1;
   const sign = options.direction === 'out' ? -away : away;
   return tier2(
@@ -104,7 +104,7 @@ export function sharedAxisX(
  * replaying this backwards.
  */
 export function sheetRise(_node: Element): TransitionConfig {
-  const distance = motionDistance('--motion-distance-md', 24);
+  const distance = motionDistance('--motion-distance-md');
   return tier2((t, u) => `opacity: ${t}; transform: translateY(${distance * u}px)`);
 }
 
@@ -119,7 +119,7 @@ const [send, receive] = crossfade({
      transform its longest standard duration for exactly that reason. At
      240ms the card arrives before the eye has followed it, which loses the
      one thing the pattern exists to show. */
-  duration: () => motionDuration('--dur-slow', 380),
+  duration: () => motionDuration('--dur-slow'),
   easing: EASE_OUT
 });
 
