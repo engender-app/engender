@@ -57,6 +57,22 @@ describe("kit.css's cross-block spacing", () => {
     expect(kit).toMatch(/\+\s*:is\(\[data-kit-surface\], \.skeleton-stack\)\s*\{[^}]*margin-top/);
   });
 
+  it('gives a note the two-things gap, not a control gap', () => {
+    // This is the rule screens.css asked for twice and never got, because
+    // kit.css is imported after it and matched at the same specificity. It
+    // lives here now, beside the rule it is an exception to, so the cascade
+    // can't quietly take it back.
+    const note = /:is\(\.stats-note, \.wrapped-note\)\s*\+[^{]*\{\s*margin-top: var\(--space-4\)/;
+    expect(kit).toMatch(note);
+  });
+
+  it('keeps notes out of the control rule that would overrule them', () => {
+    const control = /:is\(\.segmented,[^)]*\)\s*\n?\s*\+ :is\(\[data-kit-surface\]/.exec(kit);
+    expect(control).not.toBeNull();
+    expect(control![0]).not.toContain('.stats-note');
+    expect(control![0]).not.toContain('.wrapped-note');
+  });
+
   it('no longer enumerates the full surface set anywhere', () => {
     // The two rules this ticket replaced each carried the whole set by name,
     // in three places between them. What's left in kit.css is one rule going

@@ -1708,7 +1708,11 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   cursor: pointer;
 }
 
-:is(.stats-note, .stats-open) + :is(.kit-chart, .kit-list) {
+/* .stats-note used to be named here too, and never won - kit.css is imported
+   after this file and matched it at the same specificity. The note case now
+   lives in kit.css beside the rule it is an exception to; what is left here
+   is the button, which is a control that wants the tighter gap anyway. */
+.stats-open + :is(.kit-chart, .kit-list) {
   margin-top: var(--space-4);
 }
 
@@ -1779,10 +1783,6 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   font-size: var(--text-sm);
   line-height: var(--leading-body);
   color: var(--text-2);
-}
-
-.wrapped-note + :is(.kit-chart, .kit-list) {
-  margin-top: var(--space-4);
 }
 
 /* The two dates a custom range needs, inside the range sheet. */
