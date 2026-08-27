@@ -20,7 +20,8 @@ import {
   esterCurves,
   fractionalEpochDay,
   scaleCurves,
-  type EsterCurve
+  type EsterCurve,
+  type HormoneCurves
 } from '../hormoneCurve';
 import { fitScaleFactorToLabs } from '../hormoneCurveFit';
 import { dosesWithNoCurve } from '../hormoneCurveQualitative';
@@ -32,6 +33,7 @@ import type { LabResult } from '../types';
 import type { DosesArea } from './doses';
 import type { LabsArea } from './labs';
 import type { RegimenArea } from './regimen';
+import { createModelMemo } from './curveModelMemo';
 
 /** One of the user's own results, placed on the curve's axis. */
 export interface CurveLabPoint {
@@ -114,6 +116,10 @@ export function makeHormoneCurveArea(
   regimen: RegimenArea,
   labs: LabsArea
 ): HormoneCurveArea {
+  /* One journal, one cache (ticket 04) - see curveModelMemo.ts for what this
+     guards and why it is keyed and invalidated the way it is. */
+  const populationCache = createModelMemo<HormoneCurves>();
+
   return {
     async getCurves({ fromEpochDay, toEpochDay, fitToOwnLabs }) {
       /* The dose log is read back past the window: an injection given before
@@ -147,7 +153,9 @@ export function makeHormoneCurveArea(
       }
       labPoints.sort((a, b) => a.day - b.day);
 
-      const population = esterCurves({ doses: doseEvents, episodes, fromEpochDay, toEpochDay });
+      const population = populationCache.remember(`${fromEpochDay}:${toEpochDay}`, [doseEvents, episodes], () =>
+        esterCurves({ doses: doseEvents, episodes, fromEpochDay, toEpochDay })
+      );
 
       /* A factor is only worth fitting when the model is drawing everything
          that went in. An injection logged by volume leaves the bands

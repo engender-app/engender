@@ -1,11 +1,18 @@
 /* The hormone curve area (phase 4 ticket 10): bands over the dose log with
-   the user's own lab results overlaid, recomputed on every read. */
+   the user's own lab results overlaid, recomputed on every read.
 
-import { test } from 'vitest';
+   The caching tests below (ticket 04, phase 5 performance audit finding 06)
+   spy on esterCurves rather than counting anything the cache itself
+   exposes, so what they prove is what the screen actually gets: whether the
+   313-sample-per-day model underneath getCurves ran again, not whether some
+   internal flag was set. */
+
+import { test, vi } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
 import type { Journal } from './journal.ts';
+import * as hormoneCurveModel from '../hormoneCurve.ts';
 
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
 
@@ -295,4 +302,123 @@ test('an ester with no curve worth drawing produces no curve and no special case
 
   const undecylate = await second.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
   assert.deepEqual(undecylate.curves, []);
+});
+
+test('asking for the same window twice models it once', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await injectWeekly(journal, 12);
+
+  const spy = vi.spyOn(hormoneCurveModel, 'esterCurves');
+  try {
+    await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    assert.equal(spy.mock.calls.length, 1);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('switching windows twice does not model the curve twice', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await injectWeekly(journal, 12);
+
+  const spy = vi.spyOn(hormoneCurveModel, 'esterCurves');
+  try {
+    await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    // A different window: a genuine miss.
+    await journal.hormoneCurve.getCurves({ fromEpochDay: FROM + 10, toEpochDay: TO + 10, fitToOwnLabs: false });
+    assert.equal(spy.mock.calls.length, 2);
+
+    // Back to the first window: already modelled, so this must not model it
+    // again.
+    await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    assert.equal(spy.mock.calls.length, 2);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('toggling the fit switch does not re-model the population it fits against', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await injectWeekly(journal, 12);
+  await journal.labs.upsertResult({ epochDay: FROM + 40, analyte: 'estradiol', value: 600, unit: 'pg/mL', drawTime: '09:00' });
+
+  const spy = vi.spyOn(hormoneCurveModel, 'esterCurves');
+  try {
+    await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    const fitted = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: true });
+
+    assert.equal(spy.mock.calls.length, 1, 'the fit switch changes the scale, not the doses or the window');
+    assert.ok(fitted.scaleFactor !== null);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('a dose write invalidates the cached model for that window', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await injectWeekly(journal, 12);
+
+  const spy = vi.spyOn(hormoneCurveModel, 'esterCurves');
+  try {
+    const before = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    await journal.doses.upsertDose({
+      timestamp: at(FROM + 50),
+      route: 'im',
+      dose: 5,
+      doseUnit: 'mg',
+      injectionSite: 'thigh-left',
+      vehicle: 'oil'
+    });
+    const after = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+
+    assert.equal(spy.mock.calls.length, 2, 'a dose write must not be served from the stale cache');
+    assert.equal(after.curves[0].doseCount, before.curves[0].doseCount + 1);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('an episode write invalidates the cached model for that window', async () => {
+  // The population model reads episodes too (attributeDose), so an edited
+  // regimen must not be served a band drawn against the old one.
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30, { endEpochDay: FROM + 39 });
+  await injectWeekly(journal, 12);
+
+  const spy = vi.spyOn(hormoneCurveModel, 'esterCurves');
+  try {
+    await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    await episode(journal, FROM + 40, { drug: 'estradiol enanthate', ester: 'enanthate', interval: 'every 14 days' });
+    const after = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+
+    assert.equal(spy.mock.calls.length, 2);
+    assert.equal(after.curves.length, 2, 'the new episode has its own ester and so its own curve');
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('a lab result write changes the fit without re-modelling the population', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await injectWeekly(journal, 12);
+
+  const spy = vi.spyOn(hormoneCurveModel, 'esterCurves');
+  try {
+    const before = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: true });
+    assert.equal(before.labPoints.length, 0);
+
+    await journal.labs.upsertResult({ epochDay: FROM + 20, analyte: 'estradiol', value: 180, unit: 'pg/mL' });
+    const after = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: true });
+
+    assert.equal(after.labPoints.length, 1);
+    assert.equal(spy.mock.calls.length, 1, 'a lab write changes what the fit reads, not the doses the population is drawn from');
+  } finally {
+    spy.mockRestore();
+  }
 });
