@@ -84,10 +84,19 @@ export interface OcrMachine {
 export function createOcrMachine(
   imageSource: OcrImageSource,
   recognizer: OcrRecognizer,
-  saver: OcrSaver
+  saver: OcrSaver,
+  onStateChange?: (state: OcrMachineState) => void
 ): OcrMachine {
+  let currentState: OcrMachineState = { tag: 'idle' };
+
   const machine: OcrMachine = {
-    state: { tag: 'idle' },
+    get state() {
+      return currentState;
+    },
+    set state(next) {
+      currentState = next;
+      onStateChange?.(next);
+    },
 
     open() {
       machine.state = { tag: 'picking' };
