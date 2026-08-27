@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { epochDayFromLocalDate } from './epochDay.ts';
 import type { PersonalEffectType, RegimenEpisode } from './types.ts';
-import { literatureCovers, literatureWindow, literatureWindowDays } from './personalEffectWindow.ts';
+import {
+  effectTier,
+  effectWindowShape,
+  literatureCovers,
+  literatureWindow,
+  literatureWindowDays
+} from './personalEffectWindow.ts';
 
 const ANCHOR = epochDayFromLocalDate(new Date(2024, 0, 1)); // 2024-01-01
 
@@ -43,7 +49,8 @@ const ORIGINAL_EIGHT = [
    new masculinizing-direction keys, read out of GenderGP's WPATH-sourced
    tables (personalEffectWindow.ts's header). Masculinising scalp hair loss
    is deliberately absent - its completion figure is "variable", no range,
-   so it sits at tier 2 instead (personalEffectCatalog.ts). */
+   so it sits at tier 2 instead - it is catalogued in
+   vocabulary/builtins.ts and listed here nowhere. */
 const NEW_FEMINIZING_TIER_1 = [
   'decreased_muscle_mass_strength',
   'decreased_libido',
@@ -230,7 +237,7 @@ test('the gate reads the same drug names the hormone curve does, in both catalog
 
 test('a tier-2 or tier-3 key - no literature window at all - never gets a band', () => {
   // scalp_hair_loss_masculinizing is a real tier-2 catalogue key
-  // (personalEffectCatalog.ts): GenderGP names it but gives no usable
+  // (vocabulary/builtins.ts): GenderGP names it but gives no usable
   // completion range, so ticket 41 catalogues it at tier 2 rather than
   // stretching this file's tier-1 map to cover it. A minted custom key
   // behaves identically - absence from the map is what "no band" means.
@@ -240,5 +247,42 @@ test('a tier-2 or tier-3 key - no literature window at all - never gets a band',
     assert.equal(literatureCovers(effect, 'testosterone'), false);
     assert.equal(literatureWindowDays(effect, ON_E), null);
     assert.equal(literatureWindowDays(effect, ON_T), null);
+  }
+});
+
+test("an effect's source tier is derived from whether this file lists it", () => {
+  // CONTEXT's three tiers: a literature band, a named marker from the
+  // community catalogue, a person's own addition. Nothing stores the tier
+  // (ADR-0010) - listing a key in the window map above is what makes it
+  // tier 1, and un-listing it would make it tier 2 with no second edit.
+  assert.equal(effectTier({ key: 'breast_development', builtIn: true }), 1);
+  assert.equal(effectTier({ key: 'voice_drop', builtIn: true }), 1);
+  assert.equal(effectTier({ key: 'scalp_hair_loss_masculinizing', builtIn: true }), 2);
+  assert.equal(effectTier({ key: 'a1b2c3d4-custom-uuid', builtIn: false }), 3);
+});
+
+test("a person's own addition is tier 3 even if it borrows a built-in key", () => {
+  // The tier decides which citation prints under an effect, so a custom
+  // row named after a catalogued one must not inherit the guideline's.
+  assert.equal(effectTier({ key: 'breast_development', builtIn: false }), 3);
+});
+
+test("the window's three shapes are enumerated here, not re-derived by a caption", () => {
+  // The screen prints one whole sentence per shape. It asks which shape
+  // this is rather than reading the nullable fields a second time.
+  assert.equal(effectWindowShape('skin_softening'), 'no-completion');
+  assert.equal(effectWindowShape('hair_changes'), 'open-completion');
+  assert.equal(effectWindowShape('cycle_cessation'), 'no-completion');
+  assert.equal(effectWindowShape('breast_development'), 'bounded');
+  assert.equal(effectWindowShape('voice_drop'), 'bounded');
+  assert.equal(effectWindowShape('scalp_hair_loss_masculinizing'), 'none');
+});
+
+test('every tier-1 window has a shape that is not none, and no other key does', () => {
+  // The vacuous-pass guard: a shape function that answered 'none' for
+  // everything would pass the case list above if the list went stale.
+  for (const effect of ['breast_development', 'skin_softening', 'hair_changes', 'cycle_cessation']) {
+    assert.notEqual(effectWindowShape(effect), 'none');
+    assert.equal(effectTier({ key: effect, builtIn: true }), 1);
   }
 });

@@ -5,7 +5,12 @@
    selector in kit.css, and nothing here would have caught it: the CSS was
    valid, the tokens were spelled correctly, and the only symptom was that
    nothing drew. What's worth holding to a test is that opting in is one
-   call now, and that kit.css has nothing left to hand-maintain. */
+   call now, and that kit.css has nothing left to hand-maintain.
+
+   Half calls and half greps, on purpose (ticket 08): roleAttrs is a
+   function and is called, while "kit.css has nothing left to
+   hand-maintain" is a negative over a stylesheet and can only be
+   matched. */
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';

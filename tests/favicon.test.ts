@@ -11,7 +11,11 @@
    both mention both filenames, which is true of two files that disagree
    about when to use which; the fixture the two adapters are driven against
    is what says that now (prefs/fixtures/document-chrome.json). This file
-   asks the remaining question, which is whether the files exist. */
+   asks the remaining question, which is whether the files exist.
+
+   A file on disk and the glyph inside it: greps and byte reads, with no
+   rule to call (ticket 08). Which name the chrome rule produces is
+   documentChrome's own test. */
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';

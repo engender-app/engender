@@ -8,7 +8,10 @@ import { describe, expect, it } from 'vitest';
    drifted from each other in small ways, so the thing worth guarding is
    not how the header looks - that is ScreenHeader.svelte's own business and
    restyling it should not fail a test - but that no screen goes back to
-   writing its own. */
+   writing its own.
+
+   That is a negative over every .svelte file in the repo, so it is a grep
+   and could not be anything else (ticket 08). */
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
