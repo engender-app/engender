@@ -16,12 +16,12 @@
      own label, so it is still the same three facts as before. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { normalizeUnit, type LabSeries } from '$lib/data/journal/labs';
+  import type { LabSeries } from '$lib/data/journal/labs';
   import { seriesComparability } from '$lib/data/labTiming';
   import { comparabilityLabels, labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { createOcrMachine, type OcrSaver } from '$lib/data/labs/ocr-machine';
-  import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, type PreferredUnitAnalyte } from '$lib/data/labs/units';
+  import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, normalizeUnit, type PreferredUnitAnalyte } from '$lib/data/labs/units';
   import { defaultUnitForAnalyte, nextUnitAfterAnalyteChange } from '$lib/data/labs/preferred-units';
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
   import {
