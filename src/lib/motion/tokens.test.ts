@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { isReducedMotion, motionDistance, motionDuration } from './tokens';
+import { DISTANCE_FALLBACK, DURATION_FALLBACK, isReducedMotion, motionDistance, motionDuration } from './tokens';
+
+const root = fileURLToPath(new URL('../../../', import.meta.url));
 
 describe('isReducedMotion', () => {
   it('is true when the document is marked reduced', () => {
@@ -17,8 +22,33 @@ describe('isReducedMotion', () => {
 });
 
 describe('motionDuration and motionDistance without a DOM', () => {
-  it('fall back to the caller-supplied value', () => {
-    expect(motionDuration('--dur-med', 240)).toBe(240);
-    expect(motionDistance('--motion-distance-md', 24)).toBe(24);
+  it('fall back to the token\'s own authored value', () => {
+    expect(motionDuration('--dur-med')).toBe(240);
+    expect(motionDistance('--motion-distance-md')).toBe(24);
+  });
+});
+
+/* Ticket 15 (MO-004): the fallback used to be a second parameter every
+   caller restated by hand, and it had already drifted - --dur-fast is
+   authored at 150ms and two call sites passed 160. Held against base.css
+   itself, the same way flagSun.test.ts holds its palette list against
+   palettes.css, so the next drift fails here instead of shipping. */
+describe('the fallback table agrees with what base.css authors', () => {
+  const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
+
+  it('every duration token', () => {
+    for (const [token, fallback] of Object.entries(DURATION_FALLBACK)) {
+      const match = new RegExp(`${token}:\\s*(\\d+)ms`).exec(base);
+      expect(match, `${token} should be authored in ms in base.css`).not.toBeNull();
+      expect(Number(match![1]), token).toBe(fallback);
+    }
+  });
+
+  it('every distance token', () => {
+    for (const [token, fallback] of Object.entries(DISTANCE_FALLBACK)) {
+      const match = new RegExp(`${token}:\\s*(\\d+)px`).exec(base);
+      expect(match, `${token} should be authored in px in base.css`).not.toBeNull();
+      expect(Number(match![1]), token).toBe(fallback);
+    }
   });
 });

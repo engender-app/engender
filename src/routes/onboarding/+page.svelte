@@ -130,7 +130,7 @@
     options: { direction?: 'in' | 'out' | 'both' }
   ) {
     const config = sharedAxisX(node, params, options);
-    return { ...config, delay: motionDuration('--dur-fast', 150) };
+    return { ...config, delay: motionDuration('--dur-fast') };
   }
 
   function go(to: OnboardingStep) {

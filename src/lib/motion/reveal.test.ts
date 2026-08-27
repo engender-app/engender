@@ -140,7 +140,9 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
   it('fades the placeholder out rather than fading the content in', () => {
     stubDocument(false, true, {});
     const { css, duration } = crossfade(measured(240));
-    expect(duration).toBe(160);
+    /* --dur-fast is authored at 150ms; this asserted 160 until ticket 15
+       traced the drift to reveal.ts's own restated fallback. */
+    expect(duration).toBe(150);
     expect(frame(css!, 1)).toContain('opacity: 1');
     expect(frame(css!, 0)).toContain('opacity: 0');
   });

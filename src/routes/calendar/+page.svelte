@@ -80,13 +80,13 @@
      swap together, so the delay is what makes it a queue. */
   let dir = $state(1);
 
-  const LEAVE = () => motionDuration('--dur-fast', 150);
+  const LEAVE = () => motionDuration('--dur-fast');
 
   function labelIn(_node: Element) {
     if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     return {
       delay: LEAVE(),
-      duration: motionDuration('--dur-med', 240),
+      duration: motionDuration('--dur-med'),
       easing: EASE_OUT,
       css: (_t: number, u: number) => `transform: translateY(${-dir * u * 100}%)`
     };
