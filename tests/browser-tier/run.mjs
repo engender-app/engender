@@ -14,7 +14,7 @@ import { createReporter, launchChromium } from '../browser-harness.mjs';
 import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const { ok, fail, finish } = createReporter();
+const { ok, fail, finish, block } = createReporter();
 
 const server = await createServer({ configFile: `${here}/browser-tier.vite.config.ts`, server: { port: 0 } });
 await server.listen();
@@ -35,19 +35,42 @@ const browser = await launchChromium({
 });
 const page = await (await browser.newContext()).newPage();
 
+/* A module that throws on import (the familiar `$state is not defined` from
+   a probe reaching a Svelte store without the plugin, or any other load-time
+   error) never calls publish() at all, so waitForSelector below would just
+   run out its 30s default and read as an anonymous timeout. Forwarding
+   `pageerror` and racing it against the wait means load() fails with the
+   error's own text, attributed to whichever probe was loading when it
+   fired - see docs/agents/verification.md on why this differs from
+   walkthrough.test.mjs's policy of collecting page errors instead. */
+let onPageError;
+page.on('pageerror', (error) => onPageError?.(error));
+
 /** Loads `path`, waits for `name`'s ready attribute to appear, and reads
     `name`'s result global off `window` (tests/probe-handshake.mjs derives
     both from `name`, the same way the probe page publishing them does).
     Reload the same page and call again to check persistence. */
 async function load(path, name) {
-  await page.goto(`http://localhost:${port}${path}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector(`body[${readyAttr(name)}]`, { state: 'attached' });
+  const failure = new Promise((_resolve, reject) => {
+    onPageError = reject;
+  });
+  try {
+    await Promise.race([
+      (async () => {
+        await page.goto(`http://localhost:${port}${path}`, { waitUntil: 'networkidle' });
+        await page.waitForSelector(`body[${readyAttr(name)}]`, { state: 'attached' });
+      })(),
+      failure
+    ]);
+  } finally {
+    onPageError = undefined;
+  }
   return page.evaluate((key) => window[key], resultGlobal(name));
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
 // --- Ticket 03: FTS5 + OPFS mechanics, against a synthetic table -----------
-try {
+await block('ticket 03 browser tier', 5, async () => {
   const first = await load('/', 'probe');
   if (first.error) throw new Error(first.error);
 
@@ -69,12 +92,10 @@ try {
   if (second.error) throw new Error(second.error);
   if (second.markerExisted === true) ok('OPFS survives a full page reload');
   else fail('OPFS survives a full page reload', 'marker row was gone after reload');
-} catch (e) {
-  fail('ticket 03 browser tier', e.message ?? String(e));
-}
+});
 
 // --- Ticket 04: the real driver + boot() against the real schema -----------
-try {
+await block('ticket 04 browser tier', 7, async () => {
   const first = await load('/driver.html', 'driver-probe');
   if (first.error) throw new Error(first.error);
 
@@ -116,12 +137,10 @@ try {
   if (second.error) throw new Error(second.error);
   if (second.markerExisted === true) ok('data written before a reload is still there after boot() re-runs');
   else fail('data written before a reload is still there after boot() re-runs', 'marker entry was gone after reload');
-} catch (e) {
-  fail('ticket 04 browser tier', e.message ?? String(e));
-}
+});
 
 // --- Ticket 09: folded search against the WASM SQLite, via the journal ----
-try {
+await block('ticket 09 browser tier', 12, async () => {
   const r = await load('/search.html', 'search-probe');
   if (r.error) throw new Error(r.error);
 
@@ -148,12 +167,10 @@ try {
   eq('editing a note leaves none of the old text in the index', r.afterEdit.old, []);
   eq('editing a note indexes the new text', r.afterEdit.new, [r.ids.bed]);
   eq('a deleted entry leaves the index', r.afterDelete, []);
-} catch (e) {
-  fail('ticket 09 browser tier', e.message ?? String(e));
-}
+});
 
 // --- Ticket 12: crypto primitives, and hash-wasm's no-network-fetch claim -
-try {
+await block('ticket 12 browser tier', 3, async () => {
   const requestUrls = [];
   const onRequest = (req) => requestUrls.push(req.url());
   page.on('request', onRequest);
@@ -171,12 +188,10 @@ try {
   const wasmRequests = requestUrls.filter((u) => u.includes('.wasm'));
   if (wasmRequests.length === 0) ok('hash-wasm makes no separate request for its WASM - it is bundled as base64, not fetched');
   else fail('hash-wasm makes no separate request for its WASM - it is bundled as base64, not fetched', wasmRequests.join(', '));
-} catch (e) {
-  fail('ticket 12 browser tier', e.message ?? String(e));
-}
+});
 
 // --- Ticket 11: normalize() against a real canvas, and the OPFS store -----
-try {
+await block('ticket 11 browser tier', 22, async () => {
   const r = await load('/photos.html', 'photos-probe');
   if (r.error) throw new Error(r.error);
 
@@ -323,12 +338,10 @@ try {
   if (picked.normalizedSizes.length === 2 && picked.normalizedSizes.every((s) => s.width === 1 && s.height === 1))
     ok('picked bytes go straight into normalize() with no filename or MIME type involved');
   else fail('picked bytes go straight into normalize()', JSON.stringify(picked.normalizedSizes));
-} catch (e) {
-  fail('ticket 11 browser tier', e.message ?? String(e));
-}
+});
 
 // --- Ticket 13: the archive, packed on the real platform and downloaded --
-try {
+await block('ticket 13 browser tier', 10, async () => {
   const r = await load('/archive.html', 'archive-probe');
   if (r.error) throw new Error(r.error);
 
@@ -417,12 +430,10 @@ try {
   // Cross-platform archive round-trips now run in the Android tier, where
   // one probe can boot both the web and Android storage stacks in one app.
   console.log('INFO  cross-platform archive round-trips are verified in tests/android-tier');
-} catch (e) {
-  fail('ticket 13 browser tier', e.message ?? String(e));
-}
+});
 
 // --- Ticket 09 (phase 2): at-rest encryption, gated by the closed-app scan -
-try {
+await block('ticket 09 (phase 2) browser tier', 10, async () => {
   const r = await load('/encryption.html', 'encryption-probe');
   if (r.error) throw new Error(r.error);
 
@@ -485,12 +496,10 @@ try {
 
   if (r.wrongRawKey !== null) ok('a wrong raw key is refused by SQLite rather than read as garbage');
   else fail('a wrong raw key is refused by SQLite', 'a query under a random key succeeded');
-} catch (e) {
-  fail('ticket 09 (phase 2) browser tier', e.message ?? String(e));
-}
+});
 
 // --- Ticket 10 (phase 2): converting a plaintext-era journal --------------
-try {
+await block('ticket 10 (phase 2) browser tier', 14, async () => {
   const r = await load('/conversion.html', 'conversion-probe');
   if (r.error) throw new Error(r.error);
 
@@ -579,12 +588,10 @@ try {
 
   if (r.secondConvertPhoto === true) ok('converting an already-converted photo again leaves it readable, which is what a resume relies on');
   else fail('converting an already-converted photo is a no-op', JSON.stringify(r.secondConvertPhoto));
-} catch (e) {
-  fail('ticket 10 (phase 2) browser tier', e.message ?? String(e));
-}
+});
 
 // --- Ticket 04 (phase 2): when a waiting release may take over ------------
-try {
+await block('ticket 04 (phase 2) update guard', 5, async () => {
   const r = await load('/update.html', 'update-probe');
   if (r.error) throw new Error(r.error);
 
@@ -629,12 +636,10 @@ try {
         reloads: r.reloadsWhenIdle
       })
     );
-} catch (e) {
-  fail('ticket 04 (phase 2) update guard', e.message ?? String(e));
-}
+});
 
 // --- Ticket 04 (phase 2): forward migration, refusal and the copy ---------
-try {
+await block('ticket 04 (phase 2) migration and rollback', 9, async () => {
   const r = await load('/migration.html', 'migration-probe');
   if (r.error) throw new Error(r.error);
 
@@ -717,12 +722,10 @@ try {
   if (r.copyAfterRestoredBoot === false)
     ok('and the restored journal coming up clean is what finally retires the copy');
   else fail('a clean boot after the restore retires the copy', JSON.stringify(r.copyAfterRestoredBoot));
-} catch (e) {
-  fail('ticket 04 (phase 2) migration and rollback', e.message ?? String(e));
-}
+});
 
 // --- Ticket 27: the photo journey export, against a real canvas and MediaRecorder ---
-try {
+await block('ticket 27 photo journey export', 19, async () => {
   const r = await load('/journey.html', 'journey-probe');
   if (r.error) throw new Error(r.error);
 
@@ -832,12 +835,10 @@ try {
   if (shared.sharedFile?.name === 'alicja-journey-2025-08-13.jpg' && shared.sharedFile.type === 'image/jpeg' && shared.sharedFile.size > 0)
     ok('what the share sheet receives is the generated collage itself, named and typed for what it is');
   else fail('the share sheet receives the generated collage', JSON.stringify(shared.sharedFile));
-} catch (e) {
-  fail('ticket 27 photo journey export', e.message ?? String(e));
-}
+});
 
 // --- Phase 5 ticket 22: the video note re-encode ---------------------------
-try {
+await block('phase 5 ticket 22 video note re-encode', 9, async () => {
   const r = await load('/video-notes.html', 'video-note-probe');
   if (r.error) throw new Error(r.error);
 
@@ -898,12 +899,10 @@ try {
   if (r.undecodableGivesNull)
     ok('and a file the browser cannot decode yields null, so an oversized capture is kept rather than lost');
   else fail('a file the browser cannot decode yields null', `got ${r.undecodableGivesNull}`);
-} catch (e) {
-  fail('phase 5 ticket 22 video note re-encode', e.message ?? String(e));
-}
+});
 
 // --- Phase 5 ticket 18: rasterizing the wrapped share card -----------------
-try {
+await block('phase 5 ticket 18 wrapped share card', 6, async () => {
   const r = await load('/share-card.html', 'share-card-probe');
   if (r.error) throw new Error(r.error);
 
@@ -931,9 +930,7 @@ try {
   if (r.emptySize.width > 0 && r.emptySize.height > 0 && r.emptySize.height < r.fullSize.height)
     ok(`a card with nothing picked still rasterizes (its own padding), smaller than one with content (${r.emptySize.height}px vs ${r.fullSize.height}px)`);
   else fail('a card with nothing picked still rasterizes, smaller than one with content', JSON.stringify({ empty: r.emptySize, full: r.fullSize }));
-} catch (e) {
-  fail('phase 5 ticket 18 wrapped share card', e.message ?? String(e));
-}
+});
 
 // --- Phase 5 ticket 30: the control kit, measured rather than assumed ------
 /* The 48px floor is the one thing in this ticket that cannot be read off a
@@ -942,7 +939,7 @@ try {
    tall and 44px wide, and how the Gecko slider thumb ended up at 20px. So
    every control on the fixture page gets its rendered box read, and the
    pressed and held states get driven with a real pointer. */
-try {
+await block('phase 5 ticket 30 control kit', 23, async () => {
   await page.goto(`http://localhost:${port}/controls.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-controls-ready]', { state: 'attached' });
 
@@ -1129,12 +1126,10 @@ try {
   if (reduced.every((d) => d === '1'))
     ok('reduced motion takes all three press depths to 1, so no control moves');
   else fail('reduced motion takes all three press depths to 1', JSON.stringify(reduced));
-} catch (e) {
-  fail('phase 5 ticket 30 control kit', e.message ?? String(e));
-}
+});
 
 // --- Phase 5 audit ticket 03: what a grid of photos actually reads ---------
-try {
+await block('phase 5 audit ticket 03 thumbnail grid', 5, async () => {
   await page.setViewportSize({ width: 400, height: 600 });
   const thumbs = await load('/thumbs.html', 'thumbs');
   if (thumbs.error) throw new Error(thumbs.error);
@@ -1179,9 +1174,7 @@ try {
       'a scroll through the grid and back leaves the blob URLs where they were',
       `${onMount.live} on mount, ${atBottom.live} at the bottom, ${backAtTop.live} back at the top`
     );
-} catch (e) {
-  fail('phase 5 audit ticket 03 thumbnail grid', e.message ?? String(e));
-}
+});
 
 await browser.close();
 await server.close();
