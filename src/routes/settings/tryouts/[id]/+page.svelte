@@ -31,6 +31,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -243,20 +244,18 @@
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
           {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
-            <div class="kit-row is-static" data-feeling={f.id}>
-              <span class="kit-row-text">
-                <span class="kit-row-title">{dayLabel(f.epochDay)}</span>
-                {#if f.note}<span class="kit-row-sub">{f.note}</span>{/if}
-              </span>
-              <button
-                class="kit-row-act press"
-                data-delete-feeling={f.id}
-                aria-label={m.tryout_feeling_delete_sheet()}
-                onclick={() => feelingRecord.askToDelete(f)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
+            <ListRow
+              static
+              data-feeling={f.id}
+              title={dayLabel(f.epochDay)}
+              subtitle={f.note}
+              action={{
+                icon: 'trash',
+                label: m.tryout_feeling_delete_sheet(),
+                onclick: () => feelingRecord.askToDelete(f),
+                attrs: { 'data-delete-feeling': f.id }
+              }}
+            />
           {/each}
         </ListCard>
       </div>
@@ -286,18 +285,18 @@
       <div style="margin-bottom:var(--space-3)">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
           {#each photos as p (p.id)}
-            <div class="kit-row is-static" data-tryout-photo={p.id}>
-              <PhotoThumb photo={p} size={48} />
-              <span class="kit-row-text"></span>
-              <button
-                class="kit-row-act press"
-                data-delete-tryout-photo={p.id}
-                aria-label={m.tryout_photo_delete_sheet()}
-                onclick={() => photoRecord.askToDelete(p)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
+            <ListRow
+              static
+              data-tryout-photo={p.id}
+              action={{
+                icon: 'trash',
+                label: m.tryout_photo_delete_sheet(),
+                onclick: () => photoRecord.askToDelete(p),
+                attrs: { 'data-delete-tryout-photo': p.id }
+              }}
+            >
+              {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
+            </ListRow>
           {/each}
         </ListCard>
       </div>

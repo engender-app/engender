@@ -9,9 +9,10 @@
      one long column.
 
      The rows stay presentational and keep growing to fit four stacked
-     things, which is why they are `.kit-row.is-static` rather than
-     ListRows: a resource is not a destination, it is a name with two ways
-     to reach it, and the two are separate links inside the row. */
+     things. They are written out rather than `<ListRow static>` (ticket 40)
+     because the row and its text each carry a class of this screen's own -
+     scoped styles that a component boundary would not reach - and because
+     the third thing in the text is a pair of links, not a subtitle. */
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
