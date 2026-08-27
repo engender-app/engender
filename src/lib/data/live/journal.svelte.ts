@@ -34,6 +34,7 @@
    resolution, which needs a real scheduler to be seen re-running at all. */
 
 import { observeWrites, tablesReadBy, type TableName } from './writes';
+import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './readState';
 import type { Journal } from '../journal/journal';
 import { bump, versionOf } from './tableVersions.svelte';
 
@@ -124,6 +125,31 @@ export interface LiveQuery<T> {
       screen is one round trip old, not absent, and replacing a list with a
       placeholder on every save would be worse than the wait it reports. */
   readonly loading: boolean;
+  /** True when the most recent run rejected (readState.ts). Reading it is a
+      screen's choice: the default rendering of a failed read is the empty
+      state, unchanged by this being here. */
+  readonly failed: boolean;
+}
+
+/** A read whose answer is a list, which is most of them.
+
+    Same query underneath, with the two things every list call site was
+    writing itself: rows already defaulted to an empty list, and `empty` as a
+    state rather than a `.length` test that a still-loading read passes. With
+    `failed` beside them, the three-state gate a screen renders is the read's
+    own vocabulary rather than something the screen assembles (phase 5 audit
+    ticket 04). */
+export interface LiveList<T> {
+  /** The rows, `[]` until the first result lands. */
+  readonly rows: T[];
+  /** True until the first result lands, as on `LiveQuery`. */
+  readonly loading: boolean;
+  /** The read answered, and it answered with nothing. False while loading, so
+      a screen cannot show its empty state over a read still in flight. */
+  readonly empty: boolean;
+  /** True when the most recent run rejected. A failed first read is `empty`
+      too, which is the rendering the default keeps. */
+  readonly failed: boolean;
 }
 
 /** A query that re-runs whenever a table it read is written.
@@ -149,6 +175,13 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>): LiveQuery<T
   return query(null, run);
 }
 
+/** `liveQuery` for a read that answers with a list: the same query, seen
+    through `rows`/`loading`/`empty`/`failed` (readState.ts). What ReadGate
+    takes, and what a screen holding rows of its own should ask for. */
+export function liveList<T>(run: (journal: Journal) => Promise<T[]>): LiveList<T> {
+  return listView(query(null, run));
+}
+
 /** A query that watches only `tables`, whatever its reads actually touch.
 
     The escape hatch from the paragraph above, for a screen that narrows on
@@ -165,9 +198,28 @@ export function liveQueryWatchingOnly<T>(
   return query(tables, run);
 }
 
+/** The list face of a query: `LiveQuery`'s value read through readState's two
+    list rules, so the defaulting exists once rather than at every call site. */
+function listView<T>(read: LiveQuery<T[]>): LiveList<T> {
+  const state = (): ReadState<T[]> => ({ value: read.value, loading: read.loading, failed: read.failed });
+  return {
+    get rows() {
+      return rowsOf(state());
+    },
+    get loading() {
+      return read.loading;
+    },
+    get empty() {
+      return emptyOf(state());
+    },
+    get failed() {
+      return read.failed;
+    }
+  };
+}
+
 function query<T>(narrowedTo: TableName[] | null, run: (journal: Journal) => Promise<T>): LiveQuery<T> {
-  let value = $state<T | undefined>(undefined);
-  let loading = $state(true);
+  let state = $state<ReadState<T>>(pending<T>());
   /* Only the newest run may write the result. Without this a fast re-run that
      overtakes a slow one - a search where "co" outruns "c" - would leave the
      older answer on screen for good. */
@@ -216,28 +268,31 @@ function query<T>(narrowedTo: TableName[] | null, run: (journal: Journal) => Pro
     running.then(
       (result) => {
         if (mine !== latest) return;
-        value = result;
-        loading = false;
+        state = landed(result);
       },
       (error) => {
         if (mine !== latest) return;
-        /* Logged and given up on rather than surfaced: the design has no error
-           state for a single query, and a screen holding its placeholder
-           forever tells the user less than an empty state does. A failure here
-           means the database is unreadable, which +layout.svelte already
-           reports from boot. */
+        /* Logged, and rendered as the empty state rather than surfaced by
+           default: a screen holding its placeholder forever tells the user
+           less than an empty state does, and a failure here means the database
+           is unreadable, which +layout.svelte already reports from boot. What
+           `failed` adds is that a screen with better words for it can now ask
+           (readState.ts, phase 5 audit ticket 04). */
         console.error('a journal query failed', error);
-        loading = false;
+        state = gaveUp(state);
       }
     );
   });
 
   return {
     get value() {
-      return value;
+      return state.value;
     },
     get loading() {
-      return loading;
+      return state.loading;
+    },
+    get failed() {
+      return state.failed;
     }
   };
 }
