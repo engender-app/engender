@@ -42,6 +42,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
@@ -291,17 +292,17 @@
         <div style="margin-bottom:var(--space-3)">
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
             {#each selected.consults as consult (consult.id)}
-              <div class="kit-row is-static" data-consult={consult.id}>
-                <span class="kit-row-text"><span class="kit-row-title">{dayLabel(consult.epochDay)}</span></span>
-                <button
-                  class="kit-row-act press"
-                  data-delete-consult={consult.id}
-                  aria-label={m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) })}
-                  onclick={() => journal.procedures.deleteConsult(consult.id)}
-                >
-                  <Icon name="trash" size={18} />
-                </button>
-              </div>
+              <ListRow
+                static
+                data-consult={consult.id}
+                title={dayLabel(consult.epochDay)}
+                action={{
+                  icon: 'trash',
+                  label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
+                  onclick: () => journal.procedures.deleteConsult(consult.id),
+                  attrs: { 'data-delete-consult': consult.id }
+                }}
+              />
             {/each}
           </ListCard>
         </div>
@@ -334,18 +335,19 @@
         <div style="margin-bottom:var(--space-3)">
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
             {#each photos as photo (photo.id)}
-              <div class="kit-row is-static" data-procedure-photo={photo.id}>
-                <PhotoThumb photo={photo} size={48} />
-                <span class="kit-row-text"><span class="kit-row-sub">{dayLabel(photo.epochDay)}</span></span>
-                <button
-                  class="kit-row-act press"
-                  data-delete-procedure-photo={photo.id}
-                  aria-label={m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
-                  onclick={() => photoRecord.askToDelete(photo)}
-                >
-                  <Icon name="trash" size={18} />
-                </button>
-              </div>
+              <ListRow
+                static
+                data-procedure-photo={photo.id}
+                subtitle={dayLabel(photo.epochDay)}
+                action={{
+                  icon: 'trash',
+                  label: m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) }),
+                  onclick: () => photoRecord.askToDelete(photo),
+                  attrs: { 'data-delete-procedure-photo': photo.id }
+                }}
+              >
+                {#snippet leading()}<PhotoThumb photo={photo} size={48} />{/snippet}
+              </ListRow>
             {/each}
           </ListCard>
         </div>

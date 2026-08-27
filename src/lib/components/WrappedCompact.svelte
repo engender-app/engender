@@ -43,12 +43,12 @@
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import type { RecapDimChange } from '$lib/data/recapDisplay';
   import type { WrappedStreaks, WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
-  import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
   import AreaChart from './kit/AreaChart.svelte';
   import BarRows from './kit/BarRows.svelte';
   import ChartCard from './kit/ChartCard.svelte';
   import ListCard from './kit/ListCard.svelte';
+  import ListRow from './kit/ListRow.svelte';
   import SectionHeading from './kit/SectionHeading.svelte';
 
   let {
@@ -121,57 +121,52 @@
      a different period. -->
 <div class="wrapped-figure-list" data-wrapped-stats>
 <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.figures)}>
-  <div class="kit-row is-static" data-wrapped-stat>
-    <span class="kit-row-text"><span class="kit-row-title">{m.wrapped_stat_entries()}</span></span>
-    <span class="kit-row-trail"><b class="wrapped-figure-value">{recap.entryCount}</b></span>
-  </div>
+  <ListRow static data-wrapped-stat title={m.wrapped_stat_entries()}>
+    {#snippet trailing()}<b class="wrapped-figure-value">{recap.entryCount}</b>{/snippet}
+  </ListRow>
   {#if streaks}
-    <div class="kit-row is-static" data-wrapped-stat>
-      <span class="kit-row-text">
-        <span class="kit-row-title">{m.wrapped_stat_streak()}</span>
-        <!-- The period's best against the best there has ever been. Never a
-             verdict on the pair: the label says which is which and the
-             numbers say the rest. -->
-        <span class="kit-row-sub">
-          {m.wrapped_stat_streak_ever()}: {m.n_days({ n: streaks.ever })}
-        </span>
-      </span>
-      <span class="kit-row-trail"><b class="wrapped-figure-value">{m.n_days({ n: streaks.inPeriod })}</b></span>
-    </div>
+    <!-- The period's best against the best there has ever been. Never a
+         verdict on the pair: the label says which is which and the numbers
+         say the rest. -->
+    <ListRow
+      static
+      data-wrapped-stat
+      title={m.wrapped_stat_streak()}
+      subtitle={`${m.wrapped_stat_streak_ever()}: ${m.n_days({ n: streaks.ever })}`}
+    >
+      {#snippet trailing()}<b class="wrapped-figure-value">{m.n_days({ n: streaks.inPeriod })}</b>{/snippet}
+    </ListRow>
   {/if}
   {#if recap.averageMood !== null}
-    <div class="kit-row is-static" data-wrapped-stat>
-      <span class="kit-row-text"><span class="kit-row-title">{m.wrapped_stat_mood()}</span></span>
-      <span class="kit-row-trail"><b class="wrapped-figure-value">{recap.averageMood.toFixed(1)}</b></span>
-    </div>
+    {@const mood = recap.averageMood}
+    <ListRow static data-wrapped-stat title={m.wrapped_stat_mood()}>
+      {#snippet trailing()}<b class="wrapped-figure-value">{mood.toFixed(1)}</b>{/snippet}
+    </ListRow>
   {/if}
   {#if anchorDuration}
-    <div class="kit-row is-static" data-wrapped-stat>
-      <span class="kit-row-text">
-        <span class="kit-row-title">{m.journey_anchor_since({ name: anchorDuration.name })}</span>
-      </span>
-      <span class="kit-row-trail"><b class="wrapped-figure-value">{anchorDuration.duration}</b></span>
-    </div>
+    <ListRow static data-wrapped-stat title={m.journey_anchor_since({ name: anchorDuration.name })}>
+      {#snippet trailing()}<b class="wrapped-figure-value">{anchorDuration.duration}</b>{/snippet}
+    </ListRow>
   {/if}
   {#if dimChange}
     <!-- The scale that moved furthest, with the movement itself and not only
          its two endpoints (spec 06). Signed, because which way a gender
          dimension went is not better or worse (F15), only different. -->
-    <div class="kit-row is-static" data-wrapped-stat data-wrapped-dim-change>
-      <span class="kit-row-text">
-        <span class="kit-row-title">{m.wrapped_scale_arc()}</span>
-        <span class="kit-row-sub">
-          {m.wrapped_scale_arc_body({
-            name: dimChange.name,
-            from: String(Math.round(dimChange.from)),
-            to: String(Math.round(dimChange.to))
-          })}
-        </span>
-      </span>
-      <span class="kit-row-trail">
+    <ListRow
+      static
+      data-wrapped-stat
+      data-wrapped-dim-change
+      title={m.wrapped_scale_arc()}
+      subtitle={m.wrapped_scale_arc_body({
+        name: dimChange.name,
+        from: String(Math.round(dimChange.from)),
+        to: String(Math.round(dimChange.to))
+      })}
+    >
+      {#snippet trailing()}
         <b class="wrapped-figure-value">{signedValue(dimChange.change, (n) => String(Math.round(n)))}</b>
-      </span>
-    </div>
+      {/snippet}
+    </ListRow>
   {/if}
 </ListCard>
 </div>
@@ -223,13 +218,11 @@
   <SectionHeading text={m.wrapped_milestones()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}>
     {#each recap.milestones as ms (ms.id)}
-      <div class="kit-row is-static" data-wrapped-milestone>
-        <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
-        <span class="kit-row-text"><span class="kit-row-title">{ms.name}</span></span>
-        <span class="kit-row-trail">
+      <ListRow static data-wrapped-milestone icon="flag" title={ms.name}>
+        {#snippet trailing()}
           <span class="wrapped-figure-date">{fmtDay(ms.epochDay, { day: 'numeric', month: 'short' })}</span>
-        </span>
-      </div>
+        {/snippet}
+      </ListRow>
     {/each}
   </ListCard>
 {/if}

@@ -14,6 +14,20 @@
   import Icon from '../Icon.svelte';
   import Check from './Check.svelte';
 
+  /* Falsy is a line the row does not have, so a conditional subtitle is
+     written as the condition rather than filtered at the call site. */
+  type RowLine = string | false | null | undefined;
+
+  type RowAction = {
+    icon: string;
+    label: string;
+    onclick: () => void;
+    /** The control's own walkthrough handle, where the row's `key` is not
+        it: a delete button on a photo row is `data-delete-hair-photo`, and
+        the name is the screen's, not the kit's (ADR-0029). */
+    attrs?: Record<string, string>;
+  };
+
   let {
     title,
     subtitle,
@@ -22,14 +36,19 @@
     onclick,
     key,
     checked,
+    static: isStatic = false,
     chevron = true,
     leading,
     trailing,
     action,
     ...rest
   }: {
-    title: string;
-    subtitle?: string;
+    /** Optional, because a static row can be a photograph and a control
+        with nothing to say between them. */
+    title?: string;
+    /** An array where the row states several things under its title - a
+        procedure's date, its consults, its checklist. */
+    subtitle?: RowLine | RowLine[];
     /** A name from $lib/components/icons.ts. */
     icon?: string;
     href?: string;
@@ -44,6 +63,11 @@
         row - which is what a list of things to tick wants, and what a row
         holding a switch deliberately does not do. */
     checked?: boolean;
+    /** A row that states something and goes nowhere - the exposure counters,
+        a clinician summary's lines, a Wrapped figure. It renders as a plain
+        container rather than a link or a button, so it neither takes the
+        press nor promises a screen that is not there. */
+    static?: boolean;
     /** Off for a row that acts in place rather than going somewhere - a
         row carrying a switch, say, where a chevron would promise a screen
         that is not there. */
@@ -64,7 +88,7 @@
         controls side by side. The label travels with the handler for the
         same reason Notice's dismiss does - an icon button with no
         accessible name cannot be reached by voice or announced at all. */
-    action?: { icon: string; label: string; onclick: () => void };
+    action?: RowAction;
     /** The caller's own attributes, landing on the row itself - the same
         contract Tile and Notice already have. `data-list-row` names the
         slot and the handle beside it names the thing in it, which is what
@@ -78,6 +102,10 @@
      named once here rather than being re-derived at each of the two places
      that ask. */
   let isCheckbox = $derived(checked !== undefined);
+
+  let subtitles = $derived(
+    (Array.isArray(subtitle) ? subtitle : [subtitle]).filter(Boolean) as string[]
+  );
 </script>
 
 {#snippet body()}
@@ -87,36 +115,55 @@
     <span class="kit-row-ico"><Icon name={icon} size={22} /></span>
   {/if}
   <span class="kit-row-text">
-    <span class="kit-row-title">{title}</span>
-    {#if subtitle}<span class="kit-row-sub">{subtitle}</span>{/if}
+    {#if title}<span class="kit-row-title">{title}</span>{/if}
+    {#each subtitles as line}<span class="kit-row-sub">{line}</span>{/each}
   </span>
-  <span class="kit-row-trail">
-    {#if trailing}{@render trailing()}{/if}
-    {#if isCheckbox}<Check checked={checked ?? false} />{/if}
-    {#if chevron}<Icon name="chevronRight" size={22} />{/if}
-  </span>
+  <!-- A static row with nothing at its trailing edge gets no trailing edge:
+       an empty flex item would still spend the row's gap and take that width
+       off the text. Every other row has a chevron, a box or a switch there. -->
+  {#if trailing || !isStatic}
+    <span class="kit-row-trail">
+      {#if trailing}{@render trailing()}{/if}
+      {#if isCheckbox}<Check checked={checked ?? false} />{/if}
+      {#if chevron && !isStatic}<Icon name="chevronRight" size={22} />{/if}
+    </span>
+  {/if}
+{/snippet}
+
+{#snippet rowAction(a: RowAction)}
+  <button
+    type="button"
+    class="kit-row-act press"
+    data-row-action={key}
+    aria-label={a.label}
+    onclick={a.onclick}
+    {...a.attrs}
+  >
+    <Icon name={a.icon} size={18} />
+  </button>
 {/snippet}
 
 <!-- A link where it navigates and a button where it acts, written out
      rather than resolved through <svelte:element>: the two carry different
      keyboard behaviour and different announcements, and the tag has to be
      legible to the compiler for it to check either. -->
-{#if action}
+{#if isStatic}
+  <!-- Nothing to press, so nothing that announces itself as pressable. The
+       action beside it, where there is one, sits directly in the row rather
+       than in the split shape: there is no main half to split away from,
+       and `.kit-row-act` stretches to the row's own height. -->
+  <div class="kit-row is-static" data-list-row={key} {...rest}>
+    {@render body()}
+    {#if action}{@render rowAction(action)}{/if}
+  </div>
+{:else if action}
   <div class="kit-row is-split" data-list-row={key} {...rest}>
     {#if href}
       <a class="kit-row-main" {href} {onclick}>{@render body()}</a>
     {:else}
       <button type="button" class="kit-row-main" {onclick}>{@render body()}</button>
     {/if}
-    <button
-      type="button"
-      class="kit-row-act press"
-      data-row-action={key}
-      aria-label={action.label}
-      onclick={action.onclick}
-    >
-      <Icon name={action.icon} size={18} />
-    </button>
+    {@render rowAction(action)}
   </div>
 {:else if href}
   <a class="kit-row" data-list-row={key} {href} {onclick} {...rest}>{@render body()}</a>

@@ -12,10 +12,9 @@
      Segmented now, which is also the one that knows what a radiogroup has
      to announce.
 
-     Its rows state a count and go nowhere, so they are `.kit-row.is-static`
-     written out rather than ListRows, the same call WrappedCompact and
-     WrappedYear make: a ListRow renders as a link or a button, and neither
-     is what a figure is. */
+     Its rows state a count and go nowhere, which is what `<ListRow static>`
+     is (phase 5 UX ticket 40): the row renders as a plain container rather
+     than a link or a button, since neither is what a figure is. */
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -24,6 +23,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade } from '$lib/motion/reveal';
@@ -59,14 +59,12 @@
     <div class="screen-part">
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each counters.doseTotals as t (`${t.drug}-${t.route}-${t.doseUnit}`)}
-          <div class="kit-row is-static" data-dose-total={`${t.drug}-${t.route}`}>
-            <span class="kit-row-text">
-              <span class="kit-row-title">{t.drug}</span>
-              <span class="kit-row-sub">
-                {m.exposure_dose_total_sub({ route: routeLabel(t.route), total: String(t.total), unit: t.doseUnit })}
-              </span>
-            </span>
-          </div>
+          <ListRow
+            static
+            data-dose-total={`${t.drug}-${t.route}`}
+            title={t.drug}
+            subtitle={m.exposure_dose_total_sub({ route: routeLabel(t.route), total: String(t.total), unit: t.doseUnit })}
+          />
         {/each}
       </ListCard>
     </div>
@@ -86,16 +84,12 @@
     <div class="screen-part">
       <ListCard role={roleAt(activeFlag.roles, 1)}>
         {#each counters.routeDays as r (r.route)}
-          <div class="kit-row is-static" data-route-days={r.route}>
-            <span class="kit-row-text">
-              <!-- A regimen episode's own route is free text (types.ts), unlike
-                   a dose event's closed route union - shown raw here the same
-                   way settings/regimen already shows it, not run through
-                   routeLabel. -->
-              <span class="kit-row-title">{r.route}</span>
-            </span>
-            <span class="kit-row-trail">{m.exposure_days_count({ days: String(r.days) })}</span>
-          </div>
+          <!-- A regimen episode's own route is free text (types.ts), unlike a
+               dose event's closed route union - shown raw here the same way
+               settings/regimen already shows it, not run through routeLabel. -->
+          <ListRow static data-route-days={r.route} title={r.route}>
+            {#snippet trailing()}{m.exposure_days_count({ days: String(r.days) })}{/snippet}
+          </ListRow>
         {/each}
       </ListCard>
     </div>
@@ -110,13 +104,14 @@
     <div class="screen-part">
       <ListCard role={roleAt(activeFlag.roles, 2)}>
         {#each counters.regimenDays as rd (rd.episodeId)}
-          <div class="kit-row is-static" data-regimen-days={rd.episodeId}>
-            <span class="kit-row-text">
-              <span class="kit-row-title">{rd.drug}</span>
-              <span class="kit-row-sub">{m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}</span>
-            </span>
-            <span class="kit-row-trail">{m.exposure_days_count({ days: String(rd.days) })}</span>
-          </div>
+          <ListRow
+            static
+            data-regimen-days={rd.episodeId}
+            title={rd.drug}
+            subtitle={m.exposure_regimen_days_sub({ dose: String(rd.dose), unit: rd.doseUnit, route: rd.route })}
+          >
+            {#snippet trailing()}{m.exposure_days_count({ days: String(rd.days) })}{/snippet}
+          </ListRow>
         {/each}
       </ListCard>
     </div>
