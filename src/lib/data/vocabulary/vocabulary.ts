@@ -11,7 +11,7 @@
 
 import { m } from '$lib/paraglide/messages';
 import { MOOD_RANGE, type MetricRange } from '../metricRange';
-import { prefs } from '../prefs/store.svelte';
+import { prefs, selectMetric } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
 import { rankByLean, scaleLean } from '../lean';
@@ -295,6 +295,33 @@ export const vocabulary = {
   get metricLegend(): { low: string; high: string } {
     const d = this.metricDimension(this.activeMetric);
     return d ? { low: d.low, high: d.high } : { low: moodName(1), high: moodName(5) };
+  },
+  /** Every fact a screen needs about the Metric, in one read (ticket 07):
+      the validated key and its Range, its name and legend, the picker list
+      every Metric control offers - mood plus the active dimensions, one
+      shape, one mood key - and the call that sets it. Four call sites read
+      `metricKey(prefs)` directly instead of this and could colour by a
+      scale their own picker did not offer; this is the door that replaces
+      them. */
+  get metric(): {
+    key: string;
+    range: MetricRange;
+    name: string;
+    legend: { low: string; high: string };
+    options: { key: string; name: string; range: MetricRange }[];
+    select: (key: string) => void;
+  } {
+    return {
+      key: this.activeMetric,
+      range: this.rangeOf(this.activeMetric),
+      name: this.metricName,
+      legend: this.metricLegend,
+      options: [
+        { key: 'mood', name: m.mood(), range: MOOD_RANGE },
+        ...this.activeDimensions.map((d) => ({ key: d.key, name: d.name, range: { min: d.min, max: d.max } }))
+      ],
+      select: (key: string) => selectMetric(key === 'mood' ? null : key)
+    };
   },
   tag(id: string): Tag | null {
     const found = reference.tag(id);

@@ -10,7 +10,7 @@
      would make one day's single tap as tall as another day's five, and the
      two are counts of the same kind of thing. */
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { ongoingWindowRange, RANGE_PRESETS, todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { atGrain, type Grain } from '$lib/charts/grain';
@@ -22,14 +22,14 @@
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
 
-  const RANGES = [7, 14, 30, 90, 180, 365];
+  const RANGES = RANGE_PRESETS;
   let range = $state(30);
 
   // Same inclusive-range rule as the stats screen (ticket 10): the journal
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
   let today = $derived(todayEpochDay());
-  let from = $derived(today - range + 1);
+  let from = $derived(ongoingWindowRange(today, range).start);
 
   let misgenderedQuery = liveList((j) => j.stats.tallyTrend('misgendered', from, today));
   let misgendered = $derived(misgenderedQuery.rows);
