@@ -256,7 +256,12 @@
     /* The tab's identity, from the module every surface that names the app
        reads (disguise/identity.ts) - the rule and its reasons are there,
        and this is the wiring. */
-    const tab = tabIdentity({ disguised: prefs.disguise, blanked: lockState.blanked, icon: chrome.icon });
+    const tab = tabIdentity({
+      disguised: prefs.disguise,
+      blanked: lockState.blanked,
+      appName: m.app_name(),
+      icon: chrome.icon
+    });
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
     /* The installed app's identity (ticket 25). Follows the preference and

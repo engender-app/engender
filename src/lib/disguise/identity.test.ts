@@ -34,14 +34,16 @@ describe('what the tab says', () => {
   const chromeIcon = 'favicon.svg';
 
   it('says the app name over the running app', () => {
-    expect(tabIdentity({ disguised: false, blanked: false, icon: chromeIcon })).toEqual({
+    expect(tabIdentity({ disguised: false, blanked: false, appName: 'enGender', icon: chromeIcon })).toEqual({
       title: 'enGender',
       icon: 'favicon.svg'
     });
   });
 
   it('says the decoy name over the running app when disguised', () => {
-    expect(tabIdentity({ disguised: true, blanked: false, icon: 'favicon-notes.svg' })).toEqual({
+    expect(
+      tabIdentity({ disguised: true, blanked: false, appName: 'enGender', icon: 'favicon-notes.svg' })
+    ).toEqual({
       title: 'Notes',
       icon: 'favicon-notes.svg'
     });
@@ -51,7 +53,7 @@ describe('what the tab says', () => {
     /* Undisguised, the quick-exit face is a blank page, so the tab says
        what a blank page says - and takes the neutral icon with it, since
        an empty tab wearing the app's flag is not empty. */
-    expect(tabIdentity({ disguised: false, blanked: true, icon: chromeIcon })).toEqual({
+    expect(tabIdentity({ disguised: false, blanked: true, appName: 'enGender', icon: chromeIcon })).toEqual({
       title: 'New tab',
       icon: 'favicon-notes.svg'
     });
@@ -61,7 +63,9 @@ describe('what the tab says', () => {
     /* Disguised, quick exit shows the decoy notes screen, so the tab says
        what the page shows rather than dropping to "New tab" and telling
        anyone watching that something was closed. */
-    expect(tabIdentity({ disguised: true, blanked: true, icon: 'favicon-notes.svg' })).toEqual({
+    expect(
+      tabIdentity({ disguised: true, blanked: true, appName: 'enGender', icon: 'favicon-notes.svg' })
+    ).toEqual({
       title: 'Notes',
       icon: 'favicon-notes.svg'
     });
@@ -80,15 +84,33 @@ describe('where the decoy name is allowed to appear', () => {
         : [`${dir}/${entry.name}`]
     );
 
+  /* Comments are stripped before the search rather than the search being
+     narrowed to one quoting style: half a dozen files explain the
+     disguise in prose, and a check that only caught `'Notes'` would miss
+     a new surface writing "Notes" or a bare text node - which is exactly
+     the surface this is here to catch. `DecoyNotes` and the rest of the
+     identifiers are safe on the word boundary. */
+  const withoutComments = (source: string) =>
+    source
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
   it('is this module and nothing else', () => {
     /* ADR-0035 asks for the disguise check to live in one place, and the
        cost of a surface forgetting it is not cosmetic: it shows the real
-       app name to whoever the person was hiding it from. The literal is
-       quoted, so the prose above it that names the disguise in double
-       quotes is not a hit, and the tests above name it on purpose. */
+       app name to whoever the person was hiding it from.
+
+       `src/` only. The name is also in static/manifest-notes.webmanifest,
+       which is the launcher entry rather than a surface and is held to the
+       catalogue by tests/web-manifest.test.ts. */
     const naming = sources('src')
       .filter((path) => !path.endsWith('.test.ts'))
-      .filter((path) => readFileSync(root + path, 'utf8').includes("'Notes'"));
+      /* Demo seed prose, not a surface: fullFixture writes journal
+         content, and "Notes on trying out X" is an English sentence that
+         happens to start with the word. */
+      .filter((path) => path !== 'src/lib/data/demo/fullFixture.ts')
+      .filter((path) => /\bNotes\b/.test(withoutComments(readFileSync(root + path, 'utf8'))));
     expect(naming).toEqual(['src/lib/disguise/identity.ts']);
   });
 
@@ -98,13 +120,13 @@ describe('where the decoy name is allowed to appear', () => {
        here. The rail's wordmark is why this test exists - it was the one
        of the five sites nothing asserted at all, so a disguise that
        stopped reaching the desktop rail would have shipped green. */
-    const wordmark = ['src/lib/components/AppNav.svelte', 'src/routes/+page.svelte'];
-    for (const path of wordmark) {
-      expect(readFileSync(root + path, 'utf8'), path).toContain(
-        'appWordmark(prefs.disguise, m.app_name())'
-      );
+    for (const path of ['src/lib/components/AppNav.svelte', 'src/routes/+page.svelte']) {
+      /* The call, not its argument list: matching the arguments would fail
+         a rename that kept the behaviour, which is the polarity this
+         ticket exists to remove. */
+      expect(readFileSync(root + path, 'utf8'), path).toContain('appWordmark(');
     }
     expect(readFileSync(root + 'src/routes/+layout.svelte', 'utf8')).toContain('tabIdentity({');
-    expect(readFileSync(root + 'src/lib/components/DecoyNotes.svelte', 'utf8')).toContain('{DECOY_NAME}');
+    expect(readFileSync(root + 'src/lib/components/DecoyNotes.svelte', 'utf8')).toContain('DECOY_NAME');
   });
 });

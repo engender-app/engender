@@ -80,11 +80,12 @@ describe('what Home is built from', () => {
     expect(read('src/routes/+layout.svelte')).toContain('refreshActiveFlag(document, prefs.disguise)');
     // And Home still gates the sun itself, which is the belt to that braces.
     expect(markup).toContain('{#if !prefs.disguise}<FlagSun />');
-    /* SCREENS.md: disguise changes the app's name app-wide, not per screen,
-       and the hero is the largest text on this one. What the swap produces
-       is disguise/identity.test.ts's; what this checks is that Home asks
-       rather than deciding for itself. */
-    expect(markup).toContain('{appWordmark(prefs.disguise, m.app_name())}');
+    /* The hero is the largest text on the screen and SCREENS.md says
+       disguise changes the app's name app-wide, so it swaps too - but
+       both halves of that are disguise/identity.test.ts's now, the rule
+       by calling it and the wiring by holding all four naming surfaces to
+       reading the module. Asserting it a second time here would be the
+       same string in two files. */
   });
 });
 

@@ -119,14 +119,22 @@
     const window = literatureWindow(key)!;
     const onsetMin = String(window.onsetMonths.min);
     const onsetMax = String(window.onsetMonths.max);
-    const compMin = String(window.completionMonths?.min);
+    /* Read inside the two branches that have one: a completion window is
+       null on the no-completion shape, and pulling its min out above the
+       switch would put the string "undefined" in a variable the sentence
+       happens not to use. */
     switch (effectWindowShape(key)) {
       case 'no-completion':
         return m.effect_window_no_completion({ onsetMin, onsetMax });
       case 'open-completion':
-        return m.effect_window_open_completion({ onsetMin, onsetMax, compMin });
+        return m.effect_window_open_completion({ onsetMin, onsetMax, compMin: String(window.completionMonths!.min) });
       case 'bounded':
-        return m.effect_window_bounded({ onsetMin, onsetMax, compMin, compMax: String(window.completionMonths!.max) });
+        return m.effect_window_bounded({
+          onsetMin,
+          onsetMax,
+          compMin: String(window.completionMonths!.min),
+          compMax: String(window.completionMonths!.max)
+        });
       case 'none':
         /* Unreachable behind the band gate above - a key with no window
            has no band either - and typed rather than dropped so a fourth

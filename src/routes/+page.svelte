@@ -74,12 +74,12 @@
 
   const today = todayEpochDay();
 
-  /* Which stripe each area of the screen takes ($lib/theme/roles.ts, where
-     the reason the week strip is out of reading order is written down).
-     The celebration shares the milestones' colour because it is about a
-     milestone; the backup notice takes none, because the flag colours the
-     areas of the journal and that one is the app talking about itself. */
-  const AREA_ROLE = HOME_AREA_ROLE;
+  /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
+     ($lib/theme/roles.ts, where the reason the week strip is out of
+     reading order is written down). The celebration shares the
+     milestones' colour because it is about a milestone; the backup notice
+     takes none, because the flag colours the areas of the journal and
+     that one is the app talking about itself. */
 
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
      read; the entry-shaped reads below are the ones that had to become
@@ -268,7 +268,7 @@
       <Notice
         icon="sparkle"
         key="celebration"
-        role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}
+        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.milestones)}
         aria-live="polite"
         title={landing?.s.years
           ? m.home_anniv_years({
@@ -306,7 +306,7 @@
        children and so no height, and the air around it belongs to its
        neighbours rather than to itself. -->
   <TileGrid
-    role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}
+    role={roleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
     flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
   >
     {#if prefs.wrappedEnabled}
@@ -325,7 +325,7 @@
       <a class="kit-heading-action" href="/timeline">{m.timeline()}</a>
     {/snippet}
   </SectionHeading>
-  <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}>
+  <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.milestones)}>
     {#if upcoming.length}
       {#each upcoming.slice(0, 4) as x (x.m.id)}
         <MilestoneCard milestone={x.m} s={x.s} />
@@ -351,7 +351,7 @@
       />
     {/snippet}
   </SectionHeading>
-  <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, AREA_ROLE.week)} />
+  <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
   <!-- The streak, as the caption on the week it describes. -->
   {#if streak > 1 && !pausedToday}
     <p class="home-week-caption" data-home-streak="week">{streak} {m.streak_row()}</p>
@@ -369,7 +369,7 @@
           {#each dayGroups as group (group.epochDay)}
             <DayCard
               key={String(group.epochDay)}
-              role={roleAt(activeFlag.roles, AREA_ROLE.days)}
+              role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
               date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
               aside={group.dayCount > 1 ? m.entry_day_count({ count: String(group.dayCount) }) : undefined}
             >
@@ -396,7 +396,7 @@
           <Notice
             icon="book"
             key="no-entries"
-            role={roleAt(activeFlag.roles, AREA_ROLE.days)}
+            role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
             title={m.empty_home_title()}
             text={m.empty_home_body()}
             action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }}
