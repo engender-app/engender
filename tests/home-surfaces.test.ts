@@ -15,6 +15,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { HOME_AREA_ROLE } from '../src/lib/theme/roles';
+
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
@@ -48,10 +50,12 @@ describe('what Home is built from', () => {
        where the stripe is a value rather than a decoration. On trans, whose
        flag yields three roles for four areas, reading order handed the strip
        the white band. */
+    expect(HOME_AREA_ROLE.week).toBe(0);
+    /* The rest is a grep because it is about wiring: that the strip is
+       handed that area's role rather than another's. */
     const strip = markup.match(/<WeekStrip[^>]*>/s)?.[0];
     expect(strip).toBeDefined();
     expect(strip).toContain('AREA_ROLE.week');
-    expect(home).toMatch(/AREA_ROLE = \{ week: 0\b/);
   });
 
   it('publishes no flag at all under disguise', () => {

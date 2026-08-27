@@ -228,6 +228,23 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
   return roles[index % roles.length];
 }
 
+/** Which stripe each area of Home takes, named rather than written as a
+    number at the call site - one of them is not in reading order and the
+    reason is the ordering above.
+
+    The week strip takes role 0, the only index guaranteed to be a colour
+    on all 8 palettes, because it is the one area on that screen where the
+    stripe is a value rather than a decoration: on trans, whose flag yields
+    three roles for four areas, reading order handed the strip the white
+    band, and a heat ramp from white into a white page is not a ramp.
+    Everything else takes its turn as normal.
+
+    Beside `roleAt` rather than in the screen for the same reason
+    wrappedDisplay.ts holds WRAPPED_AREA_ROLE: the index is only meaningful
+    against the list this module builds, and a table buried in markup is a
+    table nobody can check. */
+export const HOME_AREA_ROLE = { week: 0, lookBack: 1, milestones: 2, days: 3 } as const;
+
 /** The whole flag as one CSS fill: hard-edged bands, left to right, in
     stripe order and in the flag's own proportions.
 

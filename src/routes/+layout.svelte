@@ -37,6 +37,7 @@
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
+  import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { recordNavigation } from '$lib/navigation/smart-back';
@@ -112,11 +113,9 @@
   let schemaTooNew = $derived(gate === 'schema-too-new');
 
   let path = $derived(page.url.pathname);
-  /* The routes that render without chrome whoever is looking at them, as
-     opposed to the gate states below, which depend on how boot went. Split
-     out because the tier-2 transition has to ask the question about a route
-     it has not arrived at yet. */
-  const chromelessPath = (p: string) => p.startsWith('/onboarding') || p === '/settings/lock';
+  /* The routes that render without chrome whoever is looking at them
+     (navigation/chromeless.ts) folded together with the gate states, which
+     depend on how boot went and are this file's own. */
   let chromeless = $derived(
     locked ||
       needsPassphrase ||
