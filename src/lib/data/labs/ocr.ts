@@ -1,5 +1,5 @@
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '../epochDay';
-import { normalizeUnit } from '../journal/labs';
+import { normalizeUnit } from './units';
 import { foldText } from '../fold';
 import {
   canonicalizeLabMeasurement,

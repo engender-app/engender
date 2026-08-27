@@ -1,4 +1,4 @@
-import { normalizeUnit } from '../journal/labs';
+import { normalizeUnit } from './units';
 import { preferredUnitForAnalyte, type PreferredLabUnits } from './units';
 
 function sameUnit(a: string, b: string): boolean {
