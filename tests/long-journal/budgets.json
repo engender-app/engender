@@ -159,9 +159,9 @@
       "targetMs": 300
     },
     "tryout-detail-entries": {
-      "what": "tryout detail, every entry across its open-ended span",
-      "baselineMs": 69,
-      "budgetMs": 345,
+      "what": "tryout detail, one page and the total across its open-ended span",
+      "baselineMs": 4,
+      "budgetMs": 200,
       "targetMs": 800
     },
     "photo-grid-list": {
