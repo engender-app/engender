@@ -965,6 +965,8 @@
   "labs_ocr_review_sheet": "Sprawdź wiersze przed zapisem",
   "labs_ocr_empty_sheet": "Brak wierszy do importu",
   "labs_ocr_pick_intro": "Wybierz zdjęcie z galerii albo aparatu. OCR działa lokalnie na tym urządzeniu.",
+  "labs_ocr_download_title": "Pierwszy odczyt pobiera 21 MB",
+  "labs_ocr_download_body": "To silnik rozpoznawania i jego dwa języki. Potem skaner działa bez sieci.",
   "labs_ocr_pick_gallery": "Wybierz z galerii",
   "labs_ocr_pick_camera": "Zrób zdjęcie",
   "labs_ocr_running": "Odczytywanie…",
