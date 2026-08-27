@@ -443,7 +443,7 @@
             { id: 'wrapped-range-end', label: m.recap_custom_end_label(), value: customEnd, min: customStart || undefined }
           ] as field (field.id)}
             {@const shown = shownDate(field.value)}
-            <div class="date-row">
+            <div class="rows-divide date-row">
               <label class="date-row-label" for={field.id}>{field.label}</label>
               <span class="date-row-value">{shown ?? ''}</span>
               <span class="date-row-icon"><Icon name="calendar" size={18} /></span>

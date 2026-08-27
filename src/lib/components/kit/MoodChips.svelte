@@ -52,7 +52,7 @@
   const STEPS = [1, 2, 3, 4, 5];
 </script>
 
-<div class="kit-moods" role="radiogroup" aria-label={m.mood()} data-mood-chips>
+<div class="kit-moods" data-kit-surface role="radiogroup" aria-label={m.mood()} data-mood-chips>
   {#each STEPS as step (step)}
     <button
       type="button"

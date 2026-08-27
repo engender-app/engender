@@ -119,7 +119,7 @@
      the best-ever streak sit under the period's own best as the thing it is
      measured against instead of becoming a fifth tile stating a number about
      a different period. -->
-<div class="wrapped-figure-list" data-wrapped-stats>
+<div class="wrapped-figure-list" data-kit-surface data-wrapped-stats>
 <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.figures)}>
   <ListRow static data-wrapped-stat title={m.wrapped_stat_entries()}>
     {#snippet trailing()}<b class="wrapped-figure-value">{recap.entryCount}</b>{/snippet}

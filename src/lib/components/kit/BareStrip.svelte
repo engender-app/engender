@@ -31,7 +31,7 @@
   const LEVELS = [0, 22, 45, 70, 100];
 </script>
 
-<div class="kit-strip" data-week-strip {...roleAttrs(role)}>
+<div class="kit-strip" data-kit-surface data-week-strip {...roleAttrs(role)}>
   {#each days as day (day.key)}
     <div class="kit-strip-day" class:is-today={day.isToday}>
       <span
