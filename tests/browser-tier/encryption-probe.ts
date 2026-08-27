@@ -17,6 +17,7 @@
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
+import { checkCipherCompat } from './legacy-cipher-check.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-store.ts';
@@ -91,6 +92,10 @@ async function run() {
   // A clean slate: this probe owns the whole origin's storage for its run.
   await freshOrigin();
 
+  // --- F-08: a journal written under sqlite3mc's implicit cipher default
+  // still opens now that the cipher is pinned explicitly (ticket 04) -------
+  result.cipherCompat = await checkCipherCompat();
+
   // --- setup: the production first-run path --------------------------------
   const created = await createKeystore(PASSPHRASE, PROBE_KDF);
   await writeKeystoreFile(created.metadata);
@@ -101,6 +106,9 @@ async function run() {
   const { driver, fileOps } = createEncryptedWebSqlite('gender-diary.sqlite3', created.dataKey);
   const booted = await boot({ createDriver: () => driver, fileOps });
   if (booted.phase === 'error') throw booted.error;
+
+  const [cipherRow] = await driver.query<Record<string, unknown>>('PRAGMA cipher');
+  result.cipher = Object.values(cipherRow ?? {})[0];
 
   // --- seed every kind of protected content the claim names ----------------
   const files = encryptedFileStore(opfsPhotoFiles(), created.dataKey);
