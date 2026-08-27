@@ -74,7 +74,12 @@ jobs:
         run: |
           mkdir -p dist
           node scripts/android-version.mjs "${{ steps.version.outputs.value }}" > dist/android-version.env
-          cat dist/android-version.env >> "$GITHUB_ENV"
+          cat dist/android-version.env
+          # android-version.mjs prints ANDROID_VERSION_CODE; build.gradle reads
+          # GENDER_DIARY_VERSION_CODE (GENDER_DIARY_VERSION is already set from
+          # the tag above, and matches ANDROID_VERSION_NAME by construction).
+          version_code="$(grep '^ANDROID_VERSION_CODE=' dist/android-version.env | cut -d= -f2)"
+          echo "GENDER_DIARY_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
 
       - name: Materialize Android signing key in the protected environment
         env:
@@ -83,13 +88,18 @@ jobs:
           key="$RUNNER_TEMP/upload-keystore.p12"
           base64 --decode <<<"$ANDROID_KEYSTORE_BASE64" > "$key"
           chmod 600 "$key"
+          # The path is a RUNNER_TEMP file at mode 600, not a secret, so it can
+          # ride in GITHUB_ENV. The keystore password and key alias below stay
+          # scoped to the Gradle step that actually reads them, so a compromised
+          # later step (the Play upload action) never sees them.
           echo "ANDROID_KEYSTORE_PATH=$key" >> "$GITHUB_ENV"
-          echo "ANDROID_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_ALIAS=${{ vars.ANDROID_KEY_ALIAS }}" >> "$GITHUB_ENV"
           echo "ANDROID_REQUIRE_SIGNING=true" >> "$GITHUB_ENV"
           echo "ANDROID_REQUIRE_RELEASE_VERSION=true" >> "$GITHUB_ENV"
 
       - name: Build signed Android release artifacts
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ vars.ANDROID_KEY_ALIAS }}
         run: |
           npm run build
           npx cap sync android
@@ -107,8 +117,13 @@ jobs:
       - name: Build, package, and check what came out
         run: node scripts/package-release.mjs
 
+      # Pinned to a commit SHA, not a tag: this is a third-party action that
+      # already runs with the Play service-account JSON, and a tag can move
+      # under us between one release and the next. First-party actions/*
+      # steps above stay on their major-version tag - GitHub controls those,
+      # so the extra pin buys nothing over the account boundary itself.
       - name: Upload App Bundle to Google Play internal
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: dev.barankiewicz.genderdiary
