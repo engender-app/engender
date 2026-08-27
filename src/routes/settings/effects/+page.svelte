@@ -331,24 +331,64 @@
 
     <h3>{m.effect_manage_types()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.effect_manage_types_intro()}</p>
-    <div class="managed-tags">
-      {#each vocabulary.personalEffectTypes as e (e.key)}
-        <div class="managed-tag" class:is-hidden={e.hidden}>
-          <span class="managed-label">
-            {e.name}{#if !e.builtIn}<span class="muted small"> · {m.custom_suffix()}</span>{/if}
-          </span>
-          {#if e.hidden}<span class="muted small">{m.tags_hidden()}</span>{/if}
-          <button
-            class="icon-btn"
-            data-effect-type-hide={e.key}
-            aria-label={e.hidden ? m.effect_type_show_aria({ name: e.name }) : m.effect_type_hide_aria({ name: e.name })}
-            onclick={() => journal.personalEffects.setEffectTypeHidden(e.key, !e.hidden)}
-          >
-            <Icon name={e.hidden ? 'eye' : 'eyeOff'} size={16} />
-          </button>
+    <!-- Grouped the same way the timeline above groups them (by category),
+         rather than one flat list of every effect the catalogue has - the
+         two disagreeing about how these effects are organised was its own
+         kind of confusing (Alicja, 2026-08-27). A category's own Switch,
+         above, already keeps every effect under it out of the timeline and
+         the "mark a change" picker (visiblePersonalEffectTypes); shown here
+         as effectively hidden too, rather than only in the two screens this
+         one does not do the toggling for, so what a row says matches what
+         the category switch already decided for it. Its own eye toggle
+         stays live regardless - hiding it individually is a choice that
+         should still stick once the category comes back on. -->
+    {#each vocabulary.effectCategories as cat (cat.key)}
+      {@const catEffects = vocabulary.personalEffectTypes.filter((e) => e.categoryKey === cat.key)}
+      {#if catEffects.length}
+        <p class="field-label" style="margin:var(--space-3) 0 var(--space-2)">{cat.name}</p>
+        <div class="managed-tags">
+          {#each catEffects as e (e.key)}
+            {@const effectiveHidden = e.hidden || !cat.enabled}
+            <div class="managed-tag" class:is-hidden={effectiveHidden}>
+              <span class="managed-label">
+                {e.name}{#if !e.builtIn}<span class="muted small"> · {m.custom_suffix()}</span>{/if}
+              </span>
+              {#if effectiveHidden}<span class="muted small">{m.tags_hidden()}</span>{/if}
+              <button
+                class="icon-btn"
+                data-effect-type-hide={e.key}
+                aria-label={e.hidden ? m.effect_type_show_aria({ name: e.name }) : m.effect_type_hide_aria({ name: e.name })}
+                onclick={() => journal.personalEffects.setEffectTypeHidden(e.key, !e.hidden)}
+              >
+                <Icon name={e.hidden ? 'eye' : 'eyeOff'} size={16} />
+              </button>
+            </div>
+          {/each}
         </div>
-      {/each}
-    </div>
+      {/if}
+    {/each}
+    {@const uncategorized = vocabulary.personalEffectTypes.filter((e) => e.categoryKey === null)}
+    {#if uncategorized.length}
+      <p class="field-label" style="margin:var(--space-3) 0 var(--space-2)">{m.effect_type_category_none()}</p>
+      <div class="managed-tags">
+        {#each uncategorized as e (e.key)}
+          <div class="managed-tag" class:is-hidden={e.hidden}>
+            <span class="managed-label">
+              {e.name}{#if !e.builtIn}<span class="muted small"> · {m.custom_suffix()}</span>{/if}
+            </span>
+            {#if e.hidden}<span class="muted small">{m.tags_hidden()}</span>{/if}
+            <button
+              class="icon-btn"
+              data-effect-type-hide={e.key}
+              aria-label={e.hidden ? m.effect_type_show_aria({ name: e.name }) : m.effect_type_hide_aria({ name: e.name })}
+              onclick={() => journal.personalEffects.setEffectTypeHidden(e.key, !e.hidden)}
+            >
+              <Icon name={e.hidden ? 'eye' : 'eyeOff'} size={16} />
+            </button>
+          </div>
+        {/each}
+      </div>
+    {/if}
 
     <div class="field">
       <label class="field-label" for="new-effect-type">{m.effect_type_new_label()}</label>
