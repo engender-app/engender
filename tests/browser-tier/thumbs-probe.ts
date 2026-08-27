@@ -11,8 +11,8 @@
 
 import { mount } from 'svelte';
 import PhotoThumb from '../../src/lib/components/PhotoThumb.svelte';
-import { setPhotoFiles } from '../../src/lib/stores/photoFiles';
-import type { PhotoFileStore } from '../../src/lib/data/journal/journal';
+import { setPhotoFiles } from '../../src/lib/stores/photoFiles.ts';
+import type { PhotoFileStore } from '../../src/lib/data/journal/journal.ts';
 
 const TILES = 60;
 /** The tile with no stored file: its row exists, its bytes are gone, and
@@ -113,19 +113,12 @@ async function run() {
   const lastRead = reads.includes(`p${TILES - 1}-thumb.jpg`);
 
   await scrollTo(document.body.scrollHeight);
-  const atBottom = { drawn: drawn(), live, names: [...reads] };
+  const atBottom = { live, names: [...reads] };
 
   await scrollTo(0);
-  const backAtTop = { drawn: drawn(), live };
+  const backAtTop = { live };
 
-  return {
-    tiles: TILES,
-    missingIndex: MISSING,
-    onMount,
-    lastTileReadOnMount: lastRead,
-    atBottom,
-    backAtTop
-  };
+  return { tiles: TILES, onMount, lastTileReadOnMount: lastRead, atBottom, backAtTop };
 }
 
 run().then(

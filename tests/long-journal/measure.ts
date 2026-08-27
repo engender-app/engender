@@ -245,8 +245,10 @@ export async function measureLongJournal(
   // number standing in for a screen that read one thumbnail at a time.
   //
   // Still an upper bound on the screen rather than a picture of it: the
-  // grid gates each tile on the viewport now (PhotoThumb), so it reads a
-  // screenful and this reads the journal. What the two share is the path.
+  // grid gates each tile on the viewport now (PhotoThumb), so it asks for
+  // a screenful - about twenty - where this asks for every photo in the
+  // journal, and the queue sends whatever it was asked for as one
+  // readMany. What the two share is the path, not the width of it.
   let photos!: Awaited<ReturnType<Journal['photos']['inJournal']>>;
   await measure('photo-grid-list', 'photo grid, listing every photo', async () => {
     photos = await journal.photos.inJournal();

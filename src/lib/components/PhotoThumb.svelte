@@ -24,7 +24,7 @@
      the first scrollable ancestor rather than by naming the shell, so a
      tile in a probe page or a scrolling sheet gets the right one too. */
   const watchers = new Map<Element, (near: boolean) => void>();
-  const observers = new Map<Element | null, IntersectionObserver>();
+  const observers = new Map<Element | null, { observer: IntersectionObserver; watching: number }>();
 
   function scrollRoot(target: Element): Element | null {
     for (let node = target.parentElement; node; node = node.parentElement) {
@@ -37,21 +37,32 @@
 
   function watchViewport(target: Element, onChange: (near: boolean) => void): () => void {
     const root = scrollRoot(target);
-    let observer = observers.get(root);
-    if (!observer) {
-      observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) watchers.get(entry.target)?.(entry.isIntersecting);
-        },
-        { root, rootMargin: '400px' }
-      );
-      observers.set(root, observer);
+    let entry = observers.get(root);
+    if (!entry) {
+      entry = {
+        observer: new IntersectionObserver(
+          (entries) => {
+            for (const seen of entries) watchers.get(seen.target)?.(seen.isIntersecting);
+          },
+          { root, rootMargin: '400px' }
+        ),
+        watching: 0
+      };
+      observers.set(root, entry);
     }
+    entry.watching += 1;
     watchers.set(target, onChange);
-    observer.observe(target);
+    entry.observer.observe(target);
     return () => {
       watchers.delete(target);
-      observer.unobserve(target);
+      entry.observer.unobserve(target);
+      entry.watching -= 1;
+      // Or a scroll container that has gone stays held for the rest of the
+      // session by the observer that was watching inside it.
+      if (entry.watching === 0) {
+        entry.observer.disconnect();
+        observers.delete(root);
+      }
     };
   }
 </script>
@@ -105,8 +116,8 @@
       near = true;
       return;
     }
-    return watchViewport(target, (visible) => {
-      near = visible;
+    return watchViewport(target, (isNear) => {
+      near = isNear;
     });
   });
 
@@ -128,11 +139,19 @@
     let stale = false;
 
     const thumbnail = given ? Promise.resolve(given) : readThumbnail(fileName!);
-    thumbnail.then((loaded) => {
-      if (stale || !loaded) return;
-      objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], { type: 'image/jpeg' }));
-      url = objectUrl;
-    });
+    thumbnail.then(
+      (loaded) => {
+        if (stale || !loaded) return;
+        objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], { type: 'image/jpeg' }));
+        url = objectUrl;
+      },
+      // A file that was tampered with or written under another key throws
+      // out of the store rather than reading as null. The placeholder is
+      // already what this tile is showing, so there is nothing to do but
+      // leave it up - and swallowing it here is what keeps that from
+      // surfacing as an unhandled rejection.
+      () => {}
+    );
 
     return () => {
       stale = true;

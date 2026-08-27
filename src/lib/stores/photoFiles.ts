@@ -63,22 +63,25 @@ async function flush(): Promise<void> {
   const settle = (name: string, bytes: Uint8Array | null) => {
     for (const waiter of batch.get(name)!) waiter.resolve(bytes);
   };
-  const readEach = () =>
-    Promise.all(
-      names.map((name) =>
-        files!.read(name).then(
-          (bytes) => settle(name, bytes),
-          (error) => {
-            for (const waiter of batch.get(name)!) waiter.reject(error);
-          }
-        )
-      )
-    );
+  const fail = (name: string, error: unknown) => {
+    for (const waiter of batch.get(name)!) waiter.reject(error);
+  };
 
   if (!files) {
     for (const name of names) settle(name, null);
     return;
   }
+
+  const readEach = () =>
+    Promise.all(
+      names.map((name) =>
+        files.read(name).then(
+          (bytes) => settle(name, bytes),
+          (error) => fail(name, error)
+        )
+      )
+    );
+
   if (!files.readMany) {
     await readEach();
     return;
