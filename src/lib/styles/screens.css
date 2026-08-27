@@ -1134,6 +1134,12 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
    label, because with the date text hidden the indicator moves to the start
    of the field. */
 .date-row {
+  /* Not redundant with .rows-divide's own position: relative, even though
+     every .date-row currently carries that class. The invisible full-bleed
+     input below (`.date-row input[type='date']`) is absolutely positioned
+     against this row, so a .date-row that ever renders without the utility
+     would stretch its picker over the wrong ancestor and lose the
+     press-anywhere behaviour the comment above describes. */
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
