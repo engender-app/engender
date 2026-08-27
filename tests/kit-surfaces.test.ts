@@ -190,8 +190,8 @@ describe('the charts', () => {
   });
 
   it('caps how many points a chart draws, whatever range it is given', async () => {
-    const { MAX_POINTS, bucket } = await import('../src/lib/charts/geometry');
-    const decade = Array.from({ length: 3650 }, (_, i) => ({ x: i, y: i % 5 }));
-    expect(bucket(decade).length).toBe(MAX_POINTS);
+    const { MAX_POSITIONS, atGrain } = await import('../src/lib/charts/grain');
+    const threeYears = Array.from({ length: 1095 }, (_, i) => ({ x: i, y: i % 5 }));
+    expect(atGrain(threeYears, threeYears.length).points.length).toBeLessThanOrEqual(MAX_POSITIONS);
   });
 });
