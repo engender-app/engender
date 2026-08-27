@@ -329,7 +329,12 @@ try {
   const r = await load('/archive.html', 'data-archive-probe-ready', '__archiveProbeResult');
   if (r.error) throw new Error(r.error);
 
-  if (r.header.formatVersion === 1 && r.spansChunks)
+  /* Format version 2 (phase 5 ticket 35): the payload's preferences
+     changed shape (the active preset became the list of scales it stood
+     for), which moved the version this probe writes and reads without
+     touching the body layout it is actually checking here. See
+     src/lib/data/archive/codec.ts's own comment on archiveCodecV2. */
+  if (r.header.formatVersion === 2 && r.spansChunks)
     ok(`a real journal packs into ${r.header.totalChunks} chunks of ${r.header.chunkSize} bytes (${r.archiveLength} bytes, ${r.packMs}ms including the KDF)`);
   else fail('a real journal packs into several chunks', JSON.stringify(r.header));
 
@@ -361,7 +366,11 @@ try {
     restored.tags?.includes('e-happy') &&
     restored.milestones === 1 &&
     restored.photos === 2 &&
-    restored.builtInDimensions === 5 &&
+    /* Seven built-in gender dimensions today (src/lib/data/vocabulary/
+       builtins.ts's BUILT_IN_DIMENSIONS) - social_recognition and
+       gender_stability joined the original five after this count was
+       last written here. */
+    restored.builtInDimensions === 7 &&
     restored.photoBytesMatch
   )
     ok('a Replace installs the archive over the encrypted driver and OPFS: rows, photo bytes and the built-ins it kept by key');
@@ -395,7 +404,10 @@ try {
 
   const magic = bytes.subarray(0, 6).toString('latin1');
   const headerJson = JSON.parse(bytes.subarray(12, 12 + bytes.readUInt32BE(8)).toString('utf8'));
-  if (bytes.length === r.archiveLength && magic === 'GDIARY' && bytes.readUInt16BE(6) === 1 && headerJson.totalChunks === r.header.totalChunks)
+  // Version byte read raw off the file, deliberately not through the app's
+  // own decoder (see this block's own comment above) - 2, same as r.header
+  // .formatVersion above, for the same format-version-2 reason.
+  if (bytes.length === r.archiveLength && magic === 'GDIARY' && bytes.readUInt16BE(6) === 2 && headerJson.totalChunks === r.header.totalChunks)
     ok('the downloaded file is the archive, and its version, KDF parameters and salt read without a password');
   else fail('the downloaded file is the archive with a readable plaintext header', `${bytes.length} bytes, magic ${magic}`);
 
@@ -413,6 +425,18 @@ try {
 
   if (r.keystoreRoundTrips) ok('the keystore file round-trips: unlock returns the same data key that was created');
   else fail('the keystore file round-trips', 'unlocked key differs from the created one');
+
+  // F-08 (ticket 04): the web database cipher is pinned rather than left to
+  // sqlite3mc's compiled default.
+  if (r.cipher === 'chacha20') ok(`the web database cipher is pinned explicitly (${r.cipher})`);
+  else fail('the web database cipher is pinned explicitly', `got ${JSON.stringify(r.cipher)}`);
+
+  // F-08's compatibility risk: a journal written under sqlite3mc's implicit
+  // cipher default - what every journal on disk was written under before
+  // this ticket - still opens now that the cipher is pinned to chacha20.
+  if (r.cipherCompat?.cipher === 'chacha20' && r.cipherCompat?.readBack === 'sentinel-cipher-compat-8420')
+    ok('a database written under the pre-pin implicit cipher default still opens under the pinned cipher');
+  else fail('a database written under the implicit cipher default still opens pinned', JSON.stringify(r.cipherCompat));
 
   if (r.searchHitsWhileOpen >= 1) ok(`FTS5 searches the encrypted journal while it is open (${r.searchHitsWhileOpen} hits)`);
   else fail('FTS5 searches the encrypted journal while it is open', `got ${r.searchHitsWhileOpen} hits`);
@@ -1104,6 +1128,56 @@ try {
   else fail('reduced motion takes all three press depths to 1', JSON.stringify(reduced));
 } catch (e) {
   fail('phase 5 ticket 30 control kit', e.message ?? String(e));
+}
+
+// --- Phase 5 audit ticket 03: what a grid of photos actually reads ---------
+try {
+  await page.setViewportSize({ width: 400, height: 600 });
+  const thumbs = await load('/thumbs.html', 'data-thumbs-ready', '__thumbsResult');
+  if (thumbs.error) throw new Error(thumbs.error);
+
+  const { onMount, atBottom, backAtTop } = thumbs;
+
+  /* The claim the ticket is about: a tile far below the fold has not been
+     read, so the screen costs a screenful rather than a journal. */
+  if (!thumbs.lastTileReadOnMount && onMount.names.length < thumbs.tiles)
+    ok(`only tiles near the viewport read on mount (${onMount.names.length} of ${thumbs.tiles})`);
+  else
+    fail(
+      'only tiles near the viewport read on mount',
+      `${onMount.names.length} of ${thumbs.tiles} read, last tile read: ${thumbs.lastTileReadOnMount}`
+    );
+
+  /* And they leave together. One observer callback, one Svelte flush, one
+     readMany - the same property the Node tier counts against a fake, here
+     against a real layout crossing a real margin. */
+  if (onMount.batches === 1) ok('the whole screenful leaves as a single readMany');
+  else fail('the whole screenful leaves as a single readMany', `${onMount.batches} batches`);
+
+  /* The photo whose file is gone still draws: a placeholder, not a gap. */
+  if (onMount.drawn === onMount.names.length - 1 && onMount.placeholders >= 1)
+    ok('a photo with no stored file still renders as a placeholder');
+  else
+    fail(
+      'a photo with no stored file still renders as a placeholder',
+      `${onMount.drawn} images, ${onMount.placeholders} placeholders, ${onMount.names.length} read`
+    );
+
+  if (atBottom.names.length > onMount.names.length)
+    ok(`scrolling down reads the tiles it reaches (${atBottom.names.length} of ${thumbs.tiles})`);
+  else fail('scrolling down reads the tiles it reaches', `still ${atBottom.names.length}`);
+
+  /* No leak, and no unbounded growth either: a tile scrolled well past
+     revokes its URL, so a pass over the whole grid ends where it began. */
+  if (backAtTop.live === onMount.live)
+    ok(`a scroll through the grid and back leaves the blob URLs where they were (${backAtTop.live})`);
+  else
+    fail(
+      'a scroll through the grid and back leaves the blob URLs where they were',
+      `${onMount.live} on mount, ${atBottom.live} at the bottom, ${backAtTop.live} back at the top`
+    );
+} catch (e) {
+  fail('phase 5 audit ticket 03 thumbnail grid', e.message ?? String(e));
 }
 
 await browser.close();

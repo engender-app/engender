@@ -1,4 +1,10 @@
-import { normalizeUnit } from '../journal/labs';
+/** The unit as a series key. Surrounding whitespace is an artefact of typing,
+    so it goes. Nothing else does: deciding that `ng/dl` and `ng/dL` name the
+    same unit is an interpretation this app does not make, and the one after
+    that would be converting between them (CONTEXT: "Analyte"). */
+export function normalizeUnit(unit: string): string {
+  return unit.trim();
+}
 
 export type PreferredUnitAnalyte = 'estradiol' | 'testosterone' | 'prolactin';
 export type PreferredLabUnits = Partial<Record<PreferredUnitAnalyte, string>>;

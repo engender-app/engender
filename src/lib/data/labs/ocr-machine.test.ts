@@ -1,7 +1,12 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { createOcrMachine, type OcrImageSource, type OcrMachineState, type OcrRecognizer, type OcrSaver } from './ocr-machine';
 import { epochDayFromDateInputValue } from '../epochDay';
 import type { OcrReviewRow } from './ocr';
+
+vi.mock('./units', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./units')>();
+  return { ...actual, PREFERRED_UNIT_ANALYTES: [...actual.PREFERRED_UNIT_ANALYTES, 'progesterone'] };
+});
 
 // ---------------------------------------------------------------------------
 // Stub adapters
@@ -75,6 +80,16 @@ describe('OcrMachine – success path', () => {
     const m = createOcrMachine(imageSourceThat(null), recognizerThat(''), saverWith());
     m.open();
     expect(m.state.tag).toBe('picking');
+  });
+
+  test('onStateChange fires with every transition, not just the object read back from .state', () => {
+    const seen: string[] = [];
+    const m = createOcrMachine(imageSourceThat(null), recognizerThat(''), saverWith(), (state) =>
+      seen.push(state.tag)
+    );
+    m.open();
+    m.close();
+    expect(seen).toEqual(['picking', 'idle']);
   });
 
   test('full success path ends in saved with correct count', async () => {
@@ -476,5 +491,18 @@ describe('OcrMachine – save-failed path', () => {
     await m.save();
     m.retry();
     expect(m.state.tag).toBe('picking');
+  });
+});
+
+describe('OcrMachine – preferred-unit default derives from the allowlist', () => {
+  test('asks the saver for every allowlisted analyte, including one added after this code was written', async () => {
+    const getPreferredUnit = vi.fn(() => null);
+    const saver: OcrSaver = { ...saverWith(), getPreferredUnit };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(GOOD_OCR_TEXT), saver);
+
+    m.open();
+    await m.pickSource('gallery');
+
+    expect(getPreferredUnit).toHaveBeenCalledWith('progesterone');
   });
 });

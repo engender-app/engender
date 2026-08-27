@@ -1,0 +1,151 @@
+[
+  {
+    "name": "DAILY fires later today while the time has not passed",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "DAILY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-08-11T20:00:00+02:00"
+  },
+  {
+    "name": "DAILY rolls to tomorrow once the time has passed",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-13T10:00:00+02:00",
+    "rule": { "time": "08:00", "recurrence": "DAILY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-08-14T08:00:00+02:00"
+  },
+  {
+    "name": "WEEKLY fires later today while the time has not passed",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "WEEKLY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-08-11T20:00:00+02:00"
+  },
+  {
+    "name": "WEEKLY rolls a full week once the time has passed",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "09:30", "recurrence": "WEEKLY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-08-18T09:30:00+02:00"
+  },
+  {
+    "name": "EVERY_N_DAYS lands on the anchored progression, not on today plus N",
+    "why": "Anchored 2026-08-10 (epoch day 20675) every 3 days, asked on the 11th: the progression runs 10th, 13th, 16th, so the answer is the 13th and never the 14th.",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 3, "anchorEpochDay": 20675, "epochDay": null },
+    "expectedIso": "2026-08-13T20:00:00+02:00"
+  },
+  {
+    "name": "EVERY_N_DAYS anchored today fires today while the time is still ahead",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 3, "anchorEpochDay": 20676, "epochDay": null },
+    "expectedIso": "2026-08-11T20:00:00+02:00"
+  },
+  {
+    "name": "EVERY_N_DAYS anchored today skips a whole interval once the time has passed",
+    "why": "A progression day that has already come round is spent; the next one is a full interval away, not tomorrow.",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "18:00", "recurrence": "EVERY_N_DAYS", "interval": 3, "anchorEpochDay": 20676, "epochDay": null },
+    "expectedIso": "2026-08-14T18:00:00+02:00"
+  },
+  {
+    "name": "EVERY_N_DAYS with a future anchor waits for the anchor day itself",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "08:00", "recurrence": "EVERY_N_DAYS", "interval": 3, "anchorEpochDay": 20681, "epochDay": null },
+    "expectedIso": "2026-08-16T08:00:00+02:00"
+  },
+  {
+    "name": "CONTESTED: the anchor progression around the evening cutoff",
+    "why": "ReminderPlannerTest.everyNDaysUsesItsAnchorProgression asserted 2026-08-16 for this rule and had been failing on main for that reason. Anchor 20670 is 2026-08-05, so with an interval of 3 the progression runs 5th, 8th, 11th, 14th, 17th - the 16th is not on it, and no implementation could ever have returned it. Both sides compute the 14th at 20:00, which is after the 13th at 21:00, so nothing is bumped past a cutoff. The test was wrong and this case supersedes it.",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-13T21:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 3, "anchorEpochDay": 20670, "epochDay": null },
+    "expectedIso": "2026-08-14T20:00:00+02:00"
+  },
+  {
+    "name": "a one-off on a future day is that day",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "09:30", "recurrence": null, "interval": null, "anchorEpochDay": null, "epochDay": 20688 },
+    "expectedIso": "2026-08-23T09:30:00+02:00"
+  },
+  {
+    "name": "a one-off today fires while its time is still ahead",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": null, "interval": null, "anchorEpochDay": null, "epochDay": 20676 },
+    "expectedIso": "2026-08-11T20:00:00+02:00"
+  },
+  {
+    "name": "CONTESTED: a one-off whose time passed earlier today has nothing left",
+    "why": "Same decision as the elapsed one-off below, on the day it turns over.",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "18:00", "recurrence": null, "interval": null, "anchorEpochDay": null, "epochDay": 20676 },
+    "expectedIso": null
+  },
+  {
+    "name": "CONTESTED: an elapsed one-off has no next occurrence",
+    "why": "The TypeScript side returned the moment it fired and called it Next; the Java side returned null, and both suites passed. Null is the answer, because the question this function is asked is when the rule fires next, strictly after now - which is what every recurring branch already answers, and the one-off was the only carve-out. It had no caller acting on it either: the editor formatted the past moment under a Next: label, and the scheduler discarded it. The list row is where an elapsed one-off is still shown, and it reads the stored day rather than this function (vocabulary/reminderLabel.ts).",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T19:00:00+02:00",
+    "rule": { "time": "09:30", "recurrence": null, "interval": null, "anchorEpochDay": null, "epochDay": 20675 },
+    "expectedIso": null
+  },
+  {
+    "name": "DST: a wall-clock time keeps its wall clock across the spring forward",
+    "why": "Warsaw loses an hour at 02:00 on 2026-03-29. 08:00 stays 08:00 and the real gap to it is 23 hours, which is the whole reason the schema stores a rule and not a next-fire instant (ADR-0010).",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-03-28T10:00:00+01:00",
+    "rule": { "time": "08:00", "recurrence": "DAILY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-03-29T08:00:00+02:00"
+  },
+  {
+    "name": "DST: a time inside the spring-forward gap moves forward by the gap",
+    "why": "02:30 does not exist on 2026-03-29. Both sides land on 03:30 rather than throwing or falling back a day - JavaScript because setHours rolls through the gap, Java because atZone shifts a gap local time later by its length. Recorded because it is agreement neither implementation states, not because anyone sets a reminder there on purpose.",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-03-28T10:00:00+01:00",
+    "rule": { "time": "02:30", "recurrence": "DAILY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-03-29T03:30:00+02:00"
+  },
+  {
+    "name": "DST: a time inside the ambiguous fall-back hour takes the earlier offset",
+    "why": "02:30 happens twice on 2026-10-25. Both sides take the first one, still on summer time.",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-10-24T10:00:00+02:00",
+    "rule": { "time": "02:30", "recurrence": "DAILY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-10-25T02:30:00+02:00"
+  },
+  {
+    "name": "DST: a wall-clock time keeps its wall clock across the fall back",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-10-24T10:00:00+02:00",
+    "rule": { "time": "08:00", "recurrence": "DAILY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-10-25T08:00:00+01:00"
+  },
+  {
+    "name": "a zone at a half-hour offset with no DST at all",
+    "zone": "Asia/Kolkata",
+    "nowIso": "2026-08-13T10:00:00+05:30",
+    "rule": { "time": "08:00", "recurrence": "DAILY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-08-14T08:00:00+05:30"
+  },
+  {
+    "name": "a southern-hemisphere zone entering DST, so the rule is not Europe's",
+    "zone": "Pacific/Auckland",
+    "nowIso": "2026-09-26T10:00:00+12:00",
+    "rule": { "time": "08:00", "recurrence": "DAILY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "expectedIso": "2026-09-27T08:00:00+13:00"
+  },
+  {
+    "name": "an anchored progression stepping across a southern-hemisphere DST shift",
+    "why": "Anchor 2026-09-24 (epoch day 20720) every 3 days: the 27th is a progression day and also the day Auckland gains an hour.",
+    "zone": "Pacific/Auckland",
+    "nowIso": "2026-09-26T10:00:00+12:00",
+    "rule": { "time": "08:00", "recurrence": "EVERY_N_DAYS", "interval": 3, "anchorEpochDay": 20720, "epochDay": null },
+    "expectedIso": "2026-09-27T08:00:00+13:00"
+  }
+]

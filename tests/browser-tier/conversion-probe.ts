@@ -32,7 +32,7 @@ import { createKeystore, unlockKeystore } from '../../src/lib/crypto/keystore.ts
 import { readKeystoreFile, writeKeystoreFile, KEYSTORE_FILE } from '../../src/lib/data/keystore-file.ts';
 import { localStorageCache, BOOT_CACHE_KEY } from '../../src/lib/data/prefs/boot-cache.ts';
 import { openPreferences } from '../../src/lib/data/prefs/preferences.ts';
-import { LATEST_SCHEMA_VERSION } from '../../src/lib/data/sqlite/migrations.ts';
+import { LATEST_SCHEMA_VERSION } from '../../src/lib/data/sqlite/schema-version.ts';
 import {
   describeJournalState,
   prepareConversion,

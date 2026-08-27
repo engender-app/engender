@@ -256,7 +256,7 @@
     {#if streak > 1 && !pausedToday}
       <div class="home-streak-wrap">
         {#if cheering}{@render cheer(true)}{/if}
-        <p class="home-streak" data-home-streak>{streak} {m.streak_row()}</p>
+        <p class="home-streak" data-home-streak="line">{streak} {m.streak_row()}</p>
       </div>
     {/if}
   </header>
@@ -365,7 +365,7 @@
   <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, AREA_ROLE.week)} />
   <!-- The streak, as the caption on the week it describes. -->
   {#if streak > 1 && !pausedToday}
-    <p class="home-week-caption" data-home-streak>{streak} {m.streak_row()}</p>
+    <p class="home-week-caption" data-home-streak="week">{streak} {m.streak_row()}</p>
   {/if}
 
   <SectionHeading text={m.recent_entries()}>

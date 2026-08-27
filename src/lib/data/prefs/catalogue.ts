@@ -131,6 +131,13 @@ export interface PreferenceValues {
   lastOnThisDayNotifiedEpochDay: number | null;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone' | 'prolactin', string>>;
+  /** The unit body measurements chart in (phase 5, "units should be
+      choosable in settings"). A measurement is still logged and stored in
+      whatever unit it was typed in, never converted (measurements.ts) -
+      this only decides what a chart converts every reading to for display,
+      which is what lets the chart be one line instead of one per unit
+      someone has ever logged in. */
+  measurementUnit: 'cm' | 'in';
   /** Which measurement types have had their capture-protocol guidance
       dismissed (ticket 08), keyed by measurement type key. Guidance is
       opt-in, never required to save a measurement, so this only ever
@@ -223,6 +230,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lastWrappedNotifiedPeriodKey: null,
   lastOnThisDayNotifiedEpochDay: null,
   preferredLabUnits: {},
+  measurementUnit: 'cm',
   measurementProtocolDismissed: {},
   hairPhotoProtocolDismissed: false,
   hairAnchorEpochDay: null,
@@ -251,6 +259,7 @@ export const PORTABLE_KEYS = [
   'checkInTime',
   'checkInAffirmationsEnabled',
   'preferredLabUnits',
+  'measurementUnit',
   'streakGoalHabit',
   'streakGoalTargetDays',
   'journeyAnchorMilestoneId',

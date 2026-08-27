@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
+import { markJournalBusy } from '../journal-busy.ts';
 import { purgeExpiredTrash, TRASH_WINDOW_DAYS } from './entries.ts';
 import { countingDriver, journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins.ts';
@@ -283,7 +284,7 @@ test('purgeExpiredTrash reclaims trash past the 30-day window and leaves fresher
   const justOverWindow = Date.now() - TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000 - 1;
   db.raw.prepare('UPDATE entry SET trashed_at = ? WHERE id = ?').run(justOverWindow, expiredId);
 
-  await purgeExpiredTrash(db, files);
+  assert.equal(await purgeExpiredTrash(db, files), 1, 'reports what it took, so boot can announce the write');
 
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(expiredId) as { n: number }).n, 0);
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0);
@@ -291,6 +292,8 @@ test('purgeExpiredTrash reclaims trash past the 30-day window and leaves fresher
 
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(freshId) as { n: number }).n, 1);
   assert.deepEqual((await journal.entries.trashedEntries()).map((e) => e.id), [freshId]);
+
+  assert.equal(await purgeExpiredTrash(db, files), 0, 'and nothing to take is nothing to announce');
 });
 
 test('a trashed entry drops out of entriesForDay, recentDays and entriesWithTag, and cannot be edited', async () => {
@@ -695,4 +698,28 @@ test('counterevidencePool matches any tag id it is given, not just the first', a
 
   const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
   assert.deepEqual(pool.map((e) => e.id), [body, social]);
+});
+
+test('the purge declines to run while a journal write is in flight', async () => {
+  /* Same rule as the orphan sweep's, and for the same reason (phase 5 audit
+     ticket 02): it reads which entries are past the window and then deletes
+     them, and it now runs with the screens live - so a restore landing in that
+     gap would have its entry deleted anyway. One more boot in the trash is
+     nothing; a restored entry deleted is gone. */
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  await journal.reconcileBuiltIns();
+
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, note: 'long gone' });
+  await journal.entries.deleteEntry(id);
+  const justOverWindow = Date.now() - TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000 - 1;
+  db.raw.prepare('UPDATE entry SET trashed_at = ? WHERE id = ?').run(justOverWindow, id);
+
+  const saving = markJournalBusy();
+  assert.equal(await purgeExpiredTrash(db, files), 0);
+  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(id) as { n: number }).n, 1);
+
+  saving();
+  assert.equal(await purgeExpiredTrash(db, files), 1, 'and taken once nothing is writing');
 });

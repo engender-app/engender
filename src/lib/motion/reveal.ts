@@ -26,9 +26,10 @@
    substitute, because the 1ms clamp in theme/base.css is a CSS rule and never
    touches a Svelte transition. */
 
+import type { Action } from 'svelte/action';
 import type { TransitionConfig } from 'svelte/transition';
 
-import { EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from './tokens';
+import { EASE_OUT, EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from './tokens';
 
 /** Whether the runtime can clip at all.
 
@@ -88,10 +89,14 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
  * Tier 3, change within a screen: a group opening its own height.
  *
  * DIRECTION.md names this case by itself - "a list insertion opens its own
- * height rather than making everything below it jump" - and it is the one
- * place tier 3 is allowed a layout property. What is animated is the
- * element's own height, so the rows under it travel with it rather than
- * being teleported down the screen by a block appearing at full size.
+ * height rather than making everything below it jump" - and it was the
+ * first place tier 3 spent the performance contract's one layout-property
+ * exception. `resize`, below, is the second - both animate a single scalar
+ * height rather than the chart re-tween's per-point SVG path, which is the
+ * cost the contract's own escape hatch was written against. What is
+ * animated here is the element's own height, so the rows under it travel
+ * with it rather than being teleported down the screen by a block appearing
+ * at full size.
  *
  * The cap is the same as the wipe's, and stricter in practice: one group at
  * a time, and a group rather than a screen. A disclosure that opens half the
@@ -182,3 +187,133 @@ export function crossfade(node: Element): TransitionConfig {
     css: (t) => `opacity: ${t}; position: absolute; width: ${width}px; z-index: -1; pointer-events: none`
   };
 }
+
+/**
+ * Tier 3, change within a screen: a box that changes size in place travels
+ * between the two, instead of snapping (phase 5 ticket 32.17).
+ *
+ * `disclose` covers a group being born or leaving - a transition, which only
+ * fires when Svelte adds or removes the node. What this covers is the other
+ * half: a node that stays mounted and changes size under its own content, the
+ * shape neither `transition:` nor `in:`/`out:` can see, because nothing about
+ * the node's presence changed. The measurements screen's protocol notice is
+ * the case that named this - switching the segmented control swaps the
+ * notice's text under it without unmounting anything, and the box resized in
+ * one frame, 181px to 118px, with nothing in between (Alicja, 2026-08-26:
+ * "when i switch the switcher the content of 'measuring consistently'
+ * changes and the height of the box jumps").
+ *
+ * `interpolate-size: allow-keywords` with `transition: height` - the CSS-only
+ * answer to an animated auto height - was tried first and does nothing on
+ * this codebase's floor (captured every frame for 500ms after a switch;
+ * height went straight from 181 to 118). So this measures instead, the way
+ * `disclose` already does for the opening case: `ResizeObserver` reports the
+ * node's new height after the browser has already laid it out, ResizeObserver
+ * with a real gain: the point it fires at, has finished layout but not yet
+ * painted. WAAPI keyframes from the last known height to that new one are
+ * started in that same tick, so the paint the browser is about to do already
+ * shows the animation's first frame instead of the jump.
+ *
+ * Height is a layout property, and the performance contract's rule is
+ * transform and opacity only - `disclose` already spends the contract's one
+ * named exception on exactly this, for the same reason: animating height is
+ * what makes the rows below travel with the box instead of teleporting.
+ * `resize` is the second spend rather than a new one, on a single scalar
+ * height rather than the chart re-tween's per-point SVG path interpolation,
+ * which is the cost the contract's own escape hatch was written against.
+ *
+ * An action, not a transition, and that difference is the whole reason this
+ * is a second primitive rather than a mode on the first: a transition is a
+ * function Svelte calls once, at the moment a node is created or destroyed,
+ * with no way to be told about it again later. An action's `destroy` is that
+ * same one-shot shape, but nothing stops it doing its own ongoing watching in
+ * between - which is exactly what `ResizeObserver` is.
+ *
+ * `overflow: hidden` for the animation's own duration and no longer: content
+ * on the way from a short box to a tall one would otherwise sit outside the
+ * animating box until the box catches up, and the box's resting rule already
+ * says whatever it says about its own overflow the rest of the time.
+ *
+ * Reduced motion skips both the observer's first, harmless call (mount, no
+ * prior height to compare against) and every animation after: the box still
+ * resizes, in the one frame it always could, which is tier 3's substitute -
+ * a change inside a screen has no journey for a fade to stand in for, the
+ * same reasoning `disclose`'s own substitute rests on.
+ *
+ * One box, one animation at a time, and a second resize inside the first
+ * one's 240ms is missed rather than redirected. Not a corner cut: the
+ * animation's own frames are resizes too, so the observer cannot tell "the
+ * content changed again" from "the animation I started is still running"
+ * without a signal, and the only signal available - ignore callbacks while
+ * animating - is also what stops the box chasing its own frame-by-frame
+ * travel forever. Content that changes twice inside 240ms lands on the
+ * second change in one frame, which is where every change lands today; it
+ * does not lose the first change's travel.
+ *
+ * It very nearly did overshoot past it, the first time this was written:
+ * ignoring the second resize left `lastHeight` at the first animation's own
+ * target, and once that animation's `fill: none` reverted to whatever the
+ * node actually measured by then - the second change's real height, since
+ * nothing had animated to it - the revert was itself a resize this same
+ * observer would see, compared against that now-stale number, and re-open a
+ * second animation travelling backwards from a height nothing was showing
+ * any more. The `finished` handler's own re-sync below is what closes that:
+ * read at the one moment nothing is overriding height, so the revert reads
+ * as arriving already there rather than as a fresh resize to chase.
+ */
+export const resize: Action<HTMLElement> = (node) => {
+  if (isReducedMotion() || typeof ResizeObserver === 'undefined') return;
+
+  let lastHeight = node.getBoundingClientRect().height;
+  let animating = false;
+  let current: Animation | undefined;
+
+  const observer = new ResizeObserver(() => {
+    // The animation's own frames are themselves resizes; ignored rather than
+    // measured, or the box would chase its own tail mid-travel.
+    if (animating) return;
+
+    const newHeight = node.getBoundingClientRect().height;
+    const oldHeight = lastHeight;
+    lastHeight = newHeight;
+    // Under a pixel is a rounding wobble, not a resize - animating one would
+    // run a 240ms transition over nothing to look at.
+    if (Math.abs(newHeight - oldHeight) < 1) return;
+
+    animating = true;
+    const restoreOverflow = node.style.overflow;
+    node.style.overflow = 'hidden';
+    current = node.animate(
+      [{ height: `${oldHeight}px` }, { height: `${newHeight}px` }],
+      { duration: motionDuration('--dur-med', 240), easing: EASE_OUT_CSS }
+    );
+    current.finished
+      .catch(() => {
+        // Cancelled below, by the node leaving mid-travel - `out:disclose`
+        // (Notice.svelte) owns the height property from here, and finishing
+        // quietly is what stops the two fighting over it.
+      })
+      .finally(() => {
+        node.style.overflow = restoreOverflow;
+        animating = false;
+        current = undefined;
+        // Re-synced here rather than left at newHeight above: a resize
+        // arriving mid-travel was ignored, not measured, and the node's own
+        // fill: none reverts to whatever the content is by now - which is
+        // that ignored resize's real height, not this animation's own
+        // target, whenever the two differ. Reading it now, the one moment
+        // nothing is overriding height, is what stops that reveal being
+        // read as a fresh resize against a stale number and re-animated
+        // backwards to a target already behind it.
+        lastHeight = node.getBoundingClientRect().height;
+      });
+  });
+  observer.observe(node);
+
+  return {
+    destroy() {
+      observer.disconnect();
+      current?.cancel();
+    }
+  };
+};

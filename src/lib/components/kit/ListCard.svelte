@@ -25,6 +25,6 @@
   } = $props();
 </script>
 
-<div class="kit-list" data-list-card {...roleAttrs(role)}>
+<div class="kit-list" data-kit-surface data-list-card {...roleAttrs(role)}>
   {@render children()}
 </div>

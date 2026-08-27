@@ -28,10 +28,12 @@
   import EntryCard from '$lib/components/EntryCard.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -100,7 +102,11 @@
      nothing to attach it to before that first save. */
   let photosQuery = liveQuery(['tryout'], (j) => (isNew ? Promise.resolve([]) : j.tryouts.getPhotos(tryoutId)));
   let photos = $derived(photosQuery.value ?? []);
-  let photoDeleteTarget = $state<TryoutPhoto | null>(null);
+  const photoRecord = recordEditor<TryoutPhoto>({
+    remove: (id) => journal.tryouts.deletePhoto(id),
+    findById: (id) => photos.find((p) => p.id === id)
+  });
+  let photoDeleteTarget = $derived(photoRecord.deleteTarget);
 
   async function storePhoto(photo: NormalizedPhoto | null) {
     if (isNew || !photo) return;
@@ -118,23 +124,38 @@
     storePhoto
   );
 
-  async function deletePhoto() {
-    if (!photoDeleteTarget) return;
-    const id = photoDeleteTarget.id;
-    photoDeleteTarget = null;
-    await journal.tryouts.deletePhoto(id);
-  }
-
   const HISTORY_LIMIT = 50;
   let feelingQuery = liveQuery(['feltSense'], (j) => (isNew ? Promise.resolve([]) : j.feltSense.forTryout(tryoutId)));
   let feeling = $derived(feelingQuery.value ?? []);
 
-  let entriesQuery = liveQuery(['entry'], (j) =>
-    isNew || !existing
-      ? Promise.resolve([])
-      : j.entries.searchEntries('', [], { startEpochDay: existing.startEpochDay, endEpochDay: existing.endEpochDay })
-  );
-  let entriesInRange = $derived(entriesQuery.value ?? []);
+  /* Phase 5 performance ticket 07/08: an open-ended tryout's range has no
+     upper bound, so a page limit is the only thing that keeps this bounded.
+     Newest first, same as the query's own ORDER BY - "load more" reaches
+     further back, the same shape search/+page.svelte already uses. */
+  const PAGE = 30;
+  let pages = $state(1);
+
+  /* Reset by anything that changes what range is being read, the same
+     reason search/+page.svelte's own `pages` reset gives: page three of
+     one range is not page three of a different one, and leaving it where
+     it was after an edit would silently ask for pages*PAGE entries in what
+     might now be a much smaller range. */
+  $effect(() => {
+    existing?.startEpochDay;
+    existing?.endEpochDay;
+    pages = 1;
+  });
+
+  let entriesQuery = liveQuery(['entry'], (j) => {
+    if (isNew || !existing) return Promise.resolve({ hits: [], total: 0 });
+    const range = { startEpochDay: existing.startEpochDay, endEpochDay: existing.endEpochDay };
+    return Promise.all([
+      j.entries.searchEntries('', [], range, PAGE * pages),
+      j.entries.countSearchMatches('', [], range)
+    ]).then(([hits, total]) => ({ hits, total }));
+  });
+  let entriesInRange = $derived(entriesQuery.value?.hits ?? []);
+  let entriesRemaining = $derived(Math.max(0, (entriesQuery.value?.total ?? 0) - entriesInRange.length));
 
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
@@ -148,13 +169,11 @@
     feelingNote = '';
   }
 
-  let feelingDeleteTarget = $state<FeltSenseEntry | null>(null);
-  async function deleteFeeling() {
-    if (!feelingDeleteTarget) return;
-    const id = feelingDeleteTarget.id;
-    feelingDeleteTarget = null;
-    await journal.feltSense.remove(id);
-  }
+  const feelingRecord = recordEditor<FeltSenseEntry>({
+    remove: (id) => journal.feltSense.remove(id),
+    findById: (id) => feeling.find((f) => f.id === id)
+  });
+  let feelingDeleteTarget = $derived(feelingRecord.deleteTarget);
   /* One example per kind. Name and pronouns had their own and the other four
      shared "a short name for it", so moving between Style, Garment, Makeup
      and Presentation step changed the highlight and nothing else - which
@@ -247,20 +266,18 @@
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
           {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
-            <div class="kit-row is-static" data-feeling={f.id}>
-              <span class="kit-row-text">
-                <span class="kit-row-title">{dayLabel(f.epochDay)}</span>
-                {#if f.note}<span class="kit-row-sub">{f.note}</span>{/if}
-              </span>
-              <button
-                class="kit-row-act press"
-                data-delete-feeling={f.id}
-                aria-label={m.tryout_feeling_delete_sheet()}
-                onclick={() => (feelingDeleteTarget = f)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
+            <ListRow
+              static
+              data-feeling={f.id}
+              title={dayLabel(f.epochDay)}
+              subtitle={f.note}
+              action={{
+                icon: 'trash',
+                label: m.tryout_feeling_delete_sheet(),
+                onclick: () => feelingRecord.askToDelete(f),
+                attrs: { 'data-delete-feeling': f.id }
+              }}
+            />
           {/each}
         </ListCard>
       </div>
@@ -290,18 +307,18 @@
       <div style="margin-bottom:var(--space-3)">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
           {#each photos as p (p.id)}
-            <div class="kit-row is-static" data-tryout-photo={p.id}>
-              <PhotoThumb photo={p} size={48} />
-              <span class="kit-row-text"></span>
-              <button
-                class="kit-row-act press"
-                data-delete-tryout-photo={p.id}
-                aria-label={m.tryout_photo_delete_sheet()}
-                onclick={() => (photoDeleteTarget = p)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
+            <ListRow
+              static
+              data-tryout-photo={p.id}
+              action={{
+                icon: 'trash',
+                label: m.tryout_photo_delete_sheet(),
+                onclick: () => photoRecord.askToDelete(p),
+                attrs: { 'data-delete-tryout-photo': p.id }
+              }}
+            >
+              {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
+            </ListRow>
           {/each}
         </ListCard>
       </div>
@@ -325,6 +342,11 @@
         {#each entriesInRange as e (e.id)}
           <EntryCard entry={e} />
         {/each}
+        {#if entriesRemaining > 0}
+          <button class="btn btn-soft search-more" data-tryout-entries-more onclick={() => (pages += 1)}>
+            <span>{m.search_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
+          </button>
+        {/if}
       </div>
     {:else}
       <div class="screen-part">
@@ -339,27 +361,29 @@
     {/if}
   {/if}
 
-  <Sheet open={feelingDeleteTarget !== null} title={m.tryout_feeling_delete_sheet()} onClose={() => (feelingDeleteTarget = null)}>
-    {#if feelingDeleteTarget}
-      <h3>{m.tryout_feeling_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.tryout_feeling_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-feeling onclick={deleteFeeling}><span>{m.tryout_feeling_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (feelingDeleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={feelingDeleteTarget !== null}
+    title={m.tryout_feeling_delete_sheet()}
+    question={m.tryout_feeling_delete_q()}
+    hint={m.tryout_feeling_delete_hint()}
+    confirmLabel={m.tryout_feeling_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-feeling': '' }}
+    onConfirm={feelingRecord.confirmDelete}
+    onCancel={feelingRecord.cancelDelete}
+  />
 
-  <Sheet open={photoDeleteTarget !== null} title={m.tryout_photo_delete_sheet()} onClose={() => (photoDeleteTarget = null)}>
-    {#if photoDeleteTarget}
-      <h3>{m.tryout_photo_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.tryout_photo_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-tryout-photo onclick={deletePhoto}><span>{m.tryout_photo_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (photoDeleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={photoDeleteTarget !== null}
+    title={m.tryout_photo_delete_sheet()}
+    question={m.tryout_photo_delete_q()}
+    hint={m.tryout_photo_delete_hint()}
+    confirmLabel={m.tryout_photo_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-tryout-photo': '' }}
+    onConfirm={photoRecord.confirmDelete}
+    onCancel={photoRecord.cancelDelete}
+  />
 
   <PhotoAlignmentReview
     photo={tryoutPhotoReview.photo}

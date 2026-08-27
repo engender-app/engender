@@ -5,9 +5,15 @@
    rewriting after every fire, reboot and timezone change, and would shift
    a 20:00 reminder by an hour across a DST boundary.
 
-   nextOccurrence() is the one function the editor's "Next: ..." preview
-   and the notification scheduler share; that is the only way the two stay
-   in agreement. */
+   nextOccurrence() answers one question - when does this rule fire next,
+   strictly after now - and the editor's "Next: ..." preview is its only
+   caller. What decides when a notification actually fires is
+   ReminderPlanner.nextReminder in Java, which cannot import this file and
+   reimplements the same arithmetic. The two are held to the same answers by
+   src/lib/android/fixtures/reminder-rule.json, which both suites iterate
+   (ADR-0028's shape). Editing the rule here without adding the case there
+   leaves the two free to drift, which is how they came to disagree about an
+   elapsed one-off with both suites green. */
 
 import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay';
 
@@ -49,13 +55,14 @@ function occurrenceOn(epochDay: number, time: string): Date {
   return new Date(timestampAtLocalTime(epochDay, time));
 }
 
-/** When the rule fires next, strictly after `now` - except for a one-off,
-    which is its own concrete moment whether or not it has passed; the
-    caller decides what an elapsed one-off means. */
-export function nextOccurrence(rule: ReminderRule, now: Date): Date {
+/** When the rule fires next, strictly after `now`, or null when it never
+    will again - which only a one-off whose day and time have gone by can be.
+    A recurring rule always has a next one. */
+export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
   if (rule.recurrence === null) {
     if (rule.epochDay == null) throw new Error('one-off reminder has no epochDay');
-    return occurrenceOn(rule.epochDay, rule.time);
+    const at = occurrenceOn(rule.epochDay, rule.time);
+    return at > now ? at : null;
   }
 
   const today = epochDayFromLocalDate(now);

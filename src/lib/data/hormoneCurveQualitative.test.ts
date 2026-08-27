@@ -23,7 +23,6 @@ function episode(over: Partial<RegimenEpisode> = {}): RegimenEpisode {
     interval: 'every day',
     startEpochDay: -1000,
     endEpochDay: null,
-    hidden: false,
     ...over
   };
 }

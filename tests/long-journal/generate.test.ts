@@ -271,6 +271,7 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'tagWord',
       'tagWordEntries',
       'tryouts',
+      'tryoutWideOpenStartEpochDay',
       'voiceRecordings',
       'wearSessions'
     ].sort()

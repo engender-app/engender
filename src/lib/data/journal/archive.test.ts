@@ -44,7 +44,7 @@ async function populated() {
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
   const measurement = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
-  const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' });
+  const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
   const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   const cycleEvent = await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   const journalingPause = await journal.journalingPauses.upsertPause({ startEpochDay: 19500, endEpochDay: 19510 });
@@ -326,9 +326,7 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
   assert.deepEqual(snapshot.journal.measurements, [
     { id: measurement, type: 'waist', epochDay: 20000, value: 79, unit: 'cm' }
   ]);
-  assert.deepEqual(snapshot.journal.tallyEvents, [
-    { id: tally, epochDay: 20000, kind: 'misgendered', context: 'wrong pronoun at the pharmacy' }
-  ]);
+  assert.deepEqual(snapshot.journal.tallyEvents, [{ id: tally, epochDay: 20000, kind: 'misgendered' }]);
   assert.deepEqual(snapshot.journal.sideEffects, [
     { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000 }
   ]);
@@ -363,8 +361,7 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       route: 'im',
       interval: 'every 2 weeks',
       startEpochDay: 19000,
-      endEpochDay: null,
-      hidden: false
+      endEpochDay: null
     }
   ]);
 });
@@ -601,7 +598,7 @@ const CARRIED: Record<string, string[]> = {
   measurement: ['uuid', 'epoch_day', 'type', 'value', 'unit'],
   measurement_type: ['uuid', 'key', 'name', 'is_built_in', 'hidden'],
   size_record: ['uuid', 'epoch_day', 'category', 'size', 'brand', 'fit_note'],
-  tally_event: ['uuid', 'epoch_day', 'kind', 'context'],
+  tally_event: ['uuid', 'epoch_day', 'kind'],
   regimen_episode: [
     'uuid',
     'drug',
@@ -611,8 +608,7 @@ const CARRIED: Record<string, string[]> = {
     'route',
     'interval',
     'start_epoch_day',
-    'end_epoch_day',
-    'hidden'
+    'end_epoch_day'
   ],
   dose_event: [
     'uuid',
@@ -694,12 +690,20 @@ const CARRIED: Record<string, string[]> = {
 /* `id` is this device's rowid and means nothing anywhere else (ADR-0002);
    `updated_at` is written by every area and read by nothing, and an
    archive that carried it would be asserting a fact about another
-   device's clock. `entry.trashed_at` (phase 5 ticket 19) is the third and
-   only column-specific one: trash is out of scope for archives entirely
-   (readEntries filters it out before this ever runs), so the column
-   travelling with the row it never carries would be a column with no
-   purpose on the other end. */
-const LEFT_BEHIND = ['id', 'updated_at', 'trashed_at'];
+   device's clock. `entry.trashed_at` (phase 5 ticket 19) is column-specific:
+   trash is out of scope for archives entirely (readEntries filters it out
+   before this ever runs), so the column travelling with the row it never
+   carries would be a column with no purpose on the other end.
+   `tally_event.context` (register finding 32.4) is the same shape: nothing
+   in the app writes it any more, so it stays in the schema for rows that
+   already have it but never travels for a device that has stopped
+   producing it. `regimen_episode.hidden` is that same shape again: the
+   only control that ever set it is gone (Alicja, 2026-08-27, "get rid of
+   the show/hide progesterone button" - it never did more than add a badge
+   to the row), and every other table's own `hidden` column stays carried
+   as before - this is scoped to `regimen_episode` alone by the per-table
+   CARRIED lists above, not by this flat list. */
+const LEFT_BEHIND = ['id', 'updated_at', 'trashed_at', 'context', 'hidden'];
 
 test('every column in the schema is either carried or deliberately left behind', async () => {
   const { db } = await populated();

@@ -22,6 +22,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Photo } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
+import { watchJournalWrites } from '../journal-busy';
 import type { PhotoFileStore } from './journal';
 import { assertChanged, bool, mintUuid, now } from './support';
 
@@ -171,8 +172,30 @@ export async function photosByMilestone(driver: SqliteDriver): Promise<Map<numbe
    Precondition: nothing may attach a photo while this runs. It reads the
    rows and then lists the files, so a photo whose files landed after the
    read but whose row landed before the list would look like an orphan.
-   Boot is the only caller and runs before any screen can write. */
+
+   Enforced rather than assumed since phase 5 audit ticket 02 took this off
+   boot's critical path: boot is still the only caller, but it no longer runs
+   before any screen can write, so the guard every journal write raises is what
+   the precondition rests on now (watchJournalWrites, journal-busy.ts). A write
+   in flight at any point means this stops where it is and leaves the rest to
+   the next boot - the same outcome its failure path has always had, and the
+   right way round: losing a photo's bytes is not a price worth paying to
+   reclaim a file nothing was reading. */
 export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
+  const writes = watchJournalWrites();
+  try {
+    await sweepUnreferencedFiles(driver, files, writes.sawWrite);
+  } finally {
+    writes.stop();
+  }
+}
+
+async function sweepUnreferencedFiles(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  sawWrite: () => boolean
+): Promise<void> {
+  if (sawWrite()) return;
   const [photoRows, hairPhotoRows, hairRemovalPhotoRows, procedurePhotoRows, tryoutPhotoRows, recordingRows, videoRows] =
     await Promise.all([
       driver.query<{ file_path: string }>('SELECT file_path FROM photo'),
@@ -193,6 +216,9 @@ export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileSt
     ...videoRows.map((row) => row.file_path)
   ]);
   for (const name of await files.list()) {
+    // Asked per file rather than once: a write that starts halfway through
+    // must not have the rest of the listing deleted out from under it.
+    if (sawWrite()) return;
     if (!referenced.has(name)) await files.remove(name);
   }
 }

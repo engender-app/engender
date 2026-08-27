@@ -7,6 +7,8 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import type { Affirmation } from '$lib/data/types';
 
   let language = $state<'en' | 'pl'>(getLocale() === 'pl' ? 'pl' : 'en');
@@ -18,7 +20,12 @@
   let newText = $state('');
   let editTarget = $state<Affirmation | null>(null);
   let editText = $state('');
-  let deleteTarget = $state<Affirmation | null>(null);
+
+  const record = recordEditor<Affirmation>({
+    remove: (id) => journal.affirmations.deleteLine(id),
+    findById: (id) => vocabulary.affirmations.find((a) => a.id === id)
+  });
+  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
@@ -28,7 +35,7 @@
     <h2 class="editor-heading" style="margin-bottom:var(--space-3)">{m.affirmations_builtin_heading()}</h2>
     <div class="managed-tags">
       {#each builtIns as a (a.id)}
-        <div class="managed-tag" class:is-hidden={a.hidden}>
+        <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
           <span class="managed-label">{a.text}</span>
           {#if a.hidden}<span class="muted small">{m.affirmations_hidden()}</span>{/if}
           <span class="managed-actions">
@@ -64,7 +71,7 @@
     {/if}
     <div class="managed-tags">
       {#each customs as a (a.id)}
-        <div class="managed-tag">
+        <div class="rows-divide managed-tag">
           <span class="managed-label">{a.text}</span>
           <span class="managed-actions">
             <button
@@ -81,7 +88,7 @@
               class="icon-btn"
               data-del
               aria-label={m.affirmations_delete_aria({ line: a.text })}
-              onclick={() => (deleteTarget = a)}
+              onclick={() => record.askToDelete(a)}
             >
               <Icon name="trash" size={16} />
             </button>
@@ -131,20 +138,14 @@
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.affirmations_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.affirmations_delete_q()}</h3>
-      <div class="stack-3">
-        <button
-          class="btn btn-danger"
-          data-confirm
-          onclick={() => {
-            journal.affirmations.deleteLine(deleteTarget!.id);
-            deleteTarget = null;
-          }}><span>{m.affirmations_delete_confirm()}</span></button
-        >
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.affirmations_delete_sheet()}
+    question={deleteTarget ? m.affirmations_delete_q() : ''}
+    confirmLabel={m.affirmations_delete_confirm()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm': '' }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 </div>

@@ -25,6 +25,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { journal, onTablesWritten } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { documentChrome } from '$lib/data/prefs/documentChrome';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
@@ -196,6 +197,21 @@
            is noise that buries a real one, and the walkthrough fails the
            whole run on it. */
         await navigation.complete.catch(() => {});
+        /* Before the "new" side is captured, not after: a view transition
+           photographs the incoming screen the instant this callback's own
+           promise resolves, and `afterNavigate` below - the only other
+           caller of restoreScroll - fires as its own separate SvelteKit
+           lifecycle callback with no ordering promised against that
+           capture. Losing the race meant the photograph was always taken
+           at scroll 0, and the real scroll position only snapped in once
+           afterNavigate ran a moment later - on a screen with anything to
+           scroll, the fade-in's last frame and that snap landed close
+           enough together to read as one motion (Alicja, 2026-08-27, on
+           the transition roadmap: "the fade-in jumps a lot of pixels").
+           Restoring here as well as there is not a race fixed by luck -
+           this one is provably before the capture, and afterNavigate's own
+           call becomes a harmless no-op restoring the same value again. */
+        if (navigation.to) restoreScroll(navigation.to.url.pathname);
       });
       void transition.finished
         .catch(() => {})
@@ -222,37 +238,39 @@
   });
   $effect(() => {
     const root = document.documentElement;
-    root.dataset.palette = prefs.palette;
-    root.dataset.moodPreset = prefs.moodPreset;
-    root.dataset.theme = prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : prefs.theme;
-    root.dataset.a11yTextSize = prefs.a11yTextSizeBoost ? 'boost' : 'normal';
-    root.dataset.a11yLegibility = prefs.a11yLegibilityBoost ? 'boost' : 'normal';
-    root.dataset.a11yMotion = prefs.a11yMotionReduce || systemReducedMotion ? 'reduce' : 'normal';
+    /* The eight stamps app.html also writes before first paint, from the
+       rule both adapters are held to case for case
+       (prefs/documentChrome.ts, fixtures/document-chrome.json). This side
+       has the live preferences and the media queries; that side has a
+       mirror in localStorage and the same two queries. */
+    const chrome = documentChrome(prefs, {
+      prefersDark: systemDark,
+      prefersReducedMotion: systemReducedMotion
+    });
+    root.dataset.palette = chrome.palette;
+    root.dataset.moodPreset = chrome.moodPreset;
+    root.dataset.theme = chrome.theme;
+    root.dataset.a11yTextSize = chrome.a11yTextSize;
+    root.dataset.a11yLegibility = chrome.a11yLegibility;
+    root.dataset.a11yMotion = chrome.a11yMotion;
     /* The tab's identity, decided once: a tab called "Notes" next to a trans
        flag is not disguised at all, and the icon is the half of it that
        survives a narrow tab strip, a background tab and the bookmark list.
-       app.html stamps the same icon before first paint, from the same
-       mirrored preference, so a disguised cold start never shows the flag. */
+       The blank is this side's alone - app.html has no notion of a quick
+       exit - so it sits on top of the shared icon rather than inside it. */
     const tab = lockState.blanked
       ? /* Disguised, the quick-exit face is the decoy notes screen (ticket
            30), so the tab says what the page shows; undisguised it stays an
            empty tab over the blank. */
         { title: prefs.disguise ? 'Notes' : 'New tab', icon: 'favicon-notes.svg' }
-      : prefs.disguise
-        ? { title: 'Notes', icon: 'favicon-notes.svg' }
-        : { title: 'enGender', icon: 'favicon.svg' };
+      : { title: prefs.disguise ? 'Notes' : 'enGender', icon: chrome.icon };
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
     /* The installed app's identity (ticket 25). Follows the preference and
        not the blank, because quick exit is a moment and an install is not:
        what a launcher calls this app should change when someone asks for a
        disguise, not for as long as a tab is held blank. */
-    document
-      .querySelector('link[rel="manifest"]')
-      ?.setAttribute(
-        'href',
-        `${assets}/${prefs.disguise ? 'manifest-notes.webmanifest' : 'manifest.webmanifest'}`
-      );
+    document.querySelector('link[rel="manifest"]')?.setAttribute('href', `${assets}/${chrome.manifest}`);
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);

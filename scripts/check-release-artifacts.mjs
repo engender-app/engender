@@ -75,22 +75,20 @@ export function releaseArtifactProblems(input) {
     }
   }
 
+  // AGP does not write an output-metadata.json with version fields for
+  // bundleRelease - only APK variants get one. The APK and the AAB share the
+  // same defaultConfig in the same Gradle invocation, so checking the APK's
+  // versionName/versionCode here covers both artifacts.
   const apkMeta = join(androidBuildDir, 'outputs/apk/release/output-metadata.json');
-  const aabMeta = join(androidBuildDir, 'outputs/bundle/release/output-metadata.json');
-  for (const [label, path] of [
-    ['APK', apkMeta],
-    ['AAB', aabMeta]
-  ]) {
-    if (!existsSync(path)) {
-      problems.push(`Missing ${label} output metadata: ${path}`);
-      continue;
-    }
-    const parsed = JSON.parse(readFileSync(path, 'utf8'));
+  if (!existsSync(apkMeta)) {
+    problems.push(`Missing APK output metadata: ${apkMeta}`);
+  } else {
+    const parsed = JSON.parse(readFileSync(apkMeta, 'utf8'));
     const element = parsed?.elements?.[0];
     const gotName = String(parsed?.versionName ?? element?.versionName ?? '');
     const gotCode = Number(parsed?.versionCode ?? element?.versionCode ?? -1);
-    if (gotName !== version) problems.push(`${label} versionName is ${gotName}, expected ${version}`);
-    if (gotCode !== versionCode) problems.push(`${label} versionCode is ${gotCode}, expected ${versionCode}`);
+    if (gotName !== version) problems.push(`APK versionName is ${gotName}, expected ${version}`);
+    if (gotCode !== versionCode) problems.push(`APK versionCode is ${gotCode}, expected ${versionCode}`);
   }
 
   return problems;
@@ -145,7 +143,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     problems.push('jarsigner is not available on PATH');
   } else {
     try {
-      run('jarsigner', ['-verify', '-strict', aab]);
+      // No -strict: Android signing certs are normally self-signed with no CA
+      // chain, and an AAB reads differently via JarFile and JarInputStream by
+      // construction. -strict turns both of those expected traits into a
+      // failure on every legitimately signed AAB, not just a broken one.
+      // jarsigner still exits non-zero on an actually missing or bad signature.
+      run('jarsigner', ['-verify', aab]);
     } catch {
       problems.push(`AAB signature verification failed: ${aab}`);
     }

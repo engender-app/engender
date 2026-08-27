@@ -294,6 +294,29 @@
 
     <ListCard>
       <div class="kit-row" style="cursor:default">
+        <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
+          <span class="kit-row-sub">{m.settings_measurement_unit_sub()}</span>
+        </span>
+        <span class="kit-row-trail">
+          <Segmented
+            name={m.settings_measurement_unit_title()}
+            key="measurement-unit"
+            compact
+            options={[
+              { value: 'cm', label: m.measurement_unit_cm() },
+              { value: 'in', label: m.measurement_unit_in() }
+            ]}
+            value={prefs.measurementUnit}
+            onChange={(v) => (prefs.measurementUnit = v as typeof prefs.measurementUnit)}
+          />
+        </span>
+      </div>
+    </ListCard>
+
+    <ListCard>
+      <div class="kit-row" style="cursor:default">
         <span class="kit-row-ico"><Icon name="tag" size={22} /></span>
         <span class="kit-row-text">
           <span class="kit-row-title">{m.tag_groups()}</span>

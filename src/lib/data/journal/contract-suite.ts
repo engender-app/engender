@@ -23,7 +23,7 @@
 import { foldText } from '../fold.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
 import { openPreferences } from '../prefs/preferences.ts';
-import { LATEST_SCHEMA_VERSION } from '../sqlite/migrations.ts';
+import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
 import { thumbFileName } from '../photos/names.ts';
 import type { Journal, PhotoFileStore } from './journal.ts';
 import { openJournal } from './journal.ts';

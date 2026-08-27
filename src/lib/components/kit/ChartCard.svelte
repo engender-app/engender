@@ -35,7 +35,7 @@
   } = $props();
 </script>
 
-<section class="kit-chart" data-chart-card={kind} {...roleAttrs(role)}>
+<section class="kit-chart" data-kit-surface data-chart-card={kind} {...roleAttrs(role)}>
   <div class="kit-chart-head">
     <h3>{heading}</h3>
     {#if control}{@render control()}{/if}

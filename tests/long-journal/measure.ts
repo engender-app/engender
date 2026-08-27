@@ -21,11 +21,13 @@ import { dateInputValueFromEpochDay } from '../../src/lib/data/epochDay.ts';
 import { PREFERENCE_DEFAULTS } from '../../src/lib/data/prefs/catalogue.ts';
 import { normalizePhoto } from '../../src/lib/data/photos/normalize.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
+import { readThumbnail, setPhotoFiles } from '../../src/lib/stores/photoFiles.ts';
 import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
 import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
 import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
 import { hairAnchorEpochDay } from '../../src/lib/data/hairAnchor.ts';
 import { expectedSlots, adherence } from '../../src/lib/data/doseSchedule.ts';
+import { CURVE_DRUGS } from '../../src/lib/data/hormoneDrug.ts';
 import type { LongJournalSummary } from './generate.ts';
 
 export interface Measurement {
@@ -38,6 +40,14 @@ export interface Measurement {
       something. */
   detail: string;
 }
+
+/** The cold-start measurements the probe takes around boot() itself, before
+    it hands the journal to the harness below (phase 5 audit ticket 02). They
+    live in the probe rather than here because they need a real driver over
+    real storage - what boot costs is the driver opening, not a fake one being
+    constructed - and they are named here so budgets.json can be checked
+    against the whole set of names a run produces (measure.test.ts). */
+export const STARTUP_MEASUREMENT_NAMES = ['boot-ready', 'boot-purge', 'boot-sweep'] as const;
 
 export interface MeasureOptions {
   /** As an epoch day, never from a clock (ADR-0001). */
@@ -67,6 +77,16 @@ const INSIGHT_DIMENSION = 'femininity';
     region shares (bodyRegionTrend's `region` is a plain WHERE parameter,
     not a branch). Any of the fixture's five would do. */
 const BENCHMARK_REGION = 'chest';
+
+/** The analyte the labs measurement reads: the fixture's most-logged one,
+    carried in two unit spellings on purpose (generate.ts), so getResults and
+    getSeries both do real work. */
+const LABS_ANALYTE = 'Estradiol';
+
+/** The measurement type the measurements-screen measurement reads: the one
+    generate.ts also forces two 'in' readings onto, so getSeries splits into
+    two unit series rather than one. */
+const MEASUREMENT_TYPE = 'waist';
 
 /** The password an export is packed under here. Real Argon2id parameters
     ride with it (pack.ts's default), because the KDF is part of what an
@@ -227,33 +247,31 @@ export async function measureLongJournal(
 
   // --- photo grid ---------------------------------------------------------
   // The rows first, which is one query however many photos there are, and
-  // then the bytes, which is one read per thumbnail through the encrypting
-  // store. The grid decodes thumbnails only (PhotoThumb), so this reads
-  // thumbnails only.
+  // then the bytes, through the same queue the screen reads through
+  // (stores/photoFiles.ts). It used to call files.readMany in batches of 32
+  // of its own, which was the fast path no screen could reach - a 65 ms
+  // number standing in for a screen that read one thumbnail at a time.
+  //
+  // Still an upper bound on the screen rather than a picture of it: the
+  // grid gates each tile on the viewport now (PhotoThumb), so it asks for
+  // a screenful - about twenty - where this asks for every photo in the
+  // journal, and the queue sends whatever it was asked for as one
+  // readMany. What the two share is the path, not the width of it.
   let photos!: Awaited<ReturnType<Journal['photos']['inJournal']>>;
   await measure('photo-grid-list', 'photo grid, listing every photo', async () => {
     photos = await journal.photos.inJournal();
     return { result: photos, detail: `${photos.length} photos` };
   });
 
+  setPhotoFiles(files);
   await measure('photo-grid-thumbs', 'photo grid, reading every thumbnail', async () => {
     /* Kept rather than counted. A mounted grid holds decoded thumbnails
        (PhotoThumb), so returning only a byte total would let this
        measurement do less than the screen it claims to represent. */
-    const thumbs: Uint8Array[] = [];
-    const names = photos.flatMap((photo) => (photo.fileName ? [thumbFileName(photo.fileName)] : []));
-    if (files.readMany) {
-      const BATCH_SIZE = 32;
-      for (let i = 0; i < names.length; i += BATCH_SIZE) {
-        const batch = await files.readMany(names.slice(i, i + BATCH_SIZE));
-        for (const thumb of batch) if (thumb) thumbs.push(thumb);
-      }
-    } else {
-      for (const name of names) {
-        const thumb = await files.read(name);
-        if (thumb) thumbs.push(thumb);
-      }
-    }
+    const loaded = await Promise.all(
+      photos.flatMap((photo) => (photo.fileName ? [readThumbnail(photo.fileName)] : []))
+    );
+    const thumbs = loaded.filter((thumb) => thumb !== null);
     const bytes = thumbs.reduce((total, thumb) => total + thumb.length, 0);
     return { result: thumbs, detail: `${thumbs.length} thumbnails, ${mb(bytes)}` };
   });
@@ -306,6 +324,25 @@ export async function measureLongJournal(
     return {
       result: results,
       detail: `${results.filter(Boolean).length} of ${results.length} lookback days clear the bar`
+    };
+  });
+
+  /* On-this-day's own screen (phase 5 UX ticket 23, spec 05) reads
+     `entriesForDay` only for a lookback that already cleared the bar above
+     - but this measures all three unconditionally, the same way
+     `on-this-day-good-day` does, because the screen fires from a
+     notification (phase 4 features ticket 04): whichever day resurfaces is
+     not chosen by this run, so the worst case is that a decade-scale
+     journal makes every one of the three cost something. `entriesForDay`
+     replaced two one-day aggregates (`recap`, `dayAverages`) per candidate;
+     nothing here measures those, because they no longer run. */
+  await measure('on-this-day-entries', 'on-this-day, entries and attachments for each lookback day', async () => {
+    const candidates = onThisDayCandidates(today);
+    const entries = await Promise.all(candidates.map((c) => journal.entries.entriesForDay(c.epochDay)));
+    const photos = entries.reduce((total, day) => total + day.reduce((n, e) => n + e.photos.length, 0), 0);
+    return {
+      result: entries,
+      detail: `${entries.map((day) => day.length).join('+')} entries across the three lookback days, ${photos} photos`
     };
   });
 
@@ -381,6 +418,136 @@ export async function measureLongJournal(
     const slots = expectedSlots(schedule, episode.startEpochDay, from, today);
     const result = adherence(slots, doses, pauses);
     return { result, detail: `${result.rows.length} expected slots, ${result.unmatched.length} unmatched doses` };
+  });
+
+  // --- phase 5 ticket 36 features (ticket 05) ------------------------------
+  // Nine more More-hub areas ticket 36 seeded real content for, surveyed
+  // against their actual data-layer calls and found genuinely uncovered.
+  // sizes, wear and the overlapping-episode fan-out were surveyed too and
+  // found not to need a line here - see ticket 05's Comments for why.
+
+  // Hormone curve (settings/hormone-curve/+page.svelte): the screen's three
+  // concurrent queries at once - the injectable model plus one qualitative
+  // curve per CURVE_DRUGS entry (estradiol, testosterone) - at the screen's
+  // widest window (180 days). Each shares hormoneCurve.ts's own fan-out:
+  // regimen.getEpisodes() (all episodes, every read) and one
+  // labs.getResults(analyte) call per analyte drawn in that model's unit.
+  const curveFrom = today - 179;
+  await measure('hormone-curve', 'hormone curve, injectable plus qualitative models, 180 days', async () => {
+    const [injectable, ...qualitative] = await Promise.all([
+      journal.hormoneCurve.getCurves({ fromEpochDay: curveFrom, toEpochDay: today, fitToOwnLabs: true }),
+      ...CURVE_DRUGS.map((drug) =>
+        journal.qualitativeCurve.getCurves({ drug, fromEpochDay: curveFrom, toEpochDay: today, fitToOwnLabs: true })
+      )
+    ]);
+    const qualCurves = qualitative.reduce((n, q) => n + q.curves.length, 0);
+    const qualPoints = qualitative.reduce((n, q) => n + q.labPoints.length, 0);
+    return {
+      result: [injectable, ...qualitative],
+      detail: `${injectable.curves.length} injectable curves + ${qualCurves} qualitative curves, ${injectable.labPoints.length + qualPoints} lab points`
+    };
+  });
+
+  // Labs (settings/labs/+page.svelte): the screen's own five concurrent
+  // queries for whichever analyte is selected, none date-bounded or LIMITed
+  // (labs.ts:136-179).
+  await measure('labs-series', 'labs screen, one analyte across every query the screen runs', async () => {
+    const [used, offered, mostRecent, results, series] = await Promise.all([
+      journal.labs.getUsedAnalytes(),
+      journal.labs.getAnalytes(),
+      journal.labs.getMostRecentAnalyte(),
+      journal.labs.getResults(LABS_ANALYTE),
+      journal.labs.getSeries(LABS_ANALYTE)
+    ]);
+    return {
+      result: [used, offered, mostRecent, results, series],
+      detail: `${used.length} used analytes, ${results.length} results for ${LABS_ANALYTE} across ${series.length} unit series`
+    };
+  });
+
+  // Measurements (settings/measurements/+page.svelte): getMeasurements and
+  // getSeries for one type, both filtered only on type, no date bound
+  // (measurements.ts:98-110).
+  await measure('measurements-series', 'measurements screen, one type across both queries the screen runs', async () => {
+    const [measurements, series] = await Promise.all([
+      journal.measurements.getMeasurements(MEASUREMENT_TYPE),
+      journal.measurements.getSeries(MEASUREMENT_TYPE)
+    ]);
+    return {
+      result: [measurements, series],
+      detail: `${measurements.length} measurements for ${MEASUREMENT_TYPE} across ${series.length} unit series`
+    };
+  });
+
+  // Hair removal (settings/hair-removal/+page.svelte): getSessions() is a
+  // whole-table read with no LIMIT (hairRemoval.ts:109). generate.ts seeds
+  // this area at a realistic cadence (its own "a year, irregular cadence"
+  // instruction), so the row count stays small on purpose - this watches for
+  // a regression in the query's shape, not a volume no real journal reaches.
+  await measure('hair-removal-sessions', 'hair removal, every session', async () => {
+    const sessions = await journal.hairRemoval.getSessions();
+    return { result: sessions, detail: `${sessions.length} sessions` };
+  });
+
+  // Cycle events (settings/cycle-events/+page.svelte): getCycleEvents()
+  // reads the whole table (cycleEvents.ts:37) even though a ranged variant
+  // already exists (cycleEvents.ts:44) - the screen just doesn't call it,
+  // named rather than fixed (ticket 05's scope).
+  await measure('cycle-events-log', 'cycle events, every event', async () => {
+    const events = await journal.cycleEvents.getCycleEvents();
+    return { result: events, detail: `${events.length} events` };
+  });
+
+  // Side effects (settings/side-effects/+page.svelte): getSideEffects() is
+  // the unbounded overload (sideEffects.ts:62); a ranged one exists
+  // (sideEffects.ts:55) and goes unused, named rather than fixed.
+  await measure('side-effects-log', 'side effects, every entry', async () => {
+    const effects = await journal.sideEffects.getSideEffects();
+    return { result: effects, detail: `${effects.length} side effects` };
+  });
+
+  // Voice (settings/voice/+page.svelte): inJournal() joins voice_recording
+  // against entry with no date bound or LIMIT (voiceRecordings.ts:120-131).
+  await measure('voice-recordings', 'voice recordings, every one in the journal', async () => {
+    const recordings = await journal.voice.inJournal();
+    return { result: recordings, detail: `${recordings.length} recordings` };
+  });
+
+  // Stock (settings/stock/+page.svelte): getProjections(today) reads doses
+  // from the oldest stock entry forward (stock.ts:109-121), then projects
+  // per stock entry over that whole dose array - O(entries x doses) at
+  // decade scale, the strongest candidate this ticket's survey found. Each
+  // projection also runs attributeDrug (regimenEpisode.ts) once per dose,
+  // which is where the fixture's three regimen episodes' overlap-resolution
+  // path actually gets exercised - the only place in this suite that does.
+  await measure('stock-projection', 'stock screen, every drug projected against the whole dose log', async () => {
+    const projections = await journal.stock.getProjections(today);
+    const excluded = projections.reduce((n, p) => n + p.projection.excludedDoses, 0);
+    return {
+      result: projections,
+      detail: `${projections.length} drugs projected, ${excluded} doses excluded as ambiguous between concurrent episodes`
+    };
+  });
+
+  // Tryout detail (settings/tryouts/[id]/+page.svelte): performance ticket 07
+  // found searchEntries('', [], {startEpochDay, endEpochDay}) ran with no
+  // word and no page limit over a tryout's whole date span - 3634ms/3518ms
+  // on Android for the fixture's open-ended tryout, too slow to ship
+  // (Alicja, 2026-08-27). Ticket 08 bounded the real screen's call with
+  // `PAGE * pages` and a "load more" control, the same shape the three
+  // search-* measurements above already use; this measurement now mirrors
+  // that bounded call rather than the unbounded one it used to guard, since
+  // the unbounded shape is exactly what's gone from the app.
+  await measure('tryout-detail-entries', 'tryout detail, one page and the total across its open-ended span', async () => {
+    const range = { startEpochDay: summary.tryoutWideOpenStartEpochDay, endEpochDay: null };
+    const [entries, total] = await Promise.all([
+      journal.entries.searchEntries('', [], range, SEARCH_PAGE),
+      journal.entries.countSearchMatches('', [], range)
+    ]);
+    return {
+      result: [entries, total],
+      detail: `${entries.length} shown of ${total} entries across the tryout's open-ended span`
+    };
   });
 
   // --- write paths -------------------------------------------------------

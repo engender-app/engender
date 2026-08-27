@@ -5,9 +5,10 @@
    it, or leave it alone. journal/stock.ts calls this identically from
    every write that can move a projection - upsertEntry as well as the
    dose-log writes it is asked to react to - which is the only way this
-   avoids two copies of the decision drifting apart, the same reason
-   reminderRule.ts's nextOccurrence() is shared by the editor's preview and
-   the scheduler.
+   avoids two copies of the decision drifting apart. Where two copies do
+   have to exist, as with reminderRule.ts's nextOccurrence() and its Java
+   reimplementation, a shared fixture is what keeps them answering the same
+   way (ADR-0028, and ADR-0010's amendment).
 
    THE HANDOFF. A one-off Reminder legitimately fits an approaching run-out
    - the schema's CHECK requires a concrete epoch_day when recurrence is

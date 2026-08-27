@@ -160,16 +160,27 @@
      surface over a 12px backdrop-filter, the same number doing a different
      job. Phase 5 ticket 18 made the bar an opaque floating plane, so blur
      is now the app's one material and means one thing: the screen behind a
-     sheet is still there and is not what is being read. */
-  --blur-withdraw: 12px;
+     sheet is still there and is not what is being read.
+
+     Retuned from 12px to 6px against register finding 32.15 ("the blur
+     effect looks like shit"): Alicja picked the number with the Withdrawal
+     Blur Tuner artifact, 2026-08-27. */
+  --blur-withdraw: 6px;
 
   /* The tint that rides with the blur. Thinner than --scrim on purpose: the
      blur is doing the withdrawing, so the tint only has to say "not this",
      and a lighter one leaves the palette behind it readable as colour. Where
      the blur cannot happen, --scrim itself is the fallback state - which is
      what the app ships today, so the degraded state is a designed one rather
-     than an accident. */
-  --scrim-withdraw: color-mix(in oklab, var(--scrim) 55%, transparent);
+     than an accident.
+
+     A literal value rather than a mix off --scrim since register finding
+     32.15: the derived tint carried --scrim's per-theme colour into the
+     blur (near-black in light, pure black in dark), which is what read as
+     muddying a dark palette. One neutral grey now, the same in both themes,
+     matching the material's own cap of one scrim, one radius - see
+     --blur-withdraw above for how it was picked. */
+  --scrim-withdraw: rgb(15 15 15 / 0.31);
 
   /* --- Layout --- */
   /* The window insets, read from the platform once and consumed from here
@@ -192,14 +203,6 @@
   --content-max: 640px;      /* centred column at desktop width */
   --rail-width: 220px;       /* desktop navigation rail */
   --bottom-nav-height: 64px;
-  /* The whole app's own frame on the web, past which the page shows
-     (phase 5 ticket 32.11). Room for the rail and the column with a real
-     margin between them and the frame's own edge - the rail (220px) plus
-     the column (680px) is 900px with nothing to spare, which read as the
-     frame and the column fighting for the same edge. 1200px leaves that
-     margin without approaching a width this single-column app would ever
-     ask a reader to read across. */
-  --app-frame-max: 1200px;
 }
 
 html {
