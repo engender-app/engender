@@ -499,6 +499,22 @@ const OPERATIONS: Record<string, { writes: Partial<Record<string, TableName[]>>;
 
     Throws if the journal carries an area, or an operation on one, that this
     module does not classify. */
+/** The tables one classified operation writes, for the one caller that makes
+    the same change from outside the journal handle: boot's trash purge
+    finishes the delete `deleteEntry` starts, over the driver rather than
+    through the wrapper, and still has to invalidate what that write
+    invalidates (phase 5 audit ticket 02).
+
+    Here rather than as a second list at the call site, for this file's own
+    reason: a table added to an operation above must not need a second edit
+    somewhere else to be announced. Throws on an unclassified name, the same
+    way observeWrites does. */
+export function tablesWrittenBy(area: string, operation: string): TableName[] {
+  const tables = OPERATIONS[area]?.writes[operation];
+  if (!tables) throw new Error(`journal.${area}.${operation} is not a classified write`);
+  return tables;
+}
+
 export function observeWrites(journal: Journal, onWrite: (tables: TableName[]) => void): Journal {
   const wrappedJournal: Record<string, unknown> = {
     reconcileBuiltIns: announcing(journal.reconcileBuiltIns.bind(journal), RECONCILE_TABLES, onWrite)

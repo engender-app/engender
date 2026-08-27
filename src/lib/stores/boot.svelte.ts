@@ -33,6 +33,7 @@ import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { bump } from '../data/live/tableVersions.svelte';
+import { tablesWrittenBy } from '../data/live/writes';
 import { hydrateReference } from '../data/live/reference.svelte';
 import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file-store';
 import { appPrivatePhotoFiles } from '../data/photos/android-file-store';
@@ -561,13 +562,13 @@ function openAndBoot(sqlite: WebSqlite, photoFiles: PhotoFileStore) {
 
        Which is also why the purge announces itself: it now runs with the
        screens already live, so a Trash list somebody is looking at would
-       otherwise keep showing entries the purge has taken. The tables are the
-       ones deleteEntry announces (writes.ts), because that is the delete this
-       is finishing. The sweep needs no announcement - it only ever removes
-       files no row references. */
+       otherwise keep showing entries the purge has taken. It announces
+       deleteEntry's own tables, asked of writes.ts rather than listed again
+       here, because that is the delete this is finishing. The sweep needs no
+       announcement - it only ever removes files no row references. */
     purgeExpiredTrash: async (opened) => {
       const reclaimed = await purgeExpiredTrash(opened, photoFiles);
-      if (reclaimed > 0) bump(['entry', 'photo', 'voiceRecording', 'videoNote']);
+      if (reclaimed > 0) bump(tablesWrittenBy('entries', 'deleteEntry'));
     },
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
     scheduleHousekeeping: whenIdle

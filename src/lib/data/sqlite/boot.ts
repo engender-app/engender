@@ -101,10 +101,17 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
      pass produces anything a screen reads, and both grow with the journal -
      the sweep lists the whole attachment directory, which is 886 files on the
      decade fixture - while the call that unparks every query in the app waits
-     on boot() resolving. The guard is not extended over them: they run outside
-     it today too, for the reason the sweep's own comment gives, and both are
-     written so that an interrupted pass leaves work for the next boot rather
-     than damage.
+     on boot() resolving.
+
+     What changes for them is that they now run with the screens live, so each
+     one takes the write watch its own module documents (watchJournalWrites,
+     ../journal-busy.ts) and gives up rather than delete something a write is
+     in the middle of. The update guard is deliberately not extended over them:
+     it is the same counter the watch reads, so a pass holding it would see its
+     own write and decline every time. What that costs is a service worker
+     activating between the purge's commit and its file removals, which leaves
+     orphan files for the sweep - and what it buys is the pass declining when a
+     person is saving, which is the failure that would cost data.
 
      The order stays: the purge runs first so an entry whose 30 days are up is
      a real delete before the sweep asks what nothing references any more. */
