@@ -2,15 +2,16 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/* Phase 5 security ticket 02, F-04: the saved backup password is decrypted
-   with a Keystore key that needs no authentication, because the scheduler
-   has to pack a backup with nobody watching. That freedom is the
-   scheduler's alone, and the thing keeping it there is that no screen ever
-   asks for the password - a screen only ever sets one, clears one, or asks
-   status() whether one exists.
+/* Phase 5 security ticket 02, F-04. Why the one call that reads the saved
+   backup password is not behind a prompt is written out on
+   AutoExportPlugin.passwordForScheduledBackup; what this file asserts is
+   the fact that decision rests on, which is that the scheduler is the only
+   thing reading it.
 
-   Asserted as absence, which is the one thing a grep over source can prove
-   without going false-green: a call that is not written cannot be inert. */
+   Asserted as absence, and by the bare name rather than by the call: a
+   destructured alias reads the password with no `androidAutoExport.`
+   anywhere near it, and that is exactly the shape a grep for the call
+   would wave through. */
 
 const root = new URL('../', import.meta.url);
 const PASSWORD_CALL = 'passwordForScheduledBackup';
@@ -26,11 +27,18 @@ const read = (path: string) => readFileSync(fileURLToPath(new URL(path, root)), 
 
 describe('the saved backup password', () => {
   it('is read by the scheduler and by nothing else', () => {
-    const callers = [...sourceFiles('src/lib/'), ...sourceFiles('src/routes/')]
-      .filter((path) => !path.includes('/paraglide/'))
-      .filter((path) => read(path).includes(`androidAutoExport.${PASSWORD_CALL}`));
+    /* The bridge declares the method and this file names it, so both are
+       expected. Everything else that so much as spells it is a reader. */
+    const declared = ['src/lib/data/archive/android-auto-export-bridge.ts'];
 
-    expect(callers).toEqual(['src/lib/data/archive/auto-export-scheduler.ts']);
+    const readers = [...sourceFiles('src/lib/'), ...sourceFiles('src/routes/')]
+      .filter((path) => !path.includes('/paraglide/'))
+      // A mock of the bridge names the method without reading a password.
+      .filter((path) => !path.endsWith('.test.ts'))
+      .filter((path) => !declared.includes(path))
+      .filter((path) => read(path).includes(PASSWORD_CALL));
+
+    expect(readers).toEqual(['src/lib/data/archive/auto-export-scheduler.ts']);
   });
 
   it('leaves the export screen able to say whether one is saved, without one', () => {
