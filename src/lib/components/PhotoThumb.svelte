@@ -1,3 +1,72 @@
+<script module lang="ts">
+  /* One observer for every tile on the page, not one observer each.
+
+     A browser delivers all of an observer's entries in a single callback,
+     so a screenful of tiles crossing the margin together becomes one
+     state flush and, downstream of that, one batched read in
+     photoFiles.ts. Separate observers get separate callbacks with a
+     microtask checkpoint between them, and the queue would drain once per
+     tile - which is the batching this ticket added, undone.
+
+     It lives on PhotoThumb rather than on the photo grid because a tile
+     is what knows it is about to read: the timeline, the milestone list
+     and the compare view would each need their own copy otherwise, and
+     the implicit root already accounts for whichever ancestor is doing
+     the scrolling.
+
+     The margin is roughly a screenful, so scrolling arrives at a loaded
+     tile rather than at a placeholder that then fills in - and it is why
+     the root has to be the element that scrolls rather than the implicit
+     viewport. A margin only widens the root's own rectangle; an ancestor
+     that clips still clips at its real edge, so with the app shell
+     scrolling (.app-main, app.css) the implicit root loaded a tile exactly
+     as it appeared and the margin bought nothing. Found by walking up to
+     the first scrollable ancestor rather than by naming the shell, so a
+     tile in a probe page or a scrolling sheet gets the right one too. */
+  const watchers = new Map<Element, (near: boolean) => void>();
+  const observers = new Map<Element | null, { observer: IntersectionObserver; watching: number }>();
+
+  function scrollRoot(target: Element): Element | null {
+    for (let node = target.parentElement; node; node = node.parentElement) {
+      const overflow = getComputedStyle(node).overflowY;
+      if (overflow === 'auto' || overflow === 'scroll') return node;
+    }
+    // Nothing in between scrolls, so the viewport is the root.
+    return null;
+  }
+
+  function watchViewport(target: Element, onChange: (near: boolean) => void): () => void {
+    const root = scrollRoot(target);
+    let entry = observers.get(root);
+    if (!entry) {
+      entry = {
+        observer: new IntersectionObserver(
+          (entries) => {
+            for (const seen of entries) watchers.get(seen.target)?.(seen.isIntersecting);
+          },
+          { root, rootMargin: '400px' }
+        ),
+        watching: 0
+      };
+      observers.set(root, entry);
+    }
+    entry.watching += 1;
+    watchers.set(target, onChange);
+    entry.observer.observe(target);
+    return () => {
+      watchers.delete(target);
+      entry.observer.unobserve(target);
+      entry.watching -= 1;
+      // Or a scroll container that has gone stays held for the rest of the
+      // session by the observer that was watching inside it.
+      if (entry.watching === 0) {
+        entry.observer.disconnect();
+        observers.delete(root);
+      }
+    };
+  }
+</script>
+
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import Icon from './Icon.svelte';
@@ -31,26 +100,58 @@
   } = $props();
 
   let url = $state<string | null>(null);
+  let element = $state<HTMLElement | null>(null);
+  let near = $state(false);
+
+  /* A tile reads nothing until it comes near the screen, and lets its
+     bytes go once it is well past (phase 5 audit ticket 03, finding 04).
+     A grid of hundreds of photos otherwise reads and decodes every one of
+     them on mount and holds a blob URL and a decoded thumbnail for each,
+     so the screen costs what the journal holds instead of what is on it. */
+  $effect(() => {
+    const target = element;
+    if (!target) return;
+    // No observer means no way to tell: draw everything, as before.
+    if (typeof IntersectionObserver === 'undefined') {
+      near = true;
+      return;
+    }
+    return watchViewport(target, (isNear) => {
+      near = isNear;
+    });
+  });
 
   /* Loading bytes and holding an object URL is exactly the external
      resource an effect is for: the URL has to be revoked when this
      unmounts or the photo changes, or a scrolling list leaks one blob per
-     tile. */
+     tile. Scrolling far away runs the same teardown, which is what keeps
+     a grid's memory to what is on screen rather than to what has been. */
   $effect(() => {
     const given = bytes;
     const fileName = photo.fileName;
+    const visible = near;
     url = null;
-    if (!given && !fileName) return;
+    // Given bytes are already in hand - a photo the editor just picked,
+    // which has no stored file to read and nothing to gate.
+    if (!given && !(fileName && visible)) return;
 
     let objectUrl: string | null = null;
     let stale = false;
 
     const thumbnail = given ? Promise.resolve(given) : readThumbnail(fileName!);
-    thumbnail.then((loaded) => {
-      if (stale || !loaded) return;
-      objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], { type: 'image/jpeg' }));
-      url = objectUrl;
-    });
+    thumbnail.then(
+      (loaded) => {
+        if (stale || !loaded) return;
+        objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], { type: 'image/jpeg' }));
+        url = objectUrl;
+      },
+      // A file that was tampered with or written under another key throws
+      // out of the store rather than reading as null. The placeholder is
+      // already what this tile is showing, so there is nothing to do but
+      // leave it up - and swallowing it here is what keeps that from
+      // surfacing as an unhandled rejection.
+      () => {}
+    );
 
     return () => {
       stale = true;
@@ -69,6 +170,7 @@
 </script>
 
 <div
+  bind:this={element}
   class="photo-thumb"
   style:width="{size}px"
   style:height="{size}px"
