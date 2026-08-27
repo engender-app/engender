@@ -47,6 +47,28 @@
 
 import { readFileSync } from 'node:fs';
 
+const FLOOR_MS = 200;
+const BUDGET_MULTIPLE = 5;
+
+/**
+ * The gate's rule, decided here before any run so a threshold never gets
+ * chosen after seeing the numbers: `min(max(5x baseline, 200ms floor),
+ * target)`. The floor absorbs the run-to-run wobble a small measurement
+ * shows; the target ceiling means a baseline near zero can never leave the
+ * gate as loose as the 200ms floor alone would - a budget above what a
+ * person can wait for is not a budget. `targetMs` is `null` for a
+ * measurement `--record` has not carried a target for yet, in which case
+ * the floor is the whole rule.
+ *
+ * @param {number} baselineMs
+ * @param {number | null} targetMs
+ * @returns {number}
+ */
+export function budgetFor(baselineMs, targetMs) {
+  const floored = Math.max(baselineMs * BUDGET_MULTIPLE, FLOOR_MS);
+  return targetMs == null ? floored : Math.min(floored, targetMs);
+}
+
 /**
  * @typedef {object} Budget
  * @property {string} what
