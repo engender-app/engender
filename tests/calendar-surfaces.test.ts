@@ -128,7 +128,7 @@ describe('the heat map', () => {
     /* ADR-0012 and F15: neither end of binary <-> nonbinary is the better
        one. The words come from the vocabulary's own legend for whichever
        metric is active, so the calendar cannot invent a pair. */
-    expect(heatMap).toContain('vocabulary.metric');
+    expect(heatMap).toContain('vocabulary.metricLegend');
     expect(heatMap).toContain('legend.low');
     expect(heatMap).toContain('legend.high');
     for (const word of ['worst', 'best', 'good', 'bad', 'better', 'worse']) {

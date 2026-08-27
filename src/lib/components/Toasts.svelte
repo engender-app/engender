@@ -10,7 +10,7 @@
     role="status"
     data-toast
     data-toast-kind={t.kind}
-    transition:fly={{ y: motionDistance('--motion-distance-sm', 10), duration: motionDuration('--dur-med', 240) }}
+    transition:fly={{ y: motionDistance('--motion-distance-sm'), duration: motionDuration('--dur-med') }}
   >
     <span>{t.message}</span>
     {#if t.actionLabel}

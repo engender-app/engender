@@ -89,7 +89,7 @@
   $effect(() => {
     const next = target;
     const previous = untrack(() => shown);
-    const duration = motionDuration('--dur-slow', 380);
+    const duration = motionDuration('--dur-slow');
 
     // Nothing to travel from on a first draw, and nothing to travel with
     // under reduced motion: arrive at the dataset instead. The first draw's

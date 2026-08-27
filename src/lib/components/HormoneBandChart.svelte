@@ -132,13 +132,17 @@
     {#if interactive}
       <!-- Hit areas over the results, sized the way LineChart sizes its own:
            wider than the mark and narrower than 44px, because at 44px
-           neighbouring draws would steal each other's taps. -->
+           neighbouring draws would steal each other's taps.
+           data-no-press (ticket 15): fill: transparent below, so there is
+           nothing visible here for a press to move; the selected mark is
+           what answers, drawn separately above. -->
       {#each chart.marks as mark, i (i)}<circle
           cx={mark.cx}
           cy={mark.cy}
           r="13"
           class="chart-hit"
           role="button"
+          data-no-press
           tabindex="0"
           aria-label={pointLabel?.(i)}
           aria-pressed={i === selected}

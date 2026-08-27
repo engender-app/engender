@@ -28,15 +28,13 @@
   import {
     calendarDuration,
     localDateFromEpochDay,
-    ongoingWindowRange,
     previousCalendarMonthRange,
     previousCalendarYearRange,
-    RANGE_PRESETS,
     todayEpochDay
   } from '$lib/data/epochDay';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { isPausedOn } from '$lib/data/journalingPause';
-  import { MOOD_RANGE } from '$lib/data/metricRange';
   import { atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
   import { nativeValue, signedValue, tagInsightRows } from '$lib/data/wrappedDisplay';
@@ -52,7 +50,6 @@
   import BarRows from '$lib/components/kit/BarRows.svelte';
   import type { BarRow } from '$lib/components/kit/barRow';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
-  import { metricPickerOptions } from '$lib/components/kit/chartPickerOptions';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Distribution from '$lib/components/kit/Distribution.svelte';
   import PairedDots from '$lib/components/kit/PairedDots.svelte';
@@ -65,7 +62,7 @@
   import type { CorrelationCard } from '$lib/data/correlationCards';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
-  const RANGES = RANGE_PRESETS;
+  const RANGES = [7, 14, 30, 90, 180, 365];
   /** How many entries the sheet behind a tag insight lists. */
   const INSIGHT_ENTRIES = 20;
   /** How many tags the insight chart draws. Bars, not rows: past a handful
@@ -99,7 +96,7 @@
      ends, so "7 days" is today and the six before it - and read on recompute
      rather than captured, so a session open across midnight moves on. */
   let today = $derived(todayEpochDay());
-  let from = $derived(ongoingWindowRange(today, range).start);
+  let from = $derived(today - range + 1);
 
   /* The journey anchor (phase 5 ticket 25, ADR-0010): recomputed on every
      render from the anchor's own date, nothing cached - so switching or
@@ -108,9 +105,12 @@
   let anchor = $derived(vocabulary.journeyAnchor);
   let anchorDuration = $derived(anchor ? fmtDuration(calendarDuration(anchor.epochDay, today)) : null);
 
-  let metrics = $derived(vocabulary.metric.options);
-  let metricOptions = $derived(metricPickerOptions(metrics));
-  let shown = $derived(vocabulary.metric);
+  let metrics = $derived([
+    { key: 'mood', name: m.mood(), min: 1, max: 5 },
+    ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max }))
+  ]);
+  let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
+  let shown = $derived(metrics.find((mt) => mt.key === vocabulary.activeMetric) ?? metrics[0]);
 
   let streakQuery = liveQuery((j) => j.stats.streak(today));
   let streak = $derived(streakQuery.value ?? 0);
@@ -137,7 +137,7 @@
   let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
   let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
 
-  let insightsQuery = liveList((j) => j.stats.tagInsights(shown.key, from, today));
+  let insightsQuery = liveList((j) => j.stats.tagInsights(vocabulary.activeMetric, from, today));
   let insights = $derived(insightsQuery.rows);
 
   let lastMonth = $derived(previousCalendarMonthRange(today));
@@ -157,7 +157,10 @@
      native, which is the only honest way to put mood's 1-to-5 and a
      dimension's 0-to-100 on one card (../lib/data/statsCharts.ts). */
   let scaleRows = $derived<BarRow[]>(
-    metricStandings(metrics, seriesFor).map((standing) => {
+    metricStandings(
+      metrics.map((mt) => ({ key: mt.key, range: { min: mt.min, max: mt.max } })),
+      seriesFor
+    ).map((standing) => {
       const metric = metrics.find((mt) => mt.key === standing.key);
       return {
         key: standing.key,
@@ -190,7 +193,7 @@
         withoutAvg: insight.withoutAvg,
         delta: insight.withAvg - insight.withoutAvg
       })),
-      shown.key
+      vocabulary.activeMetric
     )
   );
 
@@ -205,7 +208,7 @@
         name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
         note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
         value: fmtNativeValue(shown.key, point.value),
-        amount: (point.value - shown.range.min) / Math.max(shown.range.max - shown.range.min, 1)
+        amount: (point.value - shown.min) / Math.max(shown.max - shown.min, 1)
       }))
   );
 
@@ -264,9 +267,14 @@
      six of them read as busy and as a third copy of the same shape. Each
      row's track is its own metric's range, so a mood card and a dimension
      card need nothing in common to sit next to each other. */
+  const metricBounds = (key: string) => {
+    const dimension = vocabulary.metricDimension(key);
+    return dimension ? { min: dimension.min, max: dimension.max } : { min: 1, max: 5 };
+  };
+
   let correlationRows = $derived<PairedRow[]>(
     correlationCards.map((card) => {
-      const bounds = vocabulary.rangeOf(card.metric);
+      const bounds = metricBounds(card.metric);
       return {
         key: `${card.occurrence.kind}-${card.occurrence.kind === 'tag' ? card.occurrence.id : 'dose'}-${card.metric}`,
         name: occurrenceLabel(card),
@@ -350,7 +358,7 @@
         label={m.stats_day_by_day()}
         value={shown.key}
         options={metricOptions}
-        onPick={vocabulary.metric.select}
+        onPick={(value) => selectMetric(value === 'mood' ? null : value)}
       />
     {/snippet}
     {#if seriesQuery.loading}
@@ -358,8 +366,8 @@
     {:else}
       <AreaChart
         points={plotted.points}
-        min={shown.range.min}
-        max={shown.range.max}
+        min={shown.min}
+        max={shown.max}
         from={fmtDay(from, { day: 'numeric', month: 'short' })}
         to={fmtDay(today, { day: 'numeric', month: 'short' })}
         formatValue={(v) => fmtNativeValue(shown.key, v)}
@@ -446,8 +454,8 @@
       {#snippet rows()}
         <AreaChart
           points={positionPoints(intervalMoodPattern)}
-          min={MOOD_RANGE.min}
-          max={MOOD_RANGE.max}
+          min={1}
+          max={5}
           formatValue={(v) => v.toFixed(1)}
           scrubLabel={positionLabel}
           ariaLabel={m.interval_mood_chart_aria({
@@ -487,8 +495,8 @@
       {#snippet rows(customIntervalPattern)}
         <AreaChart
           points={positionPoints(customIntervalPattern)}
-          min={MOOD_RANGE.min}
-          max={MOOD_RANGE.max}
+          min={1}
+          max={5}
           formatValue={(v) => v.toFixed(1)}
           scrubLabel={positionLabel}
           ariaLabel={m.custom_interval_chart_aria({

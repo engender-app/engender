@@ -17,7 +17,7 @@
      than a link or a button, since neither is what a figure is. */
   import { m } from '$lib/paraglide/messages';
   import { liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
-  import { ongoingWindowRange, todayEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { routeLabel } from '$lib/data/vocabulary/doseLabels';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -34,7 +34,7 @@
   let range = $state(90);
 
   let today = $derived(todayEpochDay());
-  let from = $derived(ongoingWindowRange(today, range).start);
+  let from = $derived(today - range + 1);
 
   /* One read, three lists on it. Each section gates on its own, through the
      one answer rather than through three reads of the same counters. */
