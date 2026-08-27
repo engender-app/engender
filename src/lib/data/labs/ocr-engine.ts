@@ -27,9 +27,19 @@ export function tesseractLabOcrEngine(): LabOcrEngine {
          and there is nothing here that knows which release filled it - a
          repeat ask against a full cache costs a handful of reads.
 
+         Sent to the registration rather than to navigator.serviceWorker
+         .controller, which is null on precisely the visit this matters most:
+         the worker does not claim clients (ADR-0021), so the page that
+         installed it is not controlled by it, and a first visit that opens the
+         scanner would have asked nobody. The registration is reachable from an
+         uncontrolled page.
+
          Nothing is awaited: this is the worker's errand from here, and the
          recognition the person is waiting for does not queue behind it. */
-      navigator.serviceWorker?.controller?.postMessage(CACHE_ON_DEMAND);
+      void navigator.serviceWorker
+        ?.getRegistration()
+        .then((registration) => registration?.active?.postMessage(CACHE_ON_DEMAND))
+        .catch(() => {});
 
       const bytes = new Uint8Array(image);
       const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
