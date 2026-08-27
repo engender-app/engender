@@ -28,11 +28,11 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -116,10 +116,9 @@
      until it is picked. No scale is preselected on purpose: defaulting to
      either one would be the app guessing which pattern the person has, which
      is the assumption ticket 33 exists to remove. */
-  const stageRecord = recordEditor<
-    HairStage,
-    { id?: string; date: string; scale: string | null; stage: string; description: string }
-  >({
+  type StageDraft = { id?: string; date: string; scale: string | null; stage: string; description: string };
+
+  const stageRecord = recordEditor<HairStage, StageDraft>({
     blank: () => ({ date: dateInputValueFromEpochDay(today), scale: null, stage: '', description: '' }),
     fromRecord: (existing) => ({
       id: existing.id,
@@ -141,8 +140,6 @@
     remove: (id) => journal.hairProgress.deleteStage(id),
     findById: (id) => stages.find((s) => s.id === id)
   });
-  let stageEditor = $derived(stageRecord.editor);
-  let stageDeleteTarget = $derived(stageRecord.deleteTarget);
 
   /** Picking a scale clears both the grade and the prose rather than
       carrying either over. The two scales share codes and mean different
@@ -151,18 +148,17 @@
       so clearing it here is what stops a person's own words disappearing
       between the sheet and the save (hairProgress.ts's checkedStaging drops
       it either way). */
-  function pickScale(scale: string) {
-    if (!stageEditor || stageEditor.scale === scale) return;
-    stageEditor.scale = scale;
-    stageEditor.stage = gradesOfScale(scale)[0] ?? '';
-    stageEditor.description = '';
+  function pickScale(draft: StageDraft, scale: string) {
+    if (draft.scale === scale) return;
+    draft.scale = scale;
+    draft.stage = gradesOfScale(scale)[0] ?? '';
+    draft.description = '';
   }
 
   const photoRecord = recordEditor<HairPhoto>({
     remove: (id) => journal.hairProgress.deletePhoto(id),
     findById: (id) => photos.find((p) => p.id === id)
   });
-  let photoDeleteTarget = $derived(photoRecord.deleteTarget);
 
   async function storePhoto(photo: NormalizedPhoto | null) {
     if (!photo) return;
@@ -348,13 +344,23 @@
     {/if}
   </Sheet>
 
-  <Sheet
-    open={stageEditor !== null}
-    title={stageEditor?.id ? m.hair_stage_edit_sheet() : m.hair_stage_new_sheet()}
-    onClose={() => (stageRecord.editor = null)}
+  <RecordSheet
+    record={stageRecord}
+    handle="hair-stage"
+    newTitle={m.hair_stage_new_sheet()}
+    editTitle={m.hair_stage_edit_sheet()}
+    saveLabel={m.hair_stage_save()}
+    deleteLabel={m.hair_stage_delete()}
+    canSave={(draft) => draft.scale !== null}
+    confirm={{
+      title: m.hair_stage_delete_sheet(),
+      question: () => m.hair_stage_delete_q(),
+      hint: () => m.hair_stage_delete_hint(),
+      confirmLabel: m.hair_stage_delete(),
+      cancelLabel: m.keep_it()
+    }}
   >
-    {#if stageEditor}
-      <h3>{stageEditor.id ? m.hair_stage_edit_sheet() : m.hair_stage_new_sheet()}</h3>
+    {#snippet fields(stageEditor)}
       <div class="field">
         <label class="field-label" for="hair-stage-date">{m.hair_stage_date_label()}</label>
         <input class="input" type="date" id="hair-stage-date" name="hair-stage-date" bind:value={stageEditor.date} />
@@ -369,7 +375,7 @@
                 role="radio"
                 aria-checked={stageEditor.scale === scale}
                 data-pick-scale={scale}
-                onclick={() => pickScale(scale)}
+                onclick={() => pickScale(stageEditor, scale)}
               >
                 <span class="kit-row-text">
                   <span class="kit-row-title">{hairScaleName(scale)}</span>
@@ -408,40 +414,19 @@
             </div>
           {/if}
         </div>
-      {/if}
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-hair-stage disabled={!stageEditor.scale} onclick={stageRecord.save}>
-          <span>{m.hair_stage_save()}</span>
-        </button>
-        {#if stageEditor.id}
-          <button class="btn btn-ghost" data-delete-hair-stage onclick={() => stageRecord.askToDelete()}><span>{m.hair_stage_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
+      {/if}    {/snippet}
+  </RecordSheet>
 
-  <ConfirmDeleteSheet
-    open={stageDeleteTarget !== null}
-    title={m.hair_stage_delete_sheet()}
-    question={m.hair_stage_delete_q()}
-    hint={m.hair_stage_delete_hint()}
-    confirmLabel={m.hair_stage_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-hair-stage': '' }}
-    onConfirm={stageRecord.confirmDelete}
-    onCancel={stageRecord.cancelDelete}
-  />
-
-  <ConfirmDeleteSheet
-    open={photoDeleteTarget !== null}
-    title={m.hair_photo_delete_sheet()}
-    question={m.hair_photo_delete_q()}
-    hint={m.hair_photo_delete_hint()}
-    confirmLabel={m.hair_photo_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-hair-photo': '' }}
-    onConfirm={photoRecord.confirmDelete}
-    onCancel={photoRecord.cancelDelete}
+  <RecordSheet
+    record={photoRecord}
+    handle="hair-photo"
+    confirm={{
+      title: m.hair_photo_delete_sheet(),
+      question: () => m.hair_photo_delete_q(),
+      hint: () => m.hair_photo_delete_hint(),
+      confirmLabel: m.hair_photo_delete(),
+      cancelLabel: m.keep_it()
+    }}
   />
 
   <PhotoAlignmentReview

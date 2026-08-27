@@ -39,12 +39,12 @@
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -117,8 +117,6 @@
     },
     findById: (id) => procedures.find((p) => p.id === id)
   });
-  let editor = $derived(record.editor);
-  let deleteTarget = $derived(record.deleteTarget);
   let consultSheet = $state(false);
   let consultDate = $state('');
   let notesDraft = $state('');
@@ -128,14 +126,12 @@
     remove: (id) => journal.procedures.deletePhoto(id),
     findById: (id) => photos.find((p) => p.id === id)
   });
-  let photoDeleteTarget = $derived(photoRecord.deleteTarget);
   let itemSheet = $state(false);
   let itemText = $state('');
   const itemRecord = recordEditor<ChecklistItem>({
     remove: (id) => journal.checklists.deleteItem(id),
     findById: (id) => checklistItems.find((i) => i.id === id)
   });
-  let itemDeleteTarget = $derived(itemRecord.deleteTarget);
 
   function select(procedure: Procedure) {
     selectedId = selectedId === procedure.id ? null : procedure.id;
@@ -411,13 +407,22 @@
     </div>
   {/if}
 
-  <Sheet
-    open={editor !== null}
-    title={editor?.id ? m.surgery_edit_sheet() : m.surgery_new_sheet()}
-    onClose={() => (record.editor = null)}
+  <RecordSheet
+    {record}
+    handle="procedure"
+    newTitle={m.surgery_new_sheet()}
+    editTitle={m.surgery_edit_sheet()}
+    saveLabel={m.surgery_save()}
+    deleteLabel={m.surgery_delete()}
+    confirm={{
+      title: m.surgery_delete_sheet(),
+      question: (procedure) => m.surgery_delete_q({ name: procedure.name }),
+      hint: () => m.surgery_delete_hint(),
+      confirmLabel: m.surgery_delete(),
+      cancelLabel: m.keep_it()
+    }}
   >
-    {#if editor}
-      <h3>{editor.id ? m.surgery_edit_sheet() : m.surgery_new_sheet()}</h3>
+    {#snippet fields(editor)}
       <div class="field">
         <label class="field-label" for="surgery-name">{m.surgery_name_label()}</label>
         <input
@@ -432,26 +437,8 @@
         <label class="field-label" for="surgery-date">{m.surgery_date_label()}</label>
         <input class="input" type="date" id="surgery-date" name="surgery-date" bind:value={editor.date} />
       </div>
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-procedure onclick={record.save}><span>{m.surgery_save()}</span></button>
-        {#if editor.id}
-          <button class="btn btn-ghost" data-delete-procedure onclick={() => record.askToDelete()}><span>{m.surgery_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
-
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.surgery_delete_sheet()}
-    question={deleteTarget ? m.surgery_delete_q({ name: deleteTarget.name }) : ''}
-    hint={m.surgery_delete_hint()}
-    confirmLabel={m.surgery_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-procedure': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
-  />
+    {/snippet}
+  </RecordSheet>
 
   <Sheet open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
     <h3>{m.surgery_consult_sheet()}</h3>
@@ -478,16 +465,16 @@
     </div>
   </Sheet>
 
-  <ConfirmDeleteSheet
-    open={photoDeleteTarget !== null}
-    title={m.surgery_photo_delete_sheet()}
-    question={photoDeleteTarget ? m.surgery_photo_delete_q() : ''}
-    hint={m.surgery_photo_delete_hint()}
-    confirmLabel={m.surgery_photo_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-procedure-photo': '' }}
-    onConfirm={photoRecord.confirmDelete}
-    onCancel={photoRecord.cancelDelete}
+  <RecordSheet
+    record={photoRecord}
+    handle="procedure-photo"
+    confirm={{
+      title: m.surgery_photo_delete_sheet(),
+      question: () => m.surgery_photo_delete_q(),
+      hint: () => m.surgery_photo_delete_hint(),
+      confirmLabel: m.surgery_photo_delete(),
+      cancelLabel: m.keep_it()
+    }}
   />
 
   <Sheet open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
@@ -504,16 +491,16 @@
     <button class="btn btn-primary" data-save-procedure-item onclick={addItem}><span>{m.surgery_checklist_add()}</span></button>
   </Sheet>
 
-  <ConfirmDeleteSheet
-    open={itemDeleteTarget !== null}
-    title={m.surgery_checklist_delete_sheet()}
-    question={itemDeleteTarget ? m.surgery_checklist_delete_q() : ''}
-    hint={itemDeleteTarget ? itemDeleteTarget.content : null}
-    confirmLabel={m.surgery_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-procedure-item': '' }}
-    onConfirm={itemRecord.confirmDelete}
-    onCancel={itemRecord.cancelDelete}
+  <RecordSheet
+    record={itemRecord}
+    handle="procedure-item"
+    confirm={{
+      title: m.surgery_checklist_delete_sheet(),
+      question: () => m.surgery_checklist_delete_q(),
+      hint: (item) => item.content,
+      confirmLabel: m.surgery_delete(),
+      cancelLabel: m.keep_it()
+    }}
   />
 
   <PhotoAlignmentReview

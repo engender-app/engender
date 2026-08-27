@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { recordHandleSlug } from '../src/lib/components/kit/recordHandles.ts';
+
 /* walkthrough-locators.test.ts polices the *shape* of a handle - never a
    CSS class, never bare copy. This polices the other half ADR-0029 names:
    a selector that stops matching does not fail loudly either, so every
@@ -53,7 +55,19 @@ for (const match of source.matchAll(SELECTOR_CALL)) {
    written as a literal attribute name somewhere; an id is usually an `id=`
    attribute but sometimes only a bare string a snippet turns into one
    (routes/compare/+page.svelte's date rows), so any matching quoted
-   literal counts too. */
+   literal counts too.
+
+   The exception is a record sheet's three buttons, whose handles are built
+   from the record's own name (recordHandles.ts, phase 5 audit ticket 09).
+   `data-save-lab` is nowhere in src/ as a literal, but `handle="lab"` is,
+   and that is the same claim: a screen named this record, so the sheet it
+   renders stamps all three. A slug no screen passes still fails here, the
+   same as a misspelt attribute would. */
+function ownsRecordHandle(handle: string): boolean {
+  const slug = recordHandleSlug(handle);
+  return slug !== null && new RegExp(`\\bhandle=["']${slug}["']`).test(srcText);
+}
+
 function existsInSrc(handle: string): boolean {
   if (handle.startsWith('#')) {
     const name = handle.slice(1);
@@ -64,7 +78,7 @@ function existsInSrc(handle: string): boolean {
       srcText.includes(`\`${name}\``)
     );
   }
-  return srcText.includes(handle);
+  return srcText.includes(handle) || ownsRecordHandle(handle);
 }
 
 /* Handles the walkthrough stamps onto the page itself instead of reading
