@@ -13,8 +13,6 @@
    recordEditor.ts already make here. detailDraft.svelte.ts is the reactive
    half and holds nothing but the state these decide over. */
 
-import type { LiveList } from '$lib/data/live/journal.svelte';
-
 export type FillDecision =
   /** The record for this id has not answered yet. */
   | 'wait'
@@ -47,24 +45,27 @@ export function draftFor<TRecord, TDraft>(
   return record ? fromRecord(record) : blank();
 }
 
-/** A list read that hangs off the record, seen as still loading until the
-    record has arrived.
+/** An answer from a read that hangs off the record, tagged with the id it
+    was read for. `null` is a read that had no record to read for and so
+    asked nothing. */
+export type TaggedAnswer<T> = { readonly for: string | null; readonly value: T | undefined };
 
-    A read whose closure needs the record has nothing to ask for while the
-    record is undefined, so it answers immediately and answers with nothing.
-    Rendered as-is that is an empty state over a screen that is still
-    loading. `failed` survives the wait: a read that rejected has something
-    to say whenever the screen is ready to say it. */
-export function waitingOn<T>(recordLoading: boolean, read: LiveList<T>): LiveList<T> {
-  if (!recordLoading) return read;
-  return {
-    get rows() {
-      return read.rows;
-    },
-    loading: true,
-    empty: false,
-    get failed() {
-      return read.failed;
-    }
-  };
+/** Whether a dependent read's answer is the one this screen should be
+    showing.
+
+    This is what the tryout entries race turned on. A read whose closure
+    needs the record has nothing to look up while the record is undefined,
+    so it answers at once and answers with nothing. The record then arrives
+    and the read runs again - but a live query deliberately keeps showing
+    its previous answer across a re-run rather than flashing a placeholder
+    on every write, so for one round trip the screen holds an empty answer
+    that was computed without the record. Rendered as-is, that is "no
+    entries in this range" over a tryout with ninety of them.
+
+    An answer read for a different id, or for no record at all, is still
+    loading. An answer read for this id is the answer, including when the
+    id names nothing stored: an empty state is right there, and a spinner
+    that never resolves is not. */
+export function answersFor<T>(answer: TaggedAnswer<T> | undefined, id: string): boolean {
+  return answer !== undefined && answer.for === id;
 }
