@@ -24,6 +24,7 @@
   import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, normalizeUnit, type PreferredUnitAnalyte } from '$lib/data/labs/units';
   import { defaultUnitForAnalyte, nextUnitAfterAnalyteChange } from '$lib/data/labs/preferred-units';
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
+  import { isAndroid } from '$lib/platform';
   import {
     parseLabNumeric,
     type OcrReviewRow
@@ -274,6 +275,14 @@
         : m.labs_ocr_pick_sheet()
   );
 
+  /* What the scanner is about to spend, said before it spends it (phase 5
+     performance ticket 01). The engine and its two language files are 21 MB
+     over the wire and the shell no longer precaches them, so a person opening
+     this on mobile data is about to pay for a feature they may have opened by
+     accident. Not on Android, where every one of those files is already inside
+     the APK and nothing is downloaded at all. */
+  let ocrDownloads = $derived(!isAndroid());
+
   function openOcrImport() {
     ocr.open();
   }
@@ -317,7 +326,12 @@
   }
 </script>
 
-<div class="screen">
+<!-- The scanner's state on the screen root rather than inside the sheet:
+     the release gate drives a real recognition through this screen and needs
+     to tell "read the image" from "could not load the engine", and a handle
+     outside the sheet is readable whether or not the sheet is open
+     (ADR-0029). -->
+<div class="screen" data-ocr-state={ocr.state.tag}>
   <ScreenHeader title={m.lab_results()} back="/more" subtitle={m.labs_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-preferred-units aria-label={m.labs_preferred_units_title()} onclick={() => (unitsOpen = true)}>
@@ -551,11 +565,20 @@
     {#if ocr.state.tag === 'picking'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_pick_intro()}</p>
+      {#if ocrDownloads}
+        <Notice
+          icon="info"
+          key="labs-ocr-download"
+          data-ocr-download
+          title={m.labs_ocr_download_title()}
+          text={m.labs_ocr_download_body()}
+        />
+      {/if}
       <div class="stack-3">
-        <button class="btn btn-soft" onclick={() => ocr.pickSource('gallery')}>
+        <button class="btn btn-soft" data-ocr-pick="gallery" onclick={() => ocr.pickSource('gallery')}>
           <span>{m.labs_ocr_pick_gallery()}</span>
         </button>
-        <button class="btn btn-soft" onclick={() => ocr.pickSource('camera')}>
+        <button class="btn btn-soft" data-ocr-pick="camera" onclick={() => ocr.pickSource('camera')}>
           <span>{m.labs_ocr_pick_camera()}</span>
         </button>
       </div>

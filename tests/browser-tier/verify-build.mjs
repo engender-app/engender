@@ -23,6 +23,68 @@ import { preview } from 'vite';
 import { createReporter, launchChromium, launchPersistentChromium } from '../browser-harness.mjs';
 import { appVersion } from '../../scripts/app-version.mjs';
 
+/* --- Phase 5 performance ticket 01: the scanner, online then offline ---
+
+   The shell no longer precaches the OCR engine, so the question this answers
+   is the one that trade turns on: does the scanner still work with no network
+   after it has been opened once. Nothing short of running it proves that. The
+   engine is 27 MB of wasm and language data, so both runs are slow, and the
+   waits below are sized for that rather than for a normal click.
+
+   A canvas rather than a fixture image, so the repository carries no binary
+   for this: white ground, black text, the shape of a lab slip line. */
+async function labSlipImage(page) {
+  const dataUrl = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 900;
+    canvas.height = 300;
+    const draw = canvas.getContext('2d');
+    draw.fillStyle = '#ffffff';
+    draw.fillRect(0, 0, canvas.width, canvas.height);
+    draw.fillStyle = '#000000';
+    draw.font = '48px serif';
+    draw.fillText('Estradiol 412 pmol/L', 40, 90);
+    draw.fillText('Testosterone 0.8 nmol/L', 40, 180);
+    draw.fillText('2026-08-27', 40, 270);
+    return canvas.toDataURL('image/png');
+  });
+  return Buffer.from(dataUrl.split(',')[1], 'base64');
+}
+
+/** Opens the lab scanner and reads one image through it, from whatever state
+    the page is in. Returns the state the machine settled in. */
+async function readOneImage(page, origin) {
+  await page.goto(`${origin}/settings/labs`);
+  /* Every navigation here is a fresh load, and a reload ends the unlocked
+     session (ADR-0018), so the gate is met again on the way in. */
+  await page.waitForSelector('#journal-passphrase', { timeout: 30000 }).catch(() => {});
+  await page.fill('#journal-passphrase', 'verify-build passphrase').catch(() => {});
+  await page.click('[data-passphrase-submit]').catch(() => {});
+  await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+
+  await page.locator('[data-import-lab]').click();
+  await page.waitForSelector('[data-ocr-pick="gallery"]', { timeout: 10000 });
+
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.locator('[data-ocr-pick="gallery"]').click()
+  ]);
+  await chooser.setFiles({ name: 'lab-slip.png', mimeType: 'image/png', buffer: await labSlipImage(page) });
+
+  /* Either end of a recognition that ran: rows were found, or the text held
+     none. recognition-failed is the engine not loading, which is the failure
+     this whole section exists to catch. */
+  await page.waitForFunction(
+    () => {
+      const state = document.querySelector('[data-ocr-state]')?.getAttribute('data-ocr-state');
+      return state === 'review' || state === 'no-rows' || state === 'recognition-failed';
+    },
+    null,
+    { timeout: 180000 }
+  );
+  return await page.locator('[data-ocr-state]').getAttribute('data-ocr-state');
+}
+
 /** Every file under `path`, recursively. */
 function walk(path, files = []) {
   for (const entry of readdirSync(path, { withFileTypes: true })) {
@@ -180,7 +242,15 @@ try {
      gate. Walking it is what puts a journal on the device, and the quick log
      after it is the entry the offline start has to read back. Five steps then
      finish, the same six screens walkthrough.test.mjs flow 13 walks. */
-  for (let i = 0; i < 5; i++) await cold.locator('[data-next]').click();
+  /* Walked to the end rather than counted out. It was five clicks and a
+     finish, which stopped being the flow when 7d11edfd made the first run
+     seven steps, and failed here as an anonymous 30s wait for [data-finish] -
+     the same shape ADR-0029 is about. The bound is a runaway guard, not the
+     step count: onboarding-steps has seven today and the flow is one shorter
+     under disguise. */
+  for (let step = 0; step < 12 && (await cold.locator('[data-next]').count()); step++) {
+    await cold.locator('[data-next]').click();
+  }
   await cold.locator('[data-finish]').click();
   await cold.waitForSelector('[data-home-hello]');
   await cold.locator('[data-mood="4"]').click();
@@ -202,8 +272,16 @@ try {
      it would install. That keeps this from passing only because the profile
      happens to be sitting at the passphrase gate and boot never got as far as
      opening preferences again. */
-  await cold.locator('a[href="/settings"]:visible').first().click();
-  await cold.getByRole('button', { name: /Disguise/i }).click();
+  /* Straight to the screen rather than through the tab, which stopped being a
+     link to it: ADR-0036 put a More hub in front of Settings and the nav tab
+     goes there now. What follows is about disguise, not about how a person
+     reaches Settings, and the walkthrough owns that route. */
+  await cold.goto(`${origin}/settings`);
+  /* Waited out, because a goto is a fresh boot: the rows render before the
+     journal is open and are replaced when it is, so a click sent early
+     resolves the row and then loses it to the re-render. */
+  await cold.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+  await cold.locator('[data-list-row="disguise"]').click();
   await cold.getByRole('switch', { name: 'Disguise app' }).click();
   await cold.waitForFunction(() => {
     const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
@@ -248,12 +326,67 @@ try {
   const shell = await cold.evaluate(async () => {
     const names = await caches.keys();
     const cache = await caches.open(names[0]);
-    return { names, paths: (await cache.keys()).map((request) => new URL(request.url).pathname) };
+    const entries = await cache.keys();
+    /* Measured rather than derived from the file list, because what a first
+       visit actually costs is what the browser stored, and the two came apart
+       once already: the audit found a 54.06 MB shell whose asset list read as
+       unremarkable (phase 5 performance ticket 01). */
+    let bytes = 0;
+    for (const request of entries) {
+      const response = await cache.match(request);
+      if (response) bytes += (await response.blob()).size;
+    }
+    return { names, bytes, paths: entries.map((request) => new URL(request.url).pathname) };
   });
+  const megabytes = (shell.bytes / 1e6).toFixed(2);
 
   if (shell.names.length === 1 && shell.names[0].startsWith('gender-diary-shell-'))
-    ok(`the shell is one cache per release (${shell.names[0]})`);
+    ok(`the shell is one cache per release (${shell.names[0]}), ${shell.paths.length} entries, ${megabytes} MB`);
   else fail('the shell is one cache per release', JSON.stringify(shell.names));
+
+  /* The whole of ticket 01's first finding, as the one number a person feels:
+     the shell was 54.06 MB across 324 entries, 49.7 MB of it an OCR engine
+     that a first visit has no use for. The ceiling is deliberately loose - it
+     is here to catch another feature's assets being precached wholesale, not
+     to make an ordinary release fail because a font was added. */
+  const SHELL_CEILING_MB = 15;
+  if (shell.bytes < SHELL_CEILING_MB * 1e6) ok(`a first visit stores ${megabytes} MB, under the ${SHELL_CEILING_MB} MB ceiling`);
+  else fail(`a first visit stores under ${SHELL_CEILING_MB} MB`, `${megabytes} MB across ${shell.paths.length} entries`);
+
+  const precachedOnDemand = shell.paths.filter((path) => path.startsWith('/tesseract/'));
+  if (precachedOnDemand.length === 0) ok('the OCR engine is not in a fresh install\'s shell');
+  else fail("the OCR engine is not in a fresh install's shell", precachedOnDemand.slice(0, 4).join(', '));
+
+  /* Opening the scanner, online, which is what puts the engine in the cache.
+     The notice is checked in the same visit because it has to be read before
+     the download starts, and this is the moment it would be. */
+  await cold.goto(`${origin}/settings/labs`);
+  await cold.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+  await cold.locator('[data-import-lab]').click();
+  if ((await cold.locator('[data-ocr-download]').count()) === 1)
+    ok('the scanner says what it is about to download before it downloads it');
+  else fail('the scanner says what it is about to download', 'no download notice in the pick sheet');
+  await cold.keyboard.press('Escape');
+
+  const onlineRead = await readOneImage(cold, origin);
+  if (onlineRead === 'review' || onlineRead === 'no-rows') ok(`the scanner reads an image online (${onlineRead})`);
+  else fail('the scanner reads an image online', `the machine settled in ${onlineRead}`);
+
+  const afterUse = await cold.evaluate(async () => {
+    const cache = await caches.open((await caches.keys())[0]);
+    const paths = (await cache.keys()).map((request) => new URL(request.url).pathname);
+    let bytes = 0;
+    for (const request of await cache.keys()) {
+      const response = await cache.match(request);
+      if (response) bytes += (await response.blob()).size;
+    }
+    return { ocr: paths.filter((path) => path.startsWith('/tesseract/')), entries: paths.length, bytes };
+  });
+  if (afterUse.ocr.length >= 5)
+    ok(
+      `using the scanner adds the engine to the same cache (${afterUse.ocr.length} files, now ${afterUse.entries} entries, ${(afterUse.bytes / 1e6).toFixed(2)} MB)`
+    );
+  else fail('using the scanner adds the engine to the release cache', `${afterUse.ocr.length} OCR files in the cache`);
 
   /* The whole release, file by file, against what is actually in the cache.
      Four files are deliberately outside the shell: the fallback document,
@@ -263,9 +396,18 @@ try {
      release.json, which describes the directory on the server rather than the
      app in the browser - nothing in the app reads it, and a cached copy would
      go on answering for the release that was live when it was cached
-     (ticket 05). */
+     (ticket 05).
+
+     The OCR engine is outside it for a different reason, and the assertion is
+     narrowed rather than weakened: /tesseract/ belongs to a feature the app
+     loads on demand, so an install that has never opened the lab scanner is
+     supposed not to hold it, and what is checked below is every file of the
+     release except that set (phase 5 performance ticket 01). The set is named
+     by its directory rather than listed, so a sixth OCR file would join it
+     silently - which is right, since the whole directory is what ships and
+     what a page later asks the worker for. */
   const outsideShell = new Set(['/index.html', '/_app/version.json', '/service-worker.js', '/release.json']);
-  const release = releasePaths().filter((path) => !outsideShell.has(path));
+  const release = releasePaths().filter((path) => !outsideShell.has(path) && !path.startsWith('/tesseract/'));
   const missing = release.filter((path) => !shell.paths.includes(path));
   if (missing.length === 0 && shell.paths.includes('/'))
     ok(`the precached shell holds the fallback document and all ${release.length} other files of the release`);
@@ -332,7 +474,8 @@ try {
      the same function. The walkthrough suite holds the other half - it
      builds under a GENDER_DIARY_VERSION nobody derives and insists on seeing
      exactly that string - and the rules live in tests/app-version.test.ts. */
-  await cold.locator('a[href="/settings"]:visible').first().click();
+  await cold.goto(`${origin}/settings`);
+  await cold.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
   /* Phase 5 ticket 24: the About row is a ListRow now, whose own handle is
      data-list-row="about" rather than a settings-specific attribute. */
   await cold.locator('[data-list-row="about"]').click();
@@ -407,6 +550,19 @@ try {
       'an offline start on a nested route opens that screen',
       deepBooted ? 'the entry editor did not render' : 'the app never booted - check the asset URLs in the cached document'
     );
+
+  /* The half of ticket 01 that the whole trade rests on: the scanner was
+     opened once while there was a network, and this is a different browser
+     process against a dead origin. The engine can only come from the cache the
+     page asked the worker to fill.
+
+     Run on the deep page rather than a new one, because the encrypted driver
+     holds the OPFS access handles for as long as its tab lives (ADR-0020, one
+     connection per origin). */
+  const offlineRead = await readOneImage(deep, origin);
+  if (offlineRead === 'review' || offlineRead === 'no-rows')
+    ok(`the scanner still reads an image with the network gone (${offlineRead})`);
+  else fail('the scanner still reads an image with the network gone', `the machine settled in ${offlineRead}`);
 
   const offOrigin = offlineRequests.filter((url) => new URL(url).origin !== origin);
   if (offOrigin.length === 0 && offlineRequests.length > 0)
