@@ -27,10 +27,12 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -61,13 +63,12 @@
   }
 
   let reading = $state<Letter | null>(null);
-  let deleteTarget = $state<Letter | null>(null);
-  async function deleteLetter() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.letters.deleteLetter(id);
-  }
+
+  const record = recordEditor<Letter>({
+    remove: (id) => journal.letters.deleteLetter(id),
+    findById: (id) => letters.find((letter) => letter.id === id)
+  });
+  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
@@ -97,7 +98,7 @@
               : letter.text}
             chevron={false}
             onclick={() => (reading = letter)}
-            action={{ icon: 'trash', label: m.letters_delete_sheet(), onclick: () => (deleteTarget = letter) }}
+            action={{ icon: 'trash', label: m.letters_delete_sheet(), onclick: () => record.askToDelete(letter) }}
           />
         {/each}
       </ListCard>
@@ -170,16 +171,17 @@
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.letters_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.letters_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.letters_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-letter onclick={deleteLetter}><span>{m.letters_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.letters_delete_sheet()}
+    question={deleteTarget ? m.letters_delete_q() : ''}
+    hint={m.letters_delete_hint()}
+    confirmLabel={m.letters_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-letter': '' }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 </div>
 
 <style>

@@ -30,9 +30,11 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import CycleEventChart from '$lib/components/CycleEventChart.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -65,43 +67,27 @@
       : []
   );
 
-  let editor = $state<{ id?: string; date: string; kind: CycleEventKind } | null>(null);
-  let deleteTarget = $state<CycleEvent | null>(null);
-
-  function openEditor(event: CycleEvent | null) {
-    editor = event
-      ? { id: event.id, date: dateInputValueFromEpochDay(event.epochDay), kind: event.kind }
-      : { date: dateInputValueFromEpochDay(today), kind: 'period_occurred' };
-  }
-
-  async function saveEvent() {
-    if (!editor) return;
-    await journal.cycleEvents.upsertCycleEvent({
-      id: editor.id,
-      kind: editor.kind,
-      epochDay: epochDayFromDateInputValue(editor.date) ?? today
-    });
-    editor = null;
-  }
-
-  function askToDelete() {
-    if (!editor?.id) return;
-    deleteTarget = events.find((event) => event.id === editor!.id) ?? null;
-    if (deleteTarget) editor = null;
-  }
-
-  async function deleteEvent() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.cycleEvents.deleteCycleEvent(id);
-  }
+  const record = recordEditor<CycleEvent, { id?: string; date: string; kind: CycleEventKind }>({
+    blank: () => ({ date: dateInputValueFromEpochDay(today), kind: 'period_occurred' }),
+    fromRecord: (event) => ({ id: event.id, date: dateInputValueFromEpochDay(event.epochDay), kind: event.kind }),
+    async upsert(draft) {
+      await journal.cycleEvents.upsertCycleEvent({
+        id: draft.id,
+        kind: draft.kind,
+        epochDay: epochDayFromDateInputValue(draft.date) ?? today
+      });
+    },
+    remove: (id) => journal.cycleEvents.deleteCycleEvent(id),
+    findById: (id) => events.find((event) => event.id === id)
+  });
+  let editor = $derived(record.editor);
+  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.cycle_events()} back="/more" subtitle={m.cycle_events_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.cycle_event_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.cycle_event_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -147,7 +133,7 @@
             title={cycleEventKindName(event.kind)}
             subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
             chevron={false}
-            onclick={() => openEditor(event)}
+            onclick={() => record.openEditor(event)}
           />
         {/each}
       </ListCard>
@@ -160,12 +146,12 @@
         role={roleAt(activeFlag.roles, 0)}
         title={m.cycle_event_empty_title()}
         text={m.cycle_event_empty_body()}
-        action={{ label: m.cycle_event_empty_action(), primary: true, onclick: () => openEditor(null) }}
+        action={{ label: m.cycle_event_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
       />
     </div>
   {/if}
 
-  <Sheet open={editor !== null} title={editor?.id ? m.cycle_event_edit_sheet() : m.cycle_event_new_sheet()} onClose={() => (editor = null)}>
+  <Sheet open={editor !== null} title={editor?.id ? m.cycle_event_edit_sheet() : m.cycle_event_new_sheet()} onClose={() => (record.editor = null)}>
     {#if editor}
       <h3>{editor.id ? m.cycle_event_edit_sheet() : m.cycle_event_new_sheet()}</h3>
       <div class="field">
@@ -182,22 +168,23 @@
         />
       </div>
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-cycle-event onclick={saveEvent}><span>{m.cycle_event_save()}</span></button>
+        <button class="btn btn-primary" data-save-cycle-event onclick={record.save}><span>{m.cycle_event_save()}</span></button>
         {#if editor.id}
-          <button class="btn btn-ghost" data-delete-cycle-event onclick={askToDelete}><span>{m.cycle_event_delete()}</span></button>
+          <button class="btn btn-ghost" data-delete-cycle-event onclick={() => record.askToDelete()}><span>{m.cycle_event_delete()}</span></button>
         {/if}
       </div>
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.cycle_event_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.cycle_event_delete_q({ kind: cycleEventKindName(deleteTarget.kind), date: fmtDay(deleteTarget.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.cycle_event_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-cycle-event onclick={deleteEvent}><span>{m.cycle_event_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.cycle_event_delete_sheet()}
+    question={deleteTarget ? m.cycle_event_delete_q({ kind: cycleEventKindName(deleteTarget.kind), date: fmtDay(deleteTarget.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) }) : ''}
+    hint={m.cycle_event_delete_hint()}
+    confirmLabel={m.cycle_event_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-cycle-event': '' }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 </div>
