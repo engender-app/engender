@@ -22,7 +22,7 @@
   a chunk plus whatever the caller is holding. */
 
 import { decrypt, encrypt } from '../../crypto/aesGcm';
-import type { Argon2Params } from '../../crypto/params';
+import { ARCHIVE_ARGON2_PARAMS, type Argon2Params } from '../../crypto/params';
 import { currentArchiveFormatVersion } from './codec';
 import { CorruptArchiveError, u32 } from './wire';
 
@@ -36,6 +36,12 @@ const PREFIX_LENGTH = MAGIC.length + 2 + 4;
 /** A header this long is not one of ours, whatever the magic says; the
     length is read off an untrusted file and allocated against. */
 const MAX_HEADER_JSON = 64 * 1024;
+
+/** Eight times today's archive profile (ADR-0013): room for a real re-tune,
+    well under a request that would itself crash the allocation it is meant
+    to guard against - F-07, these numbers come off a file from anywhere. */
+const MAX_KDF_MEMORY_SIZE = ARCHIVE_ARGON2_PARAMS.memorySize * 8;
+const MAX_KDF_ITERATIONS = ARCHIVE_ARGON2_PARAMS.iterations * 8;
 
 const NONCE_LENGTH = 12;
 const TAG_LENGTH = 16;
@@ -245,8 +251,18 @@ function parseHeaderJson(json: Uint8Array): Omit<ArchiveHeader, 'formatVersion'>
     throw new CorruptArchiveError('the archive header is not readable');
   }
   if (chunkSize! > CHUNK_SIZE * 16) throw new CorruptArchiveError('the archive header is not readable');
+  if (kdf!.memorySize > MAX_KDF_MEMORY_SIZE || kdf!.iterations > MAX_KDF_ITERATIONS) {
+    throw new CorruptArchiveError('the archive header is not readable');
+  }
 
-  return { kdf: kdf!, salt: fromBase64(salt), chunkSize: chunkSize!, totalChunks: totalChunks! };
+  let saltBytes: Uint8Array<ArrayBuffer>;
+  try {
+    saltBytes = fromBase64(salt);
+  } catch {
+    throw new CorruptArchiveError('the archive header is not readable');
+  }
+
+  return { kdf: kdf!, salt: saltBytes, chunkSize: chunkSize!, totalChunks: totalChunks! };
 }
 
 function concat(a: Uint8Array, b: Uint8Array): Uint8Array<ArrayBuffer> {
