@@ -3,6 +3,7 @@ import { test } from 'vitest';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { thumbFileName } from '../photos/names.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
+import { markJournalBusy } from '../journal-busy.ts';
 import { openJournal } from './journal.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 import { UUID_PATTERN } from './test-support.ts';
@@ -362,4 +363,41 @@ test('starredPhotos lists only starred photos, oldest first, entry and milestone
     (await journal.photos.starredPhotos()).map((p) => p.id),
     [milestonePhoto, entryPhoto]
   );
+});
+
+test('the sweep declines to run while a journal write is in flight', async () => {
+  /* Its precondition, enforced since phase 5 audit ticket 02 moved it off
+     boot's critical path (photos.ts): it reads the rows and then lists the
+     files, so a photo attached across that gap would look like an orphan and
+     lose its bytes. What it does not reclaim, the next boot does. */
+  const { db, files } = await journalWithFiles();
+  await files.write('99999999-dead-4000-8000-000000000000.webm', new Uint8Array([9]));
+
+  const saving = markJournalBusy();
+  await sweepOrphanPhotos(db, files);
+  assert.deepEqual(files.names(), ['99999999-dead-4000-8000-000000000000.webm'], 'the orphan is left where it is');
+
+  saving();
+  await sweepOrphanPhotos(db, files);
+  assert.deepEqual(files.names(), [], 'and reclaimed once nothing is writing');
+});
+
+test('a write starting mid-sweep stops it where it stands', async () => {
+  const { db, files } = await journalWithFiles();
+  for (const name of ['a.webm', 'b.webm', 'c.webm']) await files.write(name, new Uint8Array([9]));
+
+  // A save that begins while the sweep is partway through its listing: the
+  // first orphan is already gone, the rest are the next boot's to reclaim.
+  const watched = {
+    ...files,
+    async remove(name: string) {
+      const done = markJournalBusy();
+      await files.remove(name);
+      done();
+    }
+  };
+
+  await sweepOrphanPhotos(db, watched);
+
+  assert.equal(files.names().length, 2, 'one removed, then the sweep gave way');
 });

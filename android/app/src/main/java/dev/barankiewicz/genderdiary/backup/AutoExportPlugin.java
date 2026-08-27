@@ -3,9 +3,11 @@ package dev.barankiewicz.genderdiary.backup;
 import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.UriPermission;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -47,7 +49,10 @@ import javax.crypto.spec.GCMParameterSpec;
 public class AutoExportPlugin extends Plugin {
     private static final int DAY_MS = 24 * 60 * 60 * 1000;
 
-    private static final String PREFS = "gender-diary-auto-export";
+    /** Named rather than private because the reset has to prove it cleared
+        this file and deleted that alias (phase 5 security ticket 01), and a
+        test that spelled either out itself would pass while the app moved. */
+    public static final String PREFS = "gender-diary-auto-export";
     private static final String KEY_ENABLED = "enabled";
     private static final String KEY_SCHEDULE = "schedule";
     private static final String KEY_DESTINATION_URI = "destinationUri";
@@ -59,7 +64,7 @@ public class AutoExportPlugin extends Plugin {
     private static final String KEY_LAST_FAILURE_REASON = "lastFailureReason";
 
     private static final String KEYSTORE = "AndroidKeyStore";
-    private static final String PASSWORD_ALIAS = "gender-diary-auto-export-password";
+    public static final String PASSWORD_ALIAS = "gender-diary-auto-export-password";
     private static final String PASSWORD_CIPHER = "AES/GCM/NoPadding";
 
     private static final String FAILURE_CHANNEL = "backup_failures";
@@ -271,6 +276,44 @@ public class AutoExportPlugin extends Plugin {
         }
     }
 
+    /**
+     * The reset path (ADR-0014): the destination URI and its label, the
+     * wrapped backup password, and - the part a preference clear does not
+     * reach - the Keystore alias it was wrapped under. An alias left behind
+     * is a key left behind, and the ciphertext beside it is only gone
+     * because this file went with it; the two have to leave together or the
+     * password stays recoverable by anything that can put the ciphertext
+     * back.
+     */
+    public static void wipe(Context context) throws Exception {
+        releaseDestinationGrants(context);
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
+        PasswordStore.deleteKey();
+    }
+
+    /**
+     * The SAF grant outlives the preference that recorded it. Forgetting
+     * the destination URI is not the same as giving it up: the grant stays
+     * in the system's own table, where {@code getPersistedUriPermissions}
+     * reads it back with the folder's name and path in it, and it is still
+     * write access to a folder on a phone the person has just wiped.
+     *
+     * <p>Every grant this app holds rather than the one the preferences
+     * name, and the two are usually the same one - {@code pickedDestination}
+     * is the only place anything is taken. A grant whose preference row has
+     * already gone is exactly the one a list read from preferences would
+     * miss.
+     */
+    private static void releaseDestinationGrants(Context context) {
+        ContentResolver resolver = context.getContentResolver();
+        for (UriPermission held : resolver.getPersistedUriPermissions()) {
+            int modes =
+                (held.isReadPermission() ? Intent.FLAG_GRANT_READ_URI_PERMISSION : 0)
+                    | (held.isWritePermission() ? Intent.FLAG_GRANT_WRITE_URI_PERMISSION : 0);
+            if (modes != 0) resolver.releasePersistableUriPermission(held.getUri(), modes);
+        }
+    }
+
     private void verifyBytes(Uri uri, byte[] expected) throws Exception {
         byte[] written;
         try (InputStream in = getContext().getContentResolver().openInputStream(uri)) {
@@ -442,6 +485,15 @@ public class AutoExportPlugin extends Plugin {
 
         void clear() {
             prefs.edit().remove(KEY_PASSWORD_NONCE).remove(KEY_PASSWORD_CIPHERTEXT).apply();
+        }
+
+        /** Static, and no {@code prefs}: the wrapping key outlives the
+            ciphertext, so the reset has to reach it without an instance
+            bound to preferences that are already gone. */
+        static void deleteKey() throws Exception {
+            java.security.KeyStore keyStore = java.security.KeyStore.getInstance(KEYSTORE);
+            keyStore.load(null);
+            if (keyStore.containsAlias(PASSWORD_ALIAS)) keyStore.deleteEntry(PASSWORD_ALIAS);
         }
 
         private SecretKey key() throws Exception {

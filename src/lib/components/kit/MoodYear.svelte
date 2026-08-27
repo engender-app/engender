@@ -43,9 +43,18 @@
 </script>
 
 <div class="kit-year" data-chart="mood-year">
-  {#each grid.months as month (month)}
+  {#each grid.months as month, i (month)}
     <span class="kit-year-label" aria-hidden="true">{monthName(month)}</span>
-    <div class="kit-year-rows" data-year-month={month}>
+    <!-- Fills in month by month rather than appearing whole (Alicja,
+         2026-08-27: wrapped's year cadence "appears abruptly without
+         animation" against week and month, both of which tween an
+         AreaChart's points in - this grid has no such per-value motion of
+         its own to borrow, so it wants an entrance of its own). Reuses
+         .stagger-in/--stagger-step (components.css) rather than a new
+         keyframe - the same primitive the skeleton cascade already uses
+         for "several like things arriving as a set", which twelve months
+         of one year are. -->
+    <div class="kit-year-rows stagger-in" style="--stagger-i:{i}" data-year-month={month}>
       {#each grid.cells.filter((cell) => cell.month === month) as cell (cell.epochDay)}
         {#if cell.step === null}
           <span class="kit-year-cell is-empty" data-year-cell={cell.epochDay} title={dayLabel(cell.epochDay, null)}

@@ -71,6 +71,19 @@ jobs:
       # Firebase, Play Services, analytics or proprietary runtime SDK in the
       # Android graph - runs in the Android job where Gradle can resolve the
       # release runtime classpath.
+      #
+      # `npm audit` advisory verdict, checked 2026-08-27, six open, none
+      # reachable, nothing to patch:
+      #   - cookie <0.7.0, low, arrives through @sveltejs/kit ->
+      #     adapter-static. The advisory is about server-side cookie
+      #     parsing; this app builds with adapter-static, has no server and
+      #     no SSR.
+      #   - uuid <11.1.1, moderate, arrives through xcode -> @capacitor/cli,
+      #     which is developer tooling for Xcode project files and ships in
+      #     no built artifact.
+      # `npm audit fix --force` would install @sveltejs/kit@0.0.30 and break
+      # the app for advisories neither reaches. Re-check this comment
+      # against a fresh `npm audit` before re-running the fix, not after.
 
   android:
     name: Android debug artifact and F-Droid checks

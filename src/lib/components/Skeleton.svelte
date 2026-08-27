@@ -21,7 +21,7 @@
   } = $props();
 </script>
 
-<div class="skeleton-stack" aria-hidden="true">
+<div class="skeleton-stack" data-skeleton aria-hidden="true">
   {#each Array.from({ length: count }) as _, i (i)}
     <div class="skeleton-{variant} stagger-in" style="--stagger-i:{i}">
       {#if variant === 'card'}

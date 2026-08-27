@@ -16,14 +16,15 @@
      own label, so it is still the same three facts as before. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { normalizeUnit, type LabSeries } from '$lib/data/journal/labs';
+  import type { LabSeries } from '$lib/data/journal/labs';
   import { seriesComparability } from '$lib/data/labTiming';
   import { comparabilityLabels, labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { createOcrMachine, type OcrSaver } from '$lib/data/labs/ocr-machine';
-  import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, type PreferredUnitAnalyte } from '$lib/data/labs/units';
+  import { createOcrMachine, type OcrMachineState, type OcrSaver } from '$lib/data/labs/ocr-machine';
+  import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, normalizeUnit, type PreferredUnitAnalyte } from '$lib/data/labs/units';
   import { defaultUnitForAnalyte, nextUnitAfterAnalyteChange } from '$lib/data/labs/preferred-units';
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
+  import { isAndroid } from '$lib/platform';
   import {
     parseLabNumeric,
     type OcrReviewRow
@@ -39,8 +40,10 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -118,21 +121,94 @@
   const contextLine = (r: LabResult) =>
     [r.timing ? labTimingLabel(r.timing) : '', r.provider.trim()].filter(Boolean).join(' · ');
 
-  let editor = $state<{
-    id?: string;
-    date: string;
-    time: string;
-    analyte: string;
-    customAnalyte: string;
-    value: string;
-    unit: string;
-    note: string;
-    provider: string;
-    /** Read-only: the context is frozen when the result is saved, so the
-        sheet shows what was recorded rather than offering to change it. */
-    timing: LabResult['timing'];
-  } | null>(null);
-  let deleteTarget = $state<LabResult | null>(null);
+  const record = recordEditor<
+    LabResult,
+    {
+      id?: string;
+      date: string;
+      time: string;
+      analyte: string;
+      customAnalyte: string;
+      value: string;
+      unit: string;
+      note: string;
+      provider: string;
+      /** Read-only: the context is frozen when the result is saved, so the
+          sheet shows what was recorded rather than offering to change it. */
+      timing: LabResult['timing'];
+    }
+  >({
+    blank: () => ({
+      date: dateInputValueFromEpochDay(todayEpochDay()),
+      time: '',
+      /* Whatever the screen is already showing - itself the most
+         recently logged analyte, or none - rather than a hormone
+         (ticket 37). Unit likewise: a set preferred unit wins, then the
+         last unit this analyte was actually recorded in, the same
+         fallback the measurements screen uses for its own unit. */
+      analyte,
+      customAnalyte: '',
+      value: '',
+      unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results.at(-1)?.unit ?? ''),
+      note: '',
+      provider: '',
+      timing: null
+    }),
+    fromRecord: (result) => ({
+      id: result.id,
+      date: dateInputValueFromEpochDay(result.epochDay),
+      time: result.drawTime ?? '',
+      analyte: result.analyte,
+      customAnalyte: '',
+      value: String(result.value),
+      unit: result.unit,
+      note: result.note,
+      provider: result.provider,
+      timing: result.timing
+    }),
+    async upsert(draft) {
+      const value = parseFloat(draft.value);
+      const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
+      if (isNaN(value) || !resultAnalyte) return false;
+
+      /* Which units this analyte already has, ignoring the result being edited,
+         so that changing the unit on an analyte's only result does not announce
+         a second trend that will not exist. */
+      const unit = normalizeUnit(draft.unit);
+      const otherUnits = new Set(
+        (await journal.labs.getSeries(resultAnalyte))
+          .filter((s) => s.results.some((r) => r.id !== draft.id))
+          .map((s) => s.unit)
+      );
+
+      await journal.labs.upsertResult({
+        id: draft.id,
+        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+        analyte: resultAnalyte,
+        value,
+        unit: draft.unit,
+        note: draft.note,
+        /* An empty time input is "not recorded", not midnight. The journal
+           derives the timing context from this; a blank one means no hours
+           figure rather than a zero (labTiming.ts). */
+        drawTime: draft.time || null,
+        provider: draft.provider
+      });
+      analyte = resultAnalyte;
+
+      /* Stated, not warned about: a new unit is a normal thing for a lab to
+         report, and all that follows from it is a second line. */
+      if (otherUnits.size && !otherUnits.has(unit)) {
+        toast(unit ? m.labs_new_unit_toast({ unit, analyte: resultAnalyte }) : m.labs_no_unit_toast(), {
+          kind: 'lab-new-unit'
+        });
+      }
+    },
+    remove: (id) => journal.labs.deleteResult(id),
+    findById: (id) => results.find((result) => result.id === id)
+  });
+  let editor = $derived(record.editor);
+  let deleteTarget = $derived(record.deleteTarget);
 
   // ---------------------------------------------------------------------------
   // OCR state machine
@@ -147,57 +223,70 @@
     }
   };
 
-  const ocrMachineBase = createOcrMachine(
+  // The machine writes to its own closed-over object; it cannot write into a
+  // $state proxy from inside its own methods. So the component owns the
+  // reactive copy, and the machine notifies it on every transition.
+  let ocrState = $state<OcrMachineState>({ tag: 'idle' });
+  const ocr = createOcrMachine(
     platformImageSource(),
     tesseractOcrRecognizer(),
-    ocrSaver
+    ocrSaver,
+    (next) => {
+      ocrState = next;
+    }
   );
-  // Wrap in $state so Svelte tracks reads on .state
-  let ocr = $state(ocrMachineBase);
 
   // After save succeeds, show a toast and return to idle.
   $effect(() => {
-    if (ocr.state.tag === 'saved') {
-      toast(m.labs_ocr_saved_toast({ count: String(ocr.state.count) }));
+    if (ocrState.tag === 'saved') {
+      toast(m.labs_ocr_saved_toast({ count: String(ocrState.count) }));
       ocr.close();
     }
   });
 
   // Derive error message string for the review sheet's notice.
   let ocrValidationError = $derived(
-    ocr.state.tag === 'save-validation-failed'
-      ? ocr.state.error === 'missing-analyte'
+    ocrState.tag === 'save-validation-failed'
+      ? ocrState.error === 'missing-analyte'
         ? m.labs_ocr_missing_analyte()
-        : ocr.state.error === 'invalid-value'
+        : ocrState.error === 'invalid-value'
           ? m.labs_ocr_invalid_value()
-          : ocr.state.error === 'missing-date'
+          : ocrState.error === 'missing-date'
             ? m.labs_ocr_missing_date()
             : m.labs_ocr_invalid_date()
-      : ocr.state.tag === 'save-failed'
+      : ocrState.tag === 'save-failed'
         ? m.labs_ocr_failed()
         : ''
   );
 
   // The review rows, available from review, save-validation-failed, and save-failed states.
   let ocrRows = $derived<OcrReviewRow[]>(
-    ocr.state.tag === 'review' ||
-    ocr.state.tag === 'save-validation-failed' ||
-    ocr.state.tag === 'save-failed'
-      ? ocr.state.rows
+    ocrState.tag === 'review' ||
+    ocrState.tag === 'save-validation-failed' ||
+    ocrState.tag === 'save-failed'
+      ? ocrState.rows
       : []
   );
 
   // Whether the OCR sheet should be open (any non-idle state).
-  let ocrSheetOpen = $derived(ocr.state.tag !== 'idle' && ocr.state.tag !== 'saved');
+  let ocrSheetOpen = $derived(ocrState.tag !== 'idle' && ocrState.tag !== 'saved');
 
   // Title for the sheet header.
   let ocrSheetTitle = $derived(
-    ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving' || ocr.state.tag === 'save-failed'
+    ocrState.tag === 'review' || ocrState.tag === 'save-validation-failed' || ocrState.tag === 'saving' || ocrState.tag === 'save-failed'
       ? m.labs_ocr_review_sheet()
-      : ocr.state.tag === 'no-rows'
+      : ocrState.tag === 'no-rows'
         ? m.labs_ocr_empty_sheet()
         : m.labs_ocr_pick_sheet()
   );
+
+  /* What the scanner is about to spend, said before it spends it (phase 5
+     performance ticket 01). The engine and its two language files are 21 MB
+     over the wire and the shell no longer precaches them, so a person opening
+     this on mobile data is about to pay for a feature they may have opened by
+     accident. Not on Android, where every one of those files is already inside
+     the APK and nothing is downloaded at all. */
+  const ocrDownloads = !isAndroid();
 
   function openOcrImport() {
     ocr.open();
@@ -209,38 +298,6 @@
 
   function handleOcrRowsChange(rows: OcrReviewRow[]) {
     ocr.updateRows(rows);
-  }
-
-  function openEditor(result: LabResult | null) {
-    editor = result
-      ? {
-          id: result.id,
-          date: dateInputValueFromEpochDay(result.epochDay),
-          time: result.drawTime ?? '',
-          analyte: result.analyte,
-          customAnalyte: '',
-          value: String(result.value),
-          unit: result.unit,
-          note: result.note,
-          provider: result.provider,
-          timing: result.timing
-        }
-      : {
-          date: dateInputValueFromEpochDay(todayEpochDay()),
-          time: '',
-          /* Whatever the screen is already showing - itself the most
-             recently logged analyte, or none - rather than a hormone
-             (ticket 37). Unit likewise: a set preferred unit wins, then the
-             last unit this analyte was actually recorded in, the same
-             fallback the measurements screen uses for its own unit. */
-          analyte,
-          customAnalyte: '',
-          value: '',
-          unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results.at(-1)?.unit ?? ''),
-          note: '',
-          provider: '',
-          timing: null
-        };
   }
 
   function setPreferredUnit(analyteName: PreferredUnitAnalyte, unit: string) {
@@ -263,61 +320,6 @@
     editor.analyte = next;
   }
 
-  async function saveResult() {
-    if (!editor) return;
-    const draft = { ...editor };
-    const value = parseFloat(draft.value);
-    const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
-    if (isNaN(value) || !resultAnalyte) return;
-
-    /* Which units this analyte already has, ignoring the result being edited,
-       so that changing the unit on an analyte's only result does not announce
-       a second trend that will not exist. */
-    const unit = normalizeUnit(draft.unit);
-    const otherUnits = new Set(
-      (await journal.labs.getSeries(resultAnalyte))
-        .filter((s) => s.results.some((r) => r.id !== draft.id))
-        .map((s) => s.unit)
-    );
-
-    await journal.labs.upsertResult({
-      id: draft.id,
-      epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
-      analyte: resultAnalyte,
-      value,
-      unit: draft.unit,
-      note: draft.note,
-      /* An empty time input is "not recorded", not midnight. The journal
-         derives the timing context from this; a blank one means no hours
-         figure rather than a zero (labTiming.ts). */
-      drawTime: draft.time || null,
-      provider: draft.provider
-    });
-    analyte = resultAnalyte;
-    editor = null;
-
-    /* Stated, not warned about: a new unit is a normal thing for a lab to
-       report, and all that follows from it is a second line. */
-    if (otherUnits.size && !otherUnits.has(unit)) {
-      toast(unit ? m.labs_new_unit_toast({ unit, analyte: resultAnalyte }) : m.labs_no_unit_toast(), {
-        kind: 'lab-new-unit'
-      });
-    }
-  }
-
-  function askToDelete() {
-    if (!editor?.id) return;
-    deleteTarget = results.find((result) => result.id === editor!.id) ?? null;
-    if (deleteTarget) editor = null;
-  }
-
-  async function deleteResult() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await journal.labs.deleteResult(id);
-  }
-
   /* Ticket 11's other entry point into the appointment prep list: a one-tap
      add, seeded from the analyte already on screen. */
   async function addToAppointmentPrep() {
@@ -338,7 +340,7 @@
       <button class="icon-btn press" data-import-lab aria-label={m.labs_ocr_import_aria()} onclick={openOcrImport}>
         <Icon name="camera" size={20} />
       </button>
-      <button class="icon-btn press" data-add aria-label={m.labs_add_aria()} onclick={() => openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.labs_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -407,11 +409,11 @@
             class="kit-row"
             data-lab-result={r.id}
             aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-            onclick={() => openEditor(r)}
+            onclick={() => record.openEditor(r)}
           >
             <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
             <span class="kit-row-text">
-              <span class="kit-row-title">{r.value} {r.unit}</span>
+              <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
               <span class="kit-row-sub">
                 {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
               </span>
@@ -434,7 +436,7 @@
         role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
         title={m.labs_empty_title()}
         text={m.labs_empty_body()}
-        action={{ label: m.labs_empty_action(), primary: true, onclick: () => openEditor(null) }}
+        action={{ label: m.labs_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
       />
     </div>
   {/if}
@@ -460,7 +462,7 @@
     {/each}
   </Sheet>
 
-  <Sheet open={editor !== null} title={editor?.id ? m.labs_edit_sheet() : m.labs_new_sheet()} onClose={() => (editor = null)}>
+  <Sheet open={editor !== null} title={editor?.id ? m.labs_edit_sheet() : m.labs_new_sheet()} onClose={() => (record.editor = null)}>
     {#if editor}
       <h3>{editor.id ? m.labs_edit_sheet() : m.labs_new_sheet()}</h3>
       <div class="cd-endpoints">
@@ -534,67 +536,79 @@
       {/if}
 
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-lab onclick={saveResult}><span>{m.labs_save()}</span></button>
+        <button class="btn btn-primary" data-save-lab onclick={record.save}><span>{m.labs_save()}</span></button>
         {#if editor.id}
           <button class="btn btn-soft" data-add-to-appointment-prep onclick={addToAppointmentPrep}><span>{m.appointment_prep_add_button()}</span></button>
-          <button class="btn btn-ghost" data-delete-lab onclick={askToDelete}><span>{m.labs_delete()}</span></button>
+          <button class="btn btn-ghost" data-delete-lab onclick={() => record.askToDelete()}><span>{m.labs_delete()}</span></button>
         {/if}
       </div>
     {/if}
   </Sheet>
 
-  <Sheet open={deleteTarget !== null} title={m.labs_delete_sheet()} onClose={() => (deleteTarget = null)}>
-    {#if deleteTarget}
-      <h3>{m.labs_delete_q({ analyte: deleteTarget.analyte })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-lab onclick={deleteResult}><span>{m.labs_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (deleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={deleteTarget !== null}
+    title={m.labs_delete_sheet()}
+    question={deleteTarget ? m.labs_delete_q({ analyte: deleteTarget.analyte }) : ''}
+    hint={m.labs_delete_hint()}
+    confirmLabel={m.labs_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-lab': '' }}
+    onConfirm={record.confirmDelete}
+    onCancel={record.cancelDelete}
+  />
 
   <Sheet
     open={ocrSheetOpen}
     title={ocrSheetTitle}
     onClose={closeOcrSheet}
   >
-    {#if ocr.state.tag === 'picking'}
+    <!-- The tag itself, not just its wording, so a walkthrough can grip the
+         state directly (ADR-0029) rather than matching translated copy. -->
+    <div data-ocr-state={ocrState.tag}>
+    {#if ocrState.tag === 'picking'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_pick_intro()}</p>
+      {#if ocrDownloads}
+        <Notice
+          icon="info"
+          key="labs-ocr-download"
+          title={m.labs_ocr_download_title()}
+          text={m.labs_ocr_download_body()}
+        />
+      {/if}
       <div class="stack-3">
-        <button class="btn btn-soft" onclick={() => ocr.pickSource('gallery')}>
+        <button class="btn btn-soft" data-ocr-pick="gallery" onclick={() => ocr.pickSource('gallery')}>
           <span>{m.labs_ocr_pick_gallery()}</span>
         </button>
-        <button class="btn btn-soft" onclick={() => ocr.pickSource('camera')}>
+        <button class="btn btn-soft" data-ocr-pick="camera" onclick={() => ocr.pickSource('camera')}>
           <span>{m.labs_ocr_pick_camera()}</span>
         </button>
       </div>
-    {:else if ocr.state.tag === 'recognizing'}
+    {:else if ocrState.tag === 'recognizing'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <p class="muted small">{m.labs_ocr_running()}</p>
-    {:else if ocr.state.tag === 'permission-denied'}
+    {:else if ocrState.tag === 'permission-denied'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_permission_denied()}</div>
       </div>
-      <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
-    {:else if ocr.state.tag === 'recognition-failed'}
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+    {:else if ocrState.tag === 'recognition-failed'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_failed()}</div>
       </div>
-      <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
-    {:else if ocr.state.tag === 'no-rows'}
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+    {:else if ocrState.tag === 'no-rows'}
       <h3>{m.labs_ocr_empty_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_no_rows_body()}</p>
       <div class="stack-3">
-        <button class="btn btn-primary" onclick={() => { ocr.close(); openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
-        <button class="btn btn-soft" onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+        <button class="btn btn-primary" data-ocr-manual onclick={() => { ocr.close(); record.openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
+        <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
       </div>
-    {:else if ocr.state.tag === 'review' || ocr.state.tag === 'save-validation-failed' || ocr.state.tag === 'saving' || ocr.state.tag === 'save-failed'}
+    {:else if ocrState.tag === 'review' || ocrState.tag === 'save-validation-failed' || ocrState.tag === 'saving' || ocrState.tag === 'save-failed'}
       <h3>{m.labs_ocr_review_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-3)">{m.labs_ocr_review_intro()}</p>
       {#if ocrValidationError}
@@ -618,21 +632,21 @@
             {/if}
             <div class="field">
               <label class="field-label" for={`ocr-analyte-${i}`}>{m.labs_analyte_label()}</label>
-              <input class="input" id={`ocr-analyte-${i}`} value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+              <input class="input" id={`ocr-analyte-${i}`} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
             </div>
             <div class="cd-endpoints">
               <div class="field">
                 <label class="field-label" for={`ocr-value-${i}`}>{m.labs_value_label()}</label>
-                <input class="input" id={`ocr-value-${i}`} inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input class="input" id={`ocr-value-${i}`} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               </div>
               <div class="field">
                 <label class="field-label" for={`ocr-unit-${i}`}>{m.labs_unit_label()}</label>
-                <input class="input" id={`ocr-unit-${i}`} value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input class="input" id={`ocr-unit-${i}`} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               </div>
             </div>
             <div class="field">
               <label class="field-label" for={`ocr-date-${i}`}>{m.labs_date_label()}</label>
-              <input class="input" type="date" id={`ocr-date-${i}`} value={row.date} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+              <input class="input" type="date" id={`ocr-date-${i}`} data-ocr-field="date" value={row.date} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
             </div>
             <div class="field">
               <label class="field-label" for={`ocr-note-${i}`}>{m.labs_note_label()}</label>
@@ -641,7 +655,8 @@
           </div>
         {/each}
       </div>
-      <button class="btn btn-primary" disabled={ocr.state.tag === 'saving'} onclick={() => ocr.save()}><span>{m.labs_ocr_save()}</span></button>
+      <button class="btn btn-primary" data-ocr-save disabled={ocrState.tag === 'saving'} onclick={() => ocr.save()}><span>{m.labs_ocr_save()}</span></button>
     {/if}
+    </div>
   </Sheet>
 </div>

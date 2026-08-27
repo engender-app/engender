@@ -650,18 +650,18 @@
     {/if}
     {#if daylioPreview}
       <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
-        <div class="value-row"><span>{m.daylio_entries_to_add()}</span><strong>{daylioPreview.entryCount}</strong></div>
-        <div class="value-row">
+        <div class="rows-divide value-row"><span>{m.daylio_entries_to_add()}</span><strong>{daylioPreview.entryCount}</strong></div>
+        <div class="rows-divide value-row">
           <span>{m.daylio_activities_to_tags()}</span>
           <strong>{m.daylio_tag_counts({ matched: String(daylioPreview.matchedTagCount), new: String(daylioPreview.newTagCount) })}</strong>
         </div>
-        <div class="value-row"><span>{m.daylio_notes_row()}</span><strong>{m.daylio_notes_kept()}</strong></div>
-        <div class="value-row"><span>{m.daylio_photos_row()}</span><strong>{m.daylio_photos_absent()}</strong></div>
+        <div class="rows-divide value-row"><span>{m.daylio_notes_row()}</span><strong>{m.daylio_notes_kept()}</strong></div>
+        <div class="rows-divide value-row"><span>{m.daylio_photos_row()}</span><strong>{m.daylio_photos_absent()}</strong></div>
         <div class="hr"></div>
         <p class="small" style="margin-bottom:var(--space-2)"><strong>{m.daylio_mood_mapping()}</strong></p>
         {#if daylioPreview.moodMappings.length > 0}
           {#each daylioPreview.moodMappings as mapping (mapping.label)}
-            <div class="value-row">
+            <div class="rows-divide value-row">
               <span>{mapping.label}</span>
               <strong>{mapping.mood === null ? m.daylio_mood_unmapped() : `${mapping.mood} · ${moodName(mapping.mood)}`}</strong>
             </div>

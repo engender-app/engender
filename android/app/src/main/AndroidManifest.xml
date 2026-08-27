@@ -18,8 +18,39 @@
          The back destination itself is unchanged and still decided by
          resolveAndroidBackAction; this changes how the gesture is drawn,
          not where it goes. -->
+
+    <!-- The platform's backup service, phase 5 security ticket 01 (F-02).
+         Off, by both of the two attributes it takes.
+
+         The default is on, and with no dataExtractionRules or
+         fullBackupContent to narrow it the whole private directory was
+         eligible for Google's cloud backup and for device-to-device
+         transfer. The journal itself survived that harmlessly - the RSA
+         private half never leaves the platform keystore and is not backed
+         up, so a restored copy is ciphertext nobody can open, which is what
+         AndroidEncryptionClaimTest proves by reading the bytes. The leak was
+         everything beside it: the WebView's localStorage draft, the reminder
+         titles, the backup destination's label. Those left the device
+         without anyone choosing it, and CONTEXT.md's claim is that journal
+         data stays on the device unless the person deliberately creates or
+         delivers an archive.
+
+         Rules excluding sharedpref and the WebView directory would have kept
+         backup for the encrypted database alone. Not taken: what a backup of
+         it would restore is a database whose key is gone, on a phone whose
+         keystore never had it - nothing recoverable, in exchange for a
+         surface that has to be re-audited every time the app writes
+         somewhere new. The archive export is the recovery path, and it is
+         the one the app tells people about.
+
+         dataExtractionRules beside it rather than instead of it: from
+         Android 12 the flag below only stops cloud backup, and the rules
+         file is what stops device-to-device transfer. The flag still covers
+         the Android 11 and older half of the range, which starts at the
+         app's floor of API 26. -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -147,7 +178,39 @@
 
     <!-- Permissions -->
 
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- No android.permission.INTERNET, and that absence is the point (phase 5
+         security ticket 03). The app makes no off-origin request anywhere -
+         tests/browser-tier/verify-build.mjs asserts that online and offline -
+         and the bundle it runs is served out of the APK by Capacitor's asset
+         loader, which intercepts the request before any socket exists. So the
+         permission bought nothing, and dropping it turns "no telemetry" into
+         something a reader of the permission list can verify rather than take
+         on trust.
+
+         Answered with a build rather than an opinion. With this line removed,
+         the connected suite was run on a Pixel 10a and then compared against
+         the same suite with the line restored: the two runs fail the same
+         tests. Nothing regressed on removal, and what passes covers the paths
+         that could plausibly have wanted a socket - the WebView boots the real
+         bundle, the native driver opens the journal and passes the whole
+         contract suite over SQLCipher, the photo write channel writes and reads
+         its files, the keystore holds the data key, the three widgets render,
+         print reaches the spooler, and WebViewCspEnforcementTest fetches a
+         bundled Tesseract asset off the app's own origin, which is the
+         mechanism OCR loads its language data through.
+
+         Four tests fail on that phone in both runs and none of them is about
+         this: DisguiseAliasTest.mainActivityIsExcludedFromRecents asserts the
+         opposite of what the manifest now says and of what
+         tests/android-manifest-recents.test.ts asserts, two JournalKeystoreTest
+         cases need a phone with no lock screen, and
+         ArchiveCrossPlatformRoundTripTest cannot create its probe photo
+         directory. The archive one is the only gap worth naming here, since an
+         export is a path this question is about; it fails with the permission
+         present too, on the same device, in the same isolated run.
+
+         If something here ever does need a socket, put the line back with a
+         comment naming what needed it. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />

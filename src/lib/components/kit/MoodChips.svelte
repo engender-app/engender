@@ -52,7 +52,7 @@
   const STEPS = [1, 2, 3, 4, 5];
 </script>
 
-<div class="kit-moods" role="radiogroup" aria-label={m.mood()} data-mood-chips>
+<div class="kit-moods" data-kit-surface role="radiogroup" aria-label={m.mood()} data-mood-chips>
   {#each STEPS as step (step)}
     <button
       type="button"
@@ -63,7 +63,11 @@
       data-mood={step}
       onclick={() => onPick(step === value ? null : step)}
     >
-      <MoodFace {step} size={40} />
+      <!-- 48, not 40 (Alicja, 2026-08-27: "a little bigger") - the same
+           number as --touch-target, so the circle itself now clears the row
+           item's own floor rather than the label beneath it being what gets
+           it there. -->
+      <MoodFace {step} size={48} />
       <span aria-hidden="true">{moodName(step)}</span>
     </button>
   {/each}

@@ -41,6 +41,43 @@
   let links = $derived(options.some((o) => o.href !== undefined));
   let buttons = $state<(HTMLElement | undefined)[]>([]);
   let pill = $state({ x: 0, w: 0 });
+
+  /* The track scrolls rather than shrinks when its segments run wider than
+     it is (Alicja, 2026-08-26, "the pill came out 48 by 48" - shrinking was
+     tried and rejected). But its scrollbar is hidden (`.segmented`'s own
+     rule, below) for the same reason a native one is hidden everywhere else
+     in the app, and a control that scrolls with no visible scrollbar and no
+     other hint looks exactly like one that has simply run out of room -
+     "pain"/"severity" cut "severe" off flush against the sheet's edge with
+     nothing to suggest there was more (Alicja, 2026-08-27). These two flags
+     draw a fade over whichever edge still has content past it, which is the
+     hint a hidden scrollbar took away. */
+  let track = $state<HTMLElement | undefined>();
+  let canScrollStart = $state(false);
+  let canScrollEnd = $state(false);
+
+  function updateScrollFade() {
+    if (!track) return;
+    canScrollStart = track.scrollLeft > 1;
+    canScrollEnd = track.scrollLeft < track.scrollWidth - track.clientWidth - 1;
+  }
+
+  // Re-measured whenever the option set changes shape, not only on scroll.
+  $effect(() => {
+    void options;
+    updateScrollFade();
+  });
+
+  $effect(() => {
+    if (!track) return;
+    const el = track;
+    el.addEventListener('scroll', updateScrollFade, { passive: true });
+    window.addEventListener('resize', updateScrollFade);
+    return () => {
+      el.removeEventListener('scroll', updateScrollFade);
+      window.removeEventListener('resize', updateScrollFade);
+    };
+  });
   /** Set while the pill is crossing, which is what plays the stretch. Not set
       on the first measurement: the control does not slide into its own initial
       state, it starts there. */
@@ -74,8 +111,11 @@
      same either way, which is the whole point of the two living here. -->
 {#if links}
   <nav
+    bind:this={track}
     class="segmented"
     class:is-compact={compact}
+    class:can-scroll-start={canScrollStart}
+    class:can-scroll-end={canScrollEnd}
     data-segmented={key}
     aria-label={name}
     style:--seg-x="{pill.x}px"
@@ -103,8 +143,11 @@
   </nav>
 {:else}
   <div
+    bind:this={track}
     class="segmented"
     class:is-compact={compact}
+    class:can-scroll-start={canScrollStart}
+    class:can-scroll-end={canScrollEnd}
     data-segmented={key}
     role="radiogroup"
     aria-label={name}

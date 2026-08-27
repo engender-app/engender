@@ -158,6 +158,18 @@ try {
     fail('hashed assets are served immutable', `${immutableResponse.status} ${immutableCache}`);
   }
 
+  /* The OCR engine's own policy (phase 5 performance ticket 01). It used to
+     fall through to `location /` and its no-cache, so every shell install
+     revalidated 27 MB of files that change only when a dependency upgrade
+     changes them. */
+  const ocrResponse = await fetch(`${origin}/tesseract/tesseract-core.wasm`);
+  const ocrCache = ocrResponse.headers.get('cache-control') ?? '';
+  if (ocrResponse.status === 200 && ocrCache.includes('max-age=2592000') && !ocrCache.includes('no-cache')) {
+    ok('the on-demand OCR assets are served with a month of cache rather than revalidated');
+  } else {
+    fail('the on-demand OCR assets are served with a long max-age', `${ocrResponse.status} ${ocrCache || 'no cache-control'}`);
+  }
+
   const manifestResponse = await fetch(`${origin}/manifest.webmanifest`);
   const manifestType = manifestResponse.headers.get('content-type') ?? '';
   if (manifestResponse.status === 200 && manifestType.includes('application/manifest+json')) {

@@ -8,7 +8,9 @@
         own job, fully implemented below.
      3. Load mirrored reference data into reactive state (ticket 08).
      4. Purge trash past its 30-day window, then run the photo orphan sweep
-        (ticket 11; phase 5 ticket 19).
+        (ticket 11; phase 5 ticket 19) - off the critical path since phase 5
+        audit ticket 02: scheduled as boot reports ready rather than waited
+        for, because no screen reads what either of them produces.
 
    Steps 1, 3 and 4 are dependency-injected no-ops until their tickets land
    - boot() still calls them in order so the shape doesn't change later,
@@ -21,7 +23,7 @@ import { markJournalBusy } from '../journal-busy.ts';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import { runMigrations } from './migration-runner.ts';
-import { migrations } from './migrations.ts';
+import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 
 export interface BootDeps {
   createDriver: () => SqliteDriver;
@@ -31,10 +33,24 @@ export interface BootDeps {
   loadReferenceData?: (driver: SqliteDriver) => Promise<void>;
   purgeExpiredTrash?: (driver: SqliteDriver) => Promise<void>;
   sweepOrphanPhotos?: (driver: SqliteDriver) => Promise<void>;
+  /** When to run the two housekeeping passes, given the work to run. The app
+      passes an idle callback (whenIdle, ../../idle.ts); leave it out and they
+      start as soon as ready is reported, which is what the probes want - the
+      point is only that nothing waits for them. */
+  scheduleHousekeeping?: (run: () => void) => void;
 }
 
 export type BootResult =
-  | { phase: 'ready'; driver: SqliteDriver; persistDenied: boolean }
+  | {
+      phase: 'ready';
+      driver: SqliteDriver;
+      persistDenied: boolean;
+      /** Resolves when both housekeeping passes have finished, and never
+          rejects - a failure in either is warned about and left for the next
+          boot. Nothing in the app awaits it; the benchmarks and the tests
+          that prove the passes ran do. */
+      housekeeping: Promise<void>;
+    }
   | { phase: 'error'; error: unknown };
 
 export async function boot(deps: BootDeps): Promise<BootResult> {
@@ -53,7 +69,14 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
     // getUserVersion calls, which are where opening the database and
     // applying schema changes actually happen.
     driver = deps.createDriver();
-    await runMigrations(driver, deps.fileOps, migrations);
+    /* The list itself only where it is needed (phase 5 audit ticket 02): 27KB
+       of SQL text across the full schema history, which a journal already on
+       the current version has no use for. The dynamic import is what keeps it
+       out of the first-load graph, so it has to stay inside this call. */
+    await runMigrations(driver, deps.fileOps, {
+      latestVersion: LATEST_SCHEMA_VERSION,
+      load: async () => (await import('./migrations.ts')).migrations
+    });
   } catch (error) {
     // Migrations run before anything reads or writes app data, so a
     // failure here means the caller must show a handled error state
@@ -74,12 +97,37 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
 
   await deps.loadReferenceData?.(driver);
 
-  /* Both of these are housekeeping, the same reasoning the orphan sweep's
-     own comment below gives: a screen cannot render without reference data,
-     but the app is not withheld for either of these failing, since what
-     they did not finish is still there for the next boot to retry. The
-     purge runs first so an entry whose 30 days are up is a real delete
-     before the sweep asks what nothing references any more. */
+  /* Step 4, scheduled rather than awaited (phase 5 audit ticket 02). Neither
+     pass produces anything a screen reads, and both grow with the journal -
+     the sweep lists the whole attachment directory, which is 886 files on the
+     decade fixture - while the call that unparks every query in the app waits
+     on boot() resolving.
+
+     What changes for them is that they now run with the screens live, so each
+     one takes the write watch its own module documents (watchJournalWrites,
+     ../journal-busy.ts) and gives up rather than delete something a write is
+     in the middle of. The update guard is deliberately not extended over them:
+     it is the same counter the watch reads, so a pass holding it would see its
+     own write and decline every time. What that costs is a service worker
+     activating between the purge's commit and its file removals, which leaves
+     orphan files for the sweep - and what it buys is the pass declining when a
+     person is saving, which is the failure that would cost data.
+
+     The order stays: the purge runs first so an entry whose 30 days are up is
+     a real delete before the sweep asks what nothing references any more. */
+  const housekeeping = new Promise<void>((resolve) => {
+    const run = () => void housekeep(deps, driver).then(resolve);
+    if (deps.scheduleHousekeeping) deps.scheduleHousekeeping(run);
+    else run();
+  });
+
+  return { phase: 'ready', driver, persistDenied, housekeeping };
+}
+
+/** Both passes, in order, each one's failure its own. A failure is a warning
+    and nothing more: the app is not withheld for either of these, since what
+    they did not finish is still there for the next boot to retry. */
+async function housekeep(deps: BootDeps, driver: SqliteDriver): Promise<void> {
   try {
     await deps.purgeExpiredTrash?.(driver);
   } catch (error) {
@@ -91,6 +139,4 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
   } catch (error) {
     console.warn('photo orphan sweep failed; unreferenced files stay until the next boot', error);
   }
-
-  return { phase: 'ready', driver, persistDenied };
 }

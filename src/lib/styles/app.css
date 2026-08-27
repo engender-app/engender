@@ -21,6 +21,52 @@ body {
   line-height: var(--leading-body);
   background: var(--bg);
   color: var(--text);
+  /* An app, not a web page: dragging or long-pressing a label, heading or
+     row title selected it with a browser handle over it, which is not
+     anything a person asked for here (phase 5 ticket 32.20, "most of the
+     text in the app shouldnt be selectable"). Off by default, and opted
+     back in below on the surfaces that carry the person's own writing -
+     not the other way round, since that is the smaller list. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The opt-in. A journal entry's own note (`.entry-note`, EntryCard and the
+   doubt journal's own quoting of the same notes; `.kit-entry-note`,
+   DayEntry), the printed journal book's copy of it (`.book-note`), a
+   letter's body once unsealed (`.letter-text`), a lab result's value
+   (`.lab-value`), and the clinician summary in full - the one screen whose
+   entire purpose is being handed to someone else and read, so
+   `.clinician-summary` opts in as a screen rather than line by line. Text
+   fields keep the browser's own selection regardless, restated below for
+   engines that need it said again once an ancestor has turned it off.
+
+   Plain classes throughout rather than `data-*` attributes, on purpose: two
+   of these elements (DayEntry's and EntryCard's own note) already carry
+   `data-entry-note` as a walkthrough locator, and ADR-0029 holds those
+   handles to carrying "no styling and no behavior" so a rename never has to
+   consider a second, unrelated reader. Reaching for that same attribute
+   here to save a selector would have broken the one thing the ADR is for.
+
+   Deliberately not extended to every other place a `note` prop shows up
+   (WrappedYear's figure captions, BarRows', PairedDots' and Tile's own
+   `note` slots): those are computed summaries the app wrote, not something
+   the person typed, and belong with the rest of the app's chrome. */
+:is(
+  .entry-note,
+  .kit-entry-note,
+  .book-note,
+  .letter-text,
+  .lab-value,
+  .clinician-summary
+) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+:is(input, textarea) {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .app-viewport {
@@ -36,6 +82,13 @@ body {
   flex-direction: column;
   background: var(--bg);
   overflow: hidden;
+  /* An identity transform, so a `position: fixed` descendant - a sheet's
+     scrim (components.css) - is contained by this box instead of the real
+     window. Normally the two are the same size; in the demo bar's
+     phone-frame preview and the walkthrough's own frame they are not, and a
+     sheet fixed to the true window would centre on the browser instead of
+     the frame it visually belongs to. */
+  transform: translateZ(0);
 }
 
 /* The one place the window insets are spent (phase 5 ticket 18).
@@ -63,7 +116,27 @@ body {
   overflow-x: hidden;
   position: relative;
   scrollbar-width: thin;
+  /* Reserves the scrollbar's own width whether or not one is drawn, so
+     Sheet.svelte locking this element to `overflow: hidden` while a sheet
+     is open does not also remove the scrollbar and shift the content under
+     it (Alicja, 2026-08-27: the list jumps when an entry is selected, in
+     hair removal). */
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
+  /* Scroll position here is scroll-region.ts's own to manage - it remembers
+     and restores per path deliberately, because this element rather than
+     the window is what scrolls, so the browser's default handling never
+     sees it (that file's own comment). Scroll anchoring is a second,
+     competing authority over the same number: it nudges scrollTop on its
+     own whenever content already above the viewport changes size, which
+     several stacked `{#if query.loading}` sections each resolving at a
+     slightly different moment does continuously for the first few hundred
+     ms after a screen mounts. Restoring to 767 and then watching the
+     browser walk it back down toward 598 over the next several frames,
+     unprompted, is exactly that fight (Alicja, 2026-08-27, on the
+     transition roadmap: "the fade-in jumps a lot of pixels"; measured with
+     a scroll listener across a real back navigation to /more). */
+  overflow-anchor: none;
   padding-top: var(--inset-top);
   padding-left: var(--inset-left);
   padding-right: var(--inset-right);
@@ -157,9 +230,16 @@ body {
    spacing this is about. Margins collapse; a gap would not.
 
    The trailing margin on the last block is deliberate and harmless: the
-   scroll region already clears the floating bar with its own padding. */
+   scroll region already clears the floating bar with its own padding.
+
+   --space-6, not --space-4: two cards read as one with a line through it at
+   16px (Alicja, 2026-08-26, register finding 32.14). This is a different
+   axis from DIRECTION.md decision 3's "tighter, not airier" - that gap
+   (--space-3) is between related items inside a section and deliberately
+   shrank; this one is between unrelated blocks that need to read as
+   separate, and grows for the same reason the other one shrank. */
 .screen > * {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
 /* A heading belongs to what comes after it. Less space under it than over it
@@ -185,9 +265,11 @@ body {
    switcher (Alicja, 2026-08-26).
 
    Named rather than reached through with `.screen > * > *`, which would put
-   a margin inside every card, list and chart on the screen. */
+   a margin inside every card, list and chart on the screen.
+
+   --space-6 to match the floor above it (32.14). */
 .screen > .screen-part > * {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
 .screen > .screen-part > .kit-heading {
@@ -619,43 +701,25 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   }
 }
 
-/* A frame for the app itself at desktop width, so a bleed has an edge to
-   cut against (phase 5 ticket 32.11). Nothing before this capped anything
-   but .screen, and .screen's own edge is well inside .app-main - so Home's
-   flag sun, clipped by .home-header's own overflow: hidden against that
-   edge, cut off against page that ran on unbroken past it in both
-   directions. Alicja, 2026-08-26: "let's leave the sun in the corner, but
-   let's put a nice border around the whole app on web, so that the sun
-   doesn't just cut off like that." The sun's own clip is unchanged - this
-   frames the rail and the column together, so the composition they make
-   reads as a window sitting on the page rather than as content that
-   happens to stop.
+/* Not a frame around the whole app any more (phase 5 ticket 32.11,
+   reverted here). That version bordered the rail and the column together
+   on `body`, which put the rail back to its normal desktop position but
+   left the border drawn nearly 200px out from where Home's own bleed
+   actually clips its sun - the composition read as a window on the page,
+   but the sun inside it still stopped at an edge with nothing marking it,
+   same as before, just with an unrelated frame around the whole thing
+   (Alicja, 2026-08-27: "the border should only be around the main home
+   content, not over the whole app... the menu can go back to the previous
+   position as well as the width of the app").
 
-   An outline, not a border, and on body rather than .app-viewport - both
-   for the same reason. A container query measures a size container's own
-   content box, and .app-viewport (width: 100% of its containing block) is
-   that container: a border anywhere between the real window and it - on
-   .app-viewport itself, or on body around it - takes its own width off
-   what .app-viewport ends up 100% of. Either placement landed 1024px of
-   real window as 1022px of container, one part in a thousand short of the
-   rail's own @container app (min-width: 1024px), and silently back to the
-   bottom bar. An outline draws in the same place without occupying any
-   box-model space, so nothing downstream measures a pixel narrower -
-   "border" above is the word for what a reader sees, which an outline
-   draws exactly.
-
-   A plain @media rather than the container query itself: body is outside
-   that container altogether, and 1024px matches the rail's own threshold
-   so the two move together. Below it, the frame does nothing: a narrow
-   desktop window is already close enough to phone width that .screen
-   fills it edge to edge, the same as it does on a phone. */
-@media (min-width: 1024px) {
-  body {
-    max-width: var(--app-frame-max);
-    margin: 0 auto;
-    outline: 1px solid var(--border);
-  }
-}
+   What replaces it is scoped to Home alone, in screens.css: a border
+   directly on `.home`, which already sits at the exact edge `.home-header`
+   bleeds its sun against (`.screen`'s own padding box, per the container
+   query above - the negative margin that pulls the header out to that
+   edge is unchanged). Putting the border on that same box, rather than
+   somewhere past it, means the rounded corner is what clips the sun now,
+   instead of the sun stopping at an edge and a border being drawn
+   somewhere else. */
 .rail-brand {
   font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg);
   letter-spacing: var(--display-track);

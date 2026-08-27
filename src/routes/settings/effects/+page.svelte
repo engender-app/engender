@@ -313,6 +313,31 @@
     {/if}
   </Sheet>
 
+  <!-- One row shape, called from both branches below - it was written out
+       twice (per-category, then again for the uncategorized group) before
+       a code review named the duplication. `effectiveHidden` is passed in
+       rather than recomputed here because the two branches derive it
+       differently: a categorized effect also answers to its category's
+       own Switch, an uncategorized one only ever answers to its own.
+       Declared outside the Sheet below - a snippet declared as a direct
+       child of a component is treated as an implicit prop for it. -->
+  {#snippet managedEffectRow(e: PersonalEffectCatalogEntry, effectiveHidden: boolean)}
+    <div class="rows-divide managed-tag" class:is-hidden={effectiveHidden}>
+      <span class="managed-label">
+        {e.name}{#if !e.builtIn}<span class="muted small"> · {m.custom_suffix()}</span>{/if}
+      </span>
+      {#if effectiveHidden}<span class="muted small">{m.tags_hidden()}</span>{/if}
+      <button
+        class="icon-btn"
+        data-effect-type-hide={e.key}
+        aria-label={e.hidden ? m.effect_type_show_aria({ name: e.name }) : m.effect_type_hide_aria({ name: e.name })}
+        onclick={() => journal.personalEffects.setEffectTypeHidden(e.key, !e.hidden)}
+      >
+        <Icon name={e.hidden ? 'eye' : 'eyeOff'} size={16} />
+      </button>
+    </div>
+  {/snippet}
+
   <Sheet open={manageOpen} title={m.effect_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.effects_categories_heading()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.effects_categories_intro()}</p>
@@ -331,24 +356,37 @@
 
     <h3>{m.effect_manage_types()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.effect_manage_types_intro()}</p>
-    <div class="managed-tags">
-      {#each vocabulary.personalEffectTypes as e (e.key)}
-        <div class="managed-tag" class:is-hidden={e.hidden}>
-          <span class="managed-label">
-            {e.name}{#if !e.builtIn}<span class="muted small"> · {m.custom_suffix()}</span>{/if}
-          </span>
-          {#if e.hidden}<span class="muted small">{m.tags_hidden()}</span>{/if}
-          <button
-            class="icon-btn"
-            data-effect-type-hide={e.key}
-            aria-label={e.hidden ? m.effect_type_show_aria({ name: e.name }) : m.effect_type_hide_aria({ name: e.name })}
-            onclick={() => journal.personalEffects.setEffectTypeHidden(e.key, !e.hidden)}
-          >
-            <Icon name={e.hidden ? 'eye' : 'eyeOff'} size={16} />
-          </button>
+    <!-- Grouped the same way the timeline above groups them (by category),
+         rather than one flat list of every effect the catalogue has - the
+         two disagreeing about how these effects are organised was its own
+         kind of confusing (Alicja, 2026-08-27). A category's own Switch,
+         above, already keeps every effect under it out of the timeline and
+         the "mark a change" picker (visiblePersonalEffectTypes); shown here
+         as effectively hidden too, rather than only in the two screens this
+         one does not do the toggling for, so what a row says matches what
+         the category switch already decided for it. Its own eye toggle
+         stays live regardless - hiding it individually is a choice that
+         should still stick once the category comes back on. -->
+    {#each vocabulary.effectCategories as cat (cat.key)}
+      {@const catEffects = vocabulary.personalEffectTypes.filter((e) => e.categoryKey === cat.key)}
+      {#if catEffects.length}
+        <p class="field-label" style="margin:var(--space-3) 0 var(--space-2)">{cat.name}</p>
+        <div class="managed-tags">
+          {#each catEffects as e (e.key)}
+            {@render managedEffectRow(e, e.hidden || !cat.enabled)}
+          {/each}
         </div>
-      {/each}
-    </div>
+      {/if}
+    {/each}
+    {@const uncategorized = vocabulary.personalEffectTypes.filter((e) => e.categoryKey === null)}
+    {#if uncategorized.length}
+      <p class="field-label" style="margin:var(--space-3) 0 var(--space-2)">{m.effect_type_category_none()}</p>
+      <div class="managed-tags">
+        {#each uncategorized as e (e.key)}
+          {@render managedEffectRow(e, e.hidden)}
+        {/each}
+      </div>
+    {/if}
 
     <div class="field">
       <label class="field-label" for="new-effect-type">{m.effect_type_new_label()}</label>

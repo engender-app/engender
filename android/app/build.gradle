@@ -11,9 +11,9 @@ if (requireReleaseVersion && (releaseVersionName == '0.0.0-dev' || releaseVersio
 def requireSigning = (System.getenv('ANDROID_REQUIRE_SIGNING') ?: '').toBoolean()
 def keystorePath = System.getenv('ANDROID_KEYSTORE_PATH')
 def keystorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
-def keyAlias = System.getenv('ANDROID_KEY_ALIAS')
-def keyPassword = System.getenv('ANDROID_KEY_PASSWORD') ?: keystorePassword
-def hasReleaseSigning = keystorePath && keystorePassword && keyAlias && keyPassword
+def androidKeyAlias = System.getenv('ANDROID_KEY_ALIAS')
+def androidKeyPassword = System.getenv('ANDROID_KEY_PASSWORD') ?: keystorePassword
+def hasReleaseSigning = keystorePath && keystorePassword && androidKeyAlias && androidKeyPassword
 if (requireSigning && !hasReleaseSigning) {
     throw new GradleException(
         'Release signing is required but ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD are not all set.'
@@ -49,16 +49,18 @@ android {
             release {
                 storeFile file(keystorePath)
                 storePassword keystorePassword
-                keyAlias keyAlias
-                keyPassword keyPassword
+                keyAlias androidKeyAlias
+                keyPassword androidKeyPassword
             }
         }
     }
     buildTypes {
         release {
             if (hasReleaseSigning) signingConfig signingConfigs.release
+            // Deliberate: the source is public, so obfuscation buys
+            // nothing, and R8 is a moving part between a signed tag and
+            // an F-Droid rebuild. No proguardFiles here on purpose.
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }

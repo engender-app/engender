@@ -20,7 +20,7 @@
     <h2 class="editor-heading" style="margin-bottom:var(--space-3)">{m.body_regions_builtin_heading()}</h2>
     <div class="managed-tags">
       {#each builtIns as r (r.id)}
-        <div class="managed-tag" class:is-hidden={r.hidden}>
+        <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
           <span class="managed-label">{r.name}</span>
           {#if r.hidden}<span class="muted small">{m.body_regions_hidden()}</span>{/if}
           <span class="managed-actions">
@@ -45,7 +45,7 @@
     {/if}
     <div class="managed-tags">
       {#each customs as r (r.id)}
-        <div class="managed-tag">
+        <div class="rows-divide managed-tag">
           <span class="managed-label">{r.name}</span>
         </div>
       {/each}

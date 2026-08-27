@@ -549,28 +549,24 @@
       </p>
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
         {#each [...comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
-          <div class="kit-row is-static" data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}>
-            <span class="kit-row-text">
-              <span class="kit-row-title">{fmtDayLong(row.slot.epochDay)}</span>
-              {#if activeSchedule.dosesPerDay > 1}
-                <span class="kit-row-sub">
-                  {m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: activeSchedule.dosesPerDay })}
-                </span>
-              {/if}
-              {#if row.slot.amount}
-                <span class="kit-row-sub">
-                  {m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })}
-                </span>
-              {/if}
-            </span>
-            <span class="kit-row-trail">
+          <ListRow
+            static
+            data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
+            title={fmtDayLong(row.slot.epochDay)}
+            subtitle={[
+              activeSchedule.dosesPerDay > 1 &&
+                m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: activeSchedule.dosesPerDay }),
+              row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
+            ]}
+          >
+            {#snippet trailing()}
               {#if row.dose}
                 {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
               {:else}
                 {m.adherence_nothing_logged()}
               {/if}
-            </span>
-          </div>
+            {/snippet}
+          </ListRow>
         {/each}
       </ListCard>
 
@@ -579,19 +575,17 @@
         <p class="muted small">{m.adherence_paused_note()}</p>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
           {#each activePauses as pause (pause.id)}
-            <div class="kit-row is-static" data-pause={pause.id}>
-              <span class="kit-row-text">
-                <span class="kit-row-title">
-                  {pause.endEpochDay === null
-                    ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
-                    : m.adherence_paused_range({
-                        from: fmtDayLong(pause.startEpochDay),
-                        to: fmtDayLong(pause.endEpochDay)
-                      })}
-                </span>
-                <span class="kit-row-sub">{pauseReasonLabel(pause.reason)}</span>
-              </span>
-            </div>
+            <ListRow
+              static
+              data-pause={pause.id}
+              title={pause.endEpochDay === null
+                ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
+                : m.adherence_paused_range({
+                    from: fmtDayLong(pause.startEpochDay),
+                    to: fmtDayLong(pause.endEpochDay)
+                  })}
+              subtitle={pauseReasonLabel(pause.reason)}
+            />
           {/each}
         </ListCard>
       {/if}
@@ -601,12 +595,12 @@
         <p class="muted small">{m.adherence_unmatched_note()}</p>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
           {#each comparison.unmatched as dose (dose.id)}
-            <div class="kit-row is-static" data-unmatched={dose.id}>
-              <span class="kit-row-text">
-                <span class="kit-row-title">{dose.dose} {dose.doseUnit} · {routeLabel(dose.route)}</span>
-                <span class="kit-row-sub">{whenOf(dose)}</span>
-              </span>
-            </div>
+            <ListRow
+              static
+              data-unmatched={dose.id}
+              title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
+              subtitle={whenOf(dose)}
+            />
           {/each}
         </ListCard>
       {/if}

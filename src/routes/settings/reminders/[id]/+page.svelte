@@ -54,7 +54,10 @@
     if (draft.choice === 'ONCE') {
       // "Once" means the next moment the chosen time comes around; the
       // shared rule function decides whether that is today or tomorrow.
-      const at = nextOccurrence({ ...none, time: draft.time, recurrence: 'DAILY' }, new Date());
+      // A DAILY rule always has a next occurrence - only an elapsed one-off
+      // comes back empty - so this is the day the draft is dated from, and
+      // is why the preview below never has to say a saved one-off has passed.
+      const at = nextOccurrence({ ...none, time: draft.time, recurrence: 'DAILY' }, new Date())!;
       return { ...none, time: draft.time, recurrence: null, epochDay: epochDayFromLocalDate(at) };
     }
     if (draft.choice === 'EVERY_3_DAYS' || draft.choice === 'EVERY_7_DAYS') {
@@ -69,8 +72,11 @@
     return { ...none, time: draft.time, recurrence: draft.choice as 'DAILY' | 'WEEKLY' };
   }
 
-  /* The same function the scheduler uses (ADR-0010): the preview cannot
-     disagree with what will actually fire. */
+  /* The rule the Android scheduler is held to case for case
+     (reminder-rule.json): the preview cannot promise a moment that will not
+     fire. Only an elapsed one-off has no occurrence left, and ruleFromDraft()
+     dates a one-off forward every time it is called, so there is always a
+     moment here to show. */
   let nextPreview = $derived.by(() => {
     return new Intl.DateTimeFormat(intlLocale(), {
       weekday: 'short',
@@ -78,7 +84,7 @@
       month: 'short',
       hour: 'numeric',
       minute: '2-digit',
-    }).format(nextOccurrence(ruleFromDraft(), new Date()));
+    }).format(nextOccurrence(ruleFromDraft(), new Date())!);
   });
 
   function saveReminder() {

@@ -45,6 +45,7 @@
      it names the thing being said (ADR-0029). */
   import Icon from '../Icon.svelte';
   import { roleAttrs } from './role';
+  import { disclose, resize } from '$lib/motion/reveal';
   import type { Role } from '$lib/theme/roles';
 
   let {
@@ -83,9 +84,35 @@
   } = $props();
 </script>
 
-<div class="kit-notice" data-notice={key} {...roleAttrs(role)} {...rest}>
+<!-- out: only, never in:. A notice arrives with tier 4's "content is simply
+     there" - no entrance animation is DIRECTION.md's own rule, and every
+     other kit surface already follows it. Leaving is different: whatever
+     unmounts this - the dismiss button, or a caller's own condition going
+     false, the same shape a dismiss produces - used to drop the space it
+     held in one frame and throw the content below up to meet it (phase 5
+     ticket 32.17, "clicking 'x' on a panel should close it with a nice
+     animation, the content below shouldnt just jump up immediately").
+     `disclose` already shrinks a box to nothing by measuring its own
+     height rather than guessing at one; it runs the same way backwards
+     for a leaving node as it does forwards for an arriving one.
+
+     `use:resize` on the body below, not here, for the other half of the
+     same finding: a notice that stays mounted and changes size under its
+     own title/text (the measurements screen's protocol tip, switched with
+     the segmented control) used to jump the same way on the way in. One
+     primitive per shape - `resize` cannot see a node arriving or leaving,
+     which is `disclose`'s job, and `disclose` cannot see a node's own
+     content changing size while it stays put, which is `resize`'s. -->
+<div class="kit-notice" data-kit-surface data-notice={key} out:disclose {...roleAttrs(role)} {...rest}>
   <span class="kit-notice-ico"><Icon name={icon} size={22} /></span>
-  <div class="kit-notice-body">
+  <!-- Not the root: `disclose`'s own out-transition animates the root's
+       height too, on the way out, and ResizeObserver cannot tell that
+       apart from a genuine content change - the two fought over the same
+       property, and the height oscillated rather than settling. The body
+       is the one thing that actually varies with title/text, so watching
+       it instead is both the fix and the more precise place for this to
+       live. -->
+  <div class="kit-notice-body" use:resize>
     {#if title}<strong class="kit-notice-title" data-notice-title>{title}</strong>{/if}
     {#if text}<p class="kit-notice-text">{text}</p>{/if}
   </div>

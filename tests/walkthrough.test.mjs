@@ -75,6 +75,27 @@ async function expectNoHorizontalOverflow(selector) {
   }
 }
 
+/* A lab-slip-shaped PNG, drawn in the page itself rather than shipped as a
+   fixture: large black text on white is what a phone photo of a printed
+   slip approximates best, and the scanner has to run its real Tesseract
+   engine against whatever comes out (ticket 44 - the sheet this feeds was
+   the thing that could not be reached at all). */
+async function labSlipImage(lines) {
+  const dataUrl = await page.evaluate((lines) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 900;
+    canvas.height = 120 + lines.length * 90;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 56px sans-serif';
+    lines.forEach((line, i) => ctx.fillText(line, 30, 90 + i * 90));
+    return canvas.toDataURL('image/png');
+  }, lines);
+  return Buffer.from(dataUrl.split(',')[1], 'base64');
+}
+
 /* RFC 4180, enough of it to read back what the plain export writes (ticket
    15): a quoted field can hold commas, newlines and doubled quotes, and
    splitting on commas would call every one of those a new column. */
@@ -388,10 +409,11 @@ try {
   if (!notes.includes('Day detail proof A') || !notes.includes('Day detail proof B')) {
     throw new Error('day detail did not keep separate entries');
   }
-  if (await page.locator('[data-day-average]').count()) {
-    throw new Error('day detail still shows a day-average block');
-  }
-  ok('day detail keeps separate entries and no average summary');
+  /* Used to also assert [data-day-average] absent here. No component has
+     ever owned that handle - day detail (routes/day/[day]/+page.svelte)
+     shows no day-average block and never has - so the assertion could not
+     fail either way it went (ticket 01). Deleted rather than repointed. */
+  ok('day detail keeps separate entries');
 } catch (e) { fail('day detail truthfulness', e); }
 
 /* 5. search */
@@ -625,6 +647,91 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('[data-lab-series]').length === 1);
   ok('a second unit gets its own trend and a neutral notice');
 } catch (e) { fail('lab unit series', e); }
+
+/* 6e. the lab scanner, unreachable in a shipped build until ticket 44: the
+   screen wrapped a factory-built OCR machine in $state(...), but the
+   machine's own methods wrote to the object the factory closed over, never
+   to the proxy the template read - so the sheet's `open` prop stayed false
+   forever. ocr-machine.test.ts drove the machine directly and could not see
+   it; only a page reading the state through the proxy can, which is what
+   this flow is for. Picks a real slip image through a real file dialog and
+   runs it through the app's own Tesseract engine - no mocks - because a
+   mocked recognizer would prove the wiring works without proving the sheet
+   that wiring lives in ever opens. */
+try {
+  await fresh('/settings/labs');
+  await page.locator('[data-import-lab]').click();
+  await page.waitForSelector('[data-ocr-state="picking"]');
+
+  // The download notice phase 5 performance ticket 01 added: shipped, but
+  // unverifiable in its own sheet until this ticket (see verify-build.mjs).
+  const noticeText = await page.locator('[data-notice="labs-ocr-download"]').textContent();
+  if (!noticeText || !noticeText.includes('21 MB')) {
+    throw new Error(`download notice missing or reworded: ${noticeText}`);
+  }
+
+  const slip = await labSlipImage(['Date 2026-08-12', 'Estradiol 123.4 pg/mL']);
+  page.once('filechooser', (chooser) => chooser.setFiles({ name: 'slip.png', mimeType: 'image/png', buffer: slip }));
+  await page.locator('[data-ocr-pick="gallery"]').click();
+  await page.waitForSelector('[data-ocr-state="recognizing"]');
+  await page.waitForSelector('[data-ocr-state="review"], [data-ocr-state="no-rows"]', { timeout: 60000 });
+
+  if (await page.locator('[data-ocr-state="no-rows"]').count()) {
+    // A real OCR pass, so what the engine actually read is allowed to miss a
+    // clean match; the no-rows path itself is exercised deterministically
+    // below with a blank slip, so what matters here is that the sheet
+    // reacted to the transition at all rather than sitting on "picking".
+    await page.locator('[data-ocr-retry]').click();
+    await page.waitForSelector('[data-ocr-state="picking"]');
+    ok('the scanner opens, shows its download notice, and reacts through recognizing to no-rows on a real recognition pass');
+  } else {
+    // Rows in hand: overwritten with known values before saving, since the
+    // point here is the review→save round trip, not grading Tesseract's
+    // transcription of a canvas-rendered slip.
+    await page.locator('[data-ocr-field="analyte"]').first().fill('estradiol');
+    await page.locator('[data-ocr-field="value"]').first().fill('123.4');
+    await page.locator('[data-ocr-field="unit"]').first().fill('pg/mL');
+    await page.locator('[data-ocr-field="date"]').first().fill('2026-08-12');
+
+    // A blanked analyte first, so save-validation-failed renders too - the
+    // sheet's own re-edit path, not just the machine's transition into it.
+    await page.locator('[data-ocr-field="analyte"]').first().fill('');
+    await page.locator('[data-ocr-save]').click();
+    await page.waitForSelector('[data-ocr-state="save-validation-failed"]');
+
+    await page.locator('[data-ocr-field="analyte"]').first().fill('estradiol');
+    await page.locator('[data-ocr-save]').click();
+    /* "saving" itself is not asserted: the local write it names can resolve
+       inside a single Playwright poll, and how long it takes to lose that
+       race depends on machine load this file has no control over - it was
+       flaky under the full suite even though it held reliably alone. The
+       toast below is what proves the save actually landed. */
+    await page.waitForFunction(
+      () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Imported'))
+    );
+    await page.waitForSelector('[data-ocr-state]', { state: 'detached' });
+    ok('the scanner opens, shows its download notice, and a picked slip reaches review, save-validation-failed and saved in turn');
+  }
+} catch (e) { fail('lab scanner import (ticket 44)', e); }
+
+/* 6f. no-rows, driven deterministically: a blank slip has nothing for the
+   engine to read, so unlike 6e this does not depend on what Tesseract makes
+   of rendered text. */
+try {
+  await fresh('/settings/labs');
+  await page.locator('[data-import-lab]').click();
+  await page.waitForSelector('[data-ocr-state="picking"]');
+
+  const blank = await labSlipImage([]);
+  page.once('filechooser', (chooser) => chooser.setFiles({ name: 'blank.png', mimeType: 'image/png', buffer: blank }));
+  await page.locator('[data-ocr-pick="camera"]').click();
+  await page.waitForSelector('[data-ocr-state="no-rows"]', { timeout: 60000 });
+
+  await page.locator('[data-ocr-manual]').click();
+  await page.waitForSelector('[data-ocr-state]', { state: 'detached' });
+  await page.waitForSelector('#lab-analyte');
+  ok('a blank slip lands in no-rows, and its manual-entry escape opens the regular editor');
+} catch (e) { fail('lab scanner no-rows path', e); }
 
 /* 7. palette switch */
 try {
@@ -2549,6 +2656,12 @@ try {
 
   await page.goto(BASE + '/settings/wear', { waitUntil: 'networkidle' });
   await booted();
+  /* [data-skeleton] used to match nothing - Skeleton.svelte only ever wrote
+     `class="skeleton"` - so this wait was a no-op from its first tick
+     (ticket 01). Skeleton.svelte now stamps data-skeleton on its own root,
+     chosen over pointing this wait at something wear-log-specific because
+     every other screen that shows a Skeleton while loading gets the same
+     real wait for free. */
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   if (!(await page.getByRole('heading', { level: 1 }).count())) throw new Error('the wear log did not render');
   ok('quick add: a wear session starts and stops in place, and the row says which');

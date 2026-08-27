@@ -126,7 +126,7 @@
        anything drawn here would. -->
   {#snippet dateRow(id: string, label: string, name: string, value: string, bind: (v: string) => void, min: string | undefined)}
     {@const shown = shownDate(value)}
-    <div class="date-row">
+    <div class="rows-divide date-row">
       <label class="date-row-label" for={id}>{label}</label>
       <span class="date-row-value">{shown ?? ''}</span>
       <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
@@ -193,34 +193,34 @@
          No third column: the difference between the two is the reader's to
          draw, and a delta would be the app naming a winner. -->
     <div class="compare-metrics" data-compare-table>
-      <div class="compare-metrics-row compare-metrics-header">
+      <div class="rows-divide compare-metrics-row compare-metrics-header">
         <span></span>
         <span class="compare-period-label" data-compare-period-label>{periodA.label}</span>
         <span class="compare-period-label" data-compare-period-label>{periodB.label}</span>
       </div>
-      <div class="compare-metrics-row" data-compare-metric="entries">
+      <div class="rows-divide compare-metrics-row" data-compare-metric="entries">
         <span class="compare-metric-name">{m.compare_entries_label()}</span>
         <span>{a.entryCount}</span>
         <span>{b.entryCount}</span>
       </div>
-      <div class="compare-metrics-row" data-compare-metric="mood">
+      <div class="rows-divide compare-metrics-row" data-compare-metric="mood">
         <span class="compare-metric-name">{m.mood()}</span>
         <span>{fmtMood(a.averageMood)}</span>
         <span>{fmtMood(b.averageMood)}</span>
       </div>
       {#each vocabulary.activeDimensions as d, i (d.key)}
-        <div class="compare-metrics-row" data-compare-metric={d.key}>
+        <div class="rows-divide compare-metrics-row" data-compare-metric={d.key}>
           <span class="compare-metric-name">{d.name}</span>
           <span>{fmtDimension(a.dimensionAverages[i]?.average ?? null)}</span>
           <span>{fmtDimension(b.dimensionAverages[i]?.average ?? null)}</span>
         </div>
       {/each}
-      <div class="compare-metrics-row" data-compare-metric="streak">
+      <div class="rows-divide compare-metrics-row" data-compare-metric="streak">
         <span class="compare-metric-name">{m.compare_streak_label()}</span>
         <span>{m.n_days({ n: a.bestStreak })}</span>
         <span>{m.n_days({ n: b.bestStreak })}</span>
       </div>
-      <div class="compare-metrics-row compare-metrics-tags" data-compare-metric="tags">
+      <div class="rows-divide compare-metrics-row compare-metrics-tags" data-compare-metric="tags">
         <span class="compare-metric-name">{m.recap_tags_title()}</span>
         <span class="compare-metric-text">{a.topTagLabel}</span>
         <span class="compare-metric-text">{b.topTagLabel}</span>

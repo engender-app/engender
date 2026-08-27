@@ -8,10 +8,13 @@ import assert from 'node:assert/strict';
 import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
 import { runMigrations } from './migration-runner.ts';
 import { migrations } from './migrations.ts';
+import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
+  // Deliberate oracle: the one hardcoded version in this suite, so a runner
+  // bug that stalls user_version can't hide behind the derived constant.
   assert.equal(db.getUserVersion(), 42);
 
   const tables = db.raw
@@ -343,7 +346,7 @@ test('v19 widens personal_effect to eight markers, preserving rows the v12 table
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 42);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -375,7 +378,7 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 42);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const row = db.raw.prepare('SELECT * FROM measurement WHERE uuid = ?').get('m1') as {
     type: string;
@@ -404,7 +407,7 @@ test('v39 drops the CHECK on personal_effect.effect and adds effect_category/per
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 42);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
     effect: string;
@@ -488,7 +491,7 @@ test('v37 carries the v13 table across as Norwood-Hamilton stagings', async () =
   db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h1', 19180, '3a', 1000)");
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 42);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const row = db.raw.prepare('SELECT * FROM hair_stage WHERE uuid = ?').get('h1') as {
     epoch_day: number;
@@ -519,7 +522,7 @@ test('v38 carries the v8 dose_schedule table across as everyNDays, with no weekd
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 42);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const row = db.raw.prepare('SELECT * FROM dose_schedule WHERE uuid = ?').get('s1') as {
     recurrence_kind: string;
@@ -617,7 +620,7 @@ test('v40 backfills end_epoch_day from the pre-v40 next-episode inference, and a
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 42);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const episodes = (
     db.raw.prepare('SELECT uuid, end_epoch_day FROM regimen_episode ORDER BY start_epoch_day').all() as Array<{
@@ -647,7 +650,7 @@ test('v41 drops doubt_entry and every row it held, leaving doubt_snapshot and it
   );
 
   await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), 42);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'doubt%'")
@@ -770,4 +773,18 @@ test('v42 leaves an install that never chose a preset on the default set', async
   // everything, and this install has said nothing at all, so the preference
   // default is what should answer for it.
   assert.equal(activeScales(db), null);
+});
+
+test('the hand-written latest version and the migration list agree', async () => {
+  /* LATEST_SCHEMA_VERSION stopped being derived from the array in phase 5
+     audit ticket 02, so that a boot on the current schema never loads it.
+     Two places now write the number down, and this is what catches a
+     migration appended without the constant moving - including the merge
+     case, where two branches each add a version and the loser renumbers. */
+  assert.equal(LATEST_SCHEMA_VERSION, Math.max(...migrations.map((migration) => migration.version)));
+  assert.deepEqual(
+    migrations.map((migration) => migration.version),
+    Array.from({ length: LATEST_SCHEMA_VERSION }, (_, index) => index + 1),
+    'the list is contiguous from 1, in order, with no version applied twice'
+  );
 });

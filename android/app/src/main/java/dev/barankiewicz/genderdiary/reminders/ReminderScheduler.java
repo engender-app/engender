@@ -15,7 +15,7 @@ import java.time.ZonedDateTime;
 
 public final class ReminderScheduler {
 
-    static final String PREFS = "gender-diary-reminders";
+    public static final String PREFS = "gender-diary-reminders";
     private static final String KEY_PAYLOAD = "payload-v1";
     private static final String KEY_LAUNCH_ROUTE = "launch-route";
 
@@ -51,6 +51,36 @@ public final class ReminderScheduler {
         if (payload == null) return;
         cancelAll(context, payload);
         scheduleAll(context, payload, ZonedDateTime.now());
+    }
+
+    /**
+     * The reset path (ADR-0014). Cancellation lives here, beside the
+     * {@link #cancelAll} that {@code saveAndSchedule} already calls, rather
+     * than in a second mechanism that would have to know the same request
+     * codes and intent shapes to reach the same alarms.
+     *
+     * <p>Order matters: the payload is what names the alarms, so it is read
+     * and used before the file holding it goes. Left the other way round, a
+     * reset would drop the titles and leave the alarms, and
+     * {@link ReminderAlarmReceiver} would keep waking on schedule to find
+     * nothing to post - quiet, but still an alarm nobody can cancel from
+     * inside the app.
+     *
+     * <p>{@code commit} rather than {@code apply}: the reset tells the
+     * person it is done, and it should be done rather than queued.
+     *
+     * <p>One residual, bounded rather than fixed: a reminder alarm can only
+     * be cancelled by name, so a payload that will not parse leaves its
+     * reminder alarms scheduled. What they wake into is
+     * {@link ReminderAlarmReceiver#onReceive}, which returns on a missing
+     * payload without posting and without rescheduling - so each fires once
+     * more, silently, and is then gone. The check-in alarm has no such
+     * limit: it is cancelled by its fixed request code whatever the payload
+     * says.
+     */
+    public static void wipe(Context context) {
+        cancelAll(context, loadPayload(context));
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
     }
 
     static JSONObject loadPayload(Context context) {
@@ -186,9 +216,14 @@ public final class ReminderScheduler {
 
     private static void cancelAll(Context context, JSONObject payload) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager == null || payload == null) return;
+        if (alarmManager == null) return;
 
-        JSONArray reminders = payload.optJSONArray("reminders");
+        /* A missing payload used to return here, taking the check-in alarm
+           below with it - and that one needs no payload to name, only its
+           fixed request code. The reset is where that matters: a reminders
+           file that will not parse left a check-in alarm scheduled that
+           nothing could reach afterwards. */
+        JSONArray reminders = payload == null ? null : payload.optJSONArray("reminders");
         if (reminders != null) {
             for (int i = 0; i < reminders.length(); i++) {
                 JSONObject reminder = reminders.optJSONObject(i);

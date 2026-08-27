@@ -552,7 +552,7 @@ export async function applyRegimenEpisodes({ driver, journal, ts }: Restoring): 
   await insertRows(
     driver,
     `INSERT INTO regimen_episode
-       (uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, hidden, updated_at)`,
+       (uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, updated_at)`,
     inserting.map((episode) => [
       episode.id,
       episode.drug,
@@ -565,7 +565,6 @@ export async function applyRegimenEpisodes({ driver, journal, ts }: Restoring): 
       // Absent on an archive from before ticket 38 - read as still
       // ongoing, the same as every pre-existing episode's backfill (v40).
       episode.endEpochDay ?? null,
-      flag(episode.hidden),
       ts
     ])
   );
@@ -577,8 +576,8 @@ export async function applyTallyEvents({ driver, journal, ts }: Restoring): Prom
   const inserting = journal.tallyEvents.filter((event) => !present.has(event.id));
   await insertRows(
     driver,
-    'INSERT INTO tally_event (uuid, epoch_day, kind, context, updated_at)',
-    inserting.map((event) => [event.id, event.epochDay, event.kind, event.context, ts])
+    'INSERT INTO tally_event (uuid, epoch_day, kind, updated_at)',
+    inserting.map((event) => [event.id, event.epochDay, event.kind, ts])
   );
 }
 

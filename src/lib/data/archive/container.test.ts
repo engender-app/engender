@@ -58,6 +58,34 @@ async function* oneShot(bytes: Uint8Array): AsyncGenerator<Uint8Array> {
   yield bytes;
 }
 
+function base64(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes));
+}
+
+/** Builds header bytes straight from a JSON object, bypassing `encodeHeader`
+    and its `ArchiveHeader` typing - the malformed-header tests need to put
+    values in that a well-typed caller could never construct. */
+function rawHeader(json: unknown): Uint8Array<ArrayBuffer> {
+  const bytes = new TextEncoder().encode(JSON.stringify(json));
+  const header = new Uint8Array(12 + bytes.length);
+  header.set(new TextEncoder().encode('GDIARY'), 0);
+  const view = new DataView(header.buffer);
+  view.setUint16(6, ARCHIVE_FORMAT_VERSION);
+  view.setUint32(8, bytes.length);
+  header.set(bytes, 12);
+  return header;
+}
+
+function validHeaderJson(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    kdf: ARCHIVE_ARGON2_PARAMS,
+    salt: base64(salt()),
+    chunkSize: 1024,
+    totalChunks: 1,
+    ...overrides
+  };
+}
+
 test('round-trips a body that spans several chunks', async () => {
   const { k, bytes } = await framed(5000);
   assert.deepEqual(await unframe(k, bytes), await expected(5000));
@@ -86,6 +114,37 @@ test('the header is plaintext: magic, version, KDF parameters and salt read with
   assert.deepEqual(read.salt, header.salt);
   assert.equal(read.chunkSize, 1024);
   assert.equal(read.totalChunks, 5);
+});
+
+test('a header asking for absurd KDF memory is refused as unreadable, before any derivation', async () => {
+  const json = validHeaderJson({ kdf: { ...ARCHIVE_ARGON2_PARAMS, memorySize: ARCHIVE_ARGON2_PARAMS.memorySize * 9999 } });
+  await assert.rejects(
+    readArchiveHeader(byteReader(oneShot(rawHeader(json)))),
+    (error: Error) => error instanceof CorruptArchiveError
+  );
+});
+
+test('a header asking for absurd KDF iterations is refused as unreadable, before any derivation', async () => {
+  const json = validHeaderJson({ kdf: { ...ARCHIVE_ARGON2_PARAMS, iterations: ARCHIVE_ARGON2_PARAMS.iterations * 9999 } });
+  await assert.rejects(
+    readArchiveHeader(byteReader(oneShot(rawHeader(json)))),
+    (error: Error) => error instanceof CorruptArchiveError
+  );
+});
+
+test('a header merely heavier than today\'s profile still imports, so the cap does not defeat re-tuning', async () => {
+  const heavier = { ...ARCHIVE_ARGON2_PARAMS, memorySize: ARCHIVE_ARGON2_PARAMS.memorySize * 4, iterations: ARCHIVE_ARGON2_PARAMS.iterations * 4 };
+  const json = validHeaderJson({ kdf: heavier });
+  const { header } = await readArchiveHeader(byteReader(oneShot(rawHeader(json))));
+  assert.deepEqual(header.kdf, heavier);
+});
+
+test('an invalid base64 salt fails as CorruptArchiveError, not a raw DOMException', async () => {
+  const json = validHeaderJson({ salt: 'not valid base64!!!' });
+  await assert.rejects(
+    readArchiveHeader(byteReader(oneShot(rawHeader(json)))),
+    (error: Error) => error instanceof CorruptArchiveError
+  );
 });
 
 test('every chunk gets its own nonce', async () => {

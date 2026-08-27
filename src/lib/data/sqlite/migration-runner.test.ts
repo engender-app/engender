@@ -275,3 +275,62 @@ test('runMigrations fails loudly on missing FTS5 before touching versions or fil
   await assert.rejects(() => runMigrations(db, fileOps, migrations), Fts5UnavailableError);
   assert.equal(fileOps.copyCalls, 0);
 });
+
+test('a journal already on the current schema never loads the migration list', async () => {
+  /* Phase 5 audit ticket 02: the list is 27KB of SQL text and every boot
+     used to parse it to decide it had nothing to do. A journal at the latest
+     version answers that with one integer comparison. */
+  const db = makeDb();
+  db.setUserVersion(1);
+  const fileOps = makeFileOpsSpy();
+  let loads = 0;
+
+  await runMigrations(db, fileOps, {
+    latestVersion: 1,
+    load: async () => {
+      loads++;
+      return migrationsFixture;
+    }
+  });
+
+  assert.equal(loads, 0, 'nothing pending, so nothing to load');
+  assert.equal(fileOps.cleanupCalls, 1, 'and a clean boot still retires an old pre-migration copy');
+});
+
+test('a journal behind the current schema loads the migration list and applies it', async () => {
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy();
+  let loads = 0;
+
+  await runMigrations(db, fileOps, {
+    latestVersion: 1,
+    load: async () => {
+      loads++;
+      return migrationsFixture;
+    }
+  });
+
+  assert.equal(loads, 1);
+  assert.equal(db.getUserVersion(), 1);
+});
+
+test('a lazy source refuses a database newer than its latest version without loading anything', async () => {
+  const db = makeDb();
+  db.setUserVersion(2);
+  const fileOps = makeFileOpsSpy();
+  let loads = 0;
+
+  await assert.rejects(
+    () =>
+      runMigrations(db, fileOps, {
+        latestVersion: 1,
+        load: async () => {
+          loads++;
+          return migrationsFixture;
+        }
+      }),
+    SchemaTooNewError
+  );
+
+  assert.equal(loads, 0);
+});
