@@ -86,6 +86,12 @@
       "budgetMs": 200,
       "targetMs": 200
     },
+    "on-this-day-entries": {
+      "what": "on-this-day, entries and attachments for each lookback day",
+      "baselineMs": 5,
+      "budgetMs": 200,
+      "targetMs": 200
+    },
     "doubt-counterevidence": {
       "what": "doubt journal, the counterevidence pool",
       "baselineMs": 5,
