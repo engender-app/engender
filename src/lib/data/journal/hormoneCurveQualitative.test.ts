@@ -366,6 +366,31 @@ test('switching windows twice does not model the curve twice', async () => {
   }
 });
 
+test('an episode write invalidates the cached model for that window', async () => {
+  // The population model reads episodes too (attributeDose), so an edited
+  // regimen must not be served a curve set drawn against the old one.
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await episode(journal, FROM - 5);
+  await journal.doses.upsertDose({ timestamp: at(FROM + 2), route: 'oral', dose: 2, doseUnit: 'mg' });
+
+  const spy = vi.spyOn(qualitativeCurveModel, 'qualitativeCurves');
+  try {
+    const before = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+    assert.equal(before.curves.length, 1);
+
+    // Ending the episode before the dose was drawn leaves it with no active
+    // episode to attribute to, so it drops out of the curve entirely - a
+    // change this app can only see by re-reading episodes.
+    await journal.regimen.endEpisode(episodeId, FROM + 1);
+    const after = await journal.qualitativeCurve.getCurves({ drug: 'estradiol', fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
+
+    assert.equal(spy.mock.calls.length, 2, 'an episode write must not be served from the stale cache');
+    assert.deepEqual(after.curves, []);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
 test('a dose write invalidates the cached model for that window', async () => {
   const { journal } = await journalWithBuiltIns();
   await episode(journal, FROM - 5);
