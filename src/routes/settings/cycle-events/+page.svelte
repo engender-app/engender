@@ -27,14 +27,13 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import CycleEventChart from '$lib/components/CycleEventChart.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -80,8 +79,6 @@
     remove: (id) => journal.cycleEvents.deleteCycleEvent(id),
     findById: (id) => events.find((event) => event.id === id)
   });
-  let editor = $derived(record.editor);
-  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
@@ -155,9 +152,26 @@
     </div>
   {/if}
 
-  <Sheet open={editor !== null} title={editor?.id ? m.cycle_event_edit_sheet() : m.cycle_event_new_sheet()} onClose={() => (record.editor = null)}>
-    {#if editor}
-      <h3>{editor.id ? m.cycle_event_edit_sheet() : m.cycle_event_new_sheet()}</h3>
+  <RecordSheet
+    {record}
+    handle="cycle-event"
+    newTitle={m.cycle_event_new_sheet()}
+    editTitle={m.cycle_event_edit_sheet()}
+    saveLabel={m.cycle_event_save()}
+    deleteLabel={m.cycle_event_delete()}
+    confirm={{
+      title: m.cycle_event_delete_sheet(),
+      question: (e) =>
+        m.cycle_event_delete_q({
+          kind: cycleEventKindName(e.kind),
+          date: fmtDay(e.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+        }),
+      hint: () => m.cycle_event_delete_hint(),
+      confirmLabel: m.cycle_event_delete(),
+      cancelLabel: m.keep_it()
+    }}
+  >
+    {#snippet fields(editor)}
       <div class="field">
         <label class="field-label" for="cycle-event-date">{m.cycle_event_date_label()}</label>
         <input class="input" type="date" id="cycle-event-date" name="cycle-event-date" bind:value={editor.date} />
@@ -168,27 +182,9 @@
           name={m.cycle_event_kind_label()}
           options={KINDS.map((k) => ({ value: k, label: cycleEventKindName(k) }))}
           value={editor.kind}
-          onChange={(v) => (editor!.kind = v as CycleEventKind)}
+          onChange={(v) => (editor.kind = v as CycleEventKind)}
         />
       </div>
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-cycle-event onclick={record.save}><span>{m.cycle_event_save()}</span></button>
-        {#if editor.id}
-          <button class="btn btn-ghost" data-delete-cycle-event onclick={() => record.askToDelete()}><span>{m.cycle_event_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
-
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.cycle_event_delete_sheet()}
-    question={deleteTarget ? m.cycle_event_delete_q({ kind: cycleEventKindName(deleteTarget.kind), date: fmtDay(deleteTarget.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) }) : ''}
-    hint={m.cycle_event_delete_hint()}
-    confirmLabel={m.cycle_event_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-cycle-event': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
-  />
+    {/snippet}
+  </RecordSheet>
 </div>
