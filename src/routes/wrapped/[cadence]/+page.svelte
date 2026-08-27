@@ -189,12 +189,12 @@
      and does not mount its card at all. */
   let on = $derived(prefs.wrappedEnabled);
 
-  let recapQuery = liveQuery(['entry', 'tag', 'milestone', 'dimension', 'photo'], (j) =>
+  let recapQuery = liveQuery((j) =>
     on && range ? j.stats.recap(range.start, range.end) : Promise.resolve(null)
   );
   let recap = $derived(recapQuery.value);
 
-  let moodTrendQuery = liveQuery(['entry'], (j) =>
+  let moodTrendQuery = liveQuery((j) =>
     on && range ? j.stats.dayAverages('mood', range.start, range.end) : Promise.resolve([])
   );
   let moodTrend = $derived((moodTrendQuery.value ?? []) as DayAverage[]);
@@ -203,11 +203,11 @@
      the same one the stats hub's own insight card reads: which scale "better
      or worse days" is measured on is one preference with one control, and it
      is set on the screen that draws the scales. */
-  let insightsQuery = liveQuery(['entry', 'tag'], (j) =>
+  let insightsQuery = liveQuery((j) =>
     on && range ? j.stats.tagInsights(metricKey(prefs), range.start, range.end) : Promise.resolve([])
   );
 
-  let tallyQuery = liveQuery(['tally'], async (j) => {
+  let tallyQuery = liveQuery(async (j) => {
     if (!on || !range) return null;
     const [misgendered, correctlyGendered] = await Promise.all([
       j.stats.tallyTrend('misgendered', range.start, range.end),
@@ -220,7 +220,7 @@
      the unknown-cadence and half-finished-range states draw no figures, and
      a whole-history streak query behind a screen that shows none is the
      thing the branch exists to prevent. */
-  let bestEverQuery = liveQuery(['entry'], (j) =>
+  let bestEverQuery = liveQuery((j) =>
     on && range ? j.stats.bestStreakEver(today) : Promise.resolve(0)
   );
 

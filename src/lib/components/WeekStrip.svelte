@@ -24,7 +24,7 @@
      through the worker to draw seven squares is the shape of read the port
      exists to avoid. Empty until it lands, so the strip draws at its full
      size with every day at level 0 and never reflows. */
-  let averages = liveQuery(['entry'], (j) => j.stats.dayAverages(metric, week.first, week.last));
+  let averages = liveQuery((j) => j.stats.dayAverages(metric, week.first, week.last));
 
   let days = $derived.by(() => {
     // Native value in, swatch out: the strip and the calendar shade the

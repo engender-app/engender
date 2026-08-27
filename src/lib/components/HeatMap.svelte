@@ -74,8 +74,8 @@
      different questions: the swatch comes from the metric's average, while
      whether a day is a link comes from whether anything was logged at all -
      a day of entries carrying no mood is still a day with entries. */
-  let averages = liveQuery(['entry'], (j) => j.stats.dayAverages(vocabulary.activeMetric, bounds.first, bounds.last));
-  let counts = liveQuery(['entry'], (j) => j.stats.entryCountsByDay(bounds.first, bounds.last));
+  let averages = liveQuery((j) => j.stats.dayAverages(vocabulary.activeMetric, bounds.first, bounds.last));
+  let counts = liveQuery((j) => j.stats.entryCountsByDay(bounds.first, bounds.last));
 
   /* Both reads are one worker round trip, and the grid draws at its full
      size the whole time - a month is 30 cells of known shape, so there is

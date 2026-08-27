@@ -101,17 +101,17 @@
      drawn (recentEntries.ts), and the rest are one tap away on the
      calendar. */
   const RECENT_DAYS = 5;
-  let recent = liveQuery(['entry'], (j) => j.entries.recentDays(RECENT_DAYS));
+  let recent = liveQuery((j) => j.entries.recentDays(RECENT_DAYS));
   let dayGroups = $derived(recentDayGroups(recent.value ?? [], RECENT_ENTRY_CAP));
 
-  let streakQuery = liveQuery(['entry', 'journalingPause'], (j) => j.stats.streak(today));
+  let streakQuery = liveQuery((j) => j.stats.streak(today));
   let streak = $derived(streakQuery.value ?? 0);
 
   /* The journaling pause (phase 5 features ticket 21): the streak caption is
      a nudge, the same as the check-in prompt, so it goes quiet while a pause
      covers today rather than showing a frozen number with nothing to
      explain it. */
-  let pausesQuery = liveQuery(['journalingPause'], (j) => j.journalingPauses.getPauses());
+  let pausesQuery = liveQuery((j) => j.journalingPauses.getPauses());
   let pausedToday = $derived(isPausedOn(pausesQuery.value ?? [], today));
 
   /* A second authored moment, and the only one besides the sun: past a

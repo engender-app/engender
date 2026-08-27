@@ -32,7 +32,7 @@
 
   const SEVERITIES = [1, 2, 3, 4, 5];
 
-  let effectsQuery = liveQuery(['sideEffect'], (j) => j.sideEffects.getSideEffects());
+  let effectsQuery = liveQuery((j) => j.sideEffects.getSideEffects());
   let effects = $derived(effectsQuery.value ?? []);
 
   const record = recordEditor<SideEffect, { id?: string; date: string; name: string; severity: string }>({

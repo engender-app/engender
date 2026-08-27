@@ -42,7 +42,7 @@
 
   const today = todayEpochDay();
 
-  let sessionsQuery = liveQuery(['hairRemoval'], (j) => j.hairRemoval.getSessions());
+  let sessionsQuery = liveQuery((j) => j.hairRemoval.getSessions());
   let sessions = $derived(sessionsQuery.value ?? []);
 
   let recency = $derived(daysSinceLastSession(sessions, today));
@@ -83,7 +83,7 @@
   /* Only once a session has its own id: a photo belongs to one session
      (hairRemoval.ts's own foreign key), so there is nothing to attach it to
      before that first save. */
-  let photosQuery = liveQuery(['hairRemoval'], (j) => (editor?.id ? j.hairRemoval.getPhotos(editor.id) : Promise.resolve([])));
+  let photosQuery = liveQuery((j) => (editor?.id ? j.hairRemoval.getPhotos(editor.id) : Promise.resolve([])));
   let photos = $derived(photosQuery.value ?? []);
 
   async function storePhoto(photo: NormalizedPhoto | null) {

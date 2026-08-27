@@ -11,8 +11,10 @@
        a repository function.
      - every write announces its tables (writes.ts); tableVersions.svelte.ts
        turns that into a version bump per table and a notify.
-     - `liveQuery` re-runs when a table it named bumps, and holds the result in
-       `$state` so a template can read it synchronously.
+     - `liveQuery` re-runs when a table the read itself touched bumps, and
+       holds the result in `$state` so a template can read it synchronously.
+       Which tables those are comes from the same registry the write half
+       announces from, not from the call site (phase 5 audit ticket 03).
 
    Invalidation is per table rather than global because the alternative is
    visibly wasteful: saving one lab result would re-run the stats charts, the
@@ -26,10 +28,12 @@
    Nothing here is tested in the Node tier: `$state` is not defined there
    (ADR-0017), which is why the parts with a rule in them live rune-free
    elsewhere - writes.ts for the table mapping, tableVersions.notify.ts for the
-   write-announcement notify. What this file adds beyond that is covered by
-   `tests/walkthrough.test.mjs` driving the real screens. */
+   write-announcement notify. What this file adds beyond that is covered from
+   the browser: `tests/walkthrough.test.mjs` driving the real screens, and
+   `tests/browser-tier/live-reads-probe.svelte.ts` for the dependency
+   resolution, which needs a real scheduler to be seen re-running at all. */
 
-import { observeWrites, type TableName } from './writes';
+import { observeWrites, tablesReadBy, type TableName } from './writes';
 import type { Journal } from '../journal/journal';
 import { bump, versionOf } from './tableVersions.svelte';
 
@@ -122,16 +126,46 @@ export interface LiveQuery<T> {
   readonly loading: boolean;
 }
 
-/** A query that re-runs whenever one of `tables` is written.
+/** A query that re-runs whenever a table it read is written.
+
+    Which tables those are is not the call site's to know: `run` is handed a
+    journal that records the operations it calls and resolves each one's tables
+    from the registry (writes.ts), the same registry the write half announces
+    from. So a screen asks the Journal a question and a table added to that
+    question's answer reaches every screen asking it (phase 5 audit ticket 03).
 
     `run` is called synchronously, so whatever it reads *before its first
     `await`* becomes a dependency alongside the table versions - which is how a
     query over an `epochDay` or a search box re-runs when those change. Reads
     after an await are invisible to Svelte; take them in the synchronous part.
+    A journal operation called after an await is still picked up, one re-run
+    later: it is recorded on the query rather than on the effect, so nothing
+    goes stale, but a round trip is spent for nothing and the synchronous form
+    is the one to write.
 
     Must be called while a component is initialising, like any `$effect`: the
     query lives and dies with the component that asked for it. */
-export function liveQuery<T>(tables: TableName[], run: (journal: Journal) => Promise<T>): LiveQuery<T> {
+export function liveQuery<T>(run: (journal: Journal) => Promise<T>): LiveQuery<T> {
+  return query(null, run);
+}
+
+/** A query that watches only `tables`, whatever its reads actually touch.
+
+    The escape hatch from the paragraph above, for a screen that narrows on
+    purpose: it uses one field of a wide answer and would rather not re-run for
+    a write that cannot change that field. Wanted at exactly one call site
+    (WrappedHomeCard, which reads a recap for its entry count), and the name is
+    long so that a forgotten table can never be mistaken for this. Say why in a
+    comment at the call site; nothing here can check that the narrowing is
+    still true. */
+export function liveQueryWatchingOnly<T>(
+  tables: TableName[],
+  run: (journal: Journal) => Promise<T>
+): LiveQuery<T> {
+  return query(tables, run);
+}
+
+function query<T>(narrowedTo: TableName[] | null, run: (journal: Journal) => Promise<T>): LiveQuery<T> {
   let value = $state<T | undefined>(undefined);
   let loading = $state(true);
   /* Only the newest run may write the result. Without this a fast re-run that
@@ -139,13 +173,47 @@ export function liveQuery<T>(tables: TableName[], run: (journal: Journal) => Pro
      older answer on screen for good. */
   let latest = 0;
 
+  /* Every table this query has been seen to read. Filled by the recorder
+     below as the closure calls its operations, and only ever grown: a query
+     whose closure takes a different branch on a later run - a search box that
+     is empty, a sheet that is closed - keeps the dependencies of the branch it
+     took before, which is what makes an unwatched write impossible rather than
+     merely unlikely. */
+  const dependencies = new Set<TableName>(narrowedTo ?? []);
+  /* Bumped when a dependency turns up outside the synchronous part of a run,
+     where reading its version cannot register with the effect. Reading this
+     inside the effect is what makes the late discovery re-subscribe. */
+  let discovered = $state(0);
+  let recording = false;
+
+  const dependOn = (area: string, operation: string) => {
+    if (narrowedTo) return;
+    for (const table of tablesReadBy(area, operation)) {
+      if (recording) {
+        dependencies.add(table);
+        void versionOf(table);
+      } else if (!dependencies.has(table)) {
+        dependencies.add(table);
+        discovered += 1;
+      }
+    }
+  };
+
   $effect(() => {
-    for (const table of tables) void versionOf(table);
+    void discovered;
+    for (const table of dependencies) void versionOf(table);
     const ready = open.journal;
     if (!ready) return; // still booting; this re-runs when the database opens
 
     const mine = ++latest;
-    run(ready).then(
+    recording = true;
+    let running: Promise<T>;
+    try {
+      running = run(recordingJournal(ready, dependOn));
+    } finally {
+      recording = false;
+    }
+    running.then(
       (result) => {
         if (mine !== latest) return;
         value = result;
@@ -172,6 +240,37 @@ export function liveQuery<T>(tables: TableName[], run: (journal: Journal) => Pro
       return loading;
     }
   };
+}
+
+/** The journal a query's closure is handed: every operation announces itself
+    to `dependOn` before it runs, and is otherwise the operation itself.
+
+    A proxy rather than a wrapper built per area at boot, for the reason the
+    facade above is one: the shape is the journal's own, and nothing here
+    should have to be edited when an area gains a method. */
+function recordingJournal(ready: Journal, dependOn: (area: string, operation: string) => void): Journal {
+  return new Proxy({} as Journal, {
+    get(_target, areaName: string) {
+      const area = ready[areaName as keyof Journal] as unknown as Operations;
+      return new Proxy(
+        {},
+        {
+          get(_areaTarget, operation: string) {
+            /* Anything that is not an operation is handed back as it stands,
+               the same way observeWrites leaves a non-function property alone:
+               a proxy that answered every property with a function would make
+               `await` on an area look like a thenable. */
+            const implementation = area[operation];
+            if (typeof implementation !== 'function') return implementation;
+            return (...args: unknown[]) => {
+              dependOn(areaName, operation);
+              return implementation.call(area, ...args);
+            };
+          }
+        }
+      );
+    }
+  });
 }
 
 /** Calls `fill` with a query's first result and never again.

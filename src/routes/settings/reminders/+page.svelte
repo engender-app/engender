@@ -13,7 +13,7 @@
   const TYPE_ICON: Record<string, string> = { med: 'heart', injection: 'zap', appointment: 'calendar', other: 'bell' };
   let isWeb = $derived(!isAndroid());
 
-  let reminders = liveQuery(['reminder'], (j) => j.reminders.getReminders());
+  let reminders = liveQuery((j) => j.reminders.getReminders());
   let status = $state<AndroidReminderStatus>({ notifications: 'not-required', exactAlarms: 'not-required' });
 
   async function refreshStatus() {

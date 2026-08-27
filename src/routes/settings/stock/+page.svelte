@@ -21,7 +21,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  let rowsQuery = liveQuery(['stock', 'dose'], (j) => j.stock.getProjections(todayEpochDay()));
+  let rowsQuery = liveQuery((j) => j.stock.getProjections(todayEpochDay()));
   let rows = $derived(rowsQuery.value ?? []);
 
   /* The excluded-dose caveat is about every projection on the screen - its

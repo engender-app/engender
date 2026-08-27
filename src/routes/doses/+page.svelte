@@ -85,14 +85,14 @@
   const today = todayEpochDay();
   const from = today - WINDOW_DAYS;
 
-  let episodesQuery = liveQuery(['regimen'], (j) => j.regimen.getEpisodes());
-  let dosesQuery = liveQuery(['dose'], (j) => j.doses.getDoses(from, today));
-  let schedulesQuery = liveQuery(['dose'], (j) => j.doses.getSchedules());
-  let pausesQuery = liveQuery(['dose'], (j) => j.doses.getPauses());
+  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
+  let dosesQuery = liveQuery((j) => j.doses.getDoses(from, today));
+  let schedulesQuery = liveQuery((j) => j.doses.getSchedules());
+  let pausesQuery = liveQuery((j) => j.doses.getPauses());
   /** Read separately from the windowed `dosesQuery` above (ticket 10): a
       rotation site's last use routinely predates the log's 90-day window,
       and "never used" has to mean never, not merely not in that window. */
-  let allInjectionDosesQuery = liveQuery(['dose'], (j) => j.doses.getDoses(0, today));
+  let allInjectionDosesQuery = liveQuery((j) => j.doses.getDoses(0, today));
 
   let episodes = $derived(episodesQuery.value ?? []);
   let doses = $derived(dosesQuery.value ?? []);

@@ -25,7 +25,7 @@
 
   /* Invalidated on entry or tag writes: those are the only two things the
      good-day rule reads (day average mood, the euphoria tag). */
-  let goodDaysQuery = liveQuery(['entry', 'tag'], async (j) => {
+  let goodDaysQuery = liveQuery(async (j) => {
     const results = await Promise.all(candidates.map((c) => j.stats.isGoodDay(c.epochDay)));
     return candidates.filter((_, i) => results[i]);
   });

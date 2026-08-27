@@ -47,7 +47,7 @@
   );
   let period = $derived(cadence ? completedWrappedPeriod(cadence, today) : null);
 
-  let recapQuery = liveQuery(['entry', 'tag', 'milestone', 'dimension', 'photo'], (j) =>
+  let recapQuery = liveQuery((j) =>
     period ? j.stats.recap(period.start, period.end) : Promise.resolve(null)
   );
   let recap = $derived(recapQuery.value);
