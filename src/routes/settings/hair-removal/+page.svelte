@@ -283,7 +283,7 @@
     hint={m.hair_removal_delete_hint()}
     confirmLabel={m.hair_removal_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-hair-removal-session': true }}
+    confirmAttrs={{ 'data-confirm-delete-hair-removal-session': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />
@@ -295,7 +295,7 @@
     hint={m.hair_removal_photo_delete_hint()}
     confirmLabel={m.hair_removal_photo_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-hair-removal-photo': true }}
+    confirmAttrs={{ 'data-confirm-delete-hair-removal-photo': '' }}
     onConfirm={photoRecord.confirmDelete}
     onCancel={photoRecord.cancelDelete}
   />

@@ -178,7 +178,7 @@
     hint={m.letters_delete_hint()}
     confirmLabel={m.letters_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-letter': true }}
+    confirmAttrs={{ 'data-confirm-delete-letter': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

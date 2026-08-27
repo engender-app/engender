@@ -472,7 +472,7 @@
     hint={m.wear_session_delete_hint()}
     confirmLabel={m.wear_session_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-wear-session': true }}
+    confirmAttrs={{ 'data-confirm-delete-wear-session': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

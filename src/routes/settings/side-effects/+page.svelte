@@ -150,7 +150,7 @@
     hint={m.side_effect_delete_hint()}
     confirmLabel={m.side_effect_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-side-effect': true }}
+    confirmAttrs={{ 'data-confirm-delete-side-effect': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

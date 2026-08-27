@@ -342,7 +342,7 @@
     hint={m.tryout_feeling_delete_hint()}
     confirmLabel={m.tryout_feeling_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-feeling': true }}
+    confirmAttrs={{ 'data-confirm-delete-feeling': '' }}
     onConfirm={feelingRecord.confirmDelete}
     onCancel={feelingRecord.cancelDelete}
   />
@@ -354,7 +354,7 @@
     hint={m.tryout_photo_delete_hint()}
     confirmLabel={m.tryout_photo_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-tryout-photo': true }}
+    confirmAttrs={{ 'data-confirm-delete-tryout-photo': '' }}
     onConfirm={photoRecord.confirmDelete}
     onCancel={photoRecord.cancelDelete}
   />

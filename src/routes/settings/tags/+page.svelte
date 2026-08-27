@@ -104,7 +104,7 @@
     hint={m.tags_delete_hint()}
     confirmLabel={m.tags_delete_confirm()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm': true }}
+    confirmAttrs={{ 'data-confirm': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

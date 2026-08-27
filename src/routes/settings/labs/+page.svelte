@@ -538,7 +538,7 @@
     hint={m.labs_delete_hint()}
     confirmLabel={m.labs_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-lab': true }}
+    confirmAttrs={{ 'data-confirm-delete-lab': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

@@ -285,7 +285,7 @@
     hint={m.measurement_delete_hint()}
     confirmLabel={m.measurement_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-measurement': true }}
+    confirmAttrs={{ 'data-confirm-delete-measurement': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />

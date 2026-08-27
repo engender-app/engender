@@ -155,7 +155,7 @@
     hint={deleteTarget?.content ?? null}
     confirmLabel={m.appointment_prep_delete()}
     cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-appointment-item': true }}
+    confirmAttrs={{ 'data-confirm-delete-appointment-item': '' }}
     onConfirm={record.confirmDelete}
     onCancel={record.cancelDelete}
   />
