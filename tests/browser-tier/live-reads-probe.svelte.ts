@@ -113,7 +113,7 @@ async function run() {
 
   // The first defect: the streak-goal screen declared ['entry'] for a read
   // that also reads journaling pauses, so this write reached nothing.
-  await journal.journalingPauses.upsertPause({ startEpochDay: TODAY - 1, endEpochDay: TODAY - 1, reason: null });
+  await journal.journalingPauses.upsertPause({ startEpochDay: TODAY - 1, endEpochDay: TODAY - 1 });
   let streakAfter: number | undefined;
   let streakError: string | null = null;
   try {
