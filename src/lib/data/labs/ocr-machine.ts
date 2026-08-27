@@ -59,7 +59,11 @@ export type OcrMachineState =
 // ---------------------------------------------------------------------------
 
 export interface OcrMachine {
-  /** Current machine state. Plain object – wrap in $state in Svelte if needed. */
+  /** Current machine state. Wrapping this object in $state does not make
+      reads of `.state` reactive - every write here happens on the object
+      this factory closed over, not on a caller's proxy. Pass an
+      onStateChange callback to createOcrMachine and mirror it into your own
+      reactive state instead. */
   state: OcrMachineState;
 
   /** User opens the import sheet. */
