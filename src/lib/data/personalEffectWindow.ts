@@ -58,10 +58,12 @@
 
    Every window here is a claim about the literature, never a target for
    anyone's own experience - the acceptance criterion this file exists to
-   keep honest. Tier 2 and tier 3 effects (personalEffectCatalog.ts) carry
-   no entry here at all: `literatureCovers`/`literatureWindow` answer
-   "no band" for any key this record does not list, which is the ordinary
-   case once the catalogue is open past twenty. */
+   keep honest. Tier 2 and tier 3 effects carry no entry here at all:
+   `literatureCovers`/`literatureWindow` answer "no band" for any key this
+   record does not list, which is the ordinary case once the catalogue is
+   open past twenty. Which tier an effect is is derived from that same
+   record, by `effectTier` at the foot of this file - there is no stored
+   tier anywhere, on the catalogue row or off it (ADR-0010). */
 
 import { epochDayMonthsAgo } from './epochDay';
 import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
@@ -83,9 +85,10 @@ export interface EffectLiteratureWindow {
   completionMonths: { min: number; max: number | null } | null;
 }
 
-/** Tier 1 only (personalEffectCatalog.ts's `tier` field) - a partial map,
-    not exhaustive over every catalogue key, because tier 2 and tier 3
-    effects have no literature window by definition. */
+/** Tier 1 only - a partial map, not exhaustive over every catalogue key
+    (vocabulary/builtins.ts's BUILT_IN_PERSONAL_EFFECT_TYPES), because tier
+    2 and tier 3 effects have no literature window by definition. Listing a
+    key here is what makes it tier 1; see `effectTier`. */
 const EFFECT_LITERATURE_WINDOW: Partial<Record<PersonalEffectType, EffectLiteratureWindow>> = {
   breast_development: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
   fat_redistribution: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
@@ -236,4 +239,41 @@ export function literatureWindowDays(
     onset: { start: afterAnchor(anchorEpochDay, window.onsetMonths.min), end: afterAnchor(anchorEpochDay, window.onsetMonths.max) },
     completion
   };
+}
+
+/** An effect's source tier, the property CONTEXT names every built-in
+    personal effect as carrying: tier 1 has a literature band, tier 2 is a
+    named marker from the community catalogue with no band, and tier 3 is
+    a person's own addition with no source at all.
+
+    Derived, never stored, per ADR-0010 - the tier is exactly "is it
+    built in, and does this file list a window for it", so a key gaining a
+    window becomes tier 1 by that fact alone and nothing has to be kept in
+    step with it. It lived as three untested lines inside
+    settings/effects/+page.svelte, deciding both which citation prints
+    under an effect and whether a band is offered at all. */
+export function effectTier(effect: { key: PersonalEffectType; builtIn: boolean }): 1 | 2 | 3 {
+  if (!effect.builtIn) return 3;
+  return literatureWindow(effect.key) ? 1 : 2;
+}
+
+/** Which of the three shapes an effect's window has, enumerated here so
+    the screen picking a sentence per shape does not re-derive them from
+    the nullable fields:
+
+    - `no-completion`, the literature reports no defined ceiling at all
+      (skin softening),
+    - `open-completion`, a lower bound still running past it (hair
+      changes' "more than 3 years"),
+    - `bounded`, both ends given.
+
+    `none` for any key with no tier-1 window - a tier 2 or tier 3 effect -
+    which is the ordinary case. */
+export type EffectWindowShape = 'none' | 'no-completion' | 'open-completion' | 'bounded';
+
+export function effectWindowShape(effect: PersonalEffectType): EffectWindowShape {
+  const window = EFFECT_LITERATURE_WINDOW[effect];
+  if (!window) return 'none';
+  if (!window.completionMonths) return 'no-completion';
+  return window.completionMonths.max == null ? 'open-completion' : 'bounded';
 }

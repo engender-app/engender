@@ -15,7 +15,12 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { earliestEpisode } from '$lib/data/regimenEpisode';
-  import { literatureWindow, literatureWindowDays } from '$lib/data/personalEffectWindow';
+  import {
+    effectTier,
+    effectWindowShape,
+    literatureWindow,
+    literatureWindowDays
+  } from '$lib/data/personalEffectWindow';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -66,15 +71,6 @@
     anchor == null ? null : new Map(visibleEffects.map((e) => [e.key, literatureWindowDays(e.key, anchor)] as const))
   );
 
-  /** Tier 1 (a literature window exists), tier 2 (built-in, no window - the
-      community catalogue), or tier 3 (a person's own addition, no source at
-      all). Derived rather than stored (personalEffectWindow.ts's header):
-      whether a key has a window is the only fact that decides this. */
-  function effectTier(e: PersonalEffectCatalogEntry): 1 | 2 | 3 {
-    if (!e.builtIn) return 3;
-    return literatureWindow(e.key) ? 1 : 2;
-  }
-
   const DIRECTIONS = ['feminizing', 'masculinizing', 'other'] as const;
   type DirectionGroup = (typeof DIRECTIONS)[number];
   const directionOf = (e: PersonalEffectCatalogEntry): DirectionGroup => e.direction ?? 'other';
@@ -123,10 +119,20 @@
     const window = literatureWindow(key)!;
     const onsetMin = String(window.onsetMonths.min);
     const onsetMax = String(window.onsetMonths.max);
-    if (!window.completionMonths) return m.effect_window_no_completion({ onsetMin, onsetMax });
-    const compMin = String(window.completionMonths.min);
-    if (window.completionMonths.max == null) return m.effect_window_open_completion({ onsetMin, onsetMax, compMin });
-    return m.effect_window_bounded({ onsetMin, onsetMax, compMin, compMax: String(window.completionMonths.max) });
+    const compMin = String(window.completionMonths?.min);
+    switch (effectWindowShape(key)) {
+      case 'no-completion':
+        return m.effect_window_no_completion({ onsetMin, onsetMax });
+      case 'open-completion':
+        return m.effect_window_open_completion({ onsetMin, onsetMax, compMin });
+      case 'bounded':
+        return m.effect_window_bounded({ onsetMin, onsetMax, compMin, compMax: String(window.completionMonths!.max) });
+      case 'none':
+        /* Unreachable behind the band gate above - a key with no window
+           has no band either - and typed rather than dropped so a fourth
+           shape cannot be added without this screen being told. */
+        return null;
+    }
   }
 
   /** The source caption under a tier-2 or tier-3 effect's edit sheet - a
