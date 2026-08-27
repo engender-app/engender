@@ -130,9 +130,28 @@ export const PATHS: Record<string, string> = {
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'
 };
 
+/* The two parameters are constrained rather than escaped, because both have
+   one shape and neither wants a wider one (phase 5 security ticket 03). This
+   string is rendered through {@html} in Icon.svelte - the only {@html} in the
+   app - so an argument that could carry a quote could carry an attribute, and
+   an argument that could carry `<` could carry an element. `name` needs
+   nothing: it is a key into the fixed map above and an unknown one falls back
+   to `info`.
+
+   Every call site passes literals today, which is why nothing here was
+   injectable, and that is exactly the property a test should hold rather than
+   a habit: src/lib/components/icons.test.ts. */
+
+/** A positive, finite pixel size, or the default. */
+const pixels = (size: number): number => (Number.isFinite(Number(size)) && Number(size) > 0 ? Number(size) : 24);
+
+/** Class tokens and the spaces between them; anything else is dropped. */
+const classTokens = (cls: string): string => String(cls).replace(/[^A-Za-z0-9_ -]/g, '');
+
 export function icon(name: string, size = 24, cls = ''): string {
   const d = PATHS[name] || PATHS.info;
-  return `<svg class="icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+  const px = pixels(size);
+  return `<svg class="icon ${classTokens(cls)}" width="${px}" height="${px}" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
     aria-hidden="true" focusable="false">${d}</svg>`;
 }
