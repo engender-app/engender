@@ -70,6 +70,15 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentText(time)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            /* Phase 5 security ticket 01 (F-05). The default is
+               VISIBILITY_PUBLIC, which puts the title - a reminder the
+               person wrote, often the name of a medication - on the lock
+               screen of a phone lying face up on a table. Not the same
+               control as hideNotificationTitles: that one covers the shade,
+               which the OS draws in full whatever a notification asks for.
+               RetrospectiveNotificationsPlugin and AutoExportPlugin already
+               make this call. */
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1))
             .build();
 
@@ -89,6 +98,10 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            // Same reason as the reminder above (F-05), and the affirmation
+            // line this one can carry says what the app is for even when
+            // the title does not.
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13));
 
         String affirmation = resolveCheckInAffirmation(payload, epochDay);

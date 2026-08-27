@@ -18,8 +18,38 @@
          The back destination itself is unchanged and still decided by
          resolveAndroidBackAction; this changes how the gesture is drawn,
          not where it goes. -->
+    <!-- allowBackup, phase 5 security ticket 01 (F-02). Off, with no
+         extraction rules standing in for it.
+
+         The default is on, and with no dataExtractionRules or
+         fullBackupContent to narrow it the whole private directory was
+         eligible for Google's cloud backup and for device-to-device
+         transfer. The journal itself survived that harmlessly - the RSA
+         private half never leaves the platform keystore and is not backed
+         up, so a restored copy is ciphertext nobody can open, which is what
+         AndroidEncryptionClaimTest proves by reading the bytes. The leak was
+         everything beside it: the WebView's localStorage draft, the reminder
+         titles, the backup destination's label. Those left the device
+         without anyone choosing it, and CONTEXT.md's claim is that journal
+         data stays on the device unless the person deliberately creates or
+         delivers an archive.
+
+         Rules excluding sharedpref and the WebView directory would have kept
+         backup for the encrypted database alone. Not taken: what a backup of
+         it would restore is a database whose key is gone, on a phone whose
+         keystore never had it - nothing recoverable, in exchange for a
+         surface that has to be re-audited every time the app writes
+         somewhere new. The archive export is the recovery path, and it is
+         the one the app tells people about.
+
+         dataExtractionRules beside it rather than instead of it: from
+         Android 12 the flag below only stops cloud backup, and the rules
+         file is what stops device-to-device transfer. The flag still covers
+         the Android 11 and older half of the range, which starts at the
+         app's floor of API 26. -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

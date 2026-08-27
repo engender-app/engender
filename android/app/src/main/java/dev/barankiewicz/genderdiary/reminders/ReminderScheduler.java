@@ -15,7 +15,7 @@ import java.time.ZonedDateTime;
 
 public final class ReminderScheduler {
 
-    static final String PREFS = "gender-diary-reminders";
+    public static final String PREFS = "gender-diary-reminders";
     private static final String KEY_PAYLOAD = "payload-v1";
     private static final String KEY_LAUNCH_ROUTE = "launch-route";
 
@@ -51,6 +51,27 @@ public final class ReminderScheduler {
         if (payload == null) return;
         cancelAll(context, payload);
         scheduleAll(context, payload, ZonedDateTime.now());
+    }
+
+    /**
+     * The reset path (ADR-0014). Cancellation lives here, beside the
+     * {@link #cancelAll} that {@code saveAndSchedule} already calls, rather
+     * than in a second mechanism that would have to know the same request
+     * codes and intent shapes to reach the same alarms.
+     *
+     * <p>Order matters: the payload is what names the alarms, so it is read
+     * and used before the file holding it goes. Left the other way round, a
+     * reset would drop the titles and leave the alarms, and
+     * {@link ReminderAlarmReceiver} would keep waking on schedule to find
+     * nothing to post - quiet, but still an alarm nobody can cancel from
+     * inside the app.
+     *
+     * <p>{@code commit} rather than {@code apply}: the reset tells the
+     * person it is done, and it should be done rather than queued.
+     */
+    public static void wipe(Context context) {
+        cancelAll(context, loadPayload(context));
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
     }
 
     static JSONObject loadPayload(Context context) {
