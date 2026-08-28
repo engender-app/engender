@@ -16,13 +16,14 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { pauseReasonLabel } from '$lib/data/vocabulary/doseLabels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DoseScheduleRecurrence, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -114,7 +115,7 @@
       doseUnit: editor.doseUnit.trim(),
       route: editor.route.trim(),
       interval: editor.interval.trim(),
-      startEpochDay: epochDayFromDateInputValue(editor.startDate) ?? todayEpochDay(),
+      startEpochDay: epochDayFromDateInputValueOrToday(editor.startDate),
       endEpochDay: editor.endDate ? epochDayFromDateInputValue(editor.endDate) : null
     });
     editor = null;
@@ -337,114 +338,129 @@
   <Sheet open={editor !== null} title={editor?.id ? m.regimen_edit_sheet() : m.regimen_new_sheet()} onClose={() => (editor = null)}>
     {#if editor}
       <h3>{editor.id ? m.regimen_edit_sheet() : m.regimen_new_sheet()}</h3>
-      <div class="field">
-        <label class="field-label" for="regimen-drug">{m.regimen_drug_label()}</label>
-        <input class="input" id="regimen-drug" name="regimen-drug" placeholder={m.regimen_drug_placeholder()} bind:value={editor.drug} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="regimen-ester">{m.regimen_ester_label()}</label>
-        <input class="input" id="regimen-ester" name="regimen-ester" placeholder={m.regimen_ester_placeholder()} bind:value={editor.ester} />
-      </div>
+      <Field label={m.regimen_drug_label()} id="regimen-drug">
+        {#snippet children(id)}
+          <input class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} bind:value={editor!.drug} />
+        {/snippet}
+      </Field>
+      <Field label={m.regimen_ester_label()} id="regimen-ester">
+        {#snippet children(id)}
+          <input class="input" {id} name="regimen-ester" placeholder={m.regimen_ester_placeholder()} bind:value={editor!.ester} />
+        {/snippet}
+      </Field>
       <div class="cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="regimen-dose">{m.regimen_dose_label()}</label>
-          <input class="input" type="number" id="regimen-dose" name="regimen-dose" placeholder={m.regimen_dose_placeholder()} inputmode="decimal" bind:value={editor.dose} />
-        </div>
-        <div class="field">
-          <label class="field-label" for="regimen-dose-unit">{m.regimen_dose_unit_label()}</label>
-          <input class="input" id="regimen-dose-unit" name="regimen-dose-unit" placeholder={m.regimen_dose_unit_placeholder()} bind:value={editor.doseUnit} />
-        </div>
+        <Field label={m.regimen_dose_label()} id="regimen-dose">
+          {#snippet children(id)}
+            <input class="input" type="number" {id} name="regimen-dose" placeholder={m.regimen_dose_placeholder()} inputmode="decimal" bind:value={editor!.dose} />
+          {/snippet}
+        </Field>
+        <Field label={m.regimen_dose_unit_label()} id="regimen-dose-unit">
+          {#snippet children(id)}
+            <input class="input" {id} name="regimen-dose-unit" placeholder={m.regimen_dose_unit_placeholder()} bind:value={editor!.doseUnit} />
+          {/snippet}
+        </Field>
       </div>
-      <div class="field">
-        <label class="field-label" for="regimen-route">{m.regimen_route_label()}</label>
-        <input class="input" id="regimen-route" name="regimen-route" placeholder={m.regimen_route_placeholder()} bind:value={editor.route} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="regimen-interval">{m.regimen_interval_label()}</label>
-        <input class="input" id="regimen-interval" name="regimen-interval" placeholder={m.regimen_interval_placeholder()} bind:value={editor.interval} />
-      </div>
+      <Field label={m.regimen_route_label()} id="regimen-route">
+        {#snippet children(id)}
+          <input class="input" {id} name="regimen-route" placeholder={m.regimen_route_placeholder()} bind:value={editor!.route} />
+        {/snippet}
+      </Field>
+      <Field label={m.regimen_interval_label()} id="regimen-interval">
+        {#snippet children(id)}
+          <input class="input" {id} name="regimen-interval" placeholder={m.regimen_interval_placeholder()} bind:value={editor!.interval} />
+        {/snippet}
+      </Field>
       <div class="cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="regimen-start">{m.regimen_start_label()}</label>
-          <input class="input" type="date" id="regimen-start" name="regimen-start" bind:value={editor.startDate} />
-        </div>
-        <div class="field">
-          <label class="field-label" for="regimen-end">{m.regimen_end_label()}</label>
-          <input class="input" type="date" id="regimen-end" name="regimen-end" bind:value={editor.endDate} />
-        </div>
+        <Field label={m.regimen_start_label()} id="regimen-start">
+          {#snippet children(id)}
+            <input class="input" type="date" {id} name="regimen-start" bind:value={editor!.startDate} />
+          {/snippet}
+        </Field>
+        <Field label={m.regimen_end_label()} id="regimen-end">
+          {#snippet children(id)}
+            <input class="input" type="date" {id} name="regimen-end" bind:value={editor!.endDate} />
+          {/snippet}
+        </Field>
       </div>
       <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.regimen_end_hint()}</p>
       {#if editor.id}
+        <!-- Not a Field: this heading names the schedule group below it
+             (ticket 10), not a control of its own. -->
         <div class="field">
           <span class="field-label">{m.regimen_schedule_legend()}</span>
           <p class="muted small">{m.regimen_schedule_hint()}</p>
         </div>
         {#if schedule}
           <div class="disclosed" transition:disclose>
-            <div class="field">
-              <span class="field-label" id="schedule-kind-label">{m.regimen_schedule_kind_label()}</span>
-              <div class="tag-row" role="group" aria-labelledby="schedule-kind-label">
-                {#each ['everyNDays', 'weekdays'] as const as kind (kind)}
-                  <button
-                    type="button"
-                    class="tag-chip"
-                    class:is-selected={schedule.recurrenceKind === kind}
-                    aria-pressed={schedule.recurrenceKind === kind}
-                    data-schedule-kind={kind}
-                    onclick={() => schedule && (schedule.recurrenceKind = kind)}
-                  >
-                    {kind === 'everyNDays' ? m.regimen_schedule_kind_every_days() : m.regimen_schedule_kind_weekdays()}
-                  </button>
-                {/each}
-              </div>
-            </div>
+            <Field label={m.regimen_schedule_kind_label()} legend>
+              {#snippet children(id)}
+                <div class="tag-row" role="group" aria-labelledby={id}>
+                  {#each ['everyNDays', 'weekdays'] as const as kind (kind)}
+                    <button
+                      type="button"
+                      class="tag-chip"
+                      class:is-selected={schedule!.recurrenceKind === kind}
+                      aria-pressed={schedule!.recurrenceKind === kind}
+                      data-schedule-kind={kind}
+                      onclick={() => schedule && (schedule.recurrenceKind = kind)}
+                    >
+                      {kind === 'everyNDays' ? m.regimen_schedule_kind_every_days() : m.regimen_schedule_kind_weekdays()}
+                    </button>
+                  {/each}
+                </div>
+              {/snippet}
+            </Field>
 
             {#if schedule.recurrenceKind === 'everyNDays'}
-              <div class="field">
-                <label class="field-label" for="regimen-every">{m.regimen_schedule_every_label()}</label>
+              <Field label={m.regimen_schedule_every_label()} id="regimen-every">
+                {#snippet children(id)}
+                  <input
+                    class="input"
+                    type="number"
+                    min="1"
+                    {id}
+                    name="regimen-every"
+                    inputmode="numeric"
+                    bind:value={schedule!.everyNDays}
+                  />
+                {/snippet}
+              </Field>
+            {:else}
+              <Field label={m.regimen_schedule_weekdays_label()} legend>
+                {#snippet children(id)}
+                  <div class="tag-row" role="group" aria-labelledby={id}>
+                    {#each WEEKDAYS as day (day)}
+                      <button
+                        type="button"
+                        class="tag-chip"
+                        class:is-selected={schedule!.weekdays.includes(day)}
+                        aria-pressed={schedule!.weekdays.includes(day)}
+                        data-weekday={day}
+                        onclick={() => toggleWeekday(day)}
+                      >
+                        {fmtDay(4 + day, { weekday: 'short' })}
+                      </button>
+                    {/each}
+                  </div>
+                {/snippet}
+              </Field>
+            {/if}
+
+            <Field label={m.regimen_schedule_per_day_label()} id="regimen-per-day">
+              {#snippet children(id)}
                 <input
                   class="input"
                   type="number"
                   min="1"
-                  id="regimen-every"
-                  name="regimen-every"
+                  {id}
+                  name="regimen-per-day"
                   inputmode="numeric"
-                  bind:value={schedule.everyNDays}
+                  bind:value={schedule!.dosesPerDay}
                 />
-              </div>
-            {:else}
-              <div class="field">
-                <span class="field-label" id="schedule-weekdays-label">{m.regimen_schedule_weekdays_label()}</span>
-                <div class="tag-row" role="group" aria-labelledby="schedule-weekdays-label">
-                  {#each WEEKDAYS as day (day)}
-                    <button
-                      type="button"
-                      class="tag-chip"
-                      class:is-selected={schedule.weekdays.includes(day)}
-                      aria-pressed={schedule.weekdays.includes(day)}
-                      data-weekday={day}
-                      onclick={() => toggleWeekday(day)}
-                    >
-                      {fmtDay(4 + day, { weekday: 'short' })}
-                    </button>
-                  {/each}
-                </div>
-              </div>
-            {/if}
+              {/snippet}
+            </Field>
 
-            <div class="field">
-              <label class="field-label" for="regimen-per-day">{m.regimen_schedule_per_day_label()}</label>
-              <input
-                class="input"
-                type="number"
-                min="1"
-                id="regimen-per-day"
-                name="regimen-per-day"
-                inputmode="numeric"
-                bind:value={schedule.dosesPerDay}
-              />
-            </div>
-
+            <!-- Not a Field either: names the amounts list below it. -->
             <div class="field">
               <span class="field-label">{m.regimen_schedule_amounts_legend()}</span>
               <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
@@ -455,7 +471,13 @@
                   <!-- Hand-rolled rather than `<ListRow static>` (ticket 40):
                        the row's text is a pair of bound inputs under the
                        screen's own two-column class, not a title and a
-                       subtitle. -->
+                       subtitle.
+
+                       The two `.field` spans stay hand-written rather than
+                       Field.svelte (ticket 10): Field renders a div, and a
+                       div inside this row's `<span class="kit-row-text">`
+                       is content a span can't hold. Each already carries a
+                       real aria-label of its own. -->
                   <div class="kit-row is-static">
                     <span class="kit-row-text cd-endpoints">
                       <span class="field">
@@ -505,6 +527,7 @@
           </div>
         {/if}
 
+        <!-- Not a Field: names the pause history list below it. -->
         <div class="field">
           <span class="field-label">{m.regimen_pauses_legend()}</span>
           <p class="muted small">{m.regimen_pauses_hint()}</p>
@@ -538,35 +561,38 @@
         {/if}
         {#if newPause}
           <div class="cd-endpoints">
-            <div class="field">
-              <label class="field-label" for="pause-start">{m.regimen_pause_start_label()}</label>
-              <input class="input" type="date" id="pause-start" name="pause-start" bind:value={newPause.start} />
-            </div>
-            <div class="field">
-              <label class="field-label" for="pause-end">{m.regimen_pause_end_label()}</label>
-              <input class="input" type="date" id="pause-end" name="pause-end" bind:value={newPause.end} />
-            </div>
+            <Field label={m.regimen_pause_start_label()} id="pause-start">
+              {#snippet children(id)}
+                <input class="input" type="date" {id} name="pause-start" bind:value={newPause!.start} />
+              {/snippet}
+            </Field>
+            <Field label={m.regimen_pause_end_label()} id="pause-end">
+              {#snippet children(id)}
+                <input class="input" type="date" {id} name="pause-end" bind:value={newPause!.end} />
+              {/snippet}
+            </Field>
           </div>
           <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
             {m.regimen_pause_end_hint()}
           </p>
-          <div class="field">
-            <span class="field-label" id="pause-reason-label">{m.regimen_pause_reason_label()}</span>
-            <div class="tag-row" role="group" aria-labelledby="pause-reason-label">
-              {#each ['planned', 'accidental'] as const as reason (reason)}
-                <button
-                  type="button"
-                  class="tag-chip"
-                  class:is-selected={newPause.reason === reason}
-                  aria-pressed={newPause.reason === reason}
-                  data-pause-reason={reason}
-                  onclick={() => newPause && (newPause.reason = reason)}
-                >
-                  {pauseReasonLabel(reason)}
-                </button>
-              {/each}
-            </div>
-          </div>
+          <Field label={m.regimen_pause_reason_label()} legend>
+            {#snippet children(id)}
+              <div class="tag-row" role="group" aria-labelledby={id}>
+                {#each ['planned', 'accidental'] as const as reason (reason)}
+                  <button
+                    type="button"
+                    class="tag-chip"
+                    class:is-selected={newPause!.reason === reason}
+                    aria-pressed={newPause!.reason === reason}
+                    data-pause-reason={reason}
+                    onclick={() => newPause && (newPause.reason = reason)}
+                  >
+                    {pauseReasonLabel(reason)}
+                  </button>
+                {/each}
+              </div>
+            {/snippet}
+          </Field>
           <button
             class="btn btn-soft"
             data-add-pause
