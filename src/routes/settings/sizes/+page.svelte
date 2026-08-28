@@ -19,13 +19,12 @@
   import type { SizeRecord } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -92,8 +91,6 @@
     remove: (id) => journal.sizeRecords.deleteRecord(id),
     findById: (id) => records.find((r) => r.id === id)
   });
-  let editor = $derived(record.editor);
-  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
@@ -167,9 +164,23 @@
     {/snippet}
   </ReadGate>
 
-  <Sheet open={editor !== null} title={editor?.id ? m.size_log_edit_sheet() : m.size_log_new_sheet()} onClose={() => (record.editor = null)}>
-    {#if editor}
-      <h3>{editor.id ? m.size_log_edit_sheet() : m.size_log_new_sheet()}</h3>
+  <RecordSheet
+    {record}
+    handle="size-record"
+    newTitle={m.size_log_new_sheet()}
+    editTitle={m.size_log_edit_sheet()}
+    saveLabel={m.size_log_save()}
+    deleteLabel={m.size_log_delete()}
+    canSave={(draft) => draft.size.trim().length > 0}
+    confirm={{
+      title: m.size_log_delete_sheet(),
+      question: (r) => m.size_log_delete_q({ category: garmentCategoryName(r.category) }),
+      hint: () => m.size_log_delete_hint(),
+      confirmLabel: m.size_log_delete(),
+      cancelLabel: m.keep_it()
+    }}
+  >
+    {#snippet fields(editor)}
       <div class="field">
         <label class="field-label" for="size-log-date">{m.size_log_date_label()}</label>
         <input class="input" type="date" id="size-log-date" name="size-log-date" bind:value={editor.date} />
@@ -194,24 +205,6 @@
         <label class="field-label" for="size-log-fit-note">{m.size_log_fit_note_label()}</label>
         <input class="input" id="size-log-fit-note" name="size-log-fit-note" placeholder={m.size_log_fit_note_placeholder()} bind:value={editor.fitNote} />
       </div>
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-size-record disabled={!editor.size.trim()} onclick={record.save}><span>{m.size_log_save()}</span></button>
-        {#if editor.id}
-          <button class="btn btn-ghost" data-delete-size-record onclick={() => record.askToDelete()}><span>{m.size_log_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
-
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.size_log_delete_sheet()}
-    question={deleteTarget ? m.size_log_delete_q({ category: garmentCategoryName(deleteTarget.category) }) : ''}
-    hint={m.size_log_delete_hint()}
-    confirmLabel={m.size_log_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-size-record': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
-  />
+    {/snippet}
+  </RecordSheet>
 </div>

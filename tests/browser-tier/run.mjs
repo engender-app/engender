@@ -1223,6 +1223,37 @@ try {
   fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
 }
 
+// --- Phase 5 audit deepening ticket 09: a dependent read waits for its record
+await block('ticket 09 detail draft', 3, async () => {
+  const detail = await load('/detail-draft.html', 'detail-draft-probe');
+  if (detail.error) throw new Error(detail.error);
+
+  /* The race itself, still there in the raw reading: the entries read has
+     nothing to look up while the tryout is undefined, so it answers with
+     nothing and the gate reads that as the empty state. If this ever stops
+     being true the check below is asserting nothing. */
+  if (detail.rawEmptyBeforeRecord)
+    ok('a read that hangs off a record does answer empty before the record lands');
+  else
+    fail(
+      'a read that hangs off a record does answer empty before the record lands',
+      `branches were ${detail.rawBranches?.join(' -> ')}`
+    );
+
+  // And what detailDraft.ts's answersFor puts in its place: an answer read
+  // for anything but the record on screen is still loading.
+  if (detail.gatedEmptyBeforeRecord === false)
+    ok('waiting on the record shows the placeholder over that gap, never the empty state');
+  else
+    fail(
+      'waiting on the record shows the placeholder over that gap, never the empty state',
+      `branches were ${detail.gatedBranches?.join(' -> ')}`
+    );
+
+  if (detail.entriesFound > 0) ok('the entries in the tryout range arrive either way');
+  else fail('the entries in the tryout range arrive either way', 'no entries found in range');
+});
+
 await browser.close();
 await server.close();
 

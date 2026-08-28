@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
+  import { journal } from '$lib/data/live/journal.svelte';
   import {
     choiceFromRule,
     nextOccurrence,
@@ -15,6 +14,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
+  import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
 
   const TYPES = [
     { value: 'med', label: m.rem_type_med() },
@@ -32,29 +32,19 @@
     { value: 'WEEKLY', label: m.rem_rec_weekly() },
   ];
 
-  const isNew = page.params.id === 'new';
-
   /* Reminders are tens of rows and not mirrored, so the one being edited comes
      from the list rather than from a query of its own. The draft is filled the
-     moment it arrives and never again, which is `onFirstResult`'s job rather
-     than the dependency list's: a re-run cannot discard what the user typed. */
-  let stored = liveQuery((j) => (isNew ? Promise.resolve([]) : j.reminders.getReminders()));
-  let existing = $derived(stored.value?.find((r) => r.id === page.params.id));
-
-  let draft = $state({
-    title: '',
-    type: 'med' as Reminder['type'],
-    time: '20:00',
-    choice: 'DAILY' as RecurrenceChoice
+     moment it arrives and never again, and refilled if the route moves to
+     another id - both are detailDraft.ts's rules, node-tested there. */
+  const detail = detailDraft<Reminder, { title: string; type: Reminder['type']; time: string; choice: RecurrenceChoice }>({
+    read: async (j, id) => (await j.reminders.getReminders()).find((r) => r.id === id),
+    blank: () => ({ title: '', type: 'med', time: '20:00', choice: 'DAILY' }),
+    fromRecord: (found) => ({ title: found.title, type: found.type, time: found.time, choice: choiceFromRule(found) })
   });
-
-  onFirstResult(stored, (reminders) => {
-    const found = reminders?.find((r) => r.id === page.params.id);
-    if (found) draft = { title: found.title, type: found.type, time: found.time, choice: choiceFromRule(found) };
-  });
+  let draft = $derived(detail.draft);
 
   const ruleFromDraft = (): ReminderRule =>
-    ruleFromChoice(draft.choice, draft.time, existing ?? null, new Date());
+    ruleFromChoice(draft.choice, draft.time, detail.record ?? null, new Date());
 
   /* The rule the Android scheduler is held to case for case
      (reminder-rule.json): the preview cannot promise a moment that will not
@@ -73,10 +63,10 @@
 
   function saveReminder() {
     journal.reminders.upsertReminder({
-      id: existing?.id,
+      id: detail.record?.id,
       title: draft.title || m.rem_default_name(),
       type: draft.type,
-      enabled: existing?.enabled ?? true,
+      enabled: detail.record?.enabled ?? true,
       ...ruleFromDraft(),
     });
     goto('/settings/reminders');
@@ -84,7 +74,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={isNew ? m.rem_new_title() : m.rem_edit_title()} back="/settings/reminders" />
+  <ScreenHeader title={detail.isNew ? m.rem_new_title() : m.rem_edit_title()} back="/settings/reminders" />
 
   <div class="card editor-section">
     <div class="field">

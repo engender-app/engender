@@ -19,12 +19,11 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -56,15 +55,12 @@
     remove: (id) => journal.sideEffects.deleteSideEffect(id),
     findById: (id) => effects.find((effect) => effect.id === id)
   });
-  let editor = $derived(record.editor);
-  let deleteTarget = $derived(record.deleteTarget);
 
   /* Ticket 11's second entry point into the appointment prep list: a
      one-tap add, seeded from what is already on screen, rather than a
      detour through that list's own editor. */
-  async function addToAppointmentPrep() {
-    if (!editor) return;
-    await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name: editor.name }));
+  async function addToAppointmentPrep(name: string) {
+    await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name }));
     toast(m.appointment_prep_added_toast());
   }
 </script>
@@ -110,13 +106,22 @@
     {/snippet}
   </ReadGate>
 
-  <Sheet
-    open={editor !== null}
-    title={editor?.id ? m.side_effect_edit_sheet() : m.side_effect_new_sheet()}
-    onClose={() => (record.editor = null)}
+  <RecordSheet
+    {record}
+    handle="side-effect"
+    newTitle={m.side_effect_new_sheet()}
+    editTitle={m.side_effect_edit_sheet()}
+    saveLabel={m.side_effect_save()}
+    deleteLabel={m.side_effect_delete()}
+    confirm={{
+      title: m.side_effect_delete_sheet(),
+      question: (effect) => m.side_effect_delete_q({ name: effect.name }),
+      hint: () => m.side_effect_delete_hint(),
+      confirmLabel: m.side_effect_delete(),
+      cancelLabel: m.keep_it()
+    }}
   >
-    {#if editor}
-      <h3>{editor.id ? m.side_effect_edit_sheet() : m.side_effect_new_sheet()}</h3>
+    {#snippet fields(editor)}
       <div class="field">
         <label class="field-label" for="side-effect-name">{m.side_effect_name_label()}</label>
         <input class="input" id="side-effect-name" name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
@@ -131,28 +136,14 @@
           name={m.side_effect_severity_label()}
           options={SEVERITIES.map((v) => ({ value: String(v), label: severityName(v) }))}
           value={editor.severity}
-          onChange={(v) => (editor!.severity = v)}
+          onChange={(v) => (editor.severity = v)}
         />
       </div>
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-side-effect onclick={record.save}><span>{m.side_effect_save()}</span></button>
-        {#if editor.id}
-          <button class="btn btn-soft" data-add-to-appointment-prep onclick={addToAppointmentPrep}><span>{m.appointment_prep_add_button()}</span></button>
-          <button class="btn btn-ghost" data-delete-side-effect onclick={() => record.askToDelete()}><span>{m.side_effect_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
-
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.side_effect_delete_sheet()}
-    question={deleteTarget ? m.side_effect_delete_q({ name: deleteTarget.name }) : ''}
-    hint={m.side_effect_delete_hint()}
-    confirmLabel={m.side_effect_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-side-effect': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
-  />
+    {/snippet}
+    {#snippet extraActions(editor)}
+      <button class="btn btn-soft" data-add-to-appointment-prep onclick={() => addToAppointmentPrep(editor.name)}>
+        <span>{m.appointment_prep_add_button()}</span>
+      </button>
+    {/snippet}
+  </RecordSheet>
 </div>
