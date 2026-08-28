@@ -43,6 +43,7 @@
      how a screen stamps its own walkthrough handle without the kit learning
      what a backup is - `data-notice` names the surface and the handle beside
      it names the thing being said (ADR-0029). */
+  import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
   import { roleAttrs } from './role';
   import { disclose, resize } from '$lib/motion/reveal';
@@ -96,6 +97,20 @@
      height rather than guessing at one; it runs the same way backwards
      for a leaving node as it does forwards for an arriving one.
 
+     `skip`: without it this same shrink replayed whenever the *page*
+     unmounts the notice - navigating away from a screen that never sets
+     `dismiss` at all (the roadmap's provenance notice, phase 5 ticket 99
+     item 16) still collapsed it to nothing over the outgoing screen's
+     transition, which read as an extra yank on top of the real page
+     transition. Every other caller of Notice wraps it in its own
+     `{#if}` - the empty-state notices behind a data check, the
+     dismissible ones behind the dismissed flag - which happens to keep
+     Svelte's outro from riding along with an unrelated ancestor's; this
+     one is mounted bare, with nothing of its own to fall back on. `skip`
+     (see `disclose`'s own comment in reveal.ts) reads `navigating` and
+     cuts the animation exactly when it is the page leaving, not the
+     notice itself, that is the reason this node is going away.
+
      `use:resize` on the body below, not here, for the other half of the
      same finding: a notice that stays mounted and changes size under its
      own title/text (the measurements screen's protocol tip, switched with
@@ -103,7 +118,14 @@
      primitive per shape - `resize` cannot see a node arriving or leaving,
      which is `disclose`'s job, and `disclose` cannot see a node's own
      content changing size while it stays put, which is `resize`'s. -->
-<div class="kit-notice" data-kit-surface data-notice={key} out:disclose {...roleAttrs(role)} {...rest}>
+<div
+  class="kit-notice"
+  data-kit-surface
+  data-notice={key}
+  out:disclose={{ skip: navigating.to !== null }}
+  {...roleAttrs(role)}
+  {...rest}
+>
   <span class="kit-notice-ico"><Icon name={icon} size={22} /></span>
   <!-- Not the root: `disclose`'s own out-transition animates the root's
        height too, on the way out, and ResizeObserver cannot tell that
