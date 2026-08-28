@@ -40,7 +40,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import {
     dateInputValueFromEpochDay,
-    epochDayFromDateInputValue,
+    epochDayFromDateInputValueOrToday,
     epochDayFromTimestamp,
     startOfDayTimestamp,
     todayEpochDay
@@ -64,6 +64,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -147,7 +148,7 @@
   }
 
   function timestampOf(dayValue: string, timeValue: string): number {
-    const epochDay = epochDayFromDateInputValue(dayValue) ?? today;
+    const epochDay = epochDayFromDateInputValueOrToday(dayValue);
     const [hours, minutes] = timeValue.split(':').map(Number);
     return startOfDayTimestamp(epochDay) + (hours || 0) * 3600000 + (minutes || 0) * 60000;
   }
@@ -339,7 +340,7 @@
   });
   let editorWhenText = $derived(
     editor
-      ? `${fmtDayShort(epochDayFromDateInputValue(editor.day) ?? today)}, ${fmtTime(timestampOf(editor.day, editor.time))}`
+      ? `${fmtDayShort(epochDayFromDateInputValueOrToday(editor.day))}, ${fmtTime(timestampOf(editor.day, editor.time))}`
       : ''
   );
 
@@ -683,24 +684,25 @@
         {#if openGroup === 'what'}
           <div class="disclosed" transition:disclose|local>
             {#if editorNeedsDrugPick}
-              <div class="field">
-                <span class="field-label" id="dose-drug-label">{m.dose_drug_label()}</span>
-                <p class="muted small">{m.dose_drug_hint()}</p>
-                <div class="tag-row" role="group" aria-labelledby="dose-drug-label">
-                  {#each activeDrugChoices as drug (drug)}
-                    <button
-                      type="button"
-                      class="tag-chip press"
-                      class:is-selected={editor.drug === drug}
-                      aria-pressed={editor.drug === drug}
-                      data-dose-drug={drug}
-                      onclick={() => pickDrug(drug)}
-                    >
-                      {drug}
-                    </button>
-                  {/each}
-                </div>
-              </div>
+              <Field label={m.dose_drug_label()} legend>
+                {#snippet children(id)}
+                  <p class="muted small">{m.dose_drug_hint()}</p>
+                  <div class="tag-row" role="group" aria-labelledby={id}>
+                    {#each activeDrugChoices as drug (drug)}
+                      <button
+                        type="button"
+                        class="tag-chip press"
+                        class:is-selected={editor!.drug === drug}
+                        aria-pressed={editor!.drug === drug}
+                        data-dose-drug={drug}
+                        onclick={() => pickDrug(drug)}
+                      >
+                        {drug}
+                      </button>
+                    {/each}
+                  </div>
+                {/snippet}
+              </Field>
             {/if}
 
             <!-- One value, one control. The amount and its unit were two
@@ -743,44 +745,46 @@
               </div>
             </div>
 
-            <div class="field">
-              <span class="field-label" id="dose-route-label">{m.dose_route_label()}</span>
-              <div class="tag-row" role="group" aria-labelledby="dose-route-label">
-                {#each ROUTE_OPTIONS as option (option.value)}
-                  <button
-                    type="button"
-                    class="tag-chip press"
-                    class:is-selected={editor.route === option.value}
-                    aria-pressed={editor.route === option.value}
-                    data-route={option.value}
-                    onclick={() => editor && (editor.route = option.value)}
-                  >
-                    {option.label}
-                  </button>
-                {/each}
-              </div>
-            </div>
+            <Field label={m.dose_route_label()} legend>
+              {#snippet children(id)}
+                <div class="tag-row" role="group" aria-labelledby={id}>
+                  {#each ROUTE_OPTIONS as option (option.value)}
+                    <button
+                      type="button"
+                      class="tag-chip press"
+                      class:is-selected={editor!.route === option.value}
+                      aria-pressed={editor!.route === option.value}
+                      data-route={option.value}
+                      onclick={() => editor && (editor.route = option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  {/each}
+                </div>
+              {/snippet}
+            </Field>
 
             <!-- The vehicle belongs to what the dose was, not to where it
                  went: the line above already reads "Intramuscular, oil". -->
             {#if editorIsInjection}
-              <div class="field">
-                <span class="field-label" id="dose-vehicle-label">{m.dose_vehicle_label()}</span>
-                <div class="tag-row" role="group" aria-labelledby="dose-vehicle-label">
-                  {#each ['oil', 'aqueous'] as const as vehicle (vehicle)}
-                    <button
-                      type="button"
-                      class="tag-chip press"
-                      class:is-selected={editor.vehicle === vehicle}
-                      aria-pressed={editor.vehicle === vehicle}
-                      data-vehicle={vehicle}
-                      onclick={() => editor && (editor.vehicle = vehicle)}
-                    >
-                      {vehicleLabel(vehicle)}
-                    </button>
-                  {/each}
-                </div>
-              </div>
+              <Field label={m.dose_vehicle_label()} legend>
+                {#snippet children(id)}
+                  <div class="tag-row" role="group" aria-labelledby={id}>
+                    {#each ['oil', 'aqueous'] as const as vehicle (vehicle)}
+                      <button
+                        type="button"
+                        class="tag-chip press"
+                        class:is-selected={editor!.vehicle === vehicle}
+                        aria-pressed={editor!.vehicle === vehicle}
+                        data-vehicle={vehicle}
+                        onclick={() => editor && (editor.vehicle = vehicle)}
+                      >
+                        {vehicleLabel(vehicle)}
+                      </button>
+                    {/each}
+                  </div>
+                {/snippet}
+              </Field>
             {/if}
           </div>
         {/if}
@@ -801,14 +805,16 @@
         {#if openGroup === 'when'}
           <div class="disclosed" transition:disclose|local>
             <div class="cd-endpoints">
-              <div class="field">
-                <label class="field-label" for="dose-day">{m.dose_day_label()}</label>
-                <input class="input" type="date" id="dose-day" name="dose-day" bind:value={editor.day} />
-              </div>
-              <div class="field">
-                <label class="field-label" for="dose-time">{m.dose_time_label()}</label>
-                <input class="input" type="time" id="dose-time" name="dose-time" bind:value={editor.time} />
-              </div>
+              <Field label={m.dose_day_label()} id="dose-day">
+                {#snippet children(id)}
+                  <input class="input" type="date" {id} name="dose-day" bind:value={editor!.day} />
+                {/snippet}
+              </Field>
+              <Field label={m.dose_time_label()} id="dose-time">
+                {#snippet children(id)}
+                  <input class="input" type="time" {id} name="dose-time" bind:value={editor!.time} />
+                {/snippet}
+              </Field>
             </div>
             <p class="muted small">{m.dose_time_hint()}</p>
           </div>
@@ -835,61 +841,67 @@
 
         {#if openGroup === 'status'}
           <div class="disclosed" transition:disclose|local>
-            <div class="field">
-              <span class="field-label">{m.dose_status_label()}</span>
-              <Segmented
-                name={m.dose_status_label()}
-                value={editor.status}
-                options={STATUS_OPTIONS}
-                onChange={(v) => editor && (editor.status = v as DoseStatus)}
-              />
-            </div>
+            <Field label={m.dose_status_label()} legend>
+              {#snippet children()}
+                <Segmented
+                  name={m.dose_status_label()}
+                  value={editor!.status}
+                  options={STATUS_OPTIONS}
+                  onChange={(v) => editor && (editor.status = v as DoseStatus)}
+                />
+              {/snippet}
+            </Field>
 
             {#if editor.status === 'changed'}
               <div class="disclosed" transition:disclose|local>
+                <!-- Not a Field: this heading names the two-field group
+                     below it (ticket 10), not a control of its own. -->
                 <div class="field">
                   <span class="field-label">{m.dose_scheduled_legend()}</span>
                   <p class="muted small">{m.dose_scheduled_hint()}</p>
                 </div>
                 <div class="cd-endpoints">
-                  <div class="field">
-                    <label class="field-label" for="dose-scheduled-amount">{m.dose_scheduled_amount_label()}</label>
-                    <input
-                      class="input"
-                      type="number"
-                      id="dose-scheduled-amount"
-                      name="dose-scheduled-amount"
-                      inputmode="decimal"
-                      bind:value={editor.scheduledDose}
-                    />
-                  </div>
-                  <div class="field">
-                    <label class="field-label" for="dose-scheduled-time">{m.dose_scheduled_time_label()}</label>
-                    <input
-                      class="input"
-                      type="time"
-                      id="dose-scheduled-time"
-                      name="dose-scheduled-time"
-                      bind:value={editor.scheduledTime}
-                    />
-                  </div>
+                  <Field label={m.dose_scheduled_amount_label()} id="dose-scheduled-amount">
+                    {#snippet children(id)}
+                      <input
+                        class="input"
+                        type="number"
+                        {id}
+                        name="dose-scheduled-amount"
+                        inputmode="decimal"
+                        bind:value={editor!.scheduledDose}
+                      />
+                    {/snippet}
+                  </Field>
+                  <Field label={m.dose_scheduled_time_label()} id="dose-scheduled-time">
+                    {#snippet children(id)}
+                      <input
+                        class="input"
+                        type="time"
+                        {id}
+                        name="dose-scheduled-time"
+                        bind:value={editor!.scheduledTime}
+                      />
+                    {/snippet}
+                  </Field>
                 </div>
-                <div class="field">
-                  <span class="field-label" id="dose-scheduled-route-label">{m.dose_scheduled_route_label()}</span>
-                  <div class="tag-row" role="group" aria-labelledby="dose-scheduled-route-label">
-                    {#each ROUTE_OPTIONS as option (option.value)}
-                      <button
-                        type="button"
-                        class="tag-chip press"
-                        class:is-selected={editor.scheduledRoute === option.value}
-                        aria-pressed={editor.scheduledRoute === option.value}
-                        onclick={() => editor && (editor.scheduledRoute = option.value)}
-                      >
-                        {option.label}
-                      </button>
-                    {/each}
-                  </div>
-                </div>
+                <Field label={m.dose_scheduled_route_label()} legend>
+                  {#snippet children(id)}
+                    <div class="tag-row" role="group" aria-labelledby={id}>
+                      {#each ROUTE_OPTIONS as option (option.value)}
+                        <button
+                          type="button"
+                          class="tag-chip press"
+                          class:is-selected={editor!.scheduledRoute === option.value}
+                          aria-pressed={editor!.scheduledRoute === option.value}
+                          onclick={() => editor && (editor.scheduledRoute = option.value)}
+                        >
+                          {option.label}
+                        </button>
+                      {/each}
+                    </div>
+                  {/snippet}
+                </Field>
               </div>
             {/if}
           </div>
@@ -901,38 +913,45 @@
            went. Left outside the record and above the save, where it reads
            as the question the sheet is actually asking. -->
       {#if editorIsInjection}
-        <div class="field" transition:disclose|local>
-          <span class="field-label">{m.dose_injection_site_label()}</span>
-          <p class="muted small">{m.dose_injection_site_hint()}</p>
-          <InjectionSiteMap
-            value={editor.injectionSite}
-            lastUsed={lastInjectionBefore(doses, timestampOf(editor.day, editor.time), editor.id)?.injectionSite ?? null}
-            recency={siteRecencyByKey}
-            onChange={(site) => editor && (editor.injectionSite = site)}
-          />
+        <!-- The transition lands on this wrapper rather than inside
+             Field.svelte: a transition: directive attaches to the element
+             it is written on, which a component boundary can't forward. -->
+        <div transition:disclose|local>
+          <Field label={m.dose_injection_site_label()} legend>
+            {#snippet children()}
+              <p class="muted small">{m.dose_injection_site_hint()}</p>
+              <InjectionSiteMap
+                value={editor!.injectionSite}
+                lastUsed={lastInjectionBefore(doses, timestampOf(editor!.day, editor!.time), editor!.id)?.injectionSite ?? null}
+                recency={siteRecencyByKey}
+                onChange={(site) => editor && (editor.injectionSite = site)}
+              />
+            {/snippet}
+          </Field>
         </div>
       {/if}
 
       {#if editorIsTopical}
         <!-- A flat row of chips, not the rotation map: a patch or gel site is
              not rotated on an injection site's schedule. -->
-        <div class="field">
-          <span class="field-label" id="dose-app-site-label">{m.dose_app_site_label()}</span>
-          <div class="tag-row" role="group" aria-labelledby="dose-app-site-label">
-            {#each APPLICATION_SITES as site (site)}
-              <button
-                type="button"
-                class="tag-chip press"
-                class:is-selected={editor.applicationSite === site}
-                aria-pressed={editor.applicationSite === site}
-                data-app-site={site}
-                onclick={() => editor && (editor.applicationSite = site)}
-              >
-                {applicationSiteLabel(site)}
-              </button>
-            {/each}
-          </div>
-        </div>
+        <Field label={m.dose_app_site_label()} legend>
+          {#snippet children(id)}
+            <div class="tag-row" role="group" aria-labelledby={id}>
+              {#each APPLICATION_SITES as site (site)}
+                <button
+                  type="button"
+                  class="tag-chip press"
+                  class:is-selected={editor!.applicationSite === site}
+                  aria-pressed={editor!.applicationSite === site}
+                  data-app-site={site}
+                  onclick={() => editor && (editor.applicationSite = site)}
+                >
+                  {applicationSiteLabel(site)}
+                </button>
+              {/each}
+            </div>
+          {/snippet}
+        </Field>
       {/if}
 
       <div class="stack-3">
