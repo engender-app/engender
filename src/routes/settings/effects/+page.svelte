@@ -232,13 +232,12 @@
             {@const expanded = expandedGroups.has(key)}
             <div class="effect-group" data-effect-group={key}>
               <ListCard role={roleAt(activeFlag.roles, i)}>
-                <button class="kit-row effect-group-header" onclick={() => toggleGroup(key)} aria-expanded={expanded}>
-                  <span class="kit-row-text"><span class="kit-row-title">{cat.name}</span></span>
-                  <span class="kit-row-trail">
+                <ListRow onclick={() => toggleGroup(key)} aria-expanded={expanded} chevron={false} title={cat.name}>
+                  {#snippet trailing()}
                     {m.effect_group_count({ count: groupEffects.length })}
                     <Icon name={expanded ? 'chevronDown' : 'chevronRight'} size={20} />
-                  </span>
-                </button>
+                  {/snippet}
+                </ListRow>
                 {#if expanded}
                   <div class="effect-group-body" transition:disclose>
                     <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
@@ -268,13 +267,17 @@
           {@const expanded = expandedGroups.has(key)}
           <div class="effect-group" data-effect-group={key}>
             <ListCard role={roleAt(activeFlag.roles, 0)}>
-              <button class="kit-row effect-group-header" onclick={() => toggleGroup(key)} aria-expanded={expanded}>
-                <span class="kit-row-text"><span class="kit-row-title">{m.effect_type_category_none()}</span></span>
-                <span class="kit-row-trail">
+              <ListRow
+                onclick={() => toggleGroup(key)}
+                aria-expanded={expanded}
+                chevron={false}
+                title={m.effect_type_category_none()}
+              >
+                {#snippet trailing()}
                   {m.effect_group_count({ count: uncategorized.length })}
                   <Icon name={expanded ? 'chevronDown' : 'chevronRight'} size={20} />
-                </span>
-              </button>
+                {/snippet}
+              </ListRow>
               {#if expanded}
                 <div class="effect-group-body" transition:disclose>
                   <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />

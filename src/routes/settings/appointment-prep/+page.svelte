@@ -75,6 +75,10 @@
     {#snippet rows()}
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, 0)}>
+          <!-- Hand-rolled rather than ListRow (ticket 16): two trailing
+               actions (carry-forward flag, delete) where `action` takes
+               one, and a checkbox main that's role="checkbox" with its own
+               .ap-box rather than ListRow's checked semantics. -->
           {#each items as item (item.id)}
             <div class="kit-row is-split" data-appointment-item={item.id}>
               <button

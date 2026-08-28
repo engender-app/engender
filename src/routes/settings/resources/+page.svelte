@@ -54,6 +54,9 @@
     <SectionHeading text={group.title()} />
     <ListCard role={roleAt(activeFlag.roles, i)}>
       {#each resourcesFor(group.region) as resource (resource.key)}
+        <!-- Hand-rolled rather than ListRow (ticket 16): a third band of
+             contact pills under the description, which title/subtitle have
+             no room for - ListRow's text slot is exactly those two. -->
         <div class="kit-row is-static resource-row" data-resource={resource.key}>
           <span class="kit-row-text resource-text">
             <span class="kit-row-title">{resource.name}</span>

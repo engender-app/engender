@@ -56,6 +56,11 @@ describe('the surfaces', () => {
       'BarRows.svelte',
       'BareStrip.svelte',
       'ChartCard.svelte',
+      /* Not a surface: it draws one paragraph inside a chart card's own
+         body, the "nothing logged in this range" text seven call sites
+         used to hand-write against .kit-chart-empty directly (phase 5
+         audit ticket 16). */
+      'ChartEmpty.svelte',
       'ChartPicker.svelte',
       /* The box a tickable row draws (phase 5 ticket 35). Not a surface of
          its own - it is a part of ListRow, the way MoodFace is a part of a

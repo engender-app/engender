@@ -103,6 +103,24 @@
   --role-hairline: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
 }
 
+/* A route's own `<style>` block is free to read --role-mark, --role-ink,
+   --role-tint, --role-wash or --role-hairline directly (six files do,
+   phase 5 audit ticket 16 - counting /timeline's own .tl-count, moved
+   into its <style> block by this same ticket) rather than going through
+   a kit surface, since they are ordinary custom properties and inherit
+   to any descendant of a [data-kit-role] element the way the raw inputs
+   do. The one thing to get right is that the rule's own selector has to
+   actually match something under one: there is no fallback value on any
+   of the five tokens above, so a selector one level too high, or on a
+   sibling of the stamped surface rather than a descendant, computes
+   nothing rather than the accent - silent, and only a render shows it
+   (ADR-0038's /timeline hit the same failure shape at the kit's own
+   surface list, before ticket 32.8 replaced it with this attribute).
+   Nothing checks a route's own usage of these five tokens the way
+   tests/kit-roles.test.ts checks this rule; a caller gets it right by
+   nesting under a surface that took a role, the same as any other
+   descendant does. */
+
 /* ---------- section header ----------
 
    Display face at the screen-title size with no icon (DIRECTION.md 3c).

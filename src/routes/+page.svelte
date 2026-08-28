@@ -67,6 +67,7 @@
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import MoodChips from '$lib/components/kit/MoodChips.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -332,12 +333,13 @@
         <MilestoneCard milestone={x.m} s={x.s} />
       {/each}
     {:else}
-      <a class="kit-row" href="/settings/milestones" data-milestones-empty>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.home_milestones_empty_title()}</span>
-          <span class="kit-row-sub">{m.home_milestones_empty_body()}</span>
-        </span>
-      </a>
+      <ListRow
+        href="/settings/milestones"
+        data-milestones-empty
+        chevron={false}
+        title={m.home_milestones_empty_title()}
+        subtitle={m.home_milestones_empty_body()}
+      />
     {/if}
   </ListCard>
 
@@ -448,3 +450,238 @@
     {/if}
   </Sheet>
 </div>
+
+<style>
+  /* Ticket 19: widened past .screen's own horizontal padding (negative
+     margin) and padded back out to the same inset, so the flag sun's corner
+     point lands exactly on the screen's true top right corner rather than
+     the padded content edge - matching "centred exactly on the screen's top
+     right corner" (DIRECTION.md) - while the greeting text keeps its usual
+     alignment with everything below it. overflow: hidden clips the sun's
+     bleed to a clean quarter instead of a scrollable overhang; min-height
+     keeps that quarter from clipping again against this header's own bottom
+     edge before the innermost ring finishes drawing (SUN_OUTER/2 in
+     $lib/motion/flagSun.ts).
+
+     175px rather than a var(), because CSS has no way to read a TS export -
+     flagSun.test.ts holds this number to SUN_OUTER/2 so the two cannot drift
+     silently. What is a var() here is the scale: the breathing loop grows
+     every ring to --sun-breathe-scale (theme/base.css) at its cycle's
+     midpoint, and the resting radius alone was the reserve until phase 5
+     ticket 32.12 - so for part of every cycle the outermost ring grew past
+     its own room and overflow: hidden shaved it flat along this header's own
+     bottom edge. Multiplying by the same token the breathing keyframe reads
+     means the two can only ever agree. */
+  .home-header {
+    position: relative; z-index: 1;
+    padding: calc(var(--space-7) + var(--inset-top)) var(--space-5) var(--space-4);
+    /* The one deliberate bleed past the safe area (phase 5 ticket 18). The
+       scroll region pads every screen clear of the display cutout; this
+       header pulls itself back up by exactly that inset, so the sun's centre
+       lands on the window's true top right corner - which is what
+       DIRECTION.md asks for - and then pads its own text back down by the
+       same amount, so the greeting is as clear of the status bar as any
+       other screen's first line. Decoration crosses the inset; nothing
+       readable does. */
+    margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
+    overflow: hidden;
+    min-height: calc(175px * var(--sun-breathe-scale) + var(--inset-top));
+  }
+  /* Flat, and clear of the sun.
+
+     It was a gradient clipped to the letterforms, which DIRECTION.md's
+     decision 2 rules out outright - colour arrives as flat fill and as
+     coloured text, never as a gradient - and which on the nonbinary palette
+     ran the word "Diary" through olive on its way from purple to yellow.
+     The accent at 38px answers to the 3:1 large-text floor, which is what
+     --accent is already held to.
+
+     The width cap is the other half of it. The sun is 350px across and
+     centred on the top right corner, so anything running past about two
+     thirds of the screen disappears under it - which is what was happening to
+     the last two letters of the app's own name. DIRECTION.md says the
+     greeting sits clear beneath the sun; the title has to sit clear of it
+     too, and the way to do that is to stop the text rather than to move the
+     flag.
+
+     :global(), because the desktop-adaptation @container block
+     (screens.css) still overrides .home-hero's font-size at 1024px+ and
+     that rule stayed put with the other screens' shared breakpoint - a
+     scoped selector here would out-specificity it with the added scope
+     class, and the desktop size would stop winning. */
+  :global(.home-hero) {
+    font-family: var(--font-display);
+    font-size: 2.4rem; font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--accent);
+    max-width: 62%;
+  }
+  .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); max-width: 78%; }
+
+  /* Home's vertical rhythm (phase 5 ticket 21). Written as a margin below
+     each surface rather than as a flex gap on the column, because one of
+     those surfaces renders empty on most days: the look-back grid holds two
+     tiles that each gate themselves, and a gap would charge for the space
+     twice - once before the empty grid and once after it - where a margin the
+     grid does not have costs nothing at all. So the tiles' air belongs to the
+     chip row above them and to the next heading's own padding below, and on a
+     day with neither tile the column closes up with nothing to notice.
+
+     --space-3 is the gap DIRECTION.md's decision 3 asks for: 10 to 12 rather
+     than the 16 the screens used to run at. */
+  .home > * { margin-bottom: var(--space-3); }
+  /* Both of these carry their own space and would otherwise be paid twice. */
+  .home > :global(.kit-heading),
+  .home > :global(.kit-tiles) { margin-bottom: 0; }
+  /* The caption belongs to the strip above it, so it sits closer than a
+     section does to the next section. */
+  .home > :global(.kit-strip) { margin-bottom: var(--space-2); }
+  .home > :last-child { margin-bottom: 0; }
+
+  /* The streak, under the greeting. No pill, no accent, no icon and no
+     display size: those are what made it read as a score, and DIRECTION.md's
+     slop audit names the big-number-plus-label-plus-accent template outright.
+     What changed at review is where the line sits, not what it is. */
+  .home-streak-wrap {
+    display: inline-grid;
+    justify-items: start;
+    position: relative;
+    margin-top: var(--space-2);
+  }
+  .home-streak {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The second authored moment: past a week's run, arriving on Home throws a
+     little confetti over the streak line, once. Over that line and nowhere
+     else - the band is a grid row above the text and exactly as wide as it,
+     which is what keeps this a mark on one fact rather than a screen effect.
+
+     It plays and stops. DIRECTION.md's tier 4 rules out a second ambient
+     *loop*, which is why the celebration card's infinite `cf-fall` was
+     deleted rather than moved here; a moment with an end is the same
+     category as the sun's entrance, and it spends the authored duration
+     twice over.
+
+     Out of the flow, which is what lets the streak sit close under the
+     greeting. In flow the band's own height was 22px of permanent gap between
+     the two lines, on every day the confetti fires and none of the days it
+     does not - a moment cannot be allowed to decide the resting layout.
+
+     It used to sit entirely above the line, and from there the pieces fell
+     through the greeting: the band's own top was one line-height under "Hi
+     Alice" and the fall started 10px above even that. It starts at the streak
+     line's own top edge now (Alicja, 2026-08-25), so what the confetti crosses
+     is the fact it is about.
+
+     The two moments then went different ways, which is the point of the
+     is-burst variant below. A milestone's falls, and falls far enough to cross
+     its notice. A streak's is thrown: it goes up, fans out, tumbles and
+     decelerates, because a run of days is something you are keeping up rather
+     than something arriving.
+
+     Only transform and opacity move, per the performance contract, and the
+     pieces are 5x8 rectangles so there is nothing to rasterize. */
+  /* The milestone day's own band. The notice is a full-width card, so the
+     pieces cross its top edge rather than a line of text, and the wrapper is
+     only here to be the thing they are positioned against. */
+  .home-celebrate {
+    position: relative;
+  }
+  .home-cheer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* Far enough down to cross the notice it is thrown over rather than
+       stopping at its top edge (Alicja, 2026-08-25). */
+    height: 46px;
+    pointer-events: none;
+  }
+  /* The streak's, which goes the other way and needs far less room: up from
+     the line, not down across a card. */
+  .home-cheer.is-burst {
+    height: 16px;
+  }
+  .home-cheer i {
+    position: absolute;
+    top: 0;
+    left: var(--x);
+    width: 5px;
+    height: 8px;
+    border-radius: 1px;
+    /* The resting state, which is also where the animation ends: past the
+       bottom of the band and invisible. Declared so the 1ms clamp has
+       somewhere true to strand it (tests/motion-system.test.ts). */
+    opacity: 0;
+    transform: translateY(46px) rotate(var(--r));
+    animation: cheer-fall calc(var(--dur-authored) * 2) linear var(--d) both;
+  }
+  .home-cheer i:nth-child(3n) { background: var(--accent); }
+  .home-cheer i:nth-child(3n + 1) { background: var(--accent-2); }
+  .home-cheer i:nth-child(3n + 2) { background: color-mix(in oklab, var(--accent) 50%, var(--accent-2)); }
+  /* Same single interval, for the same reason. This one is linear, so position
+     and opacity both move steadily and tracking each other is all it takes. */
+  @keyframes cheer-fall {
+    0% { transform: translateY(-2px) rotate(0deg); opacity: 0; }
+    12% { opacity: 1; }
+    100% { transform: translateY(46px) rotate(var(--r)); opacity: 0; }
+  }
+
+  /* Thrown rather than dropped: up, out and tumbling, on --ease-out so the
+     pieces decelerate towards the top the way something thrown does at its
+     apex. It stops 13px above the line and is already fading by then, which is
+     what keeps it off the greeting - the pieces reach the bottom of that line's
+     box at their faintest rather than crossing the words (Alicja, 2026-08-25:
+     "it shouldn't cover the 'hi alice' text too much").
+
+     Shorter than the fall, because a throw is over faster than a drop, and the
+     resting values here are restated rather than inherited: this rule is where
+     the animation is declared, so this is where the 1ms clamp has to find the
+     end state (tests/motion-system.test.ts). */
+  .home-cheer.is-burst i {
+    opacity: 0;
+    transform: translate(var(--dx, 0), -11px) rotate(var(--r));
+    animation: cheer-burst calc(var(--dur-authored) * 2) var(--ease-out) var(--d) both;
+  }
+  /* One fade interval, from just after the throw to the very end, and no stops
+     in between. That is what puts the opacity on the same curve as the
+     position, which is the thing that was wrong: a timing function eases each
+     keyframe interval separately, so holding opacity at 1 until a third of the
+     way through gave the transform - specified at 0% and 100% only, and so
+     eased across the whole duration - time to arrive and park before the fade
+     had started. The piece stopped, then disappeared (Alicja, 2026-08-25).
+
+     Sharing the interval means sharing the easing: the fade goes fast early and
+     slowly late, exactly as the travel does, so a piece is dimming the whole
+     way up and is nearly gone by the time it reaches the top. */
+  @keyframes cheer-burst {
+    0% { transform: translate(0, 2px) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; }
+    100% { transform: translate(var(--dx, 0), -11px) rotate(var(--r)); opacity: 0; }
+  }
+  /* Substituted rather than clamped: at 1ms this is a flicker, and the moment
+     it stands for is "well done", which the line underneath already says. */
+  :global(html[data-a11y-motion='reduce']) .home-cheer i { animation: none; }
+  /* The burst needs saying separately in the media block below: `.home-cheer i`
+     is one class and this is two, so without it the more specific rule keeps
+     its animation and the clamp turns a thrown piece into a 1ms flicker. The
+     attribute selector above already outweighs it. */
+  :global(html[data-a11y-motion='reduce']) .home-cheer.is-burst i { animation: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .home-cheer i { animation: none; }
+    .home-cheer.is-burst i { animation: none; }
+  }
+
+  /* Tier 3: the skeleton crossfades into the day cards. Both children sit in
+     one grid cell so they overlap for the length of the fade - side by side
+     in the flow, the outgoing skeleton would push the content it is handing
+     over to down the page. */
+  .home-swap { display: grid; }
+  .home-swap > * { grid-area: 1 / 1; }
+  .home-days { display: grid; gap: var(--space-3); align-content: start; }
+</style>

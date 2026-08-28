@@ -200,20 +200,6 @@ body {
    A floor stated once is the only version of this that stays true as
    screens change.
 
-   The owl rather than a flex gap, deliberately: `.screen` is a block
-   container and several screens position things inside it, so turning it
-   into a flex column to get `gap` would change layout well beyond the
-   spacing this is about. */
-/* Nothing on a screen touches the thing above it.
-
-   Every screen had been spacing its own areas by hand, with an inline
-   `margin-top` on whichever block happened to need one, and the blocks that
-   nobody remembered ended up flush: two outlined cards with a 0px gap
-   between them, which reads as one card with a line through it (Alicja,
-   2026-08-26, on body measurements - "no 0px gaps should happen anywhere").
-   A floor stated once is the only version of this that stays true as
-   screens change.
-
    Each block carries its own space *below* it rather than taking space from
    whatever happens to precede it, and that is load-bearing rather than a
    preference. Written as `* + *` with a `.screen-header + *` exception, a

@@ -40,6 +40,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -375,7 +376,7 @@
                   ariaLabel={m.values_title({ name: analyte })}
                 />
               {:else}
-                <p class="kit-chart-empty">{m.labs_too_little()}</p>
+                <ChartEmpty>{m.labs_too_little()}</ChartEmpty>
               {/if}
             </ChartCard>
             <!-- Stated, not warned about: the series is drawn whole, and this
@@ -396,6 +397,11 @@
         {/each}
 
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
+          <!-- Hand-rolled rather than ListRow (ticket 16): the value carries
+               .lab-value (app.css) to opt back into text selection, and the
+               context line carries .lab-context's own size and colour -
+               both classes ListRow's plain title/subtitle strings have no
+               room for. -->
           {#each [...results].reverse() as r (r.id)}
             <button
               class="kit-row"

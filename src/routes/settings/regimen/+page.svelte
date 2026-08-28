@@ -523,6 +523,12 @@
         {#if editorPauses.length}
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
             {#each editorPauses as pause (pause.id)}
+              <!-- Hand-rolled rather than ListRow's action/is-split shape
+                   (ticket 16): that shape always renders the main span as a
+                   button or a link, and this one names nothing to press -
+                   it only states a pause. Routing it through would add
+                   .kit-row-main's :active wash and a tab stop to text that
+                   does nothing when pressed. -->
               <div class="kit-row is-split">
                 <span class="kit-row-main">
                   <span class="kit-row-title">

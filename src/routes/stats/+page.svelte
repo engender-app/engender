@@ -50,6 +50,7 @@
   import BarRows from '$lib/components/kit/BarRows.svelte';
   import type { BarRow } from '$lib/components/kit/barRow';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Distribution from '$lib/components/kit/Distribution.svelte';
   import PairedDots from '$lib/components/kit/PairedDots.svelte';
@@ -414,7 +415,7 @@
         />
       {/snippet}
       {#snippet empty()}
-        <p class="kit-chart-empty">{m.insights_empty()}</p>
+        <ChartEmpty>{m.insights_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
   </ChartCard>
@@ -440,7 +441,7 @@
         <PairedDots rows={correlationRows} />
       {/snippet}
       {#snippet empty()}
-        <p class="kit-chart-empty">{m.correlation_cards_empty()}</p>
+        <ChartEmpty>{m.correlation_cards_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
   </ChartCard>
@@ -466,7 +467,7 @@
         />
       {/snippet}
       {#snippet empty()}
-        <p class="kit-chart-empty">{m.interval_mood_empty()}</p>
+        <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
   </ChartCard>
@@ -508,7 +509,7 @@
         />
       {/snippet}
       {#snippet empty()}
-        <p class="kit-chart-empty">{m.custom_interval_empty()}</p>
+        <ChartEmpty>{m.custom_interval_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
   </ChartCard>

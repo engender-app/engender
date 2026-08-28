@@ -45,6 +45,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -372,7 +373,7 @@
             <span class="legend-dot legend-region"></span>{m.wear_session_trend_region_legend({ region: trendRegionLabel })}
           </p>
         {:else}
-          <p class="kit-chart-empty">{m.not_enough_data()}</p>
+          <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
         {/if}
       </ChartCard>
     </div>

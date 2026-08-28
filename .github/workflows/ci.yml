@@ -67,6 +67,8 @@ jobs:
         run: npm run check:copy
       - name: Dependency licences
         run: npm run check:licences
+      - name: screens.css single-consumer classes
+        run: npm run check:screens-classes
       # The other half of the dependency policy the spec asks of CI - no
       # Firebase, Play Services, analytics or proprietary runtime SDK in the
       # Android graph - runs in the Android job where Gradle can resolve the
