@@ -35,6 +35,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -198,15 +199,17 @@
 <Sheet open={addTrack !== null} title={m.roadmap_new_goal()} onClose={() => (addTrack = null)}>
   {#if addTrack}
     <h3>{m.roadmap_new_goal()}</h3>
-    <div class="field">
-      <input
-        class="input"
-        id="newgoal-input"
-        name="newgoal-input"
-        placeholder={m.roadmap_goal_placeholder()}
-        bind:value={newGoalText}
-      />
-    </div>
+    <Field label={m.roadmap_new_goal()} id="newgoal-input" hidden>
+      {#snippet children(id)}
+        <input
+          class="input"
+          {id}
+          name="newgoal-input"
+          placeholder={m.roadmap_goal_placeholder()}
+          bind:value={newGoalText}
+        />
+      {/snippet}
+    </Field>
     <button
       class="btn btn-primary"
       onclick={() => {

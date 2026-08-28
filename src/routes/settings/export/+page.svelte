@@ -23,6 +23,7 @@
   import Switch from '$lib/components/Switch.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import { isAndroid } from '$lib/platform';
   import { onMount } from 'svelte';
 
@@ -449,11 +450,12 @@
   <SectionTitle text={m.exp_encrypted_section()} />
   <div class="card editor-section">
     <p class="small" style="margin-bottom:var(--space-3)">{m.exp_encrypted_body()}</p>
-    <div class="field">
-      <label class="field-label" for="exp-pass">{m.exp_password_label()}</label>
-      <input class="input" type="password" id="exp-pass" name="exp-pass" placeholder={m.exp_password_placeholder()}
-        autocomplete="new-password" bind:value={expPass} />
-    </div>
+    <Field label={m.exp_password_label()} id="exp-pass">
+      {#snippet children(id)}
+        <input class="input" type="password" {id} name="exp-pass" placeholder={m.exp_password_placeholder()}
+          autocomplete="new-password" bind:value={expPass} />
+      {/snippet}
+    </Field>
     <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={running !== null}>
       <Icon name={android ? 'share' : 'download'} size={20} />
       <span>{running === 'encrypted' ? m.exp_running() : android ? m.exp_run_share() : m.exp_run_download()}</span>
@@ -528,26 +530,29 @@
 
   <SectionTitle text={m.imp_section()} />
   <div class="card editor-section">
-    <div class="field">
-      <span class="field-label">{m.imp_file_label()}</span>
-      <button class="input" style="text-align:left;color:var(--text-2)" data-pick-file onclick={choose}>
-        <Icon name="upload" size={18} />
-        <span id="picked-file" style={picked ? 'color:var(--text)' : ''}>
-          {picked ? picked.name : m.imp_file_placeholder()}
-        </span>
-      </button>
-    </div>
-    <div class="field">
-      <label class="field-label" for="imp-pass">{m.exp_password_label()}</label>
-      <input class="input" type="password" id="imp-pass" name="imp-pass"
-        placeholder={m.imp_password_placeholder()} bind:value={impPass} />
-    </div>
-    <div class="field">
-      <span class="field-label">{m.imp_how_label()}</span>
-      <Segmented name={m.imp_how_label()}
-        options={[{ value: 'merge', label: m.imp_mode_merge() }, { value: 'replace', label: m.imp_mode_replace() }]}
-        value={impMode} onChange={(v) => (impMode = v)} />
-    </div>
+    <Field label={m.imp_file_label()} legend>
+      {#snippet children()}
+        <button class="input" style="text-align:left;color:var(--text-2)" data-pick-file onclick={choose}>
+          <Icon name="upload" size={18} />
+          <span id="picked-file" style={picked ? 'color:var(--text)' : ''}>
+            {picked ? picked.name : m.imp_file_placeholder()}
+          </span>
+        </button>
+      {/snippet}
+    </Field>
+    <Field label={m.exp_password_label()} id="imp-pass">
+      {#snippet children(id)}
+        <input class="input" type="password" {id} name="imp-pass"
+          placeholder={m.imp_password_placeholder()} bind:value={impPass} />
+      {/snippet}
+    </Field>
+    <Field label={m.imp_how_label()} legend>
+      {#snippet children()}
+        <Segmented name={m.imp_how_label()}
+          options={[{ value: 'merge', label: m.imp_mode_merge() }, { value: 'replace', label: m.imp_mode_replace() }]}
+          value={impMode} onChange={(v) => (impMode = v)} />
+      {/snippet}
+    </Field>
     {#if impError}
       <div class="notice notice-danger" style="margin-bottom:var(--space-3)" role="alert" data-import-error={impErrorKind}>
         <Icon name="alert" size={20} />
@@ -625,15 +630,16 @@
 
   <Sheet bind:open={daylioSheet} title={m.daylio_sheet_title()}>
     <h3>{m.daylio_sheet_title()}</h3>
-    <div class="field">
-      <span class="field-label">{m.daylio_file_label()}</span>
-      <button class="input" style="text-align:left;color:var(--text-2)" data-pick-daylio onclick={chooseDaylio}>
-        <Icon name="upload" size={18} />
-        <span style={daylioName ? 'color:var(--text)' : ''}>
-          {daylioName || m.daylio_file_placeholder()}
-        </span>
-      </button>
-    </div>
+    <Field label={m.daylio_file_label()} legend>
+      {#snippet children()}
+        <button class="input" style="text-align:left;color:var(--text-2)" data-pick-daylio onclick={chooseDaylio}>
+          <Icon name="upload" size={18} />
+          <span style={daylioName ? 'color:var(--text)' : ''}>
+            {daylioName || m.daylio_file_placeholder()}
+          </span>
+        </button>
+      {/snippet}
+    </Field>
     {#if daylioError}
       <div class="notice notice-danger" style="margin-bottom:var(--space-4)" role="alert">
         <Icon name="alert" size={20} />

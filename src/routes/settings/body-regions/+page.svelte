@@ -5,6 +5,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
 
   let builtIns = $derived(vocabulary.bodyRegions.filter((r) => r.builtIn));
   let customs = $derived(vocabulary.bodyRegions.filter((r) => !r.builtIn));
@@ -64,9 +65,11 @@
 
   <Sheet bind:open={addOpen} title={m.body_regions_new_sheet()}>
     <h3>{m.body_regions_new_sheet()}</h3>
-    <div class="field">
-      <input class="input" id="new-region-input" name="new-region-input" placeholder={m.body_regions_placeholder()} bind:value={newName} />
-    </div>
+    <Field label={m.body_regions_new_sheet()} id="new-region-input" hidden>
+      {#snippet children(id)}
+        <input class="input" {id} name="new-region-input" placeholder={m.body_regions_placeholder()} bind:value={newName} />
+      {/snippet}
+    </Field>
     <button
       class="btn btn-primary"
       onclick={() => {

@@ -23,7 +23,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Measurement } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -31,6 +31,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -115,7 +116,7 @@
 
       await journal.measurements.upsertMeasurement({
         id: draft.id,
-        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+        epochDay: epochDayFromDateInputValueOrToday(draft.date),
         type: draft.type,
         value,
         unit: draft.unit
@@ -256,31 +257,35 @@
     }}
   >
     {#snippet fields(editor)}
-      <div class="field">
-        <span class="field-label">{m.measurement_type_label()}</span>
-        <Segmented name={m.measurement_type_label()} options={typeOptions} value={editor.type} onChange={(v) => (editor.type = v)} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="measurement-date">{m.measurement_date_label()}</label>
-        <input class="input" type="date" id="measurement-date" name="measurement-date" bind:value={editor.date} />
-      </div>
+      <Field label={m.measurement_type_label()} legend>
+        {#snippet children()}
+          <Segmented name={m.measurement_type_label()} options={typeOptions} value={editor.type} onChange={(v) => (editor.type = v)} />
+        {/snippet}
+      </Field>
+      <Field label={m.measurement_date_label()} id="measurement-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="measurement-date" bind:value={editor.date} />
+        {/snippet}
+      </Field>
       <div class="cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="measurement-value">{m.measurement_value_label()}</label>
-          <input class="input" type="number" id="measurement-value" name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
-        </div>
-        <div class="field">
-          <span class="field-label">{m.measurement_unit_label()}</span>
-          <Segmented
-            name={m.measurement_unit_label()}
-            options={[
-              { value: 'cm', label: m.measurement_unit_cm() },
-              { value: 'in', label: m.measurement_unit_in() }
-            ]}
-            value={editor.unit}
-            onChange={(v) => (editor.unit = v)}
-          />
-        </div>
+        <Field label={m.measurement_value_label()} id="measurement-value">
+          {#snippet children(id)}
+            <input class="input" type="number" {id} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
+          {/snippet}
+        </Field>
+        <Field label={m.measurement_unit_label()} legend>
+          {#snippet children()}
+            <Segmented
+              name={m.measurement_unit_label()}
+              options={[
+                { value: 'cm', label: m.measurement_unit_cm() },
+                { value: 'in', label: m.measurement_unit_in() }
+              ]}
+              value={editor.unit}
+              onChange={(v) => (editor.unit = v)}
+            />
+          {/snippet}
+        </Field>
       </div>
     {/snippet}
   </RecordSheet>
@@ -308,16 +313,17 @@
         </div>
       {/each}
     </div>
-    <div class="field">
-      <label class="field-label" for="new-measurement-type">{m.measurement_type_new_label()}</label>
-      <input
-        class="input"
-        id="new-measurement-type"
-        name="new-measurement-type"
-        placeholder={m.measurement_type_new_placeholder()}
-        bind:value={newTypeName}
-      />
-    </div>
+    <Field label={m.measurement_type_new_label()} id="new-measurement-type">
+      {#snippet children(id)}
+        <input
+          class="input"
+          {id}
+          name="new-measurement-type"
+          placeholder={m.measurement_type_new_placeholder()}
+          bind:value={newTypeName}
+        />
+      {/snippet}
+    </Field>
     <button class="btn btn-primary" data-add-measurement-type onclick={addType}><span>{m.measurement_type_add()}</span></button>
   </Sheet>
 </div>

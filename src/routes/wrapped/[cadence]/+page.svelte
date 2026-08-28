@@ -32,6 +32,7 @@
   import {
     calendarDuration,
     dateInputValueFromEpochDay,
+    dayRangeEndMin,
     epochDayFromDateInputValue,
     todayEpochDay
   } from '$lib/data/epochDay';
@@ -440,7 +441,7 @@
         <div class="wrapped-range-dates">
           {#each [
             { id: 'wrapped-range-start', label: m.recap_custom_start_label(), value: customStart, min: undefined },
-            { id: 'wrapped-range-end', label: m.recap_custom_end_label(), value: customEnd, min: customStart || undefined }
+            { id: 'wrapped-range-end', label: m.recap_custom_end_label(), value: customEnd, min: dayRangeEndMin(customStart) }
           ] as field (field.id)}
             {@const shown = shownDate(field.value)}
             <div class="rows-divide date-row">

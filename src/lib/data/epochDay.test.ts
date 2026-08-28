@@ -16,6 +16,9 @@ import {
   startOfDayTimestamp,
   epochDayFromDateInputValue,
   dateInputValueFromEpochDay,
+  epochDayFromDateInputValueOrToday,
+  dayRangeStartMax,
+  dayRangeEndMin,
   calendarDuration,
   crossesCalendarYear,
   anniversaryYears,
@@ -92,6 +95,37 @@ test(`epochDayFromDateInputValue round-trips with dateInputValueFromEpochDay und
 
 test(`epochDayFromDateInputValue returns null for the empty string under TZ=${tz}`, () => {
   expect(epochDayFromDateInputValue('')).toBeNull();
+});
+
+/* Ticket 10: 16 call sites each decided by hand what an unreadable date
+   means - 15 answered "today", one answered null. This is that one answer,
+   written down once. */
+test(`epochDayFromDateInputValueOrToday falls back to today for the empty string under TZ=${tz}`, () => {
+  expect(epochDayFromDateInputValueOrToday('')).toBe(todayEpochDay());
+});
+
+test(`epochDayFromDateInputValueOrToday passes a real value through under TZ=${tz}`, () => {
+  const day = epochDayFromLocalDate(new Date(2024, 2, 1));
+  expect(epochDayFromDateInputValueOrToday('2024-03-01')).toBe(day);
+});
+
+/* Ticket 10: four screens (clinician summary, photo export, search, wrapped)
+   each hand-wrote the same two-ended range - start can't run past end, end
+   can't run before start. This is that pair, written once. */
+test(`dayRangeStartMax lets an empty end field mean "no upper bound" under TZ=${tz}`, () => {
+  expect(dayRangeStartMax('')).toBeUndefined();
+});
+
+test(`dayRangeStartMax caps the start field at the end field's value under TZ=${tz}`, () => {
+  expect(dayRangeStartMax('2024-03-01')).toBe('2024-03-01');
+});
+
+test(`dayRangeEndMin lets an empty start field mean "no lower bound" under TZ=${tz}`, () => {
+  expect(dayRangeEndMin('')).toBeUndefined();
+});
+
+test(`dayRangeEndMin floors the end field at the start field's value under TZ=${tz}`, () => {
+  expect(dayRangeEndMin('2024-03-01')).toBe('2024-03-01');
 });
 
 test(`calendarDuration never carries a 364-day gap as 12 months under TZ=${tz}`, () => {

@@ -12,7 +12,13 @@
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
+  import {
+    customInclusiveRange,
+    dateInputValueFromEpochDay,
+    dayRangeEndMin,
+    dayRangeStartMax,
+    epochDayFromDateInputValue
+  } from '$lib/data/epochDay';
   import {
     journeyFileName,
     journeyRangeBounds,
@@ -79,11 +85,7 @@
     endInput = dateInputValueFromEpochDay(bounds.end);
   });
 
-  let range = $derived.by(() => {
-    const start = epochDayFromDateInputValue(startInput);
-    const end = epochDayFromDateInputValue(endInput);
-    return start != null && end != null && start <= end ? { start, end } : null;
-  });
+  let range = $derived(customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput)));
 
   /* The grid shows everything in the range and the export takes what has not
      been tapped out, so both go through journeySelection() rather than one of
@@ -190,9 +192,9 @@
         <SectionHeading text={m.pj_range_title()} />
         <div class="compare-picker-grid">
           <label for="pj-start">{m.recap_custom_start_label()}</label>
-          <input class="input" id="pj-start" type="date" bind:value={startInput} max={endInput || undefined} />
+          <input class="input" id="pj-start" type="date" bind:value={startInput} max={dayRangeStartMax(endInput)} />
           <label for="pj-end">{m.recap_custom_end_label()}</label>
-          <input class="input" id="pj-end" type="date" bind:value={endInput} min={startInput || undefined} />
+          <input class="input" id="pj-end" type="date" bind:value={endInput} min={dayRangeEndMin(startInput)} />
         </div>
         <p class="muted small">
           {#if !range}
