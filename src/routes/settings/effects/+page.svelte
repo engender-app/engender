@@ -23,12 +23,13 @@
   } from '$lib/data/personalEffectWindow';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { PersonalEffectCatalogEntry } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -164,7 +165,7 @@
 
   async function saveMarker() {
     if (!editor) return;
-    const epochDay = epochDayFromDateInputValue(editor.date) ?? today;
+    const epochDay = epochDayFromDateInputValueOrToday(editor.date);
     await journal.personalEffects.upsertMarker({ effect: editor.effect.key, firstNoticedEpochDay: epochDay });
     editor = null;
   }
@@ -313,10 +314,11 @@
       {#if source}
         <p class="muted small" style="margin-bottom:var(--space-3)">{source}</p>
       {/if}
-      <div class="field">
-        <label class="field-label" for="effect-date">{m.effect_first_noticed_label()}</label>
-        <input class="input" type="date" id="effect-date" name="effect-date" bind:value={editor.date} />
-      </div>
+      <Field label={m.effect_first_noticed_label()} id="effect-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="effect-date" bind:value={editor!.date} />
+        {/snippet}
+      </Field>
       <div class="stack-3">
         <button class="btn btn-primary" data-save-effect onclick={saveMarker}><span>{m.effect_save()}</span></button>
         {#if markerFor(editor.effect.key)}
@@ -402,25 +404,27 @@
       </div>
     {/if}
 
-    <div class="field">
-      <label class="field-label" for="new-effect-type">{m.effect_type_new_label()}</label>
-      <input
-        class="input"
-        id="new-effect-type"
-        name="new-effect-type"
-        placeholder={m.effect_type_new_placeholder()}
-        bind:value={newEffectName}
-      />
-    </div>
-    <div class="field">
-      <label class="field-label" for="new-effect-type-category">{m.effect_type_category_label()}</label>
-      <select class="input" id="new-effect-type-category" bind:value={newEffectCategory}>
-        <option value="">{m.effect_type_category_none()}</option>
-        {#each vocabulary.effectCategories as cat, i (cat.key)}
-          <option value={cat.key}>{cat.name}</option>
-        {/each}
-      </select>
-    </div>
+    <Field label={m.effect_type_new_label()} id="new-effect-type">
+      {#snippet children(id)}
+        <input
+          class="input"
+          {id}
+          name="new-effect-type"
+          placeholder={m.effect_type_new_placeholder()}
+          bind:value={newEffectName}
+        />
+      {/snippet}
+    </Field>
+    <Field label={m.effect_type_category_label()} id="new-effect-type-category">
+      {#snippet children(id)}
+        <select class="input" {id} bind:value={newEffectCategory}>
+          <option value="">{m.effect_type_category_none()}</option>
+          {#each vocabulary.effectCategories as cat, i (cat.key)}
+            <option value={cat.key}>{cat.name}</option>
+          {/each}
+        </select>
+      {/snippet}
+    </Field>
     <button class="btn btn-primary" data-add-effect-type onclick={addEffectType}><span>{m.effect_type_add()}</span></button>
   </Sheet>
 </div>
