@@ -31,7 +31,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import {
     dateInputValueFromEpochDay,
-    epochDayFromDateInputValue,
+    epochDayFromDateInputValueOrToday,
     epochDayFromTimestamp,
     startOfDayTimestamp,
     timestampAtLocalTime,
@@ -46,6 +46,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -180,7 +181,7 @@
         return;
       }
 
-      const newDay = epochDayFromDateInputValue(draft.day) ?? today;
+      const newDay = epochDayFromDateInputValueOrToday(draft.day);
       await journal.wearSessions.upsertSession({
         id: draft.id,
         startTimestamp: shiftStartToDay(draft.startTimestamp, newDay),
@@ -398,57 +399,63 @@
         <p class="muted small">{m.wear_session_running_since({ time: fmtTime(editor.startTimestamp) })}</p>
       {:else}
         {#if !editor.id}
-          <div class="field">
-            <span class="field-label">{m.wear_session_mode_group()}</span>
-            <Segmented name={m.wear_session_mode_group()} options={modeOptions} value={editor.mode} onChange={(v) => (editor.mode = v as Mode)} />
-          </div>
+          <Field label={m.wear_session_mode_group()} legend>
+            {#snippet children()}
+              <Segmented name={m.wear_session_mode_group()} options={modeOptions} value={editor.mode} onChange={(v) => (editor.mode = v as Mode)} />
+            {/snippet}
+          </Field>
         {/if}
 
         {#if editor.mode === 'backfill'}
           <div class="disclosed" transition:disclose>
-            <div class="field">
-              <label class="field-label" for="wear-day">{m.wear_session_day_label()}</label>
-              <input class="input" type="date" id="wear-day" name="wear-day" bind:value={editor.day} />
-            </div>
-            <div class="field">
-              <label class="field-label" for="wear-duration">{m.wear_session_duration_label()}</label>
-              <input
-                class="input"
-                type="number"
-                id="wear-duration"
-                name="wear-duration"
-                inputmode="decimal"
-                placeholder={m.wear_session_duration_placeholder()}
-                bind:value={editor.durationHours}
-              />
-            </div>
+            <Field label={m.wear_session_day_label()} id="wear-day">
+              {#snippet children(id)}
+                <input class="input" type="date" {id} name="wear-day" bind:value={editor.day} />
+              {/snippet}
+            </Field>
+            <Field label={m.wear_session_duration_label()} id="wear-duration">
+              {#snippet children(id)}
+                <input
+                  class="input"
+                  type="number"
+                  {id}
+                  name="wear-duration"
+                  inputmode="decimal"
+                  placeholder={m.wear_session_duration_placeholder()}
+                  bind:value={editor.durationHours}
+                />
+              {/snippet}
+            </Field>
           </div>
         {/if}
       {/if}
 
-      <div class="field">
-        <label class="field-label" for="wear-note">{m.wear_session_note_label()}</label>
-        <textarea class="input" id="wear-note" name="wear-note" placeholder={m.wear_session_note_placeholder()} bind:value={editor.note}
-        ></textarea>
-      </div>
+      <Field label={m.wear_session_note_label()} id="wear-note">
+        {#snippet children(id)}
+          <textarea class="input" {id} name="wear-note" placeholder={m.wear_session_note_placeholder()} bind:value={editor.note}
+          ></textarea>
+        {/snippet}
+      </Field>
 
-      <div class="field spread">
-        <span class="field-label" id="wear-reminder-label">{m.wear_session_reminder_toggle()}</span>
-        <Switch checked={editor.reminderEnabled} label={m.wear_session_reminder_toggle()} onChange={(v) => (editor.reminderEnabled = v)} />
-      </div>
+      <Field label={m.wear_session_reminder_toggle()} legend spread>
+        {#snippet children()}
+          <Switch checked={editor.reminderEnabled} label={m.wear_session_reminder_toggle()} onChange={(v) => (editor.reminderEnabled = v)} />
+        {/snippet}
+      </Field>
       {#if editor.reminderEnabled}
         <div class="disclosed" transition:disclose>
-          <div class="field">
-            <label class="field-label" for="wear-reminder-hours">{m.wear_session_reminder_hours_label()}</label>
-            <input
-              class="input"
-              type="number"
-              id="wear-reminder-hours"
-              name="wear-reminder-hours"
-              inputmode="decimal"
-              bind:value={editor.reminderHours}
-            />
-          </div>
+          <Field label={m.wear_session_reminder_hours_label()} id="wear-reminder-hours">
+            {#snippet children(id)}
+              <input
+                class="input"
+                type="number"
+                {id}
+                name="wear-reminder-hours"
+                inputmode="decimal"
+                bind:value={editor.reminderHours}
+              />
+            {/snippet}
+          </Field>
           <p class="muted small">{m.wear_session_reminder_hint()}</p>
         </div>
       {/if}
