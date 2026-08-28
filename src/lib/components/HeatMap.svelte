@@ -162,3 +162,54 @@
     {m.legend_none()}
   </span>
 </div>
+
+<style>
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-dow {
+    text-align: center;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    font-weight: var(--weight-bold);
+  }
+  .cal-cell {
+    aspect-ratio: 1;
+    border-radius: var(--radius-xs);
+    background: var(--heat-0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    text-decoration: none;
+    /* The empty cells carry the same edge the shaded ones get from their fill,
+       so a month reads as a grid rather than as scattered colour - and so a
+       day with nothing logged is still a day. */
+    border: 1px solid var(--outline);
+  }
+  .cal-cell.is-blank { background: none; border-color: transparent; }
+  /* Today, marked by an outline rather than by a fill, because the fill is
+     already saying something else. */
+  .cal-cell.is-today { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .cal-num { font-size: var(--text-xs); color: inherit; font-weight: var(--weight-medium); }
+  /* An unshaded cell has no ink of its own to inherit. */
+  .cal-cell:not(.has-entries) .cal-num { color: var(--text-2); }
+
+  .cal-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    margin-top: var(--space-4);
+  }
+  .cal-legend-scale { display: inline-flex; align-items: center; gap: 6px; }
+  .cal-legend-none { display: inline-flex; align-items: center; gap: 5px; }
+  .cal-legend-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    display: inline-block;
+    border: 1px solid var(--outline);
+  }
+  .cal-legend-end { max-width: 9ch; }
+</style>
