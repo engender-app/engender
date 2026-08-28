@@ -20,11 +20,7 @@
   import type { HairStage } from '$lib/data/types';
   import type { HairPhoto } from '$lib/data/journal/hairProgress';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { pickPhotos } from '$lib/stores/photoPicking';
-  import { photoReview } from '$lib/stores/photoReview.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
-  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -32,7 +28,10 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import PhotoSection from '$lib/components/kit/PhotoSection.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import { photoSection } from '$lib/components/kit/photoSection.svelte';
+  import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
@@ -156,28 +155,16 @@
     draft.description = '';
   }
 
-  const photoRecord = recordEditor<HairPhoto>({
-    remove: (id) => journal.hairProgress.deletePhoto(id),
-    findById: (id) => photos.find((p) => p.id === id)
-  });
-
-  async function storePhoto(photo: NormalizedPhoto | null) {
-    if (!photo) return;
+  async function storePhoto(photo: NormalizedPhoto): Promise<void> {
     await journal.hairProgress.addPhoto(today, photo);
   }
 
-  async function pickHairPhoto() {
-    const [photo] = await pickPhotos(1);
-    await storePhoto(photo ?? null);
-  }
-
-  // The context is the hair-progress log as a whole - a schedule, not a
-  // single dated entry - so its last photo is the log's last one, already
-  // loaded above for photoDue.
-  const hairPhotoReview = photoReview(
-    () => (photos.length ? { fileName: photos[photos.length - 1].fileName } : null),
-    storePhoto
-  );
+  const hairPhotos = photoSection<HairPhoto>({
+    photos: () => photos,
+    add: storePhoto,
+    remove: (id) => journal.hairProgress.deletePhoto(id),
+    reference: () => lastPhotoReference(photos)
+  });
 
   function dismissProtocol() {
     prefs.hairPhotoProtocolDismissed = true;
@@ -281,51 +268,37 @@
       </div>
     {/if}
 
-    <div class="photo-row" style="margin:var(--space-4) 0">
-      <button class="photo-add" aria-label={m.add_photo()} onclick={pickHairPhoto}>
-        <Icon name="image" size={20} /><span>{m.add_photo()}</span>
-      </button>
-      <button class="photo-add" aria-label={m.add_photo_camera()} onclick={hairPhotoReview.capture}>
-        <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
-      </button>
+    <div style="margin:var(--space-4) 0">
+      <PhotoSection
+        section={hairPhotos}
+        read={photosQuery}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
+        handle="hair-photo"
+        reverse
+        title={(p) => dayLabel(p.epochDay)}
+        subtitle={(p) => sinceStart(p.epochDay)}
+        deleteLabel={() => m.hair_photo_delete_sheet()}
+        confirm={{
+          title: m.hair_photo_delete_sheet(),
+          question: () => m.hair_photo_delete_q(),
+          hint: () => m.hair_photo_delete_hint(),
+          confirmLabel: m.hair_photo_delete(),
+          cancelLabel: m.keep_it()
+        }}
+      >
+        {#snippet empty()}
+          <div class="screen-part">
+            <Notice
+              icon="camera"
+              key="hair-photos-empty"
+              role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
+              title={m.hair_photo_empty_title()}
+              text={m.hair_photo_empty_body()}
+            />
+          </div>
+        {/snippet}
+      </PhotoSection>
     </div>
-
-    <ReadGate read={photosQuery} variant="line" count={2}>
-      {#snippet rows()}
-        <div class="screen-part">
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
-            {#each [...photos].reverse() as p (p.id)}
-              {@const since = sinceStart(p.epochDay)}
-              <ListRow
-                static
-                data-hair-photo={p.id}
-                title={dayLabel(p.epochDay)}
-                subtitle={since}
-                action={{
-                  icon: 'trash',
-                  label: m.hair_photo_delete_sheet(),
-                  onclick: () => photoRecord.askToDelete(p),
-                  attrs: { 'data-delete-hair-photo': p.id }
-                }}
-              >
-                {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
-              </ListRow>
-            {/each}
-          </ListCard>
-        </div>
-      {/snippet}
-      {#snippet empty()}
-        <div class="screen-part">
-          <Notice
-            icon="camera"
-            key="hair-photos-empty"
-            role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
-            title={m.hair_photo_empty_title()}
-            text={m.hair_photo_empty_body()}
-          />
-        </div>
-      {/snippet}
-    </ReadGate>
   {/if}
 
   <Sheet open={anchorEditor !== null} title={m.hair_anchor_sheet()} onClose={() => (anchorEditor = null)}>
@@ -423,26 +396,6 @@
       {/if}
     {/snippet}
   </RecordSheet>
-
-  <RecordSheet
-    record={photoRecord}
-    handle="hair-photo"
-    confirm={{
-      title: m.hair_photo_delete_sheet(),
-      question: () => m.hair_photo_delete_q(),
-      hint: () => m.hair_photo_delete_hint(),
-      confirmLabel: m.hair_photo_delete(),
-      cancelLabel: m.keep_it()
-    }}
-  />
-
-  <PhotoAlignmentReview
-    photo={hairPhotoReview.photo}
-    reference={hairPhotoReview.reference}
-    onAccept={hairPhotoReview.accept}
-    onRetake={hairPhotoReview.capture}
-    onCancel={hairPhotoReview.cancel}
-  />
 </div>
 
 <style>
