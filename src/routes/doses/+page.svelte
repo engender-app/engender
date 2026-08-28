@@ -65,6 +65,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -854,12 +855,7 @@
 
             {#if editor.status === 'changed'}
               <div class="disclosed" transition:disclose|local>
-                <!-- Not a Field: this heading names the two-field group
-                     below it (ticket 10), not a control of its own. -->
-                <div class="field">
-                  <span class="field-label">{m.dose_scheduled_legend()}</span>
-                  <p class="muted small">{m.dose_scheduled_hint()}</p>
-                </div>
+                <FieldGroupHeading legend={m.dose_scheduled_legend()} hint={m.dose_scheduled_hint()} />
                 <div class="cd-endpoints">
                   <Field label={m.dose_scheduled_amount_label()} id="dose-scheduled-amount">
                     {#snippet children(id)}

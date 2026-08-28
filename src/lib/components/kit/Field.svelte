@@ -40,7 +40,10 @@
     /** Folded into the label's own text, `{label} {hint}`, muted - the
         inline form ticket 10 kept (milestones' and tryouts' date fields).
         A hint that is its own paragraph stays hand-written inside
-        `children`; Field only owns the label line. */
+        `children`; Field only owns the label line. Rendered only with a
+        `for` label, not a `legend` - no call site has needed a hint next
+        to a self-labelling control's name yet, so `legend` + `hint`
+        together is undefined rather than silently dropping one. */
     hint?: string;
     /** A screen names its own id only when something else has to agree
         with it (a walkthrough handle, a fixture). Everything else is

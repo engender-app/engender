@@ -76,6 +76,12 @@ describe('the surfaces', () => {
          label and the id the two agree on - the control is always the
          caller's own snippet. */
       'Field.svelte',
+      /* Not a surface either: the group heading four call sites in doses
+         and regimen hand-wrote identically, each with the same "not a
+         Field, this names the group below it" comment (phase 5 audit
+         ticket 10) - a legend and a hint over a control that isn't this
+         component's to own. */
+      'FieldGroupHeading.svelte',
       'ListCard.svelte',
       'ListRow.svelte',
       'MoodChips.svelte',
