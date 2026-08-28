@@ -59,6 +59,21 @@ export function epochDayFromDateInputValue(value: string): number | null {
   return epochDayFromLocalDate(new Date(y, mo - 1, d));
 }
 
+/** `<input type="date">` value → epoch day, falling back to today.
+
+    16 call sites each decided by hand what an unreadable value means - 15
+    answered "today", one (the surgery screen) answered null. This is the
+    app's one answer, for the 15: a blank date field means now, the same way
+    an unstarted record defaults to today everywhere else in the app. A
+    screen that means something else by "unreadable" (the surgery screen's
+    consult/photo dates, which are meaningless without a real date) keeps
+    calling `epochDayFromDateInputValue` directly and handles `null` itself,
+    which is the exception ticket 10 leaves written down rather than
+    silent. */
+export function epochDayFromDateInputValueOrToday(value: string): number {
+  return epochDayFromDateInputValue(value) ?? todayEpochDay();
+}
+
 /** Epoch day → `<input type="date">` value. */
 export function dateInputValueFromEpochDay(epochDay: number): string {
   const d = localDateFromEpochDay(epochDay);
@@ -248,6 +263,23 @@ export function yearToDateRange(todayEpochDay: number): CalendarYearRange {
     end: todayEpochDay,
     year
   };
+}
+
+/** The upper bound for a range's start field: it can run up to whatever the
+    end field already holds, or unbounded while the end field is still
+    empty. The cross-constraint half of the same block four screens
+    repeated (clinician summary, photo export, search, wrapped) - a ceiling
+    on top (search's "not in the future") is each screen's own decision and
+    composes with `?? `. */
+export function dayRangeStartMax(endValue: string): string | undefined {
+  return endValue || undefined;
+}
+
+/** The lower bound for a range's end field: it can run down to whatever the
+    start field already holds, or unbounded while the start field is still
+    empty. */
+export function dayRangeEndMin(startValue: string): string | undefined {
+  return startValue || undefined;
 }
 
 /** A custom inclusive range, requiring both boundaries and start <= end. */

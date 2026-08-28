@@ -1254,6 +1254,49 @@ await block('ticket 09 detail draft', 3, async () => {
   else fail('the entries in the tryout range arrive either way', 'no entries found in range');
 });
 
+// --- Phase 5 audit deepening ticket 10: a field cannot render a control
+// without an association - Field.svelte mints the id when a screen has no
+// reason to name one, and hands the same string to the label and the
+// control either way.
+await block('phase 5 audit deepening ticket 10 field association', 4, async () => {
+  await page.goto(`http://localhost:${port}/controls.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-controls-ready]', { state: 'attached' });
+
+  const fields = await page.evaluate(() => {
+    const card = document.querySelector('[data-case="fields"]');
+    const labels = [...card.querySelectorAll('label.field-label[for]')].map((l) => {
+      const forId = l.getAttribute('for');
+      return { for: forId, hasTarget: !!(forId && card.querySelector(`#${CSS.escape(forId)}`)) };
+    });
+    const legends = [...card.querySelectorAll('span.field-label[id]')].map((s) => s.id);
+    const mintedInputs = [...card.querySelectorAll('input[placeholder^="No id given"]')].map((i) => i.id);
+    return { labels, legends, mintedInputs };
+  });
+
+  if (fields.labels.length >= 2 && fields.labels.every((l) => l.hasTarget))
+    ok('every field label carries a for that names a real id inside the same field');
+  else fail('every field label carries a for that names a real id inside the same field', JSON.stringify(fields.labels));
+
+  if (fields.legends.length >= 1 && fields.legends.every((id) => !!id))
+    ok('a legend field still mints an id, for the group beneath it to point an aria-labelledby at');
+  else fail('a legend field still mints an id for its group', JSON.stringify(fields.legends));
+
+  if (
+    fields.mintedInputs.length === 2 &&
+    fields.mintedInputs[0] &&
+    fields.mintedInputs[1] &&
+    fields.mintedInputs[0] !== fields.mintedInputs[1]
+  )
+    ok('two fields given no id mint two different ones rather than colliding');
+  else fail('two fields given no id mint two different ones', JSON.stringify(fields.mintedInputs));
+
+  const explicit = await page.evaluate(
+    () => !!document.querySelector('#c-name') && !!document.querySelector('label[for="c-name"]')
+  );
+  if (explicit) ok('a field given an explicit id uses it verbatim rather than minting over it');
+  else fail('a field given an explicit id uses it verbatim rather than minting over it', 'not found');
+});
+
 await browser.close();
 await server.close();
 

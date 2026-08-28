@@ -9,6 +9,7 @@
      switch's travel and the 48px floor get looked at and measured.
 
      The strings are the fixture's own. Shipped copy is a message key. */
+  import Field from '$lib/components/kit/Field.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import Slider from '$lib/components/Slider.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -180,15 +181,43 @@
   <h2 class="gallery-head">Fields</h2>
   <div class="card" data-case="fields">
     <p class="gallery-note">A field does not press. It takes a caret, and the border answers focus.</p>
-    <div class="field">
-      <label class="field-label" for="c-name">What to call this scale</label>
-      <input class="input" id="c-name" placeholder="Femininity" />
-    </div>
-    <div class="field">
-      <label class="field-label" for="c-note">Note</label>
-      <textarea class="input" id="c-note" rows="3" placeholder="Slept badly. Put the good shirt on anyway." bind:value={note}
-      ></textarea>
-    </div>
+    <Field label="What to call this scale" id="c-name">
+      {#snippet children(id)}
+        <input class="input" {id} placeholder="Femininity" />
+      {/snippet}
+    </Field>
+    <Field label="Note" hint="(optional)">
+      {#snippet children(id)}
+        <textarea class="input" {id} rows="3" placeholder="Slept badly. Put the good shirt on anyway." bind:value={note}
+        ></textarea>
+      {/snippet}
+    </Field>
+    <!-- No id passed in either time - proves the mint doesn't collide with
+         itself, which the run.mjs check below reads off the two `for`s. -->
+    <Field label="Minted, first">
+      {#snippet children(id)}
+        <input class="input" {id} placeholder="No id given" />
+      {/snippet}
+    </Field>
+    <Field label="Minted, second">
+      {#snippet children(id)}
+        <input class="input" {id} placeholder="No id given either" />
+      {/snippet}
+    </Field>
+    <Field label="Which garment size" legend>
+      {#snippet children(id)}
+        <div class="tag-row" role="group" aria-labelledby={id}>
+          <button class="tag-chip is-selected">Small</button>
+          <button class="tag-chip">Medium</button>
+          <button class="tag-chip">Large</button>
+        </div>
+      {/snippet}
+    </Field>
+    <Field label="Reminders" legend spread>
+      {#snippet children()}
+        <Switch checked={reminders} label="Reminders" onChange={(v) => (reminders = v)} />
+      {/snippet}
+    </Field>
   </div>
 
   <h2 class="gallery-head">Handed to other tickets</h2>
