@@ -77,7 +77,7 @@
     {#each snapshots as snap (snap.id)}
       <div class="card">
         <div class="spread">
-          <span class="row-title">{dayLabel(snap.epochDay)} · {fmtTime(snap.timestamp)}</span>
+          <span class="kit-row-title">{dayLabel(snap.epochDay)} · {fmtTime(snap.timestamp)}</span>
           <button class="icon-btn" aria-label={m.doubt_snapshot_delete_sheet()} onclick={() => (snapshotDeleteTarget = snap)}>
             <Icon name="trash" size={18} />
           </button>

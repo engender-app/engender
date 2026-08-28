@@ -7,6 +7,8 @@
   import EmptyState from '$lib/components/EmptyState.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
 
   const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -29,21 +31,21 @@
   <ReadGate read={trashQuery} variant="line" count={3}>
     {#snippet rows(trashed)}
       <p class="muted small" style="margin-bottom:var(--space-3)">{m.trash_intro()}</p>
-      <div class="list-group">
+      <ListCard>
         {#each trashed as entry (entry.id)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{fmtDay(entry.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-              <span class="row-subtitle">
-                {entry.note || m.entry()} · {m.trash_days_left({ days: daysLeft(entry.trashedAt) })}
-              </span>
-            </span>
-            <button class="btn btn-soft" data-restore-entry={entry.id} onclick={() => restore(entry.id)}>
-              <span>{m.trash_restore()}</span>
-            </button>
-          </div>
+          <ListRow
+            static
+            title={fmtDay(entry.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+            subtitle={`${entry.note || m.entry()} · ${m.trash_days_left({ days: daysLeft(entry.trashedAt) })}`}
+          >
+            {#snippet trailing()}
+              <button class="btn btn-soft" data-restore-entry={entry.id} onclick={() => restore(entry.id)}>
+                <span>{m.trash_restore()}</span>
+              </button>
+            {/snippet}
+          </ListRow>
         {/each}
-      </div>
+      </ListCard>
     {/snippet}
     {#snippet empty()}
       <EmptyState title={m.trash_empty_title()} text={m.trash_empty_body()} />

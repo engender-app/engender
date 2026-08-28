@@ -16,6 +16,8 @@
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
 
   /** Offered when a goal is first turned on and nothing was chosen before. */
   const DEFAULT_TARGET_DAYS = 7;
@@ -48,9 +50,9 @@
 
   <div class="card">
     <div class="pref-row">
-      <span class="row-text">
-        <span class="row-title">{m.streak_goal_enable()}</span>
-        <span class="row-subtitle">{m.streak_goal_enable_sub()}</span>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.streak_goal_enable()}</span>
+        <span class="kit-row-sub">{m.streak_goal_enable_sub()}</span>
       </span>
       <Switch checked={goalEnabled} label={m.streak_goal_enable()} onChange={toggleGoal} />
     </div>
@@ -83,18 +85,28 @@
 
   <SectionTitle text={m.streak_goal_achievements_title()} />
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.streak_goal_achievements_intro()}</p>
-  <div class="list-group">
+  <ListCard>
     {#each GOAL_ACHIEVEMENT_DAYS as days (days)}
-      <div class="list-row">
-        <span class="row-icon">
-          {#if reached.has(days)}<Icon name="sparkle" size={20} />{/if}
-        </span>
-        <span class="row-text">
-          <span class="row-title" class:is-unreached={!reached.has(days)}>{m.n_days({ n: days })}</span>
-        </span>
-      </div>
+      <!-- A spacer rather than omitting `leading` outright when unreached:
+           the row's own icon column is what the old .row-icon span (empty
+           but still a flex item) kept reserved so every title lined up
+           under the next one's disc, and ListRow draws no leading element
+           at all for a row with no icon (ticket 18). -->
+      {#snippet achievementIcon()}
+        {#if reached.has(days)}
+          <span class="kit-row-ico"><Icon name="sparkle" size={20} /></span>
+        {:else}
+          <span class="achievement-ico-spacer" aria-hidden="true"></span>
+        {/if}
+      {/snippet}
+      <ListRow
+        static
+        leading={achievementIcon}
+        title={m.n_days({ n: days })}
+        data-unreached={reached.has(days) ? undefined : 'true'}
+      />
     {/each}
-  </div>
+  </ListCard>
 </div>
 
 <style>
@@ -111,9 +123,18 @@
     border-radius: var(--radius-pill);
   }
   /* Not-yet-reached reads as quieter, never as red or crossed out - an
-     achievement ladder has no failing rungs, only ones not climbed yet. */
-  .is-unreached {
+     achievement ladder has no failing rungs, only ones not climbed yet.
+     Targets ListRow's own title span from outside it (ticket 18), the same
+     way onboarding/+page.svelte already reaches into `.kit-row` for its
+     divider. */
+  :global(.kit-row[data-unreached] .kit-row-title) {
     color: var(--text-2);
     font-weight: var(--weight-regular);
+  }
+  /* Same width as .kit-row-ico (kit.css), so a row with no badge yet still
+     lines its title up under the ones that have one. */
+  .achievement-ico-spacer {
+    flex: 0 0 auto;
+    width: 36px;
   }
 </style>
