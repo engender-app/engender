@@ -60,6 +60,7 @@ import type {
   ArchiveWearSession
 } from '../archive/payload';
 import { bool, domainIdOf } from './support';
+import { columnsOf, fieldOf, type FlatTable } from './archiveTable';
 
 export type PhotoRow = {
   uuid: string;
@@ -128,6 +129,27 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
        ORDER BY n.order_index, n.id`
     )
   };
+}
+
+/** Every row of a flat area's table, in the order its descriptor asks for,
+    carried as the fields that descriptor names (archiveTable.ts). The
+    generic half of what used to be one hand-written reader per flat area:
+    a SELECT of the declared columns and a rename of each one. */
+export async function readFlatTable<Row>(table: FlatTable<Row>, { driver }: SectionRead): Promise<Row[]> {
+  const columns = columnsOf(table);
+  const rows = await driver.query<Record<string, unknown>>(
+    `SELECT ${columns.map((c) => c.column).join(', ')} FROM ${table.table} ORDER BY ${table.orderBy}`
+  );
+  return rows.map((row) => {
+    const carried: Record<string, unknown> = {};
+    for (const column of columns) {
+      const declared = fieldOf(column.field);
+      const value = row[column.column];
+      if (declared.bool) carried[declared.field] = bool(value);
+      else carried[declared.field] = value === null && declared.whenNull !== undefined ? declared.whenNull : value;
+    }
+    return carried as Row;
+  });
 }
 
 /** Groups joined rows by their owner, keeping the order the query returned

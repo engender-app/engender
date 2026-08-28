@@ -21,6 +21,7 @@ import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
 import { assertChanged, rowidWhere } from './support';
+import { columnsOf, fieldOf, type FlatTable } from './archiveTable';
 
 /** One import, mid-flight: the mode decides what happens to a row that is
     already here, and `ts` stamps every row it writes with the moment the
@@ -87,6 +88,43 @@ async function rowidsByUuid(
 async function presentIds(driver: SqliteDriver, sql: string): Promise<Set<string>> {
   const rows = await driver.query<{ id: string }>(sql);
   return new Set(rows.map((row) => row.id));
+}
+
+/** A flat area's rows written back from the one descriptor that declares
+    its columns (archiveTable.ts): the rows this table's identity column does
+    not already hold, inserted with the import's own clock. The generic half
+    of what used to be one hand-written applier per flat area - a present-id
+    query, a filter and an insert list.
+
+    Merge and Replace do the same thing here, and that is the whole reason a
+    section qualifies as flat: a matched row is skipped either way, because
+    there is nothing on one of these rows that a Replace would overwrite in
+    place. The vocabulary sections, which do have that branch, keep their own
+    functions. */
+export async function applyFlatTable<Row>(
+  section: string,
+  table: FlatTable<Row>,
+  { driver, journal, ts }: Restoring
+): Promise<void> {
+  const columns = columnsOf(table);
+  const identity = fieldOf(table.columns[table.identity]).field;
+  const present = await presentIds(driver, `SELECT ${table.identity} AS id FROM ${table.table}`);
+
+  const rows = (journal as unknown as Record<string, Record<string, unknown>[]>)[section];
+  const inserting = rows.filter((row) => !present.has(String(row[identity])));
+  await insertRows(
+    driver,
+    `INSERT INTO ${table.table} (${columns.map((c) => c.column).join(', ')}, updated_at)`,
+    inserting.map((row) => [
+      ...columns.map((column) => {
+        const declared = fieldOf(column.field);
+        const value = row[declared.field];
+        if (declared.bool) return flag(value === true);
+        return value === undefined ? declared.whenAbsent : value;
+      }),
+      ts
+    ])
+  );
 }
 
 export async function applyDimensions({ driver, mode, journal, ts }: Restoring): Promise<void> {
