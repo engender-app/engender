@@ -294,7 +294,7 @@
     </ListCard>
 
     <ListCard>
-      <div class="kit-row" style="cursor:default">
+      <div class="kit-row settings-unit-row" style="cursor:default">
         <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
         <span class="kit-row-text">
           <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
@@ -335,6 +335,11 @@
       </div>
     </ListCard>
 
+    <!-- Named rather than left to read as a continuation of the tag-groups
+         card above it (Alicja, 2026-08-28) - the home/calendar colour row
+         used to sit in a card of its own for the same reason, one heading
+         short of belonging anywhere. -->
+    <SectionHeading text={m.settings_lookbacks()} />
     <!-- Four related toggles as one card with hairlines between, rather
          than four boxes stacked with a margin apart - DIRECTION.md's
          decision 3: "tighter, not airier", and the shape One rounded card
@@ -443,19 +448,6 @@
           </span>
         </div>
       {/if}
-    </ListCard>
-
-    {#if !isWeb && (prefs.wrappedNotificationsEnabled || prefs.onThisDayNotificationsEnabled) && retroNotifyStatus.notifications === 'denied'}
-      <Notice
-        icon="alert"
-        key="retro-notify-denied"
-        title={m.retro_notify_capabilities_title()}
-        text={m.retro_notify_capabilities_body()}
-        action={{ label: m.rem_allow_notifications(), onclick: requestRetroNotifications }}
-      />
-    {/if}
-
-    <ListCard>
       <ListRow
         key="metric"
         icon="palette"
@@ -467,6 +459,16 @@
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
     </ListCard>
+
+    {#if !isWeb && (prefs.wrappedNotificationsEnabled || prefs.onThisDayNotificationsEnabled) && retroNotifyStatus.notifications === 'denied'}
+      <Notice
+        icon="alert"
+        key="retro-notify-denied"
+        title={m.retro_notify_capabilities_title()}
+        text={m.retro_notify_capabilities_body()}
+        action={{ label: m.rem_allow_notifications(), onclick: requestRetroNotifications }}
+      />
+    {/if}
   </div>
 
   <SectionHeading text={m.settings_privacy()} />

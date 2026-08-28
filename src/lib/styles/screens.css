@@ -553,6 +553,22 @@
    sits in - the appearance block's swatches and segments, here, rather than
    the list card growing a padding variant it holds nothing else needs. */
 .settings-pad { padding: var(--space-4); }
+/* .kit-row-text's own min-width: 0 lets it shrink to nothing before
+   anything wraps, which is right for a chevron or a Switch beside it but
+   not for a two-segment control next to a two-line title and a three-line
+   subtitle: the text column gave up most of its width to the segments and
+   wrapped hard enough to crowd against them (Alicja, 2026-08-28, on
+   measurement units - "way too crowded"). A floor on the text column turns
+   that shrink into a wrap once the row is too narrow to give both their
+   due, and margin-left: auto keeps the control at the row's own trailing
+   edge whether it is sharing the line or alone on one of its own - a plain
+   width-triggered wrap, not a forced one, so a wide-enough screen still
+   shows both side by side exactly as before. Scoped here rather than in
+   kit.css: this is the one row in the kit that pairs a Segmented with real
+   body text, so settings-unit-row has no other reader to affect. */
+.settings-unit-row { flex-wrap: wrap; row-gap: var(--space-2); }
+.settings-unit-row .kit-row-text { min-width: 160px; }
+.settings-unit-row .kit-row-trail { margin-left: auto; }
 .palette-swatch {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   border: none; background: none; cursor: pointer;
