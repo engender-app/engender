@@ -856,8 +856,8 @@ test('a staging from an archive written before there were two scales restores as
    each caller walks: a Replace runs it before it installs an archive's rows,
    and the demo bar's state jumps run it on its own. Its order comes from the
    section registry, reversed - what used to be 51 statements hand-ordered in
-   restore.ts, with the demo keeping a copy of its own that had drifted by
-   thirty tables. */
+   restore.ts, with the demo keeping a second copy of the same idea that
+   reached seven of the thirty-six sections. */
 test('emptying the journal leaves every section at what a device with only its built-ins holds', async () => {
   const journal = await everySection();
   const populated = countsOf((await journal.archive.snapshot()).journal);
@@ -914,10 +914,10 @@ test('emptying the journal leaves nothing behind in any table, cascades or no ca
   assert.deepEqual(await tableCounts(driver), await tableCounts((await builtInsOnlyDevice()).driver));
 });
 
-/* The demo's own clear path, which had its own answer to this until ticket
-   13 and left twenty-nine tables behind. Asserted through the journal rather
-   than through the demo bar: what matters is that the two paths cannot
-   disagree, and they cannot when there is one of them. */
+/* The demo's own clear path, which had an answer of its own until ticket 13
+   and reached seven of the thirty-six sections with it. Asserted through the
+   journal rather than through the demo bar: what matters is that the two
+   paths cannot disagree, and they cannot when there is one of them. */
 test("the demo's clear leaves the journal where emptying it does", async () => {
   const journal = await everySection();
   const { clearJournal } = await import('../demo/journal-seed.ts');
