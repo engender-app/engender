@@ -80,11 +80,6 @@
 /* Both of these carry their own space and would otherwise be paid twice. */
 .home > .kit-heading,
 .home > .kit-tiles { margin-bottom: 0; }
-/* The chip row is flush to the page with no container of its own, so the
-   only thing separating it from what follows is this. At the column's usual
-   12px the look-back tiles sat directly under the moods and the two read as
-   one block. */
-.home > .kit-chips { margin-bottom: var(--space-5); }
 /* The caption belongs to the strip above it, so it sits closer than a
    section does to the next section. */
 .home > .kit-strip { margin-bottom: var(--space-2); }
@@ -249,11 +244,6 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
   overflow: hidden;
   border: var(--role-hairline);
 }
-/* Still the heading inside a card on the letters and roadmap screens, which
-   are their own tickets' to redo. Home's own gradient .quicklog card went
-   with the rebuild; this outlived it. */
-.quicklog-title { font-weight: var(--weight-bold); margin-bottom: var(--space-3); }
-
 /* ---------- Entry editor ---------- */
 /* The container transform's own layer (EntryEditor.svelte) - a plain fill
    behind the real screen, carrying no text, the same fix as
@@ -437,14 +427,11 @@ html[data-a11y-motion='reduce'] .home-cheer.is-burst i { animation: none; }
    open. It keeps its name because renaming a class nine screens call by it
    is a rename ticket, not a merge.
 
-   .ob-dot and .ob-actions have none. Neither ticket killed them on its own:
-   the first run stopped using them in 26, recap stopped existing in 23, and
-   they are dead only as the sum of the two. Left rather than swept up inside
-   a merge commit that has no business deleting either ticket's code. */
-.ob-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-2); transition: background var(--dur-med); }
-.ob-dot.is-done { background: var(--accent); }
+   .ob-dot and .ob-actions had none, dead only as the sum of the two merges
+   above rather than either on its own - left standing rather than swept up
+   inside a merge commit that had no business deleting either ticket's code
+   (phase 5 audit ticket 16 is that sweep). */
 .ob-text { color: var(--text-2); margin-bottom: var(--space-5); }
-.ob-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-5); }
 
 /* ---------- The first run (phase 5 ticket 26) ----------
 
@@ -751,13 +738,6 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   .setup-sun { top: 0; right: auto; left: 62%; }
 }
 
-.recap-custom-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-2);
-  text-align: left;
-}
-
 /* Nothing on these screens stacks above anything. Every surface here
    carried `position: relative; z-index: 1`, which existed to sit above
    PrideAurora - the full-page gradient wash this redesign dropped - and
@@ -898,17 +878,6 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   font-size: var(--text-sm);
   margin-top: var(--space-7);
   padding-bottom: var(--space-7);
-}
-
-/* ---------- On-this-day ----------
-   Same card shape and gradient as wrapped's (phase 4 features ticket 03),
-   so the two read as siblings on Home rather than as two unrelated offers -
-   only the icon tells them apart at a glance. The body below the header is
-   WrappedCompact's own `.wrapped-*` styling, reused rather than duplicated;
-   this file only adds the divider between more than one qualifying day. */
-.on-this-day-day + .on-this-day-day {
-  margin-top: var(--space-7); padding-top: var(--space-7);
-  border-top: 1px solid var(--border);
 }
 
 /* ---------- Calendar & day detail ---------- */
@@ -1233,9 +1202,6 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 .compare-metrics-tags { align-items: start; }
 
 /* ---------- Stats ---------- */
-.chart-card { display: block; width: 100%; text-align: left; border: none; font: inherit; cursor: pointer; margin-bottom: var(--space-3); }
-.chart-title { font-weight: var(--weight-bold); }
-.value-list { display: flex; flex-direction: column; }
 .value-row {
   display: flex; align-items: center; gap: var(--space-3); justify-content: space-between;
   padding: var(--space-2) 0;
@@ -1367,14 +1333,6 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
 /* The dosing context, wherever a value appears. Set apart from the date
    beside it without competing with the value itself. */
 .lab-context { font-size: var(--text-sm); color: var(--on-accent-soft); }
-/* The chart's point readout, under the line rather than floating over it. */
-.lab-point {
-  margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  display: flex; flex-direction: column; gap: 2px;
-  background: var(--accent-soft);
-  border-radius: var(--radius-sm);
-}
 .lab-mixed-list { margin: var(--space-1) 0 0; padding-left: var(--space-4); }
 
 /* ---------- Custom dimension ---------- */
@@ -1664,11 +1622,6 @@ html[data-a11y-motion='reduce'] .swatch-bloom { animation: none; }
   background: var(--bg);
   padding: 2px 8px 2px 0;
 }
-
-.tl-gap-line { display: none; }
-
-/* ---------- desktop refinements ---------- */
-.mode-desktop .compare-wrap { max-width: 560px; margin: 0 auto; }
 
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
