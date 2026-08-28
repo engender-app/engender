@@ -49,10 +49,11 @@
     /** The editor sheet's title while adding. Omit this and the four props
         below for a record with no editor. */
     newTitle?: string;
-    /** And while editing. A screen with a third state composes it into this
-        one; the sheet only ever asks whether the draft has an id. */
-    editTitle?: string;
-    saveLabel?: string;
+    /** And while editing. A screen whose editing state is not one thing -
+        a wear session can be running - reads the draft for it, the shape
+        `confirm.question` and `canSave` already take. */
+    editTitle?: string | ((draft: TDraft) => string);
+    saveLabel?: string | ((draft: TDraft) => string);
     /** Omitted, the sheet has no delete button - the screen deletes from a
         row instead, and the confirm sheet below still runs. */
     deleteLabel?: string;
@@ -82,16 +83,20 @@
   const handles = $derived(recordHandles(handle));
   let draft = $derived(record.editor);
   let deleteTarget = $derived(record.deleteTarget);
+
+  /** A label a screen either states outright or reads off the draft. */
+  const wording = (label: string | ((draft: TDraft) => string) | undefined, draft: TDraft) =>
+    typeof label === 'function' ? label(draft) : label;
 </script>
 
 {#if fields}
   <Sheet
     open={draft !== null}
-    title={draft?.id ? editTitle : newTitle}
+    title={draft ? (draft.id ? wording(editTitle, draft) : newTitle) : newTitle}
     onClose={() => (record.editor = null)}
   >
     {#if draft}
-      <h3>{draft.id ? editTitle : newTitle}</h3>
+      <h3>{draft.id ? wording(editTitle, draft) : newTitle}</h3>
       {@render fields(draft)}
       <div class="stack-3">
         {#if primary}
@@ -103,7 +108,7 @@
             disabled={canSave ? !canSave(draft) : false}
             onclick={record.save}
           >
-            <span>{saveLabel}</span>
+            <span>{wording(saveLabel, draft)}</span>
           </button>
         {/if}
         {#if draft.id}

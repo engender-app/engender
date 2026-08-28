@@ -381,7 +381,7 @@
     {record}
     handle="wear-session"
     newTitle={m.wear_session_new_sheet()}
-    editTitle={record.editor?.isRunning ? m.wear_session_running_sheet() : m.wear_session_edit_sheet()}
+    editTitle={(draft) => (draft.isRunning ? m.wear_session_running_sheet() : m.wear_session_edit_sheet())}
     deleteLabel={m.wear_session_delete()}
     confirm={{
       title: m.wear_session_delete_sheet(),

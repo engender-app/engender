@@ -180,14 +180,14 @@
       cancelLabel: m.keep_it()
     }}
   >
-    {#snippet fields(editor)}
+    {#snippet fields(draft)}
       <div class="field">
         <label class="field-label" for="hair-removal-date">{m.hair_removal_date_label()}</label>
-        <input class="input" type="date" id="hair-removal-date" name="hair-removal-date" bind:value={editor.date} />
+        <input class="input" type="date" id="hair-removal-date" name="hair-removal-date" bind:value={draft.date} />
       </div>
       <div class="field">
         <label class="field-label" for="hair-removal-area">{m.hair_removal_area_label()}</label>
-        <select class="input" id="hair-removal-area" bind:value={editor.area}>
+        <select class="input" id="hair-removal-area" bind:value={draft.area}>
           {#each HAIR_REMOVAL_AREAS as area (area)}
             <option value={area}>{hairRemovalAreaName(area)}</option>
           {/each}
@@ -198,8 +198,8 @@
         <Segmented
           name={m.hair_removal_method_label()}
           options={HAIR_REMOVAL_METHODS.map((method) => ({ value: method, label: hairRemovalMethodName(method) }))}
-          value={editor.method}
-          onChange={(v) => (editor.method = v as HairRemovalMethod)}
+          value={draft.method}
+          onChange={(v) => (draft.method = v as HairRemovalMethod)}
         />
       </div>
       <div class="field">
@@ -207,8 +207,8 @@
         <Segmented
           name={m.hair_removal_pain_label()}
           options={PAIN_RATINGS.map((v) => ({ value: String(v), label: severityName(v) }))}
-          value={editor.painRating}
-          onChange={(v) => (editor.painRating = v)}
+          value={draft.painRating}
+          onChange={(v) => (draft.painRating = v)}
         />
       </div>
       <div class="field">
@@ -218,7 +218,7 @@
           id="hair-removal-cost"
           name="hair-removal-cost"
           placeholder={m.hair_removal_cost_placeholder()}
-          bind:value={editor.cost}
+          bind:value={draft.cost}
         />
       </div>
       <div class="field">
@@ -228,12 +228,12 @@
           id="hair-removal-provider"
           name="hair-removal-provider"
           placeholder={m.hair_removal_provider_placeholder()}
-          bind:value={editor.provider}
+          bind:value={draft.provider}
         />
       </div>
 
       <SectionHeading text={m.hair_removal_photo_section_title()} />
-      {#if !editor.id}
+      {#if !draft.id}
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.hair_removal_photo_hint()}</p>
       {:else}
         <div class="photo-row" style="margin-bottom:var(--space-3)">

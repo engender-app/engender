@@ -13,9 +13,9 @@
    `recordHandleSlug` is the way back, so tests/walkthrough-handles-exist.ts
    can resolve a generated handle to the slug a screen wrote. */
 
-/** Longest first, so `data-confirm-delete-lab` is never read as a delete
-    handle for a record called `confirm`. */
-export const RECORD_HANDLE_PREFIXES = ['data-confirm-delete-', 'data-delete-', 'data-save-'] as const;
+/* Longest first, so `data-confirm-delete-lab` is never read as a delete
+   handle for a record called `confirm`. */
+const PREFIXES = ['data-confirm-delete-', 'data-delete-', 'data-save-'] as const;
 
 export type RecordHandles = {
   /** The editor sheet's primary button. */
@@ -49,7 +49,7 @@ export function recordHandles(slug: string): RecordHandles {
 /** The slug behind a generated handle, or null if no record sheet could
     have produced it. */
 export function recordHandleSlug(handle: string): string | null {
-  for (const prefix of RECORD_HANDLE_PREFIXES) {
+  for (const prefix of PREFIXES) {
     if (!handle.startsWith(prefix)) continue;
     const slug = handle.slice(prefix.length);
     if (SLUG.test(slug)) return slug;
