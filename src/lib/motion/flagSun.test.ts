@@ -104,15 +104,17 @@ describe("Home's header reserves room for the sun at its breathing size", () => 
   /* Phase 5 ticket 32.12: the reserve held only the resting radius, so the
      breathing loop's outermost ring grew past its own room for half of
      every 7s cycle and overflow: hidden shaved it flat along the header's
-     bottom edge. CSS cannot read SUN_OUTER, so screens.css keeps its own
+     bottom edge. CSS cannot read SUN_OUTER, so .home-header keeps its own
      175px literal - this is what holds that literal to SUN_OUTER/2 rather
-     than trusting a comment to notice it drifted. */
-  const screens = readFileSync(join(root, 'src/lib/styles/screens.css'), 'utf8');
+     than trusting a comment to notice it drifted. Read from +page.svelte's
+     own <style> block rather than screens.css, where .home-header lived
+     until phase 5 audit ticket 16 moved it. */
+  const home = readFileSync(join(root, 'src/routes/+page.svelte'), 'utf8');
   const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
   const components = readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8');
 
-  it("screens.css's resting radius is SUN_OUTER/2, not a second number", () => {
-    const raw = /\.home-header\s*\{[\s\S]*?min-height:\s*calc\((\d+)px/.exec(screens);
+  it("home-header's resting radius is SUN_OUTER/2, not a second number", () => {
+    const raw = /\.home-header\s*\{[\s\S]*?min-height:\s*calc\((\d+)px/.exec(home);
     expect(raw, '.home-header should set min-height from a literal px radius').not.toBeNull();
     expect(Number(raw![1])).toBe(SUN_OUTER / 2);
   });
@@ -123,7 +125,7 @@ describe("Home's header reserves room for the sun at its breathing size", () => 
     // by the scale instead of multiplying by it - shrinking the room for
     // the sun rather than growing it, which is worse than the bug this
     // fixes and would pass just as silently.
-    const raw = /\.home-header\s*\{[\s\S]*?min-height:\s*calc\(([^;]+)\);/.exec(screens);
+    const raw = /\.home-header\s*\{[\s\S]*?min-height:\s*calc\(([^;]+)\);/.exec(home);
     expect(raw, '.home-header should set min-height').not.toBeNull();
     expect(raw![1].replace(/\s+/g, ' ').trim()).toBe(
       `${SUN_OUTER / 2}px * var(--sun-breathe-scale) + var(--inset-top)`
