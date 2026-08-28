@@ -4,6 +4,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -83,9 +84,11 @@
   <Sheet open={renameTarget !== null} title={m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>
     {#if renameTarget}
       <h3>{m.tags_rename_sheet()}</h3>
-      <div class="field">
-        <input class="input" id="rename-input" name="rename-input" bind:value={renameTarget.label} />
-      </div>
+      <Field label={m.tags_rename_sheet()} id="rename-input" hidden>
+        {#snippet children(id)}
+          <input class="input" {id} name="rename-input" bind:value={renameTarget!.label} />
+        {/snippet}
+      </Field>
       <button
         class="btn btn-primary"
         onclick={() => {
@@ -111,9 +114,11 @@
   <Sheet open={addTarget !== null} title={m.tags_new_tag()} onClose={() => (addTarget = null)}>
     {#if addTarget}
       <h3>{m.tags_new_tag()}</h3>
-      <div class="field">
-        <input class="input" id="newtag-input" name="newtag-input" placeholder={m.tags_tag_placeholder()} bind:value={newLabel} />
-      </div>
+      <Field label={m.tags_new_tag()} id="newtag-input" hidden>
+        {#snippet children(id)}
+          <input class="input" {id} name="newtag-input" placeholder={m.tags_tag_placeholder()} bind:value={newLabel} />
+        {/snippet}
+      </Field>
       <button
         class="btn btn-primary"
         onclick={() => {
@@ -126,9 +131,11 @@
 
   <Sheet bind:open={groupSheet} title={m.tags_new_group()}>
     <h3>{m.tags_new_group()}</h3>
-    <div class="field">
-      <input class="input" id="newgroup-input" name="newgroup-input" placeholder={m.tags_group_placeholder()} bind:value={newGroupName} />
-    </div>
+    <Field label={m.tags_new_group()} id="newgroup-input" hidden>
+      {#snippet children(id)}
+        <input class="input" {id} name="newgroup-input" placeholder={m.tags_group_placeholder()} bind:value={newGroupName} />
+      {/snippet}
+    </Field>
     <button
       class="btn btn-primary"
       onclick={() => {
