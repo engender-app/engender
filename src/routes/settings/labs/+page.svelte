@@ -397,6 +397,11 @@
         {/each}
 
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
+          <!-- Hand-rolled rather than ListRow (ticket 16): the value carries
+               .lab-value (app.css) to opt back into text selection, and the
+               context line carries .lab-context's own size and colour -
+               both classes ListRow's plain title/subtitle strings have no
+               room for. -->
           {#each [...results].reverse() as r (r.id)}
             <button
               class="kit-row"
