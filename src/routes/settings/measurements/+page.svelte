@@ -31,6 +31,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -208,7 +209,7 @@
               })}
             />
           {:else}
-            <p class="kit-chart-empty">{m.measurement_too_little()}</p>
+            <ChartEmpty>{m.measurement_too_little()}</ChartEmpty>
           {/if}
         </ChartCard>
 

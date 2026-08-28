@@ -40,6 +40,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -375,7 +376,7 @@
                   ariaLabel={m.values_title({ name: analyte })}
                 />
               {:else}
-                <p class="kit-chart-empty">{m.labs_too_little()}</p>
+                <ChartEmpty>{m.labs_too_little()}</ChartEmpty>
               {/if}
             </ChartCard>
             <!-- Stated, not warned about: the series is drawn whole, and this
