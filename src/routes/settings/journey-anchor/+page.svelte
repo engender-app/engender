@@ -17,6 +17,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
 
   let sorted = $derived(vocabulary.milestones);
 
@@ -28,38 +29,45 @@
 <div class="screen">
   <ScreenHeader title={m.journey_anchor_title()} back="/settings" subtitle={m.journey_anchor_intro()} />
 
-  <div class="list-group">
+  <!-- Both lists below stay hand-written rather than going through ListRow
+       (ticket 18): this is a mutually-exclusive pick, and ListRow's
+       `checked` draws Check.svelte's box, which that component documents
+       as deliberately never a radio's circle - the wrong shape for "one of
+       these", not the tickable "any of these" a checkbox says. -->
+  <ListCard>
     <button
-      class="list-row"
+      type="button"
+      class="kit-row"
       data-selected={prefs.journeyAnchorMilestoneId === null ? 'true' : 'false'}
       data-pick-anchor="none"
       onclick={() => pick(null)}
     >
-      <span class="row-text">
-        <span class="row-title">{m.journey_anchor_none_title()}</span>
-        <span class="row-subtitle">{m.journey_anchor_none_sub()}</span>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.journey_anchor_none_title()}</span>
+        <span class="kit-row-sub">{m.journey_anchor_none_sub()}</span>
       </span>
       {#if prefs.journeyAnchorMilestoneId === null}<Icon name="check" size={20} />{/if}
     </button>
-  </div>
+  </ListCard>
 
   <SectionTitle text={m.ms_yours()} />
-  <div class="list-group">
+  <ListCard>
     {#each sorted as mi (mi.id)}
       <button
-        class="list-row"
+        type="button"
+        class="kit-row"
         data-selected={prefs.journeyAnchorMilestoneId === mi.id ? 'true' : 'false'}
         data-pick-anchor={mi.id}
         onclick={() => pick(mi.id)}
       >
-        <span class="row-text">
-          <span class="row-title">{mi.name}</span>
-          <span class="row-subtitle">{fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{mi.name}</span>
+          <span class="kit-row-sub">{fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
         </span>
         {#if prefs.journeyAnchorMilestoneId === mi.id}<Icon name="check" size={20} />{/if}
       </button>
     {:else}
       <p class="muted small" style="padding:var(--space-4)">{m.ms_none()}</p>
     {/each}
-  </div>
+  </ListCard>
 </div>

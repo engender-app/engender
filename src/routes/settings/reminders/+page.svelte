@@ -5,6 +5,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import { isAndroid } from '$lib/platform';
@@ -74,9 +75,9 @@
   {:else}
     <div class="card checkin-card">
       <div class="spread">
-        <span class="row-text">
-          <span class="row-title"><Icon name="sparkle" size={16} /> {m.checkin_title()}</span>
-          <span class="row-subtitle">{m.checkin_sub()}</span>
+        <span class="kit-row-text">
+          <span class="kit-row-title"><Icon name="sparkle" size={16} /> {m.checkin_title()}</span>
+          <span class="kit-row-sub">{m.checkin_sub()}</span>
         </span>
         <Switch
           checked={prefs.checkInEnabled}
@@ -99,9 +100,9 @@
           />
         </div>
         <div class="spread" data-checkin-affirmations>
-          <span class="row-text">
-            <span class="row-title">{m.checkin_affirmations_title()}</span>
-            <span class="row-subtitle">{m.checkin_affirmations_sub()}</span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.checkin_affirmations_title()}</span>
+            <span class="kit-row-sub">{m.checkin_affirmations_sub()}</span>
           </span>
           <Switch
             checked={prefs.checkInAffirmationsEnabled}
@@ -115,9 +116,9 @@
     </div>
 
     <div class="card spread">
-      <span class="row-text">
-        <span class="row-title"><Icon name="shield" size={16} /> {m.rem_hide_titles_title()}</span>
-        <span class="row-subtitle">{m.rem_hide_titles_sub()}</span>
+      <span class="kit-row-text">
+        <span class="kit-row-title"><Icon name="shield" size={16} /> {m.rem_hide_titles_title()}</span>
+        <span class="kit-row-sub">{m.rem_hide_titles_sub()}</span>
       </span>
       <Switch
         checked={prefs.hideNotificationTitles}
@@ -146,18 +147,24 @@
       </div>
     {/if}
 
-    <div class="list-group">
+    <ListCard>
       {#each reminders.rows as r (r.id)}
-        <div class="list-row">
-          <span class="row-icon"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
-          <a class="row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
-            <span class="row-title">{r.title}</span>
-            <span class="row-subtitle">{reminderTypeLabel(r.type)} · {reminderScheduleLabel(r)}</span>
+        <!-- A navigable title beside an independent Switch, and ListRow has
+             no shape for that: `href` makes the whole row the link, which
+             would toggle the switch by navigating past it; `action` renders
+             one icon button, not a Switch (ticket 18). -->
+        <div class="kit-row" data-list-row={r.id}>
+          <span class="kit-row-ico"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
+          <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
+            <span class="kit-row-title">{r.title}</span>
+            <span class="kit-row-sub">{reminderTypeLabel(r.type)} · {reminderScheduleLabel(r)}</span>
           </a>
-          <Switch checked={r.enabled} label={m.rem_enable_aria({ title: r.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
+          <span class="kit-row-trail">
+            <Switch checked={r.enabled} label={m.rem_enable_aria({ title: r.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
+          </span>
         </div>
       {/each}
-    </div>
+    </ListCard>
 
     <div class="notice notice-info">
       <Icon name="info" size={20} />

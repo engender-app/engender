@@ -11,10 +11,11 @@
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { pauseCoversDay } from '$lib/data/journalingPause';
-  import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
 
   const today = todayEpochDay();
 
@@ -66,7 +67,7 @@
 
   <div class="card">
     {#if current}
-      <p class="row-title">
+      <p class="kit-row-title">
         {m.journaling_pause_running_since({
           day: fmtDay(current.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
         })}
@@ -112,29 +113,25 @@
 
   {#if history.length}
     <SectionTitle text={m.journaling_pause_history_title()} />
-    <div class="list-group">
+    <ListCard>
       {#each history as pause (pause.id)}
-        <div class="list-row">
-          <span class="row-text">
-            <span class="row-title">
-              {fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-              {pause.endEpochDay === null
-                ? `· ${m.journaling_pause_ongoing()}`
-                : `${m.journaling_pause_range_to()} ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`}
-            </span>
-          </span>
-          <button
-            class="icon-btn"
-            data-delete-pause={pause.id}
-            aria-label={m.journaling_pause_delete_aria({
+        <ListRow
+          static
+          title={`${fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })} ${
+            pause.endEpochDay === null
+              ? `· ${m.journaling_pause_ongoing()}`
+              : `${m.journaling_pause_range_to()} ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`
+          }`}
+          action={{
+            icon: 'trash',
+            label: m.journaling_pause_delete_aria({
               from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-            })}
-            onclick={() => deletePause(pause.id)}
-          >
-            <Icon name="trash" size={18} />
-          </button>
-        </div>
+            }),
+            onclick: () => deletePause(pause.id),
+            attrs: { 'data-delete-pause': pause.id }
+          }}
+        />
       {/each}
-    </div>
+    </ListCard>
   {/if}
 </div>
