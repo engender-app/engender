@@ -7,6 +7,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import type { Affirmation } from '$lib/data/types';
@@ -109,9 +110,11 @@
 
   <Sheet bind:open={addOpen} title={m.affirmations_new_sheet()}>
     <h3>{m.affirmations_new_sheet()}</h3>
-    <div class="field">
-      <textarea class="input" rows="3" placeholder={m.affirmations_placeholder()} bind:value={newText}></textarea>
-    </div>
+    <Field label={m.affirmations_new_sheet()} hidden>
+      {#snippet children(id)}
+        <textarea class="input" {id} rows="3" placeholder={m.affirmations_placeholder()} bind:value={newText}></textarea>
+      {/snippet}
+    </Field>
     <button
       class="btn btn-primary"
       onclick={() => {
@@ -124,9 +127,11 @@
   <Sheet open={editTarget !== null} title={m.affirmations_edit_sheet()} onClose={() => (editTarget = null)}>
     {#if editTarget}
       <h3>{m.affirmations_edit_sheet()}</h3>
-      <div class="field">
-        <textarea class="input" rows="3" bind:value={editText}></textarea>
-      </div>
+      <Field label={m.affirmations_edit_sheet()} hidden>
+        {#snippet children(id)}
+          <textarea class="input" {id} rows="3" bind:value={editText}></textarea>
+        {/snippet}
+      </Field>
       <button
         class="btn btn-primary"
         onclick={() => {
