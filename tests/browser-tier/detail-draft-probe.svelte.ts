@@ -14,7 +14,7 @@
    Here rather than in the Node tier because what has to be shown is the
    ordering of two real round trips under a real scheduler (ADR-0017), the
    same reason live-reads-probe.svelte.ts is here. The rules themselves -
-   `waitingOn`, and the fill decision beside it - are node-tested in
+   `answersFor`, and the fill decision beside it - are node-tested in
    src/lib/components/kit/detailDraft.test.ts.
 
    Both readings are reported, not just the fixed one: `rawEmptyBeforeRecord`

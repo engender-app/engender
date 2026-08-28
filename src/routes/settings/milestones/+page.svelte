@@ -235,7 +235,7 @@
     handle="milestone"
     newTitle={m.ms_new_title()}
     editTitle={m.ms_edit_title()}
-    saveLabel={record.editor?.id ? m.ms_save_changes() : m.ms_add()}
+    saveLabel={(draft) => (draft.id ? m.ms_save_changes() : m.ms_add())}
     confirm={{
       title: m.ms_delete_sheet(),
       question: (milestone) => m.ms_delete_q({ name: milestone.name }),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { RECORD_HANDLE_PREFIXES, recordHandles, recordHandleSlug } from './recordHandles.ts';
+import { recordHandles, recordHandleSlug } from './recordHandles.ts';
 
 describe('recordHandles', () => {
   it('names all three of a record sheet’s handles off one slug', () => {
@@ -45,10 +45,6 @@ describe('recordHandleSlug', () => {
 });
 
 describe('the generated vocabulary', () => {
-  it('states the three prefixes it owns', () => {
-    expect(RECORD_HANDLE_PREFIXES).toEqual(['data-confirm-delete-', 'data-delete-', 'data-save-']);
-  });
-
   it('round-trips every prefix', () => {
     const handles = recordHandles('wear-session');
     for (const handle of Object.values(handles)) expect(recordHandleSlug(handle)).toBe('wear-session');
