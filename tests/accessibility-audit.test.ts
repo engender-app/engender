@@ -104,26 +104,20 @@ describe('phase 2 accessibility seams', () => {
        on every cold start with this green. */
   });
 
-  /* The range picker this used to check belonged to `/recap`, which phase 5
-     UX ticket 23 deleted (spec 07). The capability moved rather than went,
-     so the check follows it onto wrapped: both date fields are named, and
-     the sheet holding them is too.
-
-     Named by a `<label for>` rather than an aria-label. The recap screen
-     carried both, which is one accessible name written twice; what has to
-     hold is that each input has a label bound to its own id. */
-  it('keeps the wrapped range picker and its two date fields labelled', () => {
+  it('keeps the wrapped range picker naming its cadence group', () => {
     const wrapped = read('src/routes/wrapped/[cadence]/+page.svelte');
-    /* Both fields come out of one table, so what has to hold is that the
-       table carries both ids and that the label is bound to the field's own
-       one rather than to a literal that could drift from it. */
-    for (const id of ['wrapped-range-start', 'wrapped-range-end']) {
-      expect(wrapped, id).toContain(`id: '${id}'`);
-    }
-    expect(wrapped).toContain('for={field.id}');
-    expect(wrapped).toContain('id={field.id}');
     expect(wrapped).toContain('m.recap_custom_start_label()');
     expect(wrapped).toContain('m.recap_custom_end_label()');
     expect(wrapped).toContain('title={m.wrapped_cadence_group()}');
   });
+
+  /* This used to be the one place label association got checked at all - a
+     grep against wrapped's two date fields, which is one screen's worth of
+     evidence for a pattern 131 call sites repeat by hand (phase 5 audit
+     ticket 10). tests/browser-tier/run.mjs's "field association" block is
+     what replaced it: Field.svelte mints the id and hands the same string
+     to the label and the control, and that block renders several of them -
+     an explicit id, two minted ones, a legend - and reads the DOM back to
+     prove the pairing holds, rather than grepping one screen's source for a
+     string that happens to be there today. */
 });
