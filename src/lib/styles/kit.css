@@ -1539,7 +1539,14 @@ a.kit-entry:active {
   background: color-mix(in oklab, var(--role-draw) 62%, var(--surface));
   transform: scaleX(1);
   transform-origin: left center;
-  animation: kit-bar-in var(--dur-slow) var(--ease-out) both;
+  /* Longer than --dur-slow and a harder decelerate than the shared
+     --ease-out, on purpose rather than borrowed: a bar growing from nothing
+     is the one drawing in the kit with no value to answer to while it
+     moves, so it can spend longer settling than a control ever could
+     (Alicja, 2026-08-28: "longer fade in animation, more ease-out"). Kept
+     local rather than folded into --ease-out itself, which every press and
+     transition in the app also reads. */
+  animation: kit-bar-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
   /* Capped, because the index is a row's place in the set and a set can be
      long: the values list is one row per day, and at 365 rows an uncapped
      stagger is eighteen seconds of bars arriving. Twelve steps is the point
