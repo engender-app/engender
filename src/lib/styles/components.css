@@ -546,10 +546,16 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   scale: var(--mood-mag, 1);
   transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast), scale var(--dur-fast) var(--ease-out);
 }
+/* --outline (19% of --text) is a card's edge - a subtle line between two
+   already-similar surface tones. A mood face sits straight on the bare app
+   background instead, which is what ticket 99 item 2's regression report
+   caught: the intended border read as no border at all. --outline-strong
+   (30%) is the token this app already names for a control holding its own
+   edge, which is what a face is. */
 .mood-face-disc {
   fill: var(--face-mood);
-  stroke: var(--outline);
-  stroke-width: 0.75;
+  stroke: var(--outline-strong);
+  stroke-width: 1;
   transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
 }
 /* The eyes, in both their forms. Steps 2 to 4 draw two dots and fill them;
