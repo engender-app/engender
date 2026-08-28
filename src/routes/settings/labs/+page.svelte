@@ -32,7 +32,7 @@
   } from '$lib/data/labs/ocr';
   import { toast } from '$lib/stores/toasts.svelte';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { LabResult } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -40,6 +40,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
@@ -177,7 +178,7 @@
 
       await journal.labs.upsertResult({
         id: draft.id,
-        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+        epochDay: epochDayFromDateInputValueOrToday(draft.date),
         analyte: resultAnalyte,
         value,
         unit: draft.unit,
@@ -438,20 +439,21 @@
     <h3>{m.labs_preferred_units_title()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.labs_preferred_units_intro()}</p>
     {#each PREFERRED_UNIT_ANALYTES as analyteName (analyteName)}
-      <div class="field">
-        <label class="field-label" for={`preferred-unit-${analyteName}`}>{analyteName}</label>
-        <select
-          class="input"
-          id={`preferred-unit-${analyteName}`}
-          value={preferredUnitForAnalyte(analyteName, prefs.preferredLabUnits) ?? ''}
-          onchange={(e) => setPreferredUnit(analyteName, (e.target as HTMLSelectElement).value)}
-        >
-          <option value="">{m.labs_preferred_units_source_default()}</option>
-          {#each ALLOWED_PREFERRED_UNITS[analyteName] as unit (unit)}
-            <option value={unit}>{unit}</option>
-          {/each}
-        </select>
-      </div>
+      <Field label={analyteName} id={`preferred-unit-${analyteName}`}>
+        {#snippet children(id)}
+          <select
+            class="input"
+            {id}
+            value={preferredUnitForAnalyte(analyteName, prefs.preferredLabUnits) ?? ''}
+            onchange={(e) => setPreferredUnit(analyteName, (e.target as HTMLSelectElement).value)}
+          >
+            <option value="">{m.labs_preferred_units_source_default()}</option>
+            {#each ALLOWED_PREFERRED_UNITS[analyteName] as unit (unit)}
+              <option value={unit}>{unit}</option>
+            {/each}
+          </select>
+        {/snippet}
+      </Field>
     {/each}
   </Sheet>
 
@@ -472,55 +474,63 @@
   >
     {#snippet fields(editor)}
       <div class="cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="lab-date">{m.labs_date_label()}</label>
-          <input class="input" type="date" id="lab-date" name="lab-date" bind:value={editor.date} />
-        </div>
+        <Field label={m.labs_date_label()} id="lab-date">
+          {#snippet children(id)}
+            <input class="input" type="date" {id} name="lab-date" bind:value={editor.date} />
+          {/snippet}
+        </Field>
         <!-- Optional, and the hours figure depends on it: a lab slip often
              carries no time, and day-of-interval does not need one. -->
-        <div class="field">
-          <label class="field-label" for="lab-time">{m.labs_time_label()}</label>
-          <input class="input" type="time" id="lab-time" name="lab-time" bind:value={editor.time} />
-        </div>
+        <Field label={m.labs_time_label()} id="lab-time">
+          {#snippet children(id)}
+            <input class="input" type="time" {id} name="lab-time" bind:value={editor.time} />
+          {/snippet}
+        </Field>
       </div>
-      <div class="field">
-        <label class="field-label" for="lab-analyte">{m.labs_analyte_label()}</label>
-        <select class="input" id="lab-analyte" value={editor.analyte} onchange={(e) => changeEditorAnalyte(editor, (e.target as HTMLSelectElement).value)}>
-          {#if !editor.analyte}
-            <option value="">{m.labs_analyte_choose()}</option>
-          {/if}
-          {#each offeredQuery.rows as a (a)}
-            <option value={a}>{a}</option>
-          {/each}
-          <option value="custom">{m.labs_analyte_custom()}</option>
-        </select>
-      </div>
+      <Field label={m.labs_analyte_label()} id="lab-analyte">
+        {#snippet children(id)}
+          <select class="input" {id} value={editor.analyte} onchange={(e) => changeEditorAnalyte(editor, (e.target as HTMLSelectElement).value)}>
+            {#if !editor.analyte}
+              <option value="">{m.labs_analyte_choose()}</option>
+            {/if}
+            {#each offeredQuery.rows as a (a)}
+              <option value={a}>{a}</option>
+            {/each}
+            <option value="custom">{m.labs_analyte_custom()}</option>
+          </select>
+        {/snippet}
+      </Field>
       {#if editor.analyte === 'custom'}
         <div class="disclosed" transition:disclose>
-          <div class="field">
-            <label class="field-label" for="lab-custom-analyte">{m.labs_custom_label()}</label>
-            <input class="input" id="lab-custom-analyte" name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
-          </div>
+          <Field label={m.labs_custom_label()} id="lab-custom-analyte">
+            {#snippet children(id)}
+              <input class="input" {id} name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
+            {/snippet}
+          </Field>
         </div>
       {/if}
       <div class="cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="lab-value">{m.labs_value_label()}</label>
-          <input class="input" type="number" id="lab-value" name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
-        </div>
-        <div class="field">
-          <label class="field-label" for="lab-unit">{m.labs_unit_label()}</label>
-          <input class="input" id="lab-unit" name="lab-unit" placeholder={m.labs_unit_placeholder()} bind:value={editor.unit} />
-        </div>
+        <Field label={m.labs_value_label()} id="lab-value">
+          {#snippet children(id)}
+            <input class="input" type="number" {id} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
+          {/snippet}
+        </Field>
+        <Field label={m.labs_unit_label()} id="lab-unit">
+          {#snippet children(id)}
+            <input class="input" {id} name="lab-unit" placeholder={m.labs_unit_placeholder()} bind:value={editor.unit} />
+          {/snippet}
+        </Field>
       </div>
-      <div class="field">
-        <label class="field-label" for="lab-provider">{m.labs_provider_label()}</label>
-        <input class="input" id="lab-provider" name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="lab-note">{m.labs_note_label()}</label>
-        <input class="input" id="lab-note" name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
-      </div>
+      <Field label={m.labs_provider_label()} id="lab-provider">
+        {#snippet children(id)}
+          <input class="input" {id} name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
+        {/snippet}
+      </Field>
+      <Field label={m.labs_note_label()} id="lab-note">
+        {#snippet children(id)}
+          <input class="input" {id} name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
+        {/snippet}
+      </Field>
 
       <!-- The detail view's copy of the context. Read-only, because it was
            recorded when the result was saved and is not recomputed
@@ -621,28 +631,33 @@
             {#if row.lowConfidence}
               <p class="muted small" style="margin-bottom:var(--space-2)">{m.labs_ocr_low_confidence()}</p>
             {/if}
-            <div class="field">
-              <label class="field-label" for={`ocr-analyte-${i}`}>{m.labs_analyte_label()}</label>
-              <input class="input" id={`ocr-analyte-${i}`} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
-            </div>
+            <Field label={m.labs_analyte_label()} id={`ocr-analyte-${i}`}>
+              {#snippet children(id)}
+                <input class="input" {id} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+              {/snippet}
+            </Field>
             <div class="cd-endpoints">
-              <div class="field">
-                <label class="field-label" for={`ocr-value-${i}`}>{m.labs_value_label()}</label>
-                <input class="input" id={`ocr-value-${i}`} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
-              </div>
-              <div class="field">
-                <label class="field-label" for={`ocr-unit-${i}`}>{m.labs_unit_label()}</label>
-                <input class="input" id={`ocr-unit-${i}`} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
-              </div>
+              <Field label={m.labs_value_label()} id={`ocr-value-${i}`}>
+                {#snippet children(id)}
+                  <input class="input" {id} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                {/snippet}
+              </Field>
+              <Field label={m.labs_unit_label()} id={`ocr-unit-${i}`}>
+                {#snippet children(id)}
+                  <input class="input" {id} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                {/snippet}
+              </Field>
             </div>
-            <div class="field">
-              <label class="field-label" for={`ocr-date-${i}`}>{m.labs_date_label()}</label>
-              <input class="input" type="date" id={`ocr-date-${i}`} data-ocr-field="date" value={row.date} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
-            </div>
-            <div class="field">
-              <label class="field-label" for={`ocr-note-${i}`}>{m.labs_note_label()}</label>
-              <input class="input" id={`ocr-note-${i}`} value={row.note} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, note: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
-            </div>
+            <Field label={m.labs_date_label()} id={`ocr-date-${i}`}>
+              {#snippet children(id)}
+                <input class="input" type="date" {id} data-ocr-field="date" value={row.date} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+              {/snippet}
+            </Field>
+            <Field label={m.labs_note_label()} id={`ocr-note-${i}`}>
+              {#snippet children(id)}
+                <input class="input" {id} value={row.note} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, note: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+              {/snippet}
+            </Field>
           </div>
         {/each}
       </div>
