@@ -36,10 +36,14 @@
    fix made on this device would vanish under an older archive.
 
    Replace discards this device's journal rows and installs the archive's,
-   then writes the archive's state onto the built-in rows it kept. Preferences
-   are not the journal's (ADR-0003) and nothing here touches the pref table,
-   which is what leaves the PIN, the app-lock flags and the disguise settings
-   in place through the most destructive path in the app.
+   then writes the archive's state onto the built-in rows it kept. Which rows
+   it discards is the registry's too, in the reverse of the order the inserts
+   run in (ADR-0027): until phase 5 ticket 13 that was 51 statements
+   hand-ordered in this file, the one list around here the registry did not
+   derive. Preferences are not the journal's (ADR-0003) and nothing here
+   touches the pref table, which is what leaves the PIN, the app-lock flags
+   and the disguise settings in place through the most destructive path in
+   the app.
 
    What the rows contain is validated by the schema as they are written, which
    is why every insert is inside the transaction: a value the columns refuse -
@@ -55,7 +59,7 @@ import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
 import { reconcileBuiltInsWithin } from './reconcile';
-import { applyArchiveJournal, ARCHIVE_SECTION_NAMES } from './archiveSections';
+import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES } from './archiveSections';
 import { now } from './support';
 
 export type RestoreMode = 'replace' | 'merge';
@@ -149,106 +153,21 @@ function assertRestorable(journal: ArchiveJournal): void {
   }
 }
 
-/* Everything the archive is about to install, children before parents so it
-   holds whether or not this connection enforces foreign keys - the same
-   assumption the demo's clearJournal() makes.
+/** Every journal row this device has, gone: one operation, ordered by the
+    registry rather than by hand (archiveSections.ts's discardStatements).
+    Called here for a Replace, and by `Journal.discardEverything` on its own
+    for the demo bar's state jumps - both mean the same thing by emptying the
+    journal, which is why there is one answer to it and not two.
 
-   The one list around here the section registry does not derive (ADR-0027),
-   and deliberately: it names child tables no section owns on its own, some
-   of its statements are conditional on a row being custom rather than
-   built-in, and its order is the reverse of the insert order. A table missed
-   here keeps stale rows through a Replace, which is why the golden fixture
-   restores over a journal that already has rows in every section
-   (archive-golden.test.ts) rather than only into an empty one. Built-in rows survive: the
-   archive's entries reference dimensions and tags by key, and deleting them
-   would leave those references nothing to resolve against. What the user put
-   on a built-in is overwritten row by row afterwards.
+    Nothing here deletes a file, which is this function's half of the ordering
+    rule in the header above: the rows go, the photos stay until the next
+    boot's orphan sweep reclaims them.
 
-   entry_fts needs no statement of its own: migration v3's trigger drops an
-   index row with its entry, which is what lets this delete entries without
-   knowing the index exists. */
-async function discardJournalRows(driver: SqliteDriver): Promise<void> {
-  const statements = [
-    'DELETE FROM photo',
-    'DELETE FROM voice_recording',
-    'DELETE FROM video_note',
-    'DELETE FROM entry_dimension_value',
-    'DELETE FROM entry_tag',
-    'DELETE FROM entry_body_region',
-    'DELETE FROM entry',
-    // Before milestone: a felt-sense row can hang off either a tryout or a
-    // milestone rowid (phase 5 ticket 24), so it has to clear before both.
-    'DELETE FROM felt_sense',
-    'DELETE FROM milestone',
-    'DELETE FROM lab_result',
-    'DELETE FROM measurement',
-    'DELETE FROM size_record',
-    'DELETE FROM side_effect',
-    'DELETE FROM cycle_event',
-    'DELETE FROM journaling_pause',
-    'DELETE FROM personal_effect',
-    'DELETE FROM wear_session',
-    'DELETE FROM hair_stage',
-    'DELETE FROM hair_photo',
-    'DELETE FROM hair_removal_photo',
-    'DELETE FROM hair_removal_session',
-    'DELETE FROM procedure_photo',
-    'DELETE FROM procedure_consult',
-    'DELETE FROM procedure',
-    'DELETE FROM reminder',
-    'DELETE FROM tally_event',
-    'DELETE FROM doubt_snapshot_entry',
-    'DELETE FROM doubt_snapshot',
-    'DELETE FROM letter',
-    'DELETE FROM roadmap_check',
-    'DELETE FROM roadmap_goal',
-    'DELETE FROM checklist_item',
-    'DELETE FROM checklist',
-    'DELETE FROM tryout_photo',
-    'DELETE FROM tryout',
-    'DELETE FROM dose_event',
-    // Before the schedule they hang off, same reasoning as the comment below.
-    'DELETE FROM dose_schedule_weekday',
-    'DELETE FROM dose_schedule_dose_amount',
-    /* Before the episodes they hang off. The foreign keys cascade, but only
-       with `PRAGMA foreign_keys` on, which is the driver's business and not
-       something this ordering should depend on. */
-    'DELETE FROM dose_schedule',
-    'DELETE FROM dose_pause',
-    'DELETE FROM regimen_episode',
-    'DELETE FROM medication_stock',
-    /* Only the custom presets' links. A built-in preset the archive does not
-       carry keeps the dimensions reconciling gave it: emptying the table
-       wholesale left one with none at all, permanently, because reconciling
-       writes a preset's links only when it writes the preset row. */
-    'DELETE FROM preset_dimension WHERE preset_id IN (SELECT id FROM gender_preset WHERE key IS NULL)',
-    'DELETE FROM gender_preset WHERE key IS NULL',
-    'DELETE FROM tag WHERE key IS NULL',
-    // A custom tag group carries a uuid and a built-in one does not; its key
-    // is that same uuid, so the uuid is what tells them apart (tags.ts).
-    'DELETE FROM tag_group WHERE uuid IS NOT NULL',
-    'DELETE FROM gender_dimension WHERE is_built_in = 0',
-    // Only the customs; a built-in affirmation the archive does not carry
-    // keeps the wording reconciling gave it, the same reasoning tag's own
-    // delete gives.
-    'DELETE FROM affirmation WHERE key IS NULL',
-    // Same reasoning as affirmation's own delete: only the customs, so a
-    // built-in region the archive does not carry keeps what reconciling
-    // gave it rather than losing its row entirely.
-    'DELETE FROM body_region WHERE key IS NULL',
-    // Measurements reference a type by key (measurements.ts), not by rowid,
-    // so unlike the child-table deletes above this needs no companion
-    // statement for rows that named a custom type just removed here - they
-    // simply keep a key nothing resolves any more, the same forward-
-    // compatible treatment lab_result.analyte already gets.
-    'DELETE FROM measurement_type WHERE is_built_in = 0',
-    // Same reasoning as measurement_type's own delete: personal_effect
-    // references an effect by key (personalEffects.ts), not by rowid, so a
-    // marker naming a custom effect just removed here simply keeps a key
-    // nothing resolves any more. No statement for effect_category: it is
-    // built-in only (no custom-category creation is asked for, ticket 41's
-    // own scope), so there is never a custom row to discard.
-    'DELETE FROM personal_effect_type WHERE is_built_in = 0'
-  ];
-  for (const statement of statements) await driver.run(statement);
+    A table missed here keeps stale rows through a Replace, so the golden
+    fixture restores over a journal that already has rows in every section
+    (archive-golden.test.ts) rather than only into an empty one, and the
+    registry's own oracle checks every table in the schema against the
+    statements (archiveSections.test.ts). */
+export async function discardJournalRows(driver: SqliteDriver): Promise<void> {
+  for (const statement of discardStatements()) await driver.run(statement);
 }

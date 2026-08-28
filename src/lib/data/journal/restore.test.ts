@@ -10,11 +10,13 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { thumbFileName } from '../photos/names.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
+import type { SqliteDriver } from '../sqlite/driver.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_DIMENSIONS } from '../vocabulary/builtins.ts';
 import { attributeDose } from '../regimenEpisode.ts';
 import { epochDayFromTimestamp } from '../epochDay.ts';
-import { emptyArchiveJournal } from './archiveSections.ts';
+import { discardStatements, emptyArchiveJournal } from './archiveSections.ts';
+import { builtInsOnlyDevice, countsOf, everySection, everySectionDevice } from './golden-archive-fixture.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
 import type { RestoreContents } from './restore.ts';
@@ -848,4 +850,84 @@ test('a staging from an archive written before there were two scales restores as
   assert.deepEqual(await target.journal.hairProgress.getStages(), [
     { id: 'legacy-staging', epochDay: 19200, scale: 'norwood_hamilton', stage: '3a', description: '' }
   ]);
+});
+
+/* Emptying the journal (phase 5 audit ticket 13). One operation, not a list
+   each caller walks: a Replace runs it before it installs an archive's rows,
+   and the demo bar's state jumps run it on its own. Its order comes from the
+   section registry, reversed - what used to be 51 statements hand-ordered in
+   restore.ts, with the demo keeping a copy of its own that had drifted by
+   thirty tables. */
+test('emptying the journal leaves every section at what a device with only its built-ins holds', async () => {
+  const journal = await everySection();
+  const populated = countsOf((await journal.archive.snapshot()).journal);
+
+  await journal.discardEverything();
+
+  const emptied = countsOf((await journal.archive.snapshot()).journal);
+  const baseline = countsOf((await (await builtInsOnlyDevice()).journal.archive.snapshot()).journal);
+  assert.deepEqual(emptied, baseline, 'a section holding more than the built-ins put there kept rows it should have lost');
+
+  /* The comparison above is only worth something if the journal it ran
+     against actually had rows to lose. `everySection` puts something in all
+     36 - which ticket 12 pinned counts for - so every section either shrank
+     or is one whose rows are all built-in reference data. */
+  const shrank = Object.keys(populated).filter((section) => populated[section] > baseline[section]);
+  assert.ok(shrank.length >= 25, `only ${shrank.length} sections had anything to lose, so this proves less than it looks`);
+});
+
+/** Every table's row count, straight off the connection - which is what the
+    orphan check below needs and a snapshot cannot give: a section reads its
+    child rows through a join to their owner, so a child left behind after its
+    owner is gone does not appear in any section at all. */
+async function tableCounts(driver: SqliteDriver): Promise<Record<string, number>> {
+  const tables = await driver.query<{ name: string }>(
+    `SELECT name FROM sqlite_master WHERE type = 'table'
+       AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'entry_fts%' ORDER BY name`
+  );
+  const counts: Record<string, number> = {};
+  for (const { name } of tables) {
+    counts[name] = (await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${name}`))[0].n;
+  }
+  return counts;
+}
+
+/* Table by table rather than section by section, because the two can
+   disagree: a child row left behind after its owner is gone is a row nobody
+   can reach, and one no section reports, since a section reads its children
+   through a join to the owner that is no longer there. Only a count off the
+   connection sees it.
+
+   With foreign keys off, which is what makes this an assertion rather than a
+   formality. node:sqlite turns them on by default, and every key in the
+   schema cascades - so under the default a statement that misses a child
+   table, or takes too narrow a slice of a shared one, is silently covered by
+   the cascade from its owner and this test passes on a broken list. The
+   statements are written not to need the cascade (restore.ts, and the
+   ordering comments in the registry), and this is where that is checked. */
+test('emptying the journal leaves nothing behind in any table, cascades or no cascades', async () => {
+  const { driver } = await everySectionDevice();
+  await driver.run('PRAGMA foreign_keys = OFF');
+
+  for (const statement of discardStatements()) await driver.run(statement);
+
+  assert.deepEqual(await tableCounts(driver), await tableCounts((await builtInsOnlyDevice()).driver));
+});
+
+/* The demo's own clear path, which had its own answer to this until ticket
+   13 and left twenty-nine tables behind. Asserted through the journal rather
+   than through the demo bar: what matters is that the two paths cannot
+   disagree, and they cannot when there is one of them. */
+test("the demo's clear leaves the journal where emptying it does", async () => {
+  const journal = await everySection();
+  const { clearJournal } = await import('../demo/journal-seed.ts');
+
+  const withPhotos = (await journal.archive.snapshot()).files.length;
+  await clearJournal(journal);
+
+  const snapshot = await journal.archive.snapshot();
+  const baseline = countsOf((await (await builtInsOnlyDevice()).journal.archive.snapshot()).journal);
+  assert.ok(withPhotos > 0, 'the fixture had photo files to clear');
+  assert.deepEqual(countsOf(snapshot.journal), baseline);
+  assert.deepEqual(snapshot.files, [], 'the entry and milestone photo files went with their rows');
 });
