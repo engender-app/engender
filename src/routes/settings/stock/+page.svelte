@@ -7,12 +7,13 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { RUN_OUT_LEAD_DAYS } from '$lib/data/stockProjection';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -75,7 +76,7 @@
       drug,
       quantity,
       unit,
-      recordedEpochDay: epochDayFromDateInputValue(editor.recordedDate) ?? todayEpochDay()
+      recordedEpochDay: epochDayFromDateInputValueOrToday(editor.recordedDate)
     });
     editor = null;
   }
@@ -150,32 +151,36 @@
   <Sheet open={editor !== null} title={editor?.id ? m.stock_edit_sheet() : m.stock_new_sheet()} onClose={() => (editor = null)}>
     {#if editor}
       <h3>{editor.id ? m.stock_edit_sheet() : m.stock_new_sheet()}</h3>
-      <div class="field">
-        <label class="field-label" for="stock-drug">{m.stock_drug_label()}</label>
-        <input class="input" id="stock-drug" name="stock-drug" placeholder={m.stock_drug_placeholder()} bind:value={editor.drug} />
-      </div>
+      <Field label={m.stock_drug_label()} id="stock-drug">
+        {#snippet children(id)}
+          <input class="input" {id} name="stock-drug" placeholder={m.stock_drug_placeholder()} bind:value={editor!.drug} />
+        {/snippet}
+      </Field>
       <div class="cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="stock-quantity">{m.stock_quantity_label()}</label>
-          <input
-            class="input"
-            type="number"
-            id="stock-quantity"
-            name="stock-quantity"
-            placeholder={m.stock_quantity_placeholder()}
-            inputmode="decimal"
-            bind:value={editor.quantity}
-          />
-        </div>
-        <div class="field">
-          <label class="field-label" for="stock-unit">{m.stock_unit_label()}</label>
-          <input class="input" id="stock-unit" name="stock-unit" placeholder={m.stock_unit_placeholder()} bind:value={editor.unit} />
-        </div>
+        <Field label={m.stock_quantity_label()} id="stock-quantity">
+          {#snippet children(id)}
+            <input
+              class="input"
+              type="number"
+              {id}
+              name="stock-quantity"
+              placeholder={m.stock_quantity_placeholder()}
+              inputmode="decimal"
+              bind:value={editor!.quantity}
+            />
+          {/snippet}
+        </Field>
+        <Field label={m.stock_unit_label()} id="stock-unit">
+          {#snippet children(id)}
+            <input class="input" {id} name="stock-unit" placeholder={m.stock_unit_placeholder()} bind:value={editor!.unit} />
+          {/snippet}
+        </Field>
       </div>
-      <div class="field">
-        <label class="field-label" for="stock-date">{m.stock_date_label()}</label>
-        <input class="input" type="date" id="stock-date" name="stock-date" bind:value={editor.recordedDate} />
-      </div>
+      <Field label={m.stock_date_label()} id="stock-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="stock-date" bind:value={editor!.recordedDate} />
+        {/snippet}
+      </Field>
 
       <div class="stack-3">
         <button class="btn btn-primary" data-save-stock onclick={saveEntry}><span>{m.stock_save()}</span></button>
