@@ -23,6 +23,11 @@ import { onboardingSteps } from '../src/lib/onboarding/steps';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 const stripScript = (source: string) => source.replace(/<script[\s\S]*?<\/script>/g, '');
+/** The step-count checks below are about script logic - a `--space-7` in
+    the first run's own <style> block (phase 5 audit ticket 16) is a
+    spacing token, not a hardcoded step count, and \b7\b cannot tell the
+    difference from the name alone. */
+const stripStyle = (source: string) => source.replace(/<style[\s\S]*?<\/style>/g, '');
 /** Block comments out, so a rule against a shape can be written down in a
     comment next to the code that replaced it without failing itself. */
 const stripComments = (source: string) =>
@@ -113,7 +118,7 @@ describe('the first run', () => {
     expect(onboarding).toContain("from '$lib/onboarding/steps'");
     /* `step === 3` is the shape this replaced: the order, the count, the
        progress label and the back arrow each knew the sequence separately. */
-    expect(stripComments(onboarding)).not.toMatch(/step === \d/);
+    expect(stripStyle(stripComments(onboarding))).not.toMatch(/step === \d/);
   });
 
   it('offers a way straight into the app on every step but the finish', () => {
@@ -163,7 +168,7 @@ describe('the first run', () => {
     expect(onboarding).toContain('onboardingSteps(prefs.disguise)');
     /* And nothing in the route counts steps for itself, which is what makes
        the shorter flow correct everywhere at once. */
-    expect(stripComments(onboarding)).not.toMatch(/ONBOARDING_STEPS|\b7\b/);
+    expect(stripStyle(stripComments(onboarding))).not.toMatch(/ONBOARDING_STEPS|\b7\b/);
   });
 
   it('crosses its steps on the tier-2 axis rather than inventing a transition', () => {
