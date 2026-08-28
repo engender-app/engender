@@ -37,6 +37,7 @@
      tier 2's crossfade: a change inside a screen has no journey for a fade
      to stand in for. */
   import { untrack } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
   import { areaPath, lerpSamples, resample, type Point } from '$lib/charts/geometry';
   import { wipe } from '$lib/motion/reveal';
@@ -129,6 +130,28 @@
     areaPath(shown, { width: Math.max(plotWidth - PAD * 2, 1), height: HEIGHT - PAD * 2, min, max }, !moving)
   );
 
+  /* The settle crossfade. Swapping straight segments for the monotone curve
+     is a real corner-rounding, not a redraw of the same shape, and doing it
+     in the single frame `moving` goes false read as the line jumping into
+     its resting state rather than arriving there (Alicja, 2026-08-28: "the
+     graph line jumps to smoothed out state ... it needs to be smooth when
+     it starts being drawn"). `dots`/`last` do not change between the two -
+     only the curve interpolation between them does - so this only ever
+     needs to fade the line and fill layers, and `path` above is already the
+     settled, smooth geometry underneath by the time this plays: what fades
+     is a snapshot of the last straight-segment frame, laid on top of it and
+     faded to nothing, never a second live copy recomputed on every frame -
+     rebuilding the smoothed curve that often is the cost geometry.ts's own
+     note measured and ruled out. */
+  let lastMovingPath = $state<{ line: string; fill: string } | null>(null);
+  let wasMoving = false;
+
+  $effect(() => {
+    if (moving) lastMovingPath = { line: path.line, fill: path.fill };
+    else if (wasMoving) lastMovingPath = null; // out:fade below plays it out
+    wasMoving = moving;
+  });
+
   /* The scrub. Held as an index rather than as a pixel, so it survives a
      resize and a re-tween without pointing at a position that has moved. */
   let scrub = $state<number | null>(null);
@@ -192,6 +215,13 @@
         <g transform="translate({PAD}, {PAD})">
           <path class="kit-area-fill" d={path.fill} />
           <path class="kit-area-line" d={path.line} />
+          {#if lastMovingPath}
+            <!-- The settling frame, laid over the smoothed geometry
+                 underneath and faded out rather than swapped in an instant -
+                 see the note above `lastMovingPath`. -->
+            <path class="kit-area-fill" d={lastMovingPath.fill} out:fade={{ duration: motionDuration('--dur-med') }} />
+            <path class="kit-area-line" d={lastMovingPath.line} out:fade={{ duration: motionDuration('--dur-med') }} />
+          {/if}
           {#if path.dots.length <= 60}
             <!-- A mark per reading, once there is room for one to be looked
                  at. Past that they are a dotted smear and the line says it
