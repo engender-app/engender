@@ -37,7 +37,7 @@
      would be the filter describing itself (recentEntries.ts). */
   import { m } from '$lib/paraglide/messages';
   import { smartBack } from '$lib/navigation/smart-back';
-  import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
+  import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
   import { entryDayGroups } from '$lib/data/recentEntries';
@@ -309,7 +309,7 @@
         data-filter-start
         type="date"
         bind:value={startDate}
-        max={endDate || undefined}
+        max={dayRangeStartMax(endDate)}
         aria-label={m.search_filter_start_label()}
       />
       <label for="search-filter-end">{m.search_filter_end_label()}</label>
@@ -319,7 +319,7 @@
         data-filter-end
         type="date"
         bind:value={endDate}
-        min={startDate || undefined}
+        min={dayRangeEndMin(startDate)}
         max={todayInput}
         aria-label={m.search_filter_end_label()}
       />
