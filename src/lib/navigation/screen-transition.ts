@@ -135,5 +135,17 @@ function isBack(from: string, to: string, type: string, delta?: number): boolean
   /* Home is every tab's ancestor by string, and reaching it is a tab
      change rather than a step up, so it is excluded by hand. */
   if (to === '/') return false;
-  return from.startsWith(to.endsWith('/') ? to : `${to}/`);
+  if (from.startsWith(to.endsWith('/') ? to : `${to}/`)) return true;
+  /* /more is the settings tab's own hub, the same role /stats or /calendar
+     plays for theirs - but ticket 09 already reaches it from routes a URL
+     prefix cannot see it under (/doses) and links straight to /settings/*
+     pages that skip an intervening /settings step (the roadmap, streak
+     goals, and the rest of More's rows), so the check above never fires
+     for the one back link most of those screens actually have. Without
+     this, closing the roadmap read as a step deeper instead of a step up -
+     the wrong shared-axis direction, which is what a slide in the wrong
+     direction off the bottom of an easing curve reads as a yank (Alicja,
+     2026-08-28: "no sliding up animation there at all... a smooth quick
+     transition like when I click on any other 'more' tab and go back"). */
+  return to === '/more' && activeTabKey(from) === 'settings';
 }
