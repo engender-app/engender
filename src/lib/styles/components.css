@@ -236,40 +236,75 @@
 .switch:focus-visible .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 /* ---------- segmented ---------- */
+/* The positioning box: the chevron hints anchor to this rather than to the
+   scrolling track itself, so they stay put at the edge while the track
+   scrolls under them (Segmented.svelte). Carries the sizing this control
+   has always wanted - inline-flex hugs its content, and then `.field` - a
+   column flex box - stretched it to full width anyway, because a flex
+   item's default cross alignment is stretch. So every switcher in an
+   editor sheet drew a track far wider than the words in it (Alicja,
+   2026-08-26, on three separate screens). Named here rather than at each
+   call site: the control knows it wants to be the width of its own
+   segments. */
+.segmented-wrap {
+  position: relative;
+  display: inline-flex;
+  align-self: start;
+  max-width: 100%;
+}
 .segmented {
   position: relative;
   display: inline-flex; gap: var(--space-2);
-  /* inline-flex hugs its content, and then `.field` - a column flex box -
-     stretched it to full width anyway, because a flex item's default cross
-     alignment is stretch. So every switcher in an editor sheet drew a track
-     far wider than the words in it (Alicja, 2026-08-26, on three separate
-     screens). Named here rather than at each call site: the control knows
-     it wants to be the width of its own segments. */
-  align-self: start;
+  min-width: 0;
   background: var(--surface-2);
   border-radius: var(--radius-pill);
   padding: 3px;
-  max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
 }
 .segmented::-webkit-scrollbar { display: none; }
 
+/* The chevron itself: a fixed hint rather than a fade, so it never depends
+   on how much of a neighbouring label the track happened to leave visible
+   (Segmented.svelte). Pointer-events:none - it marks the track's own edge,
+   not a control of its own, and sits on top of the fade rather than
+   instead of it because the fade still answers "which edge" from across
+   the room while the chevron confirms it up close. */
+.segmented-hint {
+  position: absolute;
+  top: 0; bottom: 0;
+  display: flex; align-items: center;
+  width: 20px;
+  color: var(--text-2);
+  pointer-events: none;
+}
+.segmented-hint-start { left: 0; justify-content: flex-start; padding-left: 4px; }
+.segmented-hint-end { right: 0; justify-content: flex-end; padding-right: 4px; }
+
 /* The hint the hidden scrollbar above took away: a fade over whichever edge
    still has segments past it, on only whichever side that is true
    (Segmented.svelte tracks scroll position for these two classes). No fade
-   at all when the track holds everything already, which is most of them. */
+   at all when the track holds everything already, which is most of them.
+
+   14px, not 28px: a wide fade starting well before the next segment often
+   finished fading before that segment's label even began, so the label
+   sitting past the edge - the whole point of the hint - rendered as a
+   sliver too faint to register as more than background (Alicja, 2026-08-28,
+   on the severity picker: "barely noticeable" cutting "mild" off with no
+   sign there was more). A narrower fade starts closer to the edge, which
+   both shows more of the next label at high opacity and still finishes
+   at fully transparent by the edge itself. */
 .segmented.can-scroll-end:not(.can-scroll-start) {
-  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, black calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 14px), transparent 100%);
 }
 .segmented.can-scroll-start:not(.can-scroll-end) {
-  mask-image: linear-gradient(to right, transparent, black 28px);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 28px);
+  mask-image: linear-gradient(to right, transparent, black 14px);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 14px);
 }
 .segmented.can-scroll-start.can-scroll-end {
-  mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
 }
 
 /* A flex scroll container drops its trailing padding at the end of the
@@ -368,7 +403,8 @@ a.segment {
    a dot moving between dots: six segments reading "7d" through "365d" are
    about as wide as they are tall, and at that ratio --radius-pill draws a
    circle. Phase 5 UX ticket 23. */
-.segmented.is-compact { display: flex; width: 100%; align-self: stretch; }
+.segmented-wrap.is-compact { width: 100%; align-self: stretch; }
+.segmented.is-compact { display: flex; width: 100%; }
 .segmented.is-compact .segment { flex: 1; min-width: 0; padding-inline: var(--space-1); }
 /* 5px, not 9px. The inset was tuned when the compact form carried six
    segments across the full width, where the pill is wider than it is tall
