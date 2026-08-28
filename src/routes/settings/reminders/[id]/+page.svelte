@@ -14,6 +14,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
 
   const TYPES = [
@@ -77,22 +78,26 @@
   <ScreenHeader title={detail.isNew ? m.rem_new_title() : m.rem_edit_title()} back="/settings/reminders" />
 
   <div class="card editor-section">
-    <div class="field">
-      <span class="field-label">{m.rem_type_label()}</span>
-      <Segmented name={m.rem_type_label()} options={TYPES} value={draft.type} onChange={(v) => (draft.type = v as Reminder['type'])} />
-    </div>
-    <div class="field">
-      <label class="field-label" for="r-name">{m.rem_name_label()}</label>
-      <input class="input" id="r-name" name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
-    </div>
-    <div class="field">
-      <label class="field-label" for="r-time">{m.rem_time_label()}</label>
-      <input class="input" id="r-time" name="r-time" type="time" style="max-width:160px" bind:value={draft.time} />
-    </div>
-    <div class="field">
-      <span class="field-label">{m.rem_repeats_label()}</span>
-      <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v as RecurrenceChoice)} />
-    </div>
+    <Field label={m.rem_type_label()} legend>
+      {#snippet children()}
+        <Segmented name={m.rem_type_label()} options={TYPES} value={draft.type} onChange={(v) => (draft.type = v as Reminder['type'])} />
+      {/snippet}
+    </Field>
+    <Field label={m.rem_name_label()} id="r-name">
+      {#snippet children(id)}
+        <input class="input" {id} name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
+      {/snippet}
+    </Field>
+    <Field label={m.rem_time_label()} id="r-time">
+      {#snippet children(id)}
+        <input class="input" {id} name="r-time" type="time" style="max-width:160px" bind:value={draft.time} />
+      {/snippet}
+    </Field>
+    <Field label={m.rem_repeats_label()} legend>
+      {#snippet children()}
+        <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v as RecurrenceChoice)} />
+      {/snippet}
+    </Field>
     <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
   </div>
 
