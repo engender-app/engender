@@ -110,9 +110,24 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
  * measured height, so the resting rule the element already has is what it
  * lands on - the invariant DIRECTION.md's reduced-motion contract imposes on
  * every animation in the app.
+ *
+ * `params.skip`, the same instant cut as reduced motion, for the caller that
+ * knows better than this module can: this is a Svelte out-transition, and
+ * Svelte still runs it when the *page* unmounts an always-mounted node during
+ * navigation, not only when the node's own local condition goes false - the
+ * `local`/`global` transition modifiers don't tell those two apart, they only
+ * gate whether a *nested* block's outro rides along with an ancestor's.
+ * Nothing in this module can see a SvelteKit navigation - that lives in
+ * `$app/state`, which breaks reveal.test.ts's plain-node vitest config if
+ * imported here - so the caller reads `navigating.to` and says so. A caller
+ * that never sees a bare, unwrapped mount point has no need of this; one that
+ * does is a screen's own permanent notice unmounting only when the screen
+ * itself goes (the roadmap's provenance disclaimer, phase 5 ticket 99 item
+ * 16, "when i go back to more there is a sliding-up animation with a yank at
+ * the end... i just want a smooth quick transition").
  */
-export function disclose(node: Element): TransitionConfig {
-  if (isReducedMotion()) return { duration: 0 };
+export function disclose(node: Element, params?: { skip?: boolean }): TransitionConfig {
+  if (isReducedMotion() || params?.skip) return { duration: 0 };
 
   const style = getComputedStyle(node);
   const height = parseFloat(style.height) || 0;
