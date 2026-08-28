@@ -140,6 +140,23 @@ export function disclose(node: Element): TransitionConfig {
      and this is a no-op either way. */
   const borderTop = parseFloat(style.borderTopWidth) || 0;
   const borderBottom = parseFloat(style.borderBottomWidth) || 0;
+  /* Margin is the same story as border above, and a bigger one: `.screen >
+     * { margin-bottom: var(--space-6) }` (app.css) gives most direct
+     * children of a screen 24px of it, disclose never touched it, and a
+     * transition's `css()` keeps running for its whole declared duration -
+     * the node is not actually removed until the promise it returns
+     * resolves, which lands some tens of milliseconds after the animated
+     * properties have already visually reached zero. So the box looked
+     * fully collapsed and settled, sat there still holding a full 24px of
+     * margin the whole time, and only lost it in the single frame the node
+     * was finally removed - a second, separate jump landing after the
+     * first one looked done (Alicja, 2026-08-28, after the border fix
+     * above: "it happens in many places where a box collapses... not just
+     * that singular one"). Every caller of `disclose` collapses through
+     * this one function, so this fixes all of them at once rather than
+     * chasing each margin-bearing surface that uses it. */
+  const marginTop = parseFloat(style.marginTop) || 0;
+  const marginBottom = parseFloat(style.marginBottom) || 0;
 
   return {
     duration: motionDuration('--dur-med'),
@@ -150,7 +167,9 @@ export function disclose(node: Element): TransitionConfig {
       `padding-top: ${t * paddingTop}px;` +
       `padding-bottom: ${t * paddingBottom}px;` +
       `border-top-width: ${t >= 1 ? borderTop : 0}px;` +
-      `border-bottom-width: ${t >= 1 ? borderBottom : 0}px;`
+      `border-bottom-width: ${t >= 1 ? borderBottom : 0}px;` +
+      `margin-top: ${t * marginTop}px;` +
+      `margin-bottom: ${t * marginBottom}px;`
   };
 }
 
