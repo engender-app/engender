@@ -1,5 +1,11 @@
-/* How each archive section's rows are read out of the journal: one function
-   per section, wired into the registry by archiveSections.ts.
+/* How each archive section's rows are read out of the journal, wired into
+   the registry by archiveSections.ts.
+
+   A flat area needs no function here at all: readFlatTable() below reads it
+   from the descriptor the registry declares (archiveTable.ts). What is left
+   is the sections a descriptor cannot state - child tables, joins to another
+   area's rows, and the reference data whose identity is a key rather than a
+   uuid.
 
    These read rows themselves rather than calling the other areas' getters,
    for the two reasons archive.ts's header gives - travelling identity, and
@@ -18,9 +24,7 @@ import type {
   ArchiveChecklist,
   ArchiveChecklistItem,
   ArchiveCounterevidenceSnapshot,
-  ArchiveCycleEvent,
   ArchiveDimension,
-  ArchiveDoseEvent,
   ArchiveDosePause,
   ArchiveDoseSchedule,
   ArchiveEffectCategory,
@@ -29,37 +33,24 @@ import type {
   ArchiveHairPhoto,
   ArchiveHairRemovalPhoto,
   ArchiveHairRemovalSession,
-  ArchiveHairStage,
-  ArchiveJournalingPause,
-  ArchiveLabResult,
-  ArchiveLetter,
-  ArchiveMeasurement,
   ArchiveMeasurementType,
-  ArchiveMedicationStock,
   ArchiveMilestone,
-  ArchivePersonalEffect,
   ArchivePersonalEffectType,
   ArchiveProcedure,
   ArchiveProcedureConsult,
   ArchiveProcedurePhoto,
   ArchivePhoto,
   ArchivePreset,
-  ArchiveRegimenEpisode,
-  ArchiveReminder,
   ArchiveRoadmapCheck,
-  ArchiveRoadmapGoal,
-  ArchiveSideEffect,
-  ArchiveSizeRecord,
   ArchiveTag,
   ArchiveTagGroup,
-  ArchiveTallyEvent,
   ArchiveTryout,
   ArchiveTryoutPhoto,
   ArchiveVideoNote,
-  ArchiveVoiceRecording,
-  ArchiveWearSession
+  ArchiveVoiceRecording
 } from '../archive/payload';
 import { bool, domainIdOf } from './support';
+import { columnsOf, type FlatTable } from './archiveTable';
 
 export type PhotoRow = {
   uuid: string;
@@ -128,6 +119,26 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
        ORDER BY n.order_index, n.id`
     )
   };
+}
+
+/** Every row of a flat area's table, in the order its descriptor asks for,
+    carried as the fields that descriptor names (archiveTable.ts). The
+    generic half of what used to be one hand-written reader per flat area:
+    a SELECT of the declared columns and a rename of each one. */
+export async function readFlatTable<Row>(table: FlatTable<Row>, { driver }: SectionRead): Promise<Row[]> {
+  const columns = columnsOf(table);
+  const rows = await driver.query<Record<string, unknown>>(
+    `SELECT ${columns.map((c) => c.column).join(', ')} FROM ${table.table} ORDER BY ${table.orderBy}`
+  );
+  return rows.map((row) => {
+    const carried: Record<string, unknown> = {};
+    for (const { column, field, bool: isBool, whenNull } of columns) {
+      const value = row[column];
+      if (isBool) carried[field] = bool(value);
+      else carried[field] = value === null && whenNull !== undefined ? whenNull : value;
+    }
+    return carried as Row;
+  });
 }
 
 /** Groups joined rows by their owner, keeping the order the query returned
@@ -331,108 +342,11 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
   }));
 }
 
-export async function readLabResults({ driver }: SectionRead): Promise<ArchiveLabResult[]> {
-  const rows = await driver.query<{
-    uuid: string;
-    epoch_day: number;
-    analyte: string;
-    value: number;
-    unit: string;
-    note: string | null;
-    draw_time: string | null;
-    provider: string;
-    timing_route: string | null;
-    timing_hours: number | null;
-    timing_day_of_interval: number | null;
-  }>(
-    `SELECT uuid, epoch_day, analyte, value, unit, note, draw_time, provider,
-            timing_route, timing_hours, timing_day_of_interval
-       FROM lab_result ORDER BY epoch_day, id`
-  );
-  return rows.map((r) => ({
-    id: r.uuid,
-    epochDay: r.epoch_day,
-    analyte: r.analyte,
-    value: r.value,
-    unit: r.unit,
-    note: r.note ?? '',
-    drawTime: r.draw_time,
-    provider: r.provider,
-    timingRoute: r.timing_route,
-    timingHours: r.timing_hours,
-    timingDayOfInterval: r.timing_day_of_interval
-  }));
-}
-
 export async function readMeasurementTypes({ driver }: SectionRead): Promise<ArchiveMeasurementType[]> {
   const rows = await driver.query<{ key: string; name: string; is_built_in: number; hidden: number }>(
     'SELECT key, name, is_built_in, hidden FROM measurement_type ORDER BY id'
   );
   return rows.map((r) => ({ key: r.key, name: r.name, builtIn: bool(r.is_built_in), hidden: bool(r.hidden) }));
-}
-
-export async function readMeasurements({ driver }: SectionRead): Promise<ArchiveMeasurement[]> {
-  const rows = await driver.query<{
-    uuid: string;
-    type: string;
-    epoch_day: number;
-    value: number;
-    unit: string;
-  }>('SELECT uuid, type, epoch_day, value, unit FROM measurement ORDER BY epoch_day, id');
-  return rows.map((r) => ({
-    id: r.uuid,
-    type: r.type,
-    epochDay: r.epoch_day,
-    value: r.value,
-    unit: r.unit
-  }));
-}
-
-export async function readSizeRecords({ driver }: SectionRead): Promise<ArchiveSizeRecord[]> {
-  const rows = await driver.query<{
-    uuid: string;
-    epoch_day: number;
-    category: string;
-    size: string;
-    brand: string;
-    fit_note: string;
-  }>('SELECT uuid, epoch_day, category, size, brand, fit_note FROM size_record ORDER BY epoch_day, id');
-  return rows.map((r) => ({
-    id: r.uuid,
-    epochDay: r.epoch_day,
-    category: r.category,
-    size: r.size,
-    brand: r.brand,
-    fitNote: r.fit_note
-  }));
-}
-
-export async function readTallyEvents({ driver }: SectionRead): Promise<ArchiveTallyEvent[]> {
-  const rows = await driver.query<{ uuid: string; epoch_day: number; kind: string }>(
-    'SELECT uuid, epoch_day, kind FROM tally_event ORDER BY epoch_day, id'
-  );
-  return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, kind: r.kind }));
-}
-
-export async function readSideEffects({ driver }: SectionRead): Promise<ArchiveSideEffect[]> {
-  const rows = await driver.query<{ uuid: string; name: string; severity: number; epoch_day: number }>(
-    'SELECT uuid, name, severity, epoch_day FROM side_effect ORDER BY epoch_day, id'
-  );
-  return rows.map((r) => ({ id: r.uuid, name: r.name, severity: r.severity, epochDay: r.epoch_day }));
-}
-
-export async function readCycleEvents({ driver }: SectionRead): Promise<ArchiveCycleEvent[]> {
-  const rows = await driver.query<{ uuid: string; kind: string; epoch_day: number }>(
-    'SELECT uuid, kind, epoch_day FROM cycle_event ORDER BY epoch_day, id'
-  );
-  return rows.map((r) => ({ id: r.uuid, kind: r.kind, epochDay: r.epoch_day }));
-}
-
-export async function readJournalingPauses({ driver }: SectionRead): Promise<ArchiveJournalingPause[]> {
-  const rows = await driver.query<{ uuid: string; start_epoch_day: number; end_epoch_day: number | null }>(
-    'SELECT uuid, start_epoch_day, end_epoch_day FROM journaling_pause ORDER BY start_epoch_day, id'
-  );
-  return rows.map((r) => ({ id: r.uuid, startEpochDay: r.start_epoch_day, endEpochDay: r.end_epoch_day }));
 }
 
 export async function readCounterevidenceSnapshots({ driver }: SectionRead): Promise<ArchiveCounterevidenceSnapshot[]> {
@@ -455,25 +369,11 @@ export async function readCounterevidenceSnapshots({ driver }: SectionRead): Pro
   }));
 }
 
-export async function readLetters({ driver }: SectionRead): Promise<ArchiveLetter[]> {
-  const rows = await driver.query<{ uuid: string; epoch_day: number; text: string; unlock_epoch_day: number }>(
-    'SELECT uuid, epoch_day, text, unlock_epoch_day FROM letter ORDER BY epoch_day, id'
-  );
-  return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, text: r.text, unlockEpochDay: r.unlock_epoch_day }));
-}
-
 export async function readRoadmapChecks({ driver }: SectionRead): Promise<ArchiveRoadmapCheck[]> {
   const rows = await driver.query<{ pack_key: string; goal_key: string; status: string }>(
     'SELECT pack_key, goal_key, status FROM roadmap_check ORDER BY pack_key, goal_key'
   );
   return rows.map((r) => ({ packKey: r.pack_key, goalKey: r.goal_key, status: r.status }));
-}
-
-export async function readRoadmapGoals({ driver }: SectionRead): Promise<ArchiveRoadmapGoal[]> {
-  const rows = await driver.query<{ uuid: string; track: string; text: string; status: string }>(
-    'SELECT uuid, track, text, status FROM roadmap_goal ORDER BY id'
-  );
-  return rows.map((r) => ({ id: r.uuid, track: r.track, text: r.text, status: r.status }));
 }
 
 export async function readChecklists({ driver }: SectionRead): Promise<ArchiveChecklist[]> {
@@ -554,13 +454,6 @@ export async function readFeltSenseEntries({ driver }: SectionRead): Promise<Arc
   }));
 }
 
-export async function readPersonalEffects({ driver }: SectionRead): Promise<ArchivePersonalEffect[]> {
-  const rows = await driver.query<{ uuid: string; effect: string; first_noticed_epoch_day: number }>(
-    'SELECT uuid, effect, first_noticed_epoch_day FROM personal_effect ORDER BY effect'
-  );
-  return rows.map((r) => ({ id: r.uuid, effect: r.effect, firstNoticedEpochDay: r.first_noticed_epoch_day }));
-}
-
 export async function readEffectCategories({ driver }: SectionRead): Promise<ArchiveEffectCategory[]> {
   const rows = await driver.query<{ key: string; name: string; enabled: number }>(
     'SELECT key, name, enabled FROM effect_category ORDER BY id'
@@ -584,23 +477,6 @@ export async function readPersonalEffectTypes({ driver }: SectionRead): Promise<
     hidden: bool(r.hidden),
     categoryKey: r.category_key,
     direction: r.direction
-  }));
-}
-
-export async function readHairStages({ driver }: SectionRead): Promise<ArchiveHairStage[]> {
-  const rows = await driver.query<{
-    uuid: string;
-    epoch_day: number;
-    scale: string;
-    stage: string;
-    description: string;
-  }>('SELECT uuid, epoch_day, scale, stage, description FROM hair_stage ORDER BY epoch_day, id');
-  return rows.map((r) => ({
-    id: r.uuid,
-    epochDay: r.epoch_day,
-    scale: r.scale,
-    stage: r.stage,
-    description: r.description
   }));
 }
 
@@ -679,125 +555,6 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
   }));
 }
 
-export async function readReminders({ driver }: SectionRead): Promise<ArchiveReminder[]> {
-  const rows = await driver.query<{
-    uuid: string;
-    title: string;
-    type: string;
-    time: string;
-    recurrence: string | null;
-    interval: number | null;
-    anchor_epoch_day: number | null;
-    epoch_day: number | null;
-    enabled: number;
-    auto_source: string | null;
-  }>(
-    `SELECT uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source
-     FROM reminder ORDER BY id`
-  );
-  return rows.map((r) => ({
-    id: r.uuid,
-    title: r.title,
-    type: r.type,
-    time: r.time,
-    recurrence: r.recurrence,
-    interval: r.interval,
-    anchorEpochDay: r.anchor_epoch_day,
-    epochDay: r.epoch_day,
-    enabled: bool(r.enabled),
-    autoSource: r.auto_source
-  }));
-}
-
-export async function readMedicationStock({ driver }: SectionRead): Promise<ArchiveMedicationStock[]> {
-  const rows = await driver.query<{
-    uuid: string;
-    drug: string;
-    quantity: number;
-    unit: string;
-    recorded_epoch_day: number;
-    reminder_ever_created: number;
-    reminder_dismissed: number;
-  }>(
-    `SELECT uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed
-     FROM medication_stock ORDER BY drug`
-  );
-  return rows.map((r) => ({
-    id: r.uuid,
-    drug: r.drug,
-    quantity: r.quantity,
-    unit: r.unit,
-    recordedEpochDay: r.recorded_epoch_day,
-    reminderEverCreated: bool(r.reminder_ever_created),
-    reminderDismissed: bool(r.reminder_dismissed)
-  }));
-}
-
-export async function readRegimenEpisodes({ driver }: SectionRead): Promise<ArchiveRegimenEpisode[]> {
-  const rows = await driver.query<{
-    uuid: string;
-    drug: string;
-    ester: string | null;
-    dose: number;
-    dose_unit: string;
-    route: string;
-    interval: string;
-    start_epoch_day: number;
-    end_epoch_day: number | null;
-  }>(
-    `SELECT uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day
-     FROM regimen_episode ORDER BY start_epoch_day, id`
-  );
-  return rows.map((r) => ({
-    id: r.uuid,
-    drug: r.drug,
-    ester: r.ester,
-    dose: r.dose,
-    doseUnit: r.dose_unit,
-    route: r.route,
-    interval: r.interval,
-    startEpochDay: r.start_epoch_day,
-    endEpochDay: r.end_epoch_day
-  }));
-}
-
-export async function readDoseEvents({ driver }: SectionRead): Promise<ArchiveDoseEvent[]> {
-  const rows = await driver.query<{
-    uuid: string;
-    timestamp: number;
-    route: string;
-    dose: number;
-    dose_unit: string;
-    injection_site: string | null;
-    vehicle: string | null;
-    application_site: string | null;
-    status: string;
-    scheduled_dose: number | null;
-    scheduled_route: string | null;
-    scheduled_timestamp: number | null;
-    drug: string | null;
-  }>(
-    `SELECT uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-            status, scheduled_dose, scheduled_route, scheduled_timestamp, drug
-       FROM dose_event ORDER BY timestamp, id`
-  );
-  return rows.map((r) => ({
-    id: r.uuid,
-    timestamp: r.timestamp,
-    route: r.route,
-    dose: r.dose,
-    doseUnit: r.dose_unit,
-    injectionSite: r.injection_site,
-    vehicle: r.vehicle,
-    applicationSite: r.application_site,
-    status: r.status,
-    scheduledDose: r.scheduled_dose,
-    scheduledRoute: r.scheduled_route,
-    scheduledTimestamp: r.scheduled_timestamp,
-    drug: r.drug
-  }));
-}
-
 /* Joined to the episode rather than carrying `episode_id`: a rowid is
    this device's alone (ADR-0002), and the uuid is what the importing
    device can match an episode by. */
@@ -862,20 +619,5 @@ export async function readDosePauses({ driver }: SectionRead): Promise<ArchiveDo
     startEpochDay: r.start_epoch_day,
     endEpochDay: r.end_epoch_day,
     reason: r.reason
-  }));
-}
-
-export async function readWearSessions({ driver }: SectionRead): Promise<ArchiveWearSession[]> {
-  const rows = await driver.query<{
-    uuid: string;
-    start_timestamp: number;
-    duration_ms: number | null;
-    note: string | null;
-  }>('SELECT uuid, start_timestamp, duration_ms, note FROM wear_session ORDER BY start_timestamp, id');
-  return rows.map((r) => ({
-    id: r.uuid,
-    startTimestamp: r.start_timestamp,
-    durationMs: r.duration_ms,
-    note: r.note
   }));
 }

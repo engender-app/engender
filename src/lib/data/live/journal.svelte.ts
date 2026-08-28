@@ -34,7 +34,7 @@
    `tests/browser-tier/live-reads-probe.svelte.ts` for the dependency
    resolution, which needs a real scheduler to be seen re-running at all. */
 
-import { observeWrites, tablesReadBy, type TableName } from './writes';
+import { JOURNAL_WIDE, observeWrites, tablesReadBy, type TableName } from './writes';
 import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './readState';
 import type { Journal } from '../journal/journal';
 import { bump, versionOf } from './tableVersions.svelte';
@@ -112,9 +112,16 @@ function facadeFor(areaName: string): unknown {
     journal itself, so a call site looks the way it did when it was calling a
     repository function. */
 export const journal: Journal = new Proxy({} as Journal, {
-  get(_target, area: string) {
-    if (area === 'reconcileBuiltIns') return () => opened.then((ready) => ready.reconcileBuiltIns());
-    return facadeFor(area);
+  get(_target, name: string) {
+    // An operation on the journal itself, rather than an area of them: a
+    // function to await the boot and call, not something to build a facade of
+    // operations for. The list is writes.ts's, which needs the same
+    // distinction (JOURNAL_WIDE).
+    if ((JOURNAL_WIDE as readonly string[]).includes(name)) {
+      const operation = name as (typeof JOURNAL_WIDE)[number];
+      return () => opened.then((ready) => ready[operation]());
+    }
+    return facadeFor(name);
   }
 });
 

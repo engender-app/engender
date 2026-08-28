@@ -16,6 +16,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { readRowContext } from './archiveRead.ts';
 import {
   applyArchiveJournal,
+  discardStatements,
   emptyArchiveJournal,
   orderedSections,
   readArchiveJournal,
@@ -26,9 +27,10 @@ import {
 
 const CHEAP_KDF = { memorySize: 256, iterations: 1, parallelism: 1, hashLength: 32 };
 
-const stub = (name: string, after: readonly string[] = []): ArchiveSection => ({
+const stub = (name: string, after: readonly string[] = [], discard: readonly string[] = []): ArchiveSection => ({
   name,
   after,
+  discard,
   read: async () => [],
   apply: async () => {}
 });
@@ -121,6 +123,7 @@ test('a section added to the registry travels in a packed archive and comes back
         'SELECT epoch_day, phase FROM moon_phase ORDER BY epoch_day'
       );
     },
+    discard: ['DELETE FROM moon_phase'],
     async apply({ driver, journal }) {
       const rows = (journal as unknown as Record<string, { epoch_day: number; phase: string }[]>).moonPhases;
       for (const row of rows) {
@@ -166,4 +169,115 @@ test('a section added to the registry travels in a packed archive and comes back
       [20007, 'full']
     ]
   );
+});
+
+/* Emptying the journal, derived rather than maintained. It used to be 51
+   statements hand-ordered in restore.ts, children before parents, four of
+   them conditional - a list that had to be re-read against the schema every
+   time an area was added, and that the demo kept a second copy of, reaching
+   seven of the thirty-six sections. */
+test('a section clears before the one it inserts after, so the rows it points at are still there', () => {
+  const statements = discardStatements([
+    stub('episodes', [], ['DELETE FROM episode']),
+    stub('schedules', ['episodes'], ['DELETE FROM schedule_weekday', 'DELETE FROM schedule'])
+  ]);
+
+  assert.deepEqual(statements, ['DELETE FROM schedule_weekday', 'DELETE FROM schedule', 'DELETE FROM episode']);
+});
+
+test('a section with no constraint clears in the reverse of the order it was declared in', () => {
+  const statements = discardStatements([
+    stub('letters', [], ['DELETE FROM letter']),
+    stub('stock', [], ['DELETE FROM medication_stock'])
+  ]);
+
+  assert.deepEqual(statements, ['DELETE FROM medication_stock', 'DELETE FROM letter']);
+});
+
+/** Which table each statement empties, however it is qualified. */
+const tableOf = (statement: string): string => {
+  const named = /^DELETE FROM (\w+)/.exec(statement);
+  assert.ok(named, `a discard statement that is not a DELETE of one table: ${statement}`);
+  return named[1];
+};
+
+/* Tables emptying the journal deliberately leaves alone, each for a reason
+   that is not "nobody got round to it". `effect_category` is built-in only -
+   no custom-category creation is asked for - so it has no user rows to
+   remove, the same as every other reference table's built-in half. `pref` is
+   not the journal's at all (ADR-0003), which is what leaves the PIN, the
+   app-lock flags and the disguise settings in place through the most
+   destructive path in the app. `entry_fts` and its shadow tables are the
+   search index: migration v3's trigger drops an index row with its entry.
+   `sqlite_sequence` is SQLite's own AUTOINCREMENT bookkeeping. */
+const EMPTIED_BY_NOTHING = [
+  'effect_category',
+  'pref',
+  'entry_fts',
+  'entry_fts_config',
+  'entry_fts_data',
+  'entry_fts_docsize',
+  'entry_fts_idx',
+  'sqlite_sequence'
+];
+
+/* The oracle for "a new area cannot be silently left behind": a table added
+   to the schema and not named by any section's discard fails here, which is
+   the failure the hand-ordered list could not produce. Written against
+   sqlite_master rather than against the registry, so the two are independent
+   - the same shape archive.test.ts's carried-column oracle has. */
+test('every table in the schema is emptied by a section, or listed as one nothing empties', async () => {
+  const driver = await migratedDb();
+  const tables = await driver.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'");
+
+  const emptiedBy = new Map<string, { section: string; statement: string }[]>();
+  for (const section of ARCHIVE_SECTIONS) {
+    for (const statement of section.discard) {
+      const table = tableOf(statement);
+      emptiedBy.set(table, [...(emptiedBy.get(table) ?? []), { section: section.name, statement }]);
+    }
+  }
+
+  for (const { name } of tables) {
+    const owners = emptiedBy.get(name) ?? [];
+    if (owners.length === 0) {
+      assert.ok(
+        EMPTIED_BY_NOTHING.includes(name),
+        `${name} is emptied by no section and is not listed as one nothing empties`
+      );
+      continue;
+    }
+    /* One table can be shared, and `photo` is: entry-owned and
+       milestone-owned rows in one table, with the schema's CHECK guaranteeing
+       exactly one owner per row. What a shared table may not have is an
+       unqualified statement, which would be one section emptying rows another
+       section owns. */
+    if (new Set(owners.map((o) => o.section)).size > 1) {
+      for (const owner of owners) {
+        assert.match(
+          owner.statement,
+          / WHERE /,
+          `${name} is emptied by ${owners.map((o) => o.section).join(' and ')}, and ${owner.section} takes the whole table`
+        );
+      }
+    }
+  }
+
+  const schema = new Set(tables.map((t) => t.name));
+  for (const table of emptiedBy.keys()) {
+    assert.ok(schema.has(table), `a discard statement names ${table}, which the schema does not have`);
+  }
+  for (const table of EMPTIED_BY_NOTHING) {
+    assert.ok(schema.has(table), `${table} is listed as emptied by nothing but is not in the schema any more`);
+  }
+});
+
+/* Not "every section has a statement": one legitimately has none, and a list
+   of exceptions is the thing that rots. This asserts the shape of what is
+   declared instead - a statement that is anything but a DELETE of one table
+   would break both the oracle above and the reverse ordering below it. */
+test('every section declares its discard as plain single-table deletes', () => {
+  for (const section of ARCHIVE_SECTIONS) {
+    for (const statement of section.discard) assert.ok(tableOf(statement));
+  }
 });

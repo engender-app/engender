@@ -52,6 +52,7 @@ import { makeVideoArea, type VideoArea } from './videoNotes';
 import { makeVoiceArea, type VoiceArea } from './voiceRecordings';
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
 import { reconcileBuiltIns } from './reconcile';
+import { discardJournalRows } from './restore';
 
 /** Where photo files live. The journal owns the rows; whoever owns the
     bytes implements this, so the rules about files - a delete takes them
@@ -263,6 +264,18 @@ export interface Journal {
       nothing else - safe on every boot and again before ticket 14's
       Replace import applies. */
   reconcileBuiltIns(): Promise<void>;
+  /** Every journal row gone, in one operation the section registry orders
+      (archiveSections.ts, phase 5 ticket 13). The same thing a Replace import
+      does before it installs an archive's rows, which is why it is one
+      operation and not a list each caller walks: the demo bar's state jumps
+      used to walk seven areas of their own, out of the thirty-six an archive
+      carries.
+
+      Leaves the built-in vocabulary and preferences alone, exactly as a
+      Replace does (restore.ts's discardJournalRows). Deletes no photo file
+      either - the rows go, and the next boot's orphan sweep reclaims what
+      they named (photos.ts). */
+  discardEverything(): Promise<void>;
 }
 
 export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journal {
@@ -322,6 +335,9 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     correlationCards: makeCorrelationCardsArea(stats, doses, dimensions),
     intervalMoodPattern: makeIntervalMoodPatternArea(stats, doses),
     archive: makeArchiveArea(driver, files),
-    reconcileBuiltIns: () => reconcileBuiltIns(driver)
+    reconcileBuiltIns: () => reconcileBuiltIns(driver),
+    discardEverything: async () => {
+      await driver.transaction(() => discardJournalRows(driver));
+    }
   };
 }
