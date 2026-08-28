@@ -11,6 +11,7 @@
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { GOAL_ACHIEVEMENT_DAYS, GOAL_TARGET_PRESETS, goalProgress, reachedAchievements } from '$lib/data/streakGoal';
+  import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -86,9 +87,21 @@
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.streak_goal_achievements_intro()}</p>
   <ListCard>
     {#each GOAL_ACHIEVEMENT_DAYS as days (days)}
+      <!-- A spacer rather than omitting `leading` outright when unreached:
+           the row's own icon column is what the old .row-icon span (empty
+           but still a flex item) kept reserved so every title lined up
+           under the next one's disc, and ListRow draws no leading element
+           at all for a row with no icon (ticket 18). -->
+      {#snippet achievementIcon()}
+        {#if reached.has(days)}
+          <span class="kit-row-ico"><Icon name="sparkle" size={20} /></span>
+        {:else}
+          <span class="achievement-ico-spacer" aria-hidden="true"></span>
+        {/if}
+      {/snippet}
       <ListRow
         static
-        icon={reached.has(days) ? 'sparkle' : undefined}
+        leading={achievementIcon}
         title={m.n_days({ n: days })}
         data-unreached={reached.has(days) ? undefined : 'true'}
       />
@@ -117,5 +130,11 @@
   :global(.kit-row[data-unreached] .kit-row-title) {
     color: var(--text-2);
     font-weight: var(--weight-regular);
+  }
+  /* Same width as .kit-row-ico (kit.css), so a row with no badge yet still
+     lines its title up under the ones that have one. */
+  .achievement-ico-spacer {
+    flex: 0 0 auto;
+    width: 36px;
   }
 </style>
