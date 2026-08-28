@@ -10,7 +10,7 @@
   import { daysSinceLastSession } from '$lib/data/hairRemovalSchedule';
   import { HAIR_REMOVAL_AREAS } from '$lib/data/hairRemovalAreas';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { HairRemovalSession, HairRemovalMethod } from '$lib/data/types';
   import { HAIR_REMOVAL_METHODS } from '$lib/data/types';
   import type { HairRemovalPhoto } from '$lib/data/journal/hairRemoval';
@@ -22,6 +22,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -65,7 +66,7 @@
     async upsert(draft) {
       await journal.hairRemoval.upsertSession({
         id: draft.id,
-        epochDay: epochDayFromDateInputValue(draft.date) ?? today,
+        epochDay: epochDayFromDateInputValueOrToday(draft.date),
         area: draft.area,
         method: draft.method,
         painRating: Number(draft.painRating),
@@ -181,56 +182,62 @@
     }}
   >
     {#snippet fields(draft)}
-      <div class="field">
-        <label class="field-label" for="hair-removal-date">{m.hair_removal_date_label()}</label>
-        <input class="input" type="date" id="hair-removal-date" name="hair-removal-date" bind:value={draft.date} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="hair-removal-area">{m.hair_removal_area_label()}</label>
-        <select class="input" id="hair-removal-area" bind:value={draft.area}>
-          {#each HAIR_REMOVAL_AREAS as area (area)}
-            <option value={area}>{hairRemovalAreaName(area)}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="field">
-        <span class="field-label">{m.hair_removal_method_label()}</span>
-        <Segmented
-          name={m.hair_removal_method_label()}
-          options={HAIR_REMOVAL_METHODS.map((method) => ({ value: method, label: hairRemovalMethodName(method) }))}
-          value={draft.method}
-          onChange={(v) => (draft.method = v as HairRemovalMethod)}
-        />
-      </div>
-      <div class="field">
-        <span class="field-label">{m.hair_removal_pain_label()}</span>
-        <Segmented
-          name={m.hair_removal_pain_label()}
-          options={PAIN_RATINGS.map((v) => ({ value: String(v), label: severityName(v) }))}
-          value={draft.painRating}
-          onChange={(v) => (draft.painRating = v)}
-        />
-      </div>
-      <div class="field">
-        <label class="field-label" for="hair-removal-cost">{m.hair_removal_cost_label()}</label>
-        <input
-          class="input"
-          id="hair-removal-cost"
-          name="hair-removal-cost"
-          placeholder={m.hair_removal_cost_placeholder()}
-          bind:value={draft.cost}
-        />
-      </div>
-      <div class="field">
-        <label class="field-label" for="hair-removal-provider">{m.hair_removal_provider_label()}</label>
-        <input
-          class="input"
-          id="hair-removal-provider"
-          name="hair-removal-provider"
-          placeholder={m.hair_removal_provider_placeholder()}
-          bind:value={draft.provider}
-        />
-      </div>
+      <Field label={m.hair_removal_date_label()} id="hair-removal-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="hair-removal-date" bind:value={draft.date} />
+        {/snippet}
+      </Field>
+      <Field label={m.hair_removal_area_label()} id="hair-removal-area">
+        {#snippet children(id)}
+          <select class="input" {id} bind:value={draft.area}>
+            {#each HAIR_REMOVAL_AREAS as area (area)}
+              <option value={area}>{hairRemovalAreaName(area)}</option>
+            {/each}
+          </select>
+        {/snippet}
+      </Field>
+      <Field label={m.hair_removal_method_label()} legend>
+        {#snippet children()}
+          <Segmented
+            name={m.hair_removal_method_label()}
+            options={HAIR_REMOVAL_METHODS.map((method) => ({ value: method, label: hairRemovalMethodName(method) }))}
+            value={draft.method}
+            onChange={(v) => (draft.method = v as HairRemovalMethod)}
+          />
+        {/snippet}
+      </Field>
+      <Field label={m.hair_removal_pain_label()} legend>
+        {#snippet children()}
+          <Segmented
+            name={m.hair_removal_pain_label()}
+            options={PAIN_RATINGS.map((v) => ({ value: String(v), label: severityName(v) }))}
+            value={draft.painRating}
+            onChange={(v) => (draft.painRating = v)}
+          />
+        {/snippet}
+      </Field>
+      <Field label={m.hair_removal_cost_label()} id="hair-removal-cost">
+        {#snippet children(id)}
+          <input
+            class="input"
+            {id}
+            name="hair-removal-cost"
+            placeholder={m.hair_removal_cost_placeholder()}
+            bind:value={draft.cost}
+          />
+        {/snippet}
+      </Field>
+      <Field label={m.hair_removal_provider_label()} id="hair-removal-provider">
+        {#snippet children(id)}
+          <input
+            class="input"
+            {id}
+            name="hair-removal-provider"
+            placeholder={m.hair_removal_provider_placeholder()}
+            bind:value={draft.provider}
+          />
+        {/snippet}
+      </Field>
 
       <SectionHeading text={m.hair_removal_photo_section_title()} />
       {#if !draft.id}

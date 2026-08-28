@@ -16,7 +16,7 @@
   import { hairScaleName, hairScaleSub, hairStageName } from '$lib/data/vocabulary/labels';
   import { HAIR_SCALES, gradesOfScale, isGradedScale, stagesByScale } from '$lib/data/hairStageScales';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { HairStage } from '$lib/data/types';
   import type { HairPhoto } from '$lib/data/journal/hairProgress';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
@@ -28,6 +28,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -131,7 +132,7 @@
       if (!draft.scale) return false;
       await journal.hairProgress.upsertStage({
         id: draft.id,
-        epochDay: epochDayFromDateInputValue(draft.date) ?? today,
+        epochDay: epochDayFromDateInputValueOrToday(draft.date),
         scale: draft.scale,
         stage: draft.stage,
         description: draft.description
@@ -331,10 +332,11 @@
     {#if anchorEditor !== null}
       <h3>{m.hair_anchor_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_anchor_sheet_hint()}</p>
-      <div class="field">
-        <label class="field-label" for="hair-anchor-date">{m.hair_anchor_date_label()}</label>
-        <input class="input" type="date" id="hair-anchor-date" name="hair-anchor-date" bind:value={anchorEditor} />
-      </div>
+      <Field label={m.hair_anchor_date_label()} id="hair-anchor-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="hair-anchor-date" bind:value={anchorEditor!} />
+        {/snippet}
+      </Field>
       <div class="stack-3">
         <button class="btn btn-primary" data-save-hair-anchor onclick={saveAnchor}><span>{m.hair_anchor_save()}</span></button>
         {#if anchorIsUserSet}
@@ -361,60 +363,65 @@
     }}
   >
     {#snippet fields(stageEditor)}
-      <div class="field">
-        <label class="field-label" for="hair-stage-date">{m.hair_stage_date_label()}</label>
-        <input class="input" type="date" id="hair-stage-date" name="hair-stage-date" bind:value={stageEditor.date} />
-      </div>
-      <div class="field">
-        <span class="field-label" id="hair-scale-label">{m.hair_scale_label()}</span>
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
-          <div role="radiogroup" aria-labelledby="hair-scale-label">
-            {#each HAIR_SCALES as scale (scale)}
-              <button
-                class="kit-row"
-                role="radio"
-                aria-checked={stageEditor.scale === scale}
-                data-pick-scale={scale}
-                onclick={() => pickScale(stageEditor, scale)}
-              >
-                <span class="kit-row-text">
-                  <span class="kit-row-title">{hairScaleName(scale)}</span>
-                  <span class="kit-row-sub">{hairScaleSub(scale)}</span>
-                </span>
-                <span class="kit-row-trail">
-                  {#if stageEditor.scale === scale}<Icon name="check" size={20} />{/if}
-                </span>
-              </button>
-            {/each}
-          </div>
-        </ListCard>
-      </div>
+      <Field label={m.hair_stage_date_label()} id="hair-stage-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="hair-stage-date" bind:value={stageEditor.date} />
+        {/snippet}
+      </Field>
+      <Field label={m.hair_scale_label()} legend>
+        {#snippet children(id)}
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
+            <div role="radiogroup" aria-labelledby={id}>
+              {#each HAIR_SCALES as scale (scale)}
+                <button
+                  class="kit-row"
+                  role="radio"
+                  aria-checked={stageEditor.scale === scale}
+                  data-pick-scale={scale}
+                  onclick={() => pickScale(stageEditor, scale)}
+                >
+                  <span class="kit-row-text">
+                    <span class="kit-row-title">{hairScaleName(scale)}</span>
+                    <span class="kit-row-sub">{hairScaleSub(scale)}</span>
+                  </span>
+                  <span class="kit-row-trail">
+                    {#if stageEditor.scale === scale}<Icon name="check" size={20} />{/if}
+                  </span>
+                </button>
+              {/each}
+            </div>
+          </ListCard>
+        {/snippet}
+      </Field>
       {#if stageEditor.scale}
         {@const scale = stageEditor.scale}
         <div class="disclosed" transition:disclose>
           {#if isGradedScale(scale)}
-            <div class="field">
-              <label class="field-label" for="hair-stage-value">{m.hair_stage_label()}</label>
-              <select class="input" id="hair-stage-value" bind:value={stageEditor.stage}>
-                {#each gradesOfScale(scale) as grade (grade)}
-                  <option value={grade}>{hairStageName(scale, grade)}</option>
-                {/each}
-              </select>
-            </div>
+            <Field label={m.hair_stage_label()} id="hair-stage-value">
+              {#snippet children(id)}
+                <select class="input" {id} bind:value={stageEditor.stage}>
+                  {#each gradesOfScale(scale) as grade (grade)}
+                    <option value={grade}>{hairStageName(scale, grade)}</option>
+                  {/each}
+                </select>
+              {/snippet}
+            </Field>
           {:else}
-            <div class="field">
-              <label class="field-label" for="hair-other-value">{m.hair_other_label()}</label>
-              <input
-                class="input"
-                id="hair-other-value"
-                name="hair-other-value"
-                placeholder={m.hair_other_placeholder()}
-                bind:value={stageEditor.description}
-              />
-            </div>
+            <Field label={m.hair_other_label()} id="hair-other-value">
+              {#snippet children(id)}
+                <input
+                  class="input"
+                  {id}
+                  name="hair-other-value"
+                  placeholder={m.hair_other_placeholder()}
+                  bind:value={stageEditor.description}
+                />
+              {/snippet}
+            </Field>
           {/if}
         </div>
-      {/if}    {/snippet}
+      {/if}
+    {/snippet}
   </RecordSheet>
 
   <RecordSheet
