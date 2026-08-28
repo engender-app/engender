@@ -24,6 +24,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -384,12 +385,7 @@
       </div>
       <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.regimen_end_hint()}</p>
       {#if editor.id}
-        <!-- Not a Field: this heading names the schedule group below it
-             (ticket 10), not a control of its own. -->
-        <div class="field">
-          <span class="field-label">{m.regimen_schedule_legend()}</span>
-          <p class="muted small">{m.regimen_schedule_hint()}</p>
-        </div>
+        <FieldGroupHeading legend={m.regimen_schedule_legend()} hint={m.regimen_schedule_hint()} />
         {#if schedule}
           <div class="disclosed" transition:disclose>
             <Field label={m.regimen_schedule_kind_label()} legend>
@@ -460,11 +456,7 @@
               {/snippet}
             </Field>
 
-            <!-- Not a Field either: names the amounts list below it. -->
-            <div class="field">
-              <span class="field-label">{m.regimen_schedule_amounts_legend()}</span>
-              <p class="muted small">{m.regimen_schedule_amounts_hint()}</p>
-            </div>
+            <FieldGroupHeading legend={m.regimen_schedule_amounts_legend()} hint={m.regimen_schedule_amounts_hint()} />
             {#if schedule.doseAmounts.length}
               <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
                 {#each schedule.doseAmounts as amount, index (index)}
@@ -527,11 +519,7 @@
           </div>
         {/if}
 
-        <!-- Not a Field: names the pause history list below it. -->
-        <div class="field">
-          <span class="field-label">{m.regimen_pauses_legend()}</span>
-          <p class="muted small">{m.regimen_pauses_hint()}</p>
-        </div>
+        <FieldGroupHeading legend={m.regimen_pauses_legend()} hint={m.regimen_pauses_hint()} />
         {#if editorPauses.length}
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
             {#each editorPauses as pause (pause.id)}
