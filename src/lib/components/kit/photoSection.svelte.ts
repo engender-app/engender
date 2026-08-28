@@ -14,7 +14,7 @@ import type { NormalizedPhoto } from '$lib/data/journal/photos';
 import type { ReferencePhoto } from '$lib/stores/photoPicking';
 import { pickPhotos } from '$lib/stores/photoPicking';
 import { photoReview } from '$lib/stores/photoReview.svelte';
-import { findPhotoById, pickedPhoto } from './photoSection';
+import { addPickedPhoto, findPhotoById } from './photoSection';
 import { recordEditor } from './recordEditor.svelte';
 
 export interface PhotoSectionOptions<TPhoto extends { id: string }> {
@@ -39,8 +39,7 @@ export function photoSection<TPhoto extends { id: string }>(options: PhotoSectio
   const review = photoReview(options.reference, options.add);
 
   async function pick() {
-    const photo = pickedPhoto(await pickPhotos(1));
-    if (photo) await options.add(photo);
+    await addPickedPhoto(await pickPhotos(1), options.add);
   }
 
   return {

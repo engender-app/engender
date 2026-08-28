@@ -29,3 +29,14 @@ export function lastPhotoReference<TPhoto extends { fileName: string }>(
 export function pickedPhoto<TPhoto>(picked: TPhoto[]): TPhoto | null {
   return picked[0] ?? null;
 }
+
+/** What `pick()` does with whatever the device picker returned: store it
+    against the owner unless the person backed out. The add path, decoupled
+    from the device call so a fake owner can stand in for it. */
+export async function addPickedPhoto<TPhoto>(
+  picked: TPhoto[],
+  add: (photo: TPhoto) => void | Promise<void>
+): Promise<void> {
+  const photo = pickedPhoto(picked);
+  if (photo) await add(photo);
+}

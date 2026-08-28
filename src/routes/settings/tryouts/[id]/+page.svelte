@@ -363,6 +363,4 @@
       cancelLabel: m.keep_it()
     }}
   />
-
-
 </div>
