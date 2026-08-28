@@ -29,10 +29,11 @@ import { persona } from './persona';
 
     Which rows and in what order is the journal's own answer now
     (`discardEverything`, phase 5 audit ticket 13), not a second one written
-    here. The walk this replaced covered seven areas and silently left doses,
-    regimen, side effects, procedures, letters, roadmap and checklists behind:
-    a copy of a hand-ordered list, thirty tables out of date, which is what
-    drift looks like when nothing guards it.
+    here. The walk this replaced covered seven of the thirty-six sections an
+    archive carries, and silently left doses, regimen, side effects,
+    procedures, letters, roadmap and checklists among the rest - a second copy
+    of a hand-ordered list, which is what drift looks like when nothing guards
+    it.
 
     The entry and milestone photos still go through the journal first, and
     that is the one thing this function adds: `discardEverything` deletes no

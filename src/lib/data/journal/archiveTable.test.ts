@@ -16,7 +16,7 @@ import type { SqliteDriver } from '../sqlite/driver.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { readFlatTable, type SectionRead } from './archiveRead.ts';
 import { applyFlatTable } from './archiveApply.ts';
-import type { FlatTable } from './archiveTable.ts';
+import { identityFieldOf, type FlatTable } from './archiveTable.ts';
 
 type MoonPhase = { id: string; epochDay: number; phase: string; waxing: boolean; note: string };
 
@@ -55,10 +55,10 @@ async function tableWithRows(rows: [string, number, string, number, string | nul
 const reading = (driver: SqliteDriver): SectionRead =>
   ({ driver, photos: [], recordings: [], videos: [], hairPhotos: [], hairRemovalPhotos: [], procedurePhotos: [], tryoutPhotos: [] });
 
-const restoring = (driver: SqliteDriver, rows: unknown[]) => ({
+const restoring = (driver: SqliteDriver) => ({
   driver,
   mode: 'replace' as const,
-  journal: { moonPhases: rows } as unknown as ArchiveJournal,
+  journal: {} as ArchiveJournal,
   ts: 7
 });
 
@@ -85,9 +85,9 @@ test('the declared columns are what the read carries, in the order it declares t
 test('the same declaration writes the rows back, stamped with the import clock', async () => {
   const driver = await tableWithRows([]);
 
-  await applyFlatTable('moonPhases', MOON_PHASE, restoring(driver, [
+  await applyFlatTable(MOON_PHASE, [
     { id: 'm-1', epochDay: 20000, phase: 'waxing', waxing: true, note: 'thin' }
-  ]));
+  ], restoring(driver));
 
   assert.deepEqual(
     (await landed(driver)).map((row) => [row.uuid, row.epoch_day, row.phase, row.waxing, row.note, row.updated_at]),
@@ -98,10 +98,10 @@ test('the same declaration writes the rows back, stamped with the import clock',
 test('a row the identity column already holds is left as it is rather than duplicated', async () => {
   const driver = await tableWithRows([['m-1', 20000, 'waxing', 1, 'as recorded here']]);
 
-  await applyFlatTable('moonPhases', MOON_PHASE, restoring(driver, [
+  await applyFlatTable(MOON_PHASE, [
     { id: 'm-1', epochDay: 20000, phase: 'gibbous', waxing: false, note: 'as the archive has it' },
     { id: 'm-2', epochDay: 20007, phase: 'full', waxing: false, note: '' }
-  ]));
+  ], restoring(driver));
 
   assert.deepEqual(
     (await landed(driver)).map((row) => [row.uuid, row.phase, row.note]),
@@ -119,12 +119,26 @@ test('a row the identity column already holds is left as it is rather than dupli
 test('a field an older archive never carried is written from what the column declares', async () => {
   const driver = await tableWithRows([]);
 
-  await applyFlatTable('moonPhases', MOON_PHASE, restoring(driver, [
-    { id: 'm-1', epochDay: 20000, phase: 'waxing', waxing: true }
-  ]));
+  await applyFlatTable(MOON_PHASE, [
+    // No `note` at all, the way an archive written before the column
+    // existed carries the row.
+    { id: 'm-1', epochDay: 20000, phase: 'waxing', waxing: true } as MoonPhase
+  ], restoring(driver));
 
   assert.deepEqual(
     (await landed(driver)).map((row) => row.note),
     ['']
+  );
+});
+
+/* `flat` in the registry constrains `identity` to a declared column at the
+   declaration site, so this is only reachable through a descriptor built by
+   hand - and it has to throw rather than resolve to nothing, because matching
+   every row against an undefined field would insert the whole section again
+   over rows already there. */
+test('a descriptor identified by a column it does not declare is refused rather than matching nothing', () => {
+  assert.throws(
+    () => identityFieldOf({ table: 'moon_phase', identity: 'guid', orderBy: 'id', columns: { uuid: 'id' } }),
+    /identified by guid/
   );
 });

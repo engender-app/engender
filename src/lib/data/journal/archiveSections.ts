@@ -104,7 +104,7 @@ function flat<
     // makes it flat - so emptying it needs nothing declared here either.
     discard: [`DELETE FROM ${declared.table}`],
     read: (reading: SectionRead) => read.readFlatTable(table, reading),
-    apply: (restoring: Restoring) => apply.applyFlatTable(declared.name, table, restoring)
+    apply: (restoring: Restoring) => apply.applyFlatTable(table, restoring.journal[declared.name], restoring)
   };
 }
 
@@ -410,6 +410,7 @@ const SECTIONS = [
     read: read.readCounterevidenceSnapshots,
     apply: apply.applyCounterevidenceSnapshots
   }),
+
   flat({
     name: 'letters',
     table: 'letter',
@@ -626,9 +627,9 @@ export function orderedSections(sections: readonly ArchiveSection[] = ARCHIVE_SE
     What makes this derived rather than maintained is that each section owns
     its own statements - the 51 that used to be hand-ordered in restore.ts
     named tables no section admitted to, and the demo kept a second copy of
-    the list that had drifted by thirty of them. The registry now supplies
-    both the statements and their order, and its oracle checks them against
-    the schema table by table (archiveSections.test.ts).
+    the list that reached only seven of the thirty-six sections. The registry
+    now supplies both the statements and their order, and its oracle checks
+    them against the schema table by table (archiveSections.test.ts).
 
     The reverse of the insert order, specifically, because that is the order
     that stays correct as statements get more particular. A section that

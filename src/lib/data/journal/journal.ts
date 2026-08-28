@@ -268,7 +268,8 @@ export interface Journal {
       (archiveSections.ts, phase 5 ticket 13). The same thing a Replace import
       does before it installs an archive's rows, which is why it is one
       operation and not a list each caller walks: the demo bar's state jumps
-      used to walk seven areas of their own and left twenty-nine behind.
+      used to walk seven areas of their own, out of the thirty-six an archive
+      carries.
 
       Leaves the built-in vocabulary and preferences alone, exactly as a
       Replace does (restore.ts's discardJournalRows). Deletes no photo file

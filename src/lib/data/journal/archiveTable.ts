@@ -19,24 +19,31 @@
    its reasoning where the behaviour is. */
 
 /** How one column travels. The bare string is the common case: the field it
-    is read into and written out of, straight through. */
+    is read into and written out of, straight through.
+
+    Written as a union over the row's own fields rather than one shape with a
+    `keyof Row` field, so that the two defaults are typed against the field
+    they stand in for - `whenAbsent: 'norwood_hamilton'` on a `number` field
+    is a compile error, and so is a typo'd field name. */
 export type FlatColumn<Row> =
   | (keyof Row & string)
   | {
-      field: keyof Row & string;
-      /** A 0/1 integer column that travels as a boolean. */
-      bool?: true;
-      /** What the column is written from when the archive does not carry the
-          field at all - a row written by a build from before the field
-          existed. Binding `undefined` is not a soft failure: node:sqlite
-          refuses it with a raw driver error, so a field added after an area
-          shipped needs this. */
-      whenAbsent?: unknown;
-      /** What a NULL in the column is read as, where the wire type is
-          narrower than the column - a nullable TEXT that travels as a
-          string. */
-      whenNull?: unknown;
-    };
+      [Field in keyof Row & string]: {
+        field: Field;
+        /** A 0/1 integer column that travels as a boolean. */
+        bool?: true;
+        /** What the column is written from when the archive does not carry the
+            field at all - a row written by a build from before the field
+            existed. Binding `undefined` is not a soft failure: node:sqlite
+            refuses it with a raw driver error, so a field added after an area
+            shipped needs this. */
+        whenAbsent?: Row[Field];
+        /** What a NULL in the column is read as, where the wire type is
+            narrower than the column - a nullable TEXT that travels as a
+            string. */
+        whenNull?: Row[Field];
+      };
+    }[keyof Row & string];
 
 /** One flat area's table: read one query out of it, write rows back into it,
     and empty it, all from here. */
@@ -54,21 +61,43 @@ export interface FlatTable<Row> {
   orderBy: string;
 }
 
-/** The declaration in its long form, whichever form it was written in. */
-export function fieldOf<Row>(
-  declared: FlatColumn<Row>
-): { field: string; bool: boolean; whenAbsent: unknown; whenNull: unknown } {
-  if (typeof declared === 'string') {
-    return { field: declared, bool: false, whenAbsent: undefined, whenNull: undefined };
-  }
-  return {
-    field: declared.field,
-    bool: declared.bool === true,
-    whenAbsent: declared.whenAbsent,
-    whenNull: declared.whenNull
-  };
+/** One column with its declaration read out in full, whichever of the two
+    forms it was written in. */
+export interface DeclaredColumn {
+  column: string;
+  field: string;
+  bool: boolean;
+  whenAbsent: unknown;
+  whenNull: unknown;
 }
 
-/** Every column of the table, in declaration order, with its field. */
-export const columnsOf = <Row>(table: FlatTable<Row>): { column: string; field: FlatColumn<Row> }[] =>
-  Object.entries(table.columns).map(([column, field]) => ({ column, field }));
+/** Every column of the table, in declaration order. The one way in: both
+    directions walk this, so the SELECT, the row-to-field rename, the INSERT
+    list and the values it binds are all the same list in the same order. */
+export function columnsOf<Row>(table: FlatTable<Row>): DeclaredColumn[] {
+  return Object.entries(table.columns).map(([column, declared]) =>
+    typeof declared === 'string'
+      ? { column, field: declared, bool: false, whenAbsent: undefined, whenNull: undefined }
+      : {
+          column,
+          field: declared.field,
+          bool: declared.bool === true,
+          whenAbsent: declared.whenAbsent,
+          whenNull: declared.whenNull
+        }
+  );
+}
+
+/** The field the table's identity column travels as, which is what an
+    already-present row is matched by. Throws rather than guessing: `flat`
+    constrains `identity` to a declared column at the declaration site
+    (archiveSections.ts), but a descriptor built by hand can still name one
+    that is not there, and matching every row against `undefined` would insert
+    the whole section again. */
+export function identityFieldOf<Row>(table: FlatTable<Row>): string {
+  const identity = columnsOf(table).find((column) => column.column === table.identity);
+  if (!identity) {
+    throw new Error(`flat table ${table.table} is identified by ${table.identity}, which is not one of its columns`);
+  }
+  return identity.field;
+}

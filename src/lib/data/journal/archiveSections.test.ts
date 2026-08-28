@@ -174,8 +174,8 @@ test('a section added to the registry travels in a packed archive and comes back
 /* Emptying the journal, derived rather than maintained. It used to be 51
    statements hand-ordered in restore.ts, children before parents, four of
    them conditional - a list that had to be re-read against the schema every
-   time an area was added, and that the demo's own copy of had already drifted
-   by thirty tables. */
+   time an area was added, and that the demo kept a second copy of, reaching
+   seven of the thirty-six sections. */
 test('a section clears before the one it inserts after, so the rows it points at are still there', () => {
   const statements = discardStatements([
     stub('episodes', [], ['DELETE FROM episode']),

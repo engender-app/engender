@@ -50,7 +50,7 @@ import type {
   ArchiveVoiceRecording
 } from '../archive/payload';
 import { bool, domainIdOf } from './support';
-import { columnsOf, fieldOf, type FlatTable } from './archiveTable';
+import { columnsOf, type FlatTable } from './archiveTable';
 
 export type PhotoRow = {
   uuid: string;
@@ -132,11 +132,10 @@ export async function readFlatTable<Row>(table: FlatTable<Row>, { driver }: Sect
   );
   return rows.map((row) => {
     const carried: Record<string, unknown> = {};
-    for (const column of columns) {
-      const declared = fieldOf(column.field);
-      const value = row[column.column];
-      if (declared.bool) carried[declared.field] = bool(value);
-      else carried[declared.field] = value === null && declared.whenNull !== undefined ? declared.whenNull : value;
+    for (const { column, field, bool: isBool, whenNull } of columns) {
+      const value = row[column];
+      if (isBool) carried[field] = bool(value);
+      else carried[field] = value === null && whenNull !== undefined ? whenNull : value;
     }
     return carried as Row;
   });
