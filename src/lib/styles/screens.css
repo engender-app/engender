@@ -197,6 +197,12 @@
 
 /* Yearly. */
 .wrapped-cover { text-align: center; padding: var(--space-4) 0 var(--space-7); }
+/* The wash .rive-stage carries for the empty state and onboarding reads as
+   a smudge here, sitting under the year in a card of its own rather than
+   floating over a blank screen (Alicja, 2026-08-28: "the heart bloom needs
+   to lose the gradient behind it"). Scoped to this screen only - the other
+   two callers keep the wash they were tuned for. */
+.wrapped-cover .rive-stage { background: none; }
 .wrapped-cover-label {
   font-size: var(--text-xs); font-weight: var(--weight-bold);
   text-transform: uppercase; letter-spacing: 0.14em;
