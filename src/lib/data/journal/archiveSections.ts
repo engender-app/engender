@@ -23,6 +23,11 @@
      read      how the area's rows come out of the journal (archiveRead.ts)
      apply     how they go back in, mode and all (archiveApply.ts)
 
+   A flat area declares none of the last two. It declares its table instead -
+   the columns, the column a present row is matched by, and the read's order
+   (archiveTable.ts) - and both directions are derived from that one
+   declaration. `flat` below is that form, `section` the hand-written one.
+
    The order sections are declared in is the order they travel in and the
    order they are read in. `after` is what re-orders them for the restore,
    so a section can be declared next to the area it belongs with rather than
@@ -39,6 +44,7 @@ import * as read from './archiveRead';
 import * as apply from './archiveApply';
 import type { SectionRead } from './archiveRead';
 import type { Restoring } from './archiveApply';
+import type { FlatColumn, FlatTable } from './archiveTable';
 
 export type { SectionRead } from './archiveRead';
 export type { Restoring } from './archiveApply';
@@ -67,6 +73,33 @@ function section<Name extends ArchiveSectionName>(declared: {
   return { after: [], ...declared };
 }
 
+/** One flat area's row, as the wire type declares it. */
+type FlatRow<Name extends ArchiveSectionName> = ArchiveJournal[Name][number];
+
+/** A flat area: its table declared once (archiveTable.ts), and both
+    directions derived from that declaration rather than written out again.
+    Which areas qualify is the descriptor's own doc comment; the ones that do
+    not keep the hand-written pair `section` above wires up. */
+function flat<
+  Name extends ArchiveSectionName,
+  const Columns extends Readonly<Record<string, FlatColumn<FlatRow<Name>>>>
+>(declared: {
+  name: Name;
+  after?: readonly ArchiveSectionName[];
+  table: string;
+  columns: Columns;
+  identity: keyof Columns & string;
+  orderBy: string;
+}) {
+  const table: FlatTable<FlatRow<Name>> = declared;
+  return {
+    name: declared.name,
+    after: declared.after ?? [],
+    read: (reading: SectionRead) => read.readFlatTable(table, reading),
+    apply: (restoring: Restoring) => apply.applyFlatTable(declared.name, table, restoring)
+  };
+}
+
 const SECTIONS = [
   section({ name: 'dimensions', read: read.readDimensions, apply: apply.applyDimensions }),
   // Resolves each dimension key it offers against the row applyDimensions
@@ -84,28 +117,127 @@ const SECTIONS = [
      than whatever this device happened to have. */
   section({ name: 'entries', after: ['dimensions', 'tagGroups'], read: read.readEntries, apply: apply.applyEntries }),
   section({ name: 'milestones', read: read.readMilestones, apply: apply.applyMilestones }),
-  section({ name: 'labResults', read: read.readLabResults, apply: apply.applyLabResults }),
+  /* The dosing context comes across as it was written, never re-derived
+     against this device's dose log: the log it was measured on is not the
+     one being imported into (ticket 03, and the argument at migrations.ts
+     v6).
+
+     Its last five columns declare what they are written from when the field
+     is absent, unlike every other column here, because they arrived after
+     lab results did. An archive is JSON.parse output cast to ArchivePayload
+     - the type is a claim about the file, not a guarantee - so a lab row
+     written by a build from before ticket 03 reaches the insert with the
+     fields simply missing, and `provider` is NOT NULL besides. An older
+     archive restores with an empty context instead, which is the same thing
+     a result logged before the feature carries. */
+  flat({
+    name: 'labResults',
+    table: 'lab_result',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: {
+      uuid: 'id',
+      epoch_day: 'epochDay',
+      analyte: 'analyte',
+      value: 'value',
+      unit: 'unit',
+      note: { field: 'note', whenNull: '' },
+      draw_time: { field: 'drawTime', whenAbsent: null },
+      provider: { field: 'provider', whenAbsent: '' },
+      timing_route: { field: 'timingRoute', whenAbsent: null },
+      timing_hours: { field: 'timingHours', whenAbsent: null },
+      timing_day_of_interval: { field: 'timingDayOfInterval', whenAbsent: null }
+    }
+  }),
   section({ name: 'measurementTypes', read: read.readMeasurementTypes, apply: apply.applyMeasurementTypes }),
-  section({ name: 'measurements', read: read.readMeasurements, apply: apply.applyMeasurements }),
-  section({ name: 'sizeRecords', read: read.readSizeRecords, apply: apply.applySizeRecords }),
-  section({ name: 'sideEffects', read: read.readSideEffects, apply: apply.applySideEffects }),
-  section({ name: 'cycleEvents', read: read.readCycleEvents, apply: apply.applyCycleEvents }),
-  section({ name: 'journalingPauses', read: read.readJournalingPauses, apply: apply.applyJournalingPauses }),
+  // `type` names a measurement type by key rather than by rowid
+  // (measurements.ts), so there is nothing here to resolve against the
+  // section above and no `after` to declare.
+  flat({
+    name: 'measurements',
+    table: 'measurement',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: { uuid: 'id', type: 'type', epoch_day: 'epochDay', value: 'value', unit: 'unit' }
+  }),
+  flat({
+    name: 'sizeRecords',
+    table: 'size_record',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: {
+      uuid: 'id',
+      epoch_day: 'epochDay',
+      category: 'category',
+      size: 'size',
+      brand: 'brand',
+      fit_note: 'fitNote'
+    }
+  }),
+  flat({
+    name: 'sideEffects',
+    table: 'side_effect',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: { uuid: 'id', name: 'name', severity: 'severity', epoch_day: 'epochDay' }
+  }),
+  flat({
+    name: 'cycleEvents',
+    table: 'cycle_event',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: { uuid: 'id', kind: 'kind', epoch_day: 'epochDay' }
+  }),
+  flat({
+    name: 'journalingPauses',
+    table: 'journaling_pause',
+    identity: 'uuid',
+    orderBy: 'start_epoch_day, id',
+    columns: { uuid: 'id', start_epoch_day: 'startEpochDay', end_epoch_day: 'endEpochDay' }
+  }),
   section({ name: 'effectCategories', read: read.readEffectCategories, apply: apply.applyEffectCategories }),
   section({ name: 'personalEffectTypes', read: read.readPersonalEffectTypes, apply: apply.applyPersonalEffectTypes }),
-  // `after` here is a convention, not a requirement `applyPersonalEffects`
-  // enforces: personal_effect.effect stores an effect's domain key
-  // directly with no FK (migrations.ts v37 dropped its CHECK), so nothing
-  // breaks if this ran first. Declared after personalEffectTypes anyway -
-  // reference data before the rows that name it - matching the convention
-  // entries/dimensions/tagGroups set.
-  section({
+  /* Identified by `effect`, not by uuid: personal_effect is UNIQUE per
+     effect (migrations.ts v12), one row that a fresh date replaces in place
+     rather than a log of past dates - the same shape medicationStock has for
+     a drug. A device that already has its own marker for an effect keeps it
+     (Merge's own rule), which a Replace gets for free once the journal's
+     rows have been discarded first.
+
+     `after` here is a convention, not a requirement the insert enforces:
+     personal_effect.effect stores an effect's domain key directly with no FK
+     (migrations.ts v37 dropped its CHECK), so nothing breaks if this ran
+     first. Declared after personalEffectTypes anyway - reference data before
+     the rows that name it - matching the convention entries/dimensions/
+     tagGroups set. */
+  flat({
     name: 'personalEffects',
     after: ['personalEffectTypes'],
-    read: read.readPersonalEffects,
-    apply: apply.applyPersonalEffects
+    table: 'personal_effect',
+    identity: 'effect',
+    orderBy: 'effect',
+    columns: { uuid: 'id', effect: 'effect', first_noticed_epoch_day: 'firstNoticedEpochDay' }
   }),
-  section({ name: 'hairStages', read: read.readHairStages, apply: apply.applyHairStages }),
+  /* A row with no `scale` came out of an archive written before phase 5
+     ticket 33, when Norwood-Hamilton was the only vocabulary there was, so
+     it is one - the same reading migrations.ts v37 gives the rows it carried
+     across. Defaulting rather than dropping is what keeps an old backup
+     whole; a scale this build does not know is left as it is and the
+     schema's CHECK refuses it, which is the honest failure for an archive
+     from a future build. */
+  flat({
+    name: 'hairStages',
+    table: 'hair_stage',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: {
+      uuid: 'id',
+      epoch_day: 'epochDay',
+      scale: { field: 'scale', whenAbsent: 'norwood_hamilton' },
+      stage: 'stage',
+      description: { field: 'description', whenAbsent: '' }
+    }
+  }),
   section({ name: 'hairPhotos', read: read.readHairPhotos, apply: apply.applyHairPhotos }),
   // Inserts its own photo children, the same reasoning `hairPhotos` and
   // `counterevidenceSnapshots` give - it depends on no other section.
@@ -119,18 +251,108 @@ const SECTIONS = [
   // `checklists` and is matched there by owner uuid, so the two sections
   // need no order between them.
   section({ name: 'procedures', read: read.readProcedures, apply: apply.applyProcedures }),
-  section({ name: 'reminders', read: read.readReminders, apply: apply.applyReminders }),
-  section({ name: 'tallyEvents', read: read.readTallyEvents, apply: apply.applyTallyEvents }),
+  // No rule validation of its own: the schema's recurrence CHECK is the same
+  // rule reminderRule.ts states, and the insert is inside the transaction.
+  // `auto_source` declares what it is written from when absent, the way lab
+  // results' dosing columns do - an archive written before ticket 04 has no
+  // such field at all.
+  flat({
+    name: 'reminders',
+    table: 'reminder',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: {
+      uuid: 'id',
+      title: 'title',
+      type: 'type',
+      time: 'time',
+      recurrence: 'recurrence',
+      interval: 'interval',
+      anchor_epoch_day: 'anchorEpochDay',
+      epoch_day: 'epochDay',
+      enabled: { field: 'enabled', bool: true },
+      auto_source: { field: 'autoSource', whenAbsent: null }
+    }
+  }),
+  flat({
+    name: 'tallyEvents',
+    table: 'tally_event',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: { uuid: 'id', epoch_day: 'epochDay', kind: 'kind' }
+  }),
   section({
     name: 'counterevidenceSnapshots',
     read: read.readCounterevidenceSnapshots,
     apply: apply.applyCounterevidenceSnapshots
   }),
-  section({ name: 'letters', read: read.readLetters, apply: apply.applyLetters }),
+  flat({
+    name: 'letters',
+    table: 'letter',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: { uuid: 'id', epoch_day: 'epochDay', text: 'text', unlock_epoch_day: 'unlockEpochDay' }
+  }),
   section({ name: 'roadmapChecks', read: read.readRoadmapChecks, apply: apply.applyRoadmapChecks }),
-  section({ name: 'roadmapGoals', read: read.readRoadmapGoals, apply: apply.applyRoadmapGoals }),
-  section({ name: 'regimenEpisodes', read: read.readRegimenEpisodes, apply: apply.applyRegimenEpisodes }),
-  section({ name: 'doseEvents', read: read.readDoseEvents, apply: apply.applyDoseEvents }),
+  /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
+     present locally is simply skipped rather than compared column by column:
+     a custom goal's text and track are fixed at creation (roadmap.ts has no
+     rename or move-track setter), so the only thing two devices could
+     disagree on is the status, and skipping it here for the same reason
+     applyRoadmapChecks does - a merge must not overwrite a status this
+     device recorded itself. */
+  flat({
+    name: 'roadmapGoals',
+    table: 'roadmap_goal',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: { uuid: 'id', track: 'track', text: 'text', status: 'status' }
+  }),
+  // `end_epoch_day` is absent on an archive from before ticket 38 - read as
+  // still ongoing, the same as every pre-existing episode's backfill (v40).
+  flat({
+    name: 'regimenEpisodes',
+    table: 'regimen_episode',
+    identity: 'uuid',
+    orderBy: 'start_epoch_day, id',
+    columns: {
+      uuid: 'id',
+      drug: 'drug',
+      ester: 'ester',
+      dose: 'dose',
+      dose_unit: 'doseUnit',
+      route: 'route',
+      interval: 'interval',
+      start_epoch_day: 'startEpochDay',
+      end_epoch_day: { field: 'endEpochDay', whenAbsent: null }
+    }
+  }),
+  // Carries no episode link: which episode a dose belongs to is resolved
+  // from its own timestamp above the seam (regimenEpisode.ts), so unlike the
+  // schedules and pauses below this needs no `after`. `drug` is absent on an
+  // archive from before ticket 38 - null, same as every dose ever logged
+  // without one.
+  flat({
+    name: 'doseEvents',
+    table: 'dose_event',
+    identity: 'uuid',
+    orderBy: 'timestamp, id',
+    columns: {
+      uuid: 'id',
+      timestamp: 'timestamp',
+      route: 'route',
+      dose: 'dose',
+      dose_unit: 'doseUnit',
+      injection_site: 'injectionSite',
+      vehicle: 'vehicle',
+      application_site: 'applicationSite',
+      status: 'status',
+      scheduled_dose: 'scheduledDose',
+      scheduled_route: 'scheduledRoute',
+      scheduled_timestamp: 'scheduledTimestamp',
+      drug: { field: 'drug', whenAbsent: null }
+    }
+  }),
   // Both hang off an episode rowid, and the rows applyRegimenEpisodes just
   // inserted are where those rowids come from.
   section({
@@ -140,7 +362,27 @@ const SECTIONS = [
     apply: apply.applyDoseSchedules
   }),
   section({ name: 'dosePauses', after: ['regimenEpisodes'], read: read.readDosePauses, apply: apply.applyDosePauses }),
-  section({ name: 'medicationStock', read: read.readMedicationStock, apply: apply.applyMedicationStock }),
+  /* Identified by `drug`, not by uuid: medication_stock is UNIQUE per drug
+     (migrations.ts v7), one row that a fresh count replaces in place rather
+     than a log of past ones - the same shape personalEffects has for an
+     effect. The reminder bookkeeping travels as recorded: restoring a
+     device's own backup should restore its own hand-off state, not a blank
+     one (see ArchiveMedicationStock's own comment). */
+  flat({
+    name: 'medicationStock',
+    table: 'medication_stock',
+    identity: 'drug',
+    orderBy: 'drug',
+    columns: {
+      uuid: 'id',
+      drug: 'drug',
+      quantity: 'quantity',
+      unit: 'unit',
+      recorded_epoch_day: 'recordedEpochDay',
+      reminder_ever_created: { field: 'reminderEverCreated', bool: true },
+      reminder_dismissed: { field: 'reminderDismissed', bool: true }
+    }
+  }),
   // Inserts its own photo children, the same reasoning `hairRemovalSessions`
   // and `procedures` above give.
   section({ name: 'tryouts', read: read.readTryouts, apply: apply.applyTryouts }),
@@ -153,10 +395,17 @@ const SECTIONS = [
     apply: apply.applyFeltSenseEntries
   }),
   section({ name: 'checklists', read: read.readChecklists, apply: apply.applyChecklists }),
-  // No `after`: its optional reminder travels as an ordinary reminder row,
-  // matched back up by an auto_source marker rather than a rowid this
-  // section would have to resolve.
-  section({ name: 'wearSessions', read: read.readWearSessions, apply: apply.applyWearSessions })
+  /* No episode or reminder rowid to resolve, unlike dose events and stock -
+     a wear session's own optional reminder travels as an ordinary
+     ArchiveReminder, matched back up by its auto_source marker rather than a
+     link this section would have to carry. */
+  flat({
+    name: 'wearSessions',
+    table: 'wear_session',
+    identity: 'uuid',
+    orderBy: 'start_timestamp, id',
+    columns: { uuid: 'id', start_timestamp: 'startTimestamp', duration_ms: 'durationMs', note: 'note' }
+  })
 ] as const;
 
 /* A section on the wire type with no entry above would be written into every

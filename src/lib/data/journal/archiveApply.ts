@@ -1,6 +1,12 @@
-/* How each archive section's rows are written back into the journal: one
-   apply function per section, wired into the registry by archiveSections.ts
-   and run inside restore.ts's single transaction.
+/* How each archive section's rows are written back into the journal, wired
+   into the registry by archiveSections.ts and run inside restore.ts's single
+   transaction.
+
+   A flat area needs no function here at all: applyFlatTable() below writes it
+   from the descriptor the registry declares (archiveTable.ts). What is left
+   is the sections whose merge semantics are their own - a matched row a
+   Replace overwrites in place, a child table walked in both modes, a rowid
+   resolved against a section that ran earlier.
 
    Merge semantics are each section's own, not the registry's. They differ
    for reasons the individual comments record - a roadmap check must survive
@@ -490,46 +496,6 @@ export async function applyMilestones({ driver, journal, ts }: Restoring): Promi
   );
 }
 
-export async function applyLabResults({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM lab_result');
-
-  const inserting = journal.labResults.filter((result) => !present.has(result.id));
-  await insertRows(
-    driver,
-    `INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, draw_time, provider,
-                             timing_route, timing_hours, timing_day_of_interval, updated_at)`,
-    /* The dosing context comes across as it was written, never re-derived
-       against this device's dose log: the log it was measured on is not the
-       one being imported into (ticket 03, and the argument at migrations.ts
-       v6).
-
-       Coalesced rather than passed straight through, unlike every other
-       column here, because these five arrived after lab results did. An
-       archive is JSON.parse output cast to ArchivePayload - the type is a
-       claim about the file, not a guarantee - so a lab row written by a build
-       from before ticket 03 reaches this line with the fields simply absent.
-       Binding undefined is not a soft failure: node:sqlite rejects it with
-       "Provided value cannot be bound to SQLite parameter 7", a raw driver
-       error rather than a CorruptArchiveError, and `provider` is NOT NULL
-       besides. An older archive restores with an empty context instead, which
-       is the same thing a result logged before the feature carries. */
-    inserting.map((result) => [
-      result.id,
-      result.epochDay,
-      result.analyte,
-      result.value,
-      result.unit,
-      result.note,
-      result.drawTime ?? null,
-      result.provider ?? '',
-      result.timingRoute ?? null,
-      result.timingHours ?? null,
-      result.timingDayOfInterval ?? null,
-      ts
-    ])
-  );
-}
-
 export async function applyMeasurementTypes({ driver, mode, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT key AS id FROM measurement_type');
 
@@ -552,71 +518,6 @@ export async function applyMeasurementTypes({ driver, mode, journal, ts }: Resto
       [type.builtIn ? null : type.key, type.key, type.name, flag(type.builtIn), flag(type.hidden), ts]
     );
   }
-}
-
-export async function applyMeasurements({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM measurement');
-
-  const inserting = journal.measurements.filter((measurement) => !present.has(measurement.id));
-  await insertRows(
-    driver,
-    'INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at)',
-    inserting.map((measurement) => [
-      measurement.id,
-      measurement.epochDay,
-      measurement.type,
-      measurement.value,
-      measurement.unit,
-      ts
-    ])
-  );
-}
-
-export async function applySizeRecords({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM size_record');
-
-  const inserting = journal.sizeRecords.filter((record) => !present.has(record.id));
-  await insertRows(
-    driver,
-    'INSERT INTO size_record (uuid, epoch_day, category, size, brand, fit_note, updated_at)',
-    inserting.map((record) => [record.id, record.epochDay, record.category, record.size, record.brand, record.fitNote, ts])
-  );
-}
-
-export async function applyRegimenEpisodes({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM regimen_episode');
-
-  const inserting = journal.regimenEpisodes.filter((episode) => !present.has(episode.id));
-  await insertRows(
-    driver,
-    `INSERT INTO regimen_episode
-       (uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, updated_at)`,
-    inserting.map((episode) => [
-      episode.id,
-      episode.drug,
-      episode.ester,
-      episode.dose,
-      episode.doseUnit,
-      episode.route,
-      episode.interval,
-      episode.startEpochDay,
-      // Absent on an archive from before ticket 38 - read as still
-      // ongoing, the same as every pre-existing episode's backfill (v40).
-      episode.endEpochDay ?? null,
-      ts
-    ])
-  );
-}
-
-export async function applyTallyEvents({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM tally_event');
-
-  const inserting = journal.tallyEvents.filter((event) => !present.has(event.id));
-  await insertRows(
-    driver,
-    'INSERT INTO tally_event (uuid, epoch_day, kind, updated_at)',
-    inserting.map((event) => [event.id, event.epochDay, event.kind, ts])
-  );
 }
 
 /* Matched by uuid, like applyEntries: a snapshot's items are inserted
@@ -654,20 +555,6 @@ export async function applyCounterevidenceSnapshots({ driver, journal, ts }: Res
   await insertRows(driver, 'INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note)', itemRows);
 }
 
-/* Matched by uuid, like applyTallyEvents: a letter is a dated series, not
-   a single replaced value, and carries no children of its own to insert
-   afterwards. */
-export async function applyLetters({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM letter');
-
-  const inserting = journal.letters.filter((letter) => !present.has(letter.id));
-  await insertRows(
-    driver,
-    'INSERT INTO letter (uuid, epoch_day, text, unlock_epoch_day, updated_at)',
-    inserting.map((letter) => [letter.id, letter.epochDay, letter.text, letter.unlockEpochDay, ts])
-  );
-}
-
 /* Matched on the pack/goal pair rather than a uuid, the way applyDimensions
    matches a built-in on its key: a status names a bundled goal, so the
    same pair on two devices is the same status and a merge has nothing to
@@ -693,23 +580,6 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
     driver,
     'INSERT INTO roadmap_check (pack_key, goal_key, status, updated_at)',
     inserting.map((check) => [check.packKey, check.goalKey, check.status, ts])
-  );
-}
-
-/* Uuid-identified like a checklist, so unlike applyRoadmapChecks a goal
-   already present locally is simply skipped rather than compared column
-   by column: a custom goal's text and track are fixed at creation
-   (roadmap.ts has no rename or move-track setter), so the only thing two
-   devices could disagree on is the status, and skipping it here for the
-   same reason applyRoadmapChecks does - a merge must not overwrite a
-   status this device recorded itself. */
-export async function applyRoadmapGoals({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM roadmap_goal');
-  const inserting = journal.roadmapGoals.filter((goal) => !present.has(goal.id));
-  await insertRows(
-    driver,
-    'INSERT INTO roadmap_goal (uuid, track, text, status, updated_at)',
-    inserting.map((goal) => [goal.id, goal.track, goal.text, goal.status, ts])
   );
 }
 
@@ -824,36 +694,6 @@ export async function applyFeltSenseEntries({ driver, journal, ts }: Restoring):
   );
 }
 
-export async function applyDoseEvents({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM dose_event');
-
-  const inserting = journal.doseEvents.filter((dose) => !present.has(dose.id));
-  await insertRows(
-    driver,
-    `INSERT INTO dose_event
-       (uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-        status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, updated_at)`,
-    inserting.map((dose) => [
-      dose.id,
-      dose.timestamp,
-      dose.route,
-      dose.dose,
-      dose.doseUnit,
-      dose.injectionSite,
-      dose.vehicle,
-      dose.applicationSite,
-      dose.status,
-      dose.scheduledDose,
-      dose.scheduledRoute,
-      dose.scheduledTimestamp,
-      // Absent on an archive from before ticket 38 - null, same as every
-      // dose ever logged without one.
-      dose.drug ?? null,
-      ts
-    ])
-  );
-}
-
 /* Both of these resolve their episode by uuid against what is in the table
    after applyRegimenEpisodes ran. A row whose episode is not there is
    dropped rather than inserted against a guessed episode: a schedule
@@ -929,56 +769,6 @@ export async function applyDosePauses({ driver, journal, ts }: Restoring): Promi
   );
 }
 
-export async function applySideEffects({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM side_effect');
-
-  const inserting = journal.sideEffects.filter((effect) => !present.has(effect.id));
-  await insertRows(
-    driver,
-    'INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at)',
-    inserting.map((effect) => [effect.id, effect.name, effect.severity, effect.epochDay, ts])
-  );
-}
-
-export async function applyCycleEvents({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM cycle_event');
-
-  const inserting = journal.cycleEvents.filter((event) => !present.has(event.id));
-  await insertRows(
-    driver,
-    'INSERT INTO cycle_event (uuid, kind, epoch_day, updated_at)',
-    inserting.map((event) => [event.id, event.kind, event.epochDay, ts])
-  );
-}
-
-export async function applyJournalingPauses({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM journaling_pause');
-
-  const inserting = journal.journalingPauses.filter((pause) => !present.has(pause.id));
-  await insertRows(
-    driver,
-    'INSERT INTO journaling_pause (uuid, start_epoch_day, end_epoch_day, updated_at)',
-    inserting.map((pause) => [pause.id, pause.startEpochDay, pause.endEpochDay, ts])
-  );
-}
-
-/* Matched by `effect`, not by uuid: personal_effect is UNIQUE per effect
-   (migrations.ts v12), one row that a fresh date replaces in place rather
-   than a log of past dates - the same reasoning applyMedicationStock gives
-   for matching by drug. A device that already has its own marker for an
-   effect keeps it (Merge's own rule), which a Replace gets for free once
-   discardJournalRows has emptied the table first. */
-export async function applyPersonalEffects({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT effect AS id FROM personal_effect');
-
-  const inserting = journal.personalEffects.filter((marker) => !present.has(marker.effect));
-  await insertRows(
-    driver,
-    'INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at)',
-    inserting.map((marker) => [marker.id, marker.effect, marker.firstNoticedEpochDay, ts])
-  );
-}
-
 /** Flat, like applyBodyRegions: no children, built-in only (no custom
     categories), matched on key alone. */
 export async function applyEffectCategories({ driver, mode, journal, ts }: Restoring): Promise<void> {
@@ -1033,34 +823,6 @@ export async function applyPersonalEffectTypes({ driver, mode, journal, ts }: Re
       ]
     );
   }
-}
-
-/* Matched by uuid, like applyMeasurements: a staging is a dated series
-   entry, not a single replaced value like personal_effect.
-
-   A row with no `scale` came out of an archive written before phase 5
-   ticket 33, when Norwood-Hamilton was the only vocabulary there was, so it
-   is one - the same reading migrations.ts v37 gives the rows it carried
-   across. Defaulting rather than dropping is what keeps an old backup whole;
-   a scale this build does not know is left as it is and the schema's CHECK
-   refuses it, which is the honest failure for an archive from a future
-   build. */
-export async function applyHairStages({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM hair_stage');
-
-  const inserting = journal.hairStages.filter((stage) => !present.has(stage.id));
-  await insertRows(
-    driver,
-    'INSERT INTO hair_stage (uuid, epoch_day, scale, stage, description, updated_at)',
-    inserting.map((stage) => [
-      stage.id,
-      stage.epochDay,
-      stage.scale ?? 'norwood_hamilton',
-      stage.stage,
-      stage.description ?? '',
-      ts
-    ])
-  );
 }
 
 /* A hair photo owns no other row (migrations.ts v13's own table, not a
@@ -1172,75 +934,3 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
   }
 }
 
-export async function applyReminders({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM reminder');
-
-  const inserting = journal.reminders.filter((reminder) => !present.has(reminder.id));
-  // No rule validation of its own: the schema's recurrence CHECK is the
-  // same rule reminderRule.ts states, and this is inside the transaction.
-  await insertRows(
-    driver,
-    `INSERT INTO reminder
-       (uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source, updated_at)`,
-    inserting.map((reminder) => [
-      reminder.id,
-      reminder.title,
-      reminder.type,
-      reminder.time,
-      reminder.recurrence,
-      reminder.interval,
-      reminder.anchorEpochDay,
-      reminder.epochDay,
-      flag(reminder.enabled),
-      // Coalesced like the lab timing columns (applyLabResults): an
-      // archive written before ticket 04 has no such field at all, and
-      // binding undefined is a raw node:sqlite error, not a soft failure.
-      reminder.autoSource ?? null,
-      ts
-    ])
-  );
-}
-
-/* Matched by `drug`, not by uuid: medication_stock is UNIQUE per drug
-   (migrations.ts v7), one row that a fresh count replaces in place rather
-   than a log of past ones. A device that already has its own entry for a
-   drug keeps it - Merge's own rule (CONTEXT: "Merge") - which is also what
-   a Replace gets for free once discardJournalRows has emptied the table
-   first, the same way applyDoseSchedules checks episode identity rather
-   than its own row's uuid. The reminder bookkeeping travels as recorded:
-   restoring a device's own backup should restore its own hand-off state,
-   not a blank one (see ArchiveMedicationStock's own comment). */
-export async function applyMedicationStock({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT drug AS id FROM medication_stock');
-
-  const inserting = journal.medicationStock.filter((entry) => !present.has(entry.drug));
-  await insertRows(
-    driver,
-    `INSERT INTO medication_stock
-       (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed, updated_at)`,
-    inserting.map((entry) => [
-      entry.id,
-      entry.drug,
-      entry.quantity,
-      entry.unit,
-      entry.recordedEpochDay,
-      flag(entry.reminderEverCreated),
-      flag(entry.reminderDismissed),
-      ts
-    ])
-  );
-}
-
-/* No episode or reminder rowid to resolve, unlike dose events and stock -
-   a wear session's own optional reminder travels as an ordinary
-   ArchiveReminder, matched back up by its auto_source marker rather than a
-   link this section would have to carry. */
-export async function applyWearSessions({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM wear_session');
-  const inserting = journal.wearSessions.filter((session) => !present.has(session.id));
-  await insertRows(
-    driver,
-    'INSERT INTO wear_session (uuid, start_timestamp, duration_ms, note, updated_at)',
-    inserting.map((session) => [session.id, session.startTimestamp, session.durationMs, session.note, ts])
-  );
-}
