@@ -60,6 +60,7 @@
   import WeekStrip from '$lib/components/WeekStrip.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
   import OnThisDayHomeCard from '$lib/components/OnThisDayHomeCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
@@ -422,21 +423,22 @@
              concept, and it also can't tell "skipped" apart from "chosen the
              midpoint" the way an empty input can. -->
         {#each vocabulary.activeDimensions as dim (dim.key)}
-          <div class="field">
-            <label class="field-label" for={`qld-${dim.key}`}>{dim.name}</label>
-            <input
-              class="input"
-              type="number"
-              id={`qld-${dim.key}`}
-              data-qld-input={dim.key}
-              inputmode="decimal"
-              min={dim.min}
-              max={dim.max}
-              placeholder={m.dim_value_placeholder({ n: String(Math.round((dim.min + dim.max) / 2)) })}
-              bind:value={dimInputs[dim.key]}
-            />
-            <div class="dim-ends"><span>{dim.low}</span><span>{dim.high}</span></div>
-          </div>
+          <Field label={dim.name} id={`qld-${dim.key}`}>
+            {#snippet children(id)}
+              <input
+                class="input"
+                type="number"
+                {id}
+                data-qld-input={dim.key}
+                inputmode="decimal"
+                min={dim.min}
+                max={dim.max}
+                placeholder={m.dim_value_placeholder({ n: String(Math.round((dim.min + dim.max) / 2)) })}
+                bind:value={dimInputs[dim.key]}
+              />
+              <div class="dim-ends"><span>{dim.low}</span><span>{dim.high}</span></div>
+            {/snippet}
+          </Field>
         {/each}
         <div class="stack-3">
           <button class="btn btn-primary" data-qld-add onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>

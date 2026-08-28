@@ -8,6 +8,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
 
   let name = $state('');
   let low = $state('');
@@ -50,32 +51,36 @@
   <ScreenHeader title={m.custom_dimension()} back="/settings" subtitle={m.cd_intro()} />
 
   <div class="card editor-section">
-    <div class="field">
-      <label class="field-label" for="cd-name">{m.cd_name_label()}</label>
-      <input class="input" id="cd-name" name="cd-name" placeholder={m.cd_name_placeholder()} bind:value={name} />
-    </div>
+    <Field label={m.cd_name_label()} id="cd-name">
+      {#snippet children(id)}
+        <input class="input" {id} name="cd-name" placeholder={m.cd_name_placeholder()} bind:value={name} />
+      {/snippet}
+    </Field>
     <div class="cd-endpoints">
-      <div class="field">
-        <label class="field-label" for="cd-low">{m.cd_low_label()}</label>
-        <input class="input" id="cd-low" name="cd-low" placeholder={m.cd_low_placeholder()} bind:value={low} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="cd-high">{m.cd_high_label()}</label>
-        <input class="input" id="cd-high" name="cd-high" placeholder={m.cd_high_placeholder()} bind:value={high} />
-      </div>
+      <Field label={m.cd_low_label()} id="cd-low">
+        {#snippet children(id)}
+          <input class="input" {id} name="cd-low" placeholder={m.cd_low_placeholder()} bind:value={low} />
+        {/snippet}
+      </Field>
+      <Field label={m.cd_high_label()} id="cd-high">
+        {#snippet children(id)}
+          <input class="input" {id} name="cd-high" placeholder={m.cd_high_placeholder()} bind:value={high} />
+        {/snippet}
+      </Field>
     </div>
-    <div class="field">
-      <span class="field-label">{m.cd_range_label()}</span>
-      <Segmented
-        name={m.cd_range_label()}
-        options={[
-          { value: '10', label: '0–10' },
-          { value: '100', label: '0–100' },
-        ]}
-        value={String(max)}
-        onChange={(v) => (max = Number(v))}
-      />
-    </div>
+    <Field label={m.cd_range_label()} legend>
+      {#snippet children()}
+        <Segmented
+          name={m.cd_range_label()}
+          options={[
+            { value: '10', label: '0–10' },
+            { value: '100', label: '0–100' },
+          ]}
+          value={String(max)}
+          onChange={(v) => (max = Number(v))}
+        />
+      {/snippet}
+    </Field>
   </div>
 
   <div class="card editor-section">

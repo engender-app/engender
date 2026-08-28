@@ -18,7 +18,7 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
   import { pickPhotos, type EditorPhoto } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
@@ -28,6 +28,7 @@
   import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -107,7 +108,7 @@
       const id = await journal.milestones.upsertMilestone({
         id: draft.id,
         name: draft.name.trim() || m.ms_default_name(),
-        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+        epochDay: epochDayFromDateInputValueOrToday(draft.date),
         templateKey: draft.templateKey,
         photo
       });
@@ -245,38 +246,41 @@
     }}
   >
     {#snippet fields(editor)}
-      <div class="field">
-        <label class="field-label" for="ms-name">{m.ms_name_label()}</label>
-        <input class="input" id="ms-name" name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="ms-date">{m.ms_date_label()} <span class="muted">{m.ms_date_hint()}</span></label>
-        <input class="input" type="date" id="ms-date" name="ms-date" bind:value={editor.date} />
-      </div>
-      <div class="field">
-        <span class="field-label">{m.ms_photo_label()}</span>
-        <div class="photo-row">
-          {#if editor.photo}
-            <div class="photo-wrap">
-              {#if editor.photo.kind === 'stored'}
-                <PhotoThumb photo={editor.photo.photo} size={64} />
-              {:else}
-                <PhotoThumb photo={{ fileName: null }} bytes={editor.photo.photo.thumb} size={64} />
-              {/if}
-              <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => (editor.photo = null)}>
-                <Icon name="x" size={14} />
+      <Field label={m.ms_name_label()} id="ms-name">
+        {#snippet children(id)}
+          <input class="input" {id} name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />
+        {/snippet}
+      </Field>
+      <Field label={m.ms_date_label()} hint={m.ms_date_hint()} id="ms-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="ms-date" bind:value={editor.date} />
+        {/snippet}
+      </Field>
+      <Field label={m.ms_photo_label()} legend>
+        {#snippet children()}
+          <div class="photo-row">
+            {#if editor.photo}
+              <div class="photo-wrap">
+                {#if editor.photo.kind === 'stored'}
+                  <PhotoThumb photo={editor.photo.photo} size={64} />
+                {:else}
+                  <PhotoThumb photo={{ fileName: null }} bytes={editor.photo.photo.thumb} size={64} />
+                {/if}
+                <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => (editor.photo = null)}>
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+            {:else}
+              <button class="photo-add" aria-label={m.add_photo()} onclick={pickPhoto}>
+                <Icon name="image" size={20} /><span>{m.add_photo()}</span>
               </button>
-            </div>
-          {:else}
-            <button class="photo-add" aria-label={m.add_photo()} onclick={pickPhoto}>
-              <Icon name="image" size={20} /><span>{m.add_photo()}</span>
-            </button>
-            <button class="photo-add" aria-label={m.add_photo_camera()} onclick={milestonePhotoReview.capture}>
-              <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
-            </button>
-          {/if}
-        </div>
-      </div>
+              <button class="photo-add" aria-label={m.add_photo_camera()} onclick={milestonePhotoReview.capture}>
+                <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
+              </button>
+            {/if}
+          </div>
+        {/snippet}
+      </Field>
     {/snippet}
   </RecordSheet>
 
