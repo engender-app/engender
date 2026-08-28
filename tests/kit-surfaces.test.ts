@@ -100,6 +100,12 @@ describe('the surfaces', () => {
          for a size; the picker asks for a blink. */
       'Notice.svelte',
       'PairedDots.svelte',
+      /* The rows, the add control, the confirm sheet and the alignment
+         review five screens each assembled around a photo list (phase 5
+         audit ticket 11). Unlike RecordSheet below, it does draw its own
+         pixels - a thumbnail row over ListCard - which is why it is a
+         surface rather than "the other half of" one. */
+      'PhotoSection.svelte',
       /* Not a surface either, and the only kit component that draws no
          pixels of its own: the three-state gate thirty-one screens used to
          hand-write over a journal read (phase 5 audit ticket 04). It picks
