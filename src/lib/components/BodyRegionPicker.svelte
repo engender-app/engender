@@ -1,7 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
-  import Icon from './Icon.svelte';
   import DimensionSlider from './DimensionSlider.svelte';
   import type { BodyRegionAxis, BodyRegionFeeling } from '$lib/data/types';
 
@@ -38,7 +37,7 @@
         aria-pressed={r.id in values}
         onclick={() => onToggle(r.id)}
       >
-        {#if r.id in values}<Icon name="check" size={14} />{/if}{r.name}
+        {r.name}
       </button>
     {/each}
   </div>
