@@ -162,17 +162,19 @@
 </script>
 
 <div class="wrapped-cover" data-wrapped-cover>
-  <!-- Kept, at Alicja's call (2026-08-25). This ticket had taken it off,
-       reading DIRECTION's "the sun is the whole of the app's ambient budget"
-       as covering it; a yearly retrospective is opened deliberately, once,
-       and it is the one screen in the app that is allowed to be a bit of an
-       occasion. -->
-  <RiveSlot height={140} variant="bloom" />
   <p class="wrapped-cover-label">{m.wrapped()}</p>
   <h2 class="wrapped-cover-year" data-wrapped-cover-year>{year}</h2>
   {#if flagFill}
     <span class="wrapped-cover-flag" style={`--flag-fill: ${flagFill}`} aria-hidden="true"></span>
   {/if}
+  <!-- Kept, at Alicja's call (2026-08-25). This ticket had taken it off,
+       reading DIRECTION's "the sun is the whole of the app's ambient budget"
+       as covering it; a yearly retrospective is opened deliberately, once,
+       and it is the one screen in the app that is allowed to be a bit of an
+       occasion. Under the year rather than above the whole cover (2026-08-28:
+       "it should be under '2025'") - the flourish belongs to the number, not
+       to the screen's top edge. -->
+  <RiveSlot height={140} variant="bloom" />
   <p class="wrapped-cover-intro">{intro}</p>
 </div>
 
