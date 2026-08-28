@@ -1609,8 +1609,18 @@ a.kit-entry:active {
      and a logged day's face (sized to the constant) stopped matching
      (Alicja, 2026-08-27: "month by month must be much smaller... empty
      days should be the same size as the icons"). Capped at the tuned size
-     instead of left to the card's own width. */
-  grid-template-columns: repeat(11, minmax(0, 27px));
+     instead of left to the card's own width.
+
+     Fixing the count at eleven traded one mismatch for another: the same
+     desktop-width card that made a stretched cell too big now made a
+     327px grid of fixed 27px cells sit in it with the rest of the card
+     empty (Alicja, 2026-08-28: "month by month only looks good on
+     phone... on web it's weak"). `auto-fill` keeps the cell fixed at 27px
+     and asks the width for a column count instead of the other way round,
+     so a phone-width card still gets eleven and a desktop one gets as many
+     as its own width holds - full width either way, same cell either
+     width. */
+  grid-template-columns: repeat(auto-fill, 27px);
   gap: 3px;
 }
 
