@@ -629,3 +629,113 @@
     onCancel={entryPhotoReview.cancel}
   />
 </div>
+
+<style>
+  /* The container transform's own layer - a plain fill behind the real
+     screen, carrying no text, the same fix as .entry-card-bg/.kit-entry-bg
+     in components.css/kit.css. `.screen` is already `position: relative`
+     (app.css), so this only needs its own. */
+  .editor-bg {
+    position: absolute; inset: 0;
+    background: var(--bg);
+  }
+  .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
+
+  /* The line under a heading that needs one. A hint is the area's own second
+     sentence rather than a caption on a field, so it sits at the page's
+     left edge with the controls under it, and it is the same --text-2 the
+     date line above uses. */
+  .editor-hint {
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-3);
+  }
+  /* Under a slider rather than under a heading: it belongs to the control
+     above it, so it closes up against it. */
+  .editor-hint-tight { margin: calc(-1 * var(--space-2)) 0 var(--space-3); }
+
+  .editor-note {
+    width: 100%;
+    resize: vertical;
+    font-family: var(--font-body);
+  }
+
+  /* Everything an entry carries besides its words, on one surface (phase 5
+     ticket 22). Three headed cards in a row were half the editor's length and
+     said the same thing three times; this is one area with three labelled
+     groups, separated by the same hairline a list card puts between its rows.
+
+     Uncoloured on purpose. Every other area of every other screen takes a
+     flag stripe, and this one is full of photographs and waveforms that bring
+     their own colour - a tinted ground behind a photo grid is a tint behind a
+     photograph. */
+  .editor-media {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-card);
+    overflow: hidden;
+  }
+  .editor-media-group { padding: var(--space-4); }
+  .editor-media-group + .editor-media-group { border-top: 1px solid var(--outline); }
+  .editor-media-label {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.04em;
+    color: var(--text-2);
+    margin: 0 0 var(--space-3);
+  }
+
+  /* Same 44px-touch-target/24px-badge shape as .photo-remove (screens.css),
+     opposite corner so the two never collide. */
+  .photo-star {
+    position: absolute; bottom: -16px; left: -16px;
+    width: var(--touch-target); height: var(--touch-target);
+    border: none; cursor: pointer;
+    background: none; color: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-star::before {
+    content: '';
+    position: absolute; inset: 0; margin: auto;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--text);
+  }
+  .photo-star :global(.icon) { position: relative; }
+  .photo-star.is-starred { color: var(--accent); }
+
+  /* A recording plays back at native <audio> width, not a 72px tile, so it
+     gets its own row rather than photo-row/photo-wrap's fixed square
+     (screens.css). */
+  .recording-list { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
+  .recording-row { display: flex; align-items: center; gap: var(--space-2); }
+  .recording-remove {
+    flex-shrink: 0;
+    width: var(--touch-target); height: var(--touch-target);
+    border: none; cursor: pointer;
+    background: none; color: var(--text-2);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* A video note is taller than an <audio> transport, so its remove button sits
+     at the top of the row rather than centred against a 36px strip (ticket 22).
+     The list wrapper is .recording-list either way - the gap and the column are
+     the same, and a second class with the same rules would only drift. */
+  .video-row { display: flex; align-items: flex-start; gap: var(--space-2); }
+  .video-hint { margin: 0 0 var(--space-3); color: var(--text-2); font-size: 0.85rem; }
+  .video-preview { position: relative; margin-bottom: var(--space-3); }
+  .video-preview video {
+    /* Mirrored, because a preview of your own face that moves the wrong way
+       when you do is disorienting. The recording itself is not flipped - only
+       what the person sees while framing it. Sizing and background are
+       screens.css's .video-note-player, .video-preview video rule, shared
+       with VideoNotePlayer.svelte's own stored-note box on purpose - two
+       rules for one shape would only drift. */
+    transform: scaleX(-1);
+  }
+  .video-countdown {
+    position: absolute; top: var(--space-2); right: var(--space-2);
+    padding: 2px 8px; border-radius: var(--radius-pill);
+    background: rgb(0 0 0 / 0.6); color: #fff;
+    font-size: 0.8rem; font-variant-numeric: tabular-nums;
+  }
+</style>
