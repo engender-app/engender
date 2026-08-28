@@ -7,12 +7,12 @@
      with no row shape to them, so they sit in one ListCard's padded slot
      (.settings-pad) rather than being forced through ListRow. Tracking and
      Privacy's navigable rows are genuinely list-card material and go
-     through ListRow properly; the handful of rows that carry a Switch
-     instead of a chevron stay hand-written in the kit's own row classes,
-     because ListRow always renders as an interactive <a> or <button> and a
-     button wrapping a switch's own button is a nested control - so a row
-     with nothing for the row itself to do is a plain element wearing
-     .kit-row, the same move Home's milestone-empty state already makes. */
+     through ListRow properly; the handful of rows that carry a Switch or a
+     Segmented instead of a chevron stay hand-written in the kit's own row
+     classes (ticket 16, once ListRow gained `static`: not a nested-button
+     problem any more, but `.kit-row.is-static` also drops the row's cursor
+     and its :active wash, and moving a row that keeps neither today would
+     be a press-state change on tap - out of this ticket's reach). */
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { DECOY_NAME } from '$lib/disguise/identity';
