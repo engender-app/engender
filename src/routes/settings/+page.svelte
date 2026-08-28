@@ -518,7 +518,12 @@
   <Sheet bind:open={metricSheet} title={m.home_cal_colour()}>
     <h3>{m.home_cal_colour()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.metric_note()}</p>
-    <div class="list-group" style="box-shadow:none">
+    <!-- Hand-written rather than a ListRow (ticket 18): this is a
+         mutually-exclusive pick, and ListRow's `checked` draws
+         Check.svelte's box, which that component documents as
+         deliberately never a radio's circle - the wrong shape for "one of
+         these", not the tickable "any of these" a checkbox says. -->
+    <ListCard>
       <!-- The ticked scales, which is what Home's and the calendar's own
            pickers offer. It listed every scale, so this was the one place a
            metric could be set to something no other picker would show and
@@ -527,26 +532,27 @@
            app can honour (phase 5 ticket 35). -->
       {#each [{ key: null, name: m.mood() }, ...vocabulary.activeDimensions] as d (d.key ?? 'mood')}
         <button
-          class="list-row"
+          type="button"
+          class="kit-row"
           onclick={() => {
             selectMetric(d.key);
             metricSheet = false;
           }}
         >
-          <span class="row-text"><span class="row-title">{d.name}</span></span>
+          <span class="kit-row-text"><span class="kit-row-title">{d.name}</span></span>
           {#if vocabulary.activeMetric === (d.key ?? 'mood')}<Icon name="check" size={20} />{/if}
         </button>
       {/each}
-    </div>
+    </ListCard>
   </Sheet>
 
   <Sheet bind:open={disguiseSheet} title={m.disguise_row()}>
     <h3>{m.disguise_row()}</h3>
     <div class="stack-3">
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
-        <span class="row-text">
-          <span class="row-title">{m.disguise_app_title()}</span>
-          <span class="row-subtitle">
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.disguise_app_title()}</span>
+          <span class="kit-row-sub">
             {isAndroid() ? m.disguise_app_sub_android() : m.disguise_app_sub_web()}
           </span>
         </span>
@@ -577,9 +583,9 @@
         <p class="muted small">{m.disguise_installed_note()}</p>
       {/if}
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
-        <span class="row-text">
-          <span class="row-title">{m.lock_on_leave_title()}</span>
-          <span class="row-subtitle">
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.lock_on_leave_title()}</span>
+          <span class="kit-row-sub">
             {m.lock_on_leave_sub()}{prefs.appLock ? '' : ` · ${m.lock_needs_app_lock()}`}
           </span>
         </span>
@@ -592,9 +598,9 @@
         />
       </div>
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
-        <span class="row-text">
-          <span class="row-title">{m.quick_exit_title()}</span>
-          <span class="row-subtitle">
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.quick_exit_title()}</span>
+          <span class="kit-row-sub">
             {isAndroid() ? m.quick_exit_sub_android() : m.quick_exit_sub_web()}{prefs.appLock
               ? ''
               : ` · ${m.quick_exit_no_lock()}`}

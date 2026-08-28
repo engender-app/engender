@@ -13,6 +13,8 @@
   import { isAndroid } from '$lib/platform';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Switch from '$lib/components/Switch.svelte';
 
   /* Neither surface biometrics could apply to (ADR-0014: the boot gate for
@@ -30,68 +32,69 @@
     <p class="ob-text">{m.security_intro()}</p>
   </div>
 
-  <div class="list-group" data-security-list>
-    <a class="list-row" href="/settings/passphrase">
-      <span class="row-icon"><Icon name="shield" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.settings_passphrase_row()}</span>
-        <span class="row-subtitle">
-          {bootState.accessMode === 'device-bound' ? m.settings_passphrase_sub_device() : m.settings_passphrase_sub_portable()}
-        </span>
-      </span>
-      <span class="row-trailing"><Icon name="chevronRight" size={20} /></span>
-    </a>
-    <div class="list-row" style="cursor:default">
-      <span class="row-icon"><Icon name="lock" size={22} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.app_lock()}</span>
-        <span class="row-subtitle">
-          {#if prefs.appLock}
-            {m.on()} · {isAndroid() ? m.settings_lock_on_pin_bio() : m.settings_lock_on_pin()}
-          {:else}{m.off()}{/if}
-        </span>
-      </span>
-      {#if prefs.appLock}
-        <!-- SH-104: this used to be the only route to the lock screen, a
-             plain-text link inside 14px subtitle copy. It is now a proper
-             row action next to the switch it does not overlap with in
-             purpose: the switch turns the lock off, this opens it. -->
-        <a class="icon-btn" href="/settings/lock" aria-label={m.try_it()}><Icon name="chevronRight" size={20} /></a>
-      {/if}
-      <Switch
-        checked={prefs.appLock}
-        label={m.app_lock()}
-        onChange={(v) => {
-          /* Turning it on is the setup screen's job to finish: it writes
-             both the hash and the flag once a PIN has been typed twice, so
-             the flag is never on without a PIN behind it. Turning it off
-             drops the hash, because the hash is what the gate reads. */
-          if (v) {
-            goto('/settings/lock?setup=1&next=/settings/security');
-            return;
-          }
-          prefs.appLock = false;
-          prefs.pinHash = null;
-        }}
+  <div data-security-list>
+    <ListCard>
+      <ListRow
+        key="passphrase"
+        icon="shield"
+        title={m.settings_passphrase_row()}
+        subtitle={bootState.accessMode === 'device-bound' ? m.settings_passphrase_sub_device() : m.settings_passphrase_sub_portable()}
+        href="/settings/passphrase"
       />
-    </div>
-    {#if isAndroid()}
-      <div class="list-row" style="cursor:default">
-        <span class="row-icon"><Icon name="fingerprint" size={22} /></span>
-        <span class="row-text">
-          <span class="row-title">{m.bio_row_title()}</span>
-          <span class="row-subtitle">
-            {m.bio_row_sub()}{bioApplies ? '' : ` · ${m.bio_row_needs_surface()}`}
-          </span>
-        </span>
-        <Switch
-          checked={prefs.bioOptIn === true}
-          label={m.bio_row_title()}
-          onChange={(v) => {
-            prefs.bioOptIn = v;
-          }}
-        />
-      </div>
-    {/if}
+      <ListRow
+        static
+        key="app-lock"
+        icon="lock"
+        title={m.app_lock()}
+        subtitle={prefs.appLock
+          ? `${m.on()} · ${isAndroid() ? m.settings_lock_on_pin_bio() : m.settings_lock_on_pin()}`
+          : m.off()}
+      >
+        {#snippet trailing()}
+          {#if prefs.appLock}
+            <!-- SH-104: this used to be the only route to the lock screen, a
+                 plain-text link inside 14px subtitle copy. It is now a proper
+                 row action next to the switch it does not overlap with in
+                 purpose: the switch turns the lock off, this opens it. -->
+            <a class="icon-btn" href="/settings/lock" aria-label={m.try_it()}><Icon name="chevronRight" size={20} /></a>
+          {/if}
+          <Switch
+            checked={prefs.appLock}
+            label={m.app_lock()}
+            onChange={(v) => {
+              /* Turning it on is the setup screen's job to finish: it writes
+                 both the hash and the flag once a PIN has been typed twice, so
+                 the flag is never on without a PIN behind it. Turning it off
+                 drops the hash, because the hash is what the gate reads. */
+              if (v) {
+                goto('/settings/lock?setup=1&next=/settings/security');
+                return;
+              }
+              prefs.appLock = false;
+              prefs.pinHash = null;
+            }}
+          />
+        {/snippet}
+      </ListRow>
+      {#if isAndroid()}
+        <ListRow
+          static
+          key="biometrics"
+          icon="fingerprint"
+          title={m.bio_row_title()}
+          subtitle={`${m.bio_row_sub()}${bioApplies ? '' : ` · ${m.bio_row_needs_surface()}`}`}
+        >
+          {#snippet trailing()}
+            <Switch
+              checked={prefs.bioOptIn === true}
+              label={m.bio_row_title()}
+              onChange={(v) => {
+                prefs.bioOptIn = v;
+              }}
+            />
+          {/snippet}
+        </ListRow>
+      {/if}
+    </ListCard>
   </div>
 </div>

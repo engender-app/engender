@@ -42,6 +42,8 @@
   import Icon from '$lib/components/Icon.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import JournalBookPhoto from '$lib/components/JournalBookPhoto.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -198,29 +200,23 @@
 
     {#if book.milestones.length}
       <SectionTitle text={journalBookPartName('milestones')} />
-      <div class="list-group section-block">
-        {#each book.milestones as milestone (milestone.id)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{milestone.name}</span>
-              <span class="row-subtitle">{dayLong(milestone.epochDay)}</span>
-            </span>
-          </div>
-        {/each}
+      <div class="section-block">
+        <ListCard>
+          {#each book.milestones as milestone (milestone.id)}
+            <ListRow static title={milestone.name} subtitle={dayLong(milestone.epochDay)} />
+          {/each}
+        </ListCard>
       </div>
     {/if}
 
     {#if book.sideEffects.length}
       <SectionTitle text={journalBookPartName('sideEffects')} />
-      <div class="list-group section-block">
-        {#each book.sideEffects as effect (effect.id)}
-          <div class="list-row">
-            <span class="row-text">
-              <span class="row-title">{effect.name}</span>
-              <span class="row-subtitle">{dayLong(effect.epochDay)} · {severityName(effect.severity)}</span>
-            </span>
-          </div>
-        {/each}
+      <div class="section-block">
+        <ListCard>
+          {#each book.sideEffects as effect (effect.id)}
+            <ListRow static title={effect.name} subtitle={`${dayLong(effect.epochDay)} · ${severityName(effect.severity)}`} />
+          {/each}
+        </ListCard>
       </div>
     {/if}
   {/if}
