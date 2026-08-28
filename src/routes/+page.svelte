@@ -67,6 +67,7 @@
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import MoodChips from '$lib/components/kit/MoodChips.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -332,12 +333,13 @@
         <MilestoneCard milestone={x.m} s={x.s} />
       {/each}
     {:else}
-      <a class="kit-row" href="/settings/milestones" data-milestones-empty>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.home_milestones_empty_title()}</span>
-          <span class="kit-row-sub">{m.home_milestones_empty_body()}</span>
-        </span>
-      </a>
+      <ListRow
+        href="/settings/milestones"
+        data-milestones-empty
+        chevron={false}
+        title={m.home_milestones_empty_title()}
+        subtitle={m.home_milestones_empty_body()}
+      />
     {/if}
   </ListCard>
 
