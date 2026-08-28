@@ -5,8 +5,8 @@
    four times: the SELECT in archiveRead.ts, the row-to-field map right
    below it, the INSERT list in archiveApply.ts and the value list right
    below that - plus a DELETE in restore.ts naming the table a fifth time.
-   Nothing checked the five against each other, and half of the 17 edit
-   sites a new flat area cost were the same names retyped.
+   Nothing checked the five against each other, and five of the nineteen edit
+   sites a new flat area cost were that column list retyped.
 
    One descriptor now feeds all of it: readFlatTable() reads the rows out,
    applyFlatTable() writes them back, and the registry derives the section's
