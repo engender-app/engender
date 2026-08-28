@@ -24,6 +24,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import { isAndroid } from '$lib/platform';
   import { onMount } from 'svelte';
 
@@ -412,12 +413,12 @@
 
   <div class="card" style="margin-bottom:var(--space-4)">
     <div class="spread">
-      <span class="row-text">
-        <span class="row-title">{m.exp_last_backup()}</span>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.exp_last_backup()}</span>
         <!-- Handle for the walkthrough, like data-plain on the export buttons:
              the backup age is what the plain-export flow checks moved to today,
              and reaching it by layout broke silently once this card grew rows. -->
-        <span class="row-subtitle" data-backup-age>
+        <span class="kit-row-sub" data-backup-age>
           {backupAge == null
             ? m.exp_last_backup_never()
             : backupAge === 0
@@ -433,9 +434,9 @@
     </div>
     <div class="hr" style="margin:var(--space-3) 0"></div>
     <div class="spread">
-      <span class="row-text">
-        <span class="row-title">{m.exp_last_verified()}</span>
-        <span class="row-subtitle">
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.exp_last_verified()}</span>
+        <span class="kit-row-sub">
           {verifiedAge == null
             ? m.exp_last_verified_never()
             : verifiedAge === 0
@@ -472,9 +473,9 @@
          the same warning the manual export sheet above does, once. -->
     <div class="card editor-section">
       <div class="spread">
-        <span class="row-text">
-          <span class="row-title">{m.exp_auto_title()}</span>
-          <span class="row-subtitle">{m.exp_auto_sub()}</span>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.exp_auto_title()}</span>
+          <span class="kit-row-sub">{m.exp_auto_sub()}</span>
         </span>
         <Switch checked={prefs.autoExportEnabled} label={m.exp_auto_title()}
           onChange={setAutoEnabled} />
@@ -572,15 +573,14 @@
       </button>
     </div>
     <div class="hr"></div>
-    <button class="list-row" data-daylio style="border-radius:var(--radius-md);background:var(--surface-2)"
-      onclick={openDaylio}>
-      <span class="row-icon"><Icon name="book" size={20} /></span>
-      <span class="row-text">
-        <span class="row-title">{m.daylio_row_title()}</span>
-        <span class="row-subtitle">{m.daylio_row_sub()}</span>
-      </span>
-      <Icon name="chevronRight" size={18} />
-    </button>
+    <ListRow
+      icon="book"
+      title={m.daylio_row_title()}
+      subtitle={m.daylio_row_sub()}
+      onclick={openDaylio}
+      data-daylio
+      style="border-radius:var(--radius-md);background:var(--surface-2)"
+    />
   </div>
 
   <SectionTitle text={m.plain_section()} />
