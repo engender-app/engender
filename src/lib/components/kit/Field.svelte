@@ -32,6 +32,7 @@
     hint,
     id,
     legend = false,
+    hidden = false,
     spread = false,
     children
   }: {
@@ -50,6 +51,12 @@
         for the group controls that point their own `aria-labelledby` at
         it. */
     legend?: boolean;
+    /** A real `for`/`id` pair, kept out of sight (`.visually-hidden`, the
+        same utility DemoBar's and stats' hand-rolled ones already use)
+        rather than dropped - the app's screen readers get a real
+        association, not an aria-label repeating a heading two lines above
+        it a third time. */
+    hidden?: boolean;
     /** The `.field.spread` row layout - a label to the left, a
         self-labelling control to the right (Switch). */
     spread?: boolean;
@@ -65,7 +72,7 @@
   {#if legend}
     <span class="field-label" id={fieldId}>{label}</span>
   {:else}
-    <label class="field-label" for={fieldId}>{label}{#if hint} <span class="muted">{hint}</span>{/if}</label>
+    <label class="field-label" class:visually-hidden={hidden} for={fieldId}>{label}{#if hint} <span class="muted">{hint}</span>{/if}</label>
   {/if}
   {@render children(fieldId)}
 </div>

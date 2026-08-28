@@ -218,6 +218,14 @@
         <Switch checked={reminders} label="Reminders" onChange={(v) => (reminders = v)} />
       {/snippet}
     </Field>
+    <!-- A real for/id pair, kept off screen - the shape a sheet whose own
+         heading already says what the one field below it is for wants,
+         rather than an aria-label saying the same word a third time. -->
+    <Field label="What to call it" id="c-hidden" hidden>
+      {#snippet children(id)}
+        <input class="input" {id} placeholder="No visible label above this one" />
+      {/snippet}
+    </Field>
   </div>
 
   <h2 class="gallery-head">Handed to other tickets</h2>
