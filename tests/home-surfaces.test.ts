@@ -133,7 +133,7 @@ describe('what spec 08 took off Home', () => {
        big accent number, a small label, a supporting line, on a surface of
        its own. So this checks the shape and not where the line sits, which
        moved to the greeting at review and could move again. */
-    const rule = read('src/lib/styles/screens.css').match(/\.home-streak \{[^}]*\}/s)?.[0];
+    const rule = home.match(/\.home-streak \{[^}]*\}/s)?.[0];
     expect(rule, 'the streak has a rule of its own').toBeDefined();
     expect(rule).toContain('var(--text-sm)');
     expect(rule).toContain('var(--text-2)');
@@ -148,12 +148,13 @@ describe('what spec 08 took off Home', () => {
        thing. */
     expect(home).toContain('const STREAK_CHEER_FLOOR = 7');
     expect(home).toMatch(/streak > STREAK_CHEER_FLOOR/);
-    const css = read('src/lib/styles/screens.css');
-    expect(css).toMatch(/animation: cheer-fall[^;]*;/);
-    expect(css.match(/animation: cheer-fall[^;]*;/)?.[0], 'plays once').not.toMatch(/infinite/);
+    // The animation moved into this file's own <style> block (phase 5 audit
+    // ticket 16), so `home` is read here rather than screens.css.
+    expect(home).toMatch(/animation: cheer-fall[^;]*;/);
+    expect(home.match(/animation: cheer-fall[^;]*;/)?.[0], 'plays once').not.toMatch(/infinite/);
     // Substituted, not clamped, under both reduced-motion paths.
-    expect(css).toContain("html[data-a11y-motion='reduce'] .home-cheer i { animation: none; }");
-    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.home-cheer i \{ animation: none; \}/);
+    expect(home).toContain(":global(html[data-a11y-motion='reduce']) .home-cheer i { animation: none; }");
+    expect(home).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.home-cheer i \{ animation: none; \}/);
   });
 });
 
