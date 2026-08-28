@@ -1258,7 +1258,7 @@ await block('ticket 09 detail draft', 3, async () => {
 // without an association - Field.svelte mints the id when a screen has no
 // reason to name one, and hands the same string to the label and the
 // control either way.
-await block('phase 5 audit deepening ticket 10 field association', 4, async () => {
+await block('phase 5 audit deepening ticket 10 field association', 5, async () => {
   await page.goto(`http://localhost:${port}/controls.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-controls-ready]', { state: 'attached' });
 
@@ -1295,6 +1295,17 @@ await block('phase 5 audit deepening ticket 10 field association', 4, async () =
   );
   if (explicit) ok('a field given an explicit id uses it verbatim rather than minting over it');
   else fail('a field given an explicit id uses it verbatim rather than minting over it', 'not found');
+
+  const hiddenField = await page.evaluate(() => {
+    const label = document.querySelector('label[for="c-hidden"]');
+    const input = document.querySelector('#c-hidden');
+    if (!label || !input) return null;
+    const rect = label.getBoundingClientRect();
+    return { hasClass: label.classList.contains('visually-hidden'), offscreen: rect.width <= 1 || rect.height <= 1 };
+  });
+  if (hiddenField?.hasClass && hiddenField.offscreen)
+    ok('a hidden field still gives its control a real for/id pair, just off screen');
+  else fail('a hidden field still gives its control a real for/id pair, just off screen', JSON.stringify(hiddenField));
 });
 
 await browser.close();

@@ -715,7 +715,11 @@
                  states the word "Dose" instead - so a label here would be
                  the third time the same word appeared in four lines. Both
                  inputs carry it as an accessible name, which is what a
-                 field without a visible label owes. -->
+                 field without a visible label owes.
+
+                 Left hand-written rather than moved onto Field.svelte
+                 (ticket 10): Field is one label naming one control, and
+                 this wrapper holds two, each already named its own way. -->
             <div class="field">
               <div class="dose-amount">
                 <input

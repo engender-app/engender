@@ -39,6 +39,7 @@
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -311,16 +312,18 @@
       </button>
 
       <SectionHeading text={m.surgery_notes_title()} />
-      <div class="field">
-        <textarea
-          class="input"
-          id="surgery-notes"
-          name="surgery-notes"
-          rows="4"
-          placeholder={m.surgery_notes_placeholder()}
-          bind:value={notesDraft}
-        ></textarea>
-      </div>
+      <Field label={m.surgery_notes_title()} id="surgery-notes" hidden>
+        {#snippet children(id)}
+          <textarea
+            class="input"
+            {id}
+            name="surgery-notes"
+            rows="4"
+            placeholder={m.surgery_notes_placeholder()}
+            bind:value={notesDraft}
+          ></textarea>
+        {/snippet}
+      </Field>
       <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
         <span>{m.surgery_notes_save()}</span>
       </button>
@@ -423,38 +426,42 @@
     }}
   >
     {#snippet fields(editor)}
-      <div class="field">
-        <label class="field-label" for="surgery-name">{m.surgery_name_label()}</label>
-        <input
-          class="input"
-          id="surgery-name"
-          name="surgery-name"
-          placeholder={m.surgery_name_placeholder()}
-          bind:value={editor.name}
-        />
-      </div>
-      <div class="field">
-        <label class="field-label" for="surgery-date">{m.surgery_date_label()}</label>
-        <input class="input" type="date" id="surgery-date" name="surgery-date" bind:value={editor.date} />
-      </div>
+      <Field label={m.surgery_name_label()} id="surgery-name">
+        {#snippet children(id)}
+          <input
+            class="input"
+            {id}
+            name="surgery-name"
+            placeholder={m.surgery_name_placeholder()}
+            bind:value={editor.name}
+          />
+        {/snippet}
+      </Field>
+      <Field label={m.surgery_date_label()} id="surgery-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="surgery-date" bind:value={editor.date} />
+        {/snippet}
+      </Field>
     {/snippet}
   </RecordSheet>
 
   <Sheet open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
     <h3>{m.surgery_consult_sheet()}</h3>
-    <div class="field">
-      <label class="field-label" for="surgery-consult-date">{m.surgery_consult_date_label()}</label>
-      <input class="input" type="date" id="surgery-consult-date" name="surgery-consult-date" bind:value={consultDate} />
-    </div>
+    <Field label={m.surgery_consult_date_label()} id="surgery-consult-date">
+      {#snippet children(id)}
+        <input class="input" type="date" {id} name="surgery-consult-date" bind:value={consultDate} />
+      {/snippet}
+    </Field>
     <button class="btn btn-primary" data-save-consult onclick={addConsult}><span>{m.surgery_consult_add()}</span></button>
   </Sheet>
 
   <Sheet open={photoSheet} title={m.surgery_photos_title()} onClose={() => (photoSheet = false)}>
     <h3>{m.surgery_photos_title()}</h3>
-    <div class="field">
-      <label class="field-label" for="surgery-photo-date">{m.surgery_photo_date_label()}</label>
-      <input class="input" type="date" id="surgery-photo-date" name="surgery-photo-date" bind:value={photoDate} />
-    </div>
+    <Field label={m.surgery_photo_date_label()} id="surgery-photo-date">
+      {#snippet children(id)}
+        <input class="input" type="date" {id} name="surgery-photo-date" bind:value={photoDate} />
+      {/snippet}
+    </Field>
     <div class="stack-3">
       <button class="btn btn-soft" data-pick-procedure-photo onclick={pickRecoveryPhoto}>
         <span>{m.surgery_photo_pick()}</span>
@@ -479,15 +486,17 @@
 
   <Sheet open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
     <h3>{m.surgery_checklist_sheet()}</h3>
-    <div class="field">
-      <input
-        class="input"
-        id="surgery-item"
-        name="surgery-item"
-        placeholder={m.surgery_checklist_placeholder()}
-        bind:value={itemText}
-      />
-    </div>
+    <Field label={m.surgery_checklist_sheet()} id="surgery-item" hidden>
+      {#snippet children(id)}
+        <input
+          class="input"
+          {id}
+          name="surgery-item"
+          placeholder={m.surgery_checklist_placeholder()}
+          bind:value={itemText}
+        />
+      {/snippet}
+    </Field>
     <button class="btn btn-primary" data-save-procedure-item onclick={addItem}><span>{m.surgery_checklist_add()}</span></button>
   </Sheet>
 
