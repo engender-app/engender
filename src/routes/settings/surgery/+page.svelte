@@ -123,9 +123,9 @@
   let photoSheet = $state(false);
   let photoDate = $state('');
 
-  async function storePhoto(photo: NormalizedPhoto | null) {
+  async function storePhoto(photo: NormalizedPhoto): Promise<void> {
     const epochDay = epochDayFromDateInputValue(photoDate);
-    if (!selectedId || !photo || epochDay === null) return;
+    if (!selectedId || epochDay === null) return;
     photoSheet = false;
     await journal.procedures.addPhoto(selectedId, epochDay, photo);
   }
