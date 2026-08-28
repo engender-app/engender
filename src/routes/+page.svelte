@@ -537,7 +537,14 @@
   /* The caption belongs to the strip above it, so it sits closer than a
      section does to the next section. */
   .home > :global(.kit-strip) { margin-bottom: var(--space-2); }
-  .home > :last-child { margin-bottom: 0; }
+  /* Not `.home-swap`: unlike the tiles and the heading above, nothing
+     inside it - the skeleton, the day list, the empty notice - carries any
+     trailing space of its own, so zeroing it left the last day card sitting
+     on the scroll region's own --nav-clearance padding alone, with none of
+     Home's own rhythm stacked on top of it the way every other block gets
+     (Alicja, phase 5 ticket 99 item 9: "more space needed between the end
+     of the screen and the last entry"). */
+  .home > :last-child:not(.home-swap) { margin-bottom: 0; }
 
   /* The streak, under the greeting. No pill, no accent, no icon and no
      display size: those are what made it read as a score, and DIRECTION.md's
