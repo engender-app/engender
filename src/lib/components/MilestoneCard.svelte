@@ -4,10 +4,9 @@
      DIRECTION.md's decision 2b argues against: four near-identical cards
      side by side, none of them readable without swiping to it.
 
-     Not `ListRow` itself, for the same reason `DayEntry` is not: the row
-     carries a photo where the milestone has one, and a photo is not an
-     icon disc. It writes the row's own inner classes instead, which is the
-     kit's markup rather than a second version of it.
+     `ListRow`'s `leading` snippet, for the row that carries a photo where
+     the milestone has one - a photo is not an icon disc, so the disc is the
+     fallback rather than the shape (ticket 16).
 
      The anniversary offer is a row of its own under the milestone's, rather
      than a button inside it. A button nested in a link is invalid markup
@@ -21,6 +20,7 @@
   import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
   import FeltSenseOfferSheet from './FeltSenseOfferSheet.svelte';
+  import ListRow from './kit/ListRow.svelte';
   import { fmtDay } from '$lib/data/dates';
   import type { Milestone } from '$lib/data/types';
   import type { MilestoneStatus } from '$lib/data/milestoneStatus';
@@ -43,32 +43,36 @@
   }
 </script>
 
-<a class="kit-row" data-milestone-card={milestone.id} {href}>
-  {#if milestone.photo}
-    <span class="milestone-face"><PhotoThumb photo={milestone.photo} size={36} /></span>
-  {:else}
-    <span class="kit-row-ico"><Icon name="flag" size={20} /></span>
-  {/if}
-  <span class="kit-row-text">
-    <span class="kit-row-title">{milestone.name}</span>
-    <span class="kit-row-sub"
-      >{fmtDay(milestone.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · {status}</span
-    >
-  </span>
-  <span class="kit-row-trail">
+<ListRow
+  {href}
+  data-milestone-card={milestone.id}
+  chevron={false}
+  title={milestone.name}
+  subtitle={`${fmtDay(milestone.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${status}`}
+>
+  {#snippet leading()}
+    {#if milestone.photo}
+      <span class="milestone-face"><PhotoThumb photo={milestone.photo} size={36} /></span>
+    {:else}
+      <span class="kit-row-ico"><Icon name="flag" size={20} /></span>
+    {/if}
+  {/snippet}
+  {#snippet trailing()}
     {#if badge}<span class="kit-pill">{badge}</span>{/if}
     <Icon name="chevronRight" size={20} />
-  </span>
-</a>
+  {/snippet}
+</ListRow>
 
 {#if s.isAnnivToday}
-  <button type="button" class="kit-row" data-anniv-feeling={milestone.id} onclick={() => (offering = true)}>
-    <span class="kit-row-ico"><Icon name="heart" size={20} /></span>
-    <span class="kit-row-text">
-      <span class="kit-row-title">{m.ms_feeling_anniv_title()}</span>
-    </span>
-    <span class="kit-row-trail"><Icon name="chevronRight" size={20} /></span>
-  </button>
+  <ListRow
+    data-anniv-feeling={milestone.id}
+    onclick={() => (offering = true)}
+    chevron={false}
+    title={m.ms_feeling_anniv_title()}
+  >
+    {#snippet leading()}<span class="kit-row-ico"><Icon name="heart" size={20} /></span>{/snippet}
+    {#snippet trailing()}<Icon name="chevronRight" size={20} />{/snippet}
+  </ListRow>
 
   <FeltSenseOfferSheet
     open={offering}

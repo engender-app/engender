@@ -346,21 +346,19 @@
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
             <div role="radiogroup" aria-labelledby={id}>
               {#each HAIR_SCALES as scale (scale)}
-                <button
-                  class="kit-row"
+                <ListRow
                   role="radio"
                   aria-checked={stageEditor.scale === scale}
                   data-pick-scale={scale}
                   onclick={() => pickScale(stageEditor, scale)}
+                  chevron={false}
+                  title={hairScaleName(scale)}
+                  subtitle={hairScaleSub(scale)}
                 >
-                  <span class="kit-row-text">
-                    <span class="kit-row-title">{hairScaleName(scale)}</span>
-                    <span class="kit-row-sub">{hairScaleSub(scale)}</span>
-                  </span>
-                  <span class="kit-row-trail">
+                  {#snippet trailing()}
                     {#if stageEditor.scale === scale}<Icon name="check" size={20} />{/if}
-                  </span>
-                </button>
+                  {/snippet}
+                </ListRow>
               {/each}
             </div>
           </ListCard>

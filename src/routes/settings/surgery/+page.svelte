@@ -217,6 +217,11 @@
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
           {#each procedures as procedure (procedure.id)}
+            <!-- Hand-rolled rather than ListRow's action shape (ticket 16):
+                 ...rest lands on the outer .kit-row, not the inner
+                 .kit-row-main button, so aria-expanded and this row's own
+                 aria-label - fuller than the visible title+subtitle text -
+                 have nowhere to attach through the prop surface. -->
             <div class="kit-row is-split" data-procedure={procedure.id}>
               <button
                 class="kit-row-main"
@@ -352,6 +357,11 @@
         <div style="margin-bottom:var(--space-3)">
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
           {#each checklistItems as item (item.id)}
+            <!-- Hand-rolled rather than ListRow (ticket 16): two trailing
+                 actions (flag, delete) where action takes one, a checkbox
+                 main that's role="checkbox" rather than ListRow's own
+                 checked semantics, and the same aria-attachment gap as the
+                 procedures row above. -->
             <div class="kit-row is-split" data-procedure-item={item.id}>
               <button
                 class="kit-row-main"

@@ -147,7 +147,12 @@ function styleSources() {
   return [...sheets, ...svelteStyleBlocks()];
 }
 
-const allRules = sheets.flatMap(({ path, css }) => rules(css).map((rule) => ({ ...rule, path })));
+/* styleSources(), not sheets alone (phase 5 audit ticket 16): a screen's
+   @keyframes can live in its own component now that screens.css's clusters
+   are moving into their owners, and "the cap that spans every material"
+   below already names the risk this closes - a check that only read the six
+   shared sheets would go quietly vacuous exactly when it started to matter. */
+const allRules = styleSources().flatMap(({ path, css }) => rules(css).map((rule) => ({ ...rule, path })));
 
 const isReduceContext = (rule: Rule) =>
   rule.context.some((at) => at.includes('prefers-reduced-motion')) ||
