@@ -7,7 +7,7 @@ import { expect, test } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support.ts';
 import type { Journal } from '../journal/journal.ts';
 import { journalIsBusy } from '../journal-busy.ts';
-import { observeWrites, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
+import { JOURNAL_WIDE, observeWrites, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
 
 async function observed() {
   const { journal, db } = await journalWithBuiltIns();
@@ -220,6 +220,26 @@ test('every operation the journal actually has is classified', async () => {
   // not the one openJournal() returned.
   const wrapped: Journal = observeWrites(journal, () => {});
   assert.deepEqual(Object.keys(wrapped).toSorted(), Object.keys(journal).toSorted());
+});
+
+/* Which members of the journal are operations rather than areas of them, and
+   the reason it matters twice over: this module wraps them itself instead of
+   looking them up in OPERATIONS, and journal.svelte.ts's lazy proxy has to
+   call them rather than build a facade of operations around them.
+
+   That proxy knew `reconcileBuiltIns` by name alone until phase 5 audit
+   ticket 13 added `discardEverything`, and the miss showed up only as
+   "discardEverything is not a function" in a walkthrough run - a rune module
+   the Node tier cannot import. This is the half of it that can be checked
+   here: the list and the journal agreeing on which members are functions. */
+test('the journal-wide operations are exactly the journal members that are functions', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  const functions = Object.entries(journal)
+    .filter(([, member]) => typeof member === 'function')
+    .map(([name]) => name);
+
+  assert.deepEqual(functions.toSorted(), [...JOURNAL_WIDE].toSorted());
 });
 
 test('a whole area this module does not know about is rejected too', async () => {

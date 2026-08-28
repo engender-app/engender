@@ -47,6 +47,18 @@ export async function emptyDevice(): Promise<Journal> {
   return journal;
 }
 
+/** `everySection()` with none of the user content: the reference rows a boot
+    puts there and nothing else. What emptying a journal has to leave behind,
+    and therefore what a test of that can compare against - built-in rows
+    survive a Replace by design (restore.ts), so "empty" cannot mean zero. */
+export async function builtInsOnlyDevice(): Promise<{ driver: SqliteDriver; journal: Journal }> {
+  const driver = await migratedDb();
+  const journal = openJournal(driver, fakeFileStore());
+  await journal.reconcileBuiltIns();
+  await seedLegacyBuiltInPresets(driver);
+  return { driver, journal };
+}
+
 /** Devices that reconciled before phase 5 ticket 35 kept eight built-in
     preset rows (reconcile.ts's own history says why it stopped: the picker
     they backed is gone and nothing reads them any more). A fresh journal
@@ -81,8 +93,17 @@ async function seedLegacyBuiltInPresets(driver: SqliteDriver): Promise<void> {
     hidden affirmation, a custom body region logged on the entry alongside a
     built-in one, a custom measurement type alongside a hidden built-in one,
     a disabled effect category, and a custom effect type alongside a hidden
-    built-in one. */
-export async function everySection(): Promise<Journal> {
+    built-in one. Built by `everySectionDevice` below, which is the same thing
+    with the connection handed back too. */
+export const everySection = async (): Promise<Journal> => (await everySectionDevice()).journal;
+
+/** The same journal, with its connection alongside it, for the tests that
+    have to speak to the driver directly: emptying the journal has to hold
+    with `PRAGMA foreign_keys` off, and counting rows table by table sees what
+    no section's read can (restore.test.ts). Neither is something the journal
+    handle offers, and neither is a reason for the callers that only want the
+    journal to unpack a pair. */
+export async function everySectionDevice(): Promise<{ driver: SqliteDriver; journal: Journal }> {
   const driver = await migratedDb();
   const journal = openJournal(driver, fakeFileStore());
   await journal.reconcileBuiltIns();
@@ -247,7 +268,7 @@ export async function everySection(): Promise<Journal> {
     reminderTitle: 'binder check-in'
   });
 
-  return journal;
+  return { driver, journal };
 }
 
 /** Every section's row count, in the same shape golden-archive-counts.json

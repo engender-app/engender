@@ -25,36 +25,27 @@ import { persona } from './persona';
 
 /** Deletes every journal row, leaving preferences alone. Only the demo bar's
     state jumps need this - a real Replace import is ticket 14's, behind the
-    journal rather than beside it. Ordered children-first so it works whether
-    or not foreign keys are enforced on this connection. */
+    journal rather than beside it.
+
+    Which rows and in what order is the journal's own answer now
+    (`discardEverything`, phase 5 audit ticket 13), not a second one written
+    here. The walk this replaced covered seven of the thirty-six sections an
+    archive carries, and silently left doses, regimen, side effects,
+    procedures, letters, roadmap and checklists among the rest - a second copy
+    of a hand-ordered list, which is what drift looks like when nothing guards
+    it.
+
+    The entry and milestone photos still go through the journal first, and
+    that is the one thing this function adds: `discardEverything` deletes no
+    file, deliberately, so that a failed import leaves the old photos on disk
+    (restore.ts). Removing them row and file together here keeps a demo device
+    from accumulating orphans across every state jump rather than waiting for
+    the next boot's sweep. The persona attaches no other kind of file, so the
+    remaining four photo tables need no loop of their own - and if it ever
+    does, the sweep is what reclaims them. */
 export async function clearJournal(journal: Journal): Promise<void> {
-  // Photos first and through the journal, so the files go with the rows
-  // rather than being left for the next boot's sweep.
   for (const photo of await journal.photos.inJournal()) await journal.photos.remove(photo.id);
-  // In batches, because the journal offers no unbounded entry read and should
-  // not grow one for the demo's sake (ADR-0004).
-  for (;;) {
-    const batch = await journal.entries.recentDays(60);
-    if (batch.length === 0) break;
-    for (const entry of batch) await journal.entries.deleteEntry(entry.id);
-  }
-  for (const milestone of await journal.milestones.getMilestones()) {
-    await journal.milestones.deleteMilestone(milestone.id);
-  }
-  for (const reminder of await journal.reminders.getReminders()) {
-    await journal.reminders.deleteReminder(reminder.id);
-  }
-  for (const analyte of await journal.labs.getUsedAnalytes()) {
-    for (const result of await journal.labs.getResults(analyte)) await journal.labs.deleteResult(result.id);
-  }
-  for (const kind of ['misgendered', 'correctly_gendered'] as const) {
-    for (const event of await journal.tally.getEvents(kind)) await journal.tally.deleteEvent(event.id);
-  }
-  // Custom tags and groups: built-ins stay, because reconciling them is what
-  // every boot does anyway and a demo without a vocabulary is not a demo.
-  for (const group of await journal.tags.getTagGroups()) {
-    for (const tag of group.tags) if (!tag.builtIn) await journal.tags.deleteTag(tag.id);
-  }
+  await journal.discardEverything();
 }
 
 export async function seedPersonaJournal(journal: Journal): Promise<void> {

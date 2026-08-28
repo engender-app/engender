@@ -196,7 +196,7 @@ const HYDRATED_ENTRY: TableName[] = ['entry', 'dimension', 'tag', 'photo', 'voic
     than a boot-time throw; the throw in `observeWrites` stays for the case
     the types cannot see, a build whose journal carries an area this file has
     never heard of. */
-const OPERATIONS: { [Area in keyof Omit<Journal, 'reconcileBuiltIns'>]: Classified<Journal[Area]> } = {
+const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classified<Journal[Area]> } = {
   entries: classify<Journal['entries']>()({
     writes: {
       // Photos, recordings and video notes as well as the entry: a save
@@ -595,6 +595,21 @@ const OPERATIONS: { [Area in keyof Omit<Journal, 'reconcileBuiltIns'>]: Classifi
   })
 };
 
+/* The operations that are the journal's rather than an area's, and so have no
+   entry in the map above: reconciling the built-in vocabulary, and emptying
+   the journal of every row (phase 5 audit ticket 13). Both are classified
+   where they are wrapped instead - one against the reference tables
+   reconcile.ts names, the other against all of them.
+
+   Exported because journal.svelte.ts's lazy proxy needs the same list: an
+   operation on the journal itself is a function to call, not an area to build
+   a facade of operations for, and the proxy has no other way to tell them
+   apart. It knew only `reconcileBuiltIns` by name until ticket 13 added the
+   second, which is exactly the shape that forgets the third. */
+export const JOURNAL_WIDE = ['reconcileBuiltIns', 'discardEverything'] as const;
+
+type JournalWideOperation = (typeof JOURNAL_WIDE)[number];
+
 /** The same map, keyed by plain strings, for the callers that only have
     strings: `observeWrites` walks the journal object it is handed, and a query
     resolves the operation name its closure called. The authored form above is
@@ -649,11 +664,14 @@ export function tablesReadBy(area: string, operation: string): TableName[] {
 
 export function observeWrites(journal: Journal, onWrite: (tables: TableName[]) => void): Journal {
   const wrappedJournal: Record<string, unknown> = {
-    reconcileBuiltIns: announcing(journal.reconcileBuiltIns.bind(journal), RECONCILE_TABLES, onWrite)
+    reconcileBuiltIns: announcing(journal.reconcileBuiltIns.bind(journal), RECONCILE_TABLES, onWrite),
+    // Every table, for the same reason an Archive import announces every
+    // table: it empties all of them.
+    discardEverything: announcing(journal.discardEverything.bind(journal), [...TABLE_NAMES], onWrite)
   };
 
   for (const [areaName, area] of Object.entries(journal)) {
-    if (areaName === 'reconcileBuiltIns') continue;
+    if (JOURNAL_WIDE.includes(areaName as JournalWideOperation)) continue;
     const classified = BY_NAME[areaName];
     if (!classified) throw new Error(`journal.${areaName} is an area writes.ts does not classify`);
     const { writes, reads } = classified;
