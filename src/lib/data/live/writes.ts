@@ -595,14 +595,20 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   })
 };
 
-/* The two operations that are the journal's rather than an area's, and so
-   have no entry in the map above: reconciling the built-in vocabulary, and
-   emptying the journal of every row (phase 5 audit ticket 13). Both are
-   classified where they are wrapped instead - one against the reference
-   tables reconcile.ts names, the other against all of them. */
-type JournalWideOperation = 'reconcileBuiltIns' | 'discardEverything';
+/* The operations that are the journal's rather than an area's, and so have no
+   entry in the map above: reconciling the built-in vocabulary, and emptying
+   the journal of every row (phase 5 audit ticket 13). Both are classified
+   where they are wrapped instead - one against the reference tables
+   reconcile.ts names, the other against all of them.
 
-const JOURNAL_WIDE: readonly JournalWideOperation[] = ['reconcileBuiltIns', 'discardEverything'];
+   Exported because journal.svelte.ts's lazy proxy needs the same list: an
+   operation on the journal itself is a function to call, not an area to build
+   a facade of operations for, and the proxy has no other way to tell them
+   apart. It knew only `reconcileBuiltIns` by name until ticket 13 added the
+   second, which is exactly the shape that forgets the third. */
+export const JOURNAL_WIDE = ['reconcileBuiltIns', 'discardEverything'] as const;
+
+type JournalWideOperation = (typeof JOURNAL_WIDE)[number];
 
 /** The same map, keyed by plain strings, for the callers that only have
     strings: `observeWrites` walks the journal object it is handed, and a query
@@ -665,7 +671,7 @@ export function observeWrites(journal: Journal, onWrite: (tables: TableName[]) =
   };
 
   for (const [areaName, area] of Object.entries(journal)) {
-    if ((JOURNAL_WIDE as readonly string[]).includes(areaName)) continue;
+    if (JOURNAL_WIDE.includes(areaName as JournalWideOperation)) continue;
     const classified = BY_NAME[areaName];
     if (!classified) throw new Error(`journal.${areaName} is an area writes.ts does not classify`);
     const { writes, reads } = classified;
