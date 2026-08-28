@@ -19,7 +19,10 @@
   import {
     todayEpochDay,
     epochDayFromDateInputValue,
+    epochDayFromDateInputValueOrToday,
     dateInputValueFromEpochDay,
+    dayRangeEndMin,
+    dayRangeStartMax,
     ongoingWindowRange,
     customInclusiveRange
   } from '$lib/data/epochDay';
@@ -29,6 +32,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import CycleEventChart from '$lib/components/CycleEventChart.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -73,7 +77,7 @@
       await journal.cycleEvents.upsertCycleEvent({
         id: draft.id,
         kind: draft.kind,
-        epochDay: epochDayFromDateInputValue(draft.date) ?? today
+        epochDay: epochDayFromDateInputValueOrToday(draft.date)
       });
     },
     remove: (id) => journal.cycleEvents.deleteCycleEvent(id),
@@ -105,14 +109,16 @@
            above it on the kit's filter line, because they say what the
            chart is showing rather than entering a value. -->
       <div class="kit-filter cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="cycle-event-range-start">{m.cycle_event_range_start_label()}</label>
-          <input class="input" id="cycle-event-range-start" type="date" bind:value={startInput} max={endInput || undefined} />
-        </div>
-        <div class="field">
-          <label class="field-label" for="cycle-event-range-end">{m.cycle_event_range_end_label()}</label>
-          <input class="input" id="cycle-event-range-end" type="date" bind:value={endInput} min={startInput || undefined} />
-        </div>
+        <Field label={m.cycle_event_range_start_label()} id="cycle-event-range-start">
+          {#snippet children(id)}
+            <input class="input" {id} type="date" bind:value={startInput} max={dayRangeStartMax(endInput)} />
+          {/snippet}
+        </Field>
+        <Field label={m.cycle_event_range_end_label()} id="cycle-event-range-end">
+          {#snippet children(id)}
+            <input class="input" {id} type="date" bind:value={endInput} min={dayRangeEndMin(startInput)} />
+          {/snippet}
+        </Field>
       </div>
       {#if range === null}
         <p class="muted small">{m.cycle_event_range_required()}</p>
@@ -172,19 +178,21 @@
     }}
   >
     {#snippet fields(editor)}
-      <div class="field">
-        <label class="field-label" for="cycle-event-date">{m.cycle_event_date_label()}</label>
-        <input class="input" type="date" id="cycle-event-date" name="cycle-event-date" bind:value={editor.date} />
-      </div>
-      <div class="field">
-        <span class="field-label">{m.cycle_event_kind_label()}</span>
-        <Segmented
-          name={m.cycle_event_kind_label()}
-          options={KINDS.map((k) => ({ value: k, label: cycleEventKindName(k) }))}
-          value={editor.kind}
-          onChange={(v) => (editor.kind = v as CycleEventKind)}
-        />
-      </div>
+      <Field label={m.cycle_event_date_label()} id="cycle-event-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="cycle-event-date" bind:value={editor.date} />
+        {/snippet}
+      </Field>
+      <Field label={m.cycle_event_kind_label()} legend>
+        {#snippet children()}
+          <Segmented
+            name={m.cycle_event_kind_label()}
+            options={KINDS.map((k) => ({ value: k, label: cycleEventKindName(k) }))}
+            value={editor.kind}
+            onChange={(v) => (editor.kind = v as CycleEventKind)}
+          />
+        {/snippet}
+      </Field>
     {/snippet}
   </RecordSheet>
 </div>
