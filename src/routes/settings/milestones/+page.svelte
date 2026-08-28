@@ -28,11 +28,11 @@
   import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -52,7 +52,7 @@
       point held separately: the alignment review (ticket 12) compares a
       retake against the photo this milestone had before this edit, even
       after removing it clears `photo` to make room for a new one. */
-  let editor = $state<{
+  type Draft = {
     id?: string;
     name: string;
     date: string;
@@ -60,7 +60,7 @@
     storedPhotoId: string | null;
     originalPhoto: Photo | null;
     templateKey: string | null;
-  } | null>(null);
+  };
   /* Offered, never required, right after a brand-new milestone is created
      (CONTEXT: "Felt-sense entry") - editing an existing one never opens
      this, the same reasoning ticket 24 gives for the anniversary showing
@@ -70,11 +70,52 @@
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let sorted = $derived(vocabulary.milestones);
 
-  const record = recordEditor<Milestone>({
+  /* What a blank draft is seeded from, set by whichever row of the picker
+     was tapped just before it opens. Held beside the editor rather than
+     passed through it: `openEditor` takes the record being edited, and a
+     template is not one - it is a name and a key for a milestone that does
+     not exist yet. */
+  let template: MilestoneTemplate | null = null;
+
+  const record = recordEditor<Milestone, Draft>({
+    blank: () => ({
+      name: template?.name ?? '',
+      date: dateInputValueFromEpochDay(todayEpochDay()),
+      photo: null,
+      storedPhotoId: null,
+      originalPhoto: null,
+      templateKey: template?.key ?? null
+    }),
+    fromRecord: (existing) => ({
+      id: existing.id,
+      name: existing.name,
+      date: dateInputValueFromEpochDay(existing.epochDay),
+      photo: existing.photo && { kind: 'stored', photo: existing.photo },
+      storedPhotoId: existing.photo?.id ?? null,
+      originalPhoto: existing.photo ?? null,
+      templateKey: existing.templateKey
+    }),
+    async upsert(draft) {
+      const isNew = !draft.id;
+      const photo =
+        draft.photo?.kind === 'picked'
+          ? { action: 'replace' as const, photo: draft.photo.photo }
+          : draft.storedPhotoId && !draft.photo
+            ? { action: 'remove' as const }
+            : { action: 'preserve' as const };
+
+      const id = await journal.milestones.upsertMilestone({
+        id: draft.id,
+        name: draft.name.trim() || m.ms_default_name(),
+        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+        templateKey: draft.templateKey,
+        photo
+      });
+      if (isNew) feelingOfferId = id;
+    },
     remove: (id) => journal.milestones.deleteMilestone(id),
     findById: (id) => sorted.find((mi) => mi.id === id)
   });
-  let deleteTarget = $derived(record.deleteTarget);
 
   function statusText(mi: Milestone): string {
     const s = milestoneStatus(mi, todayEpochDay());
@@ -83,61 +124,26 @@
     return m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
   }
 
-  function openEditor(existing: Milestone | null, template: MilestoneTemplate | null) {
+  function openEditor(existing: Milestone | null, seed: MilestoneTemplate | null) {
     picking = false;
-    editor = existing
-      ? {
-          id: existing.id,
-          name: existing.name,
-          date: dateInputValueFromEpochDay(existing.epochDay),
-          photo: existing.photo && { kind: 'stored', photo: existing.photo },
-          storedPhotoId: existing.photo?.id ?? null,
-          originalPhoto: existing.photo ?? null,
-          templateKey: existing.templateKey
-        }
-      : {
-          name: template?.name ?? '',
-          date: dateInputValueFromEpochDay(todayEpochDay()),
-          photo: null,
-          storedPhotoId: null,
-          originalPhoto: null,
-          templateKey: template?.key ?? null
-        };
+    template = seed;
+    record.openEditor(existing);
   }
 
   async function pickPhoto() {
     const [photo] = await pickPhotos(1); // a milestone shows one
-    if (photo && editor) editor.photo = { kind: 'picked', photo };
+    if (photo && record.editor) record.editor.photo = { kind: 'picked', photo };
   }
 
   const milestonePhotoReview = photoReview(
-    () => (editor?.originalPhoto?.fileName ? { fileName: editor.originalPhoto.fileName } : null),
+    () => {
+      const fileName = record.editor?.originalPhoto?.fileName;
+      return fileName ? { fileName } : null;
+    },
     (photo) => {
-      if (editor) editor.photo = { kind: 'picked', photo };
+      if (record.editor) record.editor.photo = { kind: 'picked', photo };
     }
   );
-
-  async function saveMilestone() {
-    if (!editor) return;
-    const draft = { ...editor };
-    const isNew = !draft.id;
-    const photo =
-      draft.photo?.kind === 'picked'
-        ? { action: 'replace' as const, photo: draft.photo.photo }
-        : draft.storedPhotoId && !draft.photo
-          ? { action: 'remove' as const }
-          : { action: 'preserve' as const };
-
-    const id = await journal.milestones.upsertMilestone({
-      id: draft.id,
-      name: draft.name.trim() || m.ms_default_name(),
-      epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
-      templateKey: draft.templateKey,
-      photo
-    });
-    editor = null;
-    if (isNew) feelingOfferId = id;
-  }
 
   async function saveFeelingOffer(input: { mood: number; note: string | null }) {
     if (!feelingOfferId) return;
@@ -220,9 +226,25 @@
     </ListCard>
   </Sheet>
 
-  <Sheet open={editor !== null} title={m.ms_sheet_title()} onClose={() => (editor = null)}>
-    {#if editor}
-      <h3>{editor.id ? m.ms_edit_title() : editor.name || m.ms_new_title()}</h3>
+  <!-- The heading used to be a third thing: the sheet was labelled "A
+       milestone" while the heading below it said the name being typed. It
+       is the title pair on both lines now, which is also the label a screen
+       reader reads out. -->
+  <RecordSheet
+    {record}
+    handle="milestone"
+    newTitle={m.ms_new_title()}
+    editTitle={m.ms_edit_title()}
+    saveLabel={(draft) => (draft.id ? m.ms_save_changes() : m.ms_add())}
+    confirm={{
+      title: m.ms_delete_sheet(),
+      question: (milestone) => m.ms_delete_q({ name: milestone.name }),
+      hint: () => m.ms_delete_hint(),
+      confirmLabel: m.ms_delete_sheet(),
+      cancelLabel: m.keep_it()
+    }}
+  >
+    {#snippet fields(editor)}
       <div class="field">
         <label class="field-label" for="ms-name">{m.ms_name_label()}</label>
         <input class="input" id="ms-name" name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />
@@ -241,7 +263,7 @@
               {:else}
                 <PhotoThumb photo={{ fileName: null }} bytes={editor.photo.photo.thumb} size={64} />
               {/if}
-              <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => (editor!.photo = null)}>
+              <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => (editor.photo = null)}>
                 <Icon name="x" size={14} />
               </button>
             </div>
@@ -255,22 +277,8 @@
           {/if}
         </div>
       </div>
-      <button class="btn btn-primary" data-save-ms onclick={saveMilestone}>
-        <span>{editor.id ? m.ms_save_changes() : m.ms_add()}</span>
-      </button>
-    {/if}
-  </Sheet>
-
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.ms_delete_sheet()}
-    question={deleteTarget ? m.ms_delete_q({ name: deleteTarget.name }) : ''}
-    hint={m.ms_delete_hint()}
-    confirmLabel={m.ms_delete_sheet()}
-    cancelLabel={m.keep_it()}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
-  />
+    {/snippet}
+  </RecordSheet>
 
   <PhotoAlignmentReview
     photo={milestonePhotoReview.photo}

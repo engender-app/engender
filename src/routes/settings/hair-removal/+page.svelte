@@ -22,13 +22,12 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -166,20 +165,29 @@
     {/snippet}
   </ReadGate>
 
-  <Sheet
-    open={editor !== null}
-    title={editor?.id ? m.hair_removal_edit_sheet() : m.hair_removal_new_sheet()}
-    onClose={() => (record.editor = null)}
+  <RecordSheet
+    {record}
+    handle="hair-removal-session"
+    newTitle={m.hair_removal_new_sheet()}
+    editTitle={m.hair_removal_edit_sheet()}
+    saveLabel={m.hair_removal_save()}
+    deleteLabel={m.hair_removal_delete()}
+    confirm={{
+      title: m.hair_removal_delete_sheet(),
+      question: (session) => m.hair_removal_delete_q({ area: hairRemovalAreaName(session.area) }),
+      hint: () => m.hair_removal_delete_hint(),
+      confirmLabel: m.hair_removal_delete(),
+      cancelLabel: m.keep_it()
+    }}
   >
-    {#if editor}
-      <h3>{editor.id ? m.hair_removal_edit_sheet() : m.hair_removal_new_sheet()}</h3>
+    {#snippet fields(draft)}
       <div class="field">
         <label class="field-label" for="hair-removal-date">{m.hair_removal_date_label()}</label>
-        <input class="input" type="date" id="hair-removal-date" name="hair-removal-date" bind:value={editor.date} />
+        <input class="input" type="date" id="hair-removal-date" name="hair-removal-date" bind:value={draft.date} />
       </div>
       <div class="field">
         <label class="field-label" for="hair-removal-area">{m.hair_removal_area_label()}</label>
-        <select class="input" id="hair-removal-area" bind:value={editor.area}>
+        <select class="input" id="hair-removal-area" bind:value={draft.area}>
           {#each HAIR_REMOVAL_AREAS as area (area)}
             <option value={area}>{hairRemovalAreaName(area)}</option>
           {/each}
@@ -190,8 +198,8 @@
         <Segmented
           name={m.hair_removal_method_label()}
           options={HAIR_REMOVAL_METHODS.map((method) => ({ value: method, label: hairRemovalMethodName(method) }))}
-          value={editor.method}
-          onChange={(v) => (editor!.method = v as HairRemovalMethod)}
+          value={draft.method}
+          onChange={(v) => (draft.method = v as HairRemovalMethod)}
         />
       </div>
       <div class="field">
@@ -199,8 +207,8 @@
         <Segmented
           name={m.hair_removal_pain_label()}
           options={PAIN_RATINGS.map((v) => ({ value: String(v), label: severityName(v) }))}
-          value={editor.painRating}
-          onChange={(v) => (editor!.painRating = v)}
+          value={draft.painRating}
+          onChange={(v) => (draft.painRating = v)}
         />
       </div>
       <div class="field">
@@ -210,7 +218,7 @@
           id="hair-removal-cost"
           name="hair-removal-cost"
           placeholder={m.hair_removal_cost_placeholder()}
-          bind:value={editor.cost}
+          bind:value={draft.cost}
         />
       </div>
       <div class="field">
@@ -220,12 +228,12 @@
           id="hair-removal-provider"
           name="hair-removal-provider"
           placeholder={m.hair_removal_provider_placeholder()}
-          bind:value={editor.provider}
+          bind:value={draft.provider}
         />
       </div>
 
       <SectionHeading text={m.hair_removal_photo_section_title()} />
-      {#if !editor.id}
+      {#if !draft.id}
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.hair_removal_photo_hint()}</p>
       {:else}
         <div class="photo-row" style="margin-bottom:var(--space-3)">
@@ -268,38 +276,19 @@
           {/snippet}
         </ReadGate>
       {/if}
+    {/snippet}
+  </RecordSheet>
 
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-hair-removal-session onclick={record.save}><span>{m.hair_removal_save()}</span></button>
-        {#if editor.id}
-          <button class="btn btn-ghost" data-delete-hair-removal-session onclick={() => record.askToDelete()}><span>{m.hair_removal_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
-
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.hair_removal_delete_sheet()}
-    question={deleteTarget ? m.hair_removal_delete_q({ area: hairRemovalAreaName(deleteTarget.area) }) : ''}
-    hint={m.hair_removal_delete_hint()}
-    confirmLabel={m.hair_removal_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-hair-removal-session': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
-  />
-
-  <ConfirmDeleteSheet
-    open={photoDeleteTarget !== null}
-    title={m.hair_removal_photo_delete_sheet()}
-    question={photoDeleteTarget ? m.hair_removal_photo_delete_q() : ''}
-    hint={m.hair_removal_photo_delete_hint()}
-    confirmLabel={m.hair_removal_photo_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-hair-removal-photo': '' }}
-    onConfirm={photoRecord.confirmDelete}
-    onCancel={photoRecord.cancelDelete}
+  <RecordSheet
+    record={photoRecord}
+    handle="hair-removal-photo"
+    confirm={{
+      title: m.hair_removal_photo_delete_sheet(),
+      question: () => m.hair_removal_photo_delete_q(),
+      hint: () => m.hair_removal_photo_delete_hint(),
+      confirmLabel: m.hair_removal_photo_delete(),
+      cancelLabel: m.keep_it()
+    }}
   />
 
   <PhotoAlignmentReview

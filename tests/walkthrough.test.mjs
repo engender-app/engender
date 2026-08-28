@@ -2458,31 +2458,20 @@ try {
   await page.goto(BASE + '/settings/tryouts', { waitUntil: 'networkidle' });
   await page.locator('[data-tryout] a').first().click();
   await page.waitForSelector('[data-screen-header]');
-  const tryoutUrl = page.url();
-
-  // The entries section reads a range keyed off the tryout row a sibling
-  // query resolves first (existing, in the page's own words) - occasionally
-  // that second query starts before the first one has landed, and settles
-  // on the empty branch for good rather than re-running once existing does
-  // land (a pre-existing gap in the page's own reactivity, not something
-  // this ticket's fixture data can paper over from here). One reload gives
-  // it a clean second run before this counts as a real failure - the same
-  // "a glitch and a real break read alike once" call feature-screen-shots.mjs
-  // already makes for a broken-looking route.
-  const notEmpty = async () => {
-    await page
-      .waitForFunction(
-        () => document.querySelector('[data-notice="tryout-entries-empty"]') || document.querySelector('[data-entry-card]'),
-        null,
-        { timeout: 8000 }
-      )
-      .catch(() => {});
-    return (await page.locator('[data-notice="tryout-entries-empty"]').count()) === 0;
-  };
-  if (!(await notEmpty())) {
-    await page.goto(tryoutUrl, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-screen-header]');
-    if (!(await notEmpty())) throw new Error('the first tryout has no entries in its date range after filling every feature');
+  /* The entries section reads a range keyed off the tryout the route names,
+     which is a round trip away. It used to be read beside that one, so it
+     could answer with nothing before the tryout arrived and leave its empty
+     state up for good - this wait carried a reload-and-recheck around that.
+     Phase 5 audit ticket 09 made the read wait for the record it reads for
+     (detailDraft.ts, tests/browser-tier/detail-draft-probe.svelte.ts), so
+     one look is enough now and an empty section here is a real failure. */
+  await page.waitForFunction(
+    () => document.querySelector('[data-notice="tryout-entries-empty"]') || document.querySelector('[data-entry-card]'),
+    null,
+    { timeout: 8000 }
+  );
+  if ((await page.locator('[data-notice="tryout-entries-empty"]').count()) > 0) {
+    throw new Error('the first tryout has no entries in its date range after filling every feature');
   }
 
   ok('every More-hub area shows real content once "Fill every feature" has run, not just its empty state');

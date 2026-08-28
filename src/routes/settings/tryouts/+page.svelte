@@ -14,11 +14,11 @@
   import type { Tryout } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -37,7 +37,6 @@
     remove: (id) => journal.tryouts.deleteTryout(id),
     findById: (id) => tryouts.find((t) => t.id === id)
   });
-  let deleteTarget = $derived(record.deleteTarget);
 </script>
 
 <div class="screen">
@@ -79,15 +78,15 @@
     {/snippet}
   </ReadGate>
 
-  <ConfirmDeleteSheet
-    open={deleteTarget !== null}
-    title={m.tryout_delete_sheet()}
-    question={m.tryout_delete_q()}
-    hint={m.tryout_delete_hint()}
-    confirmLabel={m.tryout_delete()}
-    cancelLabel={m.keep_it()}
-    confirmAttrs={{ 'data-confirm-delete-tryout': '' }}
-    onConfirm={record.confirmDelete}
-    onCancel={record.cancelDelete}
+  <RecordSheet
+    {record}
+    handle="tryout"
+    confirm={{
+      title: m.tryout_delete_sheet(),
+      question: () => m.tryout_delete_q(),
+      hint: () => m.tryout_delete_hint(),
+      confirmLabel: m.tryout_delete(),
+      cancelLabel: m.keep_it()
+    }}
   />
 </div>
