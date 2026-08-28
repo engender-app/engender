@@ -117,6 +117,11 @@
     {#each ROADMAP_TRACKS as track, i (track)}
       <SectionHeading text={roadmapTrackName(track)} />
       <ListCard role={roleAt(activeFlag.roles, i)}>
+        <!-- Every row below is hand-rolled rather than ListRow (ticket 16):
+             .roadmap-box is a three-state control (checked/not-my-path/
+             unchecked, two different glyphs), which ListRow's binary
+             `checked` has no room for, and the done/skip title styling
+             needs a class ListRow's plain `title` string can't carry. -->
         {#each rankByLean(goalsInTrack(pack, track), lean) as goal (goal.key)}
           {@const status = statuses[goal.key] ?? 'unchecked'}
           <button

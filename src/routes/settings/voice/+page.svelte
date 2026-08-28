@@ -20,6 +20,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -96,21 +97,19 @@
           </p>
           <ListCard role={roleAt(activeFlag.roles, 0)}>
             {#each recordings as r (r.id)}
-              <button
-                class="kit-row"
+              <ListRow
                 data-voice-cell={r.id}
                 aria-pressed={orderedSelected.includes(r.id)}
                 aria-label={m.vc_cell_aria({ date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
                 onclick={() => toggle(r.id)}
+                chevron={false}
+                title={fmtDay(r.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
               >
-                <span class="kit-row-ico"><Icon name="mic" size={20} /></span>
-                <span class="kit-row-text">
-                  <span class="kit-row-title">{fmtDay(r.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                </span>
-                <span class="kit-row-trail">
+                {#snippet leading()}<span class="kit-row-ico"><Icon name="mic" size={20} /></span>{/snippet}
+                {#snippet trailing()}
                   {#if orderedSelected.includes(r.id)}<Icon name="check" size={20} />{/if}
-                </span>
-              </button>
+                {/snippet}
+              </ListRow>
             {/each}
           </ListCard>
         </div>
