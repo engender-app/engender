@@ -20,8 +20,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
-  import { pickPhotos, type EditorPhoto } from '$lib/stores/photoPicking';
-  import { photoReview } from '$lib/stores/photoReview.svelte';
+  import type { EditorPhoto } from '$lib/stores/photoPicking';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
@@ -33,6 +32,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -131,20 +131,32 @@
     record.openEditor(existing);
   }
 
-  async function pickPhoto() {
-    const [photo] = await pickPhotos(1); // a milestone shows one
-    if (photo && record.editor) record.editor.photo = { kind: 'picked', photo };
+  /* A milestone shows at most one photo, so its "list" is that one slot or
+     none - the same shape a stored photo's own id would have, whether it
+     is already saved or just picked and waiting on this edit's Save
+     (F1's `photo` action). Deleting it here only clears the draft; nothing
+     is actually removed until Save, which is why ms_photo_delete_hint says
+     so rather than the other four screens' "cannot be undone". */
+  type MilestonePhotoSlot = { id: 'milestone-photo'; fileName: string | null };
+
+  function milestonePhotoSlots(photo: EditorPhoto | null): MilestonePhotoSlot[] {
+    if (!photo) return [];
+    return [{ id: 'milestone-photo', fileName: photo.kind === 'stored' ? photo.photo.fileName : null }];
   }
 
-  const milestonePhotoReview = photoReview(
-    () => {
+  const milestonePhoto = photoSection<MilestonePhotoSlot>({
+    photos: () => milestonePhotoSlots(record.editor?.photo ?? null),
+    add: (photo) => {
+      if (record.editor) record.editor.photo = { kind: 'picked', photo };
+    },
+    remove: () => {
+      if (record.editor) record.editor.photo = null;
+    },
+    reference: () => {
       const fileName = record.editor?.originalPhoto?.fileName;
       return fileName ? { fileName } : null;
-    },
-    (photo) => {
-      if (record.editor) record.editor.photo = { kind: 'picked', photo };
     }
-  );
+  });
 
   async function saveFeelingOffer(input: { mood: number; note: string | null }) {
     if (!feelingOfferId) return;
@@ -266,15 +278,24 @@
                 {:else}
                   <PhotoThumb photo={{ fileName: null }} bytes={editor.photo.photo.thumb} size={64} />
                 {/if}
-                <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => (editor.photo = null)}>
+                <button
+                  class="photo-remove"
+                  aria-label={m.photo_remove()}
+                  onclick={() => milestonePhoto.record.askToDelete('milestone-photo')}
+                >
                   <Icon name="x" size={14} />
                 </button>
               </div>
             {:else}
-              <button class="photo-add" aria-label={m.add_photo()} onclick={pickPhoto}>
+              <button class="photo-add" data-add-photo aria-label={m.add_photo()} onclick={milestonePhoto.pick}>
                 <Icon name="image" size={20} /><span>{m.add_photo()}</span>
               </button>
-              <button class="photo-add" aria-label={m.add_photo_camera()} onclick={milestonePhotoReview.capture}>
+              <button
+                class="photo-add"
+                data-capture-photo
+                aria-label={m.add_photo_camera()}
+                onclick={milestonePhoto.review.capture}
+              >
                 <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
               </button>
             {/if}
@@ -284,12 +305,24 @@
     {/snippet}
   </RecordSheet>
 
+  <RecordSheet
+    record={milestonePhoto.record}
+    handle="milestone-photo"
+    confirm={{
+      title: m.ms_photo_delete_sheet(),
+      question: () => m.ms_photo_delete_q(),
+      hint: () => m.ms_photo_delete_hint(),
+      confirmLabel: m.ms_photo_delete(),
+      cancelLabel: m.keep_it()
+    }}
+  />
+
   <PhotoAlignmentReview
-    photo={milestonePhotoReview.photo}
-    reference={milestonePhotoReview.reference}
-    onAccept={milestonePhotoReview.accept}
-    onRetake={milestonePhotoReview.capture}
-    onCancel={milestonePhotoReview.cancel}
+    photo={milestonePhoto.review.photo}
+    reference={milestonePhoto.review.reference}
+    onAccept={milestonePhoto.review.accept}
+    onRetake={milestonePhoto.review.capture}
+    onCancel={milestonePhoto.review.cancel}
   />
 
   <FeltSenseOfferSheet

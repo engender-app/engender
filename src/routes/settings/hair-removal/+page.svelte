@@ -15,19 +15,18 @@
   import { HAIR_REMOVAL_METHODS } from '$lib/data/types';
   import type { HairRemovalPhoto } from '$lib/data/journal/hairRemoval';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { pickPhotos } from '$lib/stores/photoPicking';
-  import { photoReview } from '$lib/stores/photoReview.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
-  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import PhotoSection from '$lib/components/kit/PhotoSection.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import { photoSection } from '$lib/components/kit/photoSection.svelte';
+  import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -86,27 +85,17 @@
   let photosQuery = liveList((j) => (editor?.id ? j.hairRemoval.getPhotos(editor.id) : Promise.resolve([])));
   let photos = $derived(photosQuery.rows);
 
-  async function storePhoto(photo: NormalizedPhoto | null) {
-    if (!editor?.id || !photo) return;
+  async function storePhoto(photo: NormalizedPhoto): Promise<void> {
+    if (!editor?.id) return;
     await journal.hairRemoval.addPhoto(editor.id, photo);
   }
 
-  async function pickSessionPhoto() {
-    const [photo] = await pickPhotos(1);
-    await storePhoto(photo ?? null);
-  }
-
-  // The context is this session: its own last photo, already loaded above.
-  const sessionPhotoReview = photoReview(
-    () => (photos.length ? { fileName: photos[photos.length - 1].fileName } : null),
-    storePhoto
-  );
-
-  const photoRecord = recordEditor<HairRemovalPhoto>({
+  const sessionPhotos = photoSection<HairRemovalPhoto>({
+    photos: () => photos,
+    add: storePhoto,
     remove: (id) => journal.hairRemoval.deletePhoto(id),
-    findById: (id) => photos.find((p) => p.id === id)
+    reference: () => lastPhotoReference(photos)
   });
-  let photoDeleteTarget = $derived(photoRecord.deleteTarget);
 </script>
 
 <div class="screen">
@@ -243,36 +232,20 @@
       {#if !draft.id}
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.hair_removal_photo_hint()}</p>
       {:else}
-        <div class="photo-row" style="margin-bottom:var(--space-3)">
-          <button class="photo-add" aria-label={m.add_photo()} onclick={pickSessionPhoto}>
-            <Icon name="image" size={20} /><span>{m.add_photo()}</span>
-          </button>
-          <button class="photo-add" aria-label={m.add_photo_camera()} onclick={sessionPhotoReview.capture}>
-            <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
-          </button>
-        </div>
-
-        <ReadGate read={photosQuery} variant="line" count={1}>
-          {#snippet rows()}
-            <div style="margin-bottom:var(--space-3)">
-              <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-                {#each photos as p (p.id)}
-                  <ListRow
-                    static
-                    data-hair-removal-photo={p.id}
-                    action={{
-                      icon: 'trash',
-                      label: m.hair_removal_photo_delete_sheet(),
-                      onclick: () => photoRecord.askToDelete(p),
-                      attrs: { 'data-delete-hair-removal-photo': p.id }
-                    }}
-                  >
-                    {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
-                  </ListRow>
-                {/each}
-              </ListCard>
-            </div>
-          {/snippet}
+        <PhotoSection
+          section={sessionPhotos}
+          read={photosQuery}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
+          handle="hair-removal-photo"
+          deleteLabel={() => m.hair_removal_photo_delete_sheet()}
+          confirm={{
+            title: m.hair_removal_photo_delete_sheet(),
+            question: () => m.hair_removal_photo_delete_q(),
+            hint: () => m.hair_removal_photo_delete_hint(),
+            confirmLabel: m.hair_removal_photo_delete(),
+            cancelLabel: m.keep_it()
+          }}
+        >
           {#snippet empty()}
             <Notice
               icon="camera"
@@ -281,28 +254,8 @@
               text={m.hair_removal_photo_empty_body()}
             />
           {/snippet}
-        </ReadGate>
+        </PhotoSection>
       {/if}
     {/snippet}
   </RecordSheet>
-
-  <RecordSheet
-    record={photoRecord}
-    handle="hair-removal-photo"
-    confirm={{
-      title: m.hair_removal_photo_delete_sheet(),
-      question: () => m.hair_removal_photo_delete_q(),
-      hint: () => m.hair_removal_photo_delete_hint(),
-      confirmLabel: m.hair_removal_photo_delete(),
-      cancelLabel: m.keep_it()
-    }}
-  />
-
-  <PhotoAlignmentReview
-    photo={sessionPhotoReview.photo}
-    reference={sessionPhotoReview.reference}
-    onAccept={sessionPhotoReview.accept}
-    onRetake={sessionPhotoReview.capture}
-    onCancel={sessionPhotoReview.cancel}
-  />
 </div>

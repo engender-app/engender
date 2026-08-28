@@ -18,22 +18,21 @@
   import { tryoutKindName } from '$lib/data/vocabulary/labels';
   import type { FeltSenseEntry, Tryout, TryoutKind, TryoutPhoto } from '$lib/data/types';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { pickPhotos } from '$lib/stores/photoPicking';
-  import { photoReview } from '$lib/stores/photoReview.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
-  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import PhotoSection from '$lib/components/kit/PhotoSection.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import { photoSection } from '$lib/components/kit/photoSection.svelte';
+  import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
@@ -97,26 +96,18 @@
      nothing to attach it to before that first save. */
   let photosQuery = liveList((j) => (detail.isNew ? Promise.resolve([]) : j.tryouts.getPhotos(detail.id)));
   let photos = $derived(photosQuery.rows);
-  const photoRecord = recordEditor<TryoutPhoto>({
-    remove: (id) => journal.tryouts.deletePhoto(id),
-    findById: (id) => photos.find((p) => p.id === id)
-  });
 
-  async function storePhoto(photo: NormalizedPhoto | null) {
-    if (detail.isNew || !photo) return;
+  async function storePhoto(photo: NormalizedPhoto): Promise<void> {
+    if (detail.isNew) return;
     await journal.tryouts.addPhoto(detail.id, todayEpochDay(), photo);
   }
 
-  async function pickTryoutPhoto() {
-    const [photo] = await pickPhotos(1);
-    await storePhoto(photo ?? null);
-  }
-
-  // The context is this tryout: its own last photo, already loaded above.
-  const tryoutPhotoReview = photoReview(
-    () => (photos.length ? { fileName: photos[photos.length - 1].fileName } : null),
-    storePhoto
-  );
+  const tryoutPhotos = photoSection<TryoutPhoto>({
+    photos: () => photos,
+    add: storePhoto,
+    remove: (id) => journal.tryouts.deletePhoto(id),
+    reference: () => lastPhotoReference(photos)
+  });
 
   const HISTORY_LIMIT = 50;
   let feelingQuery = liveList((j) => (detail.isNew ? Promise.resolve([]) : j.feltSense.forTryout(detail.id)));
@@ -306,35 +297,20 @@
     </ReadGate>
 
     <SectionHeading text={m.tryout_photo_section_title()} />
-    <div class="photo-row" style="margin-bottom:var(--space-3)">
-      <button class="photo-add" aria-label={m.add_photo()} onclick={pickTryoutPhoto}>
-        <Icon name="image" size={20} /><span>{m.add_photo()}</span>
-      </button>
-      <button class="photo-add" aria-label={m.add_photo_camera()} onclick={tryoutPhotoReview.capture}>
-        <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
-      </button>
-    </div>
-    <ReadGate read={photosQuery} variant="line" count={1}>
-      {#snippet rows()}
-        <div style="margin-bottom:var(--space-3)">
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}>
-            {#each photos as p (p.id)}
-              <ListRow
-                static
-                data-tryout-photo={p.id}
-                action={{
-                  icon: 'trash',
-                  label: m.tryout_photo_delete_sheet(),
-                  onclick: () => photoRecord.askToDelete(p),
-                  attrs: { 'data-delete-tryout-photo': p.id }
-                }}
-              >
-                {#snippet leading()}<PhotoThumb photo={p} size={48} />{/snippet}
-              </ListRow>
-            {/each}
-          </ListCard>
-        </div>
-      {/snippet}
+    <PhotoSection
+      section={tryoutPhotos}
+      read={photosQuery}
+      role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
+      handle="tryout-photo"
+      deleteLabel={() => m.tryout_photo_delete_sheet()}
+      confirm={{
+        title: m.tryout_photo_delete_sheet(),
+        question: () => m.tryout_photo_delete_q(),
+        hint: () => m.tryout_photo_delete_hint(),
+        confirmLabel: m.tryout_photo_delete(),
+        cancelLabel: m.keep_it()
+      }}
+    >
       {#snippet empty()}
         <div class="screen-part">
           <Notice
@@ -346,7 +322,7 @@
           />
         </div>
       {/snippet}
-    </ReadGate>
+    </PhotoSection>
 
     <SectionHeading text={m.tryout_entries_title()} />
     <ReadGate read={entriesInRangeRead} variant="card" count={2}>
@@ -386,25 +362,5 @@
       confirmLabel: m.tryout_feeling_delete(),
       cancelLabel: m.keep_it()
     }}
-  />
-
-  <RecordSheet
-    record={photoRecord}
-    handle="tryout-photo"
-    confirm={{
-      title: m.tryout_photo_delete_sheet(),
-      question: () => m.tryout_photo_delete_q(),
-      hint: () => m.tryout_photo_delete_hint(),
-      confirmLabel: m.tryout_photo_delete(),
-      cancelLabel: m.keep_it()
-    }}
-  />
-
-  <PhotoAlignmentReview
-    photo={tryoutPhotoReview.photo}
-    reference={tryoutPhotoReview.reference}
-    onAccept={tryoutPhotoReview.accept}
-    onRetake={tryoutPhotoReview.capture}
-    onCancel={tryoutPhotoReview.cancel}
   />
 </div>

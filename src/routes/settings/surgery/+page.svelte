@@ -31,20 +31,19 @@
   import type { ChecklistItem, Procedure, ProcedureConsult } from '$lib/data/types';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { pickPhotos } from '$lib/stores/photoPicking';
-  import { photoReview } from '$lib/stores/photoReview.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
-  import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import PhotoSection from '$lib/components/kit/PhotoSection.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import { photoSection } from '$lib/components/kit/photoSection.svelte';
+  import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -123,10 +122,23 @@
   let notesDraft = $state('');
   let photoSheet = $state(false);
   let photoDate = $state('');
-  const photoRecord = recordEditor<ProcedurePhoto>({
+
+  async function storePhoto(photo: NormalizedPhoto): Promise<void> {
+    const epochDay = epochDayFromDateInputValue(photoDate);
+    if (!selectedId || epochDay === null) return;
+    photoSheet = false;
+    await journal.procedures.addPhoto(selectedId, epochDay, photo);
+  }
+
+  // The context is this procedure's recovery log: its own last photo,
+  // already loaded above.
+  const recoveryPhotos = photoSection<ProcedurePhoto>({
+    photos: () => photos,
+    add: storePhoto,
     remove: (id) => journal.procedures.deletePhoto(id),
-    findById: (id) => photos.find((p) => p.id === id)
+    reference: () => lastPhotoReference(photos)
   });
+
   let itemSheet = $state(false);
   let itemText = $state('');
   const itemRecord = recordEditor<ChecklistItem>({
@@ -176,25 +188,6 @@
     photoDate = dateInputValueFromEpochDay(today);
     photoSheet = true;
   }
-
-  async function storePhoto(photo: NormalizedPhoto | null) {
-    const epochDay = epochDayFromDateInputValue(photoDate);
-    if (!selectedId || !photo || epochDay === null) return;
-    photoSheet = false;
-    await journal.procedures.addPhoto(selectedId, epochDay, photo);
-  }
-
-  async function pickRecoveryPhoto() {
-    const [photo] = await pickPhotos(1);
-    await storePhoto(photo ?? null);
-  }
-
-  // The context is this procedure's recovery log: its own last photo,
-  // already loaded above.
-  const recoveryPhotoReview = photoReview(
-    () => (photos.length ? { fileName: photos[photos.length - 1].fileName } : null),
-    storePhoto
-  );
 
   function openItemSheet() {
     itemText = '';
@@ -329,35 +322,30 @@
       </button>
 
       <SectionHeading text={m.surgery_photos_title()} />
-      <ReadGate read={photosQuery} variant="line" count={1}>
-        {#snippet rows()}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each photos as photo (photo.id)}
-                <ListRow
-                  static
-                  data-procedure-photo={photo.id}
-                  subtitle={dayLabel(photo.epochDay)}
-                  action={{
-                    icon: 'trash',
-                    label: m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) }),
-                    onclick: () => photoRecord.askToDelete(photo),
-                    attrs: { 'data-delete-procedure-photo': photo.id }
-                  }}
-                >
-                  {#snippet leading()}<PhotoThumb photo={photo} size={48} />{/snippet}
-                </ListRow>
-              {/each}
-            </ListCard>
-          </div>
-        {/snippet}
+      <PhotoSection
+        section={recoveryPhotos}
+        read={photosQuery}
+        role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
+        handle="procedure-photo"
+        subtitle={(photo) => dayLabel(photo.epochDay)}
+        deleteLabel={(photo) => m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
+        confirm={{
+          title: m.surgery_photo_delete_sheet(),
+          question: () => m.surgery_photo_delete_q(),
+          hint: () => m.surgery_photo_delete_hint(),
+          confirmLabel: m.surgery_photo_delete(),
+          cancelLabel: m.keep_it()
+        }}
+      >
         {#snippet empty()}
           <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_photos_empty()}</p>
         {/snippet}
-      </ReadGate>
-      <button class="btn btn-soft press" data-add-procedure-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
-        <span>{m.add_photo()}</span>
-      </button>
+        {#snippet addControl()}
+          <button class="btn btn-soft press" data-add-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
+            <span>{m.add_photo()}</span>
+          </button>
+        {/snippet}
+      </PhotoSection>
 
       <SectionHeading text={m.surgery_checklist_title()} />
       {#if checklistItems.length}
@@ -463,26 +451,14 @@
       {/snippet}
     </Field>
     <div class="stack-3">
-      <button class="btn btn-soft" data-pick-procedure-photo onclick={pickRecoveryPhoto}>
+      <button class="btn btn-soft" data-pick-procedure-photo onclick={recoveryPhotos.pick}>
         <span>{m.surgery_photo_pick()}</span>
       </button>
-      <button class="btn btn-soft" data-capture-procedure-photo onclick={recoveryPhotoReview.capture}>
+      <button class="btn btn-soft" data-capture-procedure-photo onclick={recoveryPhotos.review.capture}>
         <span>{m.surgery_photo_capture()}</span>
       </button>
     </div>
   </Sheet>
-
-  <RecordSheet
-    record={photoRecord}
-    handle="procedure-photo"
-    confirm={{
-      title: m.surgery_photo_delete_sheet(),
-      question: () => m.surgery_photo_delete_q(),
-      hint: () => m.surgery_photo_delete_hint(),
-      confirmLabel: m.surgery_photo_delete(),
-      cancelLabel: m.keep_it()
-    }}
-  />
 
   <Sheet open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
     <h3>{m.surgery_checklist_sheet()}</h3>
@@ -510,14 +486,6 @@
       confirmLabel: m.surgery_delete(),
       cancelLabel: m.keep_it()
     }}
-  />
-
-  <PhotoAlignmentReview
-    photo={recoveryPhotoReview.photo}
-    reference={recoveryPhotoReview.reference}
-    onAccept={recoveryPhotoReview.accept}
-    onRetake={recoveryPhotoReview.capture}
-    onCancel={recoveryPhotoReview.cancel}
   />
 </div>
 
