@@ -13,7 +13,7 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { tryoutKindName } from '$lib/data/vocabulary/labels';
   import type { FeltSenseEntry, Tryout, TryoutKind, TryoutPhoto } from '$lib/data/types';
@@ -28,6 +28,7 @@
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -79,7 +80,7 @@
       kind: draft.kind,
       label: draft.label,
       description: hasDescription(draft.kind) ? draft.description : null,
-      startEpochDay: epochDayFromDateInputValue(draft.start) ?? todayEpochDay(),
+      startEpochDay: epochDayFromDateInputValueOrToday(draft.start),
       endEpochDay: draft.end ? epochDayFromDateInputValue(draft.end) : null
     });
     /* Straight onto the new tryout, which is where its felt-sense section
@@ -201,47 +202,52 @@
   <ScreenHeader title={detail.isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/settings/tryouts" />
 
   <div class="editor-section">
-    <div class="field">
-      <span class="field-label">{m.tryout_kind_label()}</span>
-      <Segmented
-        name={m.tryout_kind_label()}
-        options={KIND_OPTIONS}
-        value={draft.kind}
-        onChange={(v) => (draft.kind = v as TryoutKind)}
-      />
-    </div>
-    <div class="field">
-      <label class="field-label" for="tr-label">{m.tryout_label_label()}</label>
-      <input
-        class="input"
-        id="tr-label"
-        name="tr-label"
-        placeholder={labelPlaceholder(draft.kind)}
-        bind:value={draft.label}
-      />
-    </div>
+    <Field label={m.tryout_kind_label()} legend>
+      {#snippet children()}
+        <Segmented
+          name={m.tryout_kind_label()}
+          options={KIND_OPTIONS}
+          value={draft.kind}
+          onChange={(v) => (draft.kind = v as TryoutKind)}
+        />
+      {/snippet}
+    </Field>
+    <Field label={m.tryout_label_label()} id="tr-label">
+      {#snippet children(id)}
+        <input
+          class="input"
+          {id}
+          name="tr-label"
+          placeholder={labelPlaceholder(draft.kind)}
+          bind:value={draft.label}
+        />
+      {/snippet}
+    </Field>
     {#if hasDescription(draft.kind)}
       <div class="disclosed" transition:disclose>
-        <div class="field">
-          <label class="field-label" for="tr-description">{m.tryout_description_label()}</label>
-          <textarea
-            class="input"
-            id="tr-description"
-            rows="2"
-            placeholder={m.tryout_description_placeholder()}
-            bind:value={draft.description}
-          ></textarea>
-        </div>
+        <Field label={m.tryout_description_label()} id="tr-description">
+          {#snippet children(id)}
+            <textarea
+              class="input"
+              {id}
+              rows="2"
+              placeholder={m.tryout_description_placeholder()}
+              bind:value={draft.description}
+            ></textarea>
+          {/snippet}
+        </Field>
       </div>
     {/if}
-    <div class="field">
-      <label class="field-label" for="tr-start">{m.tryout_start_label()}</label>
-      <input class="input" type="date" id="tr-start" name="tr-start" bind:value={draft.start} />
-    </div>
-    <div class="field">
-      <label class="field-label" for="tr-end">{m.tryout_end_label()} <span class="muted">{m.tryout_end_hint()}</span></label>
-      <input class="input" type="date" id="tr-end" name="tr-end" bind:value={draft.end} />
-    </div>
+    <Field label={m.tryout_start_label()} id="tr-start">
+      {#snippet children(id)}
+        <input class="input" type="date" {id} name="tr-start" bind:value={draft.start} />
+      {/snippet}
+    </Field>
+    <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} id="tr-end">
+      {#snippet children(id)}
+        <input class="input" type="date" {id} name="tr-end" bind:value={draft.end} />
+      {/snippet}
+    </Field>
     <button class="btn btn-primary press" data-save-tryout disabled={draft.label.trim().length === 0} onclick={saveTryout}>
       <span>{detail.isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
     </button>

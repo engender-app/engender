@@ -32,6 +32,8 @@
   import {
     customInclusiveRange,
     dateInputValueFromEpochDay,
+    dayRangeEndMin,
+    dayRangeStartMax,
     epochDayFromDateInputValue,
     epochDayFromTimestamp,
     ongoingWindowRange,
@@ -50,6 +52,7 @@
   import type { Snippet } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -337,14 +340,16 @@
        never prints: what the range was is written into the print heading
        below, where a reader on paper needs it. -->
   <div class="kit-filter cd-endpoints no-print">
-    <div class="field">
-      <label class="field-label" for="clinician-summary-start">{m.clinician_summary_range_start_label()}</label>
-      <input class="input" id="clinician-summary-start" type="date" bind:value={startInput} max={endInput || todayInput} />
-    </div>
-    <div class="field">
-      <label class="field-label" for="clinician-summary-end">{m.clinician_summary_range_end_label()}</label>
-      <input class="input" id="clinician-summary-end" type="date" bind:value={endInput} min={startInput || undefined} max={todayInput} />
-    </div>
+    <Field label={m.clinician_summary_range_start_label()} id="clinician-summary-start">
+      {#snippet children(id)}
+        <input class="input" {id} type="date" bind:value={startInput} max={dayRangeStartMax(endInput) ?? todayInput} />
+      {/snippet}
+    </Field>
+    <Field label={m.clinician_summary_range_end_label()} id="clinician-summary-end">
+      {#snippet children(id)}
+        <input class="input" {id} type="date" bind:value={endInput} min={dayRangeEndMin(startInput)} max={todayInput} />
+      {/snippet}
+    </Field>
   </div>
   {#if range === null}
     <p class="muted small no-print">{m.clinician_summary_range_required()}</p>

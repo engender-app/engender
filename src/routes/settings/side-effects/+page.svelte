@@ -13,12 +13,13 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { severityName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { toast } from '$lib/stores/toasts.svelte';
   import type { SideEffect } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -49,7 +50,7 @@
         id: draft.id,
         name,
         severity: Number(draft.severity),
-        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay()
+        epochDay: epochDayFromDateInputValueOrToday(draft.date)
       });
     },
     remove: (id) => journal.sideEffects.deleteSideEffect(id),
@@ -122,23 +123,26 @@
     }}
   >
     {#snippet fields(editor)}
-      <div class="field">
-        <label class="field-label" for="side-effect-name">{m.side_effect_name_label()}</label>
-        <input class="input" id="side-effect-name" name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="side-effect-date">{m.side_effect_date_label()}</label>
-        <input class="input" type="date" id="side-effect-date" name="side-effect-date" bind:value={editor.date} />
-      </div>
-      <div class="field">
-        <span class="field-label">{m.side_effect_severity_label()}</span>
-        <Segmented
-          name={m.side_effect_severity_label()}
-          options={SEVERITIES.map((v) => ({ value: String(v), label: severityName(v) }))}
-          value={editor.severity}
-          onChange={(v) => (editor.severity = v)}
-        />
-      </div>
+      <Field label={m.side_effect_name_label()} id="side-effect-name">
+        {#snippet children(id)}
+          <input class="input" {id} name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
+        {/snippet}
+      </Field>
+      <Field label={m.side_effect_date_label()} id="side-effect-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="side-effect-date" bind:value={editor.date} />
+        {/snippet}
+      </Field>
+      <Field label={m.side_effect_severity_label()} legend>
+        {#snippet children()}
+          <Segmented
+            name={m.side_effect_severity_label()}
+            options={SEVERITIES.map((v) => ({ value: String(v), label: severityName(v) }))}
+            value={editor.severity}
+            onChange={(v) => (editor.severity = v)}
+          />
+        {/snippet}
+      </Field>
     {/snippet}
     {#snippet extraActions(editor)}
       <button class="btn btn-soft" data-add-to-appointment-prep onclick={() => addToAppointmentPrep(editor.name)}>

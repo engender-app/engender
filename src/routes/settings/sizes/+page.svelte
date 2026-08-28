@@ -15,11 +15,12 @@
   import { garmentCategoryName } from '$lib/data/vocabulary/labels';
   import { GARMENT_CATEGORIES, type GarmentCategoryKey } from '$lib/data/garmentCategories';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { SizeRecord } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -76,7 +77,7 @@
 
       await journal.sizeRecords.upsertRecord({
         id: draft.id,
-        epochDay: epochDayFromDateInputValue(draft.date) ?? todayEpochDay(),
+        epochDay: epochDayFromDateInputValueOrToday(draft.date),
         category: draft.category,
         size: draft.size,
         brand: draft.brand,
@@ -181,30 +182,35 @@
     }}
   >
     {#snippet fields(editor)}
-      <div class="field">
-        <label class="field-label" for="size-log-date">{m.size_log_date_label()}</label>
-        <input class="input" type="date" id="size-log-date" name="size-log-date" bind:value={editor.date} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="size-log-category">{m.size_log_category_label()}</label>
-        <select class="input" id="size-log-category" bind:value={editor.category}>
-          {#each GARMENT_CATEGORIES as c (c)}
-            <option value={c}>{garmentCategoryName(c)}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="field">
-        <label class="field-label" for="size-log-size">{m.size_log_size_label()}</label>
-        <input class="input" id="size-log-size" name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="size-log-brand">{m.size_log_brand_label()}</label>
-        <input class="input" id="size-log-brand" name="size-log-brand" placeholder={m.size_log_brand_placeholder()} bind:value={editor.brand} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="size-log-fit-note">{m.size_log_fit_note_label()}</label>
-        <input class="input" id="size-log-fit-note" name="size-log-fit-note" placeholder={m.size_log_fit_note_placeholder()} bind:value={editor.fitNote} />
-      </div>
+      <Field label={m.size_log_date_label()} id="size-log-date">
+        {#snippet children(id)}
+          <input class="input" type="date" {id} name="size-log-date" bind:value={editor.date} />
+        {/snippet}
+      </Field>
+      <Field label={m.size_log_category_label()} id="size-log-category">
+        {#snippet children(id)}
+          <select class="input" {id} bind:value={editor.category}>
+            {#each GARMENT_CATEGORIES as c (c)}
+              <option value={c}>{garmentCategoryName(c)}</option>
+            {/each}
+          </select>
+        {/snippet}
+      </Field>
+      <Field label={m.size_log_size_label()} id="size-log-size">
+        {#snippet children(id)}
+          <input class="input" {id} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
+        {/snippet}
+      </Field>
+      <Field label={m.size_log_brand_label()} id="size-log-brand">
+        {#snippet children(id)}
+          <input class="input" {id} name="size-log-brand" placeholder={m.size_log_brand_placeholder()} bind:value={editor.brand} />
+        {/snippet}
+      </Field>
+      <Field label={m.size_log_fit_note_label()} id="size-log-fit-note">
+        {#snippet children(id)}
+          <input class="input" {id} name="size-log-fit-note" placeholder={m.size_log_fit_note_placeholder()} bind:value={editor.fitNote} />
+        {/snippet}
+      </Field>
     {/snippet}
   </RecordSheet>
 </div>

@@ -21,6 +21,8 @@
   import {
     customInclusiveRange,
     dateInputValueFromEpochDay,
+    dayRangeEndMin,
+    dayRangeStartMax,
     epochDayFromDateInputValue,
     ongoingWindowRange,
     todayEpochDay
@@ -38,6 +40,7 @@
   } from '$lib/data/journal/journalBook';
   import type { WrappedCardContent } from '$lib/data/wrappedCard';
   import Icon from '$lib/components/Icon.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import JournalBookPhoto from '$lib/components/JournalBookPhoto.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -121,14 +124,16 @@
 
   <div class="card no-print" style="margin-bottom:var(--space-4)">
     <div class="cd-endpoints">
-      <div class="field">
-        <label class="field-label" for="journal-book-start">{m.journal_book_range_start_label()}</label>
-        <input class="input" id="journal-book-start" type="date" bind:value={startInput} max={endInput || todayInput} />
-      </div>
-      <div class="field">
-        <label class="field-label" for="journal-book-end">{m.journal_book_range_end_label()}</label>
-        <input class="input" id="journal-book-end" type="date" bind:value={endInput} min={startInput || undefined} max={todayInput} />
-      </div>
+      <Field label={m.journal_book_range_start_label()} id="journal-book-start">
+        {#snippet children(id)}
+          <input class="input" {id} type="date" bind:value={startInput} max={dayRangeStartMax(endInput) ?? todayInput} />
+        {/snippet}
+      </Field>
+      <Field label={m.journal_book_range_end_label()} id="journal-book-end">
+        {#snippet children(id)}
+          <input class="input" {id} type="date" bind:value={endInput} min={dayRangeEndMin(startInput)} max={todayInput} />
+        {/snippet}
+      </Field>
     </div>
     {#if range === null}
       <p class="muted small">{m.journal_book_range_required()}</p>

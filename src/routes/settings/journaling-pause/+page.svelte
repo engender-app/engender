@@ -14,6 +14,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
 
   const today = todayEpochDay();
 
@@ -76,14 +77,16 @@
       </button>
     {:else if newPause}
       <div class="cd-endpoints">
-        <div class="field">
-          <label class="field-label" for="pause-start">{m.journaling_pause_start_label()}</label>
-          <input class="input" type="date" id="pause-start" name="pause-start" bind:value={newPause.start} />
-        </div>
-        <div class="field">
-          <label class="field-label" for="pause-end">{m.journaling_pause_end_label()}</label>
-          <input class="input" type="date" id="pause-end" name="pause-end" bind:value={newPause.end} />
-        </div>
+        <Field label={m.journaling_pause_start_label()} id="pause-start">
+          {#snippet children(id)}
+            <input class="input" type="date" {id} name="pause-start" bind:value={newPause!.start} />
+          {/snippet}
+        </Field>
+        <Field label={m.journaling_pause_end_label()} id="pause-end">
+          {#snippet children(id)}
+            <input class="input" type="date" {id} name="pause-end" bind:value={newPause!.end} />
+          {/snippet}
+        </Field>
       </div>
       <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
         {m.journaling_pause_end_hint()}

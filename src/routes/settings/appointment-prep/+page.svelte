@@ -21,6 +21,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
@@ -136,15 +137,17 @@
 
   <Sheet open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
     <h3>{m.appointment_prep_new_sheet()}</h3>
-    <div class="field">
-      <input
-        class="input"
-        id="appointment-prep-input"
-        name="appointment-prep-input"
-        placeholder={m.appointment_prep_placeholder()}
-        bind:value={newItemText}
-      />
-    </div>
+    <Field label={m.appointment_prep_new_sheet()} id="appointment-prep-input" hidden>
+      {#snippet children(id)}
+        <input
+          class="input"
+          {id}
+          name="appointment-prep-input"
+          placeholder={m.appointment_prep_placeholder()}
+          bind:value={newItemText}
+        />
+      {/snippet}
+    </Field>
     <button class="btn btn-primary" data-save-appointment-item onclick={addItem}><span>{m.appointment_prep_add()}</span></button>
   </Sheet>
 

@@ -26,6 +26,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -120,10 +121,11 @@
     <SectionHeading text={m.letters_compose_title()} />
     <textarea class="input" rows="6" placeholder={m.letters_compose_placeholder()} bind:value={text}></textarea>
 
-    <div class="field">
-      <label class="field-label" for="letter-unlock">{m.letters_unlock_label()}</label>
-      <input class="input" type="date" id="letter-unlock" name="letter-unlock" bind:value={unlockDate} />
-    </div>
+    <Field label={m.letters_unlock_label()} id="letter-unlock">
+      {#snippet children(id)}
+        <input class="input" type="date" {id} name="letter-unlock" bind:value={unlockDate} />
+      {/snippet}
+    </Field>
 
     <!-- The milestones are a shortcut into the date above, not a second way
          of choosing one, so they sit under it as chips rather than as a list
