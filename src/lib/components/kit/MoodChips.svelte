@@ -37,6 +37,8 @@
      given screen happened to use. */
   import { m } from '$lib/paraglide/messages';
   import { moodName } from '$lib/data/vocabulary/labels';
+  import { isReducedMotion } from '$lib/motion/tokens';
+  import { magnifyRow } from '$lib/motion/magnifier';
   import MoodFace from '../MoodFace.svelte';
 
   let {
@@ -50,10 +52,33 @@
   } = $props();
 
   const STEPS = [1, 2, 3, 4, 5];
+
+  /* Grows the face under the pointer, the same magnifier quick add's fan
+     answers a slide with (magnifier.ts) - a mouse can hover a row it never
+     has to press, so this row gets it for free rather than only on touch. */
+  let moodScale = $state<number[]>(STEPS.map(() => 1));
+  const RESTING = STEPS.map(() => 1);
+
+  function onRowMove(e: PointerEvent) {
+    if (isReducedMotion()) return;
+    const row = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    moodScale = magnifyRow(e.clientX, row, STEPS.length);
+  }
+  function onRowLeave() {
+    moodScale = RESTING;
+  }
 </script>
 
-<div class="kit-moods" data-kit-surface role="radiogroup" aria-label={m.mood()} data-mood-chips>
-  {#each STEPS as step (step)}
+<div
+  class="kit-moods"
+  data-kit-surface
+  role="radiogroup"
+  aria-label={m.mood()}
+  data-mood-chips
+  onpointermove={onRowMove}
+  onpointerleave={onRowLeave}
+>
+  {#each STEPS as step, i (step)}
     <button
       type="button"
       class="kit-mood press"
@@ -61,13 +86,14 @@
       aria-checked={step === value}
       aria-label={moodName(step)}
       data-mood={step}
+      style:--mood-mag={moodScale[i]}
       onclick={() => onPick(step === value ? null : step)}
     >
       <!-- 48, not 40 (Alicja, 2026-08-27: "a little bigger") - the same
            number as --touch-target, so the circle itself now clears the row
            item's own floor rather than the label beneath it being what gets
            it there. -->
-      <MoodFace {step} size={48} />
+      <MoodFace {step} size={48} blink />
       <span aria-hidden="true">{moodName(step)}</span>
     </button>
   {/each}

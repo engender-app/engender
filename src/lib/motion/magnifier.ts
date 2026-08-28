@@ -46,3 +46,14 @@ export function magnify(x: number, centre: number, spread: number): number {
      linear falloff that flutters the one face a person is looking at. */
   return 1 + (PEAK - 1) * (1 - away * away);
 }
+
+/** Every face's scale for a pointer at `x` over `count` evenly spaced cells
+    across `row`. The fan's own slide keeps its own version of this loop
+    because it also arms a target mid-gesture; a plain mood row (Home's
+    chips, the entry editor's picker) only ever wants the scales themselves,
+    on hover, which is what this is for - one shared answer rather than a
+    third copy of the cell math (ticket 99). */
+export function magnifyRow(x: number, row: DOMRect, count: number): number[] {
+  const cell = row.width / count;
+  return Array.from({ length: count }, (_, i) => magnify(x, row.left + cell * (i + 0.5), MAGNIFIER_SPREAD));
+}

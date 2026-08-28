@@ -504,9 +504,18 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   height: var(--face-size);
   display: block;
   flex: 0 0 auto;
-  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast);
+  /* --mood-mag is the row's own magnifier (magnifier.ts): unset anywhere
+     that doesn't set it, so every mood row gets the same grow-under-the-
+     pointer answer for free the moment it starts setting the variable. */
+  scale: var(--mood-mag, 1);
+  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast), scale var(--dur-fast) var(--ease-out);
 }
-.mood-face-disc { fill: var(--face-mood); transition: fill var(--dur-med) var(--ease-out); }
+.mood-face-disc {
+  fill: var(--face-mood);
+  stroke: var(--outline);
+  stroke-width: 0.75;
+  transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
+}
 /* The eyes, in both their forms. Steps 2 to 4 draw two dots and fill them;
    steps 1 and 5 draw lids as one stroked path, at the mouth's own weight, so
    the whole face is one drawing at one weight (moodFace.ts says why the ends
@@ -1183,11 +1192,15 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
    leaves --mood-mag at 1 there rather than not writing it, so there is no
    scale to undo, and the armed colour above is the whole answer. That is the
    substitution rather than a deletion - what goes is the movement, not the
-   cue. */
+   cue.
+
+   The scale itself is the base .mood-face rule's now (every mood row reads
+   --mood-mag); what stays here is the fan's own lift on top of it, since a
+   card that clips is what makes that lift necessary and no other row of
+   these clips its faces. */
 .fan-mood .mood-face {
-  scale: var(--mood-mag, 1);
   translate: 0 calc((1 - var(--mood-mag, 1)) * 20px);
-  transition: scale var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
+  transition: translate var(--dur-fast) var(--ease-out);
 }
 
 /* The mark travelling from the row you chose into the add control (phase 5
