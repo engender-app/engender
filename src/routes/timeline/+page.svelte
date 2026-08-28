@@ -105,3 +105,140 @@
     </EmptyState>
   {/if}
 </div>
+
+<style>
+  /* Back to the shape that worked (Alicja, 2026-08-25: "it looks much better
+     before - what have you done? we want the vertical time axis on the left
+     just like before"). The axis is a continuous line down the left, every
+     milestone is a point on it, and the description sits beside the point.
+
+     What this ticket's own rebuild had got wrong: it kept the same parts and
+     loosened all of them. The rail was 32% of a stripe on a dark ground, so it
+     read as a suggestion; the dots sat outside a card with no card edge to
+     measure against; and the axis stopped and restarted around the gap and the
+     today marker, so there was no continuous line at all. The parts are the
+     old ones again, tightened rather than restyled: the axis runs the whole
+     height without a break, the dots are on it, and the only thing kept from
+     the rebuild is that it wears the flag instead of the accent - which is the
+     rule every other area of the app follows. */
+  .timeline {
+    position: relative;
+    padding-left: 30px;
+  }
+
+  /* One line, top to bottom, behind everything - including the gap and the
+     today marker, which used to interrupt it. A timeline whose axis stops is
+     not an axis. */
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 1px;
+    background: color-mix(in oklab, var(--role-draw) 60%, var(--bg));
+  }
+
+  .tl-item {
+    position: relative;
+    margin-bottom: var(--space-4);
+  }
+
+  /* The point on the axis, centred on the line and cut out of it by a ring in
+     the page colour, so the line appears to pass behind rather than through. */
+  .tl-dot {
+    position: absolute;
+    left: -30px;
+    top: 18px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--role-draw);
+    box-shadow: 0 0 0 4px var(--bg);
+  }
+
+  /* Ahead rather than behind: the same point, unfilled. */
+  .tl-item.is-future .tl-dot {
+    background: var(--bg);
+    box-shadow: 0 0 0 4px var(--bg), inset 0 0 0 2px var(--role-draw);
+  }
+
+  /* Today is the one mark on the axis that is not a milestone, so it is the
+     one drawn in the text colour rather than the flag's. */
+  .tl-today {
+    margin: var(--space-5) 0;
+    min-height: 20px;
+  }
+
+  .tl-today .tl-dot {
+    top: 2px;
+    background: var(--text);
+    box-shadow: 0 0 0 4px var(--bg);
+  }
+
+  .tl-here {
+    margin: 0;
+    padding-top: 1px;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    color: var(--text);
+  }
+
+  .tl-body {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-card);
+    padding: var(--space-4);
+  }
+
+  .tl-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .tl-name {
+    font-weight: var(--weight-bold);
+    min-width: 0;
+  }
+
+  .tl-count {
+    flex: 0 0 auto;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    color: var(--role-ink);
+    background: var(--role-tint);
+    border: var(--role-hairline);
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+  }
+
+  .tl-date {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+
+  .tl-photo { margin-top: var(--space-3); }
+
+  /* The compressed stretch. It sits on the axis rather than replacing it: the
+     line runs behind, and this is a label with the page colour behind it so
+     the line does not cross the words. */
+  .tl-gap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin: var(--space-5) 0;
+    padding-left: 6px;
+    color: var(--text-2);
+    font-size: var(--text-xs);
+  }
+
+  .tl-gap-label {
+    background: var(--bg);
+    padding: 2px 8px 2px 0;
+  }
+</style>
