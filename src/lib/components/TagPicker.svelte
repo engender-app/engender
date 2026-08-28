@@ -23,7 +23,7 @@
     data-tag={t.id}
     onclick={() => onToggle(t.id)}
   >
-    {#if selected.includes(t.id)}<Icon name="check" size={14} />{/if}{t.label}
+    {t.label}
   </button>
 {/snippet}
 
