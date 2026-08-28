@@ -118,6 +118,28 @@ export function disclose(node: Element): TransitionConfig {
   const height = parseFloat(style.height) || 0;
   const paddingTop = parseFloat(style.paddingTop) || 0;
   const paddingBottom = parseFloat(style.paddingBottom) || 0;
+  /* A bordered surface (Notice.svelte's card) never actually reached zero
+     height without this: border-width is not part of the height/padding
+     this already shrinks, so the box stalled at its own border - top plus
+     bottom, a real but sub-pixel amount for most of the travel - and only
+     visibly lost it in the last frame or two, once easing had slowed the
+     interpolation down near a browser can no longer render a fraction of a
+     device pixel as anything but a solid hairline. The content below rode
+     the smooth shrink the whole way and then took that last sliver in one
+     frame, which is what read as a jump at the end (Alicja, 2026-08-28,
+     closing a notification panel).
+
+     Continuing to interpolate the border proportionally cannot fix that:
+     any value between 0 and a device pixel still paints as a full hairline,
+     so the snap to invisible would keep happening somewhere near the end
+     regardless of how the number is computed. Dropping it to 0 for the
+     whole animation instead - the instant the transition starts rather than
+     the instant it finishes - moves that same unavoidable snap to the first
+     frame, while the box is still nearly full height and a lost 1px edge is
+     not the thing anyone is looking at. A borderless caller measures 0 here
+     and this is a no-op either way. */
+  const borderTop = parseFloat(style.borderTopWidth) || 0;
+  const borderBottom = parseFloat(style.borderBottomWidth) || 0;
 
   return {
     duration: motionDuration('--dur-med'),
@@ -126,7 +148,9 @@ export function disclose(node: Element): TransitionConfig {
       `overflow: hidden;` +
       `height: ${t * height}px;` +
       `padding-top: ${t * paddingTop}px;` +
-      `padding-bottom: ${t * paddingBottom}px;`
+      `padding-bottom: ${t * paddingBottom}px;` +
+      `border-top-width: ${t >= 1 ? borderTop : 0}px;` +
+      `border-bottom-width: ${t >= 1 ? borderBottom : 0}px;`
   };
 }
 
