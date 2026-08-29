@@ -504,6 +504,22 @@
      too, and the way to do that is to stop the text rather than to move the
      flag.
 
+     Item 20 is that promise made arithmetic. A percentage cap still let the
+     word reach into the outermost ring below about 390px: the ring's left
+     edge at the title's own height is a chord of the circle, not a
+     vertical line, and 62% of a 320px screen is past that chord by ~57px
+     (measured against the glyph edge, not the box). So the cap reserves the
+     ring's full breathing radius outright - 175px is SUN_OUTER/2, the same
+     number flagSun.test.ts pins - and the title scales under it, because a
+     word cannot wrap and a capped box it overflows is a touch again. The
+     fluid size solves the same inequality the measurements state: the word
+     is 5.05px per font-size px, the corner chord at the title's midline
+     costs the screen its radius minus ~53px of drop, and the thin
+     scrollbar takes ~12px the container query cannot see. Clamp bounds
+     keep the extremes honest: the desktop override in screens.css still
+     owns large screens, and 1.3rem is where a 320px viewport stops having
+     room for a hero at all.
+
      :global(), because the desktop-adaptation @container block
      (screens.css) still overrides .home-hero's font-size at 1024px+ and
      that rule stayed put with the other screens' shared breakpoint - a
@@ -511,13 +527,20 @@
      class, and the desktop size would stop winning. */
   :global(.home-hero) {
     font-family: var(--font-display);
-    font-size: 2.4rem; font-weight: 700;
+    font-size: clamp(1.3rem, calc(19.8cqw - 42.2px), 2.4rem); font-weight: 700;
     line-height: 1.1;
     letter-spacing: -0.01em;
     color: var(--accent);
-    max-width: 62%;
+    max-width: min(62%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
   }
-  .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); max-width: 78%; }
+  /* The same reservation for the two quiet lines, which sit lower where the
+     circle is narrower but still reach into the outer ring's band on a
+     320px screen (the date's glyph edge measured 1.4px inside it). */
+  .home-hello,
+  .home-streak-wrap {
+    max-width: min(78%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
+  }
+  .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
 
   /* Home's vertical rhythm (phase 5 ticket 21). Written as a margin below
      each surface rather than as a flex gap on the column, because one of
