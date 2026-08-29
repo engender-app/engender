@@ -8,7 +8,6 @@ export interface BreathingState {
   phase: BreathingPhase;
   phaseIndex: number;
   secondsRemaining: number;
-  durationSeconds: number;
   running: boolean;
 }
 
@@ -24,7 +23,6 @@ export function initialBreathingState(): BreathingState {
     phase: 'inhale',
     phaseIndex: 0,
     secondsRemaining: 4,
-    durationSeconds: 4,
     running: false
   };
 }
@@ -43,7 +41,6 @@ export function tickBreathing(state: BreathingState): BreathingState {
     ...state,
     phaseIndex: nextIndex,
     phase: nextPhase.phase,
-    secondsRemaining: nextPhase.duration,
-    durationSeconds: nextPhase.duration
+    secondsRemaining: nextPhase.duration
   };
 }
