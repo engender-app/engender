@@ -37,11 +37,13 @@
     timestampAtLocalTime,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Reminder, WearSession } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import { smartBack } from '$lib/navigation/smart-back';
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
@@ -88,14 +90,6 @@
     const id = setInterval(() => (nowTick = Date.now()), 30000);
     return () => clearInterval(id);
   });
-
-  /** Whole hours and minutes out of a millisecond span - used both for a
-      completed session's stored duration and a running one's live elapsed
-      time against `nowTick`. */
-  function hoursMinutesOf(ms: number): { hours: number; minutes: number } {
-    const totalMinutes = Math.max(0, Math.floor(ms / 60000));
-    return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
-  }
 
   let runningElapsed = $derived(running ? hoursMinutesOf(nowTick - running.startTimestamp) : null);
 
@@ -266,7 +260,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.wear_log()} back="/more" subtitle={m.wear_log_intro()}>
+  <ScreenHeader title={m.wear_log()} back={() => smartBack('/more')} subtitle={m.wear_log_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.wear_session_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />

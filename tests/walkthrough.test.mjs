@@ -1774,9 +1774,15 @@ try {
 
   /* The toggle turns the feature off rather than hiding the card: Home stops
      offering it, and the screen itself says so instead of rendering a
-     wrapped nobody asked to keep computing. */
+     wrapped nobody asked to keep computing. The toggle lives in the
+     consolidated live-tiles screen (ticket 51), one row down from Settings. */
   await fresh('/settings');
-  await page.locator('[data-wrapped-toggle]').getByRole('switch').click();
+  if (await page.locator('[data-live-tile="wrapped"]').count()) {
+    throw new Error('the wrapped toggle is still on the Tracking card');
+  }
+  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.waitForSelector('[data-live-tile="wrapped"]');
+  await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
   await fresh('/');
   if (await page.locator('[data-wrapped-card]').count()) throw new Error('the card survived the toggle');
   await fresh('/wrapped/week');
@@ -1786,7 +1792,9 @@ try {
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('the off state explains nothing');
 
   await fresh('/settings');
-  await page.locator('[data-wrapped-toggle]').getByRole('switch').click();
+  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.waitForSelector('[data-live-tile="wrapped"]');
+  await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
   await fresh('/');
   if (!(await page.locator('[data-wrapped-card]').count())) throw new Error('the card did not come back');
   ok('wrapped: Home card, both presentations, the entry floor and the toggle');
@@ -1934,9 +1942,12 @@ try {
   await page.waitForSelector('[data-lookback]');
 
   /* The toggle turns the feature off entirely, and leaves wrapped's own
-     toggle and card untouched (CONTEXT/ticket scope: independent toggles). */
+     toggle and card untouched (CONTEXT/ticket scope: independent toggles).
+     It lives in the consolidated live-tiles screen (ticket 51). */
   await fresh('/settings');
-  await page.locator('[data-on-this-day-toggle]').getByRole('switch').click();
+  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.waitForSelector('[data-live-tile="on-this-day"]');
+  await page.locator('[data-live-tile="on-this-day"]').getByRole('switch').click();
   await fresh('/');
   if (await page.locator('[data-on-this-day-card]').count()) throw new Error('the card survived the toggle');
   if ((await page.locator('[data-wrapped-card]').count()) !== hadWrappedCard) {
@@ -1949,7 +1960,9 @@ try {
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('the off state explains nothing');
 
   await fresh('/settings');
-  await page.locator('[data-on-this-day-toggle]').getByRole('switch').click();
+  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.waitForSelector('[data-live-tile="on-this-day"]');
+  await page.locator('[data-live-tile="on-this-day"]').getByRole('switch').click();
   await fresh('/');
   if (!(await page.locator('[data-on-this-day-card]').count())) throw new Error('the card did not come back');
 

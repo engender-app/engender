@@ -243,7 +243,7 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
     wrappedDisplay.ts holds WRAPPED_AREA_ROLE: the index is only meaningful
     against the list this module builds, and a table buried in markup is a
     table nobody can check. */
-export const HOME_AREA_ROLE = { week: 0, lookBack: 1, milestones: 2, days: 3 } as const;
+export const HOME_AREA_ROLE = { week: 0, liveTiles: 1, lookBack: 1, milestones: 2, days: 3 } as const;
 
 /** The whole flag as one CSS fill: hard-edged bands, left to right, in
     stripe order and in the flag's own proportions.

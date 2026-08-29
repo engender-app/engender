@@ -24,18 +24,12 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import Notice from '$lib/components/kit/Notice.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { isAndroid } from '$lib/platform';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import {
-    androidRetrospectiveNotifications,
-    type AndroidRetrospectiveNotificationStatus
-  } from '$lib/retrospective/android-bridge';
-  import { disclose } from '$lib/motion/reveal';
 
   /* Keyed, not worded, so the swatch names translate with everything else. */
   const PALETTES: [string, () => string][] = [
@@ -80,34 +74,6 @@
   let metricSheet = $state(false);
   let disguiseSheet = $state(false);
   let aboutSheet = $state(false);
-
-  /* Wrapped/on-this-day notifications (phase 4 features ticket 04) share one
-     Android permission, so one status/request pair covers both toggles below
-     - the same "Allow notifications" flow reminders/+page.svelte already
-     uses for its own, separate POST_NOTIFICATIONS check. */
-  let retroNotifyStatus = $state<AndroidRetrospectiveNotificationStatus>({ notifications: 'not-required' });
-
-  async function refreshRetroNotifyStatus() {
-    if (isWeb) return;
-    try {
-      retroNotifyStatus = await androidRetrospectiveNotifications.getStatus();
-    } catch (error) {
-      console.error('Could not read retrospective notification status', error);
-    }
-  }
-
-  async function requestRetroNotifications() {
-    try {
-      retroNotifyStatus = await androidRetrospectiveNotifications.requestNotificationPermission();
-    } catch (error) {
-      console.error('Could not request notification permission', error);
-    }
-  }
-
-  $effect(() => {
-    if (isWeb) return;
-    void refreshRetroNotifyStatus();
-  });
 
   function setLanguage(v: string) {
     prefs.language = v as typeof prefs.language;
@@ -278,6 +244,9 @@
       >
         {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
       </ListRow>
+      <!-- Ticket 51: the wrapped/on-this-day toggles and every live tile's
+           kind switch live behind this one row, not in this card. -->
+      <ListRow key="live-tiles" icon="grid" title={m.live_tiles_title()} subtitle={m.live_tiles_sub()} href="/settings/live-tiles" />
       <ListRow
         key="journey-anchor"
         icon="flag"
@@ -294,7 +263,7 @@
     </ListCard>
 
     <ListCard>
-      <div class="kit-row settings-unit-row" style="cursor:default">
+      <div class="kit-row" style="cursor:default">
         <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
         <span class="kit-row-text">
           <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
@@ -335,13 +304,8 @@
       </div>
     </ListCard>
 
-    <!-- Named rather than left to read as a continuation of the tag-groups
-         card above it (Alicja, 2026-08-28) - the home/calendar colour row
-         used to sit in a card of its own for the same reason, one heading
-         short of belonging anywhere. -->
-    <SectionHeading text={m.settings_lookbacks()} />
-    <!-- Four related toggles as one card with hairlines between, rather
-         than four boxes stacked with a margin apart - DIRECTION.md's
+    <!-- Two related toggles as one card with a hairline between, rather
+         than two boxes stacked with a margin apart - DIRECTION.md's
          decision 3: "tighter, not airier", and the shape One rounded card
          repeated is the thing 2b calls generic; a run of the same-shaped
          row is not that, it is one surface with several related facts on
@@ -379,75 +343,12 @@
           />
         </span>
       </div>
-      <div class="kit-row" data-wrapped-toggle>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.wrapped()}</span>
-          <span class="kit-row-sub">{m.wrapped_settings_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.wrappedEnabled}
-            label={m.wrapped()}
-            onChange={(v) => {
-              prefs.wrappedEnabled = v;
-              // Cascading disablement (ticket 04): the notification toggle
-              // below is not just hidden when wrapped is off, it is turned
-              // off too, so there is no second switch left on to remember.
-              if (!v) prefs.wrappedNotificationsEnabled = false;
-            }}
-          />
-        </span>
-      </div>
-      {#if !isWeb && prefs.wrappedEnabled}
-        <div class="kit-row" data-wrapped-notify-toggle transition:disclose>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{m.retro_notify_title()}</span>
-            <span class="kit-row-sub">{m.wrapped_notify_sub()}</span>
-          </span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={prefs.wrappedNotificationsEnabled}
-              label={m.retro_notify_title()}
-              onChange={(v) => {
-                prefs.wrappedNotificationsEnabled = v;
-              }}
-            />
-          </span>
-        </div>
-      {/if}
-      <div class="kit-row" data-on-this-day-toggle>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.on_this_day()}</span>
-          <span class="kit-row-sub">{m.on_this_day_settings_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.onThisDayEnabled}
-            label={m.on_this_day()}
-            onChange={(v) => {
-              prefs.onThisDayEnabled = v;
-              if (!v) prefs.onThisDayNotificationsEnabled = false;
-            }}
-          />
-        </span>
-      </div>
-      {#if !isWeb && prefs.onThisDayEnabled}
-        <div class="kit-row" data-on-this-day-notify-toggle transition:disclose>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{m.retro_notify_title()}</span>
-            <span class="kit-row-sub">{m.on_this_day_notify_sub()}</span>
-          </span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={prefs.onThisDayNotificationsEnabled}
-              label={m.retro_notify_title()}
-              onChange={(v) => {
-                prefs.onThisDayNotificationsEnabled = v;
-              }}
-            />
-          </span>
-        </div>
-      {/if}
+      <!-- Wrapped's and on-this-day's toggles were here too until ticket 51
+           moved them, with their notification sub-toggles and the permission
+           notice, behind the Live tiles and notices row above. -->
+    </ListCard>
+
+    <ListCard>
       <ListRow
         key="metric"
         icon="palette"
@@ -459,16 +360,6 @@
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
     </ListCard>
-
-    {#if !isWeb && (prefs.wrappedNotificationsEnabled || prefs.onThisDayNotificationsEnabled) && retroNotifyStatus.notifications === 'denied'}
-      <Notice
-        icon="alert"
-        key="retro-notify-denied"
-        title={m.retro_notify_capabilities_title()}
-        text={m.retro_notify_capabilities_body()}
-        action={{ label: m.rem_allow_notifications(), onclick: requestRetroNotifications }}
-      />
-    {/if}
   </div>
 
   <SectionHeading text={m.settings_privacy()} />

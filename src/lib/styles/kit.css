@@ -720,6 +720,16 @@ a.kit-entry:active {
   align-items: stretch;
 }
 
+.kit-tiles[data-live-tile-grid] {
+  display: flex;
+  flex-direction: row;
+}
+
+.kit-tiles[data-live-tile-grid] > * {
+  flex: 1;
+  min-width: 0;
+}
+
 /* One tile is not half a pair. Where a grid's two destinations are each
    gated on their own - Home's look back, where wrapped and on-this-day
    qualify independently - the lone survivor sat in the left column with a
@@ -731,13 +741,16 @@ a.kit-entry:active {
    its note into an ellipsis - the reading that is the reason to go there,
    truncated. Below that the pair stacks and each tile gets the whole width.
    The threshold is where the note stops fitting rather than a device size. */
-.kit-tiles > :only-child {
+.kit-tiles:not([data-live-tile-grid]) > :only-child {
   grid-column: 1 / -1;
 }
 
 @media (max-width: 320px) {
   .kit-tiles {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .kit-tiles[data-live-tile-grid] {
+    flex-direction: column;
   }
 }
 
@@ -746,6 +759,7 @@ a.kit-entry:active {
   gap: var(--space-2);
   align-content: start;
   min-height: 108px;
+  height: 100%;
   padding: var(--space-4);
   background: var(--role-tint);
   /* The edge is the stripe rather than the app's grey outline: two tiles
@@ -757,6 +771,50 @@ a.kit-entry:active {
   text-decoration: none;
 }
 
+.kit-tile.is-split {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 108px;
+  height: 100%;
+  padding: var(--space-4);
+  background: var(--role-tint);
+  border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);
+  border-radius: var(--r-card);
+}
+
+.kit-tile-main {
+  display: grid;
+  gap: var(--space-2);
+  align-content: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.kit-tile-act.btn {
+  align-self: center;
+  min-height: 36px;
+  padding: 0 var(--space-3.5);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--role-mark) 18%, transparent);
+  color: var(--role-ink);
+  white-space: nowrap;
+}
+
+.kit-tile-act.btn:active {
+  background: color-mix(in oklab, var(--role-mark) 32%, transparent);
+}
+
+.kit-tile-act.icon-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+}
+
 .kit-tile-title {
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
@@ -766,34 +824,25 @@ a.kit-entry:active {
 
 .kit-tile-value {
   font-family: var(--font-display);
-  font-size: var(--text-3xl);
+  font-size: clamp(var(--text-xl), 5vw, var(--text-3xl));
   font-weight: var(--weight-bold);
   letter-spacing: var(--display-track);
-  line-height: 1;
+  line-height: 1.1;
   /* Display size, so it answers to the 3:1 floor and keeps the stripe. */
   color: var(--role-mark);
   justify-self: start;
   font-variant-numeric: tabular-nums;
-}
-
-/* The flag under the number: the real stripes at their real values, in
-   stripe order, in the flag's own proportions, turned a quarter so the
-   bands run across the bar rather than down it. The value is an
-   inline-block so the bar measures the digits rather than the column they
-   sit in, and the whole thing is hidden from a screen reader - it says
-   nothing the number does not.
-
-   A little longer than the number and thin: at 6px it reads as a rule that
-   happens to be a flag, which is what an underline should be, and every
-   flag's bands stay full height whatever the count. */
-.kit-tile-value {
   display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.kit-tiles[style*='--flag-fill'] .kit-tile-value::after {
+.kit-tiles[style*='--flag-fill'] .kit-tile-value::after,
+.kit-tiles[style*='--flag-fill'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
   content: '';
   display: block;
-  width: calc(100% + var(--space-3));
+  width: 100%;
   height: 6px;
   margin-top: var(--space-2);
   border-radius: 3px;
