@@ -541,6 +541,14 @@
     max-width: min(78%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
   }
   .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
+  /* The caption belongs to the week strip above it, not to the section
+     below: the generic block gap plus the heading's own padding-top read
+     as 32px of nothing between "23 days" and "How are you feeling?"
+     (Alicja, ticket 99 round 3: "around 2x smaller"). The caption gives
+     its trailing 12px back and the heading arrives with 16 instead of
+     its 20 - half the distance, still a breath. */
+  .home > .home-week-caption { margin-bottom: 0; }
+  .home > .home-week-caption + :global(.kit-heading) { padding-top: var(--space-4); }
 
   /* Home's vertical rhythm (phase 5 ticket 21). Written as a margin below
      each surface rather than as a flex gap on the column, because one of
