@@ -53,8 +53,14 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
        swap which one is arriving. Symmetric in the carve-out too: a screen
        that did not grow the editor does not get it shrinking back into it,
        and leaving this leg alone would have spent the transform's own
-       longer duration on a plain crossfade. */
-    return isEntryEditor(from) && to !== NO_CONTAINER ? 'container' : 'shared-axis-back';
+       longer duration on a plain crossfade. Home's is symmetric in its own
+       way - it fades forward like a tab crossing, so it fades back, which
+       the popstate leg of isBack reaches before the tab rule ever could. */
+    if (isEntryEditor(from)) {
+      if (to === '/') return 'fade-through';
+      return to !== NO_CONTAINER ? 'container' : 'shared-axis-back';
+    }
+    return 'shared-axis-back';
   }
 
   /* The one container transform in the app. It is not chosen by where the
@@ -68,7 +74,20 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
      button and a launcher shortcut all open it with nothing behind them,
      and a container transform with no container is a crossfade wearing a
      longer duration. */
-  if (isEntryEditor(to)) return from === NO_CONTAINER ? 'shared-axis' : 'container';
+  /* Home's recent-entry rows are the exception Alicja called out on the
+     same ticket as this file's own container transform (phase 5 ticket 99
+     item 23: "transition from home to a recent entry should be
+     good-looking, it should be the same as transition between nav tabs").
+     From Home an entry opens as a peer crossing - the fade-through a tab
+     switch gets - and Home is the one source that gets it: the day detail
+     and search keep the transform, and leaving the editor back to Home
+     already fades through the tab rule at the bottom, since /entry lights
+     the calendar tab and / is no tab's step. */
+  if (isEntryEditor(to)) {
+    if (from === NO_CONTAINER) return 'shared-axis';
+    if (from === '/') return 'fade-through';
+    return 'container';
+  }
 
   /* A screen with several views of itself is not a sequence. Wrapped's four
      cadence tabs are one screen showing a different period, so crossing them
