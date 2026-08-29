@@ -215,6 +215,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       recentDays: HYDRATED_ENTRY,
       entriesWithTag: HYDRATED_ENTRY,
       counterevidencePool: HYDRATED_ENTRY,
+      latestBadMomentEntry: HYDRATED_ENTRY,
       searchEntries: HYDRATED_ENTRY,
       // A count, so no hydration: the search clause itself joins the tag
       // tables, and nothing else is read back.
