@@ -56,6 +56,12 @@
   import { appWordmark } from '$lib/disguise/identity';
   import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
+
+  function tileSlide(node: HTMLElement, { enabled }: { enabled: boolean | undefined }) {
+    if (!enabled) return { duration: 0, css: () => '' };
+    return slide(node, { axis: 'x', duration: 250 });
+  }
+
   import FlagSun from '$lib/components/FlagSun.svelte';
   import MilestoneCard from '$lib/components/MilestoneCard.svelte';
   import WeekStrip from '$lib/components/WeekStrip.svelte';
@@ -336,7 +342,7 @@
         data-live-tile-grid
       >
         {#if showWearTile && runningWear && runningWearElapsed}
-          <div transition:slide={{ axis: 'x', duration: 250 }}>
+          <div transition:tileSlide={{ enabled: showDoseTile }}>
             <Tile
               key="wear-timer"
               data-wear-running-tile
@@ -370,7 +376,7 @@
         {/if}
 
         {#if showDoseTile}
-          <div transition:slide={{ axis: 'x', duration: 250 }}>
+          <div transition:tileSlide={{ enabled: !!(showWearTile && runningWear && runningWearElapsed) }}>
             <Tile
               key="dose-panel"
               data-dose-panel-tile
