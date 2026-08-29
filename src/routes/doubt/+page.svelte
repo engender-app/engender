@@ -16,7 +16,6 @@
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -101,18 +100,6 @@
 
   const dayLabel = (epochDay: number) =>
     fmtDay(epochDay, { weekday: 'short', day: 'numeric', month: 'short' });
-
-  $effect(() => {
-    // Opening Safe Space resolves any pending Safe Space nudge instance (ticket 50).
-    journal.entries.latestBadMomentEntry().then((entry) => {
-      if (
-        entry &&
-        (prefs.safeSpaceNudgeDismissedEntryId == null || entry.id > prefs.safeSpaceNudgeDismissedEntryId)
-      ) {
-        prefs.safeSpaceNudgeDismissedEntryId = entry.id;
-      }
-    });
-  });
 </script>
 
 <div class="screen">

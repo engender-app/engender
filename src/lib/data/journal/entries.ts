@@ -22,7 +22,6 @@ import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats';
 import {
   BAD_MOMENT_MOOD_CEILING,
   BAD_MOMENT_REGION_DYSPHORIA_FLOOR,
-  BAD_MOMENT_DIMENSION_DYSPHORIA_CEILING,
   DYSPHORIA_TAG_KEYS
 } from '../safeSpaceNudge';
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
@@ -704,18 +703,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
                SELECT 1 FROM entry_body_region ebr
                WHERE ebr.entry_id = e.id AND ebr.dysphoria >= ?
              )
-             OR EXISTS (
-               SELECT 1 FROM entry_dimension_value edv JOIN gender_dimension gd ON gd.id = edv.dimension_id
-               WHERE edv.entry_id = e.id AND gd.key = 'euphoria_dysphoria' AND edv.value <= ?
-             )
            )
-         ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
+         ORDER BY e.id DESC
          LIMIT 1`,
         [
           BAD_MOMENT_MOOD_CEILING,
           ...dysphoriaTagIds,
-          BAD_MOMENT_REGION_DYSPHORIA_FLOOR,
-          BAD_MOMENT_DIMENSION_DYSPHORIA_CEILING
+          BAD_MOMENT_REGION_DYSPHORIA_FLOOR
         ]
       );
       if (rows.length === 0) return undefined;
