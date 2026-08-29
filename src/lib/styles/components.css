@@ -1741,8 +1741,22 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 
 /* ---------- desktop adaptation (container query on .app-viewport) ---------- */
 @container app (min-width: 1024px) {
-  .sheet-scrim { align-items: center; }
+  /* Centred over the content column, not the whole app: the rail takes the
+     left of the frame the scrim is fixed to, so a plain centre across the
+     full inset put a sheet in the gap between rail and column - visually
+     off-centre from what it is editing (phase 5 ticket 99 item 13). The
+     padding reserves the rail's own width, rail plus the left inset it has
+     already taken from the scroll region, and the sheet centres in what is
+     left - the same strip .screen centres in, so the two share one axis. */
+  .sheet-scrim {
+    align-items: center;
+    padding-left: calc(var(--rail-width) + var(--inset-left));
+  }
   .sheet { border-radius: var(--radius-xl); }
+  /* As wide as the column it sits over, capped at the column's own max:
+     a wide Segmented inside a sheet was the thing that kept running out of
+     room at 520px. */
+  .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
   .toast { bottom: var(--space-6); }
 }
 
