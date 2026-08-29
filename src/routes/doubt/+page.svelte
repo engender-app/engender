@@ -1,8 +1,9 @@
 <script lang="ts">
   /* Safe Space (ticket 52, ADR-0040, CONTEXT: "Safe space").
      The crisis-mode dashboard for intense dysphoria:
-     - Calming tool: guided box breathing exercise
+     - Calming tool: guided box breathing exercise with concentric ambient halo
      - Grounding statistics: streak and good moments from the journal
+     - Visual charts: 30-day timeline and affirming themes breakdown
      - Counterevidence pool: euphoria-tagged, high-euphoria body region, and starred entries
      - Snapshots: frozen captures of past counterevidence pools
 
@@ -14,6 +15,7 @@
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -23,6 +25,12 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
   import Tile from '$lib/components/kit/Tile.svelte';
+  import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
+  import AreaChart from '$lib/components/kit/AreaChart.svelte';
+  import BarRows from '$lib/components/kit/BarRows.svelte';
+  import type { BarRow } from '$lib/components/kit/barRow';
+  import { atGrain } from '$lib/charts/grain';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -31,8 +39,10 @@
 
   const COUNTEREVIDENCE_LIMIT = 20;
   const HISTORY_LIMIT = 50;
+  const TIMELINE_DAYS = 30;
 
   let today = $derived(todayEpochDay());
+  let from = $derived(today - TIMELINE_DAYS + 1);
 
   let counterevidenceQuery = liveList((j) =>
     j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT)
@@ -41,6 +51,31 @@
 
   let streakQuery = liveQuery((j) => j.stats.streak(today));
   let streakDays = $derived(streakQuery.value ?? 0);
+
+  let dayAveragesQuery = liveList((j) => j.stats.dayAverages('mood', from, today));
+  let rawPoints = $derived(dayAveragesQuery.rows.map((r) => ({ x: r.day, y: r.value })));
+  let plotted = $derived(atGrain(rawPoints, TIMELINE_DAYS));
+
+  let affirmingTagRows = $derived.by<BarRow[]>(() => {
+    const counts = new Map<string, number>();
+    for (const entry of counterevidence) {
+      if (entry.tags) {
+        for (const t of entry.tags) {
+          counts.set(t, (counts.get(t) ?? 0) + 1);
+        }
+      }
+    }
+    const sorted = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    return sorted.map(([tagId, count]) => ({
+      key: tagId,
+      name: vocabulary.tag(tagId)?.label ?? tagId,
+      value: `${count}×`,
+      amount: count
+    }));
+  });
 
   let snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
   let snapshots = $derived(snapshotsQuery.rows);
@@ -94,6 +129,37 @@
       href="/search/starred"
     />
   </TileGrid>
+
+  <!-- 30-Day Continuity Timeline -->
+  <ChartCard
+    heading={m.safe_space_chart_timeline_title()}
+    kind="timeline"
+    role={roleAt(activeFlag.roles, 1)}
+  >
+    {#if plotted.points.length > 1}
+      <AreaChart
+        points={plotted.points}
+        min={1}
+        max={5}
+        ariaLabel={m.safe_space_chart_timeline_title()}
+        from={fmtDay(from, { day: 'numeric', month: 'short' })}
+        to={fmtDay(today, { day: 'numeric', month: 'short' })}
+      />
+    {:else}
+      <ChartEmpty>{m.safe_space_no_themes()}</ChartEmpty>
+    {/if}
+  </ChartCard>
+
+  <!-- Affirming Themes Breakdown -->
+  {#if affirmingTagRows.length > 0}
+    <ChartCard
+      heading={m.safe_space_chart_themes_title()}
+      kind="affirming-themes"
+      role={roleAt(activeFlag.roles, 2)}
+    >
+      <BarRows rows={affirmingTagRows} />
+    </ChartCard>
+  {/if}
 
   <SectionHeading text={m.safe_space_counterevidence_title()} />
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.safe_space_counterevidence_sub()}</p>
