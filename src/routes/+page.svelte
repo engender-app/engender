@@ -41,6 +41,7 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import { slide } from 'svelte/transition';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -332,58 +333,61 @@
       <TileGrid
         role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
         flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+        data-live-tile-grid
       >
         {#if showWearTile && runningWear && runningWearElapsed}
-          <Tile
-            key="wear-timer"
-            data-wear-running-tile
-            data-live-tile="wear-timer"
-            title={m.tile_wear_title()}
-            value={m.wear_session_duration_hms({
-              hours: String(runningWearElapsed.hours),
-              minutes: String(runningWearElapsed.minutes),
-              seconds: String(runningWearElapsed.seconds)
-            })}
-            note={m.wear_session_running_since({ time: fmtTime(runningWear.startTimestamp) })}
-            href="/settings/wear"
-            action={{
-              icon: 'stop',
-              text: m.wear_session_stop_action(),
-              label: m.wear_session_stop_action(),
-              attrs: { 'data-wear-stop': '' },
-              onclick: async (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                await journal.wearSessions.upsertSession({
-                  id: runningWear.id,
-                  startTimestamp: runningWear.startTimestamp,
-                  durationMs: Date.now() - runningWear.startTimestamp,
-                  note: runningWear.note
-                });
-              }
-            }}
-          />
+          <div transition:slide={{ axis: 'x', duration: 250 }}>
+            <Tile
+              key="wear-timer"
+              data-wear-running-tile
+              data-live-tile="wear-timer"
+              title={m.tile_wear_title()}
+              value={m.wear_session_duration_hms({
+                hours: String(runningWearElapsed.hours),
+                minutes: String(runningWearElapsed.minutes),
+                seconds: String(runningWearElapsed.seconds)
+              })}
+              note={m.wear_session_running_since({ time: fmtTime(runningWear.startTimestamp) })}
+              href="/settings/wear"
+              action={{
+                icon: 'stop',
+                text: m.wear_session_stop_action(),
+                label: m.wear_session_stop_action(),
+                attrs: { 'data-wear-stop': '' },
+                onclick: async (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  await journal.wearSessions.upsertSession({
+                    id: runningWear.id,
+                    startTimestamp: runningWear.startTimestamp,
+                    durationMs: Date.now() - runningWear.startTimestamp,
+                    note: runningWear.note
+                  });
+                }
+              }}
+            />
+          </div>
         {/if}
 
         {#if showDoseTile}
-          <Tile
-            key="dose-panel"
-            data-dose-panel-tile
-            data-live-tile="dose-panel"
-            title={m.tile_dose_title()}
-            value={activeEpisodes.length > 0 ? activeEpisodes[0].drug : undefined}
-            note={activeEpisodes.length === 1 && activeEpisodes[0].dose
-              ? `${activeEpisodes[0].dose} mg`
-              : m.doses_add_aria()}
-            href="/doses"
-            action={{
-              icon: 'plus',
-              text: m.doses_add_aria(),
-              label: m.doses_add_aria(),
-              href: '/doses?add=1',
-              attrs: { 'data-dose-add': '' }
-            }}
-          />
+          <div transition:slide={{ axis: 'x', duration: 250 }}>
+            <Tile
+              key="dose-panel"
+              data-dose-panel-tile
+              data-live-tile="dose-panel"
+              title={m.tile_dose_title()}
+              value={activeEpisodes.length > 0 ? activeEpisodes[0].drug : undefined}
+              note={undefined}
+              href="/doses"
+              action={{
+                icon: 'plus',
+                text: m.doses_add_aria(),
+                label: m.doses_add_aria(),
+                href: '/doses?add=1',
+                attrs: { 'data-dose-add': '' }
+              }}
+            />
+          </div>
         {/if}
       </TileGrid>
     </div>

@@ -720,6 +720,16 @@ a.kit-entry:active {
   align-items: stretch;
 }
 
+.kit-tiles[data-live-tile-grid] {
+  display: flex;
+  flex-direction: row;
+}
+
+.kit-tiles[data-live-tile-grid] > * {
+  flex: 1;
+  min-width: 0;
+}
+
 /* One tile is not half a pair. Where a grid's two destinations are each
    gated on their own - Home's look back, where wrapped and on-this-day
    qualify independently - the lone survivor sat in the left column with a
@@ -731,13 +741,16 @@ a.kit-entry:active {
    its note into an ellipsis - the reading that is the reason to go there,
    truncated. Below that the pair stacks and each tile gets the whole width.
    The threshold is where the note stops fitting rather than a device size. */
-.kit-tiles > :only-child {
+.kit-tiles:not([data-live-tile-grid]) > :only-child {
   grid-column: 1 / -1;
 }
 
 @media (max-width: 320px) {
   .kit-tiles {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .kit-tiles[data-live-tile-grid] {
+    flex-direction: column;
   }
 }
 
@@ -746,6 +759,7 @@ a.kit-entry:active {
   gap: var(--space-2);
   align-content: start;
   min-height: 108px;
+  height: 100%;
   padding: var(--space-4);
   background: var(--role-tint);
   /* The edge is the stripe rather than the app's grey outline: two tiles
@@ -763,6 +777,7 @@ a.kit-entry:active {
   align-items: center;
   gap: var(--space-3);
   min-height: 108px;
+  height: 100%;
   padding: var(--space-4);
   background: var(--role-tint);
   border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);
