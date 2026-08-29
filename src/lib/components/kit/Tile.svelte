@@ -25,12 +25,23 @@
      walkthrough has been gripping since phase 4 (ADR-0029). A tile whose
      only name were its slot would have cost that suite a rename for a
      capability that never went anywhere. */
+  import Icon from '../Icon.svelte';
+
+  export type TileAction = {
+    icon: string;
+    label: string;
+    onclick?: (e: MouseEvent) => void;
+    href?: string;
+    attrs?: Record<string, string>;
+  };
+
   let {
     title,
     value,
     note,
     href,
     key,
+    action,
     ...rest
   }: {
     title: string;
@@ -40,13 +51,45 @@
     note?: string;
     href: string;
     key?: string;
+    /** An optional in-place control for the tile (ADR-0039). */
+    action?: TileAction;
     /** The caller's own attributes - a handle, an aria-describedby. */
     [attribute: string]: unknown;
   } = $props();
 </script>
 
-<a class="kit-tile press" data-tile={key} {href} {...rest}>
-  <span class="kit-tile-title">{title}</span>
-  {#if value}<span class="kit-tile-value">{value}</span>{/if}
-  {#if note}<span class="kit-tile-note">{note}</span>{/if}
-</a>
+{#if action}
+  <div class="kit-tile is-split" data-tile={key} {...rest}>
+    <a class="kit-tile-main press" {href}>
+      <span class="kit-tile-title">{title}</span>
+      {#if value}<span class="kit-tile-value">{value}</span>{/if}
+      {#if note}<span class="kit-tile-note">{note}</span>{/if}
+    </a>
+    {#if action.href}
+      <a
+        class="kit-tile-act press"
+        href={action.href}
+        aria-label={action.label}
+        {...action.attrs}
+      >
+        <Icon name={action.icon} size={18} />
+      </a>
+    {:else}
+      <button
+        type="button"
+        class="kit-tile-act press"
+        aria-label={action.label}
+        onclick={(e) => action?.onclick?.(e)}
+        {...action.attrs}
+      >
+        <Icon name={action.icon} size={18} />
+      </button>
+    {/if}
+  </div>
+{:else}
+  <a class="kit-tile press" data-tile={key} {href} {...rest}>
+    <span class="kit-tile-title">{title}</span>
+    {#if value}<span class="kit-tile-value">{value}</span>{/if}
+    {#if note}<span class="kit-tile-note">{note}</span>{/if}
+  </a>
+{/if}

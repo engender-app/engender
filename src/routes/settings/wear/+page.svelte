@@ -37,6 +37,7 @@
     timestampAtLocalTime,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Reminder, WearSession } from '$lib/data/types';
@@ -88,14 +89,6 @@
     const id = setInterval(() => (nowTick = Date.now()), 30000);
     return () => clearInterval(id);
   });
-
-  /** Whole hours and minutes out of a millisecond span - used both for a
-      completed session's stored duration and a running one's live elapsed
-      time against `nowTick`. */
-  function hoursMinutesOf(ms: number): { hours: number; minutes: number } {
-    const totalMinutes = Math.max(0, Math.floor(ms / 60000));
-    return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
-  }
 
   let runningElapsed = $derived(running ? hoursMinutesOf(nowTick - running.startTimestamp) : null);
 
