@@ -139,9 +139,9 @@
     <div class="section-block"><ListCard>
       {#each s.regimenEpisodes as episode (episode.id)}
         <ListRow
-          static
           title={episode.drug}
           subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${episodeRangeLabel(episode.endEpochDay, episode.startEpochDay)}`}
+          href={`/settings/regimen#${episode.id}`}
         />
       {/each}
       </ListCard>
@@ -155,7 +155,7 @@
   {#if s.doses.length}
     <div class="section-block"><ListCard>
       {#each s.doses as dose (dose.id)}
-        <ListRow static title={doseHeadline(dose)} subtitle={doseDetailLine(dose)} />
+        <ListRow title={doseHeadline(dose)} subtitle={doseDetailLine(dose)} href={`/doses#${dose.id}`} />
       {/each}
       </ListCard>
     </div>

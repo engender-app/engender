@@ -29,6 +29,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
+  import { scrollToHash } from '$lib/navigation/scroll-region';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -145,6 +146,13 @@
   } | null>(null);
   let newPause = $state<{ start: string; end: string; reason: PauseReason } | null>(null);
 
+  /* A hash arrived with the navigation (the clinician summary links each
+     episode): scroll to it once the rows exist, which the browser's own
+     anchor scroll never did - it fires before the liveQuery answers. */
+  $effect(() => {
+    if (!episodesQuery.loading) scrollToHash();
+  });
+
   /* Re-seeded whenever the editor opens on a different episode, so the
      fields show that episode's schedule rather than the last one's. */
   $effect(() => {
@@ -257,6 +265,7 @@
             <ListRow
               key={episode.id}
               data-episode={episode.id}
+              id={episode.id}
               icon="flask"
               title={episode.drug}
               subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
