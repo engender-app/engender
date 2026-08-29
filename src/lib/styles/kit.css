@@ -824,7 +824,11 @@ a.kit-entry:active {
 
 .kit-tile-value {
   font-family: var(--font-display);
-  font-size: clamp(var(--text-xl), 5vw, var(--text-3xl));
+  /* No viewport clamp: at phone width 5vw pulled the value down to --text-xl
+     and a "23 days" that had been display-size since the tiles landed read
+     as shrunken (Alicja, ticket 99 round 4: "the text got smaller - don't
+     change the font size"). */
+  font-size: var(--text-3xl);
   font-weight: var(--weight-bold);
   letter-spacing: var(--display-track);
   line-height: 1.1;
@@ -887,6 +891,7 @@ a.kit-entry:active {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-2);
+  --mood-lift: 34px;
   /* An outline and nothing else. Flush to the page was the original decision
      and it read as five circles loose on it rather than as one control, but
      the fill that came with the border made it a card - and this row is a

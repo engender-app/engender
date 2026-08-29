@@ -7,6 +7,7 @@
      distinct from deleting the row outright, which erases that the pause
      ever happened rather than closing it out. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -80,12 +81,12 @@
       <div class="cd-endpoints">
         <Field label={m.journaling_pause_start_label()} id="pause-start">
           {#snippet children(id)}
-            <input class="input" type="date" {id} name="pause-start" bind:value={newPause!.start} />
+            <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
           {/snippet}
         </Field>
         <Field label={m.journaling_pause_end_label()} id="pause-end">
           {#snippet children(id)}
-            <input class="input" type="date" {id} name="pause-end" bind:value={newPause!.end} />
+            <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
           {/snippet}
         </Field>
       </div>

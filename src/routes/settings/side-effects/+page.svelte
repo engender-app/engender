@@ -10,6 +10,7 @@
      journal got the empty state and never saw it. It is the notice's own
      text there instead. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { severityName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
@@ -130,7 +131,7 @@
       </Field>
       <Field label={m.side_effect_date_label()} id="side-effect-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="side-effect-date" bind:value={editor.date} />
+          <DatePicker name="side-effect-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
       <Field label={m.side_effect_severity_label()} legend>

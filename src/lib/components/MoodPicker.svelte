@@ -38,6 +38,7 @@
 <div class="mood-picker" class:is-compact={compact} role="radiogroup" aria-label={m.mood()}>
   <div
     class="mood-row"
+    role="presentation"
     onpointermove={onRowMove}
     onpointerup={onRowRelease}
     onpointercancel={onRowRelease}

@@ -28,6 +28,7 @@
      with no snippet here is a typecheck failure, not a heading over
      nothing. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import {
     customInclusiveRange,
@@ -342,12 +343,12 @@
   <div class="kit-filter cd-endpoints no-print">
     <Field label={m.clinician_summary_range_start_label()} id="clinician-summary-start">
       {#snippet children(id)}
-        <input class="input" {id} type="date" bind:value={startInput} max={dayRangeStartMax(endInput) ?? todayInput} />
+        <DatePicker max={dayRangeStartMax(endInput) ?? todayInput} bind:value={startInput} {id} />
       {/snippet}
     </Field>
     <Field label={m.clinician_summary_range_end_label()} id="clinician-summary-end">
       {#snippet children(id)}
-        <input class="input" {id} type="date" bind:value={endInput} min={dayRangeEndMin(startInput)} max={todayInput} />
+        <DatePicker min={dayRangeEndMin(startInput)} max={todayInput} bind:value={endInput} {id} />
       {/snippet}
     </Field>
   </div>

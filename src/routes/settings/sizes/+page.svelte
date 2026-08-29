@@ -11,6 +11,7 @@
      The rows keep doing exactly what they did: tapping one opens the
      record in the editor sheet, where its delete lives. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { garmentCategoryName } from '$lib/data/vocabulary/labels';
   import { GARMENT_CATEGORIES, type GarmentCategoryKey } from '$lib/data/garmentCategories';
@@ -184,7 +185,7 @@
     {#snippet fields(editor)}
       <Field label={m.size_log_date_label()} id="size-log-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="size-log-date" bind:value={editor.date} />
+          <DatePicker name="size-log-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
       <Field label={m.size_log_category_label()} id="size-log-category">

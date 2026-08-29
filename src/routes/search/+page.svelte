@@ -36,6 +36,7 @@
      could only say how many matched, and "3 that day" over three of five
      would be the filter describing itself (recentEntries.ts). */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
@@ -303,26 +304,9 @@
 
     <div class="search-filter-dates">
       <label for="search-filter-start">{m.search_filter_start_label()}</label>
-      <input
-        class="input"
-        id="search-filter-start"
-        data-filter-start
-        type="date"
-        bind:value={startDate}
-        max={dayRangeStartMax(endDate)}
-        aria-label={m.search_filter_start_label()}
-      />
+      <DatePicker id="search-filter-start" max={dayRangeStartMax(endDate)} bind:value={startDate} ariaLabel={m.search_filter_start_label()} data-filter-start />
       <label for="search-filter-end">{m.search_filter_end_label()}</label>
-      <input
-        class="input"
-        id="search-filter-end"
-        data-filter-end
-        type="date"
-        bind:value={endDate}
-        min={dayRangeEndMin(startDate)}
-        max={todayInput}
-        aria-label={m.search_filter_end_label()}
-      />
+      <DatePicker id="search-filter-end" min={dayRangeEndMin(startDate)} max={todayInput} bind:value={endDate} ariaLabel={m.search_filter_end_label()} data-filter-end />
     </div>
 
     <div class="tag-row" role="group" aria-label={m.search_filters()}>
