@@ -28,7 +28,8 @@
   import Icon from '../Icon.svelte';
 
   export type TileAction = {
-    icon: string;
+    icon?: string;
+    text?: string;
     label: string;
     onclick?: (e: MouseEvent) => void;
     href?: string;
@@ -72,7 +73,8 @@
         aria-label={action.label}
         {...action.attrs}
       >
-        <Icon name={action.icon} size={18} />
+        {#if action.icon}<Icon name={action.icon} size={18} />{/if}
+        {#if action.text}<span>{action.text}</span>{/if}
       </a>
     {:else}
       <button
@@ -82,7 +84,8 @@
         onclick={(e) => action?.onclick?.(e)}
         {...action.attrs}
       >
-        <Icon name={action.icon} size={18} />
+        {#if action.icon}<Icon name={action.icon} size={18} />{/if}
+        {#if action.text}<span>{action.text}</span>{/if}
       </button>
     {/if}
   </div>

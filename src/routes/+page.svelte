@@ -346,6 +346,22 @@
             })}
             note={m.wear_session_running_since({ time: fmtTime(runningWear.startTimestamp) })}
             href="/settings/wear"
+            action={{
+              icon: 'stop',
+              text: m.wear_session_stop_action(),
+              label: m.wear_session_stop_action(),
+              attrs: { 'data-wear-stop': '' },
+              onclick: async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                await journal.wearSessions.upsertSession({
+                  id: runningWear.id,
+                  startTimestamp: runningWear.startTimestamp,
+                  durationMs: Date.now() - runningWear.startTimestamp,
+                  note: runningWear.note
+                });
+              }
+            }}
           />
         {/if}
 
