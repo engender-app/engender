@@ -56,6 +56,14 @@ describe('what Safe Space is built from', () => {
     expect(doubt).toContain("from '$lib/theme/activeFlag.svelte'");
     expect(doubt).toContain("from '$lib/theme/roles'");
   });
+
+  it('renders visual charts for 30-day timeline and affirming themes', () => {
+    expect(doubt).toContain("from '$lib/components/kit/ChartCard.svelte'");
+    expect(doubt).toContain("from '$lib/components/kit/AreaChart.svelte'");
+    expect(doubt).toContain("from '$lib/components/kit/BarRows.svelte'");
+    expect(markup).toContain('kind="timeline"');
+    expect(markup).toContain('kind="affirming-themes"');
+  });
 });
 
 describe('More hub row for Safe Space', () => {
