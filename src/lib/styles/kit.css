@@ -866,6 +866,9 @@ a.kit-entry:active {
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
   cursor: pointer;
+  /* The row answers a held finger sliding across it (MoodChips), which the
+     browser would otherwise claim as a scroll. */
+  touch-action: none;
   transition-property: color;
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);

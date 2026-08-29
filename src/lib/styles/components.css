@@ -370,6 +370,20 @@ a.segment {
    siblings whatever the order. */
 .segment { position: relative; }
 .segment.is-active { color: var(--text); }
+/* The keyboard ring draws inside the segment, not 2px outside it. A segment
+   sits flush against its neighbours inside a pill track, so the default
+   offset ring drew around the chosen label and out past the track's own
+   rounded end - the "365d" ring of ticket 99 round 3 - and hugged a small
+   compact segment as a second ring inside the pill's, which read as two
+   controls. Chromium marks a click on a role="radio" focus-visible (arrow
+   keys are expected to work there), so this ring appeared for every mouse
+   pick, not only keyboard ones. Inside the segment's own box a keyboard
+   user still sees exactly which segment holds focus; the mouse just sees
+   the pill. */
+.segment:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -3px;
+}
 
 /* One pill for the set, sliding to whichever segment was chosen. --seg-x and
    --seg-w are measured by Segmented.svelte, because segments are as wide as
@@ -530,6 +544,10 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   background: none; border: none; cursor: pointer;
   padding: var(--space-2) 2px; border-radius: var(--radius-md);
   transition: transform var(--dur-med) var(--ease-out);
+  /* The row answers a held finger sliding across it, which the browser
+     would otherwise claim as a scroll and end with pointercancel - the
+     same trade the fan's faces make (QuickAdd). */
+  touch-action: none;
 }
 /* One face for every surface (phase 5 ticket 31): the picker's 44px, quick
    add's 34, a chip's 26, a day card's 22. The size arrives as --face-size and
@@ -600,13 +618,25 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   .mood-face.is-alive .mood-face-eye { animation: none; }
 }
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
-.mood-btn:not(.is-selected) .mood-face { opacity: 0.55; }
-.mood-picker:not(:has(.is-selected)) .mood-face { opacity: 1; }
-/* Opacity only - DIRECTION.md tier 4 bans hover-dependent motion, and the
-   lift this used to add never had a touch equivalent to answer to (ticket
-   15). */
-.mood-btn:hover .mood-face { opacity: 0.9; }
-.mood-btn.is-selected .mood-face { transform: scale(1.18); opacity: 1; animation: mood-pop var(--dur-slow) var(--ease-out); }
+/* The unselected faces sit back at 55% - but the dimming lands on the
+   disc's fill and the features only, never on the whole svg. Opacity on
+   the svg dimmed the outline stroke with everything else, and 1px of
+   --outline-strong at 55% is nothing at all on the dark theme: the
+   "still no border around the mood icon in new entry" of ticket 99 was
+   this rule dimming the border this ticket had already strengthened. */
+.mood-btn:not(.is-selected) .mood-face-disc { fill-opacity: 0.55; }
+.mood-btn:not(.is-selected) .mood-face-eye { opacity: 0.41; }
+.mood-btn:not(.is-selected) .mood-face-eye.is-lids { opacity: 0.41; }
+.mood-btn:not(.is-selected) .mood-face-mouth { opacity: 0.41; }
+.mood-picker:not(:has(.is-selected)) .mood-face-disc { fill-opacity: 1; }
+.mood-picker:not(:has(.is-selected)) .mood-face-eye { opacity: 0.75; }
+.mood-picker:not(:has(.is-selected)) .mood-face-eye.is-lids { opacity: 0.75; }
+.mood-picker:not(:has(.is-selected)) .mood-face-mouth { opacity: 0.75; }
+/* Hover joins the magnifier's answer rather than replacing it - tier 4's
+   "no hover-dependent motion" is about inventing motion for hover, not
+   about a hover pointer being denied the response a finger gets. */
+.mood-btn:hover .mood-face-disc { fill-opacity: 0.75; }
+.mood-btn.is-selected .mood-face { transform: scale(1.18); animation: mood-pop var(--dur-slow) var(--ease-out); }
 @keyframes mood-pop {
   0% { transform: scale(0.9); }
   55% { transform: scale(1.32) rotate(-5deg); }
