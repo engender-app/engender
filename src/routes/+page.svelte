@@ -371,8 +371,9 @@
             data-dose-panel-tile
             data-live-tile="dose-panel"
             title={m.tile_dose_title()}
-            note={activeEpisodes.length === 1
-              ? m.doses_under_episode({ drug: activeEpisodes[0].drug })
+            value={activeEpisodes.length > 0 ? activeEpisodes[0].drug : undefined}
+            note={activeEpisodes.length === 1 && activeEpisodes[0].dose
+              ? `${activeEpisodes[0].dose} mg`
               : m.doses_add_aria()}
             href="/doses"
             action={{
