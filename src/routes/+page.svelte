@@ -377,6 +377,7 @@
             href="/doses"
             action={{
               icon: 'plus',
+              text: m.doses_add_aria(),
               label: m.doses_add_aria(),
               href: '/doses?add=1',
               attrs: { 'data-dose-add': '' }
