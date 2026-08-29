@@ -43,6 +43,7 @@
   import type { Reminder, WearSession } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import { smartBack } from '$lib/navigation/smart-back';
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
@@ -259,7 +260,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.wear_log()} back="/more" subtitle={m.wear_log_intro()}>
+  <ScreenHeader title={m.wear_log()} back={() => smartBack('/more')} subtitle={m.wear_log_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.wear_session_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
