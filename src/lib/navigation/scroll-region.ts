@@ -38,3 +38,50 @@ export function restoreScroll(path: string): void {
   if (!el) return;
   el.scrollTop = positions.get(path) ?? 0;
 }
+
+/** Scrolls the element a navigation's hash names into view, once it exists.
+
+    The browser's own anchor scroll gives up before this app's data does: the
+    hash resolves on arrival, but the row it names is behind a liveQuery that
+    answers a beat later, and nothing re-triggers the scroll when it lands
+    (phase 5 ticket 99 item 15 - the clinician summary's regimen and dose rows
+    link to their records across a hash, and the dose log is long enough that
+    an unscrolled landing is nowhere near the record). Called by the target
+    screen once its rows are in the DOM, not by the layout, because only the
+    screen knows when that is.
+
+    Not inline, and not on a fixed delay: the first frames after the rows'
+    query resolves still have the rest of the list mounting underneath them -
+    rows render newest first, so a record from deep in the log keeps moving
+    down while the newer rows above it arrive - and a scroll computed against
+    a half-built layout lands thousands of pixels short of where the row ends
+    up. So this waits for the scroll region's own height to hold still across
+    a frame - the list has finished shaping itself - and only then scrolls.
+    Centred rather than start-at-top, so the record arrives with its
+    neighbours reading around it.
+
+    Consuming the hash - stripping it once honoured - is what makes this safe
+    for a caller to run on every row change: the second run is a no-op instead
+    of a second yank to the same row while the person reads. */
+export function scrollToHash(hash: string = location.hash): void {
+  if (!hash) return;
+  const el = document.getElementById(decodeURIComponent(hash.slice(1)));
+  if (!el) return;
+  const region = el.closest<HTMLElement>('[data-app-scroll-region]');
+  let last: number | null = null;
+  let frames = 0;
+  const settle = () => {
+    /* Gone between the frames - a range edit, a superseded query - and
+       nothing to honour. The hash stays for the next run to try. */
+    if (!el.isConnected) return;
+    const height = region?.scrollHeight ?? document.documentElement.scrollHeight;
+    if (height === last || frames++ > 30) {
+      el.scrollIntoView({ block: 'center' });
+      history.replaceState(history.state, '', location.pathname + location.search);
+      return;
+    }
+    last = height;
+    requestAnimationFrame(settle);
+  };
+  requestAnimationFrame(settle);
+}
