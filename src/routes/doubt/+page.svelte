@@ -1,24 +1,33 @@
 <script lang="ts">
+  /* Safe Space (ticket 52, ADR-0040, CONTEXT: "Safe space").
+     The crisis-mode dashboard for intense dysphoria:
+     - Calming tool: guided box breathing exercise
+     - Grounding statistics: streak and good moments from the journal
+     - Counterevidence pool: euphoria-tagged, high-euphoria body region, and starred entries
+     - Snapshots: frozen captures of past counterevidence pools
+
+     Purely a read: opening the screen writes nothing (ADR-0037). */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
-  import { smartBack } from '$lib/navigation/smart-back';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
+  import { smartBack } from '$lib/navigation/smart-back';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import TileGrid from '$lib/components/kit/TileGrid.svelte';
+  import Tile from '$lib/components/kit/Tile.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
+  import BreathingExercise from '$lib/components/BreathingExercise.svelte';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
 
-  // Same limit the stats screen's tag-insight sheet reads a tag's entries
-  // with (INSIGHT_ENTRIES, +page.svelte) - counterevidence started as that
-  // same query, just always on rather than opened from a sheet, and ticket
-  // 14 widened it to include starred entries alongside the tag.
   const COUNTEREVIDENCE_LIMIT = 20;
   const HISTORY_LIMIT = 50;
 
@@ -29,12 +38,19 @@
   );
   let counterevidence = $derived(counterevidenceQuery.rows);
 
+  let streakQuery = liveQuery((j) => j.stats.streak(today));
+  let streakDays = $derived(streakQuery.value ?? 0);
+
   let snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
   let snapshots = $derived(snapshotsQuery.rows);
 
   async function saveSnapshot() {
     if (counterevidence.length === 0) return;
-    const items: CounterevidenceEntry[] = counterevidence.map((e) => ({ epochDay: e.epochDay, mood: e.mood, note: e.note }));
+    const items: CounterevidenceEntry[] = counterevidence.map((e) => ({
+      epochDay: e.epochDay,
+      mood: e.mood,
+      note: e.note
+    }));
     await journal.doubtJournal.saveSnapshot(today, items);
   }
 
@@ -46,39 +62,71 @@
     await journal.doubtJournal.deleteSnapshot(id);
   }
 
-  const dayLabel = (epochDay: number) => fmtDay(epochDay, { weekday: 'short', day: 'numeric', month: 'short' });
+  const dayLabel = (epochDay: number) =>
+    fmtDay(epochDay, { weekday: 'short', day: 'numeric', month: 'short' });
 </script>
 
 <div class="screen">
-  <!-- Back to the hub this screen lives on, not to Home, which is where it
-       lived until ticket 08 moved it. `smartBack` so that arriving here from
-       anywhere else - a search hit, a launcher shortcut - returns there
-       instead (Alicja, 2026-08-26). -->
-  <ScreenHeader title={m.doubt_title()} back={() => smartBack('/more')} />
+  <ScreenHeader title={m.safe_space_title()} back={() => smartBack('/more')} />
 
-  <SectionTitle text={m.doubt_counterevidence_title()} />
-  <p class="muted small" style="margin-bottom:var(--space-3)">{m.doubt_counterevidence_sub()}</p>
+  <SectionHeading text={m.safe_space_calm_title()} />
+  <BreathingExercise role={roleAt(activeFlag.roles, 0)} />
+
+  <SectionHeading text={m.safe_space_stats_title()} />
+  <TileGrid
+    role={roleAt(activeFlag.roles, 1)}
+    flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+    data-safe-space-stats
+  >
+    <Tile
+      key="streak"
+      title={m.safe_space_stat_streak_title()}
+      value={String(streakDays)}
+      note={m.safe_space_stat_streak_note()}
+      href="/calendar"
+    />
+    <Tile
+      key="evidence"
+      title={m.safe_space_stat_evidence_title()}
+      value={String(counterevidence.length)}
+      note={m.safe_space_stat_evidence_note()}
+      href="/search/starred"
+    />
+  </TileGrid>
+
+  <SectionHeading text={m.safe_space_counterevidence_title()} />
+  <p class="muted small" style="margin-bottom:var(--space-3)">{m.safe_space_counterevidence_sub()}</p>
   <ReadGate read={counterevidenceQuery} variant="card" count={2}>
     {#snippet rows()}
       {#each counterevidence as e (e.id)}
         <EntryCard entry={e} />
       {/each}
-      <button class="btn btn-soft btn-block" onclick={saveSnapshot}>
+      <button type="button" class="btn btn-soft btn-block press" onclick={saveSnapshot}>
         <Icon name="heart" size={18} /> <span>{m.doubt_save_snapshot()}</span>
       </button>
     {/snippet}
     {#snippet empty()}
-      <EmptyState title={m.doubt_no_counterevidence_title()} text={m.doubt_no_counterevidence_body()} />
+      <Notice
+        icon="sparkle"
+        key="no-counterevidence"
+        title={m.doubt_no_counterevidence_title()}
+        text={m.doubt_no_counterevidence_body()}
+      />
     {/snippet}
   </ReadGate>
 
   {#if snapshots.length}
-    <SectionTitle text={m.doubt_snapshots_title()} />
+    <SectionHeading text={m.doubt_snapshots_title()} />
     {#each snapshots as snap (snap.id)}
       <div class="card">
         <div class="spread">
           <span class="kit-row-title">{dayLabel(snap.epochDay)} · {fmtTime(snap.timestamp)}</span>
-          <button class="icon-btn" aria-label={m.doubt_snapshot_delete_sheet()} onclick={() => (snapshotDeleteTarget = snap)}>
+          <button
+            type="button"
+            class="icon-btn"
+            aria-label={m.doubt_snapshot_delete_sheet()}
+            onclick={() => (snapshotDeleteTarget = snap)}
+          >
             <Icon name="trash" size={18} />
           </button>
         </div>
@@ -91,14 +139,15 @@
     {/each}
   {/if}
 
-  <Sheet open={snapshotDeleteTarget !== null} title={m.doubt_snapshot_delete_sheet()} onClose={() => (snapshotDeleteTarget = null)}>
-    {#if snapshotDeleteTarget}
-      <h3>{m.doubt_snapshot_delete_q()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.doubt_snapshot_delete_hint()}</p>
-      <div class="stack-3">
-        <button class="btn btn-danger" data-confirm-delete-doubt-snapshot onclick={deleteSnapshot}><span>{m.doubt_snapshot_delete()}</span></button>
-        <button class="btn btn-ghost" onclick={() => (snapshotDeleteTarget = null)}><span>{m.keep_it()}</span></button>
-      </div>
-    {/if}
-  </Sheet>
+  <ConfirmDeleteSheet
+    open={snapshotDeleteTarget !== null}
+    title={m.doubt_snapshot_delete_sheet()}
+    question={m.doubt_snapshot_delete_q()}
+    hint={m.doubt_snapshot_delete_hint()}
+    confirmLabel={m.doubt_snapshot_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-doubt-snapshot': '' }}
+    onConfirm={deleteSnapshot}
+    onCancel={() => (snapshotDeleteTarget = null)}
+  />
 </div>

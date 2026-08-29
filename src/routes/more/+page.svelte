@@ -72,7 +72,7 @@
        The subtitle is the counterevidence wording rather than the old
        card's "write it down", which ADR-0037 is in the process of making
        untrue. */
-    { key: 'doubt', icon: 'heart', title: () => m.doubt_title(), subtitle: () => m.doubt_counterevidence_sub(), href: '/doubt' },
+    { key: 'doubt', icon: 'heart', title: () => m.safe_space_title(), subtitle: () => m.safe_space_hub_sub(), href: '/doubt' },
     { key: 'voice', icon: 'mic', title: () => m.recordings_label(), subtitle: () => m.voice_compare_sub(), href: '/settings/voice' },
     { key: 'wear', icon: 'clock', title: () => m.wear_log(), subtitle: () => m.wear_log_sub(), href: '/settings/wear' },
     { key: 'effects', icon: 'sparkle', title: () => m.effects_timeline(), subtitle: () => m.effects_timeline_sub(), href: '/settings/effects' },
