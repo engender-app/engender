@@ -76,6 +76,12 @@ const toWearSession = (row: WearSessionRow): WearSession => ({
   note: row.note
 });
 
+/** Whole hours and minutes out of a millisecond span. */
+export function hoursMinutesOf(ms: number): { hours: number; minutes: number } {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+}
+
 /** Where this session's reminder marks which session it belongs to -
     `feature:id`, the same shape stock.ts's own `autoSourceFor` builds. Not
     exported: only this module writes one. */

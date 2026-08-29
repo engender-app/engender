@@ -30,17 +30,17 @@ describe("Home's area colours", () => {
     expect(HOME_AREA_ROLE.week).toBe(0);
   });
 
-  it('gives its four areas four different stripes', () => {
+  it('gives its five areas five different stripes', () => {
     /* The bug this map exists against: two areas landing on one colour.
        That is what the de-duplication above is for on the flag's side,
        and it would be undone here by a repeated index. */
-    expect(indices).toHaveLength(4);
-    expect(new Set(indices).size).toBe(4);
+    expect(indices).toHaveLength(5);
+    expect(new Set(indices).size).toBe(5);
   });
 
   it('numbers them contiguously from the strip, so no stripe is skipped', () => {
-    /* A gap would mean a screen with four areas reaching past the fourth
+    /* A gap would mean a screen with five areas reaching past the fifth
        role and wrapping onto a colour it already used. */
-    expect([...indices].sort((a, b) => a - b)).toEqual([0, 1, 2, 3]);
+    expect([...indices].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
   });
 });
