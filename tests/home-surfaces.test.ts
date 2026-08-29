@@ -110,6 +110,18 @@ describe('what spec 08 took off Home', () => {
     expect(read('src/routes/more/+page.svelte')).toContain("href: '/doubt'");
   });
 
+  it('gates the two live tiles on their preferences and data conditions', () => {
+    expect(home).toContain('let showWearTile = $derived(prefs.wearTimerEnabled && !!runningWear);');
+    expect(home).toContain('let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);');
+    expect(markup).toContain('data-live-tile="wear-timer"');
+    expect(markup).toContain('data-live-tile="dose-panel"');
+  });
+
+  it('gives the live tiles grid its own role', () => {
+    expect(HOME_AREA_ROLE.liveTiles).toBe(1);
+    expect(markup).toContain('HOME_AREA_ROLE.liveTiles');
+  });
+
   it('gates the two look-back halves separately', () => {
     /* The acceptance box: turning wrapped off silences its own half and only
        its own. Two conditions on two preferences, each unmounting its own

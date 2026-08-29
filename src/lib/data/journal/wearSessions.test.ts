@@ -7,6 +7,15 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
+import { hoursMinutesOf } from './wearSessions.ts';
+
+test('hoursMinutesOf formats milliseconds span into hours and minutes', () => {
+  assert.deepEqual(hoursMinutesOf(0), { hours: 0, minutes: 0 });
+  assert.deepEqual(hoursMinutesOf(59000), { hours: 0, minutes: 0 });
+  assert.deepEqual(hoursMinutesOf(60000), { hours: 0, minutes: 1 });
+  assert.deepEqual(hoursMinutesOf(3600000), { hours: 1, minutes: 0 });
+  assert.deepEqual(hoursMinutesOf(3 * 3600000 + 15 * 60000 + 45000), { hours: 3, minutes: 15 });
+});
 
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
 
