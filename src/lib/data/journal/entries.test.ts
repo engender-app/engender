@@ -754,18 +754,27 @@ test('latestBadMomentEntry identifies bad moments and returns newest entry (tick
   found = await journal.entries.latestBadMomentEntry();
   assert.equal(found?.id, badBodyId);
 
-  // Newer bad entry via euphoria_dysphoria dimension <= 20
-  const badDimId = await journal.entries.upsertEntry({
+  // Region dysphoria under 50 does NOT qualify
+  await journal.entries.upsertEntry({
     epochDay: 104,
     timestamp: 5000,
     mood: 3,
-    dims: { euphoria_dysphoria: 15 }
+    bodyRegions: { chest: { dysphoria: 49, euphoria: null } }
   });
   found = await journal.entries.latestBadMomentEntry();
-  assert.equal(found?.id, badDimId);
+  assert.equal(found?.id, badBodyId);
+
+  // Backdated bad entry (earlier epochDay, but newer ID) is returned as latest
+  const backdatedBadId = await journal.entries.upsertEntry({
+    epochDay: 50,
+    timestamp: 6000,
+    mood: 1
+  });
+  found = await journal.entries.latestBadMomentEntry();
+  assert.equal(found?.id, backdatedBadId);
 
   // Trashing the newest bad entry falls back to previous bad entry
-  await journal.entries.deleteEntry(badDimId);
+  await journal.entries.deleteEntry(backdatedBadId);
   found = await journal.entries.latestBadMomentEntry();
   assert.equal(found?.id, badBodyId);
 });

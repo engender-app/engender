@@ -1,77 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import {
-  isBadMomentEntry,
   shouldShowSafeSpaceNudge,
   BAD_MOMENT_MOOD_CEILING,
   BAD_MOMENT_REGION_DYSPHORIA_FLOOR,
-  BAD_MOMENT_DIMENSION_DYSPHORIA_CEILING
+  DYSPHORIA_TAG_KEYS
 } from './safeSpaceNudge';
 
-describe('isBadMomentEntry', () => {
-  it('triggers on lowest mood step (mood === 1)', () => {
-    expect(isBadMomentEntry({ mood: 1 })).toBe(true);
-    expect(isBadMomentEntry({ mood: 2 })).toBe(false);
-    expect(isBadMomentEntry({ mood: 3 })).toBe(false);
-    expect(isBadMomentEntry({ mood: null })).toBe(false);
+describe('Safe Space nudge constants and tags', () => {
+  it('defines lowest mood floor and region dysphoria threshold', () => {
+    expect(BAD_MOMENT_MOOD_CEILING).toBe(1);
+    expect(BAD_MOMENT_REGION_DYSPHORIA_FLOOR).toBe(50);
   });
 
-  it('triggers on dysphoria tags', () => {
-    expect(isBadMomentEntry({ tags: ['g-soc-dys'] })).toBe(true);
-    expect(isBadMomentEntry({ tags: ['g-body-dys'] })).toBe(true);
-    expect(isBadMomentEntry({ tags: ['g-transphobia'] })).toBe(true);
-    expect(isBadMomentEntry({ tags: ['g-misgendered'] })).toBe(true);
-    expect(isBadMomentEntry({ tags: ['dt-physical'] })).toBe(true);
-    expect(isBadMomentEntry({ tags: ['dt-existential'] })).toBe(true);
-
-    // Non-dysphoria tags do not trigger
-    expect(isBadMomentEntry({ tags: ['g-euphoria', 'e-happy'] })).toBe(false);
-    expect(isBadMomentEntry({ tags: ['e-sad'] })).toBe(false);
-  });
-
-  it('triggers on body region feeling dysphoria >= 50', () => {
-    expect(
-      isBadMomentEntry({
-        bodyRegions: { chest: { dysphoria: 50 } }
-      })
-    ).toBe(true);
-    expect(
-      isBadMomentEntry({
-        bodyRegions: { face_jaw: { dysphoria: 80 } }
-      })
-    ).toBe(true);
-    expect(
-      isBadMomentEntry({
-        bodyRegions: { chest: { dysphoria: 49 } }
-      })
-    ).toBe(false);
-    expect(
-      isBadMomentEntry({
-        bodyRegions: { chest: { euphoria: 100 } }
-      })
-    ).toBe(false);
-  });
-
-  it('triggers on euphoria_dysphoria dimension <= 20', () => {
-    expect(
-      isBadMomentEntry({
-        dims: { euphoria_dysphoria: 20 }
-      })
-    ).toBe(true);
-    expect(
-      isBadMomentEntry({
-        dims: { euphoria_dysphoria: 10 }
-      })
-    ).toBe(true);
-    expect(
-      isBadMomentEntry({
-        dims: { euphoria_dysphoria: 21 }
-      })
-    ).toBe(false);
-    expect(
-      isBadMomentEntry({
-        dims: { femininity: 10 }
-      })
-    ).toBe(false);
+  it('includes built-in gender dysphoria tags and dysphoria_type group tags', () => {
+    expect(DYSPHORIA_TAG_KEYS).toContain('g-soc-dys');
+    expect(DYSPHORIA_TAG_KEYS).toContain('g-body-dys');
+    expect(DYSPHORIA_TAG_KEYS).toContain('g-transphobia');
+    expect(DYSPHORIA_TAG_KEYS).toContain('g-misgendered');
+    expect(DYSPHORIA_TAG_KEYS).toContain('dt-physical');
+    expect(DYSPHORIA_TAG_KEYS).toContain('dt-biochemical');
+    expect(DYSPHORIA_TAG_KEYS).toContain('dt-social');
+    expect(DYSPHORIA_TAG_KEYS).toContain('dt-societal');
+    expect(DYSPHORIA_TAG_KEYS).toContain('dt-sexual');
+    expect(DYSPHORIA_TAG_KEYS).toContain('dt-presentational');
+    expect(DYSPHORIA_TAG_KEYS).toContain('dt-existential');
   });
 });
 
