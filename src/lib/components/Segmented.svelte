@@ -94,6 +94,42 @@
     updateScrollFade();
   });
 
+  /* Drag to scroll, for the pointer that has no flick. A touch pans the
+     track natively; a mouse had nothing - "i cannot click and slide nor
+     scroll on web" (Alicja, phase 5 ticket 99 round 3) - so pressing and
+     sliding now moves the track itself, and the press only becomes a
+     selection if it never turned into a drag. The moved flag is what keeps
+     those two honest: a release after a real drag suppresses the click the
+     browser still fires at the segment under the pointer, link or button,
+     so a flick past "90d" does not land on "180d". */
+  let dragStartX = 0;
+  let dragStartScroll = 0;
+  let dragMoved = false;
+
+  function onTrackPointerDown(e: PointerEvent) {
+    if (e.pointerType !== 'mouse') return;
+    dragStartX = e.clientX;
+    dragStartScroll = track?.scrollLeft ?? 0;
+    dragMoved = false;
+  }
+  function onTrackPointerMove(e: PointerEvent) {
+    if (e.pointerType !== 'mouse' || e.buttons === 0 || track === undefined) return;
+    const dx = e.clientX - dragStartX;
+    if (!dragMoved && Math.abs(dx) < 5) return;
+    if (!dragMoved) {
+      dragMoved = true;
+      track.setPointerCapture(e.pointerId);
+    }
+    track.scrollLeft = dragStartScroll - dx;
+  }
+  function onTrackClickCapture(e: MouseEvent) {
+    if (dragMoved) {
+      e.preventDefault();
+      e.stopPropagation();
+      dragMoved = false;
+    }
+  }
+
   $effect(() => {
     if (!track) return;
     const el = track;
@@ -159,6 +195,10 @@
       class:can-scroll-end={canScrollEnd}
       data-segmented={key}
       aria-label={name}
+      onpointerdown={onTrackPointerDown}
+      onpointermove={onTrackPointerMove}
+      onclickcapture={onTrackClickCapture}
+      ondragstart={(e) => e.preventDefault()}
       style:--seg-x="{pill.x}px"
       style:--seg-w="{pill.w}px"
     >
@@ -194,6 +234,10 @@
       data-segmented={key}
       role="radiogroup"
       aria-label={name}
+      onpointerdown={onTrackPointerDown}
+      onpointermove={onTrackPointerMove}
+      onclickcapture={onTrackClickCapture}
+      ondragstart={(e) => e.preventDefault()}
       style:--seg-x="{pill.x}px"
       style:--seg-w="{pill.w}px"
     >
