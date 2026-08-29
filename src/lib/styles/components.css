@@ -812,6 +812,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .tag-group { margin-bottom: var(--space-4); }
 .tag-group-name { font-size: var(--text-xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); display: block; margin-bottom: var(--space-2); }
 .tag-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* A region's slider slides in under the chip row it answers to (ticket 99);
+   the margin rides the sliding element, so the gap is part of the motion
+   instead of appearing with it. */
+.body-region-feeling { margin-top: var(--space-4); }
 .tag-chip-wrap { display: inline-flex; align-items: center; }
 .tag-chip-wrap .tag-info-btn { margin-left: -6px; color: var(--text-2); }
 /* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while

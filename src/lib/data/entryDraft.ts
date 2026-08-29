@@ -11,7 +11,7 @@
 
 import { bodyRegionIsLogged, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
-import type { BodyRegionAxis, BodyRegionFeeling, Entry } from './types';
+import type { BodyRegionFeeling, Entry } from './types';
 import type { EntryInput } from './journal/entries';
 import type { NormalizedPhoto } from './journal/photos';
 import type { EditorPhoto } from '$lib/stores/photoPicking';
@@ -55,11 +55,15 @@ export interface EntryDraft {
       - `toggleTag`/`setDim` edit it same as anything the person picked
       themselves. */
   applyTemplate(tags: string[], dims: Record<string, number>): void;
-  /** Puts a region's sliders on screen, or takes them off. Neither axis is
-      seeded: a region picked and then left alone carries nothing and is
-      dropped on save (ticket 31), so picking one is not itself content. */
+  /** Puts a region's slider on screen, or takes it off. Nothing is seeded:
+      a region picked and then left alone carries nothing and is dropped on
+      save (ticket 31), so picking one is not itself content. */
   toggleBodyRegion(key: string): void;
-  setBodyRegionAxis(key: string, axis: BodyRegionAxis, intensity: number): void;
+  /** Writes one region's whole feeling, the way the picker's single bipolar
+      slider produces it: at most one axis carries a value, the other is
+      null. Overwrites both sides, so dragging across the midpoint takes
+      back the side it came from. */
+  setBodyRegionFeeling(key: string, feeling: BodyRegionFeeling): void;
   addPhoto(photo: NormalizedPhoto): void;
   removePhoto(index: number): void;
   addRecording(bytes: Uint8Array): void;
@@ -154,8 +158,8 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       }
     },
 
-    setBodyRegionAxis(key, axis, intensity) {
-      this.bodyRegions[key] = { ...this.bodyRegions[key], [axis]: intensity };
+    setBodyRegionFeeling(key, feeling) {
+      this.bodyRegions[key] = feeling;
     },
 
     addPhoto(photo) {

@@ -470,7 +470,7 @@
     regions={vocabulary.visibleBodyRegions}
     values={entryDraft.bodyRegions}
     onToggle={(key) => entryDraft.toggleBodyRegion(key)}
-    onAxisInput={(key, axis, v) => entryDraft.setBodyRegionAxis(key, axis, v)}
+    onFeeling={(key, feeling) => entryDraft.setBodyRegionFeeling(key, feeling)}
   />
 
   <!-- One area for everything an entry carries besides its words, rather

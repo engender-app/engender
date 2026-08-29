@@ -31,6 +31,55 @@ export function bodyRegionIsLogged(feeling: BodyRegionFeeling): boolean {
   return feeling.dysphoria !== null || feeling.euphoria !== null;
 }
 
+/** The one-slider presentation of a region's feeling (ticket 99).
+
+    The picker shows a single bipolar scale - dysphoria at the low end,
+    euphoria at the high end, the same shape the day-level dimension takes -
+    where the two per-axis sliders used to be. Storage keeps both axes, so
+    the mapping is a projection, not a re-shape: a slider value below the
+    midpoint writes the dysphoria axis and leaves euphoria null, above it
+    the reverse, and the midpoint itself writes neither, which is the same
+    "picked but not answered" state ticket 31 defined. Neither axis is ever
+    derived from the other and nothing combined is stored (ADR-0010).
+
+    Reading back, a region older than this slider can carry both axes at
+    once - the two-slider UI allowed that. The slider can only stand on one
+    of them, so it stands on the stronger and re-editing the region
+    collapses it to that one side. That cost was accepted when the one
+    slider was chosen (Alicja, 2026-08-29); both columns still read as they
+    always did everywhere that is not this slider. */
+export function feelingToSliderValue(feeling: BodyRegionFeeling): number | null {
+  const midpoint = (BODY_REGION_INTENSITY_MIN + BODY_REGION_INTENSITY_MAX) / 2;
+  const { dysphoria, euphoria } = feeling;
+  if (dysphoria !== null && euphoria !== null) {
+    return dysphoria >= euphoria
+      ? sliderValueFor(midpoint, -dysphoria)
+      : sliderValueFor(midpoint, euphoria);
+  }
+  if (dysphoria !== null) return sliderValueFor(midpoint, -dysphoria);
+  if (euphoria !== null) return sliderValueFor(midpoint, euphoria);
+  return null;
+}
+
+/** The inverse: a slider position becomes at most one axis, intensity
+    measured from the midpoint the way the readout shows it. The midpoint
+    itself is "nothing said", so it clears both - dragging back there is
+    how a region's answer is taken back. */
+export function sliderToFeeling(value: number): BodyRegionFeeling {
+  const midpoint = (BODY_REGION_INTENSITY_MIN + BODY_REGION_INTENSITY_MAX) / 2;
+  if (value === midpoint) return { dysphoria: null, euphoria: null };
+  const intensity = Math.round(Math.abs(value - midpoint) * 2);
+  return value < midpoint
+    ? { dysphoria: intensity, euphoria: null }
+    : { dysphoria: null, euphoria: intensity };
+}
+
+/** Distance from the midpoint on one side, as a slider position: negative
+    intensity (dysphoria) lands below it, positive (euphoria) above. */
+function sliderValueFor(midpoint: number, signedIntensity: number): number {
+  return midpoint + signedIntensity / 2;
+}
+
 /** A plain-object copy, one level into each feeling.
 
     Not `structuredClone`: the draft's map is a Svelte `$state` proxy in the
