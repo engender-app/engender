@@ -96,27 +96,42 @@
   );
 
   /* The time axis, which the old fixed-width rendering had no room to carry:
-     one tick at each year the span crosses (each quarter when the span is
-     short enough that year labels would be fewer than two), drawn as a grid
-     line through every row and labelled once on the axis above them. */
+     a tick at each month boundary the span crosses, drawn as a grid line
+     through every row and labelled once on the axis above. Labels thin
+     themselves out to whatever the drawn width fits - about one per 56px -
+     so a five-year span labels every few months where a two-year one labels
+     every other month; the year joins the label on January ticks and on
+     whichever month carries it after a thinning gap, so the axis always
+     says which year a band sits in. */
+  const MIN_LABEL_PX = 56;
+
   let ticks = $derived.by(() => {
-    const out: { day: number; label: string }[] = [];
-    const spanDays = span.end - anchorEpochDay;
-    if (spanDays > 550) {
-      const yearOf = (day: number) => localDateFromEpochDay(day).getFullYear();
-      for (let y = yearOf(anchorEpochDay); y <= yearOf(Math.ceil(span.end)); y++) {
-        const day = epochDayFromLocalDate(new Date(y, 0, 1));
-        if (day >= anchorEpochDay && day <= span.end) {
-          out.push({ day, label: fmtDay(day, { year: 'numeric' }) });
-        }
-      }
-    } else {
-      const STEP = 92;
-      for (let day = anchorEpochDay + (STEP - (anchorEpochDay % STEP)); day <= span.end; day += STEP) {
-        out.push({ day, label: fmtDay(day, { month: 'short', year: '2-digit' }) });
+    const out: { day: number; label: string; year: boolean }[] = [];
+    const start = localDateFromEpochDay(anchorEpochDay);
+    const last = localDateFromEpochDay(Math.ceil(span.end));
+    for (let y = start.getFullYear(); y <= last.getFullYear(); y++) {
+      for (let mo = y === start.getFullYear() ? start.getMonth() : 0; mo < 12; mo++) {
+        const day = epochDayFromLocalDate(new Date(y, mo, 1));
+        if (day < anchorEpochDay || day > span.end) continue;
+        const year = mo === 0 || out.length === 0;
+        out.push({
+          day,
+          year,
+          label: fmtDay(day, year ? { month: 'short', year: 'numeric' } : { month: 'short' })
+        });
       }
     }
-    return out;
+    /* Thin by drawn distance, not by count: two months are 36px apart at
+       two years and 12px at five, and a label that cannot be read is worse
+       than a month that is not named. January always survives the thinning
+       - it carries the year - crowding at worst one neighbour. */
+    let lastX = -Infinity;
+    return out.filter((tick) => {
+      const px = x(tick.day);
+      if (!tick.year && px - lastX < MIN_LABEL_PX) return false;
+      lastX = px;
+      return true;
+    });
   });
 </script>
 
