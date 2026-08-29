@@ -54,8 +54,10 @@
   const STEPS = [1, 2, 3, 4, 5];
 
   /* Grows the face under the pointer, the same magnifier quick add's fan
-     answers a slide with (magnifier.ts) - a mouse can hover a row it never
-     has to press, so this row gets it for free rather than only on touch. */
+     answers a slide with (magnifier.ts). A mouse hovers; a finger presses
+     and slides - implicit capture on the pressed face keeps the moves
+     coming as the finger travels, and they bubble up here. The release
+     puts every face back. */
   let moodScale = $state<number[]>(STEPS.map(() => 1));
   const RESTING = STEPS.map(() => 1);
 
@@ -63,6 +65,9 @@
     if (isReducedMotion()) return;
     const row = (e.currentTarget as HTMLElement).getBoundingClientRect();
     moodScale = magnifyRow(e.clientX, row, STEPS.length);
+  }
+  function onRowRelease() {
+    moodScale = RESTING;
   }
   function onRowLeave() {
     moodScale = RESTING;
@@ -76,6 +81,8 @@
   aria-label={m.mood()}
   data-mood-chips
   onpointermove={onRowMove}
+  onpointerup={onRowRelease}
+  onpointercancel={onRowRelease}
   onpointerleave={onRowLeave}
 >
   {#each STEPS as step, i (step)}
