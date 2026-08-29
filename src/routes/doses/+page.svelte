@@ -26,6 +26,7 @@
   import { page } from '$app/state';
   import { replaceState } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt, attributeDose } from '$lib/data/regimenEpisode';
   import {
@@ -819,7 +820,7 @@
             <div class="cd-endpoints">
               <Field label={m.dose_day_label()} id="dose-day">
                 {#snippet children(id)}
-                  <input class="input" type="date" {id} name="dose-day" bind:value={editor!.day} />
+                  <DatePicker name="dose-day" bind:value={editor!.day} {id} />
                 {/snippet}
               </Field>
               <Field label={m.dose_time_label()} id="dose-time">

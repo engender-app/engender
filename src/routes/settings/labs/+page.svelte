@@ -15,6 +15,7 @@
      draw's context - the timing figure and the lab - rides on the scrub's
      own label, so it is still the same three facts as before. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { LabSeries } from '$lib/data/journal/labs';
   import { paddedSeries } from '$lib/charts/geometry';
@@ -482,7 +483,7 @@
       <div class="cd-endpoints">
         <Field label={m.labs_date_label()} id="lab-date">
           {#snippet children(id)}
-            <input class="input" type="date" {id} name="lab-date" bind:value={editor.date} />
+            <DatePicker name="lab-date" bind:value={editor.date} {id} />
           {/snippet}
         </Field>
         <!-- Optional, and the hours figure depends on it: a lab slip often
@@ -656,7 +657,7 @@
             </div>
             <Field label={m.labs_date_label()} id={`ocr-date-${i}`}>
               {#snippet children(id)}
-                <input class="input" type="date" {id} data-ocr-field="date" value={row.date} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <DatePicker {id} data-ocr-field="date" value={row.date} onchange={(v) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: v } : r); handleOcrRowsChange(updated); }} />
               {/snippet}
             </Field>
             <Field label={m.labs_note_label()} id={`ocr-note-${i}`}>

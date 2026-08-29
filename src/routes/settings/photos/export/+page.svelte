@@ -10,6 +10,7 @@
      controls above it. It sits on the page now at the width of the screen,
      which is also the width the collage was made at. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import {
@@ -192,9 +193,9 @@
         <SectionHeading text={m.pj_range_title()} />
         <div class="compare-picker-grid">
           <label for="pj-start">{m.recap_custom_start_label()}</label>
-          <input class="input" id="pj-start" type="date" bind:value={startInput} max={dayRangeStartMax(endInput)} />
+          <DatePicker id="pj-start" max={dayRangeStartMax(endInput)} bind:value={startInput} />
           <label for="pj-end">{m.recap_custom_end_label()}</label>
-          <input class="input" id="pj-end" type="date" bind:value={endInput} min={dayRangeEndMin(startInput)} />
+          <DatePicker id="pj-end" min={dayRangeEndMin(startInput)} bind:value={endInput} />
         </div>
         <p class="muted small">
           {#if !range}

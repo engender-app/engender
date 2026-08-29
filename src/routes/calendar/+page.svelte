@@ -34,7 +34,7 @@
   import { getLocale } from '$lib/paraglide/runtime';
   import flatpickr from 'flatpickr';
   import 'flatpickr/dist/flatpickr.min.css';
-  import { pl } from 'flatpickr/dist/l10n/pl';
+  import { Polish as pl } from 'flatpickr/dist/l10n/pl';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -159,7 +159,7 @@
       defaultDate: new Date(year, month, 1),
       disableMobile: true,
       monthSelectorType: 'static',
-      locale: getLocale() === 'pl' ? pl : 'default',
+      locale: getLocale() === 'pl' ? pl : undefined,
       /* Browsing inside the picker - its arrows, its month dropdown - walks
          the heat map along live, the sheet staying open for more. Committing
          is a day tap or the year stepper, which close it. */
@@ -297,70 +297,5 @@
 
   .cal-jump-input {
     display: none;
-  }
-  /* flatpickr draws its own widget, and unthemed it is a white box with
-     blue accents wearing this app's sheet like a costume. Everything it
-     paints maps onto the tokens: surfaces, ink, the accent for the day
-     under the finger and the one picked, the app's own radius and type.
-     Scoped to the sheet's wrapper so the app's one instance stays one
-     instance. */
-  .cal-jump :global(.flatpickr-calendar) {
-    width: 100%;
-    background: none;
-    box-shadow: none;
-    font-family: inherit;
-  }
-  .cal-jump :global(.flatpickr-calendar .flatpickr-months) {
-    margin-bottom: var(--space-2);
-  }
-  .cal-jump :global(.flatpickr-current-month) {
-    color: var(--text);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-  }
-  .cal-jump :global(.flatpickr-monthDropdown-months),
-  .cal-jump :global(.flatpickr-monthDropdown-month) {
-    background: var(--surface);
-    color: var(--text);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-  }
-  .cal-jump :global(.flatpickr-monthDropdown-month:hover),
-  .cal-jump :global(.flatpickr-monthDropdown-month.selected) {
-    background: var(--accent-soft);
-    color: var(--on-accent-soft);
-  }
-  .cal-jump :global(.flatpickr-prev-month svg),
-  .cal-jump :global(.flatpickr-next-month svg) {
-    fill: var(--text-2);
-  }
-  .cal-jump :global(.flatpickr-prev-month:hover svg),
-  .cal-jump :global(.flatpickr-next-month:hover svg) {
-    fill: var(--text);
-  }
-  .cal-jump :global(.flatpickr-weekday) {
-    color: var(--text-2);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-  }
-  .cal-jump :global(.flatpickr-day) {
-    color: var(--text);
-    border-radius: var(--radius-md);
-  }
-  .cal-jump :global(.flatpickr-day:hover) {
-    background: var(--surface-2);
-    border-color: transparent;
-  }
-  .cal-jump :global(.flatpickr-day.today) {
-    border-color: var(--outline-strong);
-  }
-  .cal-jump :global(.flatpickr-day.selected) {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-accent);
-  }
-  .cal-jump :global(.flatpickr-day.prevMonthDay),
-  .cal-jump :global(.flatpickr-day.nextMonthDay) {
-    color: var(--text-2);
   }
 </style>

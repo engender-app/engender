@@ -18,6 +18,7 @@
      an inches one still draws a single continuous line instead of two
      that stop and start where the habit changed. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { paddedSeries } from '$lib/charts/geometry';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -265,7 +266,7 @@
       </Field>
       <Field label={m.measurement_date_label()} id="measurement-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="measurement-date" bind:value={editor.date} />
+          <DatePicker name="measurement-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
       <div class="cd-endpoints">

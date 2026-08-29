@@ -5,6 +5,7 @@
      session photos state something and go nowhere, so they are static
      rows, and the sessions themselves open the editor. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { hairRemovalAreaName, hairRemovalMethodName, severityName } from '$lib/data/vocabulary/labels';
   import { daysSinceLastSession } from '$lib/data/hairRemovalSchedule';
@@ -173,7 +174,7 @@
     {#snippet fields(draft)}
       <Field label={m.hair_removal_date_label()} id="hair-removal-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="hair-removal-date" bind:value={draft.date} />
+          <DatePicker name="hair-removal-date" bind:value={draft.date} {id} />
         {/snippet}
       </Field>
       <Field label={m.hair_removal_area_label()} id="hair-removal-area">

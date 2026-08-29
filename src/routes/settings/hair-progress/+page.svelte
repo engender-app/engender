@@ -9,6 +9,7 @@
      action on it, and the protocol's dismiss is the notice's own rather
      than an icon button wired into a header row. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { hairAnchorEpochDay } from '$lib/data/hairAnchor';
@@ -307,7 +308,7 @@
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_anchor_sheet_hint()}</p>
       <Field label={m.hair_anchor_date_label()} id="hair-anchor-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="hair-anchor-date" bind:value={anchorEditor!} />
+          <DatePicker name="hair-anchor-date" bind:value={anchorEditor!} {id} />
         {/snippet}
       </Field>
       <div class="stack-3">
@@ -338,7 +339,7 @@
     {#snippet fields(stageEditor)}
       <Field label={m.hair_stage_date_label()} id="hair-stage-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="hair-stage-date" bind:value={stageEditor.date} />
+          <DatePicker name="hair-stage-date" bind:value={stageEditor.date} {id} />
         {/snippet}
       </Field>
       <Field label={m.hair_scale_label()} legend>

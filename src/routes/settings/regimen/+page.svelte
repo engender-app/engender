@@ -13,6 +13,7 @@
      flags as a decision rather than an oversight, and no ticket in this
      phase gives either an inbound link from the hub. Unchanged here. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { fmtDay } from '$lib/data/dates';
@@ -383,12 +384,12 @@
       <div class="cd-endpoints">
         <Field label={m.regimen_start_label()} id="regimen-start">
           {#snippet children(id)}
-            <input class="input" type="date" {id} name="regimen-start" bind:value={editor!.startDate} />
+            <DatePicker name="regimen-start" bind:value={editor!.startDate} {id} />
           {/snippet}
         </Field>
         <Field label={m.regimen_end_label()} id="regimen-end">
           {#snippet children(id)}
-            <input class="input" type="date" {id} name="regimen-end" bind:value={editor!.endDate} />
+            <DatePicker name="regimen-end" bind:value={editor!.endDate} {id} />
           {/snippet}
         </Field>
       </div>
@@ -566,12 +567,12 @@
           <div class="cd-endpoints">
             <Field label={m.regimen_pause_start_label()} id="pause-start">
               {#snippet children(id)}
-                <input class="input" type="date" {id} name="pause-start" bind:value={newPause!.start} />
+                <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
               {/snippet}
             </Field>
             <Field label={m.regimen_pause_end_label()} id="pause-end">
               {#snippet children(id)}
-                <input class="input" type="date" {id} name="pause-end" bind:value={newPause!.end} />
+                <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
               {/snippet}
             </Field>
           </div>

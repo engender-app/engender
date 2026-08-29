@@ -5,6 +5,7 @@
      place the projection is surfaced directly rather than only through
      an Android prompt (box 4, +layout.svelte's reconcileStockRunOutReminders). */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -178,7 +179,7 @@
       </div>
       <Field label={m.stock_date_label()} id="stock-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="stock-date" bind:value={editor!.recordedDate} />
+          <DatePicker name="stock-date" bind:value={editor!.recordedDate} {id} />
         {/snippet}
       </Field>
 

@@ -538,7 +538,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 
 /* ---------- mood picker ---------- */
 .mood-picker { position: relative; }
-.mood-row { display: flex; justify-content: space-between; gap: var(--space-1); }
+.mood-row { display: flex; justify-content: space-between; gap: var(--space-1); --mood-lift: 34px; }
 .mood-btn {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
   background: none; border: none; cursor: pointer;
@@ -567,8 +567,9 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      99, screencast 2026-08-29: the fan is how the hover is supposed to
      read, Home and the entry editor's picker were "wrong"). A face that
      only swells in place reads as a zoom; one that comes up to the finger
-     reads as picked up. */
-  translate: 0 calc((1 - var(--mood-mag, 1)) * 20px);
+     reads as picked up. The lift's reach is the row's to set: the fan's
+     card clips at 20px, the bare rows answer with more. */
+  translate: 0 calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px));
   transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast), scale var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
 }
 /* --outline (19% of --text) is a card's edge - a subtle line between two
@@ -618,12 +619,21 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   .mood-face.is-alive .mood-face-eye { animation: none; }
 }
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
+/* The border is a ring OUTSIDE the circle, the same treatment Home's chips
+   wear, for the simple reason that every border inside the disc had
+   already failed: 1px of --outline-strong disappears against a coloured
+   fill on the dark theme, at full strength, and the dimming rules made it
+   worse besides. Outside the circle nothing can sit on top of it, and it
+   takes the picked state's accent like the chips' ring does. */
+.mood-btn .mood-face {
+  border-radius: 50%;
+  outline: 2px solid var(--outline-strong);
+  outline-offset: 3px;
+  transition: outline-color var(--dur-fast) var(--ease-out);
+}
+.mood-btn.is-selected .mood-face { outline-color: var(--accent); }
 /* The unselected faces sit back at 55% - but the dimming lands on the
-   disc's fill and the features only, never on the whole svg. Opacity on
-   the svg dimmed the outline stroke with everything else, and 1px of
-   --outline-strong at 55% is nothing at all on the dark theme: the
-   "still no border around the mood icon in new entry" of ticket 99 was
-   this rule dimming the border this ticket had already strengthened. */
+   disc's fill and the features only, never on the whole svg. */
 .mood-btn:not(.is-selected) .mood-face-disc { fill-opacity: 0.55; }
 .mood-btn:not(.is-selected) .mood-face-eye { opacity: 0.41; }
 .mood-btn:not(.is-selected) .mood-face-eye.is-lids { opacity: 0.41; }
@@ -1796,6 +1806,89 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      room at 520px. */
   .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
   .toast { bottom: var(--space-6); }
+}
+
+
+/* ---------- flatpickr (DatePicker, the calendar's month jump) ----------
+   flatpickr draws its own widget, and unthemed it is a white box with blue
+   accents wearing this app like a costume. Everything it paints maps onto
+   the tokens: surfaces, ink, the accent for the day under the finger and
+   the one picked, the app's own radius and type. One stylesheet here for
+   every picker in the app - the popups and the calendar sheet's inline
+   grid are the same widget. */
+/* The container rule is doubled up on its parent selector because
+   flatpickr's own stylesheet paints the same box white with the same
+   specificity, and import order would decide the winner. */
+body > .flatpickr-calendar,
+.flatpickr-calendar.inline {
+  font-family: inherit;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  border-radius: var(--radius-lg);
+}
+.flatpickr-calendar.inline {
+  width: 100%;
+  max-width: 340px;
+  box-shadow: none;
+}
+.flatpickr-calendar .flatpickr-months {
+  margin-bottom: var(--space-2);
+}
+.flatpickr-calendar .flatpickr-current-month {
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+.flatpickr-calendar .flatpickr-monthDropdown-months,
+.flatpickr-calendar .flatpickr-monthDropdown-month {
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+.flatpickr-calendar .flatpickr-monthDropdown-month:hover,
+.flatpickr-calendar .flatpickr-monthDropdown-month.selected {
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+}
+.flatpickr-calendar .flatpickr-prev-month svg,
+.flatpickr-calendar .flatpickr-next-month svg {
+  fill: var(--text-2);
+}
+.flatpickr-calendar .flatpickr-prev-month:hover svg,
+.flatpickr-calendar .flatpickr-next-month:hover svg {
+  fill: var(--text);
+}
+.flatpickr-calendar .flatpickr-weekday {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+.flatpickr-calendar .flatpickr-day {
+  color: var(--text);
+  border-radius: var(--radius-md);
+}
+.flatpickr-calendar .flatpickr-day:hover {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+.flatpickr-calendar .flatpickr-day.today {
+  border-color: var(--outline-strong);
+}
+.flatpickr-calendar .flatpickr-day.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.flatpickr-calendar .flatpickr-day.prevMonthDay,
+.flatpickr-calendar .flatpickr-day.nextMonthDay {
+  color: var(--text-2);
+}
+/* The popup's altInput - the visible field - reads as this app's own
+   input, not flatpickr's form-control default. */
+.flatpickr-calendar + form .form-control, input.form-control {
+  background: var(--surface);
+  color: var(--text);
 }
 
 /* ---------- loading placeholders ---------- */

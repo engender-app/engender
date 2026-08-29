@@ -12,6 +12,7 @@
      something. */
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
@@ -231,12 +232,12 @@
     {/if}
     <Field label={m.tryout_start_label()} id="tr-start">
       {#snippet children(id)}
-        <input class="input" type="date" {id} name="tr-start" bind:value={draft.start} />
+        <DatePicker name="tr-start" bind:value={draft.start} {id} />
       {/snippet}
     </Field>
     <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} id="tr-end">
       {#snippet children(id)}
-        <input class="input" type="date" {id} name="tr-end" bind:value={draft.end} />
+        <DatePicker name="tr-end" bind:value={draft.end} {id} />
       {/snippet}
     </Field>
     <button class="btn btn-primary press" data-save-tryout disabled={draft.label.trim().length === 0} onclick={saveTryout}>

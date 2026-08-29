@@ -24,6 +24,7 @@
      behind anything - the checklist is whatever the person writes, and the
      app contributes the dates and the structure around it. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { recoveryDay } from '$lib/data/recoveryDay';
   import { fmtDay } from '$lib/data/dates';
@@ -437,7 +438,7 @@
       </Field>
       <Field label={m.surgery_date_label()} id="surgery-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="surgery-date" bind:value={editor.date} />
+          <DatePicker name="surgery-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
     {/snippet}
@@ -447,7 +448,7 @@
     <h3>{m.surgery_consult_sheet()}</h3>
     <Field label={m.surgery_consult_date_label()} id="surgery-consult-date">
       {#snippet children(id)}
-        <input class="input" type="date" {id} name="surgery-consult-date" bind:value={consultDate} />
+        <DatePicker name="surgery-consult-date" bind:value={consultDate} {id} />
       {/snippet}
     </Field>
     <button class="btn btn-primary" data-save-consult onclick={addConsult}><span>{m.surgery_consult_add()}</span></button>
@@ -457,7 +458,7 @@
     <h3>{m.surgery_photos_title()}</h3>
     <Field label={m.surgery_photo_date_label()} id="surgery-photo-date">
       {#snippet children(id)}
-        <input class="input" type="date" {id} name="surgery-photo-date" bind:value={photoDate} />
+        <DatePicker name="surgery-photo-date" bind:value={photoDate} {id} />
       {/snippet}
     </Field>
     <div class="stack-3">

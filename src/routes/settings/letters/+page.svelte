@@ -18,6 +18,7 @@
      is waiting for - a row that answers a press with nothing is worse than
      a row that cannot be pressed. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { isLetterSealed } from '$lib/data/letterStatus';
   import { fmtDay } from '$lib/data/dates';
@@ -123,7 +124,7 @@
 
     <Field label={m.letters_unlock_label()} id="letter-unlock">
       {#snippet children(id)}
-        <input class="input" type="date" {id} name="letter-unlock" bind:value={unlockDate} />
+        <DatePicker name="letter-unlock" bind:value={unlockDate} {id} />
       {/snippet}
     </Field>
 

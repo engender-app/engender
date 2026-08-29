@@ -702,14 +702,14 @@
     max-width: min(78%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
   }
   .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
-  /* The caption belongs to the week strip above it, not to the section
-     below: the generic block gap plus the heading's own padding-top read
-     as 32px of nothing between "23 days" and "How are you feeling?"
-     (Alicja, ticket 99 round 3: "around 2x smaller"). The caption gives
-     its trailing 12px back and the heading arrives with 16 instead of
-     its 20 - half the distance, still a breath. */
-  .home > .home-week-caption { margin-bottom: 0; }
-  .home > .home-week-caption + :global(.kit-heading) { padding-top: var(--space-4); }
+  /* Round 4, item 20: the gap before a Home heading was two spacings
+     stacked - the block rhythm's 12px AND the heading's own 20px
+     padding-top - and read as air, however many times one of them was
+     trimmed. Home's headings take the seam from the block margin alone:
+     padding-top 0, the 12px above them the only space. No font size is
+     touched here - the tile value that shrank gets its own fix in
+     kit.css. */
+  .home > :global(.kit-heading) { padding-top: 0; }
 
   /* Home's vertical rhythm (phase 5 ticket 21). Written as a margin below
      each surface rather than as a flex gap on the column, because one of
@@ -723,9 +723,10 @@
      --space-3 is the gap DIRECTION.md's decision 3 asks for: 10 to 12 rather
      than the 16 the screens used to run at. */
   .home > * { margin-bottom: var(--space-3); }
-  /* Both of these carry their own space and would otherwise be paid twice. */
-  .home > :global(.kit-heading),
-  .home > :global(.kit-tiles) { margin-bottom: 0; }
+  /* The heading owns no space below itself; what follows it is separated by
+     its own top margin or padding. The tiles keep their 12: it is the only
+     seam they give the heading that follows them. */
+  .home > :global(.kit-heading) { margin-bottom: 0; }
   /* The caption belongs to the strip above it, so it sits closer than a
      section does to the next section. */
   .home > :global(.kit-strip) { margin-bottom: var(--space-2); }
