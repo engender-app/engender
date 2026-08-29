@@ -862,7 +862,7 @@
   .home-safe-space-text {
     margin: 0;
     font-size: var(--text-sm);
-    color: var(--role-ink);
+    color: var(--text);
     line-height: 1.35;
     font-weight: var(--weight-medium);
     flex: 1 1 auto;
@@ -874,16 +874,16 @@
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
     border-radius: var(--radius-pill);
-    background: color-mix(in oklab, var(--role-mark) 20%, transparent);
-    color: var(--role-ink);
-    border: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
+    background: color-mix(in oklab, var(--role-mark) 25%, transparent);
+    color: var(--text);
+    border: 1px solid color-mix(in oklab, var(--role-mark) 45%, transparent);
     white-space: nowrap;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
   }
   .home-safe-space-main .btn:active {
-    background: color-mix(in oklab, var(--role-mark) 32%, transparent);
+    background: color-mix(in oklab, var(--role-mark) 38%, transparent);
   }
   .home-safe-space-dismiss {
     position: absolute;
@@ -897,13 +897,13 @@
     justify-content: center;
     background: transparent;
     border: 0;
-    color: var(--text-3);
+    color: var(--text-2);
     border-radius: var(--radius-pill);
     cursor: pointer;
   }
   .home-safe-space-dismiss:hover,
   .home-safe-space-dismiss:active {
-    color: var(--role-ink);
+    color: var(--text);
     background: color-mix(in oklab, var(--role-mark) 14%, transparent);
   }
 </style>
