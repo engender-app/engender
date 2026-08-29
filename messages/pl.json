@@ -1724,6 +1724,8 @@
   "tile_surgery_sub": "Pokazuje, ile dni zostało do zaplanowanej operacji.",
   "tile_safe_space_title": "Podpowiedź o bezpiecznej przestrzeni",
   "tile_safe_space_sub": "Proponuje bezpieczną przestrzeń po trudnym wpisie.",
+  "tile_safe_space_nudge_sub": "Weź oddech lub spójrz na dobre chwile.",
+  "tile_safe_space_nudge_dismiss": "Odrzuć propozycję bezpiecznej przestrzeni",
   "tile_stock_title": "Kończący się zapas",
   "tile_stock_sub": "Ostrzega, kiedy zapas leków ma się wkrótce skończyć.",
   "wrapped": "Bilans",

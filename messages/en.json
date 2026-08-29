@@ -1686,6 +1686,8 @@
   "tile_surgery_sub": "Shows how many days are left to the next scheduled surgery.",
   "tile_safe_space_title": "Safe Space nudge",
   "tile_safe_space_sub": "Offers Safe Space after a hard entry.",
+  "tile_safe_space_nudge_sub": "Take a breath or look back at good moments.",
+  "tile_safe_space_nudge_dismiss": "Dismiss Safe Space offer",
   "tile_stock_title": "Stock running low",
   "tile_stock_sub": "Warns when medication stock is projected to run out.",
   "wrapped": "Wrapped",

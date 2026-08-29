@@ -114,6 +114,10 @@ export interface PreferenceValues {
       an entry that reads as a bad moment. Same shape and reasoning as
       `wearTimerEnabled`. */
   safeSpaceNudgeEnabled: boolean;
+  /** The entry ID of the most recent bad-moment entry whose Safe Space nudge
+      was dismissed or opened (ticket 50). A subsequent qualifying entry with a
+      newer ID produces its own fresh nudge. */
+  safeSpaceNudgeDismissedEntryId: number | null;
   /** Whether the running-low stock notice is ever shown (phase 5 ticket 51),
       while an in-use regimen's stock is projected to run out. Same shape and
       reasoning as `wearTimerEnabled`. */
@@ -256,6 +260,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   readyLetterEnabled: true,
   surgeryCountdownEnabled: true,
   safeSpaceNudgeEnabled: true,
+  safeSpaceNudgeDismissedEntryId: null,
   stockNoticeEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
@@ -320,6 +325,7 @@ export const DEVICE_LOCAL_KEYS = [
   'readyLetterEnabled',
   'surgeryCountdownEnabled',
   'safeSpaceNudgeEnabled',
+  'safeSpaceNudgeDismissedEntryId',
   'stockNoticeEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
