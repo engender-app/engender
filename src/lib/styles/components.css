@@ -544,7 +544,14 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      that doesn't set it, so every mood row gets the same grow-under-the-
      pointer answer for free the moment it starts setting the variable. */
   scale: var(--mood-mag, 1);
-  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast), scale var(--dur-fast) var(--ease-out);
+  /* And rises with it, the lift the fan's card clip forced it to invent -
+     which turned out to be the whole of the look (Alicja, phase 5 ticket
+     99, screencast 2026-08-29: the fan is how the hover is supposed to
+     read, Home and the entry editor's picker were "wrong"). A face that
+     only swells in place reads as a zoom; one that comes up to the finger
+     reads as picked up. */
+  translate: 0 calc((1 - var(--mood-mag, 1)) * 20px);
+  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast), scale var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
 }
 /* --outline (19% of --text) is a card's edge - a subtle line between two
    already-similar surface tones. A mood face sits straight on the bare app
@@ -1236,14 +1243,11 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
    substitution rather than a deletion - what goes is the movement, not the
    cue.
 
-   The scale itself is the base .mood-face rule's now (every mood row reads
-   --mood-mag); what stays here is the fan's own lift on top of it, since a
-   card that clips is what makes that lift necessary and no other row of
-   these clips its faces. */
-.fan-mood .mood-face {
-  translate: 0 calc((1 - var(--mood-mag, 1)) * 20px);
-  transition: translate var(--dur-fast) var(--ease-out);
-}
+   The scale and the lift are both the base .mood-face rule's now - every
+   mood row reads --mood-mag and rises with it, the fan included (Alicja,
+   phase 5 ticket 99: the fan was how the hover was supposed to look). The
+   selector stays only as a marker; the day a surface needs its own lift
+   apart from the rows' is the day it gets a declaration again. */
 
 /* The mark travelling from the row you chose into the add control (phase 5
    ticket 18, tier 3). Transform and opacity only, over the same
