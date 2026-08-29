@@ -760,7 +760,7 @@ a.kit-entry:active {
 .kit-tile.is-split {
   display: grid;
   grid-template-columns: 1fr auto;
-  align-items: start;
+  align-items: center;
   gap: var(--space-3);
   min-height: 108px;
   padding: var(--space-4);
@@ -772,13 +772,13 @@ a.kit-entry:active {
 .kit-tile-main {
   display: grid;
   gap: var(--space-2);
-  align-content: start;
+  align-content: center;
   color: inherit;
   text-decoration: none;
 }
 
 .kit-tile-act.btn {
-  align-self: start;
+  align-self: center;
   min-height: 36px;
   padding: 0 var(--space-3.5);
   font-size: var(--text-xs);
@@ -809,34 +809,26 @@ a.kit-entry:active {
 
 .kit-tile-value {
   font-family: var(--font-display);
-  font-size: var(--text-3xl);
+  font-size: clamp(var(--text-xl), 5vw, var(--text-3xl));
   font-weight: var(--weight-bold);
   letter-spacing: var(--display-track);
-  line-height: 1;
+  line-height: 1.1;
   /* Display size, so it answers to the 3:1 floor and keeps the stripe. */
   color: var(--role-mark);
   justify-self: start;
   font-variant-numeric: tabular-nums;
-}
-
-/* The flag under the number: the real stripes at their real values, in
-   stripe order, in the flag's own proportions, turned a quarter so the
-   bands run across the bar rather than down it. The value is an
-   inline-block so the bar measures the digits rather than the column they
-   sit in, and the whole thing is hidden from a screen reader - it says
-   nothing the number does not.
-
-   A little longer than the number and thin: at 6px it reads as a rule that
-   happens to be a flag, which is what an underline should be, and every
-   flag's bands stay full height whatever the count. */
-.kit-tile-value {
   display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.kit-tiles[style*='--flag-fill'] .kit-tile-value::after {
+.kit-tiles[style*='--flag-fill'] .kit-tile-value::after,
+.kit-tiles[style*='--flag-fill'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
   content: '';
   display: block;
   width: calc(100% + var(--space-3));
+  max-width: 80px;
   height: 6px;
   margin-top: var(--space-2);
   border-radius: 3px;
