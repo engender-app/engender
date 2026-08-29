@@ -19,6 +19,11 @@
 
 import { bodyRegionIsLogged } from '../bodyMap';
 import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats';
+import {
+  BAD_MOMENT_MOOD_CEILING,
+  BAD_MOMENT_REGION_DYSPHORIA_FLOOR,
+  DYSPHORIA_TAG_KEYS
+} from '../safeSpaceNudge';
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
@@ -135,6 +140,10 @@ export interface EntriesArea {
       one is also the stats screen's tag-insight query, for an arbitrary
       tag, and starred entries have no business surfacing there. */
   counterevidencePool(tagIds: readonly string[], limit: number): Promise<Entry[]>;
+  /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
+      body-region dysphoria intensity >= 50, or euphoria_dysphoria <= 20), newest first
+      (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
+  latestBadMomentEntry(dysphoriaTagIds?: readonly string[]): Promise<Entry | undefined>;
   /** Notes matching the query, unioned with the entries carrying any of
       `matchingTagIds`, newest first (ADR-0005, PRD F19).
 
@@ -673,6 +682,39 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         [...tagIds, GOOD_DAY_REGION_EUPHORIA_FLOOR, limit]
       );
       return hydrate(rows);
+    },
+
+    async latestBadMomentEntry(dysphoriaTagIds = DYSPHORIA_TAG_KEYS) {
+      const placeholders = dysphoriaTagIds.map(() => '?').join(', ');
+      const tagClause =
+        dysphoriaTagIds.length > 0
+          ? `OR EXISTS (
+              SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+              WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) IN (${placeholders})
+            )`
+          : '';
+      const rows = await driver.query<EntryRow>(
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
+         WHERE e.trashed_at IS NULL
+           AND (
+             (e.mood IS NOT NULL AND e.mood <= ?)
+             ${tagClause}
+             OR EXISTS (
+               SELECT 1 FROM entry_body_region ebr
+               WHERE ebr.entry_id = e.id AND ebr.dysphoria >= ?
+             )
+           )
+         ORDER BY e.id DESC
+         LIMIT 1`,
+        [
+          BAD_MOMENT_MOOD_CEILING,
+          ...dysphoriaTagIds,
+          BAD_MOMENT_REGION_DYSPHORIA_FLOOR
+        ]
+      );
+      if (rows.length === 0) return undefined;
+      const hydrated = await hydrate(rows);
+      return hydrated[0];
     },
 
     async searchEntries(query, matchingTagIds, filtersOrLimit, limit) {

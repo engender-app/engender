@@ -82,12 +82,13 @@
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
   import { hoursMinutesSecondsOf } from '$lib/data/journal/wearSessions';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { shouldShowSafeSpaceNudge } from '$lib/data/safeSpaceNudge';
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
 
-  /* Live tiles data & condition (phase 5 ticket 45). */
+  /* Live tiles data & condition (phase 5 ticket 45, 50). */
   let runningWearQuery = liveQuery((j) => j.wearSessions.getRunningSession());
   let runningWear = $derived(runningWearQuery.value ?? null);
   let nowTick = $state(Date.now());
@@ -103,7 +104,27 @@
   let activeEpisodes = $derived(activeEpisodesAt(episodesQuery.rows, Date.now()));
   let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);
 
-  let hasLiveTiles = $derived(showWearTile || showDoseTile);
+  let latestBadEntryQuery = liveQuery((j) => j.entries.latestBadMomentEntry());
+  let latestBadEntry = $derived(latestBadEntryQuery.value ?? null);
+  let showSafeSpaceTile = $derived(
+    shouldShowSafeSpaceNudge({
+      latestBadEntryId: latestBadEntry?.id,
+      dismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
+      enabled: prefs.safeSpaceNudgeEnabled
+    })
+  );
+
+  let hasLiveTiles = $derived(showWearTile || showDoseTile || showSafeSpaceTile);
+
+  function dismissSafeSpaceNudge(e?: MouseEvent) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    if (latestBadEntry) {
+      prefs.safeSpaceNudgeDismissedEntryId = latestBadEntry.id;
+    }
+  }
 
   /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
      ($lib/theme/roles.ts, where the reason the week strip is out of
@@ -342,7 +363,7 @@
         data-live-tile-grid
       >
         {#if showWearTile && runningWear && runningWearElapsed}
-          <div transition:tileSlide={{ enabled: showDoseTile }}>
+          <div transition:tileSlide={{ enabled: showDoseTile || showSafeSpaceTile }}>
             <Tile
               key="wear-timer"
               data-wear-running-tile
@@ -376,7 +397,11 @@
         {/if}
 
         {#if showDoseTile}
-          <div transition:tileSlide={{ enabled: !!(showWearTile && runningWear && runningWearElapsed) }}>
+          <div
+            transition:tileSlide={{
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSafeSpaceTile
+            }}
+          >
             <Tile
               key="dose-panel"
               data-dose-panel-tile
@@ -391,6 +416,29 @@
                 label: m.doses_add_aria(),
                 href: '/doses?add=1',
                 attrs: { 'data-dose-add': '' }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showSafeSpaceTile}
+          <div
+            transition:tileSlide={{
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile
+            }}
+          >
+            <Tile
+              key="safe-space-nudge"
+              data-safe-space-nudge-tile
+              data-live-tile="safe-space-nudge"
+              title={m.safe_space_title()}
+              note={m.tile_safe_space_nudge_sub()}
+              href="/doubt"
+              action={{
+                icon: 'x',
+                label: m.tile_safe_space_nudge_dismiss(),
+                attrs: { 'data-safe-space-nudge-dismiss': '' },
+                onclick: dismissSafeSpaceNudge
               }}
             />
           </div>
