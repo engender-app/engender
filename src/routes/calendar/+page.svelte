@@ -30,7 +30,11 @@
      takes role 0"). Home's week strip takes it for the same reason and they
      are the same reading. */
   import { m } from '$lib/paraglide/messages';
-  import { fmtMonthName, fmtMonthYear } from '$lib/data/dates';
+  import { fmtMonthYear } from '$lib/data/dates';
+  import { getLocale } from '$lib/paraglide/runtime';
+  import flatpickr from 'flatpickr';
+  import 'flatpickr/dist/flatpickr.min.css';
+  import { pl } from 'flatpickr/dist/l10n/pl';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -124,19 +128,62 @@
   /* Item 11: a year is twelve taps of the chevron away, which is the whole
      of the reason nobody lands on last August on purpose. The month label
      itself is the way in - it already says where you are, so it is the thing
-     that offers to move you - and the sheet it opens holds the two halves of
-     a date: the year, stepped one at a time because a year list is longer
-     than the trip is usually worth, and the twelve months, jumped to
-     directly. The month transition's direction follows the jump, so arriving
-     at a picked month still slides the way it went. */
+     that offers to move you - and the sheet it opens is flatpickr doing the
+     thing it has already solved: a month grid with its own dropdown month
+     selector, slide animation and locale. The year stepper above it is the
+     one jump flatpickr does not give you, and the month transition's
+     direction follows whichever of the two moved, so arriving at a picked
+     month still slides the way it went. */
   let jumpOpen = $state(false);
+  let jumpInput = $state<HTMLInputElement | undefined>();
+  let picker: flatpickr.Instance | null = null;
 
-  function jumpTo(y: number, mo: number) {
-    dir = y * 12 + mo > year * 12 + month ? 1 : -1;
+  function move(deltaMonths: number, close: boolean) {
+    const total = year * 12 + month + deltaMonths;
+    const y = Math.floor(total / 12);
+    const mo = ((total % 12) + 12) % 12;
+    dir = total > year * 12 + month ? 1 : -1;
     year = y;
     month = mo;
-    jumpOpen = false;
+    if (close) jumpOpen = false;
   }
+
+  function jumpTo(y: number, mo: number) {
+    move(y * 12 + mo - (year * 12 + month), true);
+  }
+
+  function mountPicker(node: HTMLInputElement) {
+    jumpInput = node;
+    picker = flatpickr(node, {
+      inline: true,
+      defaultDate: new Date(year, month, 1),
+      disableMobile: true,
+      monthSelectorType: 'static',
+      locale: getLocale() === 'pl' ? pl : 'default',
+      /* Browsing inside the picker - its arrows, its month dropdown - walks
+         the heat map along live, the sheet staying open for more. Committing
+         is a day tap or the year stepper, which close it. */
+      onMonthChange: (_dates, _str, inst) => {
+        move(inst.currentYear * 12 + inst.currentMonth - (year * 12 + month), false);
+      },
+      onChange: (dates) => {
+        if (dates[0]) jumpTo(dates[0].getFullYear(), dates[0].getMonth());
+      }
+    });
+    return {
+      destroy() {
+        picker?.destroy();
+        picker = null;
+      }
+    };
+  }
+
+  /* Reopen on the month the heat map is showing, not the one the picker was
+     last left on - the label above the sheet is the promise of what it
+     opens onto. */
+  $effect(() => {
+    if (jumpOpen && picker) picker.jumpToDate(new Date(year, month, 1), false);
+  });
 </script>
 
 <div class="screen">
@@ -204,25 +251,17 @@
 <Sheet bind:open={jumpOpen} title={m.cal_jump_month()}>
   <div class="cal-jump">
     <div class="cal-jump-year">
-      <button class="icon-btn" aria-label={m.prev_year()} onclick={() => (year -= 1)}>
+      <button class="icon-btn" aria-label={m.prev_year()} onclick={() => move(-12, false)}>
         <Icon name="chevronLeft" size={22} />
       </button>
       <strong>{year}</strong>
-      <button class="icon-btn" aria-label={m.next_year()} onclick={() => (year += 1)}>
+      <button class="icon-btn" aria-label={m.next_year()} onclick={() => move(12, false)}>
         <Icon name="chevronRight" size={22} />
       </button>
     </div>
-    <div class="cal-jump-grid">
-      {#each Array(12) as _, mo (mo)}
-        <button
-          class="cal-jump-month"
-          class:is-current={year === now.getFullYear() && mo === now.getMonth()}
-          onclick={() => jumpTo(year, mo)}
-        >
-          {fmtMonthName(year, mo)}
-        </button>
-      {/each}
-    </div>
+    <!-- The visible input flatpickr dresses up is not here: inline mode
+         draws the whole calendar, and its own container carries it. -->
+    <input class="cal-jump-input" type="text" use:mountPicker />
   </div>
 </Sheet>
 
@@ -248,7 +287,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-3);
   }
 
   .cal-jump-year strong {
@@ -256,26 +295,72 @@
     font-size: var(--text-lg);
   }
 
-  .cal-jump-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-2);
+  .cal-jump-input {
+    display: none;
   }
-
-  .cal-jump-month {
-    min-height: 44px;
-    border-radius: var(--radius-md);
-    border: 1.5px solid var(--border);
+  /* flatpickr draws its own widget, and unthemed it is a white box with
+     blue accents wearing this app's sheet like a costume. Everything it
+     paints maps onto the tokens: surfaces, ink, the accent for the day
+     under the finger and the one picked, the app's own radius and type.
+     Scoped to the sheet's wrapper so the app's one instance stays one
+     instance. */
+  .cal-jump :global(.flatpickr-calendar) {
+    width: 100%;
+    background: none;
+    box-shadow: none;
+    font-family: inherit;
+  }
+  .cal-jump :global(.flatpickr-calendar .flatpickr-months) {
+    margin-bottom: var(--space-2);
+  }
+  .cal-jump :global(.flatpickr-current-month) {
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+  }
+  .cal-jump :global(.flatpickr-monthDropdown-months),
+  .cal-jump :global(.flatpickr-monthDropdown-month) {
     background: var(--surface);
     color: var(--text);
-    font: inherit;
     font-size: var(--text-sm);
-    cursor: pointer;
+    font-weight: var(--weight-bold);
   }
-
-  .cal-jump-month.is-current {
+  .cal-jump :global(.flatpickr-monthDropdown-month:hover),
+  .cal-jump :global(.flatpickr-monthDropdown-month.selected) {
     background: var(--accent-soft);
-    border-color: var(--accent);
     color: var(--on-accent-soft);
+  }
+  .cal-jump :global(.flatpickr-prev-month svg),
+  .cal-jump :global(.flatpickr-next-month svg) {
+    fill: var(--text-2);
+  }
+  .cal-jump :global(.flatpickr-prev-month:hover svg),
+  .cal-jump :global(.flatpickr-next-month:hover svg) {
+    fill: var(--text);
+  }
+  .cal-jump :global(.flatpickr-weekday) {
+    color: var(--text-2);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+  }
+  .cal-jump :global(.flatpickr-day) {
+    color: var(--text);
+    border-radius: var(--radius-md);
+  }
+  .cal-jump :global(.flatpickr-day:hover) {
+    background: var(--surface-2);
+    border-color: transparent;
+  }
+  .cal-jump :global(.flatpickr-day.today) {
+    border-color: var(--outline-strong);
+  }
+  .cal-jump :global(.flatpickr-day.selected) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+  }
+  .cal-jump :global(.flatpickr-day.prevMonthDay),
+  .cal-jump :global(.flatpickr-day.nextMonthDay) {
+    color: var(--text-2);
   }
 </style>
