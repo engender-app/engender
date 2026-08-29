@@ -68,23 +68,23 @@
     </a>
     {#if action.href}
       <a
-        class="kit-tile-act press"
+        class={action.text ? 'btn btn-soft kit-tile-act press' : 'btn btn-soft icon-btn kit-tile-act press'}
         href={action.href}
         aria-label={action.label}
         {...action.attrs}
       >
-        {#if action.icon}<Icon name={action.icon} size={18} />{/if}
+        {#if action.icon}<Icon name={action.icon} size={16} />{/if}
         {#if action.text}<span>{action.text}</span>{/if}
       </a>
     {:else}
       <button
         type="button"
-        class="kit-tile-act press"
+        class={action.text ? 'btn btn-soft kit-tile-act press' : 'btn btn-soft icon-btn kit-tile-act press'}
         aria-label={action.label}
         onclick={(e) => action?.onclick?.(e)}
         {...action.attrs}
       >
-        {#if action.icon}<Icon name={action.icon} size={18} />{/if}
+        {#if action.icon}<Icon name={action.icon} size={16} />{/if}
         {#if action.text}<span>{action.text}</span>{/if}
       </button>
     {/if}
