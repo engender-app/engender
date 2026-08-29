@@ -71,10 +71,31 @@
   import MoodChips from '$lib/components/kit/MoodChips.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
+  import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
+  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
+
+  /* Live tiles data & condition (phase 5 ticket 45). */
+  let runningWearQuery = liveQuery((j) => j.wearSessions.getRunningSession());
+  let runningWear = $derived(runningWearQuery.value ?? null);
+  let nowTick = $state(Date.now());
+  $effect(() => {
+    if (!runningWear) return;
+    const id = setInterval(() => (nowTick = Date.now()), 30000);
+    return () => clearInterval(id);
+  });
+  let runningWearElapsed = $derived(runningWear ? hoursMinutesOf(nowTick - runningWear.startTimestamp) : null);
+  let showWearTile = $derived(prefs.wearTimerEnabled && !!runningWear);
+
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let activeEpisodes = $derived(activeEpisodesAt(episodesQuery.rows, Date.now()));
+  let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);
+
+  let hasLiveTiles = $derived(showWearTile || showDoseTile);
 
   /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
      ($lib/theme/roles.ts, where the reason the week strip is out of
@@ -299,6 +320,67 @@
 
   <SectionHeading text={m.how_feeling()} />
   <MoodChips onPick={onQuickLog} />
+
+  <!-- Live tiles grid (ticket 45): wear timer, dose log, etc.
+       Unbordered grid, positioned near the top of Home - above milestones,
+       the week strip and recent entries - carrying its own role-coloured
+       stripe (HOME_AREA_ROLE.liveTiles). Disappears completely - no heading,
+       no gap - when no live tile condition holds. -->
+  {#if hasLiveTiles}
+    <TileGrid
+      role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+      flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+    >
+      {#if showWearTile && runningWear && runningWearElapsed}
+        <Tile
+          key="wear-timer"
+          data-wear-running-tile
+          data-live-tile="wear-timer"
+          title={m.tile_wear_title()}
+          value={m.wear_session_duration_hm({
+            hours: String(runningWearElapsed.hours),
+            minutes: String(runningWearElapsed.minutes)
+          })}
+          note={m.wear_session_running_since({ time: fmtTime(runningWear.startTimestamp) })}
+          href="/settings/wear"
+          action={{
+            icon: 'stop',
+            label: m.wear_session_stop_action(),
+            attrs: { 'data-wear-stop': '' },
+            onclick: async (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              await journal.wearSessions.upsertSession({
+                id: runningWear.id,
+                startTimestamp: runningWear.startTimestamp,
+                durationMs: Date.now() - runningWear.startTimestamp,
+                note: runningWear.note
+              });
+            }
+          }}
+        />
+      {/if}
+
+      {#if showDoseTile}
+        <Tile
+          key="dose-panel"
+          data-dose-panel-tile
+          data-live-tile="dose-panel"
+          title={m.tile_dose_title()}
+          note={activeEpisodes.length === 1
+            ? m.doses_under_episode({ drug: activeEpisodes[0].drug })
+            : m.doses_add_aria()}
+          href="/doses"
+          action={{
+            icon: 'plus',
+            label: m.doses_add_aria(),
+            href: '/doses?add=1',
+            attrs: { 'data-dose-add': '' }
+          }}
+        />
+      {/if}
+    </TileGrid>
+  {/if}
 
   <!-- The two look-back tiles. The grid is unconditional and each tile
        gates itself on its own preference and its own floor, which is what
