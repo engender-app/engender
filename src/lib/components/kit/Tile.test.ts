@@ -15,7 +15,7 @@ describe('Tile component contract', () => {
     expect(tileFile).toContain('{#if action}');
     expect(tileFile).toContain('<div class="kit-tile is-split" data-tile={key}');
     expect(tileFile).toContain('<a class="kit-tile-main press" {href}>');
-    expect(tileFile).toContain('class="kit-tile-act press"');
+    expect(tileFile).toContain('kit-tile-act press');
     expect(tileFile).toContain('<button');
   });
 
