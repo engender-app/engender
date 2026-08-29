@@ -41,6 +41,7 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import { slide } from 'svelte/transition';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -55,7 +56,14 @@
   import { appWordmark } from '$lib/disguise/identity';
   import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
+
+  function tileSlide(node: HTMLElement, { enabled }: { enabled: boolean | undefined }) {
+    if (!enabled) return { duration: 0, css: () => '' };
+    return slide(node, { axis: 'x', duration: 250 });
+  }
+
   import FlagSun from '$lib/components/FlagSun.svelte';
+  import Icon from '$lib/components/Icon.svelte';
   import MilestoneCard from '$lib/components/MilestoneCard.svelte';
   import WeekStrip from '$lib/components/WeekStrip.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -71,10 +79,53 @@
   import MoodChips from '$lib/components/kit/MoodChips.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
+  import { hoursMinutesSecondsOf } from '$lib/data/journal/wearSessions';
+  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { shouldShowSafeSpaceNudge } from '$lib/data/safeSpaceNudge';
+  import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
+
+  /* Live tiles data & condition (phase 5 ticket 45, 50). */
+  let runningWearQuery = liveQuery((j) => j.wearSessions.getRunningSession());
+  let runningWear = $derived(runningWearQuery.value ?? null);
+  let nowTick = $state(Date.now());
+  $effect(() => {
+    if (!runningWear) return;
+    const id = setInterval(() => (nowTick = Date.now()), 1000);
+    return () => clearInterval(id);
+  });
+  let runningWearElapsed = $derived(runningWear ? hoursMinutesSecondsOf(nowTick - runningWear.startTimestamp) : null);
+  let showWearTile = $derived(prefs.wearTimerEnabled && !!runningWear);
+
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let activeEpisodes = $derived(activeEpisodesAt(episodesQuery.rows, Date.now()));
+  let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);
+
+  let latestBadEntryQuery = liveQuery((j) => j.entries.latestBadMomentEntry());
+  let latestBadEntry = $derived(latestBadEntryQuery.value ?? null);
+  let showSafeSpaceTile = $derived(
+    shouldShowSafeSpaceNudge({
+      latestBadEntryId: latestBadEntry?.id,
+      dismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
+      enabled: prefs.safeSpaceNudgeEnabled
+    })
+  );
+
+  let hasLiveTiles = $derived(showWearTile || showDoseTile || showSafeSpaceTile);
+
+  function dismissSafeSpaceNudge(e?: MouseEvent) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    if (latestBadEntry) {
+      prefs.safeSpaceNudgeDismissedEntryId = latestBadEntry.id;
+    }
+  }
 
   /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
      ($lib/theme/roles.ts, where the reason the week strip is out of
@@ -299,6 +350,116 @@
 
   <SectionHeading text={m.how_feeling()} />
   <MoodChips onPick={onQuickLog} />
+
+  <!-- Live tiles grid (ticket 45): wear timer, dose log, etc.
+       Unbordered grid, positioned near the top of Home - above milestones,
+       the week strip and recent entries - carrying its own role-coloured
+       stripe (HOME_AREA_ROLE.liveTiles). Disappears completely - no heading,
+       no gap - when no live tile condition holds. -->
+  {#if hasLiveTiles}
+    <div transition:disclose>
+      <TileGrid
+        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+        flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+        data-live-tile-grid
+      >
+        {#if showWearTile && runningWear && runningWearElapsed}
+          <div transition:tileSlide={{ enabled: showDoseTile || showSafeSpaceTile }}>
+            <Tile
+              key="wear-timer"
+              data-wear-running-tile
+              data-live-tile="wear-timer"
+              title={m.tile_wear_title()}
+              value={m.wear_session_duration_hms({
+                hours: String(runningWearElapsed.hours),
+                minutes: String(runningWearElapsed.minutes),
+                seconds: String(runningWearElapsed.seconds)
+              })}
+              note={m.wear_session_running_since({ time: fmtTime(runningWear.startTimestamp) })}
+              href="/settings/wear"
+              action={{
+                icon: 'stop',
+                text: m.wear_session_stop_action(),
+                label: m.wear_session_stop_action(),
+                attrs: { 'data-wear-stop': '' },
+                onclick: async (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  await journal.wearSessions.upsertSession({
+                    id: runningWear.id,
+                    startTimestamp: runningWear.startTimestamp,
+                    durationMs: Date.now() - runningWear.startTimestamp,
+                    note: runningWear.note
+                  });
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showDoseTile}
+          <div
+            transition:tileSlide={{
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSafeSpaceTile
+            }}
+          >
+            <Tile
+              key="dose-panel"
+              data-dose-panel-tile
+              data-live-tile="dose-panel"
+              title={m.tile_dose_title()}
+              value={activeEpisodes.length > 0 ? activeEpisodes[0].drug : undefined}
+              note={undefined}
+              href="/doses"
+              action={{
+                icon: 'plus',
+                text: m.doses_add_aria(),
+                label: m.doses_add_aria(),
+                href: '/doses?add=1',
+                attrs: { 'data-dose-add': '' }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showSafeSpaceTile}
+          <div
+            transition:tileSlide={{
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile
+            }}
+          >
+            <div
+              class="kit-tile home-safe-space-tile"
+              data-tile="safe-space-nudge"
+              data-safe-space-nudge-tile
+              data-live-tile="safe-space-nudge"
+            >
+              <div class="home-safe-space-main">
+                <p class="home-safe-space-text">{m.tile_safe_space_nudge_sub()}</p>
+                <a
+                  class="btn btn-soft kit-tile-act press"
+                  href="/doubt"
+                  data-safe-space-nudge-open
+                  onclick={dismissSafeSpaceNudge}
+                >
+                  <span>{m.safe_space_title()}</span>
+                </a>
+              </div>
+              <button
+                type="button"
+                class="home-safe-space-dismiss press"
+                data-safe-space-nudge-dismiss
+                aria-label={m.tile_safe_space_nudge_dismiss()}
+                onclick={dismissSafeSpaceNudge}
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+          </div>
+        {/if}
+      </TileGrid>
+    </div>
+  {/if}
 
   <!-- The two look-back tiles. The grid is unconditional and each tile
        gates itself on its own preference and its own floor, which is what
@@ -722,4 +883,65 @@
   .home-swap { display: grid; }
   .home-swap > * { grid-area: 1 / 1; }
   .home-days { display: grid; gap: var(--space-3); align-content: start; }
+
+  .home-safe-space-tile {
+    position: relative;
+    display: block;
+    min-height: 0;
+    padding: var(--space-4);
+  }
+  .home-safe-space-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-right: var(--space-6);
+  }
+  .home-safe-space-text {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text);
+    line-height: 1.35;
+    font-weight: var(--weight-medium);
+    flex: 1 1 auto;
+  }
+  .home-safe-space-main .btn {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 var(--space-3.5);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    border-radius: var(--radius-pill);
+    background: color-mix(in oklab, var(--role-mark) 25%, transparent);
+    color: var(--text);
+    border: 1px solid color-mix(in oklab, var(--role-mark) 45%, transparent);
+    white-space: nowrap;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+  .home-safe-space-main .btn:active {
+    background: color-mix(in oklab, var(--role-mark) 38%, transparent);
+  }
+  .home-safe-space-dismiss {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    color: var(--text-2);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+  }
+  .home-safe-space-dismiss:hover,
+  .home-safe-space-dismiss:active {
+    color: var(--text);
+    background: color-mix(in oklab, var(--role-mark) 14%, transparent);
+  }
 </style>

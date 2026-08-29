@@ -8,7 +8,8 @@ import {
   DEVICE_LOCAL_KEYS,
   PORTABLE_KEYS,
   PREFERENCE_DEFAULTS,
-  isPreferenceKey
+  isPreferenceKey,
+  type PreferenceKey
 } from './catalogue.ts';
 
 const allKeys = Object.keys(PREFERENCE_DEFAULTS);
@@ -55,6 +56,25 @@ test('the boot set cuts across the portable split rather than following it', () 
     'disguise',
     'bioOptIn'
   ]);
+});
+
+/* Ticket 51: every live tile and every unprompted notice is switchable as a
+   kind, in one consolidated Settings entry. A fresh install shows all of
+   them - the same default wrapped and on-this-day already carry - so the
+   toggles exist for opting out, never in. */
+test('every live-tile kind is switchable and defaults to on (ticket 51)', () => {
+  for (const key of [
+    'wearTimerEnabled',
+    'dosePanelEnabled',
+    'readyLetterEnabled',
+    'surgeryCountdownEnabled',
+    'safeSpaceNudgeEnabled',
+    'stockNoticeEnabled'
+  ]) {
+    expect(PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe(true);
+    expect(DEVICE_LOCAL_KEYS).toContain(key);
+    expect(PORTABLE_KEYS).not.toContain(key);
+  }
 });
 
 test('theme and language default to following the system, as the PRD asks', () => {

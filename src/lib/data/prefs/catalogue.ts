@@ -90,6 +90,38 @@ export interface PreferenceValues {
       `entryNudges` is: a yes/no about one installation's entry screen, not
       anything the journal itself carries. */
   guidedPromptsEnabled: boolean;
+  /** Whether the wear-timer live tile is ever shown (phase 5 ticket 51).
+      A kind-level switch, not a way to hide one running session: the tile
+      appears while a session is running and the kind is on, and this never
+      stands in for that data check (ADR-0039's amendment). Default on, the
+      same "the app may speak unless told otherwise" default wrapped has.
+      Device-local for the same reason `wrappedEnabled` is - a yes/no about
+      one installation's Home screen. */
+  wearTimerEnabled: boolean;
+  /** Whether the dose-log live tile is ever shown (phase 5 ticket 51),
+      while a regimen episode is active. Same shape and reasoning as
+      `wearTimerEnabled`. */
+  dosePanelEnabled: boolean;
+  /** Whether the ready-letter live tile is ever shown (phase 5 ticket 51),
+      when a time-capsule letter has become readable. Same shape and
+      reasoning as `wearTimerEnabled`. */
+  readyLetterEnabled: boolean;
+  /** Whether the surgery-countdown live tile is ever shown (phase 5
+      ticket 51), ahead of a scheduled procedure. Same shape and reasoning
+      as `wearTimerEnabled`. */
+  surgeryCountdownEnabled: boolean;
+  /** Whether the Safe Space nudge is ever shown (phase 5 ticket 51), after
+      an entry that reads as a bad moment. Same shape and reasoning as
+      `wearTimerEnabled`. */
+  safeSpaceNudgeEnabled: boolean;
+  /** The entry ID of the most recent bad-moment entry whose Safe Space nudge
+      was dismissed or opened (ticket 50). A subsequent qualifying entry with a
+      newer ID produces its own fresh nudge. */
+  safeSpaceNudgeDismissedEntryId: number | null;
+  /** Whether the running-low stock notice is ever shown (phase 5 ticket 51),
+      while an in-use regimen's stock is projected to run out. Same shape and
+      reasoning as `wearTimerEnabled`. */
+  stockNoticeEnabled: boolean;
   /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
       stops the Home card and the recap read behind it, rather than hiding a
       card over work that still runs.
@@ -223,6 +255,13 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   checkInAffirmationsEnabled: true,
   entryNudges: true,
   guidedPromptsEnabled: true,
+  wearTimerEnabled: true,
+  dosePanelEnabled: true,
+  readyLetterEnabled: true,
+  surgeryCountdownEnabled: true,
+  safeSpaceNudgeEnabled: true,
+  safeSpaceNudgeDismissedEntryId: null,
+  stockNoticeEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
   wrappedNotificationsEnabled: false,
@@ -281,6 +320,13 @@ export const DEVICE_LOCAL_KEYS = [
   'hideNotificationTitles',
   'entryNudges',
   'guidedPromptsEnabled',
+  'wearTimerEnabled',
+  'dosePanelEnabled',
+  'readyLetterEnabled',
+  'surgeryCountdownEnabled',
+  'safeSpaceNudgeEnabled',
+  'safeSpaceNudgeDismissedEntryId',
+  'stockNoticeEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
   'wrappedNotificationsEnabled',

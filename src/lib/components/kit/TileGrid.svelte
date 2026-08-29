@@ -12,7 +12,8 @@
   let {
     role,
     flagFill,
-    children
+    children,
+    ...rest
   }: {
     role?: Role;
     /** The whole flag as a fill, from $lib/theme/roles. The tiles' numbers
@@ -20,6 +21,7 @@
         stripe, so a pair reads as one area of the screen. */
     flagFill?: string;
     children: Snippet;
+    [attribute: string]: unknown;
   } = $props();
 </script>
 
@@ -29,6 +31,7 @@
   data-tile-grid
   {...roleAttrs(role)}
   style:--flag-fill={flagFill}
+  {...rest}
 >
   {@render children()}
 </div>

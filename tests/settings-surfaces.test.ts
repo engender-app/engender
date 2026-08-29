@@ -36,7 +36,10 @@ describe('what Settings is built from', () => {
     expect(settings).toContain("from '$lib/components/kit/ListCard.svelte'");
     expect(settings).toContain("from '$lib/components/kit/ListRow.svelte'");
     expect(settings).toContain("from '$lib/components/kit/SectionHeading.svelte'");
-    expect(settings).toContain("from '$lib/components/kit/Notice.svelte'");
+    /* The wrapped/on-this-day permission notice left with its toggles for
+       the live-tiles screen (ticket 51); the sheets that remain carry no
+       Notice. */
+    expect(settings).not.toContain("from '$lib/components/kit/Notice.svelte'");
   });
 
   it('hides its own title, the same call the More hub makes', () => {
@@ -63,10 +66,19 @@ describe('what Settings is built from', () => {
   it('gives rows that carry a switch instead of a chevron no interactive wrapper of their own', () => {
     /* A ListRow always renders as an <a> or a <button>; a row whose only
        job is to hold a Switch would make that switch's own button a nested
-       control. Those stay plain .kit-row divs. */
-    for (const handle of ['data-entry-nudges', 'data-guided-prompts', 'data-wrapped-toggle', 'data-on-this-day-toggle']) {
+       control. Those stay plain .kit-row divs. The wrapped and on-this-day
+       rows moved to the live-tiles screen (ticket 51), which live-tiles
+       surfaces test holds to the same rule. */
+    for (const handle of ['data-entry-nudges', 'data-guided-prompts']) {
       const re = new RegExp(`<div class="kit-row" ${handle}>`);
       expect(withoutScript).toMatch(re);
+    }
+  });
+
+  it('sends the live tiles and their toggles to one consolidated screen (ticket 51)', () => {
+    expect(withoutScript).toContain('href="/settings/live-tiles"');
+    for (const gone of ['data-wrapped-toggle', 'data-wrapped-notify-toggle', 'data-on-this-day-toggle', 'data-on-this-day-notify-toggle']) {
+      expect(settings).not.toContain(gone);
     }
   });
 
