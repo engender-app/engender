@@ -71,19 +71,7 @@
   };
 
   /* Visual scale target based on current phase */
-  let scaleClass = $derived.by(() => {
-    if (!state.running) return 'is-idle';
-    switch (state.phase) {
-      case 'inhale':
-        return 'is-inhale';
-      case 'hold-in':
-        return 'is-hold-in';
-      case 'exhale':
-        return 'is-exhale';
-      case 'hold-out':
-        return 'is-hold-out';
-    }
-  });
+  let scaleClass = $derived(!state.running ? 'is-idle' : `is-${state.phase}`);
 </script>
 
 <div

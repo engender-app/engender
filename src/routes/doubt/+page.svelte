@@ -27,6 +27,7 @@
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import { roleAttrs } from '$lib/components/kit/role';
 
   const COUNTEREVIDENCE_LIMIT = 20;
   const HISTORY_LIMIT = 50;
@@ -117,26 +118,28 @@
 
   {#if snapshots.length}
     <SectionHeading text={m.doubt_snapshots_title()} />
-    {#each snapshots as snap (snap.id)}
-      <div class="card">
-        <div class="spread">
-          <span class="kit-row-title">{dayLabel(snap.epochDay)} · {fmtTime(snap.timestamp)}</span>
-          <button
-            type="button"
-            class="icon-btn"
-            aria-label={m.doubt_snapshot_delete_sheet()}
-            onclick={() => (snapshotDeleteTarget = snap)}
-          >
-            <Icon name="trash" size={18} />
-          </button>
+    <div class="stack-3">
+      {#each snapshots as snap (snap.id)}
+        <div class="card" data-kit-surface {...roleAttrs(roleAt(activeFlag.roles, 3))}>
+          <div class="spread">
+            <span class="kit-row-title">{dayLabel(snap.epochDay)} · {fmtTime(snap.timestamp)}</span>
+            <button
+              type="button"
+              class="icon-btn"
+              aria-label={m.doubt_snapshot_delete_sheet()}
+              onclick={() => (snapshotDeleteTarget = snap)}
+            >
+              <Icon name="trash" size={18} />
+            </button>
+          </div>
+          {#each snap.items as item, i (i)}
+            <p class="kit-entry-note">
+              {#if item.mood != null}<strong>{moodName(item.mood)}</strong> · {/if}{dayLabel(item.epochDay)}: {item.note}
+            </p>
+          {/each}
         </div>
-        {#each snap.items as item, i (i)}
-          <p class="entry-note">
-            {#if item.mood != null}<strong>{moodName(item.mood)}</strong> · {/if}{dayLabel(item.epochDay)}: {item.note}
-          </p>
-        {/each}
-      </div>
-    {/each}
+      {/each}
+    </div>
   {/if}
 
   <ConfirmDeleteSheet
