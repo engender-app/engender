@@ -30,10 +30,11 @@
      takes role 0"). Home's week strip takes it for the same reason and they
      are the same reading. */
   import { m } from '$lib/paraglide/messages';
-  import { fmtMonthYear } from '$lib/data/dates';
+  import { fmtMonthName, fmtMonthYear } from '$lib/data/dates';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
@@ -119,6 +120,23 @@
     }
     month = mo;
   }
+
+  /* Item 11: a year is twelve taps of the chevron away, which is the whole
+     of the reason nobody lands on last August on purpose. The month label
+     itself is the way in - it already says where you are, so it is the thing
+     that offers to move you - and the sheet it opens holds the two halves of
+     a date: the year, stepped one at a time because a year list is longer
+     than the trip is usually worth, and the twelve months, jumped to
+     directly. The month transition's direction follows the jump, so arriving
+     at a picked month still slides the way it went. */
+  let jumpOpen = $state(false);
+
+  function jumpTo(y: number, mo: number) {
+    dir = y * 12 + mo > year * 12 + month ? 1 : -1;
+    year = y;
+    month = mo;
+    jumpOpen = false;
+  }
 </script>
 
 <div class="screen">
@@ -150,7 +168,11 @@
     <h2 class="cal-month" data-cal-month aria-live="polite">
       <span class="cal-month-slot">
         {#key monthLabel}
-          <span in:labelIn out:labelOut>{monthLabel}</span>
+          <span in:labelIn out:labelOut>
+            <button class="cal-month-btn" data-cal-month-btn onclick={() => (jumpOpen = true)}>
+              {monthLabel}
+            </button>
+          </span>
         {/key}
       </span>
     </h2>
@@ -178,3 +200,82 @@
 
   <p class="cal-hint">{m.heat_hint({ metric: metricName })}</p>
 </div>
+
+<Sheet bind:open={jumpOpen} title={m.cal_jump_month()}>
+  <div class="cal-jump">
+    <div class="cal-jump-year">
+      <button class="icon-btn" aria-label={m.prev_year()} onclick={() => (year -= 1)}>
+        <Icon name="chevronLeft" size={22} />
+      </button>
+      <strong>{year}</strong>
+      <button class="icon-btn" aria-label={m.next_year()} onclick={() => (year += 1)}>
+        <Icon name="chevronRight" size={22} />
+      </button>
+    </div>
+    <div class="cal-jump-grid">
+      {#each Array(12) as _, mo (mo)}
+        <button
+          class="cal-jump-month"
+          class:is-current={year === now.getFullYear() && mo === now.getMonth()}
+          onclick={() => jumpTo(year, mo)}
+        >
+          {fmtMonthName(year, mo)}
+        </button>
+      {/each}
+    </div>
+  </div>
+</Sheet>
+
+<style>
+  /* The label is the affordance, so it reads as one: underlined the way the
+     app's text actions are not, but only by a hair - the chevrons either
+     side already say this bar moves months, and the button only has to say
+     the words are where the bigger jump lives. */
+  .cal-month-btn {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--outline-strong);
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1px;
+  }
+
+  .cal-jump-year {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+  }
+
+  .cal-jump-year strong {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+  }
+
+  .cal-jump-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+  }
+
+  .cal-jump-month {
+    min-height: 44px;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .cal-jump-month.is-current {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--on-accent-soft);
+  }
+</style>
