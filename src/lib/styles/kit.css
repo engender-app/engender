@@ -1323,6 +1323,19 @@ a.kit-entry:active {
   margin-top: var(--space-6);
 }
 
+/* Day cards are the exception: adjacent ones are items of a day list -
+   Home's recent entries, search's hit list - and those lists separate
+   their rows with a 12px grid gap by design (DIRECTION.md decision 3).
+   The floor stacking on top of the gap read as 36px between entries,
+   which is the "space between entries is too big" of ticket 99 item 9:
+   the fix there belonged to the end of the screen, and the rhythm between
+   entries was never meant to move. A day card is only ever a next sibling
+   of another day card inside such a list - everywhere else a heading or a
+   different surface sits between them. */
+.kit-day + .kit-day {
+  margin-top: 0;
+}
+
 /* --- area ---
 
    The whole range in one card, read by moving a finger across it. It used to
