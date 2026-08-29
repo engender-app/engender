@@ -723,3 +723,49 @@ test('the purge declines to run while a journal write is in flight', async () =>
   saving();
   assert.equal(await purgeExpiredTrash(db, files), 1, 'and taken once nothing is writing');
 });
+
+test('latestBadMomentEntry identifies bad moments and returns newest entry (ticket 50)', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  // No entries -> undefined
+  assert.equal(await journal.entries.latestBadMomentEntry(), undefined);
+
+  // Neutral entry (mood = 3, happy tag) -> undefined
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1000, mood: 3, tags: ['e-happy'] });
+  assert.equal(await journal.entries.latestBadMomentEntry(), undefined);
+
+  // Bad entry via lowest mood step (mood = 1)
+  const badMoodId = await journal.entries.upsertEntry({ epochDay: 101, timestamp: 2000, mood: 1 });
+  let found = await journal.entries.latestBadMomentEntry();
+  assert.equal(found?.id, badMoodId);
+
+  // Newer bad entry via dysphoria tag
+  const badTagId = await journal.entries.upsertEntry({ epochDay: 102, timestamp: 3000, mood: 3, tags: ['g-soc-dys'] });
+  found = await journal.entries.latestBadMomentEntry();
+  assert.equal(found?.id, badTagId);
+
+  // Newer bad entry via body-region dysphoria >= 50
+  const badBodyId = await journal.entries.upsertEntry({
+    epochDay: 103,
+    timestamp: 4000,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: 50, euphoria: null } }
+  });
+  found = await journal.entries.latestBadMomentEntry();
+  assert.equal(found?.id, badBodyId);
+
+  // Newer bad entry via euphoria_dysphoria dimension <= 20
+  const badDimId = await journal.entries.upsertEntry({
+    epochDay: 104,
+    timestamp: 5000,
+    mood: 3,
+    dims: { euphoria_dysphoria: 15 }
+  });
+  found = await journal.entries.latestBadMomentEntry();
+  assert.equal(found?.id, badDimId);
+
+  // Trashing the newest bad entry falls back to previous bad entry
+  await journal.entries.deleteEntry(badDimId);
+  found = await journal.entries.latestBadMomentEntry();
+  assert.equal(found?.id, badBodyId);
+});

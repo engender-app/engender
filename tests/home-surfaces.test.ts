@@ -106,15 +106,18 @@ describe('what spec 08 took off Home', () => {
   });
 
   it('offers no doubt card, and the More hub has the row instead', () => {
-    expect(markup).not.toContain('/doubt');
+    expect(home).not.toContain("from '$lib/components/DoubtCard.svelte'");
+    expect(markup).not.toContain('<DoubtCard');
     expect(read('src/routes/more/+page.svelte')).toContain("href: '/doubt'");
   });
 
-  it('gates the two live tiles on their preferences and data conditions', () => {
+  it('gates the live tiles on their preferences and data conditions', () => {
     expect(home).toContain('let showWearTile = $derived(prefs.wearTimerEnabled && !!runningWear);');
     expect(home).toContain('let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);');
+    expect(home).toContain('let showSafeSpaceTile = $derived(');
     expect(markup).toContain('data-live-tile="wear-timer"');
     expect(markup).toContain('data-live-tile="dose-panel"');
+    expect(markup).toContain('data-live-tile="safe-space-nudge"');
   });
 
   it('gives the live tiles grid its own role', () => {

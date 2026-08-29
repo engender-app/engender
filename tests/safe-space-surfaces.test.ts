@@ -71,3 +71,18 @@ describe('More hub row for Safe Space', () => {
     expect(more).toContain("key: 'doubt', icon: 'heart', title: () => m.safe_space_title(), subtitle: () => m.safe_space_hub_sub(), href: '/doubt'");
   });
 });
+
+describe('Home live tile for Safe Space nudge (ticket 50)', () => {
+  const home = read('src/routes/+page.svelte');
+  const homeMarkup = home.replace(/<script[\s\S]*?<\/script>/g, '');
+
+  it('wires the Safe Space live tile with latestBadMomentEntry query and dismissal handling', () => {
+    expect(home).toContain("from '$lib/data/safeSpaceNudge'");
+    expect(home).toContain('j.entries.latestBadMomentEntry');
+    expect(home).toContain('shouldShowSafeSpaceNudge');
+    expect(homeMarkup).toContain('data-live-tile="safe-space-nudge"');
+    expect(homeMarkup).toContain('data-safe-space-nudge-tile');
+    expect(homeMarkup).toContain('data-safe-space-nudge-dismiss');
+    expect(homeMarkup).toContain('href="/doubt"');
+  });
+});
