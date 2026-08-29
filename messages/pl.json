@@ -2193,6 +2193,7 @@
   "wear_session_running_card_title": "Noszenie w trakcie",
   "wear_session_running_since": "Zaczęte o {time}",
   "wear_session_duration_hm": "{hours}h {minutes}min",
+  "wear_session_duration_hms": "{hours}h {minutes}min {seconds}s",
   "wear_session_trend_title": "Czas noszenia i intensywność",
   "wear_session_trend_region_group": "Porównaj z",
   "wear_session_trend_wear_legend": "Czas noszenia (godziny)",

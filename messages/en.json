@@ -2147,6 +2147,7 @@
   "wear_session_running_card_title": "Wearing now",
   "wear_session_running_since": "Started at {time}",
   "wear_session_duration_hm": "{hours}h {minutes}m",
+  "wear_session_duration_hms": "{hours}h {minutes}m {seconds}s",
   "wear_session_trend_title": "Wear time and intensity",
   "wear_session_trend_region_group": "Compare against",
   "wear_session_trend_wear_legend": "Wear time (hours)",
