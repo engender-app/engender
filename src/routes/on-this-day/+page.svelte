@@ -38,14 +38,17 @@
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
+  import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT, type RetrospectiveLetter } from '$lib/data/letterRetrospective';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { Entry } from '$lib/data/types';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import LookBackLetterCard from '$lib/components/LookBackLetterCard.svelte';
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
@@ -62,22 +65,38 @@
     key: OnThisDayLookback;
     epochDay: number;
     entries: Entry[];
+    /* Letters this lookback resurfaces - written that day, or unlocked that
+       day (phase 5 deepening ticket 13). Sealed ones are already out:
+       letterRetrospective.ts answers the seal question, not this screen. */
+    letters: RetrospectiveLetter[];
   }
 
   /* The preference is read inside the query, before the first await, so that
      turning on-this-day off stops the reads themselves rather than just
      hiding what they returned (same rule wrapped's own route follows).
 
-     Up to three good-day checks and up to three per-day entry reads, where
-     this used to run three aggregate recaps. Both are bounded by the day
-     rather than by the journal's length, and the day read only happens for a
-     day that already qualified. */
+     Up to three good-day checks, up to three per-day entry reads, and the
+     one letters read, where this used to run three aggregate recaps. All
+     are bounded by the day or by the letters read's own limit rather than
+     by the journal's length, and the entry read only happens for a day that
+     already qualified. A day qualifies on its letters too: a letter's own
+     anniversary is the letter's, not the day's, so a lookback with a letter
+     and a bad mood still shows the letter - the good-day bar governs
+     resurfacing a *day*, and this card is about the letter. */
   let daysQuery = liveList(async (j) => {
     if (!prefs.onThisDayEnabled) return [];
+    const letters = await j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT);
     const results = await Promise.all(
       candidates.map(async (c): Promise<QualifyingDay | null> => {
-        if (!(await j.stats.isGoodDay(c.epochDay))) return null;
-        return { key: c.key, epochDay: c.epochDay, entries: await j.entries.entriesForDay(c.epochDay) };
+        const dayLetters = onThisDayLetters(letters, c.epochDay, today);
+        const good = await j.stats.isGoodDay(c.epochDay);
+        if (!good && dayLetters.length === 0) return null;
+        return {
+          key: c.key,
+          epochDay: c.epochDay,
+          entries: good ? await j.entries.entriesForDay(c.epochDay) : [],
+          letters: dayLetters
+        };
       })
     );
     return results.filter((d): d is QualifyingDay => d !== null);
@@ -140,22 +159,35 @@
              above a list of that many entries is noise", and it is the same
              argument that took the three stat tiles off this screen - the
              entries are right there to be counted. -->
-        <DayCard key={String(d.epochDay)} role={roleAt(activeFlag.roles, i)} date={d.date}>
-          {#each d.entries as entry (entry.id)}
-            <!-- It opens, the same way an entry opens everywhere else it is
-                 drawn. A day you are being shown and cannot read back is a
-                 dead end. -->
-            <DayEntry
-              key={String(entry.id)}
-              href={`/entry/${entry.id}`}
-              time={fmtTime(entry.timestamp)}
-              mood={entry.mood}
-              note={entry.note ?? undefined}
-              tags={entryTags(entry)}
-              marks={entryMarks(entry)}
-            />
-          {/each}
-        </DayCard>
+        {#if d.entries.length}
+          <DayCard key={String(d.epochDay)} role={roleAt(activeFlag.roles, i)} date={d.date}>
+            {#each d.entries as entry (entry.id)}
+              <!-- It opens, the same way an entry opens everywhere else it is
+                   drawn. A day you are being shown and cannot read back is a
+                   dead end. -->
+              <DayEntry
+                key={String(entry.id)}
+                href={`/entry/${entry.id}`}
+                time={fmtTime(entry.timestamp)}
+                mood={entry.mood}
+                note={entry.note ?? undefined}
+                tags={entryTags(entry)}
+                marks={entryMarks(entry)}
+              />
+            {/each}
+          </DayCard>
+        {/if}
+
+        {#if d.letters.length}
+          <!-- Written that day, or unlocked that day - the card says which,
+               and opens the letter itself. A section can be letters alone:
+               the good-day bar governs resurfacing a day, not a letter. -->
+          <ListCard role={roleAt(activeFlag.roles, i)}>
+            {#each d.letters as rl (rl.letter.id)}
+              <LookBackLetterCard letter={rl.letter} kind={rl.kind} />
+            {/each}
+          </ListCard>
+        {/if}
 
         {#if d.photos.length}
           <div class="otd-photos" data-lookback-photos>
