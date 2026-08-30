@@ -86,6 +86,11 @@
   import { activeSurgeryProcedure, recoveryDay } from '$lib/data/recoveryDay';
   import { shouldShowSafeSpaceNudge } from '$lib/data/safeSpaceNudge';
   import { isLetterSnoozed, snoozeLetterTile, unreadUnlockedLetters } from '$lib/data/letterStatus';
+  import {
+    depletingStocks,
+    isStockNoticeSnoozed,
+    snoozeStockNotice
+  } from '$lib/data/stockProjection';
   import { toast } from '$lib/stores/toasts.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -170,6 +175,15 @@
 
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt, today));
   let showBackupNotice = $derived(backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed);
+
+  let stockProjectionsQuery = liveList((j) => j.stock.getProjections(today));
+  let isStockNoticeSnoozedState = $state(false);
+  $effect(() => {
+    isStockNoticeSnoozedState = isStockNoticeSnoozed();
+  });
+  let urgentDepletingStock = $derived(depletingStocks(stockProjectionsQuery.rows, today)[0] ?? null);
+  let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);
+  let stockDismissSheetOpen = $state(false);
 
   /* Five days, not five entries, is what the read asks for: the day cards
      head each day with how many entries it holds, and a query row limit
@@ -372,6 +386,29 @@
       dismiss={{ label: m.dismiss(), onclick: () => (prefs.backupNoticeDismissed = true) }}
       aria-live="polite"
       data-backup-notice=""
+    />
+  {/if}
+
+  {#if showStockNotice && urgentDepletingStock}
+    <Notice
+      icon="alert"
+      key="stock-low"
+      title={m.notice_stock_low_title()}
+      text={urgentDepletingStock.daysRemaining <= 0
+        ? m.notice_stock_out_body({ drug: urgentDepletingStock.entry.drug })
+        : m.notice_stock_low_body({
+            drug: urgentDepletingStock.entry.drug,
+            days: String(urgentDepletingStock.daysRemaining)
+          })}
+      action={{ label: m.notice_stock_manage(), href: '/settings/stock' }}
+      dismiss={{
+        label: m.notice_stock_dismiss_action(),
+        onclick: () => {
+          stockDismissSheetOpen = true;
+        }
+      }}
+      aria-live="polite"
+      data-stock-notice=""
     />
   {/if}
 
@@ -711,6 +748,41 @@
           }}
         >
           <span>{m.tile_letter_dont_show_btn()}</span>
+        </button>
+      </div>
+    </div>
+  </Sheet>
+
+  <Sheet
+    open={stockDismissSheetOpen}
+    title={m.notice_stock_dismiss_title()}
+    onClose={() => (stockDismissSheetOpen = false)}
+  >
+    <div data-stock-dismiss-sheet>
+      <SectionHeading text={m.notice_stock_dismiss_title()} />
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.notice_stock_dismiss_hint()}</p>
+      <div class="stack-3">
+        <button
+          class="btn btn-primary btn-block"
+          data-stock-snooze
+          onclick={() => {
+            snoozeStockNotice();
+            isStockNoticeSnoozedState = true;
+            stockDismissSheetOpen = false;
+            toast(m.notice_stock_snoozed_toast());
+          }}
+        >
+          <span>{m.notice_stock_snooze_btn()}</span>
+        </button>
+        <button
+          class="btn btn-ghost btn-block"
+          data-stock-dont-show
+          onclick={() => {
+            prefs.stockNoticeEnabled = false;
+            stockDismissSheetOpen = false;
+          }}
+        >
+          <span>{m.notice_stock_dont_show_btn()}</span>
         </button>
       </div>
     </div>
