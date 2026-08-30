@@ -20,6 +20,12 @@ describe('the live-tiles registry', () => {
       'surgeryCountdownEnabled',
       'safeSpaceNudgeEnabled',
       'stockNoticeEnabled',
+      'activeTryoutTileEnabled',
+      'patchScheduleTileEnabled',
+      'voiceBenchmarkNudgeEnabled',
+      'pauseActiveBannerEnabled',
+      'hairRemovalRecoveryEnabled',
+      'measurementsNudgeEnabled',
       'wrappedEnabled',
       'onThisDayEnabled'
     ]);

@@ -36,6 +36,12 @@
     attrs?: Record<string, string>;
   };
 
+  export type TileDismiss = {
+    label: string;
+    onclick: (e: MouseEvent) => void;
+    attrs?: Record<string, string>;
+  };
+
   let {
     title,
     value,
@@ -43,6 +49,7 @@
     href,
     key,
     action,
+    dismiss,
     ...rest
   }: {
     title: string;
@@ -54,13 +61,15 @@
     key?: string;
     /** An optional in-place control for the tile (ADR-0039). */
     action?: TileAction;
+    /** An optional dismiss control for the tile. */
+    dismiss?: TileDismiss;
     /** The caller's own attributes - a handle, an aria-describedby. */
     [attribute: string]: unknown;
   } = $props();
 </script>
 
 {#if action}
-  <div class="kit-tile is-split" data-tile={key} {...rest}>
+  <div class="kit-tile is-split" data-tile={key} class:has-dismiss={!!dismiss} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{value}</span>{/if}
@@ -88,6 +97,42 @@
         {#if action.text}<span>{action.text}</span>{/if}
       </button>
     {/if}
+    {#if dismiss}
+      <button
+        type="button"
+        class="kit-tile-dismiss press"
+        aria-label={dismiss.label}
+        onclick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          dismiss?.onclick(e);
+        }}
+        {...dismiss.attrs}
+      >
+        <Icon name="x" size={16} />
+      </button>
+    {/if}
+  </div>
+{:else if dismiss}
+  <div class="kit-tile is-split" data-tile={key} class:has-dismiss={true} {...rest}>
+    <a class="kit-tile-main press" {href}>
+      <span class="kit-tile-title">{title}</span>
+      {#if value}<span class="kit-tile-value">{value}</span>{/if}
+      {#if note}<span class="kit-tile-note">{note}</span>{/if}
+    </a>
+    <button
+      type="button"
+      class="kit-tile-dismiss press"
+      aria-label={dismiss.label}
+      onclick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        dismiss?.onclick(e);
+      }}
+      {...dismiss.attrs}
+    >
+      <Icon name="x" size={16} />
+    </button>
   </div>
 {:else}
   <a class="kit-tile press" data-tile={key} {href} {...rest}>
