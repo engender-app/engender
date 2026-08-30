@@ -14,9 +14,10 @@
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import type { Letter } from '$lib/data/types';
+  import type { RetrospectiveLetter } from '$lib/data/letterRetrospective';
   import ListRow from './kit/ListRow.svelte';
 
-  let { letter, kind }: { letter: Letter; kind: 'written' | 'opened' } = $props();
+  let { letter, kind }: { letter: Letter; kind: RetrospectiveLetter['kind'] } = $props();
 
   let label = $derived(
     kind === 'written'
