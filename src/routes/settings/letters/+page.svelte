@@ -17,10 +17,11 @@
      for and had nowhere to happen. A sealed one opens too, and says what it
      is waiting for - a row that answers a press with nothing is worse than
      a row that cannot be pressed. */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { isLetterSealed } from '$lib/data/letterStatus';
+  import { isLetterSealed, markLetterRead } from '$lib/data/letterStatus';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Letter } from '$lib/data/types';
@@ -66,6 +67,22 @@
 
   let reading = $state<Letter | null>(null);
 
+  function openReading(letter: Letter) {
+    reading = letter;
+    if (!isLetterSealed(letter, today)) {
+      markLetterRead(letter.id);
+    }
+  }
+
+  $effect(() => {
+    const readId = page.url.searchParams.get('read') ?? page.url.searchParams.get('id');
+    if (!readId) return;
+    const match = letters.find((l) => l.id === readId);
+    if (match && reading?.id !== match.id) {
+      openReading(match);
+    }
+  });
+
   const record = recordEditor<Letter>({
     remove: (id) => journal.letters.deleteLetter(id),
     findById: (id) => letters.find((letter) => letter.id === id)
@@ -97,7 +114,7 @@
                 ? m.letters_sealed_until({ date: dayLabel(letter.unlockEpochDay) })
                 : letter.text}
               chevron={false}
-              onclick={() => (reading = letter)}
+              onclick={() => openReading(letter)}
               action={{ icon: 'trash', label: m.letters_delete_sheet(), onclick: () => record.askToDelete(letter) }}
             />
           {/each}

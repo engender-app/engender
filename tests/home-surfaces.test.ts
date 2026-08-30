@@ -125,11 +125,14 @@ describe('what spec 08 took off Home', () => {
     expect(home).toContain('let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);');
     expect(home).toContain('let showSurgeryTile = $derived(prefs.surgeryCountdownEnabled && !!activeSurgery);');
     expect(home).toContain('let showSafeSpaceTile = $derived(');
+    expect(home).toContain('let showLetterTile = $derived(');
     expect(markup).toContain('data-live-tile="wear-timer"');
     expect(markup).toContain('data-live-tile="dose-panel"');
     expect(markup).toContain('data-live-tile="surgery-countdown"');
     expect(markup).toContain('data-surgery-tile');
     expect(markup).toContain('data-live-tile="safe-space-nudge"');
+    expect(markup).toContain('data-live-tile="ready-letter"');
+    expect(markup).toContain('data-letter-tile');
   });
 
   it('gives the live tiles grid its own role', () => {
