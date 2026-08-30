@@ -301,3 +301,42 @@ test('toUpsert() drops a zero timestamp, matching upsertEntry\'s own fallback', 
   draft.setMood(1);
   assert.equal(draft.toUpsert().timestamp, undefined);
 });
+
+test('draft holds contextual sub-records and attaches them to toUpsert payload', () => {
+  const draft = createEntryDraft(20_000);
+  draft.setMood(4);
+
+  assert.equal(draft.tryoutFeltSense, null);
+  assert.equal(draft.doseLog, null);
+  assert.equal(draft.procedureRecovery, null);
+  assert.equal(draft.effectMarker, null);
+  assert.equal(draft.cycleEvent, null);
+
+  draft.setTryoutFeltSense({ tryoutId: 'tryout-1', mood: 5, note: 'felt great' });
+  draft.setDoseLog({ dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' });
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: 'swelling down' });
+  draft.setEffectMarker({ effect: 'skin_softening', firstNoticedEpochDay: 20_000 });
+  draft.setCycleEvent({ kind: 'period_occurred', epochDay: 20_000 });
+
+  const upsert = draft.toUpsert();
+  assert.deepEqual(upsert.tryoutFeltSense, { tryoutId: 'tryout-1', mood: 5, note: 'felt great' });
+  assert.deepEqual(upsert.doseLog, { dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' });
+  assert.deepEqual(upsert.procedureRecovery, { procedureId: 'proc-1', notes: 'swelling down' });
+  assert.deepEqual(upsert.effectMarker, { effect: 'skin_softening', firstNoticedEpochDay: 20_000 });
+  assert.deepEqual(upsert.cycleEvent, { kind: 'period_occurred', epochDay: 20_000 });
+
+  // Can be cleared back to null
+  draft.setTryoutFeltSense(null);
+  draft.setDoseLog(null);
+  draft.setProcedureRecovery(null);
+  draft.setEffectMarker(null);
+  draft.setCycleEvent(null);
+
+  const clearedUpsert = draft.toUpsert();
+  assert.equal(clearedUpsert.tryoutFeltSense, undefined);
+  assert.equal(clearedUpsert.doseLog, undefined);
+  assert.equal(clearedUpsert.procedureRecovery, undefined);
+  assert.equal(clearedUpsert.effectMarker, undefined);
+  assert.equal(clearedUpsert.cycleEvent, undefined);
+});
+

@@ -778,3 +778,160 @@ test('latestBadMomentEntry identifies bad moments and returns newest entry (tick
   found = await journal.entries.latestBadMomentEntry();
   assert.equal(found?.id, badBodyId);
 });
+
+test('upsertEntry commits contextual sub-records atomically across models', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  const tryoutId = await journal.tryouts.upsertTryout({
+    kind: 'name',
+    label: 'Alex',
+    startEpochDay: 100,
+    endEpochDay: null
+  });
+
+  await journal.stock.upsertEntry({
+    drug: 'Estradiol',
+    quantity: 30,
+    unit: 'mg',
+    recordedEpochDay: 90
+  });
+
+  const procedureId = await journal.procedures.upsertProcedure({
+    name: 'Top Surgery',
+    surgeryEpochDay: 95
+  });
+
+  const effectType = await journal.personalEffects.addCustomEffectType('Skin softening');
+
+  const entryId = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 4,
+    note: 'Good day overall',
+    tryoutFeltSense: {
+      tryoutId,
+      mood: 5,
+      note: 'Felt euphoric when introduced'
+    },
+    doseLog: {
+      dose: 2,
+      doseUnit: 'mg',
+      route: 'oral',
+      drug: 'Estradiol'
+    },
+    procedureRecovery: {
+      procedureId,
+      notes: 'Day 5 swelling minimal'
+    },
+    effectMarker: {
+      effect: effectType.key,
+      firstNoticedEpochDay: 100
+    },
+    cycleEvent: {
+      kind: 'spotting',
+      epochDay: 100
+    }
+  });
+
+  // 1. Entry was stored
+  const entry = await journal.entries.getEntry(entryId);
+  assert.equal(entry?.note, 'Good day overall');
+
+  // 2. Felt sense was stored for tryout
+  const feelings = await journal.feltSense.forTryout(tryoutId);
+  assert.equal(feelings.length, 1);
+  assert.equal(feelings[0].mood, 5);
+  assert.equal(feelings[0].note, 'Felt euphoric when introduced');
+
+  // 3. Dose event was logged and stock decremented
+  const doses = await journal.doses.getDoses(100, 100);
+  assert.equal(doses.length, 1);
+  assert.equal(doses[0].dose, 2);
+  assert.equal(doses[0].drug, 'Estradiol');
+
+  const stocks = await journal.stock.getEntries();
+  const estradiolStock = stocks.find((s) => s.drug === 'Estradiol');
+  assert.equal(estradiolStock?.quantity, 28);
+
+  // 4. Procedure recovery note was saved
+  const procs = await journal.procedures.getProcedures();
+  const proc = procs.find((p) => p.id === procedureId);
+  assert.ok(proc?.notes.includes('Day 5 swelling minimal'));
+
+  // 5. Personal effect was recorded
+  const markers = await journal.personalEffects.getMarkers();
+  const marker = markers.find((m) => m.effect === effectType.key);
+  assert.equal(marker?.firstNoticedEpochDay, 100);
+
+  // 6. Cycle event was logged
+  const cycles = await journal.cycleEvents.getCycleEvents();
+  assert.equal(cycles.length, 1);
+  assert.equal(cycles[0].kind, 'spotting');
+});
+
+test('upsertEntry rolls back completely if any secondary validation or insert throws', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.stock.upsertEntry({
+    drug: 'Estradiol',
+    quantity: 30,
+    unit: 'mg',
+    recordedEpochDay: 90
+  });
+
+  // Attempt save with invalid mood on tryoutFeltSense
+  await assert.rejects(
+    async () => {
+      await journal.entries.upsertEntry({
+        epochDay: 200,
+        mood: 4,
+        note: 'Should roll back',
+        tryoutFeltSense: {
+          tryoutId: 'non-existent-tryout-uuid',
+          mood: 99 // Invalid mood
+        }
+      });
+    },
+    /invalid mood/
+  );
+
+  // Attempt save with unknown tryoutId
+  await assert.rejects(
+    async () => {
+      await journal.entries.upsertEntry({
+        epochDay: 200,
+        mood: 4,
+        note: 'Should roll back',
+        tryoutFeltSense: {
+          tryoutId: 'non-existent-tryout-uuid',
+          mood: 4
+        }
+      });
+    },
+    /tryout row not found/
+  );
+
+  // Attempt save with unknown effect type
+  await assert.rejects(
+    async () => {
+      await journal.entries.upsertEntry({
+        epochDay: 200,
+        mood: 4,
+        note: 'Should roll back',
+        effectMarker: {
+          effect: 'non-existent-effect'
+        }
+      });
+    },
+    /unknown personal effect type/
+  );
+
+  // Verify that day 200 has NO entry
+  const entriesOnDay = await journal.entries.entriesForDay(200);
+  assert.equal(entriesOnDay.length, 0);
+
+  // Verify stock was NOT decremented
+  const stocks = await journal.stock.getEntries();
+  const estradiolStock = stocks.find((s) => s.drug === 'Estradiol');
+  assert.equal(estradiolStock?.quantity, 30);
+});
+
