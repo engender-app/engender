@@ -67,6 +67,7 @@
 
 import { epochDayMonthsAgo } from './epochDay';
 import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
+import { earliestEpisode } from './regimenEpisode';
 import type { EffectDirection, PersonalEffectType, RegimenEpisode } from './types';
 
 export type { EffectDirection };
@@ -277,3 +278,29 @@ export function effectWindowShape(effect: PersonalEffectType): EffectWindowShape
   if (!window.completionMonths) return 'no-completion';
   return window.completionMonths.max == null ? 'open-completion' : 'bounded';
 }
+
+/** Whether at least one tier-1 personal effect's literature onset window is
+    currently active for `episodes`'s earliest episode (phase 5 ticket 49).
+    Shows while at least one onset window for the anchor episode's drug is
+    current (from the anchor's start day through the latest onset window end
+    across all covered effects, e.g. 12 months for estradiol/testosterone),
+    and false once every onset window has passed or when no covered episode
+    exists. */
+export function isHrtOnsetWindowCurrent(
+  episodes: readonly RegimenEpisode[],
+  todayEpochDay: number
+): boolean {
+  const anchor = earliestEpisode(episodes);
+  if (!anchor) return false;
+  if (todayEpochDay < anchor.startEpochDay) return false;
+
+  for (const effectKey of Object.keys(EFFECT_LITERATURE_WINDOW) as PersonalEffectType[]) {
+    const days = literatureWindowDays(effectKey, anchor);
+    if (!days) continue;
+    if (todayEpochDay <= days.onset.end) {
+      return true;
+    }
+  }
+  return false;
+}
+

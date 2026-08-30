@@ -58,6 +58,7 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from './DatePicker.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { isHrtOnsetWindowCurrent } from '$lib/data/personalEffectWindow';
   import { journal } from '$lib/data/live/journal.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
   import type { TallyKind, WearSession } from '$lib/data/types';
@@ -279,6 +280,13 @@
      the fan covers the app, and the only way to start or stop a session
      from anywhere else is to close it first. */
   let running = $state<WearSession | null>(null);
+  /* The personal effects onset nudge (phase 5 ticket 49).
+     Read once each time the fan opens, the same running-style pattern
+     wearSessions uses above: active only while at least one tier-1
+     literature onset window for the earliest regimen episode's drug is
+     current, gone once every onset window has passed. Tapping navigates to
+     /settings/effects. */
+  let showEffects = $state(false);
   $effect(() => {
     if (!ui.chooserOpen) return;
     let stale = false;
@@ -295,6 +303,14 @@
          what it says with nothing running. */
       .catch((error) => {
         console.error('quick add: could not read the running wear session', error);
+      });
+    void journal.regimen
+      .getEpisodes()
+      .then((episodes) => {
+        if (!stale) showEffects = isHrtOnsetWindowCurrent(episodes, todayEpochDay());
+      })
+      .catch((error) => {
+        console.error('quick add: could not read regimen episodes', error);
       });
     return () => {
       stale = true;
@@ -335,6 +351,11 @@
     goto('/doses?add=1');
   }
 
+  function logEffects() {
+    close();
+    goto('/settings/effects');
+  }
+
   /* Nearest the thumb first, because the order is a reachability decision
      rather than an editorial one: the mood row is where a slide lands with
      the least travel, and a dose is the one of these nobody logs in a
@@ -355,7 +376,8 @@
     'tally-misgendered': () => void logTally('misgendered'),
     'tally-correctly_gendered': () => void logTally('correctly_gendered'),
     dose: logDose,
-    wear: () => void toggleWear()
+    wear: () => void toggleWear(),
+    effects: logEffects
   };
 
   function runTarget(key: string) {
@@ -599,6 +621,18 @@
           {running ? m.wear_session_stop_action() : m.wear_session_start_action()}
         </span>
       </button>
+      {#if showEffects}
+        <button
+          class="fan-item"
+          class:is-armed={armed === 'effects'}
+          data-fan-target="effects"
+          data-choose="effects"
+          onclick={ACTIONS.effects}
+        >
+          <span class="fan-icon"><Icon name="sparkle" size={22} /></span>
+          <span class="fan-label">{m.effects_timeline()}</span>
+        </button>
+      {/if}
     </div>
   </div>
 {/if}
