@@ -73,7 +73,9 @@
         picker.altInput.id = id as string;
         node.removeAttribute('id');
       }
-      (picker.altInput as unknown as { flatpickr: flatpickr.Instance }).flatpickr = picker;
+      const visible = picker.altInput as unknown as Record<string, unknown>;
+      visible.flatpickr = picker;
+      visible._flatpickr = picker;
     }
     return {
       destroy() {
