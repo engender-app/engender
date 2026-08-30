@@ -98,6 +98,18 @@ async function addEpisode(page, { drug, dose, unit, route, interval }) {
   await page.waitForSelector(`[data-episode]:has-text("${drug}")`);
 }
 
+/** The app scrolls an inner region, not the window (data-app-scroll-region),
+    so Playwright's own scrolling helpers no-op here. Puts a heading at the
+    top of the visible frame the way a thumb would. */
+async function scrollTo(page, headingText) {
+  await page.evaluate((text) => {
+    const region = document.querySelector('[data-app-scroll-region]');
+    const heading = [...region.querySelectorAll('h2, h3')].find((h) => h.textContent.trim() === text);
+    if (heading) region.scrollTop = heading.offsetTop - region.offsetTop - 8;
+  }, headingText);
+  await page.waitForTimeout(SETTLED);
+}
+
 async function shoot(page, name) {
   /* Headless Chromium never grants persistent storage, so the app's own
      "export backups regularly" toast sits over the foot of every screen.
@@ -119,13 +131,16 @@ for (const theme of THEMES) {
   await setLook(page, theme);
 
   // Default: no testosterone, no opt-in. Health runs labs to clinician
-  // summary with no cycle row in it.
+  // summary with no cycle row in it. The hub is taller than the frame, so
+  // the pictures are of the Health card, which is what the rule moves.
   await goto(page, '/more');
+  await scrollTo(page, 'Health');
   await shoot(page, `more-default-${theme}`);
 
   // The opt-in, and what the hub looks like after it.
   await setOptIn(page, true);
   await goto(page, '/more');
+  await scrollTo(page, 'Health');
   await shoot(page, `more-optin-${theme}`);
 
   // The card that did it, with the switch resting on.
@@ -150,7 +165,7 @@ for (const theme of THEMES) {
   await addCycleEvent(page, 'Period occurred');
   await goto(page, '/settings/side-effects');
   await page.waitForSelector('[data-cycle-event]');
-  await page.waitForTimeout(SETTLED);
+  await scrollTo(page, 'Cycle');
   await shoot(page, `side-effects-cycle-${theme}`);
   await page.close();
 }
