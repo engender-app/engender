@@ -995,27 +995,34 @@
     gap: var(--space-2);
   }
   .contextual-chip {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
-    min-height: var(--touch-target);
+    min-height: 36px;
     box-sizing: border-box;
     border-radius: var(--radius-pill);
-    border: 1px solid var(--outline);
+    border: 1.5px solid var(--border);
     background: var(--surface);
     color: var(--text);
+    font: inherit;
     font-size: var(--text-sm);
-    font-family: inherit;
+    font-weight: var(--weight-medium);
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+  .contextual-chip::after {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
   }
   .contextual-chip:hover {
-    border-color: var(--text-2);
+    border-color: var(--accent-border, var(--outline));
   }
   .contextual-chip.is-active {
-    background: var(--accent);
-    color: var(--accent-fg);
+    background: var(--accent-soft, var(--accent));
+    color: var(--on-accent-soft, var(--accent-fg));
     border-color: var(--accent);
   }
   .contextual-input {
