@@ -262,7 +262,7 @@
       <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
     </ListCard>
 
-    <!-- ADR-0041: the manual way into cycle tracking, for someone no
+    <!-- ADR-0043: the manual way into cycle tracking, for someone no
          testosterone regimen already surfaces it for. A card of its own
          rather than a row squeezed into the nudges card above - the two
          cards next to it are each one row too, and this has nothing to do

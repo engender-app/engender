@@ -217,7 +217,7 @@ export interface PreferenceValues {
       rather than falling back to another one. */
   journeyAnchorMilestoneId: string | null;
   /** Whether cycle tracking is surfaced for someone no active regimen
-      already calls it out for (ADR-0041, phase 5 deepening ticket 05). Off
+      already calls it out for (ADR-0043, phase 5 deepening ticket 05). Off
       by default: a standalone cycle row is a dysphoria trigger for the
       transfemme reader it has nothing to say to, so an active testosterone
       regimen surfaces it on its own and this is everyone else's way in -

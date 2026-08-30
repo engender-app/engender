@@ -2655,7 +2655,7 @@ try {
 } catch (e) { fail('quick add dose', e); }
 
 try {
-  /* Cycle tracking stays out of sight until it is asked for (ADR-0041,
+  /* Cycle tracking stays out of sight until it is asked for (ADR-0043,
      phase 5 deepening ticket 05). The demo journal is transfemme by
      construction - estradiol, no testosterone - so by default not one
      surface names the cycle log, while the log itself keeps its records
@@ -2675,7 +2675,7 @@ try {
   }
 
   // The direct URL still answers, records intact - hiding a row never
-  // closes a screen (ADR-0041).
+  // closes a screen (ADR-0043).
   await page.goto(BASE + '/settings/cycle-events', { waitUntil: 'networkidle' });
   if ((await page.locator('[data-cycle-event]').count()) === 0) {
     throw new Error('the cycle log lost its records behind the hidden row');

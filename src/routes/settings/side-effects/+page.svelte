@@ -39,7 +39,7 @@
   let effectsQuery = liveList((j) => j.sideEffects.getSideEffects());
   let effects = $derived(effectsQuery.rows);
 
-  /* The cycle log as a second area of this screen (ADR-0041): bleeding and
+  /* The cycle log as a second area of this screen (ADR-0043): bleeding and
      spotting are physiological effects like anything else listed here, so
      the most recent ones sit beneath the effects list once cycle tracking
      is surfaced at all - an active testosterone regimen or the explicit
@@ -125,7 +125,7 @@
     {/snippet}
   </ReadGate>
 
-  {#if cycleShown && !cycleEventsQuery.loading}
+  {#if cycleShown && !cycleEventsQuery.loading && !episodesQuery.loading}
     <!-- A second area, so a heading: with one list this screen needed none
          (DIRECTION.md 3c), and two named areas do. Role 1: the second
          stripe of this screen, after the effects list's 0. -->
