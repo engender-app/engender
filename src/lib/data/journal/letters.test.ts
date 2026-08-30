@@ -38,6 +38,24 @@ test('a letter carries no mood, tags or dims, and writes no entry row', async ()
   assert.equal(entries[0].n, 0, 'a letter is its own record type, not an Entry');
 });
 
+test('a single letter reads back by id, for a deep link that names one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.letters.addLetter({ epochDay: 100, text: 'just this one', unlockEpochDay: 200 });
+
+  const letter = await journal.letters.getLetter(id);
+  assert.equal(letter?.text, 'just this one');
+  assert.equal(letter?.unlockEpochDay, 200);
+});
+
+test('a letter that is gone, or never was, reads back as null', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.letters.addLetter({ epochDay: 100, text: 'temporary', unlockEpochDay: 200 });
+  await journal.letters.deleteLetter(id);
+
+  assert.equal(await journal.letters.getLetter(id), null);
+  assert.equal(await journal.letters.getLetter('no-such-letter'), null);
+});
+
 test('deleting a letter is idempotent', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.letters.addLetter({ epochDay: 100, text: 'goodbye for now', unlockEpochDay: 200 });
