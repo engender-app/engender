@@ -40,6 +40,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import AdoptTryoutConfirmationSheet from '$lib/components/AdoptTryoutConfirmationSheet.svelte';
 
   /* Three areas below the form: how it has felt, what it looked like, and
      what was written while it ran. */
@@ -187,6 +189,33 @@
     if (kind === 'presentation_step') return m.tryout_label_placeholder_presentation_step();
     return m.tryout_label_placeholder_other();
   }
+
+  let adoptOpen = $state(false);
+  let canAdopt = $derived(
+    !detail.isNew &&
+    (draft.kind === 'name' || draft.kind === 'pronouns') &&
+    detail.record?.endEpochDay == null
+  );
+
+  async function handleAdoptConfirm(options: {
+    createMilestone: boolean;
+    milestoneTitle: string;
+    milestoneEpochDay: number;
+    updateProfileName: boolean;
+  }) {
+    if (detail.isNew || !detail.record) return;
+    await journal.tryouts.adoptTryout(detail.id, {
+      endEpochDay: todayEpochDay(),
+      createMilestone: options.createMilestone,
+      milestoneTitle: options.milestoneTitle,
+      milestoneEpochDay: options.milestoneEpochDay
+    });
+    if (options.updateProfileName && draft.kind === 'name') {
+      prefs.name = options.milestoneTitle || draft.label;
+    }
+    draft.end = dateInputValueFromEpochDay(todayEpochDay());
+    adoptOpen = false;
+  }
 </script>
 
 
@@ -240,7 +269,25 @@
         <DatePicker name="tr-end" bind:value={draft.end} {id} />
       {/snippet}
     </Field>
-    <button class="btn btn-primary press" data-save-tryout disabled={draft.label.trim().length === 0} onclick={saveTryout}>
+    {#if canAdopt}
+      <button
+        type="button"
+        class="btn btn-primary press"
+        data-adopt-tryout
+        onclick={() => (adoptOpen = true)}
+      >
+        <Icon name="check" size={18} />
+        <span>{m.tryout_adopt_permanently()}</span>
+      </button>
+    {/if}
+    <button
+      class="btn press"
+      class:btn-primary={!canAdopt}
+      class:btn-soft={canAdopt}
+      data-save-tryout
+      disabled={draft.label.trim().length === 0}
+      onclick={saveTryout}
+    >
       <span>{detail.isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
     </button>
   </div>
@@ -363,5 +410,13 @@
       confirmLabel: m.tryout_feeling_delete(),
       cancelLabel: m.keep_it()
     }}
+  />
+
+  <AdoptTryoutConfirmationSheet
+    open={adoptOpen}
+    tryout={detail.record ?? null}
+    feltSense={feeling}
+    onConfirm={handleAdoptConfirm}
+    onDismiss={() => (adoptOpen = false)}
   />
 </div>

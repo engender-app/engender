@@ -231,3 +231,63 @@ test('the sweep leaves a referenced tryout photo alone and reclaims an orphaned 
   assert.deepEqual(files.names(), [`${kept}-thumb.jpg`, `${kept}.jpg`]);
   assert.ok(files.names().includes(thumbFileName(`${kept}.jpg`)));
 });
+
+/* Phase 5 deepening ticket 11: adopt a tryout permanently. */
+
+test('adoptTryout closes the tryout and optionally creates a timeline milestone with felt-sense summary', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alicja', startEpochDay: 100, endEpochDay: null });
+  await journal.feltSense.add({ tryoutId: id }, { epochDay: 100, mood: 4, note: 'felt great' });
+  await journal.feltSense.add({ tryoutId: id }, { epochDay: 110, mood: 5, note: 'amazing' });
+  await journal.feltSense.add({ tryoutId: id }, { epochDay: 120, mood: 5, note: 'affirming' });
+
+  const res = await journal.tryouts.adoptTryout(id, {
+    endEpochDay: 130,
+    createMilestone: true,
+    milestoneTitle: 'Adopted Alicja',
+    milestoneEpochDay: 130
+  });
+
+  assert.equal(res.tryoutId, id);
+  assert.ok(res.milestoneId);
+
+  // Tryout is closed
+  const [tryout] = (await journal.tryouts.getTryouts()).filter((t) => t.id === id);
+  assert.equal(tryout.endEpochDay, 130);
+
+  // Milestone was created
+  const milestones = await journal.milestones.getMilestones();
+  const created = milestones.find((m) => m.id === res.milestoneId);
+  assert.ok(created);
+  assert.equal(created?.name, 'Adopted Alicja');
+  assert.equal(created?.epochDay, 130);
+
+  // Felt-sense summary attached to the milestone (majority mood was 5)
+  const milestoneFeltSense = await journal.feltSense.forMilestone(res.milestoneId!);
+  assert.equal(milestoneFeltSense.length, 1);
+  assert.equal(milestoneFeltSense[0].mood, 5);
+});
+
+test('adoptTryout without creating a milestone closes the tryout only', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.tryouts.upsertTryout({ kind: 'pronouns', label: 'she/her', startEpochDay: 100, endEpochDay: null });
+
+  const res = await journal.tryouts.adoptTryout(id, {
+    endEpochDay: 125,
+    createMilestone: false
+  });
+
+  assert.equal(res.tryoutId, id);
+  assert.equal(res.milestoneId, undefined);
+
+  const [tryout] = (await journal.tryouts.getTryouts()).filter((t) => t.id === id);
+  assert.equal(tryout.endEpochDay, 125);
+
+  const milestones = await journal.milestones.getMilestones();
+  assert.equal(milestones.length, 0);
+});
+
+test('adoptTryout throws on unknown tryout', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(journal.tryouts.adoptTryout('non-existent'), /unknown tryout/);
+});
