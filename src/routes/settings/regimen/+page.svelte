@@ -302,7 +302,7 @@
     {/snippet}
   </ReadGate>
 
-  <!-- ADR-0041: cycle cessation is what testosterone does, so an active
+  <!-- ADR-0043: cycle cessation is what testosterone does, so an active
        testosterone episode is what puts the cycle log one row away from
        the regimen that explains it. Same one visibility question
        cycleTracking.ts answers for More and side effects, read here for

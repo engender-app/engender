@@ -89,7 +89,7 @@
     { title: () => m.hub_group_practice(), rows: () => PRACTICE_ROWS },
   ];
 
-  /* ADR-0041: the cycle row is the one row here that has to be able to not
+  /* ADR-0043: the cycle row is the one row here that has to be able to not
      exist - read cold, a permanent cycle prompt tells a transfemme reader
      this hub was not drawn for them. It stays written in HEALTH_ROWS above
      so its shape is held like any other row's, and one filter - fed by the

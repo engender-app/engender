@@ -262,7 +262,7 @@
   "cycle_tracking_toggle_sub": "Show cycle tracking in More and on the side effects screen. For tracking a cycle when no testosterone regimen is active.",
   "cycle_tracking_regimen_row_sub": "Log bleeding and spotting against this regimen.",
   "cycle_events_open_row_title": "All cycle events",
-  "cycle_events_open_row_sub": "The full log and its chart.",
+  "cycle_events_open_row_sub": "Every event, and the chart against the regimen.",
   "hair_removal": "Hair removal",
   "hair_removal_sub": "electrolysis and laser sessions",
   "app_lock": "App lock",

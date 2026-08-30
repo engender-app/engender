@@ -48,9 +48,9 @@ describe('what the More hub is built from', () => {
     expect(more).not.toContain('readFlagRoles(');
   });
 
-  it('shows the cycle row only behind the one visibility rule (ADR-0041)', () => {
+  it('shows the cycle row only behind the one visibility rule (ADR-0043)', () => {
     /* The row stays written in the list below so its icon, href and group
-       are held like any other row's; what changed with ADR-0041 is that a
+       are held like any other row's; what changed with ADR-0043 is that a
        filter decides whether it renders. Default and transfemme profiles
        pass through a Health group of 8 rows, not 9. The decision lives in
        cycleTracking.ts, not inline here - the hub only reads its answer. */
