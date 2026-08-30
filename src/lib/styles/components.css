@@ -636,11 +636,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
    disc's fill and the features only, never on the whole svg. */
 .mood-btn:not(.is-selected) .mood-face-disc { fill-opacity: 0.55; }
 .mood-btn:not(.is-selected) .mood-face-eye { opacity: 0.41; }
-.mood-btn:not(.is-selected) .mood-face-eye.is-lids { opacity: 0.41; }
 .mood-btn:not(.is-selected) .mood-face-mouth { opacity: 0.41; }
 .mood-picker:not(:has(.is-selected)) .mood-face-disc { fill-opacity: 1; }
 .mood-picker:not(:has(.is-selected)) .mood-face-eye { opacity: 0.75; }
-.mood-picker:not(:has(.is-selected)) .mood-face-eye.is-lids { opacity: 0.75; }
 .mood-picker:not(:has(.is-selected)) .mood-face-mouth { opacity: 0.75; }
 /* Hover joins the magnifier's answer rather than replacing it - tier 4's
    "no hover-dependent motion" is about inventing motion for hover, not

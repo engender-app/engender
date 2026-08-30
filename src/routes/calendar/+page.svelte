@@ -31,10 +31,9 @@
      are the same reading. */
   import { m } from '$lib/paraglide/messages';
   import { fmtMonthYear } from '$lib/data/dates';
-  import { getLocale } from '$lib/paraglide/runtime';
-  import flatpickr from 'flatpickr';
+    import flatpickr from 'flatpickr';
   import 'flatpickr/dist/flatpickr.min.css';
-  import { Polish as pl } from 'flatpickr/dist/l10n/pl';
+  import { pickerLocale } from '$lib/components/flatpickrLocale';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -159,7 +158,7 @@
       defaultDate: new Date(year, month, 1),
       disableMobile: true,
       monthSelectorType: 'static',
-      locale: getLocale() === 'pl' ? pl : undefined,
+      locale: pickerLocale(),
       /* Browsing inside the picker - its arrows, its month dropdown - walks
          the heat map along live, the sheet staying open for more. Committing
          is a day tap or the year stepper, which close it. */

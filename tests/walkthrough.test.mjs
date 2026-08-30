@@ -18,6 +18,21 @@ const { ok, fail, finish } = createReporter();
 
 const server = await preview({ preview: { port: 0 } });
 const address = server.httpServer.address();
+
+/* The date fields are DatePickers on flatpickr now: the visible field is
+   flatpickr's altInput and the ISO value lives on the hidden original, so
+   typing into the field is not how a date gets set. The picker instance
+   hangs off the element; setDate with fireChange runs the same onChange a
+   real pick runs. */
+async function fillDate(page, selector, iso) {
+  await page.evaluate(([sel, v]) => {
+    const el = document.querySelector(sel);
+    const fp = el?.flatpickr ?? el?._flatpickr;
+    if (!fp) throw new Error(`no flatpickr instance on ${sel}`);
+    fp.setDate(v, true);
+  }, [selector, iso]);
+}
+
 const BASE = `http://localhost:${address.port}`;
 
 const browser = await launchChromium();
@@ -691,7 +706,7 @@ try {
     await page.locator('[data-ocr-field="analyte"]').first().fill('estradiol');
     await page.locator('[data-ocr-field="value"]').first().fill('123.4');
     await page.locator('[data-ocr-field="unit"]').first().fill('pg/mL');
-    await page.locator('[data-ocr-field="date"]').first().fill('2026-08-12');
+    await fillDate(page, '[data-ocr-field="date"]', '2026-08-12');
 
     // A blanked analyte first, so save-validation-failed renders too - the
     // sheet's own re-edit path, not just the machine's transition into it.
@@ -2108,10 +2123,10 @@ try {
     return { aStart: fmt(daysAgo(29)), aEnd: fmt(today), bStart: fmt(daysAgo(59)), bEnd: fmt(daysAgo(30)) };
   });
 
-  await page.locator('#compare-a-start').fill(aStart);
-  await page.locator('#compare-a-end').fill(aEnd);
-  await page.locator('#compare-b-start').fill(bStart);
-  await page.locator('#compare-b-end').fill(bEnd);
+  await fillDate(page, '#compare-a-start', aStart);
+  await fillDate(page, '#compare-a-end', aEnd);
+  await fillDate(page, '#compare-b-start', bStart);
+  await fillDate(page, '#compare-b-end', bEnd);
 
   await page.waitForSelector('[data-compare-table]');
   const entriesRow = page.locator('[data-compare-metric="entries"]');
@@ -2367,8 +2382,14 @@ try {
   // end-date field's own value via Svelte's reactive binding - filling it
   // before that settles gets clobbered right back to today's date.
   const today = localDateInput();
-  await page.waitForFunction((expected) => document.querySelector('#regimen-end')?.value === expected, today);
-  await page.fill('#regimen-end', localDateInput(1));
+  await page.waitForFunction(
+    ([sel, expected]) => {
+      const fp = document.querySelector(sel)?.flatpickr;
+      return fp?.selectedDates[0] && fp.formatDate(fp.selectedDates[0], 'Y-m-d') === expected;
+    },
+    ['#regimen-end', today]
+  );
+  await fillDate(page, '#regimen-end', localDateInput(1));
   await page.click('[data-save-regimen]');
   await page.waitForFunction(() => {
     const row = [...document.querySelectorAll('[data-episode]')].find((el) => el.textContent.includes('Estradiol'));

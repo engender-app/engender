@@ -37,8 +37,7 @@
      given screen happened to use. */
   import { m } from '$lib/paraglide/messages';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import { isReducedMotion } from '$lib/motion/tokens';
-  import { magnifyRow } from '$lib/motion/magnifier';
+  import { moodMagnifier } from '../moodMagnifier.svelte';
   import MoodFace from '../MoodFace.svelte';
 
   let {
@@ -54,24 +53,11 @@
   const STEPS = [1, 2, 3, 4, 5];
 
   /* Grows the face under the pointer, the same magnifier quick add's fan
-     answers a slide with (magnifier.ts). A mouse hovers; a finger presses
-     and slides - implicit capture on the pressed face keeps the moves
-     coming as the finger travels, and they bubble up here. The release
-     puts every face back. */
-  let moodScale = $state<number[]>(STEPS.map(() => 1));
-  const RESTING = STEPS.map(() => 1);
-
-  function onRowMove(e: PointerEvent) {
-    if (isReducedMotion()) return;
-    const row = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    moodScale = magnifyRow(e.clientX, row, STEPS.length);
-  }
-  function onRowRelease() {
-    moodScale = RESTING;
-  }
-  function onRowLeave() {
-    moodScale = RESTING;
-  }
+     answers a slide with (magnifier.ts via moodMagnifier.svelte.ts). A
+     mouse hovers; a finger presses and slides - implicit capture on the
+     pressed face keeps the moves coming as the finger travels, and they
+     bubble up here. The release puts every face back. */
+  const magnifier = moodMagnifier(STEPS.length);
 </script>
 
 <div
@@ -80,10 +66,10 @@
   role="radiogroup"
   aria-label={m.mood()}
   data-mood-chips
-  onpointermove={onRowMove}
-  onpointerup={onRowRelease}
-  onpointercancel={onRowRelease}
-  onpointerleave={onRowLeave}
+  onpointermove={magnifier.onRowMove}
+  onpointerup={magnifier.onRowRelease}
+  onpointercancel={magnifier.onRowRelease}
+  onpointerleave={magnifier.onRowLeave}
 >
   {#each STEPS as step, i (step)}
     <button
@@ -93,7 +79,7 @@
       aria-checked={step === value}
       aria-label={moodName(step)}
       data-mood={step}
-      style:--mood-mag={moodScale[i]}
+      style:--mood-mag={magnifier.moodScale[i]}
       onclick={() => onPick(step === value ? null : step)}
     >
       <!-- 48, not 40 (Alicja, 2026-08-27: "a little bigger") - the same

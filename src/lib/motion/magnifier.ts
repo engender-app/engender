@@ -61,14 +61,9 @@ export function magnify(x: number, centre: number, spread: number, peak: number 
     chips, the entry editor's picker) only ever wants the scales themselves,
     on hover or under a held finger, which is what this is for - one shared
     answer rather than a third copy of the cell math (ticket 99). */
-export function magnifyRow(
-  x: number,
-  row: DOMRect,
-  count: number,
-  peak: number = ROW_PEAK
-): number[] {
+export function magnifyRow(x: number, row: DOMRect, count: number): number[] {
   const cell = row.width / count;
   return Array.from({ length: count }, (_, i) =>
-    magnify(x, row.left + cell * (i + 0.5), MAGNIFIER_SPREAD, peak)
+    magnify(x, row.left + cell * (i + 0.5), MAGNIFIER_SPREAD, ROW_PEAK)
   );
 }
