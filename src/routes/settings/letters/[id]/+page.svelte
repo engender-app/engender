@@ -31,11 +31,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader
-    title={letter ? dayLabel(letter.epochDay) : m.letters_title()}
-    screen="letters"
-    back={() => smartBack('/settings/letters')}
-  />
+  <ScreenHeader title={m.letters_title()} screen="letters" back={() => smartBack('/settings/letters')} />
 
   {#if letterQuery.loading}
     <Skeleton variant="card" count={1} />
