@@ -28,3 +28,42 @@ export function recoveryDay(surgeryEpochDay: number | null, todayEpochDay: numbe
   if (surgeryEpochDay === todayEpochDay) return { type: 'surgeryDay' };
   return { type: 'since', days: todayEpochDay - surgeryEpochDay };
 }
+
+/** How long a completed procedure continues to show its recovery day on Home
+    before dropping away on its own (phase 5 ticket 47). 90 days covers the
+    standard active post-operative recovery window (initial wound healing,
+    follow-up checks, lifting of restrictions) across major gender-affirming
+    procedures; beyond ~3 months, recovery is long-term and no longer active
+    news on Home. */
+export const SURGERY_RECOVERY_CUTOFF_DAYS = 90;
+
+/** Selects the nearest active procedure for Home's live tile (ticket 47).
+    A procedure qualifies if it has a surgery date set and is either
+    upcoming, on surgery day, or within the active recovery cutoff.
+    With multiple candidates, the nearest one by distance to today wins. */
+export function activeSurgeryProcedure<T extends { surgeryEpochDay: number | null }>(
+  procedures: readonly T[],
+  todayEpochDay: number,
+  cutoffDays = SURGERY_RECOVERY_CUTOFF_DAYS
+): T | null {
+  const candidates: { procedure: T; distance: number }[] = [];
+
+  for (const procedure of procedures) {
+    if (procedure.surgeryEpochDay === null) continue;
+    const status = recoveryDay(procedure.surgeryEpochDay, todayEpochDay);
+    if (status.type === 'unscheduled') continue;
+    if (status.type === 'since' && status.days > cutoffDays) continue;
+
+    const distance = status.type === 'surgeryDay' ? 0 : status.days;
+    candidates.push({ procedure, distance });
+  }
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => {
+    if (a.distance !== b.distance) return a.distance - b.distance;
+    return (a.procedure.surgeryEpochDay ?? 0) - (b.procedure.surgeryEpochDay ?? 0);
+  });
+
+  return candidates[0].procedure;
+}

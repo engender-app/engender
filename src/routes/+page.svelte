@@ -83,13 +83,14 @@
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
   import { hoursMinutesSecondsOf } from '$lib/data/journal/wearSessions';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { activeSurgeryProcedure, recoveryDay } from '$lib/data/recoveryDay';
   import { shouldShowSafeSpaceNudge } from '$lib/data/safeSpaceNudge';
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
 
-  /* Live tiles data & condition (phase 5 ticket 45, 50). */
+  /* Live tiles data & condition (phase 5 ticket 45, 47, 50). */
   let runningWearQuery = liveQuery((j) => j.wearSessions.getRunningSession());
   let runningWear = $derived(runningWearQuery.value ?? null);
   let nowTick = $state(Date.now());
@@ -105,6 +106,18 @@
   let activeEpisodes = $derived(activeEpisodesAt(episodesQuery.rows, Date.now()));
   let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);
 
+  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
+  let activeSurgery = $derived(activeSurgeryProcedure(proceduresQuery.rows, today));
+  let showSurgeryTile = $derived(prefs.surgeryCountdownEnabled && !!activeSurgery);
+
+  function procedureRecoveryText(procedure: { surgeryEpochDay: number | null }): string {
+    const day = recoveryDay(procedure.surgeryEpochDay, today);
+    if (day.type === 'unscheduled') return m.surgery_day_unscheduled();
+    if (day.type === 'upcoming') return m.surgery_day_upcoming({ days: m.n_days({ n: day.days }) });
+    if (day.type === 'surgeryDay') return m.surgery_day_of();
+    return m.surgery_day_since({ days: m.n_days({ n: day.days }) });
+  }
+
   let latestBadEntryQuery = liveQuery((j) => j.entries.latestBadMomentEntry());
   let latestBadEntry = $derived(latestBadEntryQuery.value ?? null);
   let showSafeSpaceTile = $derived(
@@ -115,7 +128,7 @@
     })
   );
 
-  let hasLiveTiles = $derived(showWearTile || showDoseTile || showSafeSpaceTile);
+  let hasLiveTiles = $derived(showWearTile || showDoseTile || showSurgeryTile || showSafeSpaceTile);
 
   function dismissSafeSpaceNudge(e?: MouseEvent) {
     if (e) {
@@ -364,7 +377,7 @@
         data-live-tile-grid
       >
         {#if showWearTile && runningWear && runningWearElapsed}
-          <div transition:tileSlide={{ enabled: showDoseTile || showSafeSpaceTile }}>
+          <div transition:tileSlide={{ enabled: showDoseTile || showSurgeryTile || showSafeSpaceTile }}>
             <Tile
               key="wear-timer"
               data-wear-running-tile
@@ -400,7 +413,7 @@
         {#if showDoseTile}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSafeSpaceTile
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSurgeryTile || showSafeSpaceTile
             }}
           >
             <Tile
@@ -422,10 +435,28 @@
           </div>
         {/if}
 
+        {#if showSurgeryTile && activeSurgery}
+          <div
+            transition:tileSlide={{
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSafeSpaceTile
+            }}
+          >
+            <Tile
+              key="surgery-countdown"
+              data-surgery-tile
+              data-live-tile="surgery-countdown"
+              title={m.tile_surgery_title()}
+              value={procedureRecoveryText(activeSurgery)}
+              note={activeSurgery.name}
+              href="/settings/surgery"
+            />
+          </div>
+        {/if}
+
         {#if showSafeSpaceTile}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSurgeryTile
             }}
           >
             <div
