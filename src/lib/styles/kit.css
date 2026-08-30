@@ -824,7 +824,11 @@ a.kit-entry:active {
 
 .kit-tile-value {
   font-family: var(--font-display);
-  font-size: clamp(var(--text-xl), 5vw, var(--text-3xl));
+  /* No viewport clamp: at phone width 5vw pulled the value down to --text-xl
+     and a "23 days" that had been display-size since the tiles landed read
+     as shrunken (Alicja, ticket 99 round 4: "the text got smaller - don't
+     change the font size"). */
+  font-size: var(--text-3xl);
   font-weight: var(--weight-bold);
   letter-spacing: var(--display-track);
   line-height: 1.1;
@@ -887,6 +891,7 @@ a.kit-entry:active {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-2);
+  --mood-lift: 34px;
   /* An outline and nothing else. Flush to the page was the original decision
      and it read as five circles loose on it rather than as one control, but
      the fill that came with the border made it a card - and this row is a
@@ -915,6 +920,9 @@ a.kit-entry:active {
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
   cursor: pointer;
+  /* The row answers a held finger sliding across it (MoodChips), which the
+     browser would otherwise claim as a scroll. */
+  touch-action: none;
   transition-property: color;
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
@@ -1372,6 +1380,19 @@ a.kit-entry:active {
   margin-top: var(--space-6);
 }
 
+/* Day cards are the exception: adjacent ones are items of a day list -
+   Home's recent entries, search's hit list - and those lists separate
+   their rows with a 12px grid gap by design (DIRECTION.md decision 3).
+   The floor stacking on top of the gap read as 36px between entries,
+   which is the "space between entries is too big" of ticket 99 item 9:
+   the fix there belonged to the end of the screen, and the rhythm between
+   entries was never meant to move. A day card is only ever a next sibling
+   of another day card inside such a list - everywhere else a heading or a
+   different surface sits between them. */
+.kit-day + .kit-day {
+  margin-top: 0;
+}
+
 /* --- area ---
 
    The whole range in one card, read by moving a finger across it. It used to
@@ -1588,7 +1609,14 @@ a.kit-entry:active {
   background: color-mix(in oklab, var(--role-draw) 62%, var(--surface));
   transform: scaleX(1);
   transform-origin: left center;
-  animation: kit-bar-in var(--dur-slow) var(--ease-out) both;
+  /* Longer than --dur-slow and a harder decelerate than the shared
+     --ease-out, on purpose rather than borrowed: a bar growing from nothing
+     is the one drawing in the kit with no value to answer to while it
+     moves, so it can spend longer settling than a control ever could
+     (Alicja, 2026-08-28: "longer fade in animation, more ease-out"). Kept
+     local rather than folded into --ease-out itself, which every press and
+     transition in the app also reads. */
+  animation: kit-bar-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
   /* Capped, because the index is a row's place in the set and a set can be
      long: the values list is one row per day, and at 365 rows an uncapped
      stagger is eighteen seconds of bars arriving. Twelve steps is the point
@@ -1658,8 +1686,18 @@ a.kit-entry:active {
      and a logged day's face (sized to the constant) stopped matching
      (Alicja, 2026-08-27: "month by month must be much smaller... empty
      days should be the same size as the icons"). Capped at the tuned size
-     instead of left to the card's own width. */
-  grid-template-columns: repeat(11, minmax(0, 27px));
+     instead of left to the card's own width.
+
+     Fixing the count at eleven traded one mismatch for another: the same
+     desktop-width card that made a stretched cell too big now made a
+     327px grid of fixed 27px cells sit in it with the rest of the card
+     empty (Alicja, 2026-08-28: "month by month only looks good on
+     phone... on web it's weak"). `auto-fill` keeps the cell fixed at 27px
+     and asks the width for a column count instead of the other way round,
+     so a phone-width card still gets eleven and a desktop one gets as many
+     as its own width holds - full width either way, same cell either
+     width. */
+  grid-template-columns: repeat(auto-fill, 27px);
   gap: 3px;
 }
 

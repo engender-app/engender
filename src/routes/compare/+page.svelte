@@ -28,6 +28,7 @@
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
   import Icon from '$lib/components/Icon.svelte';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -120,25 +121,16 @@
 
   <!-- One snippet for the four fields. A date is a row of a list here, not
        a text box: the label on the left, the date in the display face on the
-       right, and a native `<input type="date">` stretched invisibly over the
-       whole row as the press target. Android's own picker is what opens,
-       which knows the reader's locale and their week start better than
-       anything drawn here would. -->
+       right, and the DatePicker spread invisibly over the whole row as the
+       press target - its popup is what opens, and it knows the reader's
+       locale and their week start. -->
   {#snippet dateRow(id: string, label: string, name: string, value: string, bind: (v: string) => void, min: string | undefined)}
     {@const shown = shownDate(value)}
     <div class="rows-divide date-row">
       <label class="date-row-label" for={id}>{label}</label>
       <span class="date-row-value">{shown ?? ''}</span>
       <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
-      <input
-        {id}
-        type="date"
-        {value}
-        {min}
-        max={todayInput}
-        aria-label={name}
-        oninput={(event) => bind((event.currentTarget as HTMLInputElement).value)}
-      />
+      <DatePicker {id} value={value} {min} max={todayInput} ariaLabel={name} invis onchange={(v) => bind(v)} />
     </div>
   {/snippet}
 

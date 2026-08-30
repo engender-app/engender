@@ -13,6 +13,7 @@
      flags as a decision rather than an oversight, and no ticket in this
      phase gives either an inbound link from the hub. Unchanged here. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { fmtDay } from '$lib/data/dates';
@@ -29,6 +30,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
+  import { scrollToHash } from '$lib/navigation/scroll-region';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -145,6 +147,13 @@
   } | null>(null);
   let newPause = $state<{ start: string; end: string; reason: PauseReason } | null>(null);
 
+  /* A hash arrived with the navigation (the clinician summary links each
+     episode): scroll to it once the rows exist, which the browser's own
+     anchor scroll never did - it fires before the liveQuery answers. */
+  $effect(() => {
+    if (!episodesQuery.loading) scrollToHash();
+  });
+
   /* Re-seeded whenever the editor opens on a different episode, so the
      fields show that episode's schedule rather than the last one's. */
   $effect(() => {
@@ -257,6 +266,7 @@
             <ListRow
               key={episode.id}
               data-episode={episode.id}
+              id={episode.id}
               icon="flask"
               title={episode.drug}
               subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
@@ -374,12 +384,12 @@
       <div class="cd-endpoints">
         <Field label={m.regimen_start_label()} id="regimen-start">
           {#snippet children(id)}
-            <input class="input" type="date" {id} name="regimen-start" bind:value={editor!.startDate} />
+            <DatePicker name="regimen-start" bind:value={editor!.startDate} {id} />
           {/snippet}
         </Field>
         <Field label={m.regimen_end_label()} id="regimen-end">
           {#snippet children(id)}
-            <input class="input" type="date" {id} name="regimen-end" bind:value={editor!.endDate} />
+            <DatePicker name="regimen-end" bind:value={editor!.endDate} {id} />
           {/snippet}
         </Field>
       </div>
@@ -557,12 +567,12 @@
           <div class="cd-endpoints">
             <Field label={m.regimen_pause_start_label()} id="pause-start">
               {#snippet children(id)}
-                <input class="input" type="date" {id} name="pause-start" bind:value={newPause!.start} />
+                <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
               {/snippet}
             </Field>
             <Field label={m.regimen_pause_end_label()} id="pause-end">
               {#snippet children(id)}
-                <input class="input" type="date" {id} name="pause-end" bind:value={newPause!.end} />
+                <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
               {/snippet}
             </Field>
           </div>

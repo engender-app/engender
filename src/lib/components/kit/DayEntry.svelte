@@ -95,6 +95,7 @@
   <a
     class="kit-entry"
     data-entry-card={key}
+    data-no-press
     {href}
     onclick={(event) => { if (key && opensHere(event)) openEntryContainer(key); }}
   >

@@ -17,6 +17,7 @@
      the local file store, the print dialog is the browser's own, and
      nothing on this screen writes to the journal. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import {
     customInclusiveRange,
@@ -128,12 +129,12 @@
     <div class="cd-endpoints">
       <Field label={m.journal_book_range_start_label()} id="journal-book-start">
         {#snippet children(id)}
-          <input class="input" {id} type="date" bind:value={startInput} max={dayRangeStartMax(endInput) ?? todayInput} />
+          <DatePicker max={dayRangeStartMax(endInput) ?? todayInput} bind:value={startInput} {id} />
         {/snippet}
       </Field>
       <Field label={m.journal_book_range_end_label()} id="journal-book-end">
         {#snippet children(id)}
-          <input class="input" {id} type="date" bind:value={endInput} min={dayRangeEndMin(startInput)} max={todayInput} />
+          <DatePicker min={dayRangeEndMin(startInput)} max={todayInput} bind:value={endInput} {id} />
         {/snippet}
       </Field>
     </div>

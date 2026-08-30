@@ -159,14 +159,14 @@
 {:else if action}
   <div class="kit-row is-split" data-list-row={key} {...rest}>
     {#if href}
-      <a class="kit-row-main" {href} {onclick}>{@render body()}</a>
+      <a class="kit-row-main" data-no-press {href} {onclick}>{@render body()}</a>
     {:else}
-      <button type="button" class="kit-row-main" {onclick}>{@render body()}</button>
+      <button type="button" class="kit-row-main" data-no-press {onclick}>{@render body()}</button>
     {/if}
     {@render rowAction(action)}
   </div>
 {:else if href}
-  <a class="kit-row" data-list-row={key} {href} {onclick} {...rest}>{@render body()}</a>
+  <a class="kit-row" data-list-row={key} data-no-press {href} {onclick} {...rest}>{@render body()}</a>
 {:else if isCheckbox}
   <!-- role="checkbox" on the button rather than a real input, which is the
        same contract Switch.svelte already carries for role="switch": the
@@ -178,9 +178,10 @@
     role="checkbox"
     aria-checked={checked}
     data-list-row={key}
+    data-no-press
     {onclick}
     {...rest}
   >{@render body()}</button>
 {:else}
-  <button type="button" class="kit-row" data-list-row={key} {onclick} {...rest}>{@render body()}</button>
+  <button type="button" class="kit-row" data-list-row={key} data-no-press {onclick} {...rest}>{@render body()}</button>
 {/if}

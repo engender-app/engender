@@ -27,6 +27,14 @@
     grew far enough would lose its own top. */
 const PEAK = 1.24;
 
+/** The plain rows' peak. The fan's 1.24 rides on a small face in a card
+    that frames it; the same number on a bare row read as barely anything -
+    "still no sliding zoom animation like in quick add" survived 1.4 for
+    the same reason (Alicja, phase 5 ticket 99, round 4). 1.6 under the
+    finger, on the sweep the fan's slide already answers, is what makes the
+    row read as the same control. */
+export const ROW_PEAK = 1.6;
+
 /** How far the lift reaches, in mood cells. Under 2 on purpose: at 1.7 an
     immediate neighbour comes up about a third of the way and the face two
     along is untouched, so the row reads as one raised face with a shoulder
@@ -37,12 +45,25 @@ export const MAGNIFIER_SPREAD = 1.7;
     in the same axis and the same units. `spread` is how far the effect
     reaches, which the caller measures from the row rather than assuming - the
     row is as wide as the fan, and the fan is as wide as the screen. */
-export function magnify(x: number, centre: number, spread: number): number {
+export function magnify(x: number, centre: number, spread: number, peak: number = PEAK): number {
   if (spread <= 0) return 1;
   const away = Math.abs(x - centre) / spread;
   if (away >= 1) return 1;
   /* Squared rather than linear, so the curve is flat where the finger is.
      A finger holding still on a target still moves a pixel or two, and on a
      linear falloff that flutters the one face a person is looking at. */
-  return 1 + (PEAK - 1) * (1 - away * away);
+  return 1 + (peak - 1) * (1 - away * away);
+}
+
+/** Every face's scale for a pointer at `x` over `count` evenly spaced cells
+    across `row`. The fan's own slide keeps its own version of this loop
+    because it also arms a target mid-gesture; a plain mood row (Home's
+    chips, the entry editor's picker) only ever wants the scales themselves,
+    on hover or under a held finger, which is what this is for - one shared
+    answer rather than a third copy of the cell math (ticket 99). */
+export function magnifyRow(x: number, row: DOMRect, count: number): number[] {
+  const cell = row.width / count;
+  return Array.from({ length: count }, (_, i) =>
+    magnify(x, row.left + cell * (i + 0.5), MAGNIFIER_SPREAD, ROW_PEAK)
+  );
 }

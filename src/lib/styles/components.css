@@ -236,40 +236,75 @@
 .switch:focus-visible .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 /* ---------- segmented ---------- */
+/* The positioning box: the chevron hints anchor to this rather than to the
+   scrolling track itself, so they stay put at the edge while the track
+   scrolls under them (Segmented.svelte). Carries the sizing this control
+   has always wanted - inline-flex hugs its content, and then `.field` - a
+   column flex box - stretched it to full width anyway, because a flex
+   item's default cross alignment is stretch. So every switcher in an
+   editor sheet drew a track far wider than the words in it (Alicja,
+   2026-08-26, on three separate screens). Named here rather than at each
+   call site: the control knows it wants to be the width of its own
+   segments. */
+.segmented-wrap {
+  position: relative;
+  display: inline-flex;
+  align-self: start;
+  max-width: 100%;
+}
 .segmented {
   position: relative;
   display: inline-flex; gap: var(--space-2);
-  /* inline-flex hugs its content, and then `.field` - a column flex box -
-     stretched it to full width anyway, because a flex item's default cross
-     alignment is stretch. So every switcher in an editor sheet drew a track
-     far wider than the words in it (Alicja, 2026-08-26, on three separate
-     screens). Named here rather than at each call site: the control knows
-     it wants to be the width of its own segments. */
-  align-self: start;
+  min-width: 0;
   background: var(--surface-2);
   border-radius: var(--radius-pill);
   padding: 3px;
-  max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
 }
 .segmented::-webkit-scrollbar { display: none; }
 
+/* The chevron itself: a fixed hint rather than a fade, so it never depends
+   on how much of a neighbouring label the track happened to leave visible
+   (Segmented.svelte). Pointer-events:none - it marks the track's own edge,
+   not a control of its own, and sits on top of the fade rather than
+   instead of it because the fade still answers "which edge" from across
+   the room while the chevron confirms it up close. */
+.segmented-hint {
+  position: absolute;
+  top: 0; bottom: 0;
+  display: flex; align-items: center;
+  width: 20px;
+  color: var(--text-2);
+  pointer-events: none;
+}
+.segmented-hint-start { left: 0; justify-content: flex-start; padding-left: 4px; }
+.segmented-hint-end { right: 0; justify-content: flex-end; padding-right: 4px; }
+
 /* The hint the hidden scrollbar above took away: a fade over whichever edge
    still has segments past it, on only whichever side that is true
    (Segmented.svelte tracks scroll position for these two classes). No fade
-   at all when the track holds everything already, which is most of them. */
+   at all when the track holds everything already, which is most of them.
+
+   14px, not 28px: a wide fade starting well before the next segment often
+   finished fading before that segment's label even began, so the label
+   sitting past the edge - the whole point of the hint - rendered as a
+   sliver too faint to register as more than background (Alicja, 2026-08-28,
+   on the severity picker: "barely noticeable" cutting "mild" off with no
+   sign there was more). A narrower fade starts closer to the edge, which
+   both shows more of the next label at high opacity and still finishes
+   at fully transparent by the edge itself. */
 .segmented.can-scroll-end:not(.can-scroll-start) {
-  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, black calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 14px), transparent 100%);
 }
 .segmented.can-scroll-start:not(.can-scroll-end) {
-  mask-image: linear-gradient(to right, transparent, black 28px);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 28px);
+  mask-image: linear-gradient(to right, transparent, black 14px);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 14px);
 }
 .segmented.can-scroll-start.can-scroll-end {
-  mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
 }
 
 /* A flex scroll container drops its trailing padding at the end of the
@@ -335,6 +370,20 @@ a.segment {
    siblings whatever the order. */
 .segment { position: relative; }
 .segment.is-active { color: var(--text); }
+/* The keyboard ring draws inside the segment, not 2px outside it. A segment
+   sits flush against its neighbours inside a pill track, so the default
+   offset ring drew around the chosen label and out past the track's own
+   rounded end - the "365d" ring of ticket 99 round 3 - and hugged a small
+   compact segment as a second ring inside the pill's, which read as two
+   controls. Chromium marks a click on a role="radio" focus-visible (arrow
+   keys are expected to work there), so this ring appeared for every mouse
+   pick, not only keyboard ones. Inside the segment's own box a keyboard
+   user still sees exactly which segment holds focus; the mouse just sees
+   the pill. */
+.segment:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -3px;
+}
 
 /* One pill for the set, sliding to whichever segment was chosen. --seg-x and
    --seg-w are measured by Segmented.svelte, because segments are as wide as
@@ -368,7 +417,8 @@ a.segment {
    a dot moving between dots: six segments reading "7d" through "365d" are
    about as wide as they are tall, and at that ratio --radius-pill draws a
    circle. Phase 5 UX ticket 23. */
-.segmented.is-compact { display: flex; width: 100%; align-self: stretch; }
+.segmented-wrap.is-compact { width: 100%; align-self: stretch; }
+.segmented.is-compact { display: flex; width: 100%; }
 .segmented.is-compact .segment { flex: 1; min-width: 0; padding-inline: var(--space-1); }
 /* 5px, not 9px. The inset was tuned when the compact form carried six
    segments across the full width, where the pill is wider than it is tall
@@ -488,12 +538,16 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 
 /* ---------- mood picker ---------- */
 .mood-picker { position: relative; }
-.mood-row { display: flex; justify-content: space-between; gap: var(--space-1); }
+.mood-row { display: flex; justify-content: space-between; gap: var(--space-1); --mood-lift: 34px; }
 .mood-btn {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
   background: none; border: none; cursor: pointer;
   padding: var(--space-2) 2px; border-radius: var(--radius-md);
   transition: transform var(--dur-med) var(--ease-out);
+  /* The row answers a held finger sliding across it, which the browser
+     would otherwise claim as a scroll and end with pointercancel - the
+     same trade the fan's faces make (QuickAdd). */
+  touch-action: none;
 }
 /* One face for every surface (phase 5 ticket 31): the picker's 44px, quick
    add's 34, a chip's 26, a day card's 22. The size arrives as --face-size and
@@ -504,9 +558,32 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   height: var(--face-size);
   display: block;
   flex: 0 0 auto;
-  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast);
+  /* --mood-mag is the row's own magnifier (magnifier.ts): unset anywhere
+     that doesn't set it, so every mood row gets the same grow-under-the-
+     pointer answer for free the moment it starts setting the variable. */
+  scale: var(--mood-mag, 1);
+  /* And rises with it, the lift the fan's card clip forced it to invent -
+     which turned out to be the whole of the look (Alicja, phase 5 ticket
+     99, screencast 2026-08-29: the fan is how the hover is supposed to
+     read, Home and the entry editor's picker were "wrong"). A face that
+     only swells in place reads as a zoom; one that comes up to the finger
+     reads as picked up. The lift's reach is the row's to set: the fan's
+     card clips at 20px, the bare rows answer with more. */
+  translate: 0 calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px));
+  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast), scale var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
 }
-.mood-face-disc { fill: var(--face-mood); transition: fill var(--dur-med) var(--ease-out); }
+/* --outline (19% of --text) is a card's edge - a subtle line between two
+   already-similar surface tones. A mood face sits straight on the bare app
+   background instead, which is what ticket 99 item 2's regression report
+   caught: the intended border read as no border at all. --outline-strong
+   (30%) is the token this app already names for a control holding its own
+   edge, which is what a face is. */
+.mood-face-disc {
+  fill: var(--face-mood);
+  stroke: var(--outline-strong);
+  stroke-width: 1;
+  transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
+}
 /* The eyes, in both their forms. Steps 2 to 4 draw two dots and fill them;
    steps 1 and 5 draw lids as one stroked path, at the mouth's own weight, so
    the whole face is one drawing at one weight (moodFace.ts says why the ends
@@ -542,13 +619,32 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   .mood-face.is-alive .mood-face-eye { animation: none; }
 }
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
-.mood-btn:not(.is-selected) .mood-face { opacity: 0.55; }
-.mood-picker:not(:has(.is-selected)) .mood-face { opacity: 1; }
-/* Opacity only - DIRECTION.md tier 4 bans hover-dependent motion, and the
-   lift this used to add never had a touch equivalent to answer to (ticket
-   15). */
-.mood-btn:hover .mood-face { opacity: 0.9; }
-.mood-btn.is-selected .mood-face { transform: scale(1.18); opacity: 1; animation: mood-pop var(--dur-slow) var(--ease-out); }
+/* The border is a ring OUTSIDE the circle, the same treatment Home's chips
+   wear, for the simple reason that every border inside the disc had
+   already failed: 1px of --outline-strong disappears against a coloured
+   fill on the dark theme, at full strength, and the dimming rules made it
+   worse besides. Outside the circle nothing can sit on top of it, and it
+   takes the picked state's accent like the chips' ring does. */
+.mood-btn .mood-face {
+  border-radius: 50%;
+  outline: 2px solid var(--outline-strong);
+  outline-offset: 3px;
+  transition: outline-color var(--dur-fast) var(--ease-out);
+}
+.mood-btn.is-selected .mood-face { outline-color: var(--accent); }
+/* The unselected faces sit back at 55% - but the dimming lands on the
+   disc's fill and the features only, never on the whole svg. */
+.mood-btn:not(.is-selected) .mood-face-disc { fill-opacity: 0.55; }
+.mood-btn:not(.is-selected) .mood-face-eye { opacity: 0.41; }
+.mood-btn:not(.is-selected) .mood-face-mouth { opacity: 0.41; }
+.mood-picker:not(:has(.is-selected)) .mood-face-disc { fill-opacity: 1; }
+.mood-picker:not(:has(.is-selected)) .mood-face-eye { opacity: 0.75; }
+.mood-picker:not(:has(.is-selected)) .mood-face-mouth { opacity: 0.75; }
+/* Hover joins the magnifier's answer rather than replacing it - tier 4's
+   "no hover-dependent motion" is about inventing motion for hover, not
+   about a hover pointer being denied the response a finger gets. */
+.mood-btn:hover .mood-face-disc { fill-opacity: 0.75; }
+.mood-btn.is-selected .mood-face { transform: scale(1.18); animation: mood-pop var(--dur-slow) var(--ease-out); }
 @keyframes mood-pop {
   0% { transform: scale(0.9); }
   55% { transform: scale(1.32) rotate(-5deg); }
@@ -754,6 +850,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
 .tag-group { margin-bottom: var(--space-4); }
 .tag-group-name { font-size: var(--text-xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); display: block; margin-bottom: var(--space-2); }
 .tag-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* A region's slider slides in under the chip row it answers to (ticket 99);
+   the margin rides the sliding element, so the gap is part of the motion
+   instead of appearing with it. */
+.body-region-feeling { margin-top: var(--space-4); }
 .tag-chip-wrap { display: inline-flex; align-items: center; }
 .tag-chip-wrap .tag-info-btn { margin-left: -6px; color: var(--text-2); }
 /* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while
@@ -1183,12 +1283,13 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
    leaves --mood-mag at 1 there rather than not writing it, so there is no
    scale to undo, and the armed colour above is the whole answer. That is the
    substitution rather than a deletion - what goes is the movement, not the
-   cue. */
-.fan-mood .mood-face {
-  scale: var(--mood-mag, 1);
-  translate: 0 calc((1 - var(--mood-mag, 1)) * 20px);
-  transition: scale var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
-}
+   cue.
+
+   The scale and the lift are both the base .mood-face rule's now - every
+   mood row reads --mood-mag and rises with it, the fan included (Alicja,
+   phase 5 ticket 99: the fan was how the hover was supposed to look). The
+   selector stays only as a marker; the day a surface needs its own lift
+   apart from the rows' is the day it gets a declaration again. */
 
 /* The mark travelling from the row you chose into the add control (phase 5
    ticket 18, tier 3). Transform and opacity only, over the same
@@ -1686,9 +1787,106 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 
 /* ---------- desktop adaptation (container query on .app-viewport) ---------- */
 @container app (min-width: 1024px) {
-  .sheet-scrim { align-items: center; }
+  /* Centred over the content column, not the whole app: the rail takes the
+     left of the frame the scrim is fixed to, so a plain centre across the
+     full inset put a sheet in the gap between rail and column - visually
+     off-centre from what it is editing (phase 5 ticket 99 item 13). The
+     padding reserves the rail's own width, rail plus the left inset it has
+     already taken from the scroll region, and the sheet centres in what is
+     left - the same strip .screen centres in, so the two share one axis. */
+  .sheet-scrim {
+    align-items: center;
+    padding-left: calc(var(--rail-width) + var(--inset-left));
+  }
   .sheet { border-radius: var(--radius-xl); }
+  /* As wide as the column it sits over, capped at the column's own max:
+     a wide Segmented inside a sheet was the thing that kept running out of
+     room at 520px. */
+  .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
   .toast { bottom: var(--space-6); }
+}
+
+
+/* ---------- flatpickr (DatePicker, the calendar's month jump) ----------
+   flatpickr draws its own widget, and unthemed it is a white box with blue
+   accents wearing this app like a costume. Everything it paints maps onto
+   the tokens: surfaces, ink, the accent for the day under the finger and
+   the one picked, the app's own radius and type. One stylesheet here for
+   every picker in the app - the popups and the calendar sheet's inline
+   grid are the same widget. */
+/* The container rule is doubled up on its parent selector because
+   flatpickr's own stylesheet paints the same box white with the same
+   specificity, and import order would decide the winner. */
+body > .flatpickr-calendar,
+.flatpickr-calendar.inline {
+  font-family: inherit;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  border-radius: var(--radius-lg);
+}
+.flatpickr-calendar.inline {
+  width: 100%;
+  max-width: 340px;
+  box-shadow: none;
+}
+.flatpickr-calendar .flatpickr-months {
+  margin-bottom: var(--space-2);
+}
+.flatpickr-calendar .flatpickr-current-month {
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+.flatpickr-calendar .flatpickr-monthDropdown-months,
+.flatpickr-calendar .flatpickr-monthDropdown-month {
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+.flatpickr-calendar .flatpickr-monthDropdown-month:hover,
+.flatpickr-calendar .flatpickr-monthDropdown-month.selected {
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+}
+.flatpickr-calendar .flatpickr-prev-month svg,
+.flatpickr-calendar .flatpickr-next-month svg {
+  fill: var(--text-2);
+}
+.flatpickr-calendar .flatpickr-prev-month:hover svg,
+.flatpickr-calendar .flatpickr-next-month:hover svg {
+  fill: var(--text);
+}
+.flatpickr-calendar .flatpickr-weekday {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+.flatpickr-calendar .flatpickr-day {
+  color: var(--text);
+  border-radius: var(--radius-md);
+}
+.flatpickr-calendar .flatpickr-day:hover {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+.flatpickr-calendar .flatpickr-day.today {
+  border-color: var(--outline-strong);
+}
+.flatpickr-calendar .flatpickr-day.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.flatpickr-calendar .flatpickr-day.prevMonthDay,
+.flatpickr-calendar .flatpickr-day.nextMonthDay {
+  color: var(--text-2);
+}
+/* The popup's altInput - the visible field - reads as this app's own
+   input, not flatpickr's form-control default. */
+.flatpickr-calendar + form .form-control, input.form-control {
+  background: var(--surface);
+  color: var(--text);
 }
 
 /* ---------- loading placeholders ---------- */

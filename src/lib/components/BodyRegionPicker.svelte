@@ -1,32 +1,27 @@
 <script lang="ts">
+  import { slide } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
-  import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
-  import Icon from './Icon.svelte';
+  import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN, feelingToSliderValue, sliderToFeeling } from '$lib/data/bodyMap';
+  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
   import DimensionSlider from './DimensionSlider.svelte';
-  import type { BodyRegionAxis, BodyRegionFeeling } from '$lib/data/types';
+  import type { BodyRegionFeeling } from '$lib/data/types';
 
   let {
     regions,
     values,
     onToggle,
-    onAxisInput,
+    onFeeling,
   }: {
     regions: { id: string; name: string }[];
     values: Record<string, BodyRegionFeeling>;
     onToggle: (id: string) => void;
-    onAxisInput: (id: string, axis: BodyRegionAxis, value: number) => void;
+    onFeeling: (id: string, feeling: BodyRegionFeeling) => void;
   } = $props();
 
-  /* Both axes, in a fixed order, neither of them the region's default: a
-     picked region shows the pair unset and the person fills in whichever
-     one they have something to say about (ticket 31). Dysphoria is listed
-     first because it is the one that already existed, not because it is
-     the one to answer - there is no pre-filled value on either, so neither
-     is what the region says unless someone says it. */
-  const AXES: { axis: BodyRegionAxis; label: () => string }[] = [
-    { axis: 'dysphoria', label: () => m.body_region_axis_dysphoria() },
-    { axis: 'euphoria', label: () => m.body_region_axis_euphoria() }
-  ];
+  /* One bipolar scale per picked region (ticket 99): dysphoria at the low
+     end, euphoria at the high end, the same shape the day-level dimension
+     takes, where the two per-axis sliders used to be. Storage keeps both
+     axes - bodyMap.ts owns the projection both ways. */
 </script>
 
 <div class="tag-picker">
@@ -38,23 +33,26 @@
         aria-pressed={r.id in values}
         onclick={() => onToggle(r.id)}
       >
-        {#if r.id in values}<Icon name="check" size={14} />{/if}{r.name}
+        {r.name}
       </button>
     {/each}
   </div>
   {#each regions.filter((r) => r.id in values) as r (r.id)}
-    {#each AXES as a (a.axis)}
+    <div
+      class="body-region-feeling"
+      transition:slide={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}
+    >
       <DimensionSlider
         dim={{
-          name: m.body_region_axis_slider({ region: r.name, axis: a.label() }),
-          low: m.body_region_intensity_low(),
-          high: m.body_region_intensity_high(),
+          name: m.body_region_axis_slider({ region: r.name, axis: m.dim_euphoria_dysphoria() }),
+          low: m.dim_euphoria_dysphoria_low(),
+          high: m.dim_euphoria_dysphoria_high(),
           min: BODY_REGION_INTENSITY_MIN,
           max: BODY_REGION_INTENSITY_MAX
         }}
-        value={values[r.id][a.axis]}
-        onInput={(v) => onAxisInput(r.id, a.axis, v)}
+        value={feelingToSliderValue(values[r.id])}
+        onInput={(v) => onFeeling(r.id, sliderToFeeling(v))}
       />
-    {/each}
+    </div>
   {/each}
 </div>
