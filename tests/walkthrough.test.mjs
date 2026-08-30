@@ -27,7 +27,7 @@ const address = server.httpServer.address();
 async function fillDate(page, selector, iso) {
   await page.evaluate(([sel, v]) => {
     const el = document.querySelector(sel);
-    const fp = el?.flatpickr ?? el?._flatpickr;
+    const fp = el?._flatpickr ?? el?.flatpickr;
     if (!fp) throw new Error(`no flatpickr instance on ${sel}`);
     fp.setDate(v, true);
   }, [selector, iso]);
@@ -2384,7 +2384,7 @@ try {
   const today = localDateInput();
   await page.waitForFunction(
     ([sel, expected]) => {
-      const fp = document.querySelector(sel)?.flatpickr;
+      const fp = document.querySelector(sel)?._flatpickr;
       return fp?.selectedDates[0] && fp.formatDate(fp.selectedDates[0], 'Y-m-d') === expected;
     },
     ['#regimen-end', today]
