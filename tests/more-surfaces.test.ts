@@ -48,6 +48,17 @@ describe('what the More hub is built from', () => {
     expect(more).not.toContain('readFlagRoles(');
   });
 
+  it('shows the cycle row only behind the one visibility rule (ADR-0041)', () => {
+    /* The row stays written in the list below so its icon, href and group
+       are held like any other row's; what changed with ADR-0041 is that a
+       filter decides whether it renders. Default and transfemme profiles
+       pass through a Health group of 8 rows, not 9. The decision lives in
+       cycleTracking.ts, not inline here - the hub only reads its answer. */
+    expect(more).toContain("from '$lib/data/cycleTracking'");
+    expect(more).toContain('cycleTrackingVisible');
+    expect(more).toMatch(/filter\(\(row\) => row\.key !== 'cycle-events'\)/);
+  });
+
   it('keeps every one of the 23 rows, with an unchanged icon, href and group', () => {
     /* The spec (and its own acceptance box) says "22 rows in four groups";
        the four groups actually sum to 23 (5 + 9 + 4 + 5), doubt included.

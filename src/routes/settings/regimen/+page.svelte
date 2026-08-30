@@ -16,6 +16,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { testosteroneActive } from '$lib/data/cycleTracking';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { pauseReasonLabel } from '$lib/data/vocabulary/doseLabels';
@@ -300,6 +301,29 @@
       </div>
     {/snippet}
   </ReadGate>
+
+  <!-- ADR-0041: cycle cessation is what testosterone does, so an active
+       testosterone episode is what puts the cycle log one row away from
+       the regimen that explains it. Same one visibility question
+       cycleTracking.ts answers for More and side effects, read here for
+       the testosterone half alone - the preference has nothing to add on
+       a screen only a regimen reader reached. The cycle screen already
+       draws these episodes as bands behind the events, which is the
+       timeline this row names. -->
+  {#if testosteroneActive(episodes, Date.now())}
+    <div class="regimen-elsewhere">
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.elsewhere)}>
+        <ListRow
+          key="cycle-events"
+          data-cycle-events-link
+          icon="calendar"
+          title={m.cycle_events()}
+          subtitle={m.cycle_tracking_regimen_row_sub()}
+          href="/settings/cycle-events"
+        />
+      </ListCard>
+    </div>
+  {/if}
 
   <!-- No heading over these three. The catalogue's only wording for the
        area is the name of the first row in it, which would be the row
