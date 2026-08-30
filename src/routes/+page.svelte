@@ -85,12 +85,15 @@
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { activeSurgeryProcedure, recoveryDay } from '$lib/data/recoveryDay';
   import { shouldShowSafeSpaceNudge } from '$lib/data/safeSpaceNudge';
+  import { isLetterSnoozed, snoozeLetterTile, unreadUnlockedLetters } from '$lib/data/letterStatus';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const today = todayEpochDay();
+  const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
-  /* Live tiles data & condition (phase 5 ticket 45, 47, 50). */
+  /* Live tiles data & condition (phase 5 ticket 45, 47, 50, ticket 01). */
   let runningWearQuery = liveQuery((j) => j.wearSessions.getRunningSession());
   let runningWear = $derived(runningWearQuery.value ?? null);
   let nowTick = $state(Date.now());
@@ -110,6 +113,17 @@
   let activeSurgery = $derived(activeSurgeryProcedure(proceduresQuery.rows, today));
   let showSurgeryTile = $derived(prefs.surgeryCountdownEnabled && !!activeSurgery);
 
+  let lettersQuery = liveList((j) => j.letters.getLetters(100));
+  let isLetterSnoozedState = $state(false);
+  $effect(() => {
+    isLetterSnoozedState = isLetterSnoozed();
+  });
+  let unreadLetters = $derived(unreadUnlockedLetters(lettersQuery.rows, today));
+  let readyLetter = $derived(unreadLetters[0] ?? null);
+  let otherReadyLettersCount = $derived(Math.max(0, unreadLetters.length - 1));
+  let showLetterTile = $derived(prefs.readyLetterEnabled && !!readyLetter && !isLetterSnoozedState);
+  let letterDismissSheetOpen = $state(false);
+
   function procedureRecoveryText(procedure: { surgeryEpochDay: number | null }): string {
     const day = recoveryDay(procedure.surgeryEpochDay, today);
     if (day.type === 'unscheduled') return m.surgery_day_unscheduled();
@@ -128,7 +142,7 @@
     })
   );
 
-  let hasLiveTiles = $derived(showWearTile || showDoseTile || showSurgeryTile || showSafeSpaceTile);
+  let hasLiveTiles = $derived(showWearTile || showDoseTile || showSurgeryTile || showSafeSpaceTile || showLetterTile);
 
   function dismissSafeSpaceNudge(e?: MouseEvent) {
     if (e) {
@@ -377,7 +391,7 @@
         data-live-tile-grid
       >
         {#if showWearTile && runningWear && runningWearElapsed}
-          <div transition:tileSlide={{ enabled: showDoseTile || showSurgeryTile || showSafeSpaceTile }}>
+          <div transition:tileSlide={{ enabled: showDoseTile || showSurgeryTile || showSafeSpaceTile || showLetterTile }}>
             <Tile
               key="wear-timer"
               data-wear-running-tile
@@ -413,7 +427,7 @@
         {#if showDoseTile}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSurgeryTile || showSafeSpaceTile
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSurgeryTile || showSafeSpaceTile || showLetterTile
             }}
           >
             <Tile
@@ -438,7 +452,7 @@
         {#if showSurgeryTile && activeSurgery}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSafeSpaceTile
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSafeSpaceTile || showLetterTile
             }}
           >
             <Tile
@@ -456,7 +470,7 @@
         {#if showSafeSpaceTile}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSurgeryTile
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSurgeryTile || showLetterTile
             }}
           >
             <div
@@ -486,6 +500,40 @@
                 <Icon name="x" size={16} />
               </button>
             </div>
+          </div>
+        {/if}
+
+        {#if showLetterTile && readyLetter}
+          <div
+            transition:tileSlide={{
+              enabled:
+                !!(showWearTile && runningWear && runningWearElapsed) ||
+                showDoseTile ||
+                showSurgeryTile ||
+                showSafeSpaceTile
+            }}
+          >
+            <Tile
+              key="ready-letter"
+              data-letter-tile
+              data-live-tile="ready-letter"
+              title={m.tile_letter_title()}
+              value={dayLabel(readyLetter.epochDay)}
+              note={otherReadyLettersCount > 0
+                ? m.tile_letter_more({ count: String(otherReadyLettersCount) })
+                : m.tile_letter_single_note()}
+              href={`/settings/letters?read=${readyLetter.id}`}
+              action={{
+                icon: 'x',
+                label: m.tile_letter_dismiss_action(),
+                attrs: { 'data-letter-dismiss': '' },
+                onclick: (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  letterDismissSheetOpen = true;
+                }
+              }}
+            />
           </div>
         {/if}
       </TileGrid>
@@ -640,6 +688,41 @@
         </div>
       </div>
     {/if}
+  </Sheet>
+
+  <Sheet
+    open={letterDismissSheetOpen}
+    title={m.tile_letter_dismiss_title()}
+    onClose={() => (letterDismissSheetOpen = false)}
+  >
+    <div data-letter-dismiss-sheet>
+      <SectionHeading text={m.tile_letter_dismiss_title()} />
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.tile_letter_dismiss_hint()}</p>
+      <div class="stack-3">
+        <button
+          class="btn btn-primary btn-block"
+          data-letter-snooze
+          onclick={() => {
+            snoozeLetterTile();
+            isLetterSnoozedState = true;
+            letterDismissSheetOpen = false;
+            toast(m.tile_letter_snoozed_toast());
+          }}
+        >
+          <span>{m.tile_letter_snooze_btn()}</span>
+        </button>
+        <button
+          class="btn btn-ghost btn-block"
+          data-letter-dont-show
+          onclick={() => {
+            prefs.readyLetterEnabled = false;
+            letterDismissSheetOpen = false;
+          }}
+        >
+          <span>{m.tile_letter_dont_show_btn()}</span>
+        </button>
+      </div>
+    </div>
   </Sheet>
 </div>
 
