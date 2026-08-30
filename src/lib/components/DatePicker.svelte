@@ -15,8 +15,7 @@
      rest-spread every kit control offers. */
   import flatpickr from 'flatpickr';
   import 'flatpickr/dist/flatpickr.min.css';
-  import { Polish as pl } from 'flatpickr/dist/l10n/pl';
-  import { getLocale } from '$lib/paraglide/runtime';
+  import { pickerLocale } from './flatpickrLocale';
 
   let {
     value = $bindable(''),
@@ -54,17 +53,28 @@
       dateFormat: 'Y-m-d',
       altInput: !invis,
       altFormat: 'j F Y',
-      defaultDate: value ? (value as string) : undefined,
-      minDate: (min as string) ?? undefined,
-      maxDate: (max as string) ?? undefined,
+      defaultDate: value || undefined,
+      minDate: min || undefined,
+      maxDate: max || undefined,
       disableMobile: true,
-      locale: getLocale() === 'pl' ? pl : undefined,
+      locale: pickerLocale(),
       onChange: (dates) => {
         const next = dates[0] ? flatpickr.formatDate(dates[0], 'Y-m-d') : '';
         value = next;
         onchange?.(next);
       }
     });
+    /* The id belongs on the field a person sees and a label points at; the
+       hidden original keeps the name for whatever submits it. The instance
+       goes on both, so anything holding the visible field - a label, a
+       test - reaches the picker through it. */
+    if (picker.altInput) {
+      if (id) {
+        picker.altInput.id = id as string;
+        node.removeAttribute('id');
+      }
+      (picker.altInput as unknown as { flatpickr: flatpickr.Instance }).flatpickr = picker;
+    }
     return {
       destroy() {
         picker?.destroy();
