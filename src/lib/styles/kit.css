@@ -805,6 +805,12 @@ a.kit-entry:active {
   cursor: pointer;
 }
 
+.kit-tile-dismiss::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+}
+
 .kit-tile-dismiss:hover,
 .kit-tile-dismiss:active {
   color: var(--text);
