@@ -253,6 +253,16 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     file: 'src/lib/components/LineChart.svelte',
     count: 1,
     reason: 'fill: transparent - an invisible hit target has nothing visible to press'
+  },
+  {
+    file: 'src/lib/components/kit/DayEntry.svelte',
+    count: 1,
+    reason: 'an entry row in a day card is list content being read, not a control - the row press read as text jumping (ticket 99 item 10)'
+  },
+  {
+    file: 'src/lib/components/kit/ListRow.svelte',
+    count: 5,
+    reason: 'the row scale made a tapped list jump sideways; the row is the list, not a button on it (ticket 99 item 10)'
   }
 ];
 
