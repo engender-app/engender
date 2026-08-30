@@ -292,6 +292,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const entries = makeEntriesArea(driver, files);
   const milestones = makeMilestonesArea(driver, files);
   const doubtJournal = makeDoubtJournalArea(driver);
+  const feltSense = makeFeltSenseArea(driver);
   const tags = makeTagsArea(driver);
 
   return {
@@ -326,8 +327,8 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     hairRemoval: makeHairRemovalArea(driver, files),
     procedures,
     doubtJournal,
-    tryouts: makeTryoutsArea(driver, files),
-    feltSense: makeFeltSenseArea(driver),
+    feltSense,
+    tryouts: makeTryoutsArea(driver, files, milestones, feltSense),
     letters: makeLettersArea(driver),
     roadmap: makeRoadmapArea(driver),
     checklists,

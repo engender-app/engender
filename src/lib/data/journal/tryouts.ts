@@ -27,6 +27,9 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Tryout, TryoutKind, TryoutPhoto } from '../types';
 import type { PhotoFileStore } from './journal';
+import type { MilestonesArea } from './milestones';
+import type { FeltSenseArea } from './feltSense';
+import { todayEpochDay } from '../epochDay';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now, rowidByUuid } from './support';
 
@@ -37,6 +40,18 @@ export interface TryoutInput {
   description?: string | null;
   startEpochDay: number;
   endEpochDay: number | null;
+}
+
+export interface AdoptTryoutOptions {
+  endEpochDay?: number;
+  createMilestone?: boolean;
+  milestoneTitle?: string;
+  milestoneEpochDay?: number;
+}
+
+export interface AdoptTryoutResult {
+  tryoutId: string;
+  milestoneId?: string;
 }
 
 export interface TryoutsArea {
@@ -55,6 +70,10 @@ export interface TryoutsArea {
   addPhoto(tryoutId: string, epochDay: number, photo: NormalizedPhoto): Promise<string>;
   /** Idempotent. */
   deletePhoto(id: string): Promise<void>;
+  /** Adopts a tryout permanently: closes it on `endEpochDay` (defaults to
+      today) and optionally mints a timeline milestone with the tryout's
+      felt-sense summary attached. */
+  adoptTryout(id: string, options?: AdoptTryoutOptions): Promise<AdoptTryoutResult>;
 }
 
 type TryoutRow = {
@@ -75,7 +94,12 @@ const toTryout = (row: TryoutRow): Tryout => ({
   endEpochDay: row.end_epoch_day
 });
 
-export function makeTryoutsArea(driver: SqliteDriver, files: PhotoFileStore): TryoutsArea {
+export function makeTryoutsArea(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  milestones?: MilestonesArea,
+  feltSense?: FeltSenseArea
+): TryoutsArea {
   return {
     async getTryouts() {
       const rows = await driver.query<TryoutRow>(
@@ -153,6 +177,91 @@ export function makeTryoutsArea(driver: SqliteDriver, files: PhotoFileStore): Tr
       ]);
       await driver.run('DELETE FROM tryout_photo WHERE uuid = ?', [id]);
       await removeFilesOf(files, rows);
+    },
+
+    async adoptTryout(id, options) {
+      const rows = await driver.query<TryoutRow>(
+        'SELECT uuid, kind, label, description, start_epoch_day, end_epoch_day FROM tryout WHERE uuid = ?',
+        [id]
+      );
+      if (!rows[0]) throw new Error(`unknown tryout: ${id}`);
+      const tryout = toTryout(rows[0]);
+
+      const endEpochDay = options?.endEpochDay ?? todayEpochDay();
+      const result = await driver.run(
+        'UPDATE tryout SET end_epoch_day = ?, updated_at = ? WHERE uuid = ?',
+        [endEpochDay, now(), id]
+      );
+      assertChanged(result, `tryout: ${id}`);
+
+      let milestoneId: string | undefined = undefined;
+
+      if (options?.createMilestone) {
+        const milestoneEpochDay = options.milestoneEpochDay ?? endEpochDay;
+        const milestoneTitle = options.milestoneTitle?.trim() || tryout.label;
+
+        if (milestones) {
+          milestoneId = await milestones.upsertMilestone({
+            name: milestoneTitle,
+            epochDay: milestoneEpochDay
+          });
+        } else {
+          milestoneId = mintUuid();
+          await driver.run(
+            'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
+            [milestoneId, milestoneTitle, milestoneEpochDay, null, now()]
+          );
+        }
+
+        const feltSenseRows = await driver.query<{ mood: number; note: string | null }>(
+          `SELECT f.mood, f.note
+             FROM felt_sense f JOIN tryout t ON t.id = f.tryout_id
+            WHERE t.uuid = ?
+            ORDER BY f.epoch_day DESC, f.id DESC`,
+          [id]
+        );
+
+        if (feltSenseRows.length > 0) {
+          const counts = new Map<number, number>();
+          for (const f of feltSenseRows) {
+            counts.set(f.mood, (counts.get(f.mood) ?? 0) + 1);
+          }
+          let majorityMood = feltSenseRows[0].mood;
+          let maxCount = -1;
+          for (let m = 1; m <= 5; m++) {
+            const c = counts.get(m) ?? 0;
+            if (c > maxCount) {
+              maxCount = c;
+              majorityMood = m;
+            }
+          }
+
+          const summaryNote = feltSenseRows.find((f) => f.note?.trim())?.note ?? null;
+          if (feltSense) {
+            await feltSense.add(
+              { milestoneId },
+              { epochDay: milestoneEpochDay, mood: majorityMood, note: summaryNote }
+            );
+          } else {
+            const milestoneRowId = await rowidByUuid(driver, 'milestone', milestoneId);
+            const fsUuid = mintUuid();
+            await driver.run(
+              'INSERT INTO felt_sense (uuid, tryout_id, milestone_id, epoch_day, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [fsUuid, null, milestoneRowId, milestoneEpochDay, majorityMood, summaryNote, now()]
+            );
+          }
+        }
+      }
+
+      return { tryoutId: id, milestoneId };
     }
   };
+}
+
+export async function adoptTryout(
+  journal: { tryouts: TryoutsArea },
+  tryoutId: string,
+  options?: AdoptTryoutOptions
+): Promise<AdoptTryoutResult> {
+  return journal.tryouts.adoptTryout(tryoutId, options);
 }

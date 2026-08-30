@@ -423,7 +423,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // Takes its felt-sense history along too.
       deleteTryout: ['tryout', 'feltSense'],
       addPhoto: ['tryout'],
-      deletePhoto: ['tryout']
+      deletePhoto: ['tryout'],
+      adoptTryout: ['tryout', 'milestone', 'feltSense']
     },
     reads: { getTryouts: ['tryout'], getPhotos: ['tryout'] }
   }),
