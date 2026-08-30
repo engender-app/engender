@@ -21,6 +21,10 @@ export interface LetterInput {
 export interface LettersArea {
   /** Newest first. */
   getLetters(limit: number): Promise<Letter[]>;
+  /** One letter by id, or null when there is no such row - the read a
+      deep link into a single letter takes, which cannot work from the
+      newest-first page above (phase 5 deepening ticket 13). */
+  getLetter(id: string): Promise<Letter | null>;
   /** Returns the letter's id. Throws on blank text: a letter's one field
       is the whole point of the record, unlike Entry's "at least one of
       six" rule. */
@@ -46,6 +50,14 @@ export function makeLettersArea(driver: SqliteDriver): LettersArea {
         [limit]
       );
       return rows.map(toLetter);
+    },
+
+    async getLetter(id) {
+      const rows = await driver.query<LetterRow>(
+        'SELECT uuid, epoch_day, text, unlock_epoch_day FROM letter WHERE uuid = ?',
+        [id]
+      );
+      return rows.length ? toLetter(rows[0]) : null;
     },
 
     async addLetter(input) {
