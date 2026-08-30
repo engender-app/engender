@@ -255,11 +255,11 @@
 
   .inspector-stat-pill {
     padding: var(--space-1) var(--space-2);
-    background: var(--bg-surface-2);
-    border: 1px solid var(--border-subtle);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: var(--text-xs);
-    font-weight: 500;
+    font-weight: var(--weight-medium);
   }
 
   .inspector-section {
@@ -271,9 +271,9 @@
   .inspector-empty-track {
     margin: 0;
     padding: var(--space-2) var(--space-3);
-    background: var(--bg-surface-1);
-    border: 1px dashed var(--border-subtle);
-    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--r-card);
   }
 
   .inspector-photos-grid {
