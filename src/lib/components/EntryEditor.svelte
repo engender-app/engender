@@ -184,13 +184,24 @@
     episodesQuery.value ? activeEpisodesAt(episodesQuery.value, startOfDayTimestamp(day)) : []
   );
 
-  let scheduleDose = $derived.by(() => {
-    if (!activeEpisodes || activeEpisodes.length === 0) return null;
-    const ep = activeEpisodes[0];
-    if (!ep.dose) return null;
-    const route = matchDoseRoute(ep.route ?? '', []) ?? undefined;
-    return { dose: ep.dose, doseUnit: ep.doseUnit, drug: ep.drug, route };
+  let todayDosesQuery = liveQuery((j) => j.doses.getDoses(day, day));
+  let loggedDoseDrugs = $derived(
+    new Set((todayDosesQuery.value ?? []).map((d) => d.drug?.toLowerCase().trim()).filter(Boolean))
+  );
+
+  let dueScheduledDoses = $derived.by(() => {
+    if (!activeEpisodes) return [];
+    return activeEpisodes
+      .filter((ep) => ep.dose != null && ep.dose > 0 && !loggedDoseDrugs.has(ep.drug.toLowerCase().trim()))
+      .map((ep) => ({
+        dose: ep.dose!,
+        doseUnit: ep.doseUnit,
+        drug: ep.drug,
+        route: matchDoseRoute(ep.route ?? '', []) ?? undefined
+      }));
   });
+
+  let scheduleDose = $derived(dueScheduledDoses[0] ?? null);
 
   let proceduresQuery = liveQuery((j) => j.procedures.getProcedures());
   let recoveringProcedure = $derived.by(() => {
@@ -206,16 +217,24 @@
 
   let effectTypesQuery = liveQuery((j) => j.personalEffects.getEffectTypes());
   let isHrtActive = $derived(activeEpisodes.length > 0);
-
-  let isTestosteroneRegimen = $derived(
-    activeEpisodes.some((ep) => ep.drug.toLowerCase().includes('testosterone'))
-  );
-  let cycleTrackingActive = $derived(prefs.cycleTrackingEnabled || isTestosteroneRegimen);
+  let cycleTrackingActive = $derived(prefs.cycleTrackingEnabled);
 
   let tryoutReflection = $state('');
   let procRecoveryNote = $state('');
   let procRecoveryPhoto = $state<NormalizedPhoto | null>(null);
   let effectSheetOpen = $state(false);
+
+  $effect(() => {
+    if (entryDraft.tryoutFeltSense?.note !== undefined && entryDraft.tryoutFeltSense?.note !== null) {
+      tryoutReflection = entryDraft.tryoutFeltSense.note;
+    }
+    if (entryDraft.procedureRecovery?.notes !== undefined && entryDraft.procedureRecovery?.notes !== null) {
+      procRecoveryNote = entryDraft.procedureRecovery.notes;
+    }
+    if (entryDraft.procedureRecovery?.photo) {
+      procRecoveryPhoto = entryDraft.procedureRecovery.photo;
+    }
+  });
 
   function effectLabel(key: string): string {
     const found = (effectTypesQuery.value ?? []).find((e) => e.key === key);
@@ -224,12 +243,13 @@
 
   function updateProcedureRecovery() {
     if (!recoveringProcedure) return;
-    if (!procRecoveryNote.trim() && !procRecoveryPhoto) {
+    const notes = procRecoveryNote.trim() || entryDraft.procedureRecovery?.notes;
+    if (!notes && !procRecoveryPhoto) {
       entryDraft.setProcedureRecovery(null);
     } else {
       entryDraft.setProcedureRecovery({
         procedureId: recoveringProcedure.proc.id,
-        notes: procRecoveryNote.trim() || undefined,
+        notes: notes || undefined,
         photo: procRecoveryPhoto ?? undefined
       });
     }
@@ -588,27 +608,29 @@
 
   {#if prefs.entryDoseQuickLogEnabled && scheduleDose}
     <div class="contextual-row" data-contextual="dose-quick-log">
-      <button
-        type="button"
-        class="contextual-chip dose-chip press"
-        class:is-active={entryDraft.doseLog != null}
-        aria-pressed={entryDraft.doseLog != null}
-        onclick={() => {
-          if (entryDraft.doseLog != null) {
-            entryDraft.setDoseLog(null);
-          } else {
-            entryDraft.setDoseLog({
-              dose: scheduleDose.dose,
-              doseUnit: scheduleDose.doseUnit,
-              drug: scheduleDose.drug,
-              route: scheduleDose.route
-            });
-          }
-        }}
-      >
-        <Icon name={entryDraft.doseLog != null ? 'check' : 'plus'} size={16} />
-        <span>{m.entry_dose_quick_log({ dose: scheduleDose.dose, unit: scheduleDose.doseUnit, drug: scheduleDose.drug })}</span>
-      </button>
+      {#each dueScheduledDoses as doseItem (doseItem.drug)}
+        <button
+          type="button"
+          class="contextual-chip dose-chip press"
+          class:is-active={entryDraft.doseLog?.drug === doseItem.drug}
+          aria-pressed={entryDraft.doseLog?.drug === doseItem.drug}
+          onclick={() => {
+            if (entryDraft.doseLog?.drug === doseItem.drug) {
+              entryDraft.setDoseLog(null);
+            } else {
+              entryDraft.setDoseLog({
+                dose: doseItem.dose,
+                doseUnit: doseItem.doseUnit,
+                drug: doseItem.drug,
+                route: doseItem.route
+              });
+            }
+          }}
+        >
+          <Icon name={entryDraft.doseLog?.drug === doseItem.drug ? 'check' : 'plus'} size={16} />
+          <span>{m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}</span>
+        </button>
+      {/each}
     </div>
   {/if}
 
@@ -977,7 +999,8 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
-    min-height: 36px;
+    min-height: var(--touch-target);
+    box-sizing: border-box;
     border-radius: var(--radius-pill);
     border: 1px solid var(--outline);
     background: var(--surface);
@@ -992,7 +1015,7 @@
   }
   .contextual-chip.is-active {
     background: var(--accent);
-    color: var(--accent-fg, #fff);
+    color: var(--accent-fg);
     border-color: var(--accent);
   }
   .contextual-input {
@@ -1010,6 +1033,7 @@
     align-items: center;
     gap: var(--space-2);
     font-size: var(--text-sm);
+    min-height: var(--touch-target);
     padding: var(--space-2) var(--space-3);
   }
   .icon-btn-inline {
@@ -1020,6 +1044,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
     padding: 0;
     margin-left: var(--space-1);
   }
