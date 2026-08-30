@@ -12,9 +12,11 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { severityName } from '$lib/data/vocabulary/labels';
+  import { severityName, cycleEventKindName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import type { SideEffect } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -23,6 +25,7 @@
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
@@ -35,6 +38,20 @@
 
   let effectsQuery = liveList((j) => j.sideEffects.getSideEffects());
   let effects = $derived(effectsQuery.rows);
+
+  /* The cycle log as a second area of this screen (ADR-0041): bleeding and
+     spotting are physiological effects like anything else listed here, so
+     the most recent ones sit beneath the effects list once cycle tracking
+     is surfaced at all - an active testosterone regimen or the explicit
+     opt-in (cycleTracking.ts, the one rule the More hub reads too). The
+     rows state, they do not open anything: editing happens on the cycle
+     screen the trailing row links to, which owns the chart and the range
+     pickers this list deliberately does not duplicate. */
+  let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
+  let cycleEvents = $derived(cycleEventsQuery.rows);
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingEnabled));
+  let recentCycleEvents = $derived([...cycleEvents].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
 
   const record = recordEditor<SideEffect, { id?: string; date: string; name: string; severity: string }>({
     blank: () => ({ date: dateInputValueFromEpochDay(todayEpochDay()), name: '', severity: '3' }),
@@ -107,6 +124,37 @@
       </div>
     {/snippet}
   </ReadGate>
+
+  {#if cycleShown && !cycleEventsQuery.loading}
+    <!-- A second area, so a heading: with one list this screen needed none
+         (DIRECTION.md 3c), and two named areas do. Role 1: the second
+         stripe of this screen, after the effects list's 0. -->
+    <SectionHeading text={m.cycle_events()} />
+    <div class="screen-part">
+      <ListCard role={roleAt(activeFlag.roles, 1)}>
+        {#each recentCycleEvents as event (event.id)}
+          <!-- Static rows (the shape regimen's pause rows use, ticket 16):
+               they name nothing to press, and routing them through ListRow
+               would add a tab stop and a wash to text that does nothing.
+               The trailing row below is the way in. -->
+          <div class="kit-row is-static" data-cycle-event={event.id}>
+            <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
+            <span class="kit-row-text">
+              <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>
+              <span class="kit-row-sub">{fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            </span>
+          </div>
+        {/each}
+        <ListRow
+          key="all-cycle-events"
+          icon="calendar"
+          title={m.cycle_events_open_row_title()}
+          subtitle={m.cycle_events_open_row_sub()}
+          href="/settings/cycle-events"
+        />
+      </ListCard>
+    </div>
+  {/if}
 
   <RecordSheet
     {record}

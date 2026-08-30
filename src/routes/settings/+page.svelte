@@ -262,6 +262,32 @@
       <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
     </ListCard>
 
+    <!-- ADR-0041: the manual way into cycle tracking, for someone no
+         testosterone regimen already surfaces it for. A card of its own
+         rather than a row squeezed into the nudges card above - the two
+         cards next to it are each one row too, and this has nothing to do
+         with the entry editor the nudges pair configures. Like every
+         visibility rule this ticket added, the switch only decides whether
+         navigation names cycle tracking; turning it off touches no record
+         and no deep link. -->
+    <ListCard>
+      <div class="kit-row" data-cycle-tracking-toggle>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+          <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
+        </span>
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs.cycleTrackingEnabled}
+            label={m.cycle_tracking_toggle_title()}
+            onChange={(v) => {
+              prefs.cycleTrackingEnabled = v;
+            }}
+          />
+        </span>
+      </div>
+    </ListCard>
+
     <ListCard>
       <div class="kit-row settings-unit-row" style="cursor:default">
         <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
