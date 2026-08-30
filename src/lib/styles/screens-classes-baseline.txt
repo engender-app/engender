@@ -43,6 +43,7 @@ mood-preset-grid
 next-preview
 otd-photos
 photo-thumb
+rive-stage
 screen-gate
 search-box
 search-chips
@@ -52,6 +53,7 @@ search-filter-label
 search-hint
 search-input
 settings-pad
+settings-unit-row
 share-note
 share-preview
 share-stage

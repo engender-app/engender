@@ -142,6 +142,7 @@ export interface Milestone {
   name: string;
   epochDay: number;
   templateKey: string | null;
+  roadmapGoalKey?: string | null;
   photo: Photo | null;
 }
 
