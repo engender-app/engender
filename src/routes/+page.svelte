@@ -473,33 +473,24 @@
               enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSurgeryTile || showLetterTile
             }}
           >
-            <div
-              class="kit-tile home-safe-space-tile"
-              data-tile="safe-space-nudge"
+            <Tile
+              key="safe-space-nudge"
               data-safe-space-nudge-tile
               data-live-tile="safe-space-nudge"
-            >
-              <div class="home-safe-space-main">
-                <p class="home-safe-space-text">{m.tile_safe_space_nudge_sub()}</p>
-                <a
-                  class="btn btn-soft kit-tile-act press"
-                  href="/doubt"
-                  data-safe-space-nudge-open
-                  onclick={dismissSafeSpaceNudge}
-                >
-                  <span>{m.safe_space_title()}</span>
-                </a>
-              </div>
-              <button
-                type="button"
-                class="home-safe-space-dismiss press"
-                data-safe-space-nudge-dismiss
-                aria-label={m.tile_safe_space_nudge_dismiss()}
-                onclick={dismissSafeSpaceNudge}
-              >
-                <Icon name="x" size={16} />
-              </button>
-            </div>
+              title={m.safe_space_title()}
+              note={m.tile_safe_space_nudge_sub()}
+              href="/doubt"
+              action={{
+                icon: 'x',
+                label: m.tile_safe_space_nudge_dismiss(),
+                attrs: { 'data-safe-space-nudge-dismiss': '' },
+                onclick: (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  dismissSafeSpaceNudge(e);
+                }
+              }}
+            />
           </div>
         {/if}
 
@@ -998,65 +989,4 @@
   .home-swap { display: grid; }
   .home-swap > * { grid-area: 1 / 1; }
   .home-days { display: grid; gap: var(--space-3); align-content: start; }
-
-  .home-safe-space-tile {
-    position: relative;
-    display: block;
-    min-height: 0;
-    padding: var(--space-4);
-  }
-  .home-safe-space-main {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding-right: var(--space-6);
-  }
-  .home-safe-space-text {
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--text);
-    line-height: 1.35;
-    font-weight: var(--weight-medium);
-    flex: 1 1 auto;
-  }
-  .home-safe-space-main .btn {
-    flex: 0 0 auto;
-    min-height: 36px;
-    padding: 0 var(--space-3.5);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    border-radius: var(--radius-pill);
-    background: color-mix(in oklab, var(--role-mark) 25%, transparent);
-    color: var(--text);
-    border: 1px solid color-mix(in oklab, var(--role-mark) 45%, transparent);
-    white-space: nowrap;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-  }
-  .home-safe-space-main .btn:active {
-    background: color-mix(in oklab, var(--role-mark) 38%, transparent);
-  }
-  .home-safe-space-dismiss {
-    position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 0;
-    color: var(--text-2);
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-  }
-  .home-safe-space-dismiss:hover,
-  .home-safe-space-dismiss:active {
-    color: var(--text);
-    background: color-mix(in oklab, var(--role-mark) 14%, transparent);
-  }
 </style>
