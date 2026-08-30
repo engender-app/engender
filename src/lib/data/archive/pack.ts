@@ -49,15 +49,23 @@ export interface OpenedArchive {
   files: AsyncGenerator<{ name: string; bytes: Uint8Array<ArrayBuffer> }>;
 }
 
+export type KeyDerivation = (
+  salt: Uint8Array<ArrayBuffer>,
+  kdf: Argon2Params
+) => Promise<Uint8Array<ArrayBuffer>>;
+
 export async function* packArchive(
   contents: ArchiveContents,
-  password: string,
+  keyOrPassword: string | KeyDerivation,
   kdf: Argon2Params = resolveCredentialProfile('archive-export')
 ): AsyncGenerator<Uint8Array<ArrayBuffer>> {
   const encoded = await encodeArchive(contents);
 
   const salt = randomSalt();
-  const key = await deriveKey(password, salt, kdf);
+  const key =
+    typeof keyOrPassword === 'function'
+      ? await keyOrPassword(salt, kdf)
+      : await deriveKey(keyOrPassword, salt, kdf);
 
   yield* frameArchive(
     key,

@@ -3,7 +3,7 @@ import type { PreferenceValues } from '../prefs/catalogue';
 import type { ArchiveSnapshot } from '../journal/archive';
 import { ARCHIVE_FILE_EXTENSION } from './container';
 import { exportFileName } from './deliver';
-import { packArchive } from './pack';
+import { packArchive, type KeyDerivation } from './pack';
 import { portablePreferences } from './payload';
 import { androidAutoExport, type AutoExportStatus } from './android-auto-export-bridge';
 
@@ -13,7 +13,6 @@ const BASE64_CHUNK = 0x8000;
 export interface AndroidAutoExportSource {
   snapshot: ArchiveSnapshot;
   preferences: PreferenceValues;
-  password: string;
 }
 
 export type AndroidAutoExportResult =
@@ -35,6 +34,9 @@ const toBase64 = (bytes: Uint8Array): string => {
   }
   return btoa(binary);
 };
+
+const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
+  Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
 
 async function collect(body: AsyncIterable<Uint8Array>): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
@@ -101,6 +103,15 @@ export async function runAndroidAutoExport(
 
   const writtenAt = deps.now?.() ?? Date.now();
   const fileName = timestampedFileName(source.preferences.name, writtenAt);
+  const derivation: KeyDerivation = async (salt, kdf) => {
+    const { key } = await androidAutoExport.deriveKey({
+      salt: toBase64(salt),
+      kdf
+    });
+    if (!key) throw new Error('no-password');
+    return fromBase64(key);
+  };
+
   const body = packArchive(
     {
       journal: source.snapshot.journal,
@@ -108,7 +119,7 @@ export async function runAndroidAutoExport(
       files: source.snapshot.files,
       readFile: source.snapshot.readFile
     },
-    source.password
+    derivation
   );
 
   try {

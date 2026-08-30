@@ -23,17 +23,13 @@ async function maybeRun() {
   const status = await androidAutoExport.status();
   if (!isDue(status, now)) return;
 
-  const { password } = await androidAutoExport.passwordForScheduledBackup();
-  if (!password) return;
-
   running = true;
   lastAttemptAt = now;
   try {
     const result = await runAndroidAutoExport(
       {
         snapshot: await journal.archive.snapshot(),
-        preferences: prefs,
-        password
+        preferences: prefs
       },
       {
         now: () => now,

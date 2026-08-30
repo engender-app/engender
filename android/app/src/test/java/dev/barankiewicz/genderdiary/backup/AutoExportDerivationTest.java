@@ -1,0 +1,33 @@
+package dev.barankiewicz.genderdiary.backup;
+
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
+public class AutoExportDerivationTest {
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    @Test
+    public void derivationMatchesGoldenVectorsFromHashWasm() {
+        byte[] salt1 = new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+        byte[] key1 = AutoExportPlugin.deriveArgon2id("correct horse", salt1, 65536, 3, 1, 32);
+        assertEquals(
+            "c157c50f9f198840868c180e3cc89815b7d0aab8785fd4cf280e82ac440fba39",
+            bytesToHex(key1)
+        );
+
+        byte[] salt2 = new byte[]{16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+        byte[] key2 = AutoExportPlugin.deriveArgon2id("another password 123!", salt2, 8192, 1, 1, 32);
+        assertEquals(
+            "fa081e0706300855bf325249b26a5dd959bdeec8644a96a1ecd90f9e76df6398",
+            bytesToHex(key2)
+        );
+    }
+}
