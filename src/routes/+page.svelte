@@ -87,15 +87,24 @@
   import { shouldShowSafeSpaceNudge } from '$lib/data/safeSpaceNudge';
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { isTileSnoozed, snoozeTile } from '$lib/data/liveTilesSnooze';
+  import {
+    shouldShowActiveTryoutTile,
+    shouldShowPatchScheduleTile,
+    shouldShowVoiceBenchmarkNudge,
+    shouldShowPauseActiveBanner,
+    shouldShowHairRemovalRecovery,
+    shouldShowMeasurementsNudge
+  } from '$lib/data/liveTiles';
+  import { hairRemovalAreaName } from '$lib/data/vocabulary/labels';
 
   const today = todayEpochDay();
 
-  /* Live tiles data & condition (phase 5 ticket 45, 47, 50). */
+  /* Live tiles data & condition (phase 5 tickets 45, 47, 50, and deepening 03). */
   let runningWearQuery = liveQuery((j) => j.wearSessions.getRunningSession());
   let runningWear = $derived(runningWearQuery.value ?? null);
   let nowTick = $state(Date.now());
   $effect(() => {
-    if (!runningWear) return;
     const id = setInterval(() => (nowTick = Date.now()), 1000);
     return () => clearInterval(id);
   });
@@ -128,8 +137,6 @@
     })
   );
 
-  let hasLiveTiles = $derived(showWearTile || showDoseTile || showSurgeryTile || showSafeSpaceTile);
-
   function dismissSafeSpaceNudge(e?: MouseEvent) {
     if (e) {
       e.stopPropagation();
@@ -139,6 +146,134 @@
       prefs.safeSpaceNudgeDismissedEntryId = latestBadEntry.id;
     }
   }
+
+  /* 1. Active tryout tile */
+  let tryoutsQuery = liveList((j) => j.tryouts.getTryouts());
+  let tryoutFeltSenseQuery = liveQuery(async (j) => {
+    const tryouts = await j.tryouts.getTryouts();
+    const map = new Map<string, number | null>();
+    for (const t of tryouts) {
+      if (t.endEpochDay === null || t.endEpochDay >= today) {
+        const entries = await j.feltSense.forTryout(t.id);
+        map.set(t.id, entries.length > 0 ? entries[0].epochDay : null);
+      }
+    }
+    return map;
+  });
+  let activeTryoutQualifying = $derived(
+    shouldShowActiveTryoutTile({
+      tryouts: tryoutsQuery.rows,
+      latestFeltSenseByTryoutId: tryoutFeltSenseQuery.value ?? new Map(),
+      todayEpochDay: today,
+      enabled: prefs.activeTryoutTileEnabled,
+      snoozed: isTileSnoozed('active-tryout-tile', nowTick)
+    })
+  );
+  let showTryoutTile = $derived(!!activeTryoutQualifying);
+
+  /* 2. Patch schedule tile */
+  let schedulesQuery = liveList((j) => j.doses.getSchedules());
+  let dosePausesQuery = liveList((j) => j.doses.getPauses());
+  let todayDosesQuery = liveList((j) => j.doses.getDoses(today, today));
+  let patchScheduleQualifying = $derived(
+    shouldShowPatchScheduleTile({
+      episodes: episodesQuery.rows,
+      schedules: schedulesQuery.rows,
+      doses: todayDosesQuery.rows,
+      pauses: dosePausesQuery.rows,
+      todayEpochDay: today,
+      enabled: prefs.patchScheduleTileEnabled,
+      snoozed: isTileSnoozed('patch-schedule-tile', nowTick)
+    })
+  );
+  let showPatchScheduleTile = $derived(!!patchScheduleQualifying);
+
+  /* 3. Voice benchmark nudge */
+  let voiceRecordingsQuery = liveList((j) => j.voice.inJournal());
+  let voiceBenchmarkQualifying = $derived(
+    shouldShowVoiceBenchmarkNudge({
+      recordings: voiceRecordingsQuery.rows,
+      todayEpochDay: today,
+      enabled: prefs.voiceBenchmarkNudgeEnabled,
+      snoozed: isTileSnoozed('voice-benchmark-nudge', nowTick)
+    })
+  );
+  let showVoiceBenchmarkTile = $derived(!!voiceBenchmarkQualifying);
+
+  /* 4. Journaling pause active banner / tile */
+  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
+  let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
+  let pauseActiveQualifying = $derived(
+    shouldShowPauseActiveBanner({
+      pauses: pausesQuery.rows,
+      todayEpochDay: today,
+      enabled: prefs.pauseActiveBannerEnabled,
+      snoozed: isTileSnoozed('pause-active-banner', nowTick)
+    })
+  );
+  let showPauseBannerTile = $derived(!!pauseActiveQualifying);
+
+  async function resumePauseEarly(pauseId: string, startEpochDay: number) {
+    const endEpochDay = today - 1;
+    if (endEpochDay < startEpochDay) {
+      await journal.journalingPauses.deletePause(pauseId);
+      return;
+    }
+    await journal.journalingPauses.upsertPause({
+      id: pauseId,
+      startEpochDay,
+      endEpochDay
+    });
+  }
+
+  /* 5. Hair removal recovery tile */
+  let hairRemovalQuery = liveList((j) => j.hairRemoval.getSessions());
+  let hairRemovalQualifying = $derived(
+    shouldShowHairRemovalRecovery({
+      sessions: hairRemovalQuery.rows,
+      todayEpochDay: today,
+      enabled: prefs.hairRemovalRecoveryEnabled,
+      snoozed: isTileSnoozed('hair-removal-recovery', nowTick)
+    })
+  );
+  let showHairRemovalTile = $derived(!!hairRemovalQualifying);
+
+  /* 6. Measurements nudge tile */
+  let measurementsQuery = liveQuery(async (j) => {
+    const all = await j.measurements.getMeasurementsInRange(0, 999999);
+    const count = all.length;
+    let latestDay: number | null = null;
+    for (const m of all) {
+      if (latestDay == null || m.epochDay > latestDay) latestDay = m.epochDay;
+    }
+    return { count, latestDay };
+  });
+  let measurementsData = $derived(measurementsQuery.value ?? { count: 0, latestDay: null });
+  let measurementsNudgeQualifying = $derived(
+    shouldShowMeasurementsNudge({
+      measurementsCount: measurementsData.count,
+      latestMeasurementEpochDay: measurementsData.latestDay,
+      todayEpochDay: today,
+      enabled: prefs.measurementsNudgeEnabled,
+      snoozed: isTileSnoozed('measurements-nudge', nowTick)
+    })
+  );
+  let showMeasurementsTile = $derived(!!measurementsNudgeQualifying);
+
+  let liveTilesCount = $derived(
+    (showWearTile && runningWear && runningWearElapsed ? 1 : 0) +
+      (showDoseTile ? 1 : 0) +
+      (showSurgeryTile && activeSurgery ? 1 : 0) +
+      (showSafeSpaceTile ? 1 : 0) +
+      (showTryoutTile && activeTryoutQualifying ? 1 : 0) +
+      (showPatchScheduleTile && patchScheduleQualifying ? 1 : 0) +
+      (showVoiceBenchmarkTile && voiceBenchmarkQualifying ? 1 : 0) +
+      (showPauseBannerTile && pauseActiveQualifying ? 1 : 0) +
+      (showHairRemovalTile && hairRemovalQualifying ? 1 : 0) +
+      (showMeasurementsTile && measurementsNudgeQualifying ? 1 : 0)
+  );
+
+  let hasLiveTiles = $derived(liveTilesCount > 0);
 
   /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
      ($lib/theme/roles.ts, where the reason the week strip is out of
@@ -168,13 +303,6 @@
 
   let streakQuery = liveQuery((j) => j.stats.streak(today));
   let streak = $derived(streakQuery.value ?? 0);
-
-  /* The journaling pause (phase 5 features ticket 21): the streak caption is
-     a nudge, the same as the check-in prompt, so it goes quiet while a pause
-     covers today rather than showing a frozen number with nothing to
-     explain it. */
-  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
-  let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
 
   /* A second authored moment, and the only one besides the sun: past a
      week's run, opening Home throws a little confetti over the streak line.
@@ -312,6 +440,14 @@
       <div class="home-streak-wrap">
         {#if cheering}{@render cheer(true)}{/if}
         <p class="home-streak" data-home-streak="line">{streak} {m.streak_row()}</p>
+      </div>
+    {:else if pausedToday && showPauseBannerTile && pauseActiveQualifying}
+      <div class="home-streak-wrap">
+        <p class="home-streak" data-home-streak="paused">
+          {pauseActiveQualifying.pause.endEpochDay != null
+            ? m.tile_pause_until_date({ date: fmtDay(pauseActiveQualifying.pause.endEpochDay, { day: 'numeric', month: 'short' }) })
+            : m.tile_pause_ongoing()}
+        </p>
       </div>
     {/if}
   </header>
@@ -456,7 +592,7 @@
         {#if showSafeSpaceTile}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSurgeryTile
+              enabled: liveTilesCount > 1
             }}
           >
             <div
@@ -486,6 +622,166 @@
                 <Icon name="x" size={16} />
               </button>
             </div>
+          </div>
+        {/if}
+
+        {#if showTryoutTile && activeTryoutQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="active-tryout"
+              data-active-tryout-tile
+              data-live-tile="active-tryout-tile"
+              title={m.tile_active_tryout_title()}
+              value={activeTryoutQualifying.tryout.label}
+              note={m.tile_active_tryout_note({ days: String(activeTryoutQualifying.daysElapsed) })}
+              href={`/settings/tryouts/${activeTryoutQualifying.tryout.id}`}
+              action={{
+                icon: 'plus',
+                text: m.tile_tryout_action(),
+                label: m.tile_tryout_action(),
+                href: `/settings/tryouts/${activeTryoutQualifying.tryout.id}?feltSense=1`
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('active-tryout-tile');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showPatchScheduleTile && patchScheduleQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="patch-schedule"
+              data-patch-schedule-tile
+              data-live-tile="patch-schedule-tile"
+              title={m.tile_patch_schedule_title()}
+              value={patchScheduleQualifying.episode.drug}
+              note={`${patchScheduleQualifying.doseAmount} · ${patchScheduleQualifying.route}`}
+              href="/doses"
+              action={{
+                icon: 'plus',
+                text: m.tile_dose_log_action(),
+                label: m.tile_dose_log_action(),
+                href: '/doses?add=1'
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('patch-schedule-tile');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showVoiceBenchmarkTile && voiceBenchmarkQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="voice-benchmark"
+              data-voice-benchmark-tile
+              data-live-tile="voice-benchmark-nudge"
+              title={m.tile_voice_benchmark_title()}
+              value={m.tile_voice_benchmark_action()}
+              note={voiceBenchmarkQualifying.daysElapsed == null
+                ? m.tile_voice_benchmark_none()
+                : m.tile_voice_benchmark_days_ago({ days: String(voiceBenchmarkQualifying.daysElapsed) })}
+              href="/settings/voice"
+              action={{
+                icon: 'mic',
+                text: m.tile_voice_benchmark_action(),
+                label: m.tile_voice_benchmark_action(),
+                href: '/settings/voice/record'
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('voice-benchmark-nudge');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showPauseBannerTile && pauseActiveQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="pause-active"
+              data-pause-active-tile
+              data-live-tile="pause-active-banner"
+              title={m.tile_pause_active_title()}
+              value={m.streak_protected()}
+              note={pauseActiveQualifying.pause.endEpochDay != null
+                ? m.tile_pause_until_date({ date: fmtDay(pauseActiveQualifying.pause.endEpochDay, { day: 'numeric', month: 'short' }) })
+                : m.tile_pause_ongoing()}
+              href="/settings/journaling-pause"
+              action={{
+                icon: 'play',
+                text: m.journaling_pause_resume(),
+                label: m.journaling_pause_resume(),
+                onclick: () => resumePauseEarly(pauseActiveQualifying!.pause.id ?? '', pauseActiveQualifying!.pause.startEpochDay)
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('pause-active-banner');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showHairRemovalTile && hairRemovalQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="hair-removal-recovery"
+              data-hair-removal-tile
+              data-live-tile="hair-removal-recovery"
+              title={m.tile_hair_removal_title()}
+              value={hairRemovalAreaName(hairRemovalQualifying.session.area)}
+              note={m.tile_hair_removal_guidance()}
+              href="/settings/hair-removal"
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('hair-removal-recovery');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showMeasurementsTile && measurementsNudgeQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="measurements-nudge"
+              data-measurements-tile
+              data-live-tile="measurements-nudge"
+              title={m.tile_measurements_title()}
+              value={m.tile_measurements_prompt()}
+              note={m.tile_measurements_note({ days: String(measurementsNudgeQualifying.daysSince) })}
+              href="/settings/measurements"
+              action={{
+                icon: 'plus',
+                text: m.tile_measurements_action(),
+                label: m.tile_measurements_action(),
+                href: '/settings/measurements'
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('measurements-nudge');
+                  nowTick = Date.now();
+                }
+              }}
+            />
           </div>
         {/if}
       </TileGrid>
