@@ -32,6 +32,7 @@ export interface MilestoneInput {
   name: string;
   epochDay: number;
   templateKey?: string | null;
+  roadmapGoalKey?: string | null;
   /** The final photo intent for this save. Omitted means preserve, which
       keeps existing callers and non-photo edits from touching photo rows. */
   photo?: MilestonePhotoChange;
@@ -54,7 +55,8 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         name: string;
         epoch_day: number;
         template_key: string | null;
-      }>('SELECT id, uuid, name, epoch_day, template_key FROM milestone ORDER BY epoch_day, id');
+        roadmap_goal_key: string | null;
+      }>('SELECT id, uuid, name, epoch_day, template_key, roadmap_goal_key FROM milestone ORDER BY epoch_day, id');
       // One query for every milestone's photo rather than one per row: the
       // milestones screen renders the whole list at once.
       const photos = await photosByMilestone(driver);
@@ -63,6 +65,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         name: r.name,
         epochDay: r.epoch_day,
         templateKey: r.template_key,
+        roadmapGoalKey: r.roadmap_goal_key,
         photo: photos.get(r.id) ?? null
       }));
     },
@@ -87,16 +90,16 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       if (input.id) {
         if (photoChange.action === 'preserve') {
           const result = await driver.run(
-            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, updated_at = ? WHERE uuid = ?',
-            [input.name, input.epochDay, input.templateKey ?? null, now(), input.id]
+            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, roadmap_goal_key = ?, updated_at = ? WHERE uuid = ?',
+            [input.name, input.epochDay, input.templateKey ?? null, input.roadmapGoalKey ?? null, now(), input.id]
           );
           assertChanged(result, `milestone: ${input.id}`);
           return input.id;
         }
         await driver.transaction(async () => {
           const result = await driver.run(
-            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, updated_at = ? WHERE uuid = ?',
-            [input.name, input.epochDay, input.templateKey ?? null, now(), input.id]
+            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, roadmap_goal_key = ?, updated_at = ? WHERE uuid = ?',
+            [input.name, input.epochDay, input.templateKey ?? null, input.roadmapGoalKey ?? null, now(), input.id]
           );
           assertChanged(result, `milestone: ${input.id}`);
           await driver.run('DELETE FROM photo WHERE milestone_id = ?', [milestoneRowid]);
@@ -110,15 +113,15 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       const uuid = mintUuid();
       if (!staged) {
         await driver.run(
-          'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
-          [uuid, input.name, input.epochDay, input.templateKey ?? null, now()]
+          'INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+          [uuid, input.name, input.epochDay, input.templateKey ?? null, input.roadmapGoalKey ?? null, now()]
         );
         return uuid;
       }
       await driver.transaction(async () => {
         await driver.run(
-          'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
-          [uuid, input.name, input.epochDay, input.templateKey ?? null, now()]
+          'INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+          [uuid, input.name, input.epochDay, input.templateKey ?? null, input.roadmapGoalKey ?? null, now()]
         );
         if (staged) {
           const rowid = await rowidByUuid(driver, 'milestone', uuid);

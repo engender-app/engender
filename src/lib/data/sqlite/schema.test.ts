@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 42);
+  assert.equal(db.getUserVersion(), 43);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -771,8 +771,28 @@ test('v42 leaves an install that never chose a preset on the default set', async
 
   // No row rather than an empty list: an empty list is a person who unticked
   // everything, and this install has said nothing at all, so the preference
-  // default is what should answer for it.
   assert.equal(activeScales(db), null);
+});
+
+async function migratedToV42() {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 42)
+  );
+  return db;
+}
+
+test('v43 adds roadmap_goal_key column to milestone table', async () => {
+  const db = await migratedToV42();
+  const beforeCols = await db.query<{ name: string }>('PRAGMA table_info(milestone)');
+  assert.equal(beforeCols.some((c) => c.name === 'roadmap_goal_key'), false);
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  const afterCols = await db.query<{ name: string }>('PRAGMA table_info(milestone)');
+  assert.equal(afterCols.some((c) => c.name === 'roadmap_goal_key'), true);
 });
 
 test('the hand-written latest version and the migration list agree', async () => {
