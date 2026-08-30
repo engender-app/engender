@@ -470,7 +470,7 @@
     regions={vocabulary.visibleBodyRegions}
     values={entryDraft.bodyRegions}
     onToggle={(key) => entryDraft.toggleBodyRegion(key)}
-    onAxisInput={(key, axis, v) => entryDraft.setBodyRegionAxis(key, axis, v)}
+    onFeeling={(key, feeling) => entryDraft.setBodyRegionFeeling(key, feeling)}
   />
 
   <!-- One area for everything an entry carries besides its words, rather
@@ -633,10 +633,20 @@
 <style>
   /* The container transform's own layer - a plain fill behind the real
      screen, carrying no text, the same fix as .entry-card-bg/.kit-entry-bg
-     in components.css/kit.css. `.screen` is already `position: relative`
-     (app.css), so this only needs its own. */
+     in components.css/kit.css. Those two sit inside a grid container, where
+     an absolutely positioned sibling and the plain grid items around it
+     share one paint layer and fall back to DOM order - bg first, content on
+     top, no z-index needed. `.screen` here is plain block layout, so its
+     static children never leave the layer below a positioned box; without
+     help this fill painted over every heading, slider and pill in the
+     screen instead of behind them. `isolation: isolate` scopes the fix to
+     this screen alone rather than reordering anything outside it. */
+  .screen.editor {
+    isolation: isolate;
+  }
   .editor-bg {
     position: absolute; inset: 0;
+    z-index: -1;
     background: var(--bg);
   }
   .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }

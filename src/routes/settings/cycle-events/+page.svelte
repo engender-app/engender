@@ -13,6 +13,7 @@
      no prediction of a next period, no fertility framing, no assumption
      that a regular cycle exists. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { cycleEventKindName } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
@@ -111,12 +112,12 @@
       <div class="kit-filter cd-endpoints">
         <Field label={m.cycle_event_range_start_label()} id="cycle-event-range-start">
           {#snippet children(id)}
-            <input class="input" {id} type="date" bind:value={startInput} max={dayRangeStartMax(endInput)} />
+            <DatePicker max={dayRangeStartMax(endInput)} bind:value={startInput} {id} />
           {/snippet}
         </Field>
         <Field label={m.cycle_event_range_end_label()} id="cycle-event-range-end">
           {#snippet children(id)}
-            <input class="input" {id} type="date" bind:value={endInput} min={dayRangeEndMin(startInput)} />
+            <DatePicker min={dayRangeEndMin(startInput)} bind:value={endInput} {id} />
           {/snippet}
         </Field>
       </div>
@@ -180,7 +181,7 @@
     {#snippet fields(editor)}
       <Field label={m.cycle_event_date_label()} id="cycle-event-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="cycle-event-date" bind:value={editor.date} />
+          <DatePicker name="cycle-event-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
       <Field label={m.cycle_event_kind_label()} legend>

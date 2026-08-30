@@ -26,6 +26,7 @@
   import { page } from '$app/state';
   import { replaceState } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt, attributeDose } from '$lib/data/regimenEpisode';
   import {
@@ -61,6 +62,7 @@
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
+  import { scrollToHash } from '$lib/navigation/scroll-region';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -207,6 +209,15 @@
        just landed here, which aborts it and leaves the shell's transition
        promise rejecting for nothing. */
     replaceState('/doses', {});
+  });
+
+  /* Same story as the regimen screen's: the clinician summary links a dose
+     across a hash, the browser's anchor scroll fires before the log's
+     liveQuery answers, and this is the second chance that actually sees the
+     row. On logRows' length as well as loading, because the rows mount over
+     more than one frame and the first may not have the one the hash names. */
+  $effect(() => {
+    if (!loading && view === 'log') scrollToHash();
   });
 
   function openEditor(dose: DoseEvent | null) {
@@ -473,6 +484,7 @@
             <ListRow
               key={dose.id}
               data-dose={dose.id}
+              id={dose.id}
               icon="clock"
               title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
               subtitle={[
@@ -808,7 +820,7 @@
             <div class="cd-endpoints">
               <Field label={m.dose_day_label()} id="dose-day">
                 {#snippet children(id)}
-                  <input class="input" type="date" {id} name="dose-day" bind:value={editor!.day} />
+                  <DatePicker name="dose-day" bind:value={editor!.day} {id} />
                 {/snippet}
               </Field>
               <Field label={m.dose_time_label()} id="dose-time">

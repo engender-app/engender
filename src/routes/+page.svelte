@@ -665,6 +665,22 @@
      too, and the way to do that is to stop the text rather than to move the
      flag.
 
+     Item 20 is that promise made arithmetic. A percentage cap still let the
+     word reach into the outermost ring below about 390px: the ring's left
+     edge at the title's own height is a chord of the circle, not a
+     vertical line, and 62% of a 320px screen is past that chord by ~57px
+     (measured against the glyph edge, not the box). So the cap reserves the
+     ring's full breathing radius outright - 175px is SUN_OUTER/2, the same
+     number flagSun.test.ts pins - and the title scales under it, because a
+     word cannot wrap and a capped box it overflows is a touch again. The
+     fluid size solves the same inequality the measurements state: the word
+     is 5.05px per font-size px, the corner chord at the title's midline
+     costs the screen its radius minus ~53px of drop, and the thin
+     scrollbar takes ~12px the container query cannot see. Clamp bounds
+     keep the extremes honest: the desktop override in screens.css still
+     owns large screens, and 1.3rem is where a 320px viewport stops having
+     room for a hero at all.
+
      :global(), because the desktop-adaptation @container block
      (screens.css) still overrides .home-hero's font-size at 1024px+ and
      that rule stayed put with the other screens' shared breakpoint - a
@@ -672,13 +688,28 @@
      class, and the desktop size would stop winning. */
   :global(.home-hero) {
     font-family: var(--font-display);
-    font-size: 2.4rem; font-weight: 700;
+    font-size: clamp(1.3rem, calc(19.8cqw - 42.2px), 2.4rem); font-weight: 700;
     line-height: 1.1;
     letter-spacing: -0.01em;
     color: var(--accent);
-    max-width: 62%;
+    max-width: min(62%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
   }
-  .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); max-width: 78%; }
+  /* The same reservation for the two quiet lines, which sit lower where the
+     circle is narrower but still reach into the outer ring's band on a
+     320px screen (the date's glyph edge measured 1.4px inside it). */
+  .home-hello,
+  .home-streak-wrap {
+    max-width: min(78%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
+  }
+  .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
+  /* Round 4, item 20: the gap before a Home heading was two spacings
+     stacked - the block rhythm's 12px AND the heading's own 20px
+     padding-top - and read as air, however many times one of them was
+     trimmed. Home's headings take the seam from the block margin alone:
+     padding-top 0, the 12px above them the only space. No font size is
+     touched here - the tile value that shrank gets its own fix in
+     kit.css. */
+  .home > :global(.kit-heading) { padding-top: 0; }
 
   /* Home's vertical rhythm (phase 5 ticket 21). Written as a margin below
      each surface rather than as a flex gap on the column, because one of
@@ -692,13 +723,21 @@
      --space-3 is the gap DIRECTION.md's decision 3 asks for: 10 to 12 rather
      than the 16 the screens used to run at. */
   .home > * { margin-bottom: var(--space-3); }
-  /* Both of these carry their own space and would otherwise be paid twice. */
-  .home > :global(.kit-heading),
-  .home > :global(.kit-tiles) { margin-bottom: 0; }
+  /* The heading owns no space below itself; what follows it is separated by
+     its own top margin or padding. The tiles keep their 12: it is the only
+     seam they give the heading that follows them. */
+  .home > :global(.kit-heading) { margin-bottom: 0; }
   /* The caption belongs to the strip above it, so it sits closer than a
      section does to the next section. */
   .home > :global(.kit-strip) { margin-bottom: var(--space-2); }
-  .home > :last-child { margin-bottom: 0; }
+  /* Not `.home-swap`: unlike the tiles and the heading above, nothing
+     inside it - the skeleton, the day list, the empty notice - carries any
+     trailing space of its own, so zeroing it left the last day card sitting
+     on the scroll region's own --nav-clearance padding alone, with none of
+     Home's own rhythm stacked on top of it the way every other block gets
+     (Alicja, phase 5 ticket 99 item 9: "more space needed between the end
+     of the screen and the last entry"). */
+  .home > :last-child:not(.home-swap) { margin-bottom: 0; }
 
   /* The streak, under the greeting. No pill, no accent, no icon and no
      display size: those are what made it read as a score, and DIRECTION.md's

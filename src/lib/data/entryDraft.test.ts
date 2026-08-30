@@ -84,7 +84,7 @@ test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty'
   const byBodyRegion = createEntryDraft(1);
   byBodyRegion.toggleBodyRegion('chest');
   assert.equal(byBodyRegion.isEmpty, true);
-  byBodyRegion.setBodyRegionAxis('chest', 'euphoria', 70);
+  byBodyRegion.setBodyRegionFeeling('chest', { dysphoria: null, euphoria: 70 });
   assert.equal(byBodyRegion.isEmpty, false);
   assert.equal(byBodyRegion.hasMoodOnlyContent, false);
   assert.deepEqual(byBodyRegion.bodyRegions, { chest: { dysphoria: null, euphoria: 70 } });
@@ -111,23 +111,26 @@ test('toggleBodyRegion adds a region with neither axis set and removes it again'
   draft.toggleBodyRegion('chest');
   assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: null, euphoria: null } });
 
-  draft.setBodyRegionAxis('chest', 'dysphoria', 80);
+  draft.setBodyRegionFeeling('chest', { dysphoria: 80, euphoria: null });
   assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 80, euphoria: null } });
 
   draft.toggleBodyRegion('chest');
   assert.deepEqual(draft.bodyRegions, {});
 });
 
-test('the two axes of a region are set independently of each other', () => {
+test('setBodyRegionFeeling writes one region\'s whole feeling, overwriting both axes', () => {
   const draft = createEntryDraft(1);
   draft.toggleBodyRegion('chest');
 
-  draft.setBodyRegionAxis('chest', 'euphoria', 70);
+  draft.setBodyRegionFeeling('chest', { dysphoria: null, euphoria: 70 });
   assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: null, euphoria: 70 } });
 
-  // Both at once is sayable: setting one never clears the other.
-  draft.setBodyRegionAxis('chest', 'dysphoria', 30);
-  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 30, euphoria: 70 } });
+  // Overwrite, not merge: the picker's one bipolar slider (ticket 99) only
+  // ever produces a single axis, and dragging back across the midpoint has
+  // to take the side it came from with it. Both-set rows still exist from
+  // the two-slider UI, so a whole-feeling write is still sayable.
+  draft.setBodyRegionFeeling('chest', { dysphoria: 30, euphoria: null });
+  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 30, euphoria: null } });
 });
 
 test('addPhoto stages a picked photo; removing it drops it without marking it removed', () => {

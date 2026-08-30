@@ -59,6 +59,7 @@
   } from '$lib/data/wrapped';
   import type { DayAverage } from '$lib/data/journal/stats';
   import Icon from '$lib/components/Icon.svelte';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -448,18 +449,17 @@
               <label class="date-row-label" for={field.id}>{field.label}</label>
               <span class="date-row-value">{shown ?? ''}</span>
               <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
-              <input
+              <DatePicker
                 id={field.id}
-                type="date"
                 value={field.value}
                 min={field.min}
                 max={todayInput}
-                oninput={(event) => {
-                  const next = (event.currentTarget as HTMLInputElement).value;
+                invis
+                onchange={(next) => {
                   if (field.id === 'wrapped-range-start') customStart = next;
                   else customEnd = next;
+                  chooseRange('custom');
                 }}
-                onchange={() => chooseRange('custom')}
               />
             </div>
           {/each}

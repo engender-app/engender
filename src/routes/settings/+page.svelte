@@ -263,7 +263,7 @@
     </ListCard>
 
     <ListCard>
-      <div class="kit-row" style="cursor:default">
+      <div class="kit-row settings-unit-row" style="cursor:default">
         <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
         <span class="kit-row-text">
           <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>

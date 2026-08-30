@@ -13,6 +13,7 @@
      The group is a list card rather than a `.card` holding a `.list-group`,
      which was two containers deep for one list. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { earliestEpisode } from '$lib/data/regimenEpisode';
   import {
@@ -319,7 +320,7 @@
       {/if}
       <Field label={m.effect_first_noticed_label()} id="effect-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="effect-date" bind:value={editor!.date} />
+          <DatePicker name="effect-date" bind:value={editor!.date} {id} />
         {/snippet}
       </Field>
       <div class="stack-3">

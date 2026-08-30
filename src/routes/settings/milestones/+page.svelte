@@ -15,6 +15,7 @@
      is what a row with an editor behind it means everywhere else in the
      app; the delete stays as the row's own one control. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { fmtDay } from '$lib/data/dates';
@@ -265,7 +266,7 @@
       </Field>
       <Field label={m.ms_date_label()} hint={m.ms_date_hint()} id="ms-date">
         {#snippet children(id)}
-          <input class="input" type="date" {id} name="ms-date" bind:value={editor.date} />
+          <DatePicker name="ms-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
       <Field label={m.ms_photo_label()} legend>

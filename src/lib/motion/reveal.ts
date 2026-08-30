@@ -110,14 +110,68 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
  * measured height, so the resting rule the element already has is what it
  * lands on - the invariant DIRECTION.md's reduced-motion contract imposes on
  * every animation in the app.
+ *
+ * `params.skip`, the same instant cut as reduced motion, for the caller that
+ * knows better than this module can: this is a Svelte out-transition, and
+ * Svelte still runs it when the *page* unmounts an always-mounted node during
+ * navigation, not only when the node's own local condition goes false - the
+ * `local`/`global` transition modifiers don't tell those two apart, they only
+ * gate whether a *nested* block's outro rides along with an ancestor's.
+ * Nothing in this module can see a SvelteKit navigation - that lives in
+ * `$app/state`, which breaks reveal.test.ts's plain-node vitest config if
+ * imported here - so the caller reads `navigating.to` and says so. A caller
+ * that never sees a bare, unwrapped mount point has no need of this; one that
+ * does is a screen's own permanent notice unmounting only when the screen
+ * itself goes (the roadmap's provenance disclaimer, phase 5 ticket 99 item
+ * 16, "when i go back to more there is a sliding-up animation with a yank at
+ * the end... i just want a smooth quick transition").
  */
-export function disclose(node: Element): TransitionConfig {
-  if (isReducedMotion()) return { duration: 0 };
+export function disclose(node: Element, params?: { skip?: boolean }): TransitionConfig {
+  if (isReducedMotion() || params?.skip) return { duration: 0 };
 
   const style = getComputedStyle(node);
   const height = parseFloat(style.height) || 0;
   const paddingTop = parseFloat(style.paddingTop) || 0;
   const paddingBottom = parseFloat(style.paddingBottom) || 0;
+  /* A bordered surface (Notice.svelte's card) never actually reached zero
+     height without this: border-width is not part of the height/padding
+     this already shrinks, so the box stalled at its own border - top plus
+     bottom, a real but sub-pixel amount for most of the travel - and only
+     visibly lost it in the last frame or two, once easing had slowed the
+     interpolation down near a browser can no longer render a fraction of a
+     device pixel as anything but a solid hairline. The content below rode
+     the smooth shrink the whole way and then took that last sliver in one
+     frame, which is what read as a jump at the end (Alicja, 2026-08-28,
+     closing a notification panel).
+
+     Continuing to interpolate the border proportionally cannot fix that:
+     any value between 0 and a device pixel still paints as a full hairline,
+     so the snap to invisible would keep happening somewhere near the end
+     regardless of how the number is computed. Dropping it to 0 for the
+     whole animation instead - the instant the transition starts rather than
+     the instant it finishes - moves that same unavoidable snap to the first
+     frame, while the box is still nearly full height and a lost 1px edge is
+     not the thing anyone is looking at. A borderless caller measures 0 here
+     and this is a no-op either way. */
+  const borderTop = parseFloat(style.borderTopWidth) || 0;
+  const borderBottom = parseFloat(style.borderBottomWidth) || 0;
+  /* Margin is the same story as border above, and a bigger one: `.screen >
+     * { margin-bottom: var(--space-6) }` (app.css) gives most direct
+     * children of a screen 24px of it, disclose never touched it, and a
+     * transition's `css()` keeps running for its whole declared duration -
+     * the node is not actually removed until the promise it returns
+     * resolves, which lands some tens of milliseconds after the animated
+     * properties have already visually reached zero. So the box looked
+     * fully collapsed and settled, sat there still holding a full 24px of
+     * margin the whole time, and only lost it in the single frame the node
+     * was finally removed - a second, separate jump landing after the
+     * first one looked done (Alicja, 2026-08-28, after the border fix
+     * above: "it happens in many places where a box collapses... not just
+     * that singular one"). Every caller of `disclose` collapses through
+     * this one function, so this fixes all of them at once rather than
+     * chasing each margin-bearing surface that uses it. */
+  const marginTop = parseFloat(style.marginTop) || 0;
+  const marginBottom = parseFloat(style.marginBottom) || 0;
 
   return {
     duration: motionDuration('--dur-med'),
@@ -126,7 +180,11 @@ export function disclose(node: Element): TransitionConfig {
       `overflow: hidden;` +
       `height: ${t * height}px;` +
       `padding-top: ${t * paddingTop}px;` +
-      `padding-bottom: ${t * paddingBottom}px;`
+      `padding-bottom: ${t * paddingBottom}px;` +
+      `border-top-width: ${t >= 1 ? borderTop : 0}px;` +
+      `border-bottom-width: ${t >= 1 ? borderBottom : 0}px;` +
+      `margin-top: ${t * marginTop}px;` +
+      `margin-bottom: ${t * marginBottom}px;`
   };
 }
 

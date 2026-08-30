@@ -27,6 +27,7 @@
      that was started live keeps its real hour even if its day is corrected
      later, and a backfilled one stays anchored at local midnight. */
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import {
@@ -405,7 +406,7 @@
           <div class="disclosed" transition:disclose>
             <Field label={m.wear_session_day_label()} id="wear-day">
               {#snippet children(id)}
-                <input class="input" type="date" {id} name="wear-day" bind:value={editor.day} />
+                <DatePicker name="wear-day" bind:value={editor.day} {id} />
               {/snippet}
             </Field>
             <Field label={m.wear_session_duration_label()} id="wear-duration">

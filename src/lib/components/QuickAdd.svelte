@@ -56,6 +56,7 @@
   import { goto } from '$app/navigation';
   import { fade } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
+  import DatePicker from './DatePicker.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { journal } from '$lib/data/live/journal.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
@@ -630,14 +631,7 @@
   <p class="muted small" style="margin-bottom:var(--space-4)">{m.new_entry_when()}</p>
   <label class="field-label" for="backdate">{m.another_day()}</label>
   <div class="spread" style="margin-top:var(--space-2)">
-    <input
-      class="input"
-      type="date"
-      id="backdate"
-      name="backdate"
-      max={dateInputValueFromEpochDay(todayEpochDay())}
-      bind:value={backdate}
-    />
+    <DatePicker id="backdate" name="backdate" max={dateInputValueFromEpochDay(todayEpochDay())} bind:value={backdate} />
     <button class="btn btn-soft press" data-choose="date" onclick={chooseDate}>{m.go()}</button>
   </div>
 </Sheet>

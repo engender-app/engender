@@ -37,6 +37,7 @@
      given screen happened to use. */
   import { m } from '$lib/paraglide/messages';
   import { moodName } from '$lib/data/vocabulary/labels';
+  import { moodMagnifier } from '../moodMagnifier.svelte';
   import MoodFace from '../MoodFace.svelte';
 
   let {
@@ -50,10 +51,27 @@
   } = $props();
 
   const STEPS = [1, 2, 3, 4, 5];
+
+  /* Grows the face under the pointer, the same magnifier quick add's fan
+     answers a slide with (magnifier.ts via moodMagnifier.svelte.ts). A
+     mouse hovers; a finger presses and slides - implicit capture on the
+     pressed face keeps the moves coming as the finger travels, and they
+     bubble up here. The release puts every face back. */
+  const magnifier = moodMagnifier(STEPS.length);
 </script>
 
-<div class="kit-moods" data-kit-surface role="radiogroup" aria-label={m.mood()} data-mood-chips>
-  {#each STEPS as step (step)}
+<div
+  class="kit-moods"
+  data-kit-surface
+  role="radiogroup"
+  aria-label={m.mood()}
+  data-mood-chips
+  onpointermove={magnifier.onRowMove}
+  onpointerup={magnifier.onRowRelease}
+  onpointercancel={magnifier.onRowRelease}
+  onpointerleave={magnifier.onRowLeave}
+>
+  {#each STEPS as step, i (step)}
     <button
       type="button"
       class="kit-mood press"
@@ -61,13 +79,14 @@
       aria-checked={step === value}
       aria-label={moodName(step)}
       data-mood={step}
+      style:--mood-mag={magnifier.moodScale[i]}
       onclick={() => onPick(step === value ? null : step)}
     >
       <!-- 48, not 40 (Alicja, 2026-08-27: "a little bigger") - the same
            number as --touch-target, so the circle itself now clears the row
            item's own floor rather than the label beneath it being what gets
            it there. -->
-      <MoodFace {step} size={48} />
+      <MoodFace {step} size={48} blink />
       <span aria-hidden="true">{moodName(step)}</span>
     </button>
   {/each}

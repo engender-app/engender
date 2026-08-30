@@ -22,6 +22,7 @@
   import { m } from '$lib/paraglide/messages';
   import { scaleLinear } from 'd3-scale';
   import { fmtDay } from '$lib/data/dates';
+  import { localDateFromEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
 
   export interface EffectTimelineRow {
     key: string;
@@ -49,9 +50,9 @@
     todayEpochDay: number;
   } = $props();
 
-  const WIDTH = 320;
   const P = 4;
   const ROW_H = 40;
+  const AXIS_H = 24;
   const BAND_H = 16;
   const BAND_Y = (ROW_H - BAND_H) / 2;
 
@@ -66,10 +67,16 @@
      would put every band hard against the left edge. */
   const MIN_SPAN_DAYS = 730;
 
+  /* Item 21: real pixels per day rather than every span squeezed into one
+     320px viewBox. 0.6px/day puts two years at ~440px - a horizontal scroll
+     on a phone, a wide-but-contained strip on desktop - and keeps five years
+     under 1100px so the scroll stays a gesture rather than a journey. */
+  const PX_PER_DAY = 0.6;
+
   const completionRenderEnd = (completion: { start: number; end: number | null }): number =>
     completion.end ?? completion.start + OPEN_END_EXTENSION_DAYS;
 
-  let x = $derived.by(() => {
+  let span = $derived.by(() => {
     const candidates = [todayEpochDay, anchorEpochDay + MIN_SPAN_DAYS];
     for (const row of rows) {
       if (row.onset) candidates.push(row.onset.end);
@@ -77,9 +84,54 @@
       if (row.markerDay != null) candidates.push(row.markerDay);
     }
     const end = Math.max(...candidates);
-    return scaleLinear()
-      .domain([anchorEpochDay, end + (end - anchorEpochDay) * 0.05])
-      .range([P, WIDTH - P]);
+    return { end: end + (end - anchorEpochDay) * 0.05 };
+  });
+
+  const WIDTH = $derived(Math.max(320, (span.end - anchorEpochDay) * PX_PER_DAY));
+
+  let x = $derived(
+    scaleLinear()
+      .domain([anchorEpochDay, span.end])
+      .range([P, WIDTH - P])
+  );
+
+  /* The time axis, which the old fixed-width rendering had no room to carry:
+     a tick at each month boundary the span crosses, drawn as a grid line
+     through every row and labelled once on the axis above. Labels thin
+     themselves out to whatever the drawn width fits - about one per 56px -
+     so a five-year span labels every few months where a two-year one labels
+     every other month; the year joins the label on January ticks and on
+     whichever month carries it after a thinning gap, so the axis always
+     says which year a band sits in. */
+  const MIN_LABEL_PX = 56;
+
+  let ticks = $derived.by(() => {
+    const out: { day: number; label: string; year: boolean }[] = [];
+    const start = localDateFromEpochDay(anchorEpochDay);
+    const last = localDateFromEpochDay(Math.ceil(span.end));
+    for (let y = start.getFullYear(); y <= last.getFullYear(); y++) {
+      for (let mo = y === start.getFullYear() ? start.getMonth() : 0; mo < 12; mo++) {
+        const day = epochDayFromLocalDate(new Date(y, mo, 1));
+        if (day < anchorEpochDay || day > span.end) continue;
+        const year = mo === 0 || out.length === 0;
+        out.push({
+          day,
+          year,
+          label: fmtDay(day, year ? { month: 'short', year: 'numeric' } : { month: 'short' })
+        });
+      }
+    }
+    /* Thin by drawn distance, not by count: two months are 36px apart at
+       two years and 12px at five, and a label that cannot be read is worse
+       than a month that is not named. January always survives the thinning
+       - it carries the year - crowding at worst one neighbour. */
+    let lastX = -Infinity;
+    return out.filter((tick) => {
+      const px = x(tick.day);
+      if (!tick.year && px - lastX < MIN_LABEL_PX) return false;
+      lastX = px;
+      return true;
+    });
   });
 </script>
 
@@ -101,38 +153,58 @@
     · {m.effect_today_label()} {fmtDay(todayEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
   </p>
 
-  {#each rows as row (row.key)}
-    <div class="effect-row">
-      <span class="effect-row-label">{row.label}</span>
-      <svg class="effect-row-track" viewBox="0 0 {WIDTH} {ROW_H}" preserveAspectRatio="none" aria-hidden="true">
-        <line class="track-baseline" x1={P} x2={WIDTH - P} y1={ROW_H / 2} y2={ROW_H / 2} />
-        {#if row.onset}
-          <rect
-            class="band-onset"
-            x={x(row.onset.start)}
-            y={BAND_Y}
-            width={Math.max(0, x(row.onset.end) - x(row.onset.start))}
-            height={BAND_H}
-          />
-        {/if}
-        {#if row.completion}
-          <rect
-            class="band-completion"
-            x={x(row.completion.start)}
-            y={BAND_Y}
-            width={Math.max(0, x(completionRenderEnd(row.completion)) - x(row.completion.start))}
-            height={BAND_H}
-            fill={row.completion.end == null ? 'url(#effect-band-fade)' : 'var(--band-completion)'}
-          />
-        {/if}
-        <line class="today-marker" x1={x(todayEpochDay)} x2={x(todayEpochDay)} y1="0" y2={ROW_H} />
-        {#if row.markerDay != null}
-          <line class="user-marker-line" x1={x(row.markerDay)} x2={x(row.markerDay)} y1="0" y2={ROW_H} />
-          <circle class="user-marker-dot" cx={x(row.markerDay)} cy={ROW_H / 2} r="5" />
-        {/if}
-      </svg>
+  <!-- Labels live outside the scroll; tracks live inside it. One row per
+       effect on both sides at the same fixed height, so the pair stay level
+       no matter how far the tracks scroll - and the axis scrolls with them,
+       which is what makes it a time axis rather than a caption: the year a
+       band sits under is the year above it, whatever the finger has done. -->
+  <div class="timeline-grid">
+    <div class="timeline-labels" aria-hidden="true">
+      <span class="effect-axis-spacer" style="height: {AXIS_H}px"></span>
+      {#each rows as row (row.key)}
+        <span class="effect-row-label" style="height: {ROW_H}px">{row.label}</span>
+      {/each}
     </div>
-  {/each}
+    <div class="timeline-tracks">
+      <svg class="effect-axis" width={WIDTH} height={AXIS_H} aria-hidden="true">
+        {#each ticks as tick (tick.day)}
+          <text class="axis-label" x={x(tick.day)} y={AXIS_H - 8} text-anchor="middle">{tick.label}</text>
+        {/each}
+      </svg>
+      {#each rows as row (row.key)}
+        <svg class="effect-row-track" width={WIDTH} height={ROW_H} aria-hidden="true">
+          {#each ticks as tick (tick.day)}
+            <line class="tick-grid" x1={x(tick.day)} x2={x(tick.day)} y1="0" y2={ROW_H} />
+          {/each}
+          <line class="track-baseline" x1={P} x2={WIDTH - P} y1={ROW_H / 2} y2={ROW_H / 2} />
+          {#if row.onset}
+            <rect
+              class="band-onset"
+              x={x(row.onset.start)}
+              y={BAND_Y}
+              width={Math.max(0, x(row.onset.end) - x(row.onset.start))}
+              height={BAND_H}
+            />
+          {/if}
+          {#if row.completion}
+            <rect
+              class="band-completion"
+              x={x(row.completion.start)}
+              y={BAND_Y}
+              width={Math.max(0, x(completionRenderEnd(row.completion)) - x(row.completion.start))}
+              height={BAND_H}
+              fill={row.completion.end == null ? 'url(#effect-band-fade)' : 'var(--band-completion)'}
+            />
+          {/if}
+          <line class="today-marker" x1={x(todayEpochDay)} x2={x(todayEpochDay)} y1="0" y2={ROW_H} />
+          {#if row.markerDay != null}
+            <line class="user-marker-line" x1={x(row.markerDay)} x2={x(row.markerDay)} y1="0" y2={ROW_H} />
+            <circle class="user-marker-dot" cx={x(row.markerDay)} cy={ROW_H / 2} r="5" />
+          {/if}
+        </svg>
+      {/each}
+    </div>
+  </div>
 
   <div class="effects-timeline-legend">
     <span class="legend-item"><span class="legend-swatch swatch-onset"></span>{m.effect_legend_onset()}</span>
@@ -150,22 +222,56 @@
   .effects-timeline-caption {
     margin-bottom: var(--space-3);
   }
-  .effect-row {
-    display: flex;
-    align-items: center;
+  .timeline-grid {
+    display: grid;
+    grid-template-columns: 108px minmax(0, 1fr);
     gap: var(--space-3);
+  }
+  .timeline-labels {
+    display: flex;
+    flex-direction: column;
     margin-bottom: var(--space-2);
   }
-  .effect-row-label {
-    flex: 0 0 108px;
-    font-size: var(--text-sm);
+  .effect-axis-spacer {
+    flex: none;
   }
-  .effect-row-track {
-    flex: 1 1 auto;
-    width: 100%;
-    height: auto;
+  .timeline-tracks {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .effect-axis {
     display: block;
     overflow: visible;
+    margin-bottom: var(--space-1);
+  }
+  .axis-label {
+    fill: var(--text-2);
+    font-size: 10px;
+    font-family: inherit;
+  }
+  .effect-row-label {
+    flex: none;
+    font-size: var(--text-xs);
+    line-height: 1.3;
+    /* Two lines and no more: the column is a fixed 40px per row so the
+       labels stay level with their tracks while the tracks scroll, and a
+       long clinical name at full length would push into the next row's.
+       Nothing is lost - the full name is the very next thing on the screen,
+       in the list this chart summarises. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .effect-row-track {
+    flex: none;
+    display: block;
+    overflow: visible;
+  }
+  .tick-grid {
+    stroke: var(--border);
+    stroke-width: 1;
   }
   .track-baseline {
     stroke: var(--border);
