@@ -111,12 +111,24 @@ describe('what spec 08 took off Home', () => {
     expect(read('src/routes/more/+page.svelte')).toContain("href: '/doubt'");
   });
 
+  it('draws no hrt onset nudge or effects tile on Home (ticket 49: lives in quick add)', () => {
+    expect(markup).not.toContain('data-live-tile="effects"');
+    expect(markup).not.toContain('data-live-tile="hrt-onset"');
+    expect(home).not.toContain('showEffectsTile');
+    expect(home).not.toContain('isHrtOnsetWindowCurrent');
+    expect(read('src/lib/components/QuickAdd.svelte')).toContain('data-choose="effects"');
+    expect(read('src/lib/components/QuickAdd.svelte')).toContain('isHrtOnsetWindowCurrent');
+  });
+
   it('gates the live tiles on their preferences and data conditions', () => {
     expect(home).toContain('let showWearTile = $derived(prefs.wearTimerEnabled && !!runningWear);');
     expect(home).toContain('let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);');
+    expect(home).toContain('let showSurgeryTile = $derived(prefs.surgeryCountdownEnabled && !!activeSurgery);');
     expect(home).toContain('let showSafeSpaceTile = $derived(');
     expect(markup).toContain('data-live-tile="wear-timer"');
     expect(markup).toContain('data-live-tile="dose-panel"');
+    expect(markup).toContain('data-live-tile="surgery-countdown"');
+    expect(markup).toContain('data-surgery-tile');
     expect(markup).toContain('data-live-tile="safe-space-nudge"');
   });
 

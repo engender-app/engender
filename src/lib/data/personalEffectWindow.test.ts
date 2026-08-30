@@ -5,6 +5,7 @@ import type { PersonalEffectType, RegimenEpisode } from './types.ts';
 import {
   effectTier,
   effectWindowShape,
+  isHrtOnsetWindowCurrent,
   literatureCovers,
   literatureWindow,
   literatureWindowDays
@@ -286,3 +287,81 @@ test('every tier-1 window has a shape that is not none, and no other key does', 
     assert.equal(effectTier({ key: effect, builtIn: true }), 1);
   }
 });
+
+test('isHrtOnsetWindowCurrent returns true only while at least one onset window is active', () => {
+  const eEpisode: RegimenEpisode = {
+    id: 'e1',
+    drug: 'estradiol valerate',
+    ester: null,
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: ANCHOR,
+    endEpochDay: null
+  };
+
+  // No episodes -> false
+  assert.equal(isHrtOnsetWindowCurrent([], ANCHOR), false);
+
+  // Before anchor start day -> false
+  const dayBefore = epochDayFromLocalDate(new Date(2023, 11, 31));
+  assert.equal(isHrtOnsetWindowCurrent([eEpisode], dayBefore), false);
+
+  // On anchor start day -> true
+  assert.equal(isHrtOnsetWindowCurrent([eEpisode], ANCHOR), true);
+
+  // 1 month in -> true
+  const oneMonthIn = epochDayFromLocalDate(new Date(2024, 1, 1));
+  assert.equal(isHrtOnsetWindowCurrent([eEpisode], oneMonthIn), true);
+
+  // 6 months in -> true
+  const sixMonthsIn = epochDayFromLocalDate(new Date(2024, 6, 1));
+  assert.equal(isHrtOnsetWindowCurrent([eEpisode], sixMonthsIn), true);
+
+  // 12 months in (at max onset end, hair_changes at 12 months) -> true
+  const twelveMonthsIn = epochDayFromLocalDate(new Date(2025, 0, 1));
+  assert.equal(isHrtOnsetWindowCurrent([eEpisode], twelveMonthsIn), true);
+
+  // 12 months + 1 day (past all onset windows) -> false
+  const pastMaxOnset = epochDayFromLocalDate(new Date(2025, 0, 2));
+  assert.equal(isHrtOnsetWindowCurrent([eEpisode], pastMaxOnset), false);
+
+  // 24 months in -> false
+  const twentyFourMonthsIn = epochDayFromLocalDate(new Date(2026, 0, 1));
+  assert.equal(isHrtOnsetWindowCurrent([eEpisode], twentyFourMonthsIn), false);
+});
+
+test('isHrtOnsetWindowCurrent handles testosterone and unclassified drugs', () => {
+  const tEpisode: RegimenEpisode = {
+    id: 't1',
+    drug: 'testosterone cypionate',
+    ester: null,
+    dose: 50,
+    doseUnit: 'mg',
+    route: 'subcutaneous',
+    interval: 'weekly',
+    startEpochDay: ANCHOR,
+    endEpochDay: null
+  };
+
+  // Active during onset window for testosterone
+  assert.equal(isHrtOnsetWindowCurrent([tEpisode], ANCHOR), true);
+  assert.equal(isHrtOnsetWindowCurrent([tEpisode], epochDayFromLocalDate(new Date(2025, 0, 1))), true);
+  assert.equal(isHrtOnsetWindowCurrent([tEpisode], epochDayFromLocalDate(new Date(2025, 0, 2))), false);
+
+  // Unclassified drug with no literature windows -> false
+  const unclassifiedEpisode: RegimenEpisode = {
+    id: 'u1',
+    drug: 'progesterone',
+    ester: null,
+    dose: 100,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: ANCHOR,
+    endEpochDay: null
+  };
+  assert.equal(isHrtOnsetWindowCurrent([unclassifiedEpisode], ANCHOR), false);
+});
+

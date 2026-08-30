@@ -2655,6 +2655,70 @@ try {
 } catch (e) { fail('quick add dose', e); }
 
 try {
+  /* The personal effects onset nudge (phase 5 ticket 49).
+     Absent on a fresh journal with no regimen. Once an active regimen
+     episode with a literature onset window is added, opening the fan shows
+     the effects row; tapping it navigates to /settings/effects and closes
+     the fan. When the anchor is moved past the onset window (>12 months),
+     the row is absent again. */
+  const localIso = (daysAgo = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  await openQuickAdd();
+  if ((await page.locator('[data-choose="effects"]').count()) > 0) {
+    throw new Error('effects row was present with no regimen logged');
+  }
+  await page.locator('[data-quick-add]').click();
+
+  // Add an active estradiol regimen episode starting today
+  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.click('[data-add]');
+  await page.click('[data-own]');
+  await page.waitForSelector('#regimen-drug');
+  await page.fill('#regimen-drug', 'Estradiol valerate');
+  await page.fill('#regimen-dose', '4');
+  await page.fill('#regimen-dose-unit', 'mg');
+  await page.fill('#regimen-route', 'oral');
+  await page.fill('#regimen-interval', 'daily');
+  await page.click('[data-save-regimen]');
+  await page.waitForSelector('[data-episode]', { timeout: 8000 });
+
+  // Now Quick Add should show the effects row
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-choose="effects"]', { timeout: 8000 });
+  await page.locator('[data-choose="effects"]').click();
+  await page.waitForFunction(() => window.location.pathname === '/settings/effects', null, { timeout: 8000 });
+  if ((await page.locator('[data-fan]').count()) > 0) {
+    throw new Error('the fan remained open after tapping effects');
+  }
+
+  // Move the anchor episode to 400 days ago (>12 months)
+  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.locator('[data-episode]').first().click();
+  await page.waitForSelector('#regimen-start');
+  await fillDate(page, '#regimen-start', localIso(400));
+  await page.click('[data-save-regimen]');
+  await page.waitForTimeout(500);
+
+  // Now Quick Add should no longer show the effects row
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-fan-target="mood-3"]');
+  if ((await page.locator('[data-choose="effects"]').count()) > 0) {
+    throw new Error('effects row was still present after onset window had passed');
+  }
+  await page.locator('[data-quick-add]').click();
+
+  ok('quick add: personal effects nudge appears only during onset window and navigates to /settings/effects');
+} catch (e) { fail('quick add effects nudge', e); }
+
+
+
+try {
   /* The wear session is the one target that reads the journal before it
      draws itself, because it is two things: nothing running, so this
      starts; something running, so this stops it. Both resolve in place, and
