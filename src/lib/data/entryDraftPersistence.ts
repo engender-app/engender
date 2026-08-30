@@ -15,6 +15,12 @@
 import { copyBodyRegions } from './bodyMap';
 import type { EntryDraft } from './entryDraft';
 import type { BodyRegionFeeling } from './types';
+import type {
+  EntryCycleEventInput,
+  EntryDoseLogInput,
+  EntryEffectMarkerInput,
+  EntryTryoutFeltSenseInput
+} from './journal/entries';
 
 export interface PersistedEntryDraft {
   id: number | undefined;
@@ -28,6 +34,11 @@ export interface PersistedEntryDraft {
   removedPhotoIds: string[];
   removedRecordingIds: string[];
   removedVideoIds: string[];
+  tryoutFeltSense?: EntryTryoutFeltSenseInput | null;
+  doseLog?: EntryDoseLogInput | null;
+  procedureRecovery?: { procedureId: string; notes?: string } | null;
+  effectMarker?: EntryEffectMarkerInput | null;
+  cycleEvent?: EntryCycleEventInput | null;
 }
 
 /** The subset of `draft` that is worth mirroring outside the component. */
@@ -43,7 +54,14 @@ export function serializeDraft(draft: EntryDraft): PersistedEntryDraft {
     bodyRegions: copyBodyRegions(draft.bodyRegions),
     removedPhotoIds: [...draft.removedPhotoIds],
     removedRecordingIds: [...draft.removedRecordingIds],
-    removedVideoIds: [...draft.removedVideoIds]
+    removedVideoIds: [...draft.removedVideoIds],
+    tryoutFeltSense: draft.tryoutFeltSense ? { ...draft.tryoutFeltSense } : null,
+    doseLog: draft.doseLog ? { ...draft.doseLog } : null,
+    procedureRecovery: draft.procedureRecovery
+      ? { procedureId: draft.procedureRecovery.procedureId, notes: draft.procedureRecovery.notes }
+      : null,
+    effectMarker: draft.effectMarker ? { ...draft.effectMarker } : null,
+    cycleEvent: draft.cycleEvent ? { ...draft.cycleEvent } : null
   };
 }
 
@@ -73,4 +91,9 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
   );
   draft.removedVideoIds = [...persisted.removedVideoIds];
   draft.videos = draft.videos.filter((v) => v.kind !== 'stored' || !draft.removedVideoIds.includes(v.video.id));
+  draft.tryoutFeltSense = persisted.tryoutFeltSense ? { ...persisted.tryoutFeltSense } : null;
+  draft.doseLog = persisted.doseLog ? { ...persisted.doseLog } : null;
+  draft.procedureRecovery = persisted.procedureRecovery ? { ...persisted.procedureRecovery } : null;
+  draft.effectMarker = persisted.effectMarker ? { ...persisted.effectMarker } : null;
+  draft.cycleEvent = persisted.cycleEvent ? { ...persisted.cycleEvent } : null;
 }
