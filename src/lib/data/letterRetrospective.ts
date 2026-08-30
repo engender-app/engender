@@ -37,7 +37,13 @@ export interface RetrospectiveLetter {
 }
 
 /** The unlocked letters written inside `[start, end]`, both ends inclusive,
-    oldest first - the order a year is read in. */
+    oldest first - the order a year is read in.
+
+    Membership is by the day a letter was *written*, not the day it opened:
+    a yearly recap is that year's own voice, so a letter belongs to the
+    year its words date from, and "unlocked" filters rather than places it.
+    A letter written in 2024 that opened in 2025 is therefore a 2024
+    letter. */
 export function wrappedLetters(
   letters: Letter[],
   start: number,

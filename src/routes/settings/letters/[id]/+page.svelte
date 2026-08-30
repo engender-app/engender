@@ -62,7 +62,10 @@
 
 <style>
   /* The letters screen's own prose treatment, carried over rather than
-       reinvented: a letter keeps prose's measure and line height. */
+       reinvented: a letter keeps prose's measure and line height. The class
+       name travels with it deliberately - app.css's user-select opt-in list
+       matches `.letter-text` by name, so renaming it here would silently
+       take the letter's text back out of selectable copy. */
   .letter-text {
     white-space: pre-wrap;
     line-height: var(--leading-body);
