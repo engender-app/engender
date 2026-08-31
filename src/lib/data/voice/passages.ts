@@ -5,17 +5,27 @@
    because the same words were read each time, so the row records which text
    that was and ticket 16's compare surface keys on it rather than assuming.
 
-   **Why the app ships its own passage.** The obvious choices were the
-   Rainbow Passage and the IPA's "North Wind and the Sun", which is what the
-   ticket suggested. Both carry a licence question this project cannot answer
-   cheaply: the Rainbow Passage is a 1940 publication whose status is
-   unsettled, and the Polish "Północny wiatr i słońce" that phoneticians
-   actually use is a translation published in the Journal of the IPA, which
-   is Cambridge's. Nothing about a benchmark needs a famous passage - it needs
-   the *same* passage, because the comparison is a person against their own
-   earlier takes and never against a published norm. So the app ships a
-   phonetically broad passage of its own per language, under the same GPL-3.0
-   as the rest of the tree, and the question does not arise.
+   **Which passages ship, and the licence question underneath them.**
+   English is the Rainbow Passage (Fairbanks, 1940), the standard first
+   paragraph, and Polish is "Północny wiatr i słońce", the Aesop fable the
+   IPA uses, in wording written for this app rather than lifted from the
+   Journal of the IPA's own Polish illustration, which is Cambridge's.
+
+   Alicja chose the Rainbow Passage on 2026-08-31 after being shown the
+   alternative. The alternative was a passage written for the app: nothing
+   about a benchmark needs a *standard* passage, only the *same* one, since
+   the comparison is a person against their own earlier takes and never
+   against a published norm - and the Rainbow Passage is a 1940 publication
+   whose status is unsettled, reproduced everywhere in speech work and
+   licensed by nobody. That is her call to make and it is recorded here
+   rather than argued again.
+
+   The English text is verbatim, American spelling and all, because a
+   standard passage edited is not the standard passage any more. Its last
+   sentence is the one to watch if this ever comes up again: it reads "when
+   a man looks for something beyond his reach, his friends say he is looking
+   for the pot of gold", which is a gendered line for somebody to read aloud
+   in this particular app.
 
    Pure: the texts live in messages/, and what is here is how a text becomes
    a series key. */
