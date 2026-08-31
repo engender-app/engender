@@ -16,11 +16,13 @@
   import { m } from '$lib/paraglide/messages';
   import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { changeJournalPin, isValidPin } from '$lib/data/journal-pin';
+  import { changeJournalPin, unlockJournalPin } from '$lib/data/journal-pin';
+  import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import AccessModeSetup from '$lib/components/AccessModeSetup.svelte';
   import PinPad from '$lib/components/PinPad.svelte';
+  import PinEntry, { type PinAttempt } from '$lib/components/PinEntry.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
 
@@ -58,15 +60,29 @@
     }
   }
 
-  /* Three pads' worth of state in one flow: the current PIN, then the new
-     one, then the new one again. Held rather than submitted in between,
-     because a rewrap needs both ends at once. */
-  async function pinStep(entered: string) {
-    error = '';
-    if (currentPin === '') {
+  /* Two steps, and the first one is a gate like any other. It goes through
+     PinEntry so the current PIN is throttled and a lost device key gets its
+     own sentence - this screen checked it by hand at first, which meant the
+     one place in the app where a wrong PIN cost nothing and a missing device
+     key read as a wrong PIN. Both real gates already got that right; this is
+     now the same component they use.
+
+     Verifying by unlocking rather than by a comparison: there is nothing to
+     compare against, and a PIN that opens the keystore is the definition of
+     the current one. */
+  async function verifyCurrentPin(entered: string): Promise<PinAttempt> {
+    try {
+      await unlockJournalPin(entered);
       currentPin = entered;
-      return;
+      return 'ok';
+    } catch (e) {
+      return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
     }
+  }
+
+  /** The new PIN, twice. Nothing is being guessed at here, so the bare pad. */
+  async function chooseNewPin(entered: string) {
+    error = '';
     if (heldPin === '') {
       heldPin = entered;
       nextPin = '';
@@ -79,21 +95,15 @@
       nextPin = '';
       return;
     }
-    if (!isValidPin(entered)) {
-      error = m.pin_mismatch();
-      nextPin = '';
-      return;
-    }
 
     busy = true;
     try {
       await changeJournalPin(currentPin, entered);
       toast(m.pin_changed_toast());
       await goto('/settings/security');
-    } catch {
-      error = m.pin_wrong();
-      pinRefusals++;
-      currentPin = '';
+    } catch (e) {
+      console.error('changing the PIN failed', e);
+      error = m.am_change_failed();
       heldPin = '';
       nextPin = '';
     } finally {
@@ -104,7 +114,6 @@
   let pinPrompt = $derived(
     currentPin === '' ? m.pin_change_current() : heldPin === '' ? m.pin_choose_title() : m.pin_again_title()
   );
-  let padValue = $derived.by(() => (currentPin === '' ? currentPin : nextPin));
 </script>
 
 <div class="screen">
@@ -114,16 +123,11 @@
     <div class="card">
       <p class="ob-text">{pinPrompt}</p>
       {#if currentPin === ''}
-        <PinPad
-          value={currentPin}
-          disabled={busy}
-          refusals={pinRefusals}
-          onComplete={pinStep}
-        />
+        <PinEntry onVerify={verifyCurrentPin} />
       {:else}
-        <PinPad bind:value={nextPin} disabled={busy} refusals={pinRefusals} onComplete={pinStep} />
+        <PinPad bind:value={nextPin} disabled={busy} refusals={pinRefusals} onComplete={chooseNewPin} />
+        <p class="pin-status small" role="alert" data-access-status>{error}</p>
       {/if}
-      <p class="pin-status small" role="alert" data-access-status>{error}</p>
       <button
         class="btn btn-ghost"
         disabled={busy}

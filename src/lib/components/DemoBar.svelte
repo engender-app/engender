@@ -25,7 +25,6 @@
     ['/settings/milestones', 'New milestone'],
     ['/settings/dimension', 'Custom dimension'],
     ['/settings/export', 'Export & import'],
-    ['/settings/lock', 'App lock'],
     ['/settings/photos', 'Progress photos'],
     ['/settings/labs', 'Lab results'],
     ['/timeline', 'Transition timeline'],

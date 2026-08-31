@@ -126,3 +126,16 @@ test('wrong selection mode fails explicitly', () => {
     'archive-export uses the current archive-password profile, not persisted parameters'
   );
 });
+
+/* The PIN's setup copy states "four digits" and "all 10,000 possible PINs"
+   as prose, in both languages, because parameterising only the digit count
+   would leave the 10,000 and the five-second figure behind and produce copy
+   that contradicts itself. That trade is only safe while the constant is
+   what the copy says, so the constant is pinned here: a change to
+   PIN_LENGTH has to fail a test rather than silently make a risk screen
+   lie (docs/ui-copy.md, "the sentence must be exactly as final as the
+   behaviour, in both languages"). */
+test('the PIN length the copy is written around is the one the pad collects', async () => {
+  const { PIN_LENGTH } = await import('./params.ts');
+  expect(PIN_LENGTH).toBe(4);
+});

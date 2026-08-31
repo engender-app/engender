@@ -162,8 +162,12 @@ export async function resetApp(): Promise<void> {
   });
   /* PIN mode's binding key (data/device-secret.ts). Not covered by the OPFS
      sweep above - it lives in IndexedDB - and a key left behind after a
-     reset is key material outliving the journal it belonged to. */
-  await removeDeviceBindingSecret().catch(() => {});
+     reset is key material outliving the journal it belonged to. Warned
+     rather than swallowed: the reset carries on either way, and a reset that
+     could not take this is worth seeing in a console. */
+  await removeDeviceBindingSecret().catch((error) => {
+    console.warn('could not remove the PIN binding key during the reset', error);
+  });
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
   location.replace('/');
@@ -287,11 +291,17 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
        screen does not offer it on a phone. */
     if (isAndroid()) throw new Error('changing to device-bound mode is not available on Android');
     await addDeviceBoundJournal(sessionDataKey);
+    /* The removal is awaited before the change is reported, and a failure is
+       allowed to throw. Reporting first would have said "changed" while the
+       keystore was still on disk, and chooseJournalAccessMode prefers a
+       keystore - so the next boot would have asked for the old secret again,
+       with a toast in the person's memory saying it had moved. Failing here
+       leaves the old mode working and the screen able to say so. */
+    await removeKeystoreFile();
     dispatch({ type: 'access-mode-changed', accessMode: 'device-bound' });
-    await removeKeystoreFile().catch((error) => {
-      console.warn('could not remove the keystore file after moving to device-bound mode', error);
+    await removeDeviceBindingSecret().catch((error) => {
+      console.warn('could not remove the PIN binding key after moving to device-bound mode', error);
     });
-    await removeDeviceBindingSecret().catch(() => {});
     return;
   }
 
@@ -301,7 +311,11 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
 
   /* PIN mode keeps its own binding key, so only a move *away* from it clears
      one. Everything else here is the previous mode's leftovers. */
-  if (target !== 'pin') await removeDeviceBindingSecret().catch(() => {});
+  if (target !== 'pin') {
+    await removeDeviceBindingSecret().catch((error) => {
+      console.warn('could not remove the PIN binding key after changing access mode', error);
+    });
+  }
   if (isAndroid()) {
     await androidKeystore.erase().catch((error) => {
       console.warn('could not erase the Android device-bound key after changing access mode', error);

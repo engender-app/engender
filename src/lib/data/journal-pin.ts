@@ -20,7 +20,7 @@ import { createKeystore, rewrapKeystore, unlockKeystore, wrapDataKeyWithSecret, 
 import { PIN_LENGTH } from '../crypto/params';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
 import { browserKeySlot, type DeviceKeySlot } from './device-bound-journal';
-import { combinePinWithDevice, createDeviceBindingSecret, readDeviceBindingSecret } from './device-secret';
+import { combinePinWithDevice, createDeviceBindingSecret, readDeviceBindingSecret, PIN_BINDING_SLOT } from './device-secret';
 
 /** Where a PIN keystore's two halves live. Defaults to the real browser
     bindings; the tests hand in memory. */
@@ -30,8 +30,6 @@ export interface PinPorts {
   writeKeystore(metadata: KeystoreMetadata): Promise<void>;
 }
 
-const PIN_BINDING_SLOT = 'journal-pin-binding';
-
 const browserPorts = (): PinPorts => ({
   slot: browserKeySlot(PIN_BINDING_SLOT),
   readKeystore: readKeystoreFile,
@@ -39,30 +37,56 @@ const browserPorts = (): PinPorts => ({
 });
 
 /** Exactly four digits (crypto/params.ts states why four). A floor and a
-    ceiling both, because the pad collects a fixed count and submits itself
-    on the last one. */
+    ceiling both, because the pad collects a fixed count and submits itself on
+    the last one. */
 export function isValidPin(pin: string): boolean {
   return new RegExp(`^[0-9]{${PIN_LENGTH}}$`).test(pin);
+}
+
+/* Enforced here rather than trusted from the pad. The pad does guarantee the
+   shape today, which made a UI-side check unreachable - but the shape is what
+   the whole five-second figure is computed from, so the guarantee belongs
+   next to the wrap rather than in whichever component happened to collect the
+   digits. A three-digit "PIN" wrapping a journal is 1000 candidates and copy
+   that lies about it. */
+function requireValidPin(pin: string): string {
+  if (!isValidPin(pin)) {
+    throw new KeystoreUnreadableError(`a PIN is exactly ${PIN_LENGTH} digits, and this one is not`);
+  }
+  return pin;
 }
 
 /** First run: mints the binding key and the data key, wraps one under the
     other plus the PIN, persists the metadata, hands back the key for this
     session. */
 export async function setupJournalPin(pin: string, ports: PinPorts = browserPorts()): Promise<Uint8Array<ArrayBuffer>> {
-  const secret = combinePinWithDevice(pin, await createDeviceBindingSecret(ports.slot));
+  const secret = combinePinWithDevice(requireValidPin(pin), await createDeviceBindingSecret(ports.slot));
   const { metadata, dataKey } = await createKeystore(secret, undefined, 'pin');
   await ports.writeKeystore(metadata);
   return dataKey;
 }
 
-/** Wraps a journal that is already open under a PIN - changing access mode
-    from Settings, where the data key is in memory. Mints a fresh binding
-    key, so the previous mode's leftovers cannot open it. */
+/** Moves a journal that is already open into PIN mode - the Settings change,
+    where the data key is in memory. Mints a fresh binding key, so the
+    previous mode's leftovers cannot open what this writes.
+
+    Refuses a journal already in PIN mode, and the refusal is the point rather
+    than tidiness. Minting replaces the binding key before the new keystore is
+    written, and for every other starting mode that is safe: the keystore on
+    disk does not use the binding key, so it keeps opening if this is
+    interrupted. From PIN mode it is not safe - the key being replaced is the
+    only one that opens the keystore still on disk, so an interruption between
+    the two would leave a journal nothing can open. Changing a PIN without
+    changing the device is changeJournalPin, which reuses the key. */
 export async function addJournalPin(
   dataKey: Uint8Array<ArrayBuffer>,
   pin: string,
   ports: PinPorts = browserPorts()
 ): Promise<void> {
+  requireValidPin(pin);
+  if ((await ports.readKeystore())?.secretSource === 'pin') {
+    throw new KeystoreUnreadableError('this journal is already in PIN mode - use changeJournalPin to change the PIN');
+  }
   const secret = combinePinWithDevice(pin, await createDeviceBindingSecret(ports.slot));
   await ports.writeKeystore(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'));
 }
@@ -86,6 +110,7 @@ export async function changeJournalPin(
   next: string,
   ports: PinPorts = browserPorts()
 ): Promise<void> {
+  requireValidPin(next);
   const metadata = await requirePinKeystore(ports);
   const deviceSecret = await readDeviceBindingSecret(ports.slot);
   await ports.writeKeystore(

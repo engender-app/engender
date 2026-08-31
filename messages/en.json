@@ -470,7 +470,6 @@
   "pin_again_title": "Type it once more",
   "pin_greeting": "Hi",
   "pin_greeting_named": "Hi, {name}",
-  "pin_setup_body": "Four digits, asked for every time the app opens. They encrypt your journal together with a key kept on this device. Forget the PIN and the only way back in is to reset the app and lose what is on here, so pick one you will remember.",
   "pin_confirm_body": "The same four digits again, so a slip of the thumb doesn’t lock you out.",
   "pin_progress": "PIN progress: {typed} of {total} digits",
   "pin_mismatch": "Those two did not match. Start again.",
@@ -2301,7 +2300,7 @@
   "dim_gender_stability_low": "steady",
   "dim_gender_stability_high": "shifting",
   "dim_gender_stability_note": "Where the day sat between a steady sense of gender and a shifting one.",
-  "am_device_no_lock": "Skip mode needs a device screen lock before Android can bind the journal key to this phone. Set one first, or choose a journal passphrase now.",
+  "am_device_no_lock": "Your device needs a screen lock before Android can bind the journal key to this phone. Set one first, or choose a PIN or passphrase now.",
   "am_device_unavailable": "This browser could not keep a device-bound journal key. Choose a journal passphrase instead.",
   "am_setup_title": "How should your journal open?",
   "am_setup_body": "Everything you write is encrypted. This chooses what unlocks it, and you can change it later in Settings.",
@@ -2319,7 +2318,6 @@
   "am_mode_passphrase_sub": "the strongest, and the only one that travels",
   "am_device_detail_web": "No passphrase to type and none to forget: the key stays in this browser profile. That cuts both ways. Anyone who copies this browser profile opens the journal without typing anything, and if the profile goes, so does the journal. Nothing you know can bring it back.",
   "am_device_detail_android": "Android keeps the key and hands it over once your screen lock says it is you, so there is nothing extra to type or remember. Removing the device screen lock destroys the key for good, and so does losing the phone. Nothing you know can bring it back.",
-  "am_pin_detail": "Four digits, and this time they are the encryption key: the journal is wrapped under your PIN together with a key that never leaves this device. Without that key, a stolen copy of the journal file cannot be attacked at all. With it, all 10,000 possible {digits}-digit PINs fall in about five seconds on a fast graphics card, so a PIN stops someone who picks your phone up, not someone who takes it apart. Choose a passphrase if that is who you are hiding from.",
   "am_passphrase_detail": "The strongest of the three, and the only one that opens this journal on another device. At least {min} characters, and enGender has no account behind it: nobody, including this app, can recover a lost passphrase or the journal under it. Save it in a password manager now.",
   "am_export_note": "This mode ties the journal to this device, so an encrypted export is the only copy that would survive losing it.",
   "am_confirm_passphrase": "Use this passphrase",
@@ -2338,5 +2336,7 @@
   "pin_change_sub": "the current one first, then the new one twice",
   "pin_change_current": "Your current PIN.",
   "pin_changed_toast": "PIN changed.",
-  "am_pin_choose": "Choose four digits."
+  "am_pin_choose": "Choose four digits.",
+  "am_pin_detail_web": "Four digits, and this time they are the encryption key: the journal is wrapped under your PIN together with a key that never leaves this browser. A stolen copy of the journal file on its own cannot be attacked at all. A copy of this whole browser profile takes both halves, and then all 10,000 possible PINs fall in about five seconds on a fast graphics card. So a PIN stops a glance and a stray file, not somebody who can take the profile or the device apart. Choose a passphrase if that is who you are hiding from.",
+  "am_pin_detail_android": "Four digits, and this time they are the encryption key: the journal is wrapped under your PIN together with a key that never leaves this phone. A stolen copy of the journal file on its own cannot be attacked at all. Somebody who can take the phone apart gets both halves, and then all 10,000 possible PINs fall in about five seconds on a fast graphics card. So a PIN stops a glance and a stray file, not a forensic tool. Choose a passphrase if that is who you are hiding from."
 }

@@ -1092,8 +1092,14 @@ try {
      honesty ADR-0041 made the condition of allowing four digits at all, so
      the walkthrough checks the sentence is actually on the screen. */
   const pinConsequence = await page.locator('[data-access-chosen="pin"]').innerText();
-  if (!/5 ?000|10[ ,.]?000/.test(pinConsequence)) {
-    throw new Error('the PIN screen does not state its brute-force figure: ' + pinConsequence);
+  /* Both halves of the claim, because either alone can be true while the
+     screen is still dishonest: the size of the space, and how long walking
+     it takes. The first draft of this check matched only the count. */
+  if (!/10[ ,.]?000/.test(pinConsequence)) {
+    throw new Error('the PIN screen does not state how many PINs there are: ' + pinConsequence);
+  }
+  if (!/five seconds|pięć sekund/.test(pinConsequence)) {
+    throw new Error('the PIN screen does not state the wall-clock figure: ' + pinConsequence);
   }
   await page.waitForSelector('[data-access-export-note]');
 

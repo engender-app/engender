@@ -11,5 +11,5 @@
    rule is a table, the layout is where a table gets buried, and a rule
    nobody can run in a test is one nobody can check. */
 export function chromelessPath(path: string): boolean {
-  return path.startsWith('/onboarding') || path === '/settings/lock';
+  return path.startsWith('/onboarding');
 }
