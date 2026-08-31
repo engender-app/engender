@@ -131,7 +131,7 @@ test('setting a custom goal that does not exist fails loudly rather than doing n
   await assert.rejects(() => journal.roadmap.setCustomGoalStatus('not-a-real-uuid', 'checked'));
 });
 
-test('minting a milestone with a roadmapGoalKey links the goal key (ticket 10, ADR-0042)', async () => {
+test('minting a milestone with a roadmapGoalKey links the goal key (ticket 10, ADR-0045)', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-id-card', 'checked');
 
