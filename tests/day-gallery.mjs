@@ -50,6 +50,9 @@ const select = async (label, value) => {
    is being looked at, so they come off for the picture and go back on. */
 async function shoot(name) {
   await page.addStyleTag({ content: '.stage-controls { display: none !important; }' });
+  // The overflow sheet is closed on every shot: the card is what is being
+  // looked at, and a sheet left open from the previous one would cover it.
+  await page.evaluate(() => document.querySelector('[data-sheet-scrim]')?.dispatchEvent(new Event('click', { bubbles: true })));
   await page.screenshot({ path: `${outDir}/${name}.png`, fullPage: true });
   await page.evaluate(() => document.head.querySelectorAll('style').forEach((s) => {
     if (s.textContent?.includes('.stage-controls')) s.remove();
@@ -70,6 +73,31 @@ for (const shape of SHAPES) {
       await shoot(`day-${shape}-${palette}-${theme}`);
     }
   }
+}
+
+/* And the overflow itself, on the one day that has one. A sheet is what the
+   card's last row opens, so a gallery of the card alone would not show half
+   of what a busy day now is. */
+await select('Day', 'maximal');
+await select('Palette', 'trans');
+for (const theme of THEMES) {
+  await select('Theme', theme);
+  await page.click('[data-day-more]');
+  await page.waitForSelector('[data-sheet]');
+  await page.waitForTimeout(400);
+  await page.addStyleTag({ content: '.stage-controls { display: none !important; }' });
+  await page.screenshot({ path: `${outDir}/day-overflow-trans-${theme}.png` });
+  shots.push(`day-overflow-trans-${theme}`);
+  // Or the selectors stay hidden and the next theme cannot be chosen.
+  await page.evaluate(() =>
+    document.head.querySelectorAll('style').forEach((s) => {
+      if (s.textContent?.includes('.stage-controls')) s.remove();
+    })
+  );
+  await page.evaluate(() =>
+    document.querySelector('[data-sheet-scrim]')?.dispatchEvent(new Event('click', { bubbles: true }))
+  );
+  await page.waitForTimeout(300);
 }
 
 await browser.close();

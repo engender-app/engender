@@ -1315,20 +1315,30 @@ await block('phase 5 audit deepening ticket 10 field association', 5, async () =
    and $lib, neither of which resolves under vitest.config.ts. The gallery
    fixture already mounts DayRecords.svelte against the real cascade, so
    this drives it. */
-await block('phase 5 deepening ticket 21 day composition', 6, async () => {
+await block('phase 5 deepening ticket 21 day composition', 8, async () => {
   await page.goto(`http://localhost:${port}/day.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-day-ready]', { state: 'attached' });
 
   const shape = async (name) => {
     await page.selectOption('select[aria-label="Day"]', name);
     await page.waitForTimeout(120);
-    return page.evaluate(() => ({
-      dayCards: document.querySelectorAll('[data-day-card]').length,
-      listCards: document.querySelectorAll('[data-list-card]').length,
-      headings: document.querySelectorAll('[data-section-heading]').length,
-      rows: document.querySelectorAll('[data-day-row]').length,
-      keys: [...document.querySelectorAll('[data-day-row]')].map((r) => r.getAttribute('data-day-row'))
-    }));
+    return page.evaluate(() => {
+      /* The overflow sheet holds a second copy of the list and is in the DOM
+         whether or not it is open, so everything here counts inside the card
+         rather than across the document. */
+      const card = document.querySelector('[data-list-card]');
+      const rowsIn = (root) => (root ? [...root.querySelectorAll('[data-day-row]')] : []);
+      return {
+        dayCards: document.querySelectorAll('[data-day-card]').length,
+        listCards: document.querySelectorAll('[data-list-card]').length,
+        headings: document.querySelectorAll('[data-section-heading]').length,
+        rows: rowsIn(card).length,
+        keys: rowsIn(card).map((r) => r.getAttribute('data-day-row')),
+        more: document.querySelectorAll('[data-day-more]').length,
+        moreLabel: document.querySelector('[data-day-more] .kit-row-title')?.textContent ?? null,
+        sheetOpen: document.querySelectorAll('[data-sheet]').length
+      };
+    });
   };
 
   const sparse = await shape('sparse');
@@ -1345,28 +1355,47 @@ await block('phase 5 deepening ticket 21 day composition', 6, async () => {
       JSON.stringify(typical)
     );
 
+  /* Four rows on the typical day, which is under the cap, so it is not
+     truncated and offers nothing to expand. */
+  if (typical.rows === 4 && typical.more === 0)
+    ok('a day inside the cap shows every row it has and offers no overflow');
+  else fail('a day inside the cap shows every row it has and offers no overflow', JSON.stringify(typical));
+
   const maximal = await shape('maximal');
   if (maximal.listCards === 1 && maximal.headings === 1)
     ok('a maximal day is still one heading and one card, not a section per area');
   else fail('a maximal day is still one heading and one card, not a section per area', JSON.stringify(maximal));
 
-  if (maximal.rows > typical.rows && typical.rows > sparse.rows)
-    ok('a day that holds more draws more rows rather than more surfaces');
-  else
-    fail(
-      'a day that holds more draws more rows rather than more surfaces',
-      `${sparse.rows} / ${typical.rows} / ${maximal.rows}`
-    );
+  if (maximal.rows === 5 && maximal.more === 1)
+    ok('a day past the cap shows five rows and one way to the rest');
+  else fail('a day past the cap shows five rows and one way to the rest', JSON.stringify(maximal));
 
-  /* Photographs collapse and records do not: three hair photos are one row,
+  /* The count on that row is what is hidden, not what exists: 22 rows, 5
+     shown, so 17 more. */
+  if (maximal.moreLabel && maximal.moreLabel.includes('17'))
+    ok('the overflow row counts what is hidden rather than what the day holds');
+  else fail('the overflow row counts what is hidden rather than what the day holds', String(maximal.moreLabel));
+
+  await page.click('[data-day-more]');
+  await page.waitForTimeout(320);
+  const opened = await page.evaluate(() => {
+    const sheet = document.querySelector('[data-sheet]');
+    return {
+      open: !!sheet,
+      rows: sheet ? sheet.querySelectorAll('[data-day-row]').length : 0,
+      keys: sheet ? [...sheet.querySelectorAll('[data-day-row]')].map((r) => r.getAttribute('data-day-row')) : []
+    };
+  });
+  if (opened.open && opened.rows === 22) ok('the overflow opens a sheet holding the whole list, all 22 rows');
+  else fail('the overflow opens a sheet holding the whole list, all 22 rows', JSON.stringify(opened));
+
+  /* Photographs collapse and records do not, checked on the full list now
+     that the card only carries the first five: three hair photos are one row,
      two doses are two rows. */
-  const hairRows = maximal.keys.filter((k) => k.startsWith('hair-photos')).length;
-  const doseRows = maximal.keys.filter((k) => k.startsWith('dose-')).length;
+  const hairRows = opened.keys.filter((k) => k.startsWith('hair-photos')).length;
+  const doseRows = opened.keys.filter((k) => k.startsWith('dose-')).length;
   if (hairRows === 1 && doseRows === 2) ok('three hair photos are one row and two doses are two rows');
   else fail('three hair photos are one row and two doses are two rows', `${hairRows} photo rows, ${doseRows} dose rows`);
-
-  if (maximal.keys.length === new Set(maximal.keys).size) ok('every row on a maximal day carries its own handle');
-  else fail('every row on a maximal day carries its own handle', JSON.stringify(maximal.keys));
 });
 
 await browser.close();

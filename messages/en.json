@@ -167,6 +167,7 @@
   "nothing_logged": "Nothing logged this day",
   "nothing_logged_body": "You can still add an entry for it. Memory counts.",
   "day_also_heading": "Also this day",
+  "day_also_more": "and {count} more",
   "day_open_whole": "The whole day",
   "day_first_noticed": "First noticed",
   "day_wear_running": "Still running",
