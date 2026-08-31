@@ -1,13 +1,14 @@
 /* Remaining medication stock and its run-out projection (phase 4 ticket 04,
-   CONTEXT: pending - "Regimen episode", "Dose event", "Dose pause"). Pure,
-   kept above the journal seam beside doseSchedule.ts and labTiming.ts:
-   nothing here reads a clock or a database, and both figures are derived
-   on read rather than stored (ADR-0010) - the schema comment at
-   medication_stock's own migration (v7) argues why a decremented number
-   would drift the way `reminder.trigger_time` did, and why that is not
-   ticket 03's stored-context exception: every dose this projects over is
-   still sitting in `dose_event`, unlike the dose log a lab draw's context
-   was measured against.
+   CONTEXT: "Medication stock", "Run-out projection", "Regimen episode",
+   "Dose event", "Dose pause"). Pure, kept above the journal seam beside
+   doseSchedule.ts and labTiming.ts: nothing here reads a clock or a
+   database, and both figures are derived on read rather than stored
+   (ADR-0046, generalizing ADR-0010's rule against stored derived state) -
+   the schema comment at medication_stock's own migration (v7) argues why a
+   decremented number would drift the way `reminder.trigger_time` did, and
+   why that is not ticket 03's stored-context exception: every dose this
+   projects over is still sitting in `dose_event`, unlike the dose log a lab
+   draw's context was measured against.
 
    Scoped by drug (free text on RegimenEpisode.drug), matched exactly the
    way an analyte's unit or a lab provider is (CONTEXT: "Analyte", "Lab
