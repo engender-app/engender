@@ -73,6 +73,17 @@ public class AutoExportPlugin extends Plugin {
     private static final String FAILURE_CHANNEL = "backup_failures";
     private static final int FAILURE_NOTIFICATION_ID = 1601;
 
+    /** The archive profile (ADR-0013), pinned here rather than read off the
+        bridge call. A page that can reach {@code deriveKey} - it never
+        should, but audit finding G-04 assumed it could - gets this cost or
+        nothing: it cannot ask for a cheaper derivation to grind offline, or
+        a larger one to crash the app. The salt stays a call argument
+        because it is per-archive and random; the cost is not. */
+    private static final int ARCHIVE_KDF_MEMORY_SIZE = 65536;
+    private static final int ARCHIVE_KDF_ITERATIONS = 3;
+    private static final int ARCHIVE_KDF_PARALLELISM = 1;
+    private static final int ARCHIVE_KDF_HASH_LENGTH = 32;
+
     @PluginMethod
     public void status(PluginCall call) {
         call.resolve(statusObject());
@@ -117,10 +128,13 @@ public class AutoExportPlugin extends Plugin {
      * ticket 06, F-04).
      *
      * <p>Argon2id derivation runs native behind the bridge. The scheduler
-     * sends a fresh random salt and the archive's KDF parameters, and
-     * receives a single derived key that opens only the archive about to be
-     * written. The password remains in Keystore-wrapped storage and never
-     * crosses into JavaScript.
+     * sends a fresh random salt, and receives a single derived key that
+     * opens only the archive about to be written. The password remains in
+     * Keystore-wrapped storage and never crosses into JavaScript.
+     *
+     * <p>The derivation cost is not read off the call (G-04): it is the
+     * archive profile pinned in {@link #deriveArchiveKey}, regardless of
+     * what the caller asks for.
      */
     @PluginMethod
     public void deriveKey(PluginCall call) {
@@ -129,16 +143,6 @@ public class AutoExportPlugin extends Plugin {
             call.reject("deriveKey requires salt");
             return;
         }
-
-        JSObject kdf = call.getObject("kdf");
-        if (kdf == null) {
-            call.reject("deriveKey requires kdf");
-            return;
-        }
-        int memorySize = kdf.getInteger("memorySize", 65536);
-        int iterations = kdf.getInteger("iterations", 3);
-        int parallelism = kdf.getInteger("parallelism", 1);
-        int hashLength = kdf.getInteger("hashLength", 32);
 
         try {
             String password = passwordStore().read();
@@ -150,7 +154,7 @@ public class AutoExportPlugin extends Plugin {
             }
 
             byte[] salt = Base64.decode(saltBase64, Base64.DEFAULT);
-            byte[] derived = deriveArgon2id(password, salt, memorySize, iterations, parallelism, hashLength);
+            byte[] derived = deriveArchiveKey(password, salt);
 
             JSObject out = new JSObject();
             out.put("key", Base64.encodeToString(derived, Base64.NO_WRAP));
@@ -158,6 +162,15 @@ public class AutoExportPlugin extends Plugin {
         } catch (Exception e) {
             call.reject(message(e), e);
         }
+    }
+
+    /** {@code deriveKey}'s derivation, under the archive profile (ADR-0013)
+        pinned above rather than taken as parameters - there is no argument
+        list here for a caller's numbers to occupy. Only the salt, which is
+        per-archive and random, still comes from outside. */
+    public static byte[] deriveArchiveKey(String password, byte[] salt) {
+        return deriveArgon2id(
+            password, salt, ARCHIVE_KDF_MEMORY_SIZE, ARCHIVE_KDF_ITERATIONS, ARCHIVE_KDF_PARALLELISM, ARCHIVE_KDF_HASH_LENGTH);
     }
 
     public static byte[] deriveArgon2id(
