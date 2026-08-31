@@ -1470,6 +1470,13 @@ HAVING count(gd.key) > 0;
 DELETE FROM pref WHERE key = 'activePreset';
 `;
 
+/* v43: link milestones to surgical procedures (phase 5 ticket 12, ADR-0042).
+   A procedure's surgery day can record a milestone linking back to the
+   procedure by its uuid. */
+const SCHEMA_V43 = `
+ALTER TABLE milestone ADD COLUMN procedure_id TEXT REFERENCES procedure(uuid);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1512,5 +1519,6 @@ export const migrations: Migration[] = [
   { version: 39, sql: SCHEMA_V39 },
   { version: 40, sql: SCHEMA_V40 },
   { version: 41, sql: SCHEMA_V41 },
-  { version: 42, sql: SCHEMA_V42 }
+  { version: 42, sql: SCHEMA_V42 },
+  { version: 43, sql: SCHEMA_V43 }
 ];
