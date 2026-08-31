@@ -30,12 +30,15 @@ const THEMES = ['dark', 'light'];
    below is one scene across all eight rather than eleven scenes across all
    eight, which would be 176 pictures nobody looks at. */
 const SCENES = [
-  'lock-unlock',
-  'lock-setup',
-  'passphrase-setup',
-  'passphrase-unlock',
-  'passphrase-converting',
-  'passphrase-refused',
+  'access-choice',
+  'access-change',
+  'unlock-pin',
+  'unlock-passphrase',
+  'session-pin',
+  'session-passphrase',
+  'session-device',
+  'converting',
+  'conversion-refused',
   'android-key',
   'android-key-no-lock',
   'android-key-invalidated',
@@ -43,11 +46,24 @@ const SCENES = [
   'schema-too-new'
 ];
 
+/* The security module is the one surface whose *content* differs by
+   platform, not just its frame (ticket 53): device-bound is labelled as the
+   screen lock on Android and cannot be moved to there at all. Both lists
+   have to be looked at, so these are shot twice. */
+const PLATFORM_SCENES = ['access-choice', 'access-change'];
+
+/* Each mode's own screen, which is where its consequence is stated - the
+   thing ADR-0041 made the condition of allowing a 4-digit PIN to encrypt at
+   all. Reached by clicking the row, from the script rather than from the
+   fixture, so the fixture stays a state selector and nothing there has to
+   drive a step it also renders. */
+const MODE_ROWS = ['device-bound', 'pin', 'passphrase'];
+
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
 const shots = [];
 
-async function shoot(page, name) {
+async function shoot(page, name, fullPage = false) {
   /* Headless Chromium never grants persistent storage, so the app's own
      "export backups regularly" toast sits over the foot of every screen
      here. It is a true notice about this browser and it is not what these
@@ -56,7 +72,7 @@ async function shoot(page, name) {
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
   });
   const file = `${outDir}/${name}.png`;
-  await page.screenshot({ path: file });
+  await page.screenshot({ path: file, fullPage });
   shots.push(name);
 }
 
@@ -89,25 +105,66 @@ await fixture.listen();
     }
   }
 
+  /* The module's per-mode screens, on both platforms: device-bound's copy is
+     the half that differs, and the PIN screen carries the brute-force figure
+     that has to be readable rather than merely present. */
+  for (const platform of ['web', 'android']) {
+    await select('Platform', platform);
+    for (const row of MODE_ROWS) {
+      for (const theme of THEMES) {
+        /* Off the scene and back, because the stage is keyed on the scene
+           name: re-selecting the one already chosen changes nothing, so the
+           module would still be showing the previous row's detail screen and
+           every row after the first would look absent. */
+        await select('Scene', 'unlock-passphrase');
+        await select('Scene', 'access-choice');
+        await select('Theme', theme);
+        const target = page.locator(`[data-list-row="${row}"]`);
+        if (!(await target.count())) continue;
+        await target.click();
+        await page.waitForSelector(`[data-access-chosen="${row}"]`);
+        await page.waitForTimeout(250);
+        await shoot(page, `gate-access-${row}-${platform}-${theme}`, true);
+      }
+    }
+  }
+  await select('Platform', 'web');
+
+  await select('Platform', 'android');
+  for (const scene of PLATFORM_SCENES) {
+    await select('Scene', scene);
+    for (const theme of THEMES) {
+      await select('Theme', theme);
+      await shoot(page, `gate-${scene}-android-${theme}`);
+    }
+  }
+  await select('Platform', 'web');
+
   /* The PIN pad's two answers to a wrong PIN, which are the only motion on
      any of these screens that leaves a visible resting state: the row has
      shaken and cleared, the wait is counting down and the rail beside it is
      draining. */
-  await select('Scene', 'lock-unlock');
   for (const theme of THEMES) {
+    await select('Scene', 'unlock-pin');
     await select('Theme', theme);
+    await page.waitForSelector('[data-pin-pad]');
     for (const digit of ['9', '9', '9', '9']) await page.locator(`[data-key="${digit}"]`).click();
+    /* The pad's own answer plus the throttle's: the row has shaken and
+       cleared, the wait is counting and the rail beside it is draining. The
+       PIN is wrong for a real reason here - there is no keystore behind this
+       fixture - so this is the true refusal, not a simulated one. */
+    await page.waitForSelector('[data-pin-status="wrong"], [data-pin-status="throttled"]');
     await page.waitForTimeout(400);
-    await shoot(page, `gate-lock-wrong-pin-trans-${theme}`);
+    await shoot(page, `gate-wrong-pin-trans-${theme}`);
   }
 
   // One gate across all eight flags, for the accent and the soft tint.
-  await select('Scene', 'lock-unlock');
+  await select('Scene', 'access-choice');
   for (const palette of PALETTES) {
     await select('Palette', palette);
     for (const theme of THEMES) {
       await select('Theme', theme);
-      await shoot(page, `gate-lock-${palette}-${theme}`);
+      await shoot(page, `gate-access-choice-${palette}-${theme}`);
     }
   }
 
@@ -169,10 +226,12 @@ const base = `http://localhost:${address.port}`;
       await shoot(page, `setup-${i}-${step}-${palette}-${theme}`);
       if (step === 'name') await page.locator('#ob-name').fill('Alicja');
       if (step === 'lock') {
-        // The row that opens its own height, open.
+        /* One switch now, and no reveal under it: the app-lock toggle that
+           used to open a second row went with its gate (ticket 53), so what
+           is left is lock-on-leave on its own. */
         await page.getByRole('switch').first().click();
         await page.waitForTimeout(400);
-        await shoot(page, `setup-${i}-${step}-open-${palette}-${theme}`);
+        await shoot(page, `setup-${i}-${step}-on-${palette}-${theme}`);
       }
       if (step === 'checkin') {
         await page.getByRole('switch').first().click();
