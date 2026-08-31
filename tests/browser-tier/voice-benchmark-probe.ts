@@ -11,19 +11,19 @@
 
    The signal is an oscillator rather than Chromium's fake device: 185 Hz is
    in the contract, and the fake device's beep frequency is not
-   (audio/test-support/oscillator.ts). The app's own startTake() and
+   (tests/fake-microphone.mjs). The app's own startTake() and
    decodeTake() run unchanged over it. */
 
 import { analysePassage } from '../../src/lib/audio/benchmark.ts';
 import { PASSAGE_CHECKS, VOWEL_CHECKS } from '../../src/lib/audio/quality.ts';
-import { installFakeMicrophone, type FakeTake } from '../../src/lib/audio/test-support/oscillator.ts';
+import { installFakeMicrophone } from '../fake-microphone.mjs';
 import { ANALYSIS_SAMPLE_RATE, startTake } from '../../src/lib/stores/voiceBenchmark.ts';
 import { publish } from '../probe-handshake.mjs';
 
 const NAME = 'voice-benchmark-probe';
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function take(kind: FakeTake, seconds: number, checks: readonly string[]) {
+async function take(kind: 'steady' | 'loud' | 'wobble' | 'silent', seconds: number, checks: readonly string[]) {
   const microphone = installFakeMicrophone(kind);
   const session = await startTake(checks as never);
   if (typeof session === 'string') throw new Error(`the microphone refused: ${session}`);

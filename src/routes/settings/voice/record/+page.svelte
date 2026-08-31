@@ -226,7 +226,13 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.vb_title()} subtitle={m.vb_lead()} back="/settings/voice" />
+  <!-- The lead says what a benchmark is, which is worth reading once and is
+       in the way of a take in progress. It goes when the flow starts. -->
+  <ScreenHeader
+    title={m.vb_title()}
+    subtitle={step === 'passage' && phase === 'idle' ? m.vb_lead() : undefined}
+    back="/settings/voice"
+  />
 
   {#if refusal}
     <div class="screen-part">
@@ -247,7 +253,7 @@
       />
     </div>
   {:else if step === 'summary'}
-    <div class="screen-part">
+    <div class="screen-part vb-body">
       <SectionHeading text={m.vb_measured()} />
       <dl class="vb-figures kit-panel">
         <div><dt>{m.vb_pitch()}</dt>
@@ -294,20 +300,23 @@
       </button>
     </div>
   {:else}
-    <div class="screen-part">
+    <div class="screen-part vb-body">
       <SectionHeading text={step === 'passage' ? m.vb_step_passage() : m.vb_step_vowel()} />
 
       {#if step === 'passage'}
         <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
         <button class="btn btn-quiet vb-passage-own" type="button" onclick={openPassageEditor}>
-          <Icon name="edit" size={18} />
+          <Icon name="pencil" size={18} />
           <span>{ownPassage ? m.vb_passage_own_in_use() : m.vb_passage_own()}</span>
         </button>
-      {:else}
+      {:else if phase !== 'recording'}
+        <!-- What to do, until it is being done: during the take the gauge is
+             saying it, and the instruction is taking up the room the gauge
+             needs. -->
         <p class="muted small vb-hint">{m.vb_vowel_hint()}</p>
       {/if}
 
-      {#if phase === 'recording' || phase === 'retry'}
+      {#if step === 'vowel' && (phase === 'recording' || phase === 'retry')}
         <VoiceGauge
           data-vb-gauge
           {role}
@@ -325,6 +334,24 @@
     </div>
 
     <div class="editor-savebar vb-bar">
+      <!-- On the passage step the figure rides the action bar rather than
+           the body: the passage is a screenful of text somebody is reading
+           off the screen, and a gauge under it is a gauge nobody can see.
+           The vowel step has nothing to read, so there it is the thing on
+           the screen and takes its full size. -->
+      {#if step === 'passage' && (phase === 'recording' || phase === 'retry')}
+        <VoiceGauge
+          compact
+          data-vb-gauge
+          {role}
+          {frames}
+          report={reading}
+          {targetSeconds}
+          label={m.vb_gauge_label()}
+          advice={phase === 'retry' ? retryAdvice : liveAdvice}
+        />
+      {/if}
+
       {#if phase === 'recording'}
         <button class="btn btn-primary press" data-vb-stop onclick={stop}>
           <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
@@ -375,6 +402,15 @@
 </Sheet>
 
 <style>
+  /* The action bar is sticky, so it floats over whatever is beneath it at
+     rest. Everything on this screen under it is load-bearing - the advice
+     the gauge is giving, the note field - so the body reserves the bar's
+     own height rather than leaving it to a scroll somebody mid-take cannot
+     make. */
+  .vb-body {
+    padding-bottom: calc(var(--touch-target) * 2);
+  }
+
   .vb-passage {
     margin: 0;
     font-size: var(--text-lg);

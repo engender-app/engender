@@ -41,6 +41,7 @@
      rather than a tween. The trace is redrawn rather than transitioned, and
      the advice underneath is words, so nothing here depends on movement to
      be readable. */
+  import { m } from '$lib/paraglide/messages';
   import { MAX_F0_CV, PEAK_CEILING, type QualityReport } from '$lib/audio/quality';
   import type { PitchFrame } from '$lib/audio/pitch';
   import type { Role } from '$lib/theme/roles';
@@ -53,6 +54,7 @@
     label,
     advice,
     role,
+    compact = false,
     ...rest
   }: {
     frames: readonly PitchFrame[];
@@ -63,6 +65,11 @@
     /** What to do differently, already in words - the readout's own text. */
     advice: string[];
     role?: Role;
+    /** The passage step's form: the same figure at a third the height,
+        sitting on the action bar under a screenful of text somebody is busy
+        reading. The vowel step is where the figure is the thing being
+        looked at, and there it gets its full size. */
+    compact?: boolean;
     [attribute: string]: unknown;
   } = $props();
 
@@ -131,6 +138,13 @@
     report ? Math.max(0, Math.min(1, report.longestVoicedSeconds / targetSeconds)) : 0
   );
 
+  /** The held stretch in words, which is what carries this figure under
+      either reduced-motion path: the marks stop moving, the sentence does
+      not (DIRECTION.md's reduced-motion contract). */
+  let heldLabel = $derived(
+    m.vb_gauge_run({ seconds: (report?.longestVoicedSeconds ?? 0).toFixed(1) })
+  );
+
   /** How far the take has wandered, as a share of what the gate allows.
       Drawn as the trace's own stroke width rather than as a fifth mark: a
       steady note draws a fine line and a wandering one draws a heavy,
@@ -140,17 +154,28 @@
   );
 </script>
 
-<div class="vg" class:is-clipping={clipping} {...roleAttrs(role)} {...rest}>
-  <svg
-    class="vg-figure"
-    viewBox="0 0 {WIDTH} 100"
-    preserveAspectRatio="none"
-    role="img"
-    aria-label={label}
-  >
-    <!-- The roof. Two elements: the track that is always there, and the
-         weight that answers the level. -->
+<div
+  class="vg"
+  class:is-clipping={clipping}
+  class:is-compact={compact}
+  {...roleAttrs(role)}
+  {...rest}
+>
+  <div class="vg-top">
+    <span class="vg-label">{label}</span>
+    <span class="vg-held">{heldLabel}</span>
+  </div>
+
+  <svg class="vg-figure" viewBox="0 0 {WIDTH} 100" preserveAspectRatio="none" aria-hidden="true">
+    <!-- The roof: always there, and heavier as the level climbs towards
+         full scale. -->
     <line class="vg-roof" x1="0" y1={ROOF_Y} x2={WIDTH} y2={ROOF_Y} stroke-width={roofWeight} />
+
+    <!-- The take's own middle, so a flat line is visibly flat against
+         something rather than just low in an empty box. It is the median of
+         what is on screen and says nothing about which pitch is the right
+         one. -->
+    <line class="vg-mid" x1="0" y1={TRACE_MID} x2={WIDTH} y2={TRACE_MID} />
 
     <!-- The room, rising from the base. Drawn at its full height and
          scaled, rather than re-laid-out: the performance contract animates
@@ -164,11 +189,9 @@
       style="--vg-room: {roomFraction}"
     />
 
-    <g class="vg-trace-group">
-      {#each runs as points, index (index)}
-        <polyline class="vg-trace" {points} stroke-width={traceWeight} />
-      {/each}
-    </g>
+    {#each runs as points, index (index)}
+      <polyline class="vg-trace" {points} stroke-width={traceWeight} />
+    {/each}
 
     <line class="vg-base" x1="0" y1={BASE_Y} x2={WIDTH} y2={BASE_Y} />
   </svg>
@@ -177,13 +200,7 @@
     <span class="vg-run-fill" style="--vg-run: {runFraction}"></span>
   </div>
 
-  <p class="vg-advice" aria-live="polite">
-    {#if advice.length > 0}
-      {#each advice as line, index (line)}
-        <span>{index > 0 ? ' ' : ''}{line}</span>
-      {/each}
-    {/if}
-  </p>
+  <p class="vg-advice" aria-live="polite">{advice.join(' ')}</p>
 </div>
 
 <style>
@@ -191,11 +208,47 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-card);
+    padding: var(--space-4);
+  }
+
+  /* On the action bar the frame would be a second card floating over the
+     first, so the bar's version drops it and keeps the marks. */
+  .vg.is-compact {
+    background: none;
+    border: 0;
+    padding: 0;
+    gap: var(--space-1);
+  }
+
+  .vg-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .vg-label {
+    font-size: var(--text-sm);
+    color: var(--muted);
+  }
+
+  .vg-held {
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    color: var(--role-ink);
+  }
+
+  .vg-mid {
+    stroke: var(--role-wash);
+    stroke-width: 1;
   }
 
   .vg-figure {
     width: 100%;
-    height: 128px;
+    height: 116px;
     display: block;
     /* Pressing into the ceiling: the whole figure sits 2px lower once the
        take is clipping, which is the only movement in here that is not a
@@ -206,6 +259,10 @@
 
   .vg.is-clipping .vg-figure {
     transform: translateY(2px);
+  }
+
+  .vg.is-compact .vg-figure {
+    height: 40px;
   }
 
   .vg-roof,
@@ -219,7 +276,7 @@
   }
 
   .vg.is-clipping .vg-roof {
-    stroke: var(--role-mark-in);
+    stroke: var(--role-draw);
   }
 
   .vg-room {
@@ -232,7 +289,10 @@
 
   .vg-trace {
     fill: none;
-    stroke: var(--role-mark-in);
+    /* --role-draw, the flag's own stripe: a drawn mark takes the band
+       undiluted, and the contrast-corrected version is for text and for a
+       glyph on a tint of itself (kit.css). */
+    stroke: var(--role-draw);
     stroke-linecap: round;
     stroke-linejoin: round;
   }
@@ -248,7 +308,7 @@
     display: block;
     height: 100%;
     border-radius: inherit;
-    background: var(--role);
+    background: var(--role-draw);
     transform-origin: left center;
     transform: scaleX(var(--vg-run, 0));
     transition: transform var(--dur-fast) var(--ease-out);
@@ -256,9 +316,15 @@
 
   .vg-advice {
     margin: 0;
-    min-height: calc(var(--text-sm) * 1.5 * 2);
+    /* One line of room kept whether or not there is anything to say, so the
+       figure does not jump up the screen the moment a check clears. */
+    min-height: calc(var(--text-sm) * 1.5);
     font-size: var(--text-sm);
     line-height: 1.5;
-    color: var(--role-ink-in);
+    color: var(--role-ink);
+  }
+
+  .vg-advice:empty {
+    min-height: calc(var(--text-sm) * 1.5);
   }
 </style>
