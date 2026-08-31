@@ -31,10 +31,32 @@ public final class DeviceStores {
      * screen states the loss before it happens, and a wipe that half
      * happened has to reach {@code wipeLocalData} as a failure rather than
      * as a reset the person is told went through.
+     *
+     * <p>Every one of them literally: a store that throws no longer takes
+     * the stores after it down with it. Two of the three can fail now that
+     * the reminder payload has a Keystore alias of its own (phase 5 security
+     * ticket 02), and the first one to throw used to be the last one that
+     * ran - so a keystore that would not delete an alias left the backup
+     * destination, the wrapped backup password and the quick-exit
+     * preference on a phone the person had just wiped. The first failure is
+     * the one raised, with any later one attached to it.
      */
     public static void wipe(Context context) throws Exception {
-        ReminderScheduler.wipe(context);
-        AutoExportPlugin.wipe(context);
-        QuickExitPlugin.wipe(context);
+        Exception failure = null;
+        for (Store store : new Store[] {ReminderScheduler::wipe, AutoExportPlugin::wipe, QuickExitPlugin::wipe}) {
+            try {
+                store.wipe(context);
+            } catch (Exception e) {
+                if (failure == null) failure = e;
+                else failure.addSuppressed(e);
+            }
+        }
+        if (failure != null) throw failure;
+    }
+
+    /** What each of the three above is, from here: one call that clears one
+        store and says so by throwing. */
+    private interface Store {
+        void wipe(Context context) throws Exception;
     }
 }
