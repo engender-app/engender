@@ -274,7 +274,10 @@ export function placeAnnotations(
   width: number,
   minGap: number = MIN_MARK_GAP
 ): PlacedAnnotations {
-  if (points.length === 0) return { bands: [], marks: [] };
+  // One position is not a plot: every day maps to the same pixel, so a band
+  // is a hairline and every mark is the same mark. A chart drawn from a
+  // single reading gets no annotations rather than a pile of them at x=0.
+  if (points.length < 2) return { bands: [], marks: [] };
 
   const bands: AnnotationBand[] = [];
   const marks: AnnotationMark[] = [];
