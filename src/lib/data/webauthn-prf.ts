@@ -64,7 +64,7 @@ const toBase64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...byte
 
 /** A PRF output arrives as either half of BufferSource depending on the
     browser, and both spellings are the same 32 bytes. */
-const bytes = (source: BufferSource): Uint8Array<ArrayBuffer> =>
+const toBytes = (source: BufferSource): Uint8Array<ArrayBuffer> =>
   ArrayBuffer.isView(source)
     ? new Uint8Array(source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength) as ArrayBuffer)
     : new Uint8Array(source.slice(0));
@@ -151,11 +151,11 @@ export function browserAuthenticator(credentials: CredentialsContainer = navigat
         throw new BiometricUnavailableError('this authenticator does not release a stable secret (no PRF)');
       }
 
-      const credentialId = bytes(credential.rawId);
+      const credentialId = toBytes(credential.rawId);
       /* Some platforms evaluate during creation and some only on a later
          assertion. Where the output is already here it costs one prompt;
          where it is not, asking again is the whole difference. */
-      const secret = prf.results?.first ? toBase64(bytes(prf.results.first)) : await this.evaluate(credentialId, salt);
+      const secret = prf.results?.first ? toBase64(toBytes(prf.results.first)) : await this.evaluate(credentialId, salt);
       return { credentialId, secret };
     },
 
@@ -175,7 +175,7 @@ export function browserAuthenticator(credentials: CredentialsContainer = navigat
       if (!first) {
         throw new BiometricUnavailableError('this authenticator returned no secret for the journal credential');
       }
-      return toBase64(bytes(first));
+      return toBase64(toBytes(first));
     }
   };
 }

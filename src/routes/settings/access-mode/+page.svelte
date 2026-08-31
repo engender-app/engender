@@ -18,6 +18,7 @@
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { changeJournalPin, unlockJournalPin } from '$lib/data/journal-pin';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
+  import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import AccessModeSetup, { type AccessSetupMode } from '$lib/components/AccessModeSetup.svelte';
@@ -54,7 +55,11 @@
       await goto('/settings/security');
     } catch (e) {
       console.error('changing the access mode failed', e);
-      error = m.am_change_failed();
+      /* Same rule as the first-run gate: a device that will not release a
+         secret has not failed at changing anything, it has answered that it
+         cannot do this mode, and the sentence has to send the person to
+         another row rather than leave them retrying at a wall. */
+      error = e instanceof BiometricUnavailableError ? m.am_biometric_unavailable() : m.am_change_failed();
     } finally {
       busy = false;
     }
