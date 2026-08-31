@@ -9,7 +9,10 @@ describe('the routes that render without chrome', () => {
   });
 
   it('is the lock screen, which is where a PIN is set', () => {
-    expect(chromelessPath('/settings/lock')).toBe(true);
+    /* /settings/lock was the second chromeless route until ticket 53 retired
+       the app-lock gate. Its replacements are rendered by the layout instead
+       of the app, so no path produces them. */
+    expect(chromelessPath('/settings')).toBe(false);
   });
 
   it('is not the rest of settings', () => {

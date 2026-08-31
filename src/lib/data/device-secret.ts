@@ -28,7 +28,10 @@
 
 import { browserKeySlot, type DeviceKeySlot } from './device-bound-journal.ts';
 
-const PIN_BINDING_SLOT = 'journal-pin-binding';
+/** Exported so journal-pin.ts opens the same slot rather than repeating the
+    name: two spellings of one storage key diverge silently, and the failure
+    is a journal nobody can open. */
+export const PIN_BINDING_SLOT = 'journal-pin-binding';
 
 /** Signed to produce the secret. Versioned, so a later scheme can derive a
     different value from the same key rather than needing a second key. */

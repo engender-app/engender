@@ -124,3 +124,31 @@ test('only four digits is a PIN', () => {
   expect(isValidPin('12a4')).toBe(false);
   expect(isValidPin('')).toBe(false);
 });
+
+/* Two refusals that exist so a mistake cannot become a journal nobody can
+   open. Both were added after review: the first because minting a fresh
+   binding key replaces the only key that opens the keystore already on disk,
+   the second because the digit count is what the setup copy's whole
+   brute-force figure is computed from. */
+test('moving to PIN mode refuses a journal already in PIN mode, rather than replacing its device key', async () => {
+  const world = ports();
+  const dataKey = await setupJournalPin('1234', world);
+  const before = world.stored();
+
+  await expect(addJournalPin(dataKey, '5678', world)).rejects.toThrow(KeystoreUnreadableError);
+  // Nothing written, and the PIN that worked still does.
+  expect(world.stored()).toBe(before);
+  expect(await unlockJournalPin('1234', world)).toEqual(dataKey);
+});
+
+test('a PIN that is not four digits never reaches the wrap', async () => {
+  const world = ports();
+  await expect(setupJournalPin('123', world)).rejects.toThrow(KeystoreUnreadableError);
+  await expect(setupJournalPin('12345', world)).rejects.toThrow(KeystoreUnreadableError);
+  await expect(setupJournalPin('', world)).rejects.toThrow(KeystoreUnreadableError);
+  expect(world.stored()).toBe(null);
+
+  await setupJournalPin('1234', world);
+  await expect(changeJournalPin('1234', '99', world)).rejects.toThrow(KeystoreUnreadableError);
+  expect(await unlockJournalPin('1234', world)).toBeTruthy();
+});

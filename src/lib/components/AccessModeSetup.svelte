@@ -49,7 +49,6 @@
   import { isAndroid } from '$lib/platform';
   import { PIN_LENGTH } from '$lib/crypto/params';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { isValidPin } from '$lib/data/journal-pin';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
   import PinPad from './PinPad.svelte';
@@ -127,7 +126,12 @@
   /** The whole consequence, stated before the mode is chosen. */
   function consequence(mode: Mode): string {
     if (mode === 'passphrase') return m.am_passphrase_detail({ min: String(MIN_PASSPHRASE_LENGTH) });
-    if (mode === 'pin') return m.am_pin_detail({ digits: String(PIN_LENGTH) });
+    /* Split by platform, because the attacker who gets both halves differs.
+       PIN mode's binding key lives in the same store device-bound mode's key
+       does, so on the web a copy of the whole browser profile takes the
+       device half as well - a far cheaper act than taking a phone apart, and
+       the first draft of this copy did not say so. */
+    if (mode === 'pin') return android ? m.am_pin_detail_android() : m.am_pin_detail_web();
     return android ? m.am_device_detail_android() : m.am_device_detail_web();
   }
 
@@ -172,11 +176,6 @@
       localError = m.pin_mismatch();
       refusals++;
       chosenPin = '';
-      pin = '';
-      return;
-    }
-    if (!isValidPin(entered)) {
-      localError = m.pin_mismatch();
       pin = '';
       return;
     }

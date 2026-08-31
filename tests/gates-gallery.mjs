@@ -1,5 +1,5 @@
 /* Screenshots of the chromeless screens (phase 5 ticket 26): the five
-   pre-unlock gates, /settings/lock in both of its jobs, and all seven steps
+   pre-unlock gates, the security module on both platforms, and all seven steps
    of the first run.
 
    Two sources, because the screens come from two places. Four of the five

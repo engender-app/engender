@@ -30,12 +30,13 @@ export const ARCHIVE_ARGON2_PARAMS: Argon2Params = {
 
     Four digits is 10,000 candidates, and no KDF cost closes a gap that
     small - so this profile is not what makes PIN mode defensible. The
-    device seal is (data/journal-pin.ts): the PIN-wrapped data key is
-    sealed again under a non-extractable device key, so a copied
-    keystore.json cannot be guessed at away from the device at all. What
-    this profile buys is the case where somebody has the device *and* runs
-    their own code, and there the honest figure is small. State it, don't
-    dress it up.
+    device binding is (data/device-secret.ts). There is exactly one wrap
+    here and no second seal: the PIN is joined with a string only this
+    device can produce, and the pair is what this profile derives from. So
+    a keystore.json copied away from its device has no derivable secret at
+    all. What this profile buys is the case where somebody has both halves
+    and runs their own code, and there the honest figure is small. State
+    it, don't dress it up.
 
     The arithmetic, at 64 MiB and 4 passes. Argon2id moves about 2 x m x t
     bytes of memory per guess - here 512 MiB - and a guessing rig is bound
@@ -44,9 +45,11 @@ export const ARCHIVE_ARGON2_PARAMS: Argon2Params = {
 
       10,000 candidates / 1900 per second = about 5 seconds.
 
-    Five seconds, for an attacker holding an unwrapped device seal. That is
-    the number setup copy quotes, and it is why the copy sends anyone whose
-    threat is a person with their unlocked phone to passphrase mode instead.
+    Five seconds to walk the whole space, so about half that to expect a hit;
+    the copy quotes the whole-space figure and says "all 10,000" so that the
+    number and the claim match. It is the figure for an attacker who already
+    holds both halves of the secret, which is why the copy sends anyone whose
+    threat is a person with their unlocked device to passphrase mode.
 
     Cost to the person: 130ms measured on the benchmark desktop
     (scripts/benchmark-argon2.mjs), against 107ms for the archive profile in

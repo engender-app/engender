@@ -500,7 +500,6 @@
   "pin_again_title": "Wpisz go jeszcze raz",
   "pin_greeting": "Cześć",
   "pin_greeting_named": "Cześć, {name}",
-  "pin_setup_body": "Cztery cyfry, o które aplikacja pyta przy każdym otwarciu. Szyfrują dziennik razem z kluczem trzymanym na tym urządzeniu. Jeśli zapomnisz PIN-u, jedyne wyjście to reset aplikacji i utrata tego, co na niej jest, więc wybierz taki, który zapamiętasz.",
   "pin_confirm_body": "Te same cztery cyfry jeszcze raz, żeby jedna pomyłka nie zamknęła ci drzwi.",
   "pin_progress": "Wpisany PIN: {typed} z {total} cyfr",
   "pin_mismatch": "Te dwa PIN-y się różnią. Zacznij od nowa.",
@@ -2347,7 +2346,7 @@
   "dim_gender_stability_low": "stałość",
   "dim_gender_stability_high": "zmienność",
   "dim_gender_stability_note": "Gdzie dzień wypadł między stałym a zmiennym poczuciem płci.",
-  "am_device_no_lock": "Tryb bez hasła wymaga blokady ekranu, żeby Android mógł przypiąć klucz dziennika do tego telefonu. Najpierw ją ustaw albo wybierz teraz hasło do dziennika.",
+  "am_device_no_lock": "Android potrzebuje blokady ekranu, żeby przypiąć klucz dziennika do tego telefonu. Najpierw ją ustaw albo wybierz teraz PIN lub hasło.",
   "am_device_unavailable": "Ta przeglądarka nie zdołała zachować lokalnego klucza dla dziennika. Wybierz zamiast tego hasło do dziennika.",
   "am_setup_title": "Jak ma się otwierać dziennik?",
   "am_setup_body": "Wszystko, co zapisujesz, jest zaszyfrowane. Tu wybierasz, co to otwiera, i możesz to później zmienić w Ustawieniach.",
@@ -2365,7 +2364,6 @@
   "am_mode_passphrase_sub": "najmocniejsze i jedyne, które podróżuje",
   "am_device_detail_web": "Nie ma hasła do wpisywania ani do zapomnienia: klucz zostaje w profilu tej przeglądarki. To działa w dwie strony. Kto skopiuje ten profil, otworzy dziennik bez wpisywania czegokolwiek, a jeśli profil przepadnie, przepadnie z nim dziennik. Nic, co wiesz, go nie przywróci.",
   "am_device_detail_android": "Android trzyma klucz i wydaje go, kiedy blokada ekranu potwierdzi, że to ty, więc nie ma nic dodatkowego do wpisywania ani do pamiętania. Usunięcie blokady ekranu niszczy klucz na dobre, tak samo jak utrata telefonu. Nic, co wiesz, go nie przywróci.",
-  "am_pin_detail": "Cztery cyfry, i tym razem to one są kluczem szyfrowania: dziennik jest opakowany twoim PIN-em razem z kluczem, który nigdy nie opuszcza tego urządzenia. Bez tego klucza skradzionej kopii pliku nie da się w ogóle atakować. Z nim wszystkie 10 000 możliwych PIN-ów z {digits} cyfr pada w około pięć sekund na szybkiej karcie graficznej, więc PIN zatrzyma kogoś, kto weźmie telefon do ręki, a nie kogoś, kto go rozłoży. Jeśli ukrywasz dziennik przed kimś takim, wybierz hasło.",
   "am_passphrase_detail": "Najmocniejszy z trzech sposobów i jedyny, który otworzy ten dziennik na innym urządzeniu. Co najmniej {min} znaków, a za enGender nie stoi żadne konto: nikt, ta aplikacja też nie, nie odzyska zgubionego hasła ani dziennika pod nim. Zapisz je teraz w menedżerze haseł.",
   "am_export_note": "Ten sposób przypina dziennik do tego urządzenia, więc zaszyfrowany eksport to jedyna kopia, która przetrwa jego utratę.",
   "am_confirm_passphrase": "Użyj tego hasła",
@@ -2384,5 +2382,7 @@
   "pin_change_sub": "najpierw obecny, potem nowy dwa razy",
   "pin_change_current": "Twój obecny PIN.",
   "pin_changed_toast": "PIN zmieniony.",
-  "am_pin_choose": "Wybierz cztery cyfry."
+  "am_pin_choose": "Wybierz cztery cyfry.",
+  "am_pin_detail_web": "Cztery cyfry, i tym razem to one są kluczem szyfrowania: dziennik jest opakowany twoim PIN-em razem z kluczem, który nigdy nie opuszcza tej przeglądarki. Samej skradzionej kopii pliku nie da się w ogóle atakować. Kopia całego profilu tej przeglądarki zabiera obie połowy, a wtedy wszystkie 10 000 możliwych PIN-ów pada w około pięć sekund na szybkiej karcie graficznej. PIN zatrzyma więc zerknięcie i zgubiony plik, a nie kogoś, kto potrafi zabrać profil albo rozłożyć urządzenie. Jeśli ukrywasz dziennik przed kimś takim, wybierz hasło.",
+  "am_pin_detail_android": "Cztery cyfry, i tym razem to one są kluczem szyfrowania: dziennik jest opakowany twoim PIN-em razem z kluczem, który nigdy nie opuszcza tego telefonu. Samej skradzionej kopii pliku nie da się w ogóle atakować. Kto potrafi rozłożyć telefon, dostaje obie połowy, a wtedy wszystkie 10 000 możliwych PIN-ów pada w około pięć sekund na szybkiej karcie graficznej. PIN zatrzyma więc zerknięcie i zgubiony plik, a nie narzędzie kryminalistyczne. Jeśli ukrywasz dziennik przed kimś takim, wybierz hasło."
 }
