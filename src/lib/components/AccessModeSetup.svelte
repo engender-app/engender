@@ -18,7 +18,8 @@
 </script>
 
 <script lang="ts">
-  /* One security module, three named choices (ticket 53, ADR-0041).
+  /* One security module, four named choices (ticket 53, ADR-0041; the
+     fourth added by ticket 55).
 
      What a person used to meet was three disconnected things at three
      moments: a passphrase gate that looked mandatory but hid a "Skip" into
@@ -44,7 +45,7 @@
 
      Copy rule for this screen, and it is the strict one (docs/ui-copy.md,
      "The screens that carry risk"): every mode states its own consequence
-     before it is chosen, not after. Two of the three tie the journal to this
+     before it is chosen, not after. Three of the four tie the journal to this
      device, and for those the archive is the only thing that survives losing
      it - so that sentence sits under the choice rather than in a help page
      nobody opens. */
@@ -134,11 +135,11 @@
     return android ? m.am_mode_device_sub_android() : m.am_mode_device_sub_web();
   }
 
-  /* Three modes, three glyphs, on both platforms. Device-bound was drawn
-     with the same padlock as the PIN at first, which made two of the three
-     rows indistinguishable at a glance - the one thing a list of choices
-     cannot afford. A key is also the truer picture of it: something held for
-     you rather than something you know. */
+  /* A glyph per mode, on every platform. Device-bound was drawn with the
+     same padlock as the PIN at first, which made two rows indistinguishable
+     at a glance - the one thing a list of choices cannot afford. A key is
+     also the truer picture of it: something held for you rather than
+     something you know. */
   function icon(mode: Mode): string {
     if (mode === 'passphrase') return 'shield';
     if (mode === 'pin') return 'lock';
