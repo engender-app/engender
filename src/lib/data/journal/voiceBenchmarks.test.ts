@@ -144,6 +144,74 @@ test('a custom passage is recorded as its own series key', async () => {
   assert.equal(saved.passageKey, 'custom');
 });
 
+test('deleting a benchmark removes the row and both its audio files', async () => {
+  const { journal, files } = await journalWithFiles();
+  const id = await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20300,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: vowelAudio(),
+    ...metrics,
+    f1Hz: 690,
+    f2Hz: 1240,
+    snrDb: 24.5
+  });
+
+  await journal.voiceBenchmarks.deleteBenchmark(id);
+
+  assert.deepEqual(await journal.voiceBenchmarks.getBenchmarks(), []);
+  assert.deepEqual(await files.list(), []);
+});
+
+test('a benchmark with no vowel take deletes cleanly with one file', async () => {
+  const { journal, files } = await journalWithFiles();
+  const id = await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20300,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null
+  });
+
+  await journal.voiceBenchmarks.deleteBenchmark(id);
+
+  assert.deepEqual(await journal.voiceBenchmarks.getBenchmarks(), []);
+  assert.deepEqual(await files.list(), []);
+});
+
+test('deleting a benchmark leaves another one untouched', async () => {
+  const { journal, files } = await journalWithFiles();
+  const kept = await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20100,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null
+  });
+  const removed = await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20300,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: vowelAudio(),
+    ...metrics,
+    f1Hz: 690,
+    f2Hz: 1240,
+    snrDb: 24.5
+  });
+
+  await journal.voiceBenchmarks.deleteBenchmark(removed);
+
+  const remaining = await journal.voiceBenchmarks.getBenchmarks();
+  assert.deepEqual(remaining.map((b) => b.id), [kept]);
+  assert.deepEqual(await files.list(), [remaining[0].passageFileName]);
+});
+
 test('the boot sweep leaves a benchmark its audio', async () => {
   const { journal, files, db } = await journalWithFiles();
   await journal.voiceBenchmarks.saveBenchmark({

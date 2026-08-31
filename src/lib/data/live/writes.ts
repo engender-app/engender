@@ -305,7 +305,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   // Unlike `voice`, this area owns its rows: a benchmark is not written
   // through the entry editor, so the save announces its own table.
   voiceBenchmarks: classify<Journal['voiceBenchmarks']>()({
-    writes: { saveBenchmark: ['voiceBenchmark'] },
+    writes: { saveBenchmark: ['voiceBenchmark'], deleteBenchmark: ['voiceBenchmark'] },
     reads: { getBenchmarks: ['voiceBenchmark'] }
   }),
   // Read-only for the same reason `voice` is: a video note's row is owned by

@@ -25,7 +25,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { VoiceBenchmark } from '../types';
 import type { PhotoFileStore } from './journal';
-import { stageRecording } from './voiceRecordings';
+import { removeRecordingFilesAfterCommit, stageRecording } from './voiceRecordings';
 import { mintUuid, now } from './support';
 
 /** What the recording flow hands over: a day, which passage was read, the
@@ -61,6 +61,11 @@ export interface VoiceBenchmarksArea {
   getBenchmarks(): Promise<VoiceBenchmark[]>;
   /** Writes both takes, then the row. Returns the benchmark's uuid. */
   saveBenchmark(input: NewVoiceBenchmark): Promise<string>;
+  /** Removes the row, then both audio files (ticket 16) - the row-then-files
+      ordering voiceRecordings.ts's own delete helper already carries.
+      Idempotent, like the journal's other deletes: a row already gone
+      leaves nothing to remove. */
+  deleteBenchmark(id: string): Promise<void>;
 }
 
 type BenchmarkRow = {
@@ -143,6 +148,21 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
         ]
       );
       return uuid;
+    },
+
+    async deleteBenchmark(id) {
+      const rows = await driver.query<{ passage_file_path: string; vowel_file_path: string | null }>(
+        'SELECT passage_file_path, vowel_file_path FROM voice_benchmark WHERE uuid = ?',
+        [id]
+      );
+      await driver.run('DELETE FROM voice_benchmark WHERE uuid = ?', [id]);
+      const filePaths = rows.flatMap((row) =>
+        row.vowel_file_path ? [row.passage_file_path, row.vowel_file_path] : [row.passage_file_path]
+      );
+      await removeRecordingFilesAfterCommit(
+        files,
+        filePaths.map((file_path) => ({ file_path }))
+      );
     }
   };
 }
