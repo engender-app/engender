@@ -99,6 +99,13 @@ describe('the three more sources ticket 14 adds', () => {
   });
 });
 
+describe('the link to the support directory', () => {
+  it('points the calming-tool heading at the existing /settings/resources directory, not new content', () => {
+    expect(markup).toContain('href="/settings/resources"');
+    expect(markup).toContain('{m.resources_title()}');
+  });
+});
+
 describe('More hub row for Safe Space', () => {
   it('points to /doubt with safe_space_title and safe_space_hub_sub', () => {
     expect(more).toContain("key: 'doubt', icon: 'heart', title: () => m.safe_space_title(), subtitle: () => m.safe_space_hub_sub(), href: '/doubt'");

@@ -7,6 +7,11 @@
      - Counterevidence pool: euphoria-tagged, high-euphoria body region, and starred entries,
        plus (ticket 14) an unlocked letter and starred photos drawn alongside it
      - Snapshots: frozen captures of past counterevidence pools
+     - A link to the bundled support directory (/settings/resources), added
+       to the calming-tool heading at Alicja's request during this ticket's
+       review - the ticket text itself excludes new crisis-resource
+       *content*, and this adds none: it points at the directory that
+       already ships, not a new one.
 
      Purely a read: opening the screen writes nothing (ADR-0037,
      src/lib/data/journal/safeSpaceReads.test.ts pins it at the driver).
@@ -140,7 +145,11 @@
 <div class="screen">
   <ScreenHeader title={m.safe_space_title()} back={() => smartBack('/more')} />
 
-  <SectionHeading text={m.safe_space_calm_title()} />
+  <SectionHeading text={m.safe_space_calm_title()}>
+    {#snippet action()}
+      <a class="kit-heading-action" href="/settings/resources">{m.resources_title()}</a>
+    {/snippet}
+  </SectionHeading>
   <BreathingExercise role={roleAt(activeFlag.roles, 0)} />
 
   <SectionHeading text={m.safe_space_stats_title()} />
