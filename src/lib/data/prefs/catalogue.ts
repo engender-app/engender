@@ -132,6 +132,18 @@ export interface PreferenceValues {
       while an in-use regimen's stock is projected to run out. Same shape and
       reasoning as `wearTimerEnabled`. */
   stockNoticeEnabled: boolean;
+  /** Whether the active-tryout live tile is ever shown (phase 5 deepening ticket 03). */
+  activeTryoutTileEnabled: boolean;
+  /** Whether the patch-schedule live tile is ever shown (phase 5 deepening ticket 03). */
+  patchScheduleTileEnabled: boolean;
+  /** Whether the voice-benchmark nudge live tile is ever shown (phase 5 deepening ticket 03). */
+  voiceBenchmarkNudgeEnabled: boolean;
+  /** Whether the pause-active banner live tile is ever shown (phase 5 deepening ticket 03). */
+  pauseActiveBannerEnabled: boolean;
+  /** Whether the hair-removal recovery live tile is ever shown (phase 5 deepening ticket 03). */
+  hairRemovalRecoveryEnabled: boolean;
+  /** Whether the measurements nudge live tile is ever shown (phase 5 deepening ticket 03). */
+  measurementsNudgeEnabled: boolean;
   /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
       stops the Home card and the recap read behind it, rather than hiding a
       card over work that still runs.
@@ -288,6 +300,12 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   safeSpaceNudgeEnabled: true,
   safeSpaceNudgeDismissedEntryId: null,
   stockNoticeEnabled: true,
+  activeTryoutTileEnabled: true,
+  patchScheduleTileEnabled: true,
+  voiceBenchmarkNudgeEnabled: true,
+  pauseActiveBannerEnabled: true,
+  hairRemovalRecoveryEnabled: true,
+  measurementsNudgeEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
   wrappedNotificationsEnabled: false,
@@ -360,6 +378,12 @@ export const DEVICE_LOCAL_KEYS = [
   'safeSpaceNudgeEnabled',
   'safeSpaceNudgeDismissedEntryId',
   'stockNoticeEnabled',
+  'activeTryoutTileEnabled',
+  'patchScheduleTileEnabled',
+  'voiceBenchmarkNudgeEnabled',
+  'pauseActiveBannerEnabled',
+  'hairRemovalRecoveryEnabled',
+  'measurementsNudgeEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
   'wrappedNotificationsEnabled',

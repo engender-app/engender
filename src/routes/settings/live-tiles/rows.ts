@@ -63,6 +63,42 @@ export const LIVE_TILE_ROWS: LiveTileRow[] = [
   },
   { key: 'stock-notice', title: () => m.tile_stock_title(), subtitle: () => m.tile_stock_sub(), prefKey: 'stockNoticeEnabled' },
   {
+    key: 'active-tryout-tile',
+    title: () => m.tile_active_tryout_title(),
+    subtitle: () => m.tile_active_tryout_sub(),
+    prefKey: 'activeTryoutTileEnabled'
+  },
+  {
+    key: 'patch-schedule-tile',
+    title: () => m.tile_patch_schedule_title(),
+    subtitle: () => m.tile_patch_schedule_sub(),
+    prefKey: 'patchScheduleTileEnabled'
+  },
+  {
+    key: 'voice-benchmark-nudge',
+    title: () => m.tile_voice_benchmark_title(),
+    subtitle: () => m.tile_voice_benchmark_sub(),
+    prefKey: 'voiceBenchmarkNudgeEnabled'
+  },
+  {
+    key: 'pause-active-banner',
+    title: () => m.tile_pause_active_title(),
+    subtitle: () => m.tile_pause_active_sub(),
+    prefKey: 'pauseActiveBannerEnabled'
+  },
+  {
+    key: 'hair-removal-recovery',
+    title: () => m.tile_hair_removal_title(),
+    subtitle: () => m.tile_hair_removal_sub(),
+    prefKey: 'hairRemovalRecoveryEnabled'
+  },
+  {
+    key: 'measurements-nudge',
+    title: () => m.tile_measurements_title(),
+    subtitle: () => m.tile_measurements_sub(),
+    prefKey: 'measurementsNudgeEnabled'
+  },
+  {
     key: 'wrapped',
     title: () => m.wrapped(),
     subtitle: () => m.wrapped_settings_sub(),

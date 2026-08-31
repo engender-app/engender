@@ -7,6 +7,7 @@
    apart. */
 
 export interface JournalingPauseRange {
+  id?: string;
   startEpochDay: number;
   endEpochDay: number | null;
 }
