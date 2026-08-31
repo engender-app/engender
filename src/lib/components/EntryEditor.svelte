@@ -8,6 +8,7 @@
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
   import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
+  import { journalDataKey } from '$lib/stores/boot.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
@@ -78,23 +79,35 @@
      only a killed-while-backgrounded process ever leaves it to be found on
      the next mount. A same-process background/resume never unmounts this
      component at all, so its in-memory state alone already handles that
-     case - this only ever restores after a real process death. */
-  const draftStore = localStorageEntryDraft();
+     case - this only ever restores after a real process death.
 
-  function restoreIfPersisted(target: EntryDraft) {
-    const persisted = draftStore.read();
-    if (!persisted) return;
-    if (draftMatchesRoute(persisted, entryId, target.epochDay)) applyPersistedDraft(target, persisted);
-    else draftStore.clear(); // a different editor's leftovers - not this one's to resume
+     What is written there is ciphertext under the open journal's data key
+     (sec-audit 02), which makes both halves async. */
+  const draftStore = localStorageEntryDraft(journalDataKey);
+
+  /* Nothing is mirrored until the first read has been attempted: the write
+     effect below would otherwise fire on mount and put the empty draft over
+     the very snapshot this is about to restore. */
+  let mirrorRead = $state(false);
+
+  async function restoreIfPersisted(target: EntryDraft) {
+    try {
+      const persisted = await draftStore.read();
+      if (!persisted) return;
+      if (draftMatchesRoute(persisted, entryId, target.epochDay)) applyPersistedDraft(target, persisted);
+      else draftStore.clear(); // a different editor's leftovers - not this one's to resume
+    } finally {
+      mirrorRead = true;
+    }
   }
 
   // svelte-ignore state_referenced_locally
-  restoreIfPersisted(entryDraft);
+  void restoreIfPersisted(entryDraft);
 
-  onFirstResult(loaded, (entry) => {
+  onFirstResult(loaded, async (entry) => {
     if (!entry) return;
     const fresh = createEntryDraft(entry.epochDay, entry);
-    restoreIfPersisted(fresh);
+    await restoreIfPersisted(fresh);
     entryDraft = fresh;
     starred = entry.starred;
   });
@@ -127,7 +140,9 @@
   }
 
   $effect(() => {
-    draftStore.write(serializeDraft(entryDraft));
+    const snapshot = serializeDraft(entryDraft);
+    if (!mirrorRead) return;
+    void draftStore.write(snapshot);
   });
 
   onDestroy(() => draftStore.clear());
