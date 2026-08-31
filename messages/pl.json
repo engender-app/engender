@@ -2109,6 +2109,7 @@
   "clinician_summary_range_required": "Wybierz datę początkową i końcową, żeby zobaczyć podsumowanie.",
   "clinician_summary_print": "Drukuj",
   "clinician_summary_generated": "Wygenerowano {date}",
+  "clinician_summary_generated_label": "Wygenerowano",
   "clinician_summary_regimen_episodes_empty": "Brak etapów kuracji w tym zakresie.",
   "clinician_summary_doses_empty": "W tym zakresie nie zapisano żadnych dawek.",
   "clinician_summary_labs_empty": "Brak wyników badań w tym zakresie.",
