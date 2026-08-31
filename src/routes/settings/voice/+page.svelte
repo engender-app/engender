@@ -26,7 +26,7 @@
      wrapping div (appointment-prep's own note on the same conflict), which
      would break the exact contract this picker needs. */
   import { m } from '$lib/paraglide/messages';
-  import { narrowAnnotations } from '$lib/charts/annotations';
+  import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { journal, liveList, type LiveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration, fmtRangeEnds } from '$lib/data/dates';
@@ -74,14 +74,8 @@
   /* What was happening between the takes (ticket 23). Benchmarks are months
      apart and a regimen episode is the thing they are read against, so the
      trend's range is however long there have been benchmarks. */
-  let benchmarkDays = $derived(benchmarksQuery.rows.map((b) => b.epochDay));
-  let annotationsQuery = liveList((j) =>
-    j.chartAnnotations.getAnnotations(
-      Math.min(...benchmarkDays, todayEpochDay()),
-      Math.max(...benchmarkDays, todayEpochDay()),
-      todayEpochDay()
-    )
-  );
+  let span = $derived(annotationSpan(benchmarksQuery.rows.map((b) => b.epochDay), todayEpochDay()));
+  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(span.from, span.to, todayEpochDay()));
   let activeQuery: LiveList<Anchor> = $derived(kind === 'recordings' ? recordingsQuery : benchmarksQuery);
   let anchors = $derived<Anchor[]>(kind === 'recordings' ? recordingsQuery.rows : benchmarksQuery.rows);
 

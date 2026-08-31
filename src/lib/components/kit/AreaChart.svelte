@@ -40,9 +40,14 @@
   import { fade } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
   import { areaPath, lerpSamples, resample, type Point } from '$lib/charts/geometry';
-  import { annotationsAtPoint, placeAnnotations, type ChartAnnotation } from '$lib/charts/annotations';
+  import {
+    MIN_PLOT_POSITIONS,
+    annotationsAtPoint,
+    placeAnnotations,
+    type ChartAnnotation
+  } from '$lib/charts/annotations';
   import ChartAnnotations from './ChartAnnotations.svelte';
-  import { annotationCaption, annotationLabel, annotationLine } from './chartAnnotation';
+  import { annotationCaption, annotationLine, annotationReadout } from './chartAnnotation';
   import { wipe } from '$lib/motion/reveal';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
 
@@ -172,11 +177,19 @@
      lands beside the reading it belongs to. */
   /* Nothing is annotated on a chart with one reading on it: there is no
      distance for a band to have and no position for a mark to be at, so the
-     caption would name things the plot never drew. */
-  let shownAnnotations = $derived(points.length >= 2 ? annotations : []);
+     caption would name things the plot never drew. The threshold is the
+     placement's own, rather than a second copy of it here. */
+  let shownAnnotations = $derived(points.length >= MIN_PLOT_POSITIONS ? annotations : []);
   let placed = $derived(placeAnnotations(shownAnnotations, points, Math.max(plotWidth - PAD * 2, 1)));
-  let atAnnotations = $derived(scrub === null ? [] : annotationsAtPoint(shownAnnotations, points, scrub));
+  let atAnnotations = $derived(
+    annotationReadout(scrub === null ? [] : annotationsAtPoint(shownAnnotations, points, scrub))
+  );
   let caption = $derived(annotationCaption(shownAnnotations));
+  /* Named here rather than called in the markup, for the reason the scrub
+     handlers above are: kit-surfaces.test.ts reads a component's copy with a
+     regex, and a message call carrying an object argument is a nested brace
+     it cannot see past - so the key itself reads as inline copy. */
+  let restLabel = $derived(m.chart_annotations_and_more({ count: String(atAnnotations.rest) }));
 
   /* Named rather than written inline. An arrow in an attribute is also an
      arrow to anything reading this markup with a regex, and
@@ -286,9 +299,12 @@
           <!-- What was going on at the position under the finger, stated
                beside the reading and never joined to it: the readout says
                both, and says nothing about the two being related. -->
-          {#each atAnnotations as annotation (annotation.id)}
-            <span class="kit-area-readout-annotation">{annotationLabel(annotation)}</span>
+          {#each atAnnotations.labels as label (label)}
+            <span class="kit-area-readout-annotation">{label}</span>
           {/each}
+          {#if atAnnotations.rest}
+            <span class="kit-area-readout-annotation">{restLabel}</span>
+          {/if}
         </output>
       {/if}
     </div>
@@ -310,7 +326,10 @@
          scrub is a way of reading a picture, so it is no use here, and the
          chart's own numbers are already offered as a list by the screens
          that draw one. -->
-    <ul class="visually-hidden">
+    <!-- Named after the chart it belongs to: a screen drawing two charts off
+         one range draws this list twice, and an unlabelled second copy is a
+         list of dates with nothing saying what they are a list of. -->
+    <ul class="visually-hidden" aria-label={ariaLabel}>
       {#each shownAnnotations as annotation (annotation.id)}
         <li>{annotationLine(annotation)}</li>
       {/each}
