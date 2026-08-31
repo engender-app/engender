@@ -1905,12 +1905,17 @@ try {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="4"]').click();
+  /* The mirror is ciphertext under the session data key now (sec-audit 02),
+     so what can be read from outside the app is that a value was written and
+     that the note is not sitting in it. Taken away first, or the mood click's
+     own write would satisfy the wait and the reload could beat the note into
+     storage. That the mirror still carries this draft is what the reload
+     below proves, which was always the point of the flow. */
+  await page.evaluate(() => localStorage.removeItem('gender-diary-entry-draft'));
   await page.locator('#ed-note').fill('Killed mid-edit by Playwright.');
   await page.waitForFunction(() => {
     const raw = localStorage.getItem('gender-diary-entry-draft');
-    if (!raw) return false;
-    const draft = JSON.parse(raw);
-    return draft.mood === 4 && draft.note === 'Killed mid-edit by Playwright.';
+    return !!raw && !raw.includes('Killed mid-edit');
   });
 
   await page.reload({ waitUntil: 'networkidle' });
