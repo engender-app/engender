@@ -1,7 +1,7 @@
 /* The medication stock area (phase 4 ticket 04, CONTEXT: "Medication stock",
    "Run-out projection"). One row per drug (migrations.ts v7,
    stockProjection.ts): remaining stock and its run-out projection are both
-   derived on read, never stored (ADR-0046).
+   derived on read, never stored (ADR-0046, generalizing ADR-0010's rule).
 
    Reads doses through DosesArea and episodes through RegimenArea, and
    writes the run-out reminder through RemindersArea, rather than

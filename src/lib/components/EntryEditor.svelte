@@ -211,7 +211,7 @@
       (ADR-0046). */
   let stockQuery = liveQuery((j) => j.stock.getProjections(day));
   let stockRows = $derived(stockQuery.value ?? []);
-  /** Exact trimmed match, the same rule stock.ts's own drug lookup uses. */
+  /** Exact trimmed match, the same rule drugsMatch (stockProjection.ts) uses. */
   const stockFor = (drug: string) => stockRows.find((row) => row.entry.drug.trim() === drug.trim()) ?? null;
 
   let proceduresQuery = liveQuery((j) => j.procedures.getProcedures());
