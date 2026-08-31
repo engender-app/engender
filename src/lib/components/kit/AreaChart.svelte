@@ -40,6 +40,9 @@
   import { fade } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
   import { areaPath, lerpSamples, resample, type Point } from '$lib/charts/geometry';
+  import { annotationsAtPoint, placeAnnotations, type ChartAnnotation } from '$lib/charts/annotations';
+  import ChartAnnotations from './ChartAnnotations.svelte';
+  import { annotationCaption, annotationLabel, annotationLine } from './chartAnnotation';
   import { wipe } from '$lib/motion/reveal';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
 
@@ -51,7 +54,8 @@
     from,
     to,
     formatValue = (v: number) => String(Math.round(v)),
-    scrubLabel
+    scrubLabel,
+    annotations = []
   }: {
     /** Already bucketed to the grain the caller chose. */
     points: Point[];
@@ -74,6 +78,11 @@
         the caller formats, the chart places. Without it the readout shows
         the value alone. */
     scrubLabel?: (point: Point, index: number) => string;
+    /** What was happening around these readings, in the same units `points`
+        counts in - epoch days (charts/annotations.ts). Empty by default: a
+        chart opts into annotations, and a chart that would be worse for them
+        passes none. */
+    annotations?: ChartAnnotation[];
   } = $props();
 
   const HEIGHT = 132;
@@ -157,6 +166,14 @@
   let scrub = $state<number | null>(null);
   let at = $derived(scrub !== null && path.dots[scrub] ? { dot: path.dots[scrub], point: points[scrub] } : null);
 
+  /* Laid out against the plot's own positions rather than against the
+     calendar: the chart draws its buckets evenly spaced whatever the days
+     behind them are, so an annotation has to be placed the same way or it
+     lands beside the reading it belongs to. */
+  let placed = $derived(placeAnnotations(annotations, points, Math.max(plotWidth - PAD * 2, 1)));
+  let atAnnotations = $derived(scrub === null ? [] : annotationsAtPoint(annotations, points, scrub));
+  let caption = $derived(annotationCaption(annotations));
+
   /* Named rather than written inline. An arrow in an attribute is also an
      arrow to anything reading this markup with a regex, and
      tests/kit-surfaces.test.ts strips tags with one. */
@@ -213,6 +230,9 @@
         aria-hidden="true"
       >
         <g transform="translate({PAD}, {PAD})">
+          <!-- Under the fill and the line, never over them: context sits
+               behind the readings it is context for. -->
+          <ChartAnnotations {placed} height={HEIGHT - PAD * 2} />
           <path class="kit-area-fill" d={path.fill} />
           <path class="kit-area-line" d={path.line} />
           {#if lastMovingPath}
@@ -255,8 +275,16 @@
 
       {#if at}
         <output class="kit-area-readout" data-chart-readout>
-          <b>{formatValue(at.point.y)}</b>
-          {#if scrubLabel && scrub !== null}<span>{scrubLabel(at.point, scrub)}</span>{/if}
+          <span class="kit-area-readout-value">
+            <b>{formatValue(at.point.y)}</b>
+            {#if scrubLabel && scrub !== null}<span>{scrubLabel(at.point, scrub)}</span>{/if}
+          </span>
+          <!-- What was going on at the position under the finger, stated
+               beside the reading and never joined to it: the readout says
+               both, and says nothing about the two being related. -->
+          {#each atAnnotations as annotation (annotation.id)}
+            <span class="kit-area-readout-annotation">{annotationLabel(annotation)}</span>
+          {/each}
         </output>
       {/if}
     </div>
@@ -267,6 +295,22 @@
       <span>{from ?? ''}</span>
       <span>{to ?? ''}</span>
     </div>
+  {/if}
+
+  {#if annotations.length}
+    <!-- What the marks are, once, under the plot. Names only: the dates are
+         where the marks are, and a caption that repeated them would be a
+         second axis written in words. -->
+    <p class="kit-area-annotations" data-chart-annotations aria-hidden="true">{caption}</p>
+    <!-- The same thing for somebody who cannot see where a mark sits. A
+         scrub is a way of reading a picture, so it is no use here, and the
+         chart's own numbers are already offered as a list by the screens
+         that draw one. -->
+    <ul class="visually-hidden">
+      {#each annotations as annotation (annotation.id)}
+        <li>{annotationLine(annotation)}</li>
+      {/each}
+    </ul>
   {/if}
 {:else}
   <p class="kit-chart-empty">{m.not_enough_data()}</p>
