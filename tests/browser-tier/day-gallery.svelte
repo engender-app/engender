@@ -33,6 +33,12 @@
   import { PALETTES } from '../palettes.mjs';
 
   const DAY = 20690;
+
+  /* A photo row's own `fileName` is a plain string on every area that owns
+     one, but a placeholder has no file - which is a state the demo persona
+     already ships and PhotoThumb already draws (types.ts). One helper rather
+     than a cast per photograph, so the fixture says "no stored file" once. */
+  const noFile = () => null as unknown as string;
   const at = (hour: number, minute = 0) => startOfDayTimestamp(DAY) + (hour * 60 + minute) * 60000;
 
   const entry = (id: number, hour: number, mood: number, note: string, tags: string[] = []) => ({
@@ -172,20 +178,20 @@
     ],
     hairStages: [{ id: 'hs1', epochDay: DAY, scale: 'norwood_hamilton', stage: '3', description: '' }],
     hairPhotos: [
-      { id: 'hp1', epochDay: DAY, fileName: null as unknown as string },
-      { id: 'hp2', epochDay: DAY, fileName: null as unknown as string },
-      { id: 'hp3', epochDay: DAY, fileName: null as unknown as string }
+      { id: 'hp1', epochDay: DAY, fileName: noFile() },
+      { id: 'hp2', epochDay: DAY, fileName: noFile() },
+      { id: 'hp3', epochDay: DAY, fileName: noFile() }
     ],
     hairRemovalSessions: [
       { id: 'hr1', epochDay: DAY, area: 'chin', method: 'laser', painRating: 3, cost: '250 zł', provider: 'Klinika' }
     ],
     procedureRecords: [
       { kind: 'consult', id: 'pc1', procedureId: 'pr1', procedureName: 'Orchiectomy' },
-      { kind: 'recovery-photo', id: 'pp1', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: null as unknown as string },
-      { kind: 'recovery-photo', id: 'pp2', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: null as unknown as string }
+      { kind: 'recovery-photo', id: 'pp1', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() },
+      { kind: 'recovery-photo', id: 'pp2', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() }
     ],
     tryoutPhotos: [
-      { id: 'tp1', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: null as unknown as string }
+      { id: 'tp1', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() }
     ]
   };
 

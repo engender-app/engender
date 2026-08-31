@@ -11,7 +11,22 @@
    This is the read side of that, and it is a registry for the reason the
    two registries before it are (ADR-0027, ADR-0031): the alternative is a
    hand-written list of imports that a new dated area is silently missing
-   from, with no test able to notice. What one entry declares:
+   from, with no test able to notice.
+
+   A third registry rather than an extension of either, and the ticket asks
+   for that check to be made rather than assumed. Neither fits. The archive
+   registry (ADR-0027) is keyed on `ArchiveJournal` and moves whole tables in
+   both directions with a restore order over them; a day asks one table for
+   one epoch day and never writes. The clinician summary (ADR-0031) is keyed
+   on `ClinicianSummary`, reads a *range*, and deliberately carries the parts
+   a doctor needs - it excludes entries, photographs, tally events and
+   felt-sense, which are four of the things a day is most about, and adding
+   them for this would change what a printed summary discloses. So the shape
+   is copied and the list is not, and what ties this one to the archive
+   registry instead is `covers` below: the archive registry is what makes an
+   area exist at all, so it is the right thing to be checked against.
+
+   What one entry declares:
 
      key     where the section's rows land in `DayRecords`
      covers  which archive sections this one accounts for, which is what
@@ -364,6 +379,11 @@ async function assembleDay(
   sections.forEach((s, index) => {
     day[s.key] = contents[index];
   });
+  /* The double cast is the price of `DaySection` being erased over its row
+     type, which is what lets one list hold every section and lets a test
+     register a section `DayRecords` has never heard of. The declaration site
+     is where the types are checked (`section` below); this is assembly.
+     clinicianSummary.ts pays the same price for the same reason. */
   return day as unknown as DayRecords;
 }
 

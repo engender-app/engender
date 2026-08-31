@@ -9,7 +9,7 @@
    is the composition: whether a sparse day still looks like the screen it
    was, and whether a maximal one reads as a day rather than as a dump.
 
-   Run: node tests/day-gallery.mjs [outDir]
+   Run: npm run gallery:day  (or node tests/day-gallery.mjs [outDir])
    Default outDir is .claude/day-shots, which is gitignored and durable. */
 import { createServer } from 'vite';
 import { mkdir } from 'node:fs/promises';
@@ -46,31 +46,29 @@ const select = async (label, value) => {
   await page.waitForTimeout(150);
 };
 
+/* The selectors are for driving the page by hand; they are not part of what
+   is being looked at, so they come off for the picture and go back on. */
 async function shoot(name) {
+  await page.addStyleTag({ content: '.stage-controls { display: none !important; }' });
   await page.screenshot({ path: `${outDir}/${name}.png`, fullPage: true });
+  await page.evaluate(() => document.head.querySelectorAll('style').forEach((s) => {
+    if (s.textContent?.includes('.stage-controls')) s.remove();
+  }));
   shots.push(name);
 }
 
-/* The three shapes on the default flag in both themes, which is the pair the
-   composition itself is judged on. */
+/* Every shape on every flag in both themes - 48 pictures. The ticket asks
+   for all three days across 8 palettes x 2 themes and it is right to: the
+   sparse day is the one that has to keep looking like the screen it was, and
+   the day card's own stripe is the only colour on it. */
 for (const shape of SHAPES) {
   await select('Day', shape);
-  for (const theme of THEMES) {
-    await select('Theme', theme);
-    await shoot(`day-${shape}-trans-${theme}`);
-  }
-}
-
-/* Then every palette, on the maximal day: the sweep is about colour, and the
-   maximal day is the only shape that spends both roles on enough surface to
-   show what a stripe does to them. Sixteen more pictures rather than
-   forty-eight nobody looks at. */
-await select('Day', 'maximal');
-for (const palette of PALETTES) {
-  await select('Palette', palette);
-  for (const theme of THEMES) {
-    await select('Theme', theme);
-    await shoot(`day-maximal-${palette}-${theme}`);
+  for (const palette of PALETTES) {
+    await select('Palette', palette);
+    for (const theme of THEMES) {
+      await select('Theme', theme);
+      await shoot(`day-${shape}-${palette}-${theme}`);
+    }
   }
 }
 

@@ -37,6 +37,14 @@
        and has no per-day point to hang a link on; and this screen's own day
        bar, which would link to itself.
 
+       charts - no chart mark in the app is a dated point that takes a press.
+       AreaChart draws its line and takes none at all; BarRows takes an
+       `onPick`, but its four callers pick a metric or a body region, not a
+       day. The one dated grid that does take a press is the calendar's, and
+       that already lands here. So there is nothing to repoint: making a
+       dated mark tappable is a feature for the chart kit, not a link this
+       audit can fix.
+
        left alone on purpose - the timeline's milestones, which are dated and
        currently open nothing. Nothing on that rail is a control: it is read,
        not operated, and gaps and "you are here" sit in the same list as the
@@ -116,7 +124,7 @@
         key="day-empty"
         role={entriesRole}
         title={m.nothing_logged()}
-        text={m.day_nothing_body()}
+        text={m.nothing_logged_body()}
       />
     {/snippet}
   </ReadGate>
