@@ -10,6 +10,7 @@
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
+  import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
@@ -202,6 +203,16 @@
   });
 
   let scheduleDose = $derived(dueScheduledDoses[0] ?? null);
+
+  /** Stock as of this entry's own day (phase 5 deepening ticket 06), not
+      today's - an entry backdated to a day before a re-count would otherwise
+      state a remaining figure the count hadn't reached yet. Read here only
+      to say what a quick-logged dose leaves; nothing writes to it
+      (ADR-0046). */
+  let stockQuery = liveQuery((j) => j.stock.getProjections(day));
+  let stockRows = $derived(stockQuery.value ?? []);
+  /** Exact trimmed match, the same rule stock.ts's own drug lookup uses. */
+  const stockFor = (drug: string) => stockRows.find((row) => row.entry.drug.trim() === drug.trim()) ?? null;
 
   let proceduresQuery = liveQuery((j) => j.procedures.getProcedures());
   let recoveringProcedure = $derived.by(() => {
@@ -609,6 +620,7 @@
   {#if prefs.entryDoseQuickLogEnabled && scheduleDose}
     <div class="contextual-row" data-contextual="dose-quick-log">
       {#each dueScheduledDoses as doseItem (doseItem.drug)}
+        {@const stockRow = stockFor(doseItem.drug)}
         <button
           type="button"
           class="contextual-chip dose-chip press"
@@ -628,7 +640,12 @@
           }}
         >
           <Icon name={entryDraft.doseLog?.drug === doseItem.drug ? 'check' : 'plus'} size={16} />
-          <span>{m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}</span>
+          <span>
+            {m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}
+            {#if stockRow}
+              · {stockRemainingLabel(stockRow.projection.remaining - 1, stockRow.entry.unit)}
+            {/if}
+          </span>
         </button>
       {/each}
     </div>
