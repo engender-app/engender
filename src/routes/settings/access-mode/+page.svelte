@@ -1,7 +1,7 @@
 <script lang="ts">
   /* Changing how the journal opens, later (ticket 53). The same module the
-     first run uses, so there is one place that explains the three modes and
-     one place that can be got wrong.
+     first run uses, so there is one place that explains the modes and one
+     place that can be got wrong.
 
      Every direction is a rewrap of the same data key (crypto/keystore.ts):
      the journal is not re-encrypted, so the change is instant whatever the
@@ -18,15 +18,16 @@
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { changeJournalPin, unlockJournalPin } from '$lib/data/journal-pin';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
+  import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import AccessModeSetup from '$lib/components/AccessModeSetup.svelte';
+  import AccessModeSetup, { type AccessSetupMode } from '$lib/components/AccessModeSetup.svelte';
   import PinPad from '$lib/components/PinPad.svelte';
   import PinEntry, { type PinAttempt } from '$lib/components/PinEntry.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
 
-  type Mode = 'device-bound' | 'pin' | 'passphrase';
+  type Mode = AccessSetupMode;
 
   let busy = $state(false);
   let error = $state('');
@@ -38,11 +39,11 @@
   let heldPin = $state('');
   let pinRefusals = $state(0);
 
-  let current = $derived(
-    bootState.accessMode === 'pin' || bootState.accessMode === 'passphrase' || bootState.accessMode === 'device-bound'
-      ? (bootState.accessMode as Mode)
-      : null
-  );
+  /* Every mode the boot state can be in is a mode this screen can show: the
+     two types are the same list plus null, and re-listing them here was how
+     a fourth mode would have gone missing from "Now: ..." without anything
+     failing. */
+  let current = $derived(bootState.accessMode);
 
   async function choose(mode: Mode, secret: string) {
     if (busy) return;
@@ -54,7 +55,11 @@
       await goto('/settings/security');
     } catch (e) {
       console.error('changing the access mode failed', e);
-      error = m.am_change_failed();
+      /* Same rule as the first-run gate: a device that will not release a
+         secret has not failed at changing anything, it has answered that it
+         cannot do this mode, and the sentence has to send the person to
+         another row rather than leave them retrying at a wall. */
+      error = e instanceof BiometricUnavailableError ? m.am_biometric_unavailable() : m.am_change_failed();
     } finally {
       busy = false;
     }

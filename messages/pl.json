@@ -2521,7 +2521,7 @@
   "am_mode_passphrase_sub": "najmocniejsze i jedyne, które podróżuje",
   "am_device_detail_web": "Nie ma hasła do wpisywania ani do zapomnienia: klucz zostaje w profilu tej przeglądarki. To działa w dwie strony. Kto skopiuje ten profil, otworzy dziennik bez wpisywania czegokolwiek, a jeśli profil przepadnie, przepadnie z nim dziennik. Nic, co wiesz, go nie przywróci.",
   "am_device_detail_android": "Android trzyma klucz i wydaje go, kiedy blokada ekranu potwierdzi, że to ty, więc nie ma nic dodatkowego do wpisywania ani do pamiętania. Usunięcie blokady ekranu niszczy klucz na dobre, tak samo jak utrata telefonu. Nic, co wiesz, go nie przywróci.",
-  "am_passphrase_detail": "Najmocniejszy z trzech sposobów i jedyny, który otworzy ten dziennik na innym urządzeniu. Co najmniej {min} znaków, a za enGender nie stoi żadne konto: nikt, ta aplikacja też nie, nie odzyska zgubionego hasła ani dziennika pod nim. Zapisz je teraz w menedżerze haseł.",
+  "am_passphrase_detail": "Najmocniejszy ze wszystkich sposobów i jedyny, który otworzy ten dziennik na innym urządzeniu. Co najmniej {min} znaków, a za enGender nie stoi żadne konto: nikt, ta aplikacja też nie, nie odzyska zgubionego hasła ani dziennika pod nim. Zapisz je teraz w menedżerze haseł.",
   "am_export_note": "Ten sposób przypina dziennik do tego urządzenia, więc zaszyfrowany eksport to jedyna kopia, która przetrwa jego utratę.",
   "am_confirm_passphrase": "Użyj tego hasła",
   "am_confirm_device": "Użyj tego urządzenia",
@@ -2541,5 +2541,15 @@
   "pin_changed_toast": "PIN zmieniony.",
   "am_pin_choose": "Wybierz cztery cyfry.",
   "am_pin_detail_web": "Cztery cyfry, i tym razem to one są kluczem szyfrowania: dziennik jest opakowany twoim PIN-em razem z kluczem, który nigdy nie opuszcza tej przeglądarki. Samej skradzionej kopii pliku nie da się w ogóle atakować. Kopia całego profilu tej przeglądarki zabiera obie połowy, a wtedy wszystkie 10 000 możliwych PIN-ów pada w około pięć sekund na szybkiej karcie graficznej. PIN zatrzyma więc zerknięcie i zgubiony plik, a nie kogoś, kto potrafi zabrać profil albo rozłożyć urządzenie. Jeśli ukrywasz dziennik przed kimś takim, wybierz hasło.",
-  "am_pin_detail_android": "Cztery cyfry, i tym razem to one są kluczem szyfrowania: dziennik jest opakowany twoim PIN-em razem z kluczem, który nigdy nie opuszcza tego telefonu. Samej skradzionej kopii pliku nie da się w ogóle atakować. Kto potrafi rozłożyć telefon, dostaje obie połowy, a wtedy wszystkie 10 000 możliwych PIN-ów pada w około pięć sekund na szybkiej karcie graficznej. PIN zatrzyma więc zerknięcie i zgubiony plik, a nie narzędzie kryminalistyczne. Jeśli ukrywasz dziennik przed kimś takim, wybierz hasło."
+  "am_pin_detail_android": "Cztery cyfry, i tym razem to one są kluczem szyfrowania: dziennik jest opakowany twoim PIN-em razem z kluczem, który nigdy nie opuszcza tego telefonu. Samej skradzionej kopii pliku nie da się w ogóle atakować. Kto potrafi rozłożyć telefon, dostaje obie połowy, a wtedy wszystkie 10 000 możliwych PIN-ów pada w około pięć sekund na szybkiej karcie graficznej. PIN zatrzyma więc zerknięcie i zgubiony plik, a nie narzędzie kryminalistyczne. Jeśli ukrywasz dziennik przed kimś takim, wybierz hasło.",
+  "am_mode_biometric": "Odblokowanie urządzeniem",
+  "am_mode_biometric_sub": "odcisk albo twarz, o które to urządzenie i tak pyta",
+  "am_biometric_detail": "Klucz jest opakowany sekretem, który to urządzenie wydaje dopiero po sprawdzeniu, że to ty, więc nie ma nic do wpisywania ani do pamiętania. Sekret nie opuszcza urządzenia i nie da się go wyliczyć z niczego, co wiesz. Jeśli urządzenie przepadnie albo zniknie z niego odcisk lub twarz, dziennik przepada razem z nim, a wyczyszczenie profilu tej przeglądarki kończy go tak samo.",
+  "am_confirm_biometric": "Użyj odblokowania urządzeniem",
+  "am_biometric_unavailable": "To urządzenie nie wydało sekretu dla dziennika. Wybierz zamiast tego PIN albo hasło.",
+  "bm_unlock_body": "Potwierdź, że to ty, żeby otworzyć dziennik.",
+  "bm_unlock_action": "Odblokuj tym urządzeniem",
+  "bm_unlock_failed": "To urządzenie nie potwierdziło, że to ty, więc dziennik pozostaje zamknięty.",
+  "bm_no_way_in": "To urządzenie nie potwierdza, że to ty?",
+  "bm_forgot_key_note": "Dziennik jest zaszyfrowany kluczem, który odpakowuje tylko to urządzenie. Bez tego urządzenia nikt tego nie odczyta, ta aplikacja też nie."
 }

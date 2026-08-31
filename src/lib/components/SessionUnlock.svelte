@@ -13,15 +13,19 @@
      The price is one Argon2id derivation per re-entry, which is honest and
      which the PIN profile was sized around (crypto/params.ts).
 
-     Three shapes, one per mode that has a secret. Web device-bound mode has
-     none, so it never reaches here - isLocked() is false for it, and quick
-     exit's neutral page is the whole of what that combination can do. The
-     settings copy says so rather than letting a switch imply otherwise. */
+     Four shapes, one per mode that has a secret: a passphrase field, a PIN
+     pad, Android's Keystore prompt, and the web biometric's own (ticket 55,
+     where the platform prompt is the secret exactly as Keystore's is). Web
+     device-bound mode has none, so it never reaches here - isLocked() is
+     false for it, and quick exit's neutral page is the whole of what that
+     combination can do. The settings copy says so rather than letting a
+     switch imply otherwise. */
 
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { unlockJournalPassphrase } from '$lib/data/journal-passphrase';
   import { unlockJournalPin } from '$lib/data/journal-pin';
+  import { unlockJournalBiometric } from '$lib/data/journal-biometric';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { markUnlocked } from '$lib/stores/lock.svelte';
   import { resetApp } from '$lib/stores/boot.svelte';
@@ -68,6 +72,23 @@
       markUnlocked();
     } catch (e) {
       error = e instanceof DeviceBindingUnavailableError ? m.su_device_key_gone() : m.pp_wrong();
+    } finally {
+      busy = false;
+    }
+  }
+
+  /* The web biometric: the authenticator's prompt is the secret, so this is
+     one button and one sentence, the same shape Android's below has. */
+  async function useBiometric() {
+    if (busy) return;
+    busy = true;
+    error = '';
+    try {
+      await unlockJournalBiometric();
+      markUnlocked();
+    } catch (e) {
+      console.error('the biometric unlock failed', e);
+      error = m.bm_unlock_failed();
     } finally {
       busy = false;
     }
@@ -121,8 +142,19 @@
   }
 
   let body = $derived(
-    mode === 'pin' ? m.su_pin_body() : mode === 'passphrase' ? m.su_passphrase_body() : m.su_device_body()
+    mode === 'pin'
+      ? m.su_pin_body()
+      : mode === 'passphrase'
+        ? m.su_passphrase_body()
+        : mode === 'biometric'
+          ? m.bm_unlock_body()
+          : m.su_device_body()
   );
+
+  /** Which sentence the way out gets. Only passphrase and PIN can be
+      forgotten; the two prompt-driven modes have a device that will not
+      answer instead. */
+  let wayOut = $derived(mode === 'pin' ? m.pin_forgot() : mode === 'biometric' ? m.bm_no_way_in() : m.pp_forgot());
 
   let title = $derived(prefs.name ? m.pin_greeting_named({ name: prefs.name }) : m.pin_greeting());
 </script>
@@ -154,6 +186,12 @@
         <span>{busy ? m.pp_decrypting() : m.pp_submit_unlock()}</span>
       </button>
     </form>
+  {:else if mode === 'biometric'}
+    <div class="gate-actions">
+      <button class="btn btn-primary" data-session-biometric disabled={busy} onclick={useBiometric}>
+        <span>{busy ? m.pp_decrypting() : m.bm_unlock_action()}</span>
+      </button>
+    </div>
   {:else if mode === 'device-bound' && isAndroid()}
     <div class="gate-actions">
       <button class="btn btn-primary" data-session-device-lock disabled={busy} onclick={useDeviceLock}>
@@ -164,7 +202,7 @@
 
   <div class="gate-foot">
     <button class="btn btn-ghost" data-forgot onclick={() => (resetOpen = true)}>
-      <span>{mode === 'pin' ? m.pin_forgot() : m.pp_forgot()}</span>
+      <span>{wayOut}</span>
     </button>
     {#if prefs.lockOnLeave || prefs.quickExit}
       <p class="gate-note">
@@ -175,13 +213,13 @@
   </div>
 </GateScreen>
 
-<Sheet bind:open={resetOpen} title={mode === 'pin' ? m.pin_forgot() : m.pp_forgot()}>
-  <h3>{mode === 'pin' ? m.pin_forgot() : m.pp_forgot()}</h3>
+<Sheet bind:open={resetOpen} title={wayOut}>
+  <h3>{wayOut}</h3>
   <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
     <Icon name="alert" size={20} />
     <div class="notice-body">
       <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
-      {m.pp_forgot_key_note()}
+      {mode === 'biometric' ? m.bm_forgot_key_note() : m.pp_forgot_key_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
