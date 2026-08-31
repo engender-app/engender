@@ -1545,9 +1545,12 @@ a.kit-entry:active {
   position: absolute;
   top: 0;
   right: 0;
+  /* A column, so an annotation goes under the reading rather than beside it:
+     side by side, a long name pushes the number off the plot at 390px. It
+     collapses to one line on its own where there is nothing to annotate. */
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: flex-end;
   padding: 3px var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--surface-2);
@@ -1562,6 +1565,64 @@ a.kit-entry:active {
 .kit-area-readout b {
   font-size: var(--text-sm);
   color: var(--text);
+}
+
+.kit-area-readout-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* Under the reading and quieter than it: what was going on is context for a
+   number, never a second number. */
+.kit-area-readout-annotation {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- annotations (phase 5 deepening ticket 23) ---
+
+   What was happening around the readings. Neutral ink at every weight here,
+   never a role colour: the fill under an annotation is one of eight flag
+   palettes in one of two themes, and a hue that read clearly against half of
+   those would be lost against the rest. Ink is what they all share.
+
+   The three weights are a wash, an edge and a mark, and they are deliberately
+   far apart. A band has to darken the card without being read as data, so it
+   sits below the weight of anything else drawn; a tick has to be findable
+   against a filled area, so it sits above the gutter's text and below the
+   line's own stroke. */
+.kit-annotation-band {
+  fill: color-mix(in oklab, var(--text) 7%, transparent);
+}
+
+/* The day a stretch began, and only where that day is really in the range. */
+.kit-annotation-edge {
+  stroke: color-mix(in oklab, var(--text) 26%, transparent);
+  stroke-width: 1;
+}
+
+/* A moment, off the baseline. Solid where the scrub is dotted: the dotted
+   line means "under your finger, right now" and this one means "this
+   happened", and two marks that mean different things may not look alike. */
+.kit-annotation-tick {
+  stroke: color-mix(in oklab, var(--text) 52%, transparent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* Names for the marks, once, under the plot. Wraps to two lines and stops:
+   the caption is a footnote to a chart and never a paragraph beside one. */
+.kit-area-annotations {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 /* The range beneath, under the plot rather than under the gutter. */
