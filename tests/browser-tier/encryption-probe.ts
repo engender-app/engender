@@ -156,7 +156,7 @@ async function run() {
      to the scan is the value the store leaves behind. Left in place on
      purpose - a mirror is exactly what a process killed mid-edit leaves for
      the closed-app scan to read. */
-  const draftMirror = localStorageEntryDraft(() => created.dataKey);
+  const draftMirror = localStorageEntryDraft(async () => created.dataKey);
   await draftMirror.write({
     id: undefined,
     epochDay: 20000,
@@ -176,7 +176,7 @@ async function run() {
   // reset has replaced, must read as no draft rather than as plaintext.
   result.draftMirrorUnderWrongKey = await (async () => {
     const other = crypto.getRandomValues(new Uint8Array(32));
-    return localStorageEntryDraft(() => other).read();
+    return localStorageEntryDraft(async () => other).read();
   })();
 
   // The pre-migration copy is persistent-file coverage too: force one so

@@ -9,14 +9,14 @@
    snapshot is journal content - the note, the mood, the tags, the region
    feelings - so writing it as bare JSON put readable journal text in the
    WebView's localStorage, next to the database whose whole purpose is that
-   this text is unreadable. It is encrypted under the session data key,
-   which is in memory exactly when an editor is mounted, so nothing new has
-   to be kept anywhere. A draft that outlives a reset then decrypts to
-   nothing, which is the right outcome rather than a loss: there is no
-   journal left for it to belong to.
+   this text is unreadable. It is encrypted under the session data key, which
+   exists for as long as the journal is open, so nothing new has to be kept
+   anywhere. A draft that outlives a reset then decrypts to nothing, which is
+   the right outcome rather than a loss: there is no journal left for it to
+   belong to.
 
-   Encrypting makes the write async, and everything that can go wrong on the
-   way back - no key, a foreign key, a mirror from an older build, plain
+   Encrypting makes both halves async, and everything that can go wrong on
+   the way back - no key, a foreign key, a mirror from an older build, plain
    garbage - reads as no draft at all, the same discard the shape check has
    always done. */
 
@@ -84,10 +84,16 @@ function toBase64(bytes: Uint8Array): string {
 const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
   Uint8Array.from(atob(text), (char) => char.charCodeAt(0));
 
-/** `journalKey` is read per call rather than captured: the editor is mounted
-    across a whole session and the key it hands over is whatever the boot
-    store holds now, or null when there is no open journal to mirror for. */
-export function localStorageEntryDraft(journalKey: () => Uint8Array<ArrayBuffer> | null): EntryDraftStore {
+/** `journalKey` is awaited rather than read, and asked per call rather than
+    captured. The editor mounts while boot is still finishing, well before
+    there is a key at all, so a synchronous read finds none and a restore
+    would conclude there is no draft (which is how this arrived: the mirror
+    was written and then never read back). Everything here waits for the open
+    journal's key instead; null is for a caller that will never have one, and
+    then nothing is mirrored. */
+export function localStorageEntryDraft(
+  journalKey: () => Promise<Uint8Array<ArrayBuffer> | null>
+): EntryDraftStore {
   /* The store key is the additional authenticated data, so a mirror copied
      to another localStorage key fails to decrypt instead of coming back as
      some other screen's draft (the same binding encrypted-file-store.ts
@@ -101,7 +107,7 @@ export function localStorageEntryDraft(journalKey: () => Uint8Array<ArrayBuffer>
 
   return {
     async read() {
-      const key = journalKey();
+      const key = await journalKey();
       if (key === null) return null;
       try {
         const raw = localStorage.getItem(ENTRY_DRAFT_STORE_KEY);
@@ -123,9 +129,13 @@ export function localStorageEntryDraft(journalKey: () => Uint8Array<ArrayBuffer>
       }
     },
     async write(draft) {
-      const key = journalKey();
-      if (key === null) return; // nothing to encrypt under, so nothing is mirrored
+      /* Sequenced before the key is awaited, not after: a write that starts
+         while the journal is still opening must still lose to a later edit,
+         and both are waiting on the same key. */
       const mine = ++latest;
+      const key = await journalKey();
+      if (key === null) return; // nothing to encrypt under, so nothing is mirrored
+      if (mine !== latest) return; // a later edit is already on its way
       try {
         const plaintext = new TextEncoder().encode(JSON.stringify(draft)) as Uint8Array<ArrayBuffer>;
         const { nonce, ciphertext } = await encrypt(key, plaintext, boundTo);
