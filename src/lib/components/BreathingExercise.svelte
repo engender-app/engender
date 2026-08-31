@@ -10,6 +10,7 @@
   import {
     initialBreathingState,
     tickBreathing,
+    phaseProgress,
     BOX_BREATHING_PHASES,
     type BreathingPhase,
     type BreathingState
@@ -23,28 +24,45 @@
     [attribute: string]: unknown;
   } = $props();
 
-  let state = $state<BreathingState>(initialBreathingState());
+  let breath = $state<BreathingState>(initialBreathingState());
+  let ringResetting = $state<boolean>(true);
+
+  /* The countdown ring drawn around the halo (Alicja, 2026-08-31 review:
+     "a nice stroke going around the circle filling up as the count goes
+     down"). Radius sits just outside the halo's own 1px border rather than
+     on top of it, so the ring reads as its own track instead of a second
+     outline fighting the first. */
+  /* The halo's own edge sits at a 120px radius (breathing-outer-ring is
+     240px across); a ring drawn at 123 turned out to be almost entirely
+     painted over by the halo's opaque background - the button and its
+     contents come after the ring in DOM order, so they paint on top of it,
+     and only a couple of the stroke's own pixels cleared the halo's edge.
+     132 with a 4px stroke draws the band from 130 to 134: a clean 10px gap
+     outside the halo rather than a stroke fighting its own background for
+     visibility. */
+  const RING_RADIUS = 132;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
   let intervalId: ReturnType<typeof setInterval> | null = null;
 
   function start() {
-    if (state.running) return;
-    state = { ...state, running: true };
+    if (breath.running) return;
+    breath = { ...breath, running: true };
     intervalId = setInterval(() => {
-      state = tickBreathing(state);
+      breath = tickBreathing(breath);
     }, 1000);
   }
 
   function pause() {
-    if (!state.running) return;
+    if (!breath.running) return;
     if (intervalId) {
       clearInterval(intervalId);
       intervalId = null;
     }
-    state = { ...state, running: false };
+    breath = { ...breath, running: false };
   }
 
   function toggle() {
-    if (state.running) {
+    if (breath.running) {
       pause();
     } else {
       start();
@@ -71,7 +89,37 @@
   };
 
   /* Scaling class based on current phase */
-  let scaleClass = $derived(!state.running ? 'is-idle' : `is-${state.phase}`);
+  let scaleClass = $derived(!breath.running ? 'is-idle' : `is-${breath.phase}`);
+
+  let phaseDuration = $derived(BOX_BREATHING_PHASES[breath.phaseIndex].duration);
+
+  /* The ring resets to empty and instantly (no transition) on the frame a
+     new phase starts, then - one animation frame later, once the browser
+     has actually painted that empty frame - the CSS transition below takes
+     over and sweeps it to wherever `phaseProgress` is heading, over the
+     rest of that second. Skipping the reset frame would run the transition
+     from the previous phase's *full* ring straight to this phase's first
+     target, which unfills before it fills rather than starting empty.
+
+     Keyed on phaseIndex alone, not on every tick: phaseIndex only changes
+     at a phase boundary (inhale -> hold-in -> exhale -> hold-out -> inhale,
+     tickBreathing's own cycle), so a second tick inside the same phase
+     leaves this effect untouched and the 1s-per-second transition below
+     keeps running uninterrupted. */
+  $effect(() => {
+    void breath.phaseIndex;
+    if (!breath.running) return;
+    ringResetting = true;
+    const raf = requestAnimationFrame(() => {
+      ringResetting = false;
+    });
+    return () => cancelAnimationFrame(raf);
+  });
+
+  let ringEmpty = $derived(!breath.running || ringResetting);
+  let ringDashoffset = $derived(
+    ringEmpty ? RING_CIRCUMFERENCE : RING_CIRCUMFERENCE * (1 - phaseProgress(phaseDuration, breath.secondsRemaining))
+  );
 </script>
 
 <div
@@ -86,11 +134,33 @@
   </div>
 
   <div class="breathing-stage">
+    <!-- The ring sits behind the halo, in its own stacking layer, so the
+         halo's press feedback and the ring's fill never fight over paint
+         order. pointer-events:none - the ring is a reading, not a target;
+         the button underneath already covers the whole tappable area. -->
+    <svg
+      class="breathing-ring"
+      class:is-empty={ringEmpty}
+      width="272"
+      height="272"
+      viewBox="0 0 272 272"
+      aria-hidden="true"
+    >
+      <circle class="breathing-ring-track" cx="136" cy="136" r={RING_RADIUS} />
+      <circle
+        class="breathing-ring-progress"
+        cx="136"
+        cy="136"
+        r={RING_RADIUS}
+        stroke-dasharray={RING_CIRCUMFERENCE}
+        stroke-dashoffset={ringDashoffset}
+      />
+    </svg>
     <!-- Clickable concentric breathing halo -->
     <button
       type="button"
       class="breathing-halo-trigger press"
-      aria-label={state.running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}
+      aria-label={breath.running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}
       onclick={toggle}
     >
       <!-- Outermost fixed ambient boundary -->
@@ -101,17 +171,17 @@
         <!-- Inner solid breathing core -->
         <div class="breathing-core {scaleClass}">
           <div class="breathing-content" aria-live="polite">
-            {#if state.running}
-              <span class="breathing-phase-text" data-breathing-phase={state.phase}>
-                {phaseLabel(state.phase)}
+            {#if breath.running}
+              <span class="breathing-phase-text" data-breathing-phase={breath.phase}>
+                {phaseLabel(breath.phase)}
               </span>
-              <span class="breathing-count">{state.secondsRemaining}</span>
+              <span class="breathing-count">{breath.secondsRemaining}</span>
               <!-- 4-step box breathing indicator dots -->
               <div class="breathing-dots" aria-hidden="true">
                 {#each BOX_BREATHING_PHASES as p, i}
                   <span
                     class="breathing-dot"
-                    class:is-active={state.phaseIndex === i}
+                    class:is-active={breath.phaseIndex === i}
                   ></span>
                 {/each}
               </div>
@@ -137,9 +207,9 @@
       data-breathing-toggle
       onclick={toggle}
     >
-      <Icon name={state.running ? 'pause' : 'play'} size={18} />
+      <Icon name={breath.running ? 'pause' : 'play'} size={18} />
       <span>
-        {state.running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}
+        {breath.running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}
       </span>
     </button>
   </div>
@@ -165,11 +235,65 @@
   }
 
   .breathing-stage {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-2) 0;
+    padding: var(--space-3) 0;
     width: 100%;
+  }
+
+  /* Centered on the stage over the halo. The ring's radius is drawn well
+     outside the halo's own edge (240px across, so a 120px radius) on
+     purpose: at 123 the stroke sat almost entirely under the halo's own
+     opaque background, which paints after the ring in DOM order and
+     covered all but a sliver of it. pointer-events:none - the ring is a
+     reading, not a target; the button underneath already covers the
+     whole tappable area, and this only has to not intercept its taps. */
+  .breathing-ring {
+    position: absolute;
+    pointer-events: none;
+    /* An absolutely positioned element takes no part in its flex parent's
+       centering - .breathing-stage centers the button through
+       align-items/justify-content, which only ever applied to in-flow
+       children. Center this one explicitly on the same point instead. */
+    top: 50%;
+    left: 50%;
+    /* 12 o'clock start rather than SVG's 3 o'clock default, so the sweep
+       reads the way every clock-shaped progress reading does. */
+    transform: translate(-50%, -50%) rotate(-90deg);
+  }
+
+  /* --role-hairline (kit.css) bundles width, style and colour into one
+     border shorthand ("1px solid <colour>") - it is not a colour on its
+     own, and stroke takes a paint value only. Reproducing its own colour
+     formula here as opacity over --role-mark rather than trying to pull a
+     colour out of the shorthand. */
+  .breathing-ring-track {
+    fill: none;
+    stroke: var(--role-mark);
+    stroke-opacity: 0.35;
+    stroke-width: 4;
+  }
+
+  /* Drawn shapes read off --role-draw (kit.css: "the stripe as it is,
+     ...what every drawn shape in a chart uses - the line... the timeline's
+     rail"), the same token the ring's aura and core borders now read
+     below - not --role-accent, which nothing in kit.css defines (see the
+     fix note by .breathing-aura). */
+  .breathing-ring-progress {
+    fill: none;
+    stroke: var(--role-draw);
+    stroke-width: 4;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear;
+  }
+
+  /* The reset frame: instant, no transition, so the next frame's fill
+     starts from a ring the browser has actually painted as empty rather
+     than animating backwards from wherever the last phase left off. */
+  .breathing-ring.is-empty .breathing-ring-progress {
+    transition: none;
   }
 
   .breathing-halo-trigger {
@@ -185,12 +309,21 @@
     touch-action: manipulation;
   }
 
+  /* --role-hairline is already a full border shorthand (kit.css:
+     "1px solid <colour>") - `border: 1px solid var(--role-hairline)`
+     nested a width+style+colour value inside another border declaration,
+     which is not valid CSS and left this border computing to nothing.
+     Confirmed via computed style, not by reading the diff: every one of
+     this file's --role-accent/--role-hairline reads below resolved to an
+     empty custom property, since kit.css derives --role-draw, --role-mark,
+     --role-tint, --role-wash and --role-hairline from [data-kit-role], and
+     none of them is named --role-accent. */
   .breathing-outer-ring {
     position: relative;
-    width: 210px;
-    height: 210px;
+    width: 240px;
+    height: 240px;
     border-radius: var(--radius-full, 9999px);
-    border: 1px solid var(--role-hairline);
+    border: var(--role-hairline);
     background: var(--bg-card);
     display: flex;
     align-items: center;
@@ -198,13 +331,15 @@
     overflow: hidden;
   }
 
-  /* Middle aura ring: flat theme color, no gradients */
+  /* Middle aura ring: flat theme color, no gradients. --role-draw is "the
+     stripe as it is... what every drawn shape in a chart uses" (kit.css) -
+     a ring's own outline is exactly that kind of drawn shape. */
   .breathing-aura {
     position: absolute;
-    width: 184px;
-    height: 184px;
+    width: 210px;
+    height: 210px;
     border-radius: var(--radius-full, 9999px);
-    border: 1px solid var(--role-accent);
+    border: 1px solid var(--role-draw);
     background: var(--bg-subtle);
     transform-origin: center center;
     will-change: transform, opacity;
@@ -215,11 +350,11 @@
   .breathing-core {
     position: relative;
     z-index: 2;
-    width: 148px;
-    height: 148px;
+    width: 170px;
+    height: 170px;
     border-radius: var(--radius-full, 9999px);
     background: var(--role-tint);
-    border: 2px solid var(--role-accent);
+    border: 2px solid var(--role-draw);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -316,7 +451,10 @@
   }
 
   .breathing-dot.is-active {
-    background: var(--role-accent);
+    /* Same token the inactive dot's fallback already reaches for: a small
+       mark sitting on --role-tint (the core's own background) is exactly
+       the case --role-mark exists for (kit.css). */
+    background: var(--role-mark, var(--outline-strong));
     opacity: 1;
     transform: scale(1.4);
   }
@@ -330,6 +468,13 @@
     .breathing-core {
       transform: none !important;
       transition: opacity 0.3s ease !important;
+    }
+
+    /* Still steps once a second with the count - the ring keeps carrying
+       real information - just without the continuous 1s sweep between
+       steps. */
+    .breathing-ring-progress {
+      transition: none !important;
     }
   }
 </style>
