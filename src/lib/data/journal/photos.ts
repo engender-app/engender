@@ -212,15 +212,26 @@ async function sweepUnreferencedFiles(
   sawWrite: () => boolean
 ): Promise<void> {
   if (sawWrite()) return;
-  const [photoRows, hairPhotoRows, hairRemovalPhotoRows, procedurePhotoRows, tryoutPhotoRows, recordingRows, videoRows] =
-    await Promise.all([
+  const [
+    photoRows,
+    hairPhotoRows,
+    hairRemovalPhotoRows,
+    procedurePhotoRows,
+    tryoutPhotoRows,
+    recordingRows,
+    videoRows,
+    benchmarkRows
+  ] = await Promise.all([
       driver.query<{ file_path: string }>('SELECT file_path FROM photo'),
       driver.query<{ file_path: string }>('SELECT file_path FROM hair_photo'),
       driver.query<{ file_path: string }>('SELECT file_path FROM hair_removal_photo'),
       driver.query<{ file_path: string }>('SELECT file_path FROM procedure_photo'),
       driver.query<{ file_path: string }>('SELECT file_path FROM tryout_photo'),
       driver.query<{ file_path: string }>('SELECT file_path FROM voice_recording'),
-      driver.query<{ file_path: string }>('SELECT file_path FROM video_note')
+      driver.query<{ file_path: string }>('SELECT file_path FROM video_note'),
+      driver.query<{ passage_file_path: string; vowel_file_path: string | null }>(
+        'SELECT passage_file_path, vowel_file_path FROM voice_benchmark'
+      )
     ]);
   const referenced = new Set([
     ...[...photoRows, ...hairPhotoRows, ...hairRemovalPhotoRows, ...procedurePhotoRows, ...tryoutPhotoRows].flatMap(
@@ -229,7 +240,10 @@ async function sweepUnreferencedFiles(
     ...recordingRows.map((row) => row.file_path),
     // Neither a recording nor a video note has a thumbnail sibling, so
     // filesOf() would only ever invent a name no row references.
-    ...videoRows.map((row) => row.file_path)
+    ...videoRows.map((row) => row.file_path),
+    // Two files per benchmark, and the vowel half is absent on a take that
+    // skipped it (ticket 15) - which is a row with one file, not an orphan.
+    ...benchmarkRows.flatMap((row) => (row.vowel_file_path ? [row.passage_file_path, row.vowel_file_path] : [row.passage_file_path]))
   ]);
   for (const name of await files.list()) {
     // Asked per file rather than once: a write that starts halfway through

@@ -121,6 +121,19 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       href: '/settings/labs'
     })),
 
+  /* The median pitch and nothing read into it (PRODUCT.md:109): a
+     descriptive parameter, no range, no colour, no good or bad end. The
+     subtitle is earned for the reason the wear row's is - a bare figure in
+     Hz does not say what kind of record it belongs to. */
+  voiceBenchmarks: (day) =>
+    day.voiceBenchmarks.map((benchmark) => ({
+      key: `voice-benchmark-${benchmark.id}`,
+      icon: 'mic',
+      title: m.vb_hz({ value: Math.round(benchmark.f0MedianHz) }),
+      subtitle: m.day_voice_benchmark(),
+      href: '/settings/voice'
+    })),
+
   measurements: (day) =>
     day.measurements.map((measurement) => ({
       key: `measurement-${measurement.id}`,

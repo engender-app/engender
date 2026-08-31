@@ -128,7 +128,7 @@
         <!-- `row.photo!` because the {#if} above guards it and a snippet
              boundary drops the narrowing - svelte-check catches this and no
              test does. -->
-        <span class="day-face"><PhotoThumb photo={row.photo!} size={36} /></span>
+        <span class="row-face"><PhotoThumb photo={row.photo!} size={36} /></span>
       {/snippet}
       {#snippet trailing()}{@render count(row.count)}{/snippet}
     </ListRow>

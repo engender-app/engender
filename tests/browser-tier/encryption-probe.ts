@@ -7,8 +7,9 @@
    the real migrations, seed protected content of every kind the claim
    names (entry text, a lab value, a reminder title, a milestone name, a
    preference, real JPEG photo bytes) through the real journal, force a
-   pre-migration copy so the copy is on disk too, close - and then scan
-   every OPFS file and every localStorage value for any of it.
+   pre-migration copy so the copy is on disk too, leave a half-written
+   entry in the draft mirror, close - and then scan every OPFS file and
+   every localStorage value for any of it.
 
    The key model rides along: wrong passphrase fails as one
    indistinguishable error, a rewrap changes the passphrase without
@@ -24,6 +25,7 @@ import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-sto
 import { createKeystore, unlockKeystore, rewrapKeystore } from '../../src/lib/crypto/keystore.ts';
 import { readKeystoreFile, writeKeystoreFile } from '../../src/lib/data/keystore-file.ts';
 import { localStorageCache, BOOT_CACHE_KEY } from '../../src/lib/data/prefs/boot-cache.ts';
+import { ENTRY_DRAFT_STORE_KEY, localStorageEntryDraft } from '../../src/lib/data/entryDraftStore.ts';
 import { openPreferences } from '../../src/lib/data/prefs/preferences.ts';
 import { scanOpfs, scanLocalStorage, textSentinel, type Sentinel } from './opfs-scan.ts';
 import { freshOrigin } from './fresh-origin.ts';
@@ -46,6 +48,7 @@ const SENTINELS: Sentinel[] = [
   textSentinel('reminder title', 'sentinel-reminder-progynova-2114'),
   textSentinel('milestone name', 'sentinel-milestone-first-day-7738'),
   textSentinel('preference name', 'sentinel-preference-alicja-4479'),
+  textSentinel('entry draft note', 'sentinel-draft-note-half-written-5583'),
   textSentinel('photo body', 'sentinel-photo-body-6627'),
   { label: 'JPEG signature', bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), atStartOnly: true }
 ];
@@ -145,6 +148,36 @@ async function run() {
   await preferences.set('name', 'sentinel-preference-alicja-4479');
   await preferences.set('theme', 'dark');
   result.bootCachePresent = localStorage.getItem(BOOT_CACHE_KEY) !== null;
+
+  /* The one writer that puts journal text in localStorage: the entry-draft
+     mirror an open editor keeps (sec-audit 02, finding G-01). Driven through
+     the same store the editor uses rather than by mounting the editor, which
+     would drag the whole component tree into a storage probe; what matters
+     to the scan is the value the store leaves behind. Left in place on
+     purpose - a mirror is exactly what a process killed mid-edit leaves for
+     the closed-app scan to read. */
+  const draftMirror = localStorageEntryDraft(async () => created.dataKey);
+  await draftMirror.write({
+    id: undefined,
+    epochDay: 20000,
+    timestamp: 1700000000000,
+    mood: 3,
+    note: 'sentinel-draft-note-half-written-5583',
+    dims: {},
+    tags: [],
+    bodyRegions: {},
+    removedPhotoIds: [],
+    removedRecordingIds: [],
+    removedVideoIds: []
+  });
+  result.draftMirrorPresent = localStorage.getItem(ENTRY_DRAFT_STORE_KEY) !== null;
+  result.draftMirrorRestored = (await draftMirror.read())?.note;
+  // A mirror written by a build before the encryption, or one whose journal a
+  // reset has replaced, must read as no draft rather than as plaintext.
+  result.draftMirrorUnderWrongKey = await (async () => {
+    const other = crypto.getRandomValues(new Uint8Array(32));
+    return localStorageEntryDraft(async () => other).read();
+  })();
 
   // The pre-migration copy is persistent-file coverage too: force one so
   // the scan below reads the copy's bytes, not just the database's.

@@ -105,6 +105,12 @@ export const TABLE_NAMES = [
      recordings without reading the rest of an entry, the same reason
      'photo' gets its own name instead of folding into 'entry' too. */
   'voiceRecording',
+  /* Voice benchmarks (phase 5 deepening ticket 15). Kept apart from
+     'voiceRecording' for the same reason the table is: a benchmark and a
+     memo are different records, and the benchmark surfaces - Home's nudge
+     tile, the compare view - must not re-query every time an entry's voice
+     memo changes, nor the reverse. */
+  'voiceBenchmark',
   /* Video notes (phase 5 ticket 22). Its own name rather than folded into
      'entry' or shared with 'voiceRecording', for the reason that one gives:
      a screen could read video notes without reading recordings or the rest
@@ -296,6 +302,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   voice: classify<Journal['voice']>()({
     writes: {},
     reads: { inJournal: ['voiceRecording', 'entry'] }
+  }),
+  // Unlike `voice`, this area owns its rows: a benchmark is not written
+  // through the entry editor, so the save announces its own table.
+  voiceBenchmarks: classify<Journal['voiceBenchmarks']>()({
+    writes: { saveBenchmark: ['voiceBenchmark'], deleteBenchmark: ['voiceBenchmark'] },
+    reads: { getBenchmarks: ['voiceBenchmark'], getBenchmarksOnDay: ['voiceBenchmark'] }
   }),
   // Read-only for the same reason `voice` is: a video note's row is owned by
   // upsertEntry/deleteEntry, which already announce 'videoNote'.

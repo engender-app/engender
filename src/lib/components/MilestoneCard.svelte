@@ -52,7 +52,7 @@
 >
   {#snippet leading()}
     {#if milestone.photo}
-      <span class="milestone-face"><PhotoThumb photo={milestone.photo} size={36} /></span>
+      <span class="row-face"><PhotoThumb photo={milestone.photo} size={36} /></span>
     {:else}
       <span class="kit-row-ico"><Icon name="flag" size={20} /></span>
     {/if}

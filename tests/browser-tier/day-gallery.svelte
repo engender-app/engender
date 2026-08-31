@@ -62,6 +62,7 @@
     milestones: [],
     doses: [],
     labResults: [],
+    voiceBenchmarks: [],
     measurements: [],
     sizeRecords: [],
     sideEffects: [],
@@ -130,6 +131,25 @@
         scheduled: null,
         drug: null,
         route: 'oral'
+      }
+    ],
+    voiceBenchmarks: [
+      {
+        id: 'vb1',
+        epochDay: DAY,
+        timestamp: at(7, 40),
+        passageKey: 'rainbow',
+        passageFileName: 'vb1.webm',
+        vowelFileName: null,
+        f0MedianHz: 171.4,
+        f0P10Hz: 158.2,
+        f0P90Hz: 189.6,
+        semitoneSd: 2.4,
+        wordsPerMinute: 148,
+        f1Hz: 620,
+        f2Hz: 1810,
+        snrDb: 24.5,
+        note: null
       }
     ],
     labResults: [

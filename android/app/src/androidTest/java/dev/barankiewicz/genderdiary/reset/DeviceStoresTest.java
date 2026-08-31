@@ -21,6 +21,7 @@ import javax.crypto.KeyGenerator;
 
 import dev.barankiewicz.genderdiary.backup.AutoExportPlugin;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
+import dev.barankiewicz.genderdiary.reminders.ReminderPayloadStore;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
 
 /**
@@ -47,6 +48,7 @@ public class DeviceStoresTest {
     private static final String AUTO_EXPORT_PREFS = AutoExportPlugin.PREFS;
     private static final String QUICK_EXIT_PREFS = QuickExitPlugin.PREFS;
     private static final String PASSWORD_ALIAS = AutoExportPlugin.PASSWORD_ALIAS;
+    private static final String REMINDERS_ALIAS = ReminderPayloadStore.ALIAS;
 
     private Context context;
 
@@ -77,12 +79,27 @@ public class DeviceStoresTest {
 
     @Test
     public void aResetDeletesTheKeystoreAliasTheBackupPasswordWasWrappedUnder() throws Exception {
-        createPasswordAlias();
-        assertTrue("the alias was not created", aliasExists());
+        createAlias(PASSWORD_ALIAS);
+        assertTrue("the alias was not created", aliasExists(PASSWORD_ALIAS));
 
         wipe();
 
-        assertFalse("the wrapping key survived the reset", aliasExists());
+        assertFalse("the wrapping key survived the reset", aliasExists(PASSWORD_ALIAS));
+    }
+
+    @Test
+    public void aResetDeletesTheKeystoreAliasTheRemindersWereWrappedUnder() throws Exception {
+        /* Phase 5 security ticket 02 (G-02): the reminder payload gained a
+           wrapping key of its own, and it leaves for the same reason the
+           backup password's does. The ciphertext is only gone because the
+           preference file went with it, so a key left behind opens any copy
+           of that file taken before the reset. */
+        createAlias(REMINDERS_ALIAS);
+        assertTrue("the alias was not created", aliasExists(REMINDERS_ALIAS));
+
+        wipe();
+
+        assertFalse("the wrapping key survived the reset", aliasExists(REMINDERS_ALIAS));
     }
 
     @Test
@@ -109,16 +126,16 @@ public class DeviceStoresTest {
         assertTrue(message, context.getSharedPreferences(prefs, Context.MODE_PRIVATE).getAll().isEmpty());
     }
 
-    /** The same alias AutoExportPlugin's PasswordStore mints on the first
-        setPassword, under the name it mints it with. Built here rather than
-        driven through the plugin because a Plugin needs a Capacitor bridge
-        and this test has none - and what the reset owes the alias does not
-        depend on which key is under it. */
-    private static void createPasswordAlias() throws Exception {
+    /** The aliases AutoExportPlugin's PasswordStore and the reminder store
+        mint on their first write, under the names they mint them with. Built
+        here rather than driven through the plugin because a Plugin needs a
+        Capacitor bridge and this test has none - and what the reset owes an
+        alias does not depend on which key is under it. */
+    private static void createAlias(String alias) throws Exception {
         KeyGenerator keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
         keyGenerator.init(
             new KeyGenParameterSpec.Builder(
-                PASSWORD_ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                alias, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setUserAuthenticationRequired(false)
@@ -126,9 +143,9 @@ public class DeviceStoresTest {
         keyGenerator.generateKey();
     }
 
-    private static boolean aliasExists() throws Exception {
+    private static boolean aliasExists(String alias) throws Exception {
         KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
         keyStore.load(null);
-        return keyStore.containsAlias(PASSWORD_ALIAS);
+        return keyStore.containsAlias(alias);
     }
 }

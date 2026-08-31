@@ -53,7 +53,17 @@ async function tableWithRows(rows: [string, number, string, number, string | nul
 }
 
 const reading = (driver: SqliteDriver): SectionRead =>
-  ({ driver, photos: [], recordings: [], videos: [], hairPhotos: [], hairRemovalPhotos: [], procedurePhotos: [], tryoutPhotos: [] });
+  ({
+    driver,
+    photos: [],
+    recordings: [],
+    videos: [],
+    hairPhotos: [],
+    hairRemovalPhotos: [],
+    procedurePhotos: [],
+    tryoutPhotos: [],
+    benchmarkFiles: []
+  });
 
 const restoring = (driver: SqliteDriver) => ({
   driver,

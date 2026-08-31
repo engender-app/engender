@@ -38,6 +38,20 @@ async function fillDay(journal: Journal, epochDay = DAY): Promise<void> {
     vehicle: 'oil'
   });
   await journal.labs.upsertResult({ epochDay, analyte: 'estradiol', value: 150, unit: 'pg/mL', provider: 'Quest' });
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay,
+    passageKey: 'rainbow',
+    passageAudio: new Uint8Array([1, 2, 3]),
+    vowelAudio: null,
+    f0MedianHz: 171,
+    f0P10Hz: 158,
+    f0P90Hz: 190,
+    semitoneSd: 2.4,
+    wordsPerMinute: 148,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null
+  });
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay, value: 78, unit: 'cm' });
   await journal.sizeRecords.upsertRecord({ epochDay, category: 'bras', size: '70B' });
   await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay });
@@ -213,13 +227,13 @@ test('a maximal day costs one pass per area, not one per row', async () => {
     sparse,
     `a busy day cost ${busy} queries against a sparse day's ${sparse}: something reads per row`
   );
-  /* 25 for 17 sections as this lands: entries hydrate their dimension
+  /* 26 for 18 sections as this lands: entries hydrate their dimension
      values, tags, body regions, photos, recordings and video notes,
      milestones read their photos, and procedures asks for consults and
      recovery photos separately. Held as a number rather than derived so
      that a section quietly gaining a query has to come back here and say
      so. */
-  assert.equal(busy, 25, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
+  assert.equal(busy, 26, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
 });
 
 test('a test may register a section of its own and read it back through the same path', async () => {
@@ -237,6 +251,7 @@ test('a test may register a section of its own and read it back through the same
       milestones: journal.milestones,
       doses: journal.doses,
       labs: journal.labs,
+      voiceBenchmarks: journal.voiceBenchmarks,
       measurements: journal.measurements,
       sizeRecords: journal.sizeRecords,
       sideEffects: journal.sideEffects,
