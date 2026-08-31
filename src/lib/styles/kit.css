@@ -440,6 +440,19 @@
   text-overflow: ellipsis;
 }
 
+/* The look-back letter card (phase 5 deepening ticket 13) carries a whole
+   letter as its subtitle, and the letter's full text is what the card opens
+   onto - so the row shows a preview of it, not the prose itself, the same
+   rule the scales row follows: the row is the summary, the screen behind it
+   is the whole. Two lines, clamped rather than truncated in code, so the
+   cut lands wherever the text wraps at the row's real width. */
+[data-list-row='letter-preview'] .kit-row-sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
 /* ---------- the box on a tickable row ----------
 
    Phase 5 ticket 35. The box carries the row's state; the row does not
