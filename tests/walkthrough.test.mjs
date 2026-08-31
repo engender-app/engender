@@ -1053,127 +1053,6 @@ try {
   ok(`plain CSV export behind the warning, ${entries.length} rows, notes intact`);
 } catch (e) { fail('plain export', e); }
 
-/* 12. app lock: the gate, the throttle, and the PIN that opens it (ticket 17).
-   Passphrase, PIN and biometrics moved onto one screen in ticket 18, reached
-   from a single Security row rather than being set up straight off /settings -
-   so this flow goes through that row rather than assuming the switch is on
-   the page it lands on. */
-try {
-  await fresh('/settings');
-  await page.locator('a[href="/settings/security"]').click();
-  await page.waitForSelector('[data-security-list]');
-
-  /* Biometrics is Android-only (ticket 18) - a desktop browser has no
-     platform prompt behind it, so the toggle must not exist here at all
-     rather than sit there doing nothing. This is also as much of the
-     consent-flow gating as this suite can reach: the ask itself lives
-     behind AndroidKeyGate and LockScreen's `android` checks, which nothing
-     in this browser tier can become true for. */
-  if (await page.getByRole('switch', { name: 'Biometrics' }).count()) {
-    throw new Error('a biometrics toggle rendered on a build with no Android platform behind it');
-  }
-
-  /* Changing access mode (ticket 53). The demo journal opens under a
-     passphrase, so the module offers the other two and marks this one as
-     current - which is also the assertion that it reads the mode off the
-     keystore rather than tracking it separately. */
-  await page.locator('a[href="/settings/access-mode"]').click();
-  await page.waitForSelector('[data-access-modes]');
-  if (await page.locator('[data-list-row="passphrase"]').count()) {
-    throw new Error('the module offered the mode the journal is already on');
-  }
-  const currentLine = await page.locator('[data-access-current]').innerText();
-  if (!/passphrase|hasło/i.test(currentLine)) throw new Error('the module names the wrong current mode: ' + currentLine);
-
-  await page.locator('[data-list-row="pin"]').click();
-  await page.waitForSelector('[data-access-chosen="pin"]');
-
-  /* The consequence, before the PIN is typed rather than after. This is the
-     honesty ADR-0041 made the condition of allowing four digits at all, so
-     the walkthrough checks the sentence is actually on the screen. */
-  const pinConsequence = await page.locator('[data-access-chosen="pin"]').innerText();
-  /* Both halves of the claim, because either alone can be true while the
-     screen is still dishonest: the size of the space, and how long walking
-     it takes. The first draft of this check matched only the count. */
-  if (!/10[ ,.]?000/.test(pinConsequence)) {
-    throw new Error('the PIN screen does not state how many PINs there are: ' + pinConsequence);
-  }
-  if (!/five seconds|pięć sekund/.test(pinConsequence)) {
-    throw new Error('the PIN screen does not state the wall-clock figure: ' + pinConsequence);
-  }
-  await page.waitForSelector('[data-access-export-note]');
-
-  await typePin('1234');
-  await typePin('1234');
-  await page.waitForSelector('[data-security-list]');
-
-  /* The retired gate's preference is gone rather than merely unread: a
-     4-digit hash in plaintext beside the encrypted journal was an
-     offline-guessable secret, and ticket 53 deletes the row (migration v43). */
-  const bootMirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
-  if ('pinHash' in bootMirror) throw new Error('the retired PIN hash is in the plaintext boot mirror');
-
-  /* A cold start, not a navigation: the PIN gate has to be what renders once
-     boot surveys the keystore and finds it says `pin`. The demo build's own
-     passphrase must not open it any more - that is the rewrap having
-     happened rather than a second keystore appearing beside the first. */
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await booted();
-  if (!(await page.locator('[data-pin-pad]').count())) throw new Error('no PIN gate after a reload in PIN mode');
-  if (await page.locator('[data-home-hello]').count()) throw new Error('Home rendered behind the gate');
-
-  await typePin('9999');
-  await page.waitForSelector('[data-pin-status="wrong"]');
-  await typePin('9999');
-  await page.waitForSelector('[data-pin-status="throttled"]');
-  if (await page.locator('[data-key="1"]:not([disabled])').count()) {
-    throw new Error('pad still accepting attempts during the wait');
-  }
-
-  await page.waitForSelector('[data-key="1"]:not([disabled])', { timeout: 8000 });
-
-  /* A reload is the cheapest thing a guesser can do, so the count has to
-     outlive one. Forged rather than earned: waiting out a real doubling
-     would make the assertion a race against the clock. */
-  if (!(await page.evaluate(() => localStorage.getItem('gender-diary-pin-attempts')))) {
-    throw new Error('the wrong-attempt count never reached storage');
-  }
-  await page.evaluate(() =>
-    localStorage.setItem(
-      'gender-diary-pin-attempts',
-      JSON.stringify({ wrongAttempts: 6, acceptingFrom: Date.now() + 30000 })
-    )
-  );
-  await page.reload({ waitUntil: 'networkidle' });
-  await booted();
-  await page.waitForSelector('[data-pin-status="throttled"]');
-
-  await page.evaluate(() => localStorage.removeItem('gender-diary-pin-attempts'));
-  await page.reload({ waitUntil: 'networkidle' });
-  await booted();
-  await typePin('1234');
-  await page.waitForSelector('[data-home-hello]');
-
-  /* Off again, or every flow after this one meets the gate. In-app, not
-     page.goto: a fresh load is a cold start, and a cold start locks. Settings
-     is a hub row now (ticket 03), not the tab itself, so this is one hop
-     longer than it was. */
-  await page.locator('[data-nav-item="settings"]').click();
-  await page.locator('a[href="/settings"]').click();
-  await page.locator('a[href="/settings/security"]').click();
-  await page.getByRole('switch', { name: 'App lock' }).click();
-  /* The switch reads back off, and the hash may never appear in the
-     localStorage mirror at all - ticket 09 moved it behind encryption, so
-     the mirror is also asserted hash-free while the lock is ON above. */
-  await page.waitForFunction(() => {
-    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
-    return !('pinHash' in boot) || boot.pinHash === null;
-  });
-  if ((await page.getByRole('switch', { name: 'App lock' }).getAttribute('aria-checked')) !== 'false') {
-    throw new Error('app lock did not switch off');
-  }
-  ok('app lock gates a cold start, throttles wrong PINs, opens on the right one');
-} catch (e) { fail('app lock', e); }
 
 /* 13. onboarding end-to-end via demo jump (phase 5 ticket 26: seven steps -
    welcome, name, flag, scales, lock, check-in, finish) */
@@ -2940,6 +2819,156 @@ try {
     ok('the flag sun bleeds into the inset and the greeting under it does not');
   });
 } catch (e) { fail('Home bleeds decoration only', e); }
+
+/* LAST. The access mode: changing it, and PIN mode's gate, throttle and the
+   PIN that opens it (ticket 53, replacing ticket 17's app lock).
+
+   Last on purpose, and it cannot be anywhere else. This flow leaves the
+   journal in PIN mode, and there is no way back to where it started: coming
+   back through the module means typing the demo build's own passphrase, which
+   is four characters, and the module enforces the real eight-character floor.
+   Refusing it is correct behaviour, so the flow ends here rather than asking
+   the app to accept a passphrase no real setup screen would.
+
+   Everything after a mode change would meet a gate instead of the app, which
+   is exactly what happened when this sat at position 12: fifteen flows passed,
+   this one changed the mode, and the remaining twenty-six timed out one after
+   another with nothing to say for themselves.
+
+   Passphrase, PIN and biometrics moved onto one screen in ticket 18, reached
+   from a single Security row rather than being set up straight off /settings -
+   so this flow goes through that row rather than assuming the switch is on
+   the page it lands on. */
+try {
+  await fresh('/settings');
+  await page.locator('a[href="/settings/security"]').click();
+  await page.waitForSelector('[data-security-list]');
+
+  /* Biometrics is Android-only (ticket 18) - a desktop browser has no
+     platform prompt behind it, so the toggle must not exist here at all
+     rather than sit there doing nothing. This is also as much of the
+     consent-flow gating as this suite can reach: the ask itself lives
+     behind AndroidKeyGate and SessionUnlock's `android` checks, which nothing
+     in this browser tier can become true for. */
+  if (await page.getByRole('switch', { name: 'Biometrics' }).count()) {
+    throw new Error('a biometrics toggle rendered on a build with no Android platform behind it');
+  }
+
+  /* Changing access mode (ticket 53). The demo journal opens under a
+     passphrase, so the module offers the other two and marks this one as
+     current - which is also the assertion that it reads the mode off the
+     keystore rather than tracking it separately. */
+  await page.locator('a[href="/settings/access-mode"]').click();
+  await page.waitForSelector('[data-access-modes]');
+  if (await page.locator('[data-list-row="passphrase"]').count()) {
+    throw new Error('the module offered the mode the journal is already on');
+  }
+  const currentLine = await page.locator('[data-access-current]').innerText();
+  if (!/passphrase|hasło/i.test(currentLine)) throw new Error('the module names the wrong current mode: ' + currentLine);
+
+  await page.locator('[data-list-row="pin"]').click();
+  await page.waitForSelector('[data-access-chosen="pin"]');
+
+  /* The consequence, before the PIN is typed rather than after. This is the
+     honesty ADR-0041 made the condition of allowing four digits at all, so
+     the walkthrough checks the sentence is actually on the screen. */
+  const pinConsequence = await page.locator('[data-access-chosen="pin"]').innerText();
+  /* Both halves of the claim, because either alone can be true while the
+     screen is still dishonest: the size of the space, and how long walking
+     it takes. The first draft of this check matched only the count. */
+  if (!/10[ ,.]?000/.test(pinConsequence)) {
+    throw new Error('the PIN screen does not state how many PINs there are: ' + pinConsequence);
+  }
+  if (!/five seconds|pięć sekund/.test(pinConsequence)) {
+    throw new Error('the PIN screen does not state the wall-clock figure: ' + pinConsequence);
+  }
+  await page.waitForSelector('[data-access-export-note]');
+
+  await typePin('1234');
+  await typePin('1234');
+  await page.waitForSelector('[data-security-list]');
+
+  /* The retired gate's preference is gone rather than merely unread: a
+     4-digit hash in plaintext beside the encrypted journal was an
+     offline-guessable secret, and ticket 53 deletes the row (migration v43). */
+  const bootMirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
+  if ('pinHash' in bootMirror) throw new Error('the retired PIN hash is in the plaintext boot mirror');
+
+  /* A cold start, not a navigation: the PIN gate has to be what renders once
+     boot surveys the keystore and finds it says `pin`. The demo build's own
+     passphrase must not open it any more - that is the rewrap having happened
+     rather than a second keystore appearing beside the first.
+
+     Not booted() from here down. The retired app-lock gate rendered *after*
+     boot reached `ready`, so waiting for the app and then finding a gate over
+     it was the right shape. A PIN is an access mode now, so its gate is a
+     boot state: `ready` is exactly what does not happen until the PIN is
+     right, and booted() would sit here for its full 30 seconds. Wait for the
+     pad. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-pin-pad]');
+  if (await page.locator('[data-home-hello]').count()) throw new Error('Home rendered behind the gate');
+
+  await typePin('9999');
+  await page.waitForSelector('[data-pin-status="wrong"]');
+  await typePin('9999');
+  await page.waitForSelector('[data-pin-status="throttled"]');
+  if (await page.locator('[data-key="1"]:not([disabled])').count()) {
+    throw new Error('pad still accepting attempts during the wait');
+  }
+
+  await page.waitForSelector('[data-key="1"]:not([disabled])', { timeout: 8000 });
+
+  /* A reload is the cheapest thing a guesser can do, so the count has to
+     outlive one. Forged rather than earned: waiting out a real doubling
+     would make the assertion a race against the clock. */
+  if (!(await page.evaluate(() => localStorage.getItem('gender-diary-pin-attempts')))) {
+    throw new Error('the wrong-attempt count never reached storage');
+  }
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'gender-diary-pin-attempts',
+      JSON.stringify({ wrongAttempts: 6, acceptingFrom: Date.now() + 30000 })
+    )
+  );
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-pin-status="throttled"]');
+
+  await page.evaluate(() => localStorage.removeItem('gender-diary-pin-attempts'));
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-pin-pad]');
+  await typePin('1234');
+  /* The right PIN is what makes boot finish, so this is the one place in the
+     flow where waiting for the app is the assertion. */
+  await booted();
+  await page.waitForSelector('[data-home-hello]');
+
+  /* The mode reads back off the keystore from the other side too: PIN is
+     current now, so the module must have stopped offering it and must say so.
+     This is the last thing the suite does, so the journal is left in PIN mode
+     deliberately - see the note at the top of this flow. */
+  await page.locator('[data-nav-item="settings"]').click();
+  await page.locator('a[href="/settings"]').click();
+  await page.locator('a[href="/settings/security"]').click();
+  if (!/PIN/i.test(await page.locator('[data-list-row="access-mode"]').innerText())) {
+    throw new Error('the security row does not name PIN as the mode');
+  }
+  await page.locator('a[href="/settings/access-mode"]').click();
+  await page.waitForSelector('[data-access-modes]');
+  if (await page.locator('[data-list-row="pin"]').count()) {
+    throw new Error('the module still offered PIN while the journal was in PIN mode');
+  }
+  const nowLine = await page.locator('[data-access-current]').innerText();
+  if (!/PIN/i.test(nowLine)) throw new Error('the module does not name PIN as current: ' + nowLine);
+
+  /* And the change-my-PIN row is the one that appears in PIN mode, where the
+     passphrase row appeared before. */
+  if (!(await page.locator('[data-list-row="change-pin"]').count())) {
+    throw new Error('PIN mode offers no way to change the PIN');
+  }
+
+  ok('the access mode changes, PIN gates a cold start, throttles wrong PINs and opens on the right one, PIN gates a cold start, throttles wrong PINs and opens on the right one');
+} catch (e) { fail('access mode', e); }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
