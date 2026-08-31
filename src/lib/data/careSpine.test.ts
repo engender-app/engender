@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   careSpine,
   lastLoggedDoseDay,
+  MIN_LABEL_GAP,
   nextExpectedSlot,
   SPINE_BACK_DAYS,
   SPINE_FORWARD_DAYS,
@@ -216,7 +217,7 @@ test('a dose today, one tomorrow and a run-out weeks out all stay readable', () 
   for (const mark of spine.marks) byLane.set(mark.lane, [...(byLane.get(mark.lane) ?? []), mark.position]);
   for (const [lane, positions] of byLane) {
     for (let i = 1; i < positions.length; i++) {
-      assert.ok(positions[i] - positions[i - 1] >= 0.17, `lane ${lane} has two captions too close together`);
+      assert.ok(positions[i] - positions[i - 1] >= MIN_LABEL_GAP, `lane ${lane} has two captions too close together`);
     }
   }
 });
