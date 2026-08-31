@@ -290,6 +290,7 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       epochDay: 19000,
       templateKey: 'hrt_start',
       roadmapGoalKey: null,
+      procedureId: null,
       photo: { id: milestonePhoto, fileName: `${milestonePhoto}.jpg`, starred: false }
     }
   ]);
@@ -560,7 +561,7 @@ const CARRIED: Record<string, string[]> = {
   entry_tag: ['entry_id', 'tag_id'],
   entry_body_region: ['entry_id', 'region', 'dysphoria', 'euphoria'],
   photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred'],
-  milestone: ['uuid', 'name', 'epoch_day', 'template_key', 'roadmap_goal_key'],
+  milestone: ['uuid', 'name', 'epoch_day', 'template_key', 'roadmap_goal_key', 'procedure_id'],
   gender_dimension: ['uuid', 'key', 'name', 'low_label', 'high_label', 'min_value', 'max_value', 'is_built_in', 'hidden'],
   gender_preset: ['uuid', 'key', 'name', 'is_built_in'],
   preset_dimension: ['preset_id', 'dimension_id', 'order_index'],

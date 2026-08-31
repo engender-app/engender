@@ -393,18 +393,24 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   procedures: classify<Journal['procedures']>()({
     writes: {
       upsertProcedure: ['procedure'],
-      deleteProcedure: ['procedure', 'checklist'],
+      deleteProcedure: ['procedure', 'checklist', 'milestone'],
       setNotes: ['procedure'],
       addConsult: ['procedure'],
       deleteConsult: ['procedure'],
       addPhoto: ['procedure'],
       deletePhoto: ['procedure'],
-      addChecklistItem: ['procedure', 'checklist']
+      addChecklistItem: ['procedure', 'checklist'],
+      recordSurgeryMilestone: ['procedure', 'milestone']
     },
     // getChecklist reads the checklist table alone, through the checklists
     // area: the recovery checklist is an ordinary owned Checklist and the
     // procedure row is not read to find it.
-    reads: { getProcedures: ['procedure'], getPhotos: ['procedure'], getChecklist: ['checklist'] }
+    reads: {
+      getProcedures: ['procedure'],
+      getPhotos: ['procedure'],
+      getChecklist: ['checklist'],
+      getMilestone: ['milestone']
+    }
   }),
   reminders: classify<Journal['reminders']>()({
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },

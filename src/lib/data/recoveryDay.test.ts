@@ -3,7 +3,29 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { activeSurgeryProcedure, recoveryDay, SURGERY_RECOVERY_CUTOFF_DAYS } from './recoveryDay.ts';
+import { activeSurgeryProcedure, procedurePhase, recoveryDay, SURGERY_RECOVERY_CUTOFF_DAYS } from './recoveryDay.ts';
+
+test('procedurePhase returns planning when no surgery date is set', () => {
+  assert.equal(procedurePhase(null, 20000), 'planning');
+});
+
+test('procedurePhase returns pre_op when surgery date is in the future', () => {
+  assert.equal(procedurePhase(20010, 20000), 'pre_op');
+});
+
+test('procedurePhase returns surgery_day when surgery date is today', () => {
+  assert.equal(procedurePhase(20000, 20000), 'surgery_day');
+});
+
+test('procedurePhase returns recovery when 1..90 days post-op', () => {
+  assert.equal(procedurePhase(20000, 20001), 'recovery');
+  assert.equal(procedurePhase(20000, 20000 + SURGERY_RECOVERY_CUTOFF_DAYS), 'recovery');
+});
+
+test('procedurePhase returns archived when >90 days post-op', () => {
+  assert.equal(procedurePhase(20000, 20000 + SURGERY_RECOVERY_CUTOFF_DAYS + 1), 'archived');
+  assert.equal(procedurePhase(20000, 20200), 'archived');
+});
 
 test('recoveryDay says nothing at all until a surgery date is set', () => {
   assert.deepEqual(recoveryDay(null, 20000), { type: 'unscheduled' });

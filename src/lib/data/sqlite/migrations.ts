@@ -1483,6 +1483,14 @@ const SCHEMA_V43 = `
 ALTER TABLE milestone ADD COLUMN roadmap_goal_key TEXT;
 `;
 
+/* v44: link milestones to surgical procedures (phase 5 ticket 12, ADR-0045).
+   A procedure's surgery day can record a milestone linking back to the
+   procedure by its uuid. Landed as v44 rather than v43 - ticket 10 minted
+   v43 for the same table first. */
+const SCHEMA_V44 = `
+ALTER TABLE milestone ADD COLUMN procedure_id TEXT REFERENCES procedure(uuid);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1526,5 +1534,6 @@ export const migrations: Migration[] = [
   { version: 40, sql: SCHEMA_V40 },
   { version: 41, sql: SCHEMA_V41 },
   { version: 42, sql: SCHEMA_V42 },
-  { version: 43, sql: SCHEMA_V43 }
+  { version: 43, sql: SCHEMA_V43 },
+  { version: 44, sql: SCHEMA_V44 }
 ];
