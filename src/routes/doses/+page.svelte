@@ -15,7 +15,7 @@
   /* The dose log (phase 4 ticket 02, widened to concurrent episodes by
      phase 5 ticket 38). Two views: what was logged, and how it sits against
      what the active episode's schedule expected. The second one is a single
-     question asked of the dose log area (phase 5 deepening ticket 17).
+     question asked of the dose log area (phase 5 audit-deepening ticket 17).
 
      A dose usually stores no drug or regimen episode of its own - every
      row asks attributeDose with the dose's own timestamp, which is why
@@ -89,13 +89,13 @@
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let dosesQuery = liveList((j) => j.doses.getDoses(from, today));
-  /** The whole schedule view in one question (phase 5 deepening ticket 17):
-      which episode is in effect, its schedule, its pauses, and the comparison
-      over the doses attributed to it - or the reason there is nothing to
-      compare. The six-step assembly that used to stand here is doses.ts's
-      getComparison, which is also what the long-journal benchmark measures,
-      so "the same way the screen does" is the same function rather than a
-      comment. */
+  /** The whole schedule view in one question (phase 5 audit-deepening
+      ticket 17): which episode is in effect, its schedule, its pauses, and
+      the comparison over the doses attributed to it - or the reason there
+      is nothing to compare. The six-step assembly that used to stand here
+      is doses.ts's getComparison, which is also what the long-journal
+      benchmark measures, so "the same way the screen does" is the same
+      function rather than a comment. */
   let comparisonQuery = liveQuery((j) => j.doses.getComparison({ fromEpochDay: from, toEpochDay: today }));
   /** Read separately from the windowed `dosesQuery` above (ticket 10): a
       rotation site's last use routinely predates the log's 90-day window,

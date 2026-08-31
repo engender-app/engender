@@ -4,7 +4,7 @@
    and stores nothing (ADR-0010). Every curve is recomputed from the dose log
    on every read.
 
-   One area and one call for both kinds of curve (phase 5 deepening ticket
+   One area and one call for both kinds of curve (phase 5 audit-deepening ticket
    17). CONTEXT is explicit that a hormone curve is "drawn one of two ways
    depending on how good the published evidence for it is": injectable
    estradiol on one of the four esters gets hormoneCurve.ts's fitted band, and
