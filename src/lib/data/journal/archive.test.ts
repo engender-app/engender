@@ -679,6 +679,25 @@ const CARRIED: Record<string, string[]> = {
   felt_sense: ['uuid', 'tryout_id', 'milestone_id', 'epoch_day', 'mood', 'note'],
   tryout_photo: ['uuid', 'tryout_id', 'epoch_day', 'file_path'],
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
+  // Every figure travels: they are measurements of the two files, not state
+  // derived from anything the archive already carries (ticket 15).
+  voice_benchmark: [
+    'uuid',
+    'epoch_day',
+    'timestamp',
+    'passage_key',
+    'passage_file_path',
+    'vowel_file_path',
+    'f0_median_hz',
+    'f0_p10_hz',
+    'f0_p90_hz',
+    'semitone_sd',
+    'words_per_minute',
+    'f1_hz',
+    'f2_hz',
+    'snr_db',
+    'note'
+  ],
   video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],
   checklist: ['uuid', 'owner_kind', 'owner_uuid'],
   // checklist_id travels as the checklist's own uuid, the way dose_pause's

@@ -127,7 +127,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async snapshot() {
       // One read of the photo, hair photo, hair-removal photo, recovery
-      // photo, tryout photo, recording and video-note tables for the rows,
+      // photo, tryout photo, recording, video-note and benchmark tables for
+      // the rows,
       // their owners and the manifest: several passes over the same
       // lists, never several queries (archiveRead.ts).
       const reading = await readRowContext(driver);
@@ -141,7 +142,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           ...reading.tryoutPhotos
         ])),
         ...(await manifestNames(reading.recordings.map((r) => r.file_path))),
-        ...(await manifestNames(reading.videos.map((v) => v.file_path)))
+        ...(await manifestNames(reading.videos.map((v) => v.file_path))),
+        // Two per benchmark, one where the vowel step was skipped (ticket 15).
+        ...(await manifestNames(
+          reading.benchmarkFiles.flatMap((b) =>
+            b.vowel_file_path ? [b.passage_file_path, b.vowel_file_path] : [b.passage_file_path]
+          )
+        ))
       ];
 
       return {
