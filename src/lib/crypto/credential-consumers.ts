@@ -1,6 +1,6 @@
 import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS, type Argon2Params } from './params.ts';
 
-export type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'pin-encryption';
+export type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'pin-encryption' | 'biometric-prf';
 
 export type CredentialConsumer =
   | 'journal-passphrase-setup'
@@ -12,7 +12,10 @@ export type CredentialConsumer =
   | 'journal-pin-setup'
   | 'journal-pin-add'
   | 'journal-pin-unlock'
-  | 'journal-pin-change';
+  | 'journal-pin-change'
+  | 'journal-biometric-setup'
+  | 'journal-biometric-add'
+  | 'journal-biometric-unlock';
 
 type SelectionRule = 'current' | 'persisted';
 
@@ -40,6 +43,22 @@ export const CREDENTIAL_PROFILES = {
   'pin-encryption': {
     purpose: 'Wraps the Journal data key under a short PIN, sealed to this device.',
     params: PIN_ENCRYPTION_ARGON2_PARAMS
+  },
+  /* Ticket 55 asked whether a WebAuthn PRF secret needs a profile of its own
+     the way a PIN did, and the answer is no in the direction that matters. A
+     PRF output is 32 bytes an authenticator produced, so there is no small
+     input space here for KDF cost to defend - nobody enumerates 2^256, and
+     no number this profile could carry would change that. What the cost is
+     still for is the same thing the passphrase profile's is: a cold start
+     can spend about half a second and no more.
+
+     So it deliberately shares the passphrase profile's numbers rather than
+     restating them. Re-tuning the journal's cold-start budget should move
+     both, because it is one budget; the registry keeps the two named apart
+     so that a future reason to separate them has somewhere to land. */
+  'biometric-prf': {
+    purpose: 'Wraps the Journal data key under a secret only a platform authenticator releases.',
+    params: JOURNAL_ARGON2_PARAMS
   }
 } as const satisfies Record<CredentialProfile, CredentialProfileRegistration>;
 
@@ -103,6 +122,24 @@ export const CREDENTIAL_CONSUMERS = [
     profile: 'pin-encryption',
     selectionRule: 'current',
     purpose: 'Rewrap the Journal data key under the current PIN profile.'
+  },
+  {
+    consumer: 'journal-biometric-setup',
+    profile: 'biometric-prf',
+    selectionRule: 'current',
+    purpose: 'Mint a new keystore for first-run biometric unlock.'
+  },
+  {
+    consumer: 'journal-biometric-add',
+    profile: 'biometric-prf',
+    selectionRule: 'current',
+    purpose: 'Wrap an existing Journal data key under a platform authenticator.'
+  },
+  {
+    consumer: 'journal-biometric-unlock',
+    profile: 'biometric-prf',
+    selectionRule: 'persisted',
+    purpose: 'Unlock a biometric keystore with the parameter set it was written under.'
   }
 ] as const satisfies readonly CredentialConsumerRegistration[];
 

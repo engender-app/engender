@@ -33,10 +33,24 @@ const DATA_KEY_LENGTH = 32;
     has been typed, and which KDF profile the secret was priced under. A
     PIN's secret is not the four digits alone: data/journal-pin.ts binds
     them to a device secret first, which is what makes four digits
-    defensible at all. */
-export type JournalSecretSource = 'passphrase' | 'pin';
+    defensible at all. A biometric's is a WebAuthn PRF output
+    (data/journal-biometric.ts), which needs the two public values below
+    before the authenticator can be asked for it. */
+export type JournalSecretSource = 'passphrase' | 'pin' | 'biometric';
 
-const SECRET_SOURCES: readonly JournalSecretSource[] = ['passphrase', 'pin'];
+const SECRET_SOURCES: readonly JournalSecretSource[] = ['passphrase', 'pin', 'biometric'];
+
+/** What biometric mode needs before it has a secret at all (ticket 55): the
+    credential to ask, and the salt to ask it about. A PRF output is a
+    function of both, so neither can be re-derived and both have to be kept.
+    Neither is secret - the credential id is a handle the authenticator
+    hands out in the clear, and the salt is an input, not a key - so they
+    travel here with the wrap's other public parameters rather than needing
+    somewhere protected of their own. */
+export interface BiometricHandle {
+  credentialId: Uint8Array<ArrayBuffer>;
+  prfSalt: Uint8Array<ArrayBuffer>;
+}
 
 /* Two consumers per source per operation (ADR-0013). The unlock rows both
    select persisted parameters, so which one is used changes no bytes - it
@@ -54,6 +68,16 @@ const CONSUMERS = {
     add: 'journal-pin-add',
     unlock: 'journal-pin-unlock',
     change: 'journal-pin-change'
+  },
+  /* Biometric mode has no change row and needs none: there is no secret to
+     replace, only a credential to mint again, which is a change of
+     authenticator rather than of secret and is out of ticket 55's scope. The
+     key stays `change` so the record shape matches the other two. */
+  biometric: {
+    setup: 'journal-biometric-setup',
+    add: 'journal-biometric-add',
+    unlock: 'journal-biometric-unlock',
+    change: 'journal-biometric-add'
   }
 } as const satisfies Record<JournalSecretSource, Record<string, string>>;
 
@@ -65,6 +89,12 @@ export interface KeystoreMetadata {
   salt: Uint8Array<ArrayBuffer>;
   nonce: Uint8Array<ArrayBuffer>;
   wrappedKey: Uint8Array<ArrayBuffer>;
+  /** Present exactly when `secretSource` is `'biometric'`, enforced on the
+      way in and on the way out: a biometric keystore without it is a journal
+      nothing can open, and that has to fail by name rather than as a wrong
+      secret. Attached by the caller that minted the credential rather than
+      by `wrap`, which stays blind to where a secret came from. */
+  biometric?: BiometricHandle;
 }
 
 /** Mints a fresh random data key and wraps it under the secret. The
@@ -142,6 +172,14 @@ const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
   Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
 
 export function serializeKeystore(metadata: KeystoreMetadata): string {
+  /* The one place every persisted keystore passes through, so it is where
+     biometric mode's invariant is worth enforcing: `wrap` builds metadata
+     without a handle and the caller attaches one, and a path that forgot to
+     would otherwise write a file that parses, names biometric mode, and
+     cannot be opened by anything. Callers serialize before they truncate. */
+  if (metadata.secretSource === 'biometric' && !metadata.biometric) {
+    throw new KeystoreUnreadableError('a biometric keystore needs its credential id and PRF salt to be openable');
+  }
   return JSON.stringify({
     version: metadata.version,
     kdf: metadata.kdf,
@@ -149,7 +187,13 @@ export function serializeKeystore(metadata: KeystoreMetadata): string {
     params: metadata.params,
     salt: toBase64(metadata.salt),
     nonce: toBase64(metadata.nonce),
-    wrappedKey: toBase64(metadata.wrappedKey)
+    wrappedKey: toBase64(metadata.wrappedKey),
+    ...(metadata.biometric
+      ? {
+          credentialId: toBase64(metadata.biometric.credentialId),
+          prfSalt: toBase64(metadata.biometric.prfSalt)
+        }
+      : {})
   });
 }
 
@@ -196,6 +240,18 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
   if (!params || numbers.some((field) => typeof params[field] !== 'number')) {
     throw new KeystoreUnreadableError('keystore file has no usable KDF parameters');
   }
+  /* Biometric mode's two public values, required exactly when it is the
+     source. Missing means a keystore nothing can ever open, and saying so
+     here keeps it out of the gate, where it would arrive as an unlock that
+     mysteriously never succeeds. */
+  let biometric: BiometricHandle | undefined;
+  if (secretSource === 'biometric') {
+    if (typeof raw.credentialId !== 'string' || typeof raw.prfSalt !== 'string') {
+      throw new KeystoreUnreadableError('a biometric keystore is missing its credential id or PRF salt');
+    }
+    biometric = { credentialId: fromBase64(raw.credentialId), prfSalt: fromBase64(raw.prfSalt) };
+  }
+
   return {
     version: KEYSTORE_VERSION,
     kdf: 'argon2id',
@@ -203,6 +259,7 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
     params: params as Argon2Params,
     salt: fromBase64(raw.salt),
     nonce: fromBase64(raw.nonce),
-    wrappedKey: fromBase64(raw.wrappedKey)
+    wrappedKey: fromBase64(raw.wrappedKey),
+    ...(biometric ? { biometric } : {})
   };
 }
