@@ -142,7 +142,7 @@ export interface Milestone {
   name: string;
   epochDay: number;
   templateKey: string | null;
-  /** Linked surgical procedure uuid (phase 5 ticket 12, ADR-0042). */
+  /** Linked surgical procedure uuid (phase 5 ticket 12, ADR-0045). */
   procedureId?: string | null;
   photo: Photo | null;
 }

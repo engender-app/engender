@@ -1,4 +1,4 @@
-/* Unit tests for the procedures area and milestone linking (phase 5 ticket 12, ADR-0042). */
+/* Unit tests for the procedures area and milestone linking (phase 5 ticket 12, ADR-0045). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -88,7 +88,7 @@ test('procedure checklist is owned by the procedure and cleans up on delete', as
   assert.equal(await journal.procedures.getChecklist(id), undefined);
 });
 
-test('recording surgery day as a transition milestone links milestone to procedure (ADR-0042)', async () => {
+test('recording surgery day as a transition milestone links milestone to procedure (ADR-0045)', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
   const journal = openJournal(db, files);

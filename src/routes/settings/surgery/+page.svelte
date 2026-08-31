@@ -4,7 +4,7 @@
      Rebuilt into a comprehensive 4-phase Procedure Care & Recovery Hub:
      1. Planning Phase (no date set): Consult questions, preparation checklist, insurance tasks.
      2. Pre-Op Phase (date set, before surgery day): Live day countdown, packing list, clearance tasks.
-     3. Surgery Day: On surgery day, prompts user to record surgery day as transition milestone upon explicit confirmation (ADR-0042).
+     3. Surgery Day: On surgery day, prompts user to record surgery day as transition milestone upon explicit confirmation (ADR-0045).
      4. Recovery Phase (1..90 days post-op): Post-op recovery day badge (Post-Op Day X), recovery feelings diary, wound healing progression photo album.
      5. Archived Phase (>90 days post-op): Permanent surgical history record. */
   import { m } from '$lib/paraglide/messages';
@@ -139,12 +139,6 @@
   function select(procedure: Procedure) {
     selectedId = selectedId === procedure.id ? null : procedure.id;
     notesDraft = selectedId ? procedure.notes : '';
-  }
-
-  async function addAsMilestone(procedure: Procedure) {
-    if (procedure.surgeryEpochDay === null) return;
-    await journal.procedures.recordSurgeryMilestone(procedure.id);
-    toast(m.surgery_milestone_added());
   }
 
   function promptMilestoneConfirmation() {
@@ -560,7 +554,7 @@
           text={selected.surgeryEpochDay ? dayLabel(selected.surgeryEpochDay) : ''}
           action={linkedMilestone
             ? undefined
-            : { label: m.surgery_milestone_add(), onclick: () => addAsMilestone(selected) }}
+            : { label: m.surgery_milestone_add(), onclick: promptMilestoneConfirmation }}
           data-add-as-milestone-notice
         />
 
@@ -867,7 +861,7 @@
     <button class="btn btn-primary" data-save-procedure-item onclick={addItem}><span>{m.surgery_checklist_add()}</span></button>
   </Sheet>
 
-  <!-- Surgery Day Milestone Confirmation Sheet (ADR-0042 explicit confirmation) -->
+  <!-- Surgery Day Milestone Confirmation Sheet (ADR-0045 explicit confirmation) -->
   {#if selected}
     <Sheet open={milestoneConfirmSheet} title={m.surgery_milestone_confirm_sheet()} onClose={() => (milestoneConfirmSheet = false)}>
       <h3>{m.surgery_milestone_confirm_q({ name: selected.name })}</h3>

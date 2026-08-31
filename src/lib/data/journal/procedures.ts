@@ -105,7 +105,7 @@ export interface ProceduresArea {
   addChecklistItem(procedureId: string, content: string): Promise<ChecklistItem>;
   /** Finds the transition milestone linked to this procedure, if one exists. */
   getMilestone(procedureId: string): Promise<Milestone | null>;
-  /** Records or updates a transition milestone linked to this procedure (ADR-0042). */
+  /** Records or updates a transition milestone linked to this procedure (ADR-0045). */
   recordSurgeryMilestone(procedureId: string, options?: { name?: string; epochDay?: number }): Promise<string>;
 }
 
@@ -121,7 +121,7 @@ export function makeProceduresArea(
   driver: SqliteDriver,
   files: PhotoFileStore,
   checklists: ChecklistsArea,
-  milestones?: MilestonesArea
+  milestones: MilestonesArea
 ): ProceduresArea {
   const rowidOf = async (procedureId: string): Promise<number> => {
     const rows = await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [procedureId]);
@@ -306,38 +306,22 @@ export function makeProceduresArea(
 
       if (existing.length > 0) {
         const existingId = existing[0].uuid;
-        if (milestones) {
-          await milestones.upsertMilestone({
-            id: existingId,
-            name,
-            epochDay,
-            templateKey: 'surgery',
-            procedureId
-          });
-        } else {
-          await driver.run(
-            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, procedure_id = ?, updated_at = ? WHERE uuid = ?',
-            [name, epochDay, 'surgery', procedureId, now(), existingId]
-          );
-        }
-        return existingId;
-      }
-
-      if (milestones) {
-        return milestones.upsertMilestone({
+        await milestones.upsertMilestone({
+          id: existingId,
           name,
           epochDay,
           templateKey: 'surgery',
           procedureId
         });
-      } else {
-        const uuid = mintUuid();
-        await driver.run(
-          'INSERT INTO milestone (uuid, name, epoch_day, template_key, procedure_id, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-          [uuid, name, epochDay, 'surgery', procedureId, now()]
-        );
-        return uuid;
+        return existingId;
       }
+
+      return milestones.upsertMilestone({
+        name,
+        epochDay,
+        templateKey: 'surgery',
+        procedureId
+      });
     }
   };
 }
