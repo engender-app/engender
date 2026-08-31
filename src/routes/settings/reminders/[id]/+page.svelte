@@ -90,7 +90,7 @@
       key="reminder-provenance"
       title={origin.text}
       text={origin.hint}
-      action={origin.href ? { label: m.prov_view_stock(), href: origin.href } : undefined}
+      action={origin.href && origin.actionLabel ? { label: origin.actionLabel, href: origin.href } : undefined}
     />
   {/if}
 

@@ -96,6 +96,17 @@ test('a stock-managed reminder names the drug, explains the handoff, and links t
   assert.deepEqual(origin, {
     text: 'Kept in step with your Estradiol stock.',
     hint: "Edit it, and it's yours to manage from here on.",
-    href: '/settings/stock'
+    href: '/settings/stock',
+    actionLabel: 'View stock'
+  });
+});
+
+test('a wear-session reminder is recognised too, not just stock - the same auto_source column carries both', () => {
+  const origin = resolveReminderOrigin(reminder({ autoSource: 'wear:session-1' }));
+  assert.deepEqual(origin, {
+    text: 'Set from a wear session you logged.',
+    hint: "Edit it, and it's yours to manage from here on.",
+    href: '/settings/wear',
+    actionLabel: 'View wear log'
   });
 });

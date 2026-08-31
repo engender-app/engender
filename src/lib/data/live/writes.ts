@@ -451,8 +451,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   tryouts: classify<Journal['tryouts']>()({
     writes: {
       upsertTryout: ['tryout'],
-      // Takes its felt-sense history along too.
-      deleteTryout: ['tryout', 'feltSense'],
+      // Takes its felt-sense history along too, and unlinks any milestone
+      // it was adopted into rather than leaving its tryout_id dangling
+      // (phase 5 deepening ticket 22, ADR-0045).
+      deleteTryout: ['tryout', 'feltSense', 'milestone'],
       addPhoto: ['tryout'],
       deletePhoto: ['tryout'],
       adoptTryout: ['tryout', 'milestone', 'feltSense']

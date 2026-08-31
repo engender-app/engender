@@ -1658,6 +1658,8 @@
   "prov_reminder_stock": "Kept in step with your {drug} stock.",
   "prov_reminder_takeover_hint": "Edit it, and it's yours to manage from here on.",
   "prov_view_stock": "View stock",
+  "prov_reminder_wear": "Set from a wear session you logged.",
+  "prov_view_wear_log": "View wear log",
   "tl_intro": "Your milestones so far, and what’s ahead.",
   "tl_you_are_here": "today, you are here",
   "tl_gap_aria": "{duration} without milestones, compressed",
