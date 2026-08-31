@@ -1975,6 +1975,7 @@
   "clinician_summary_range_required": "Pick a start and end date to see the summary.",
   "clinician_summary_print": "Print",
   "clinician_summary_generated": "Generated {date}",
+  "clinician_summary_generated_label": "Generated",
   "clinician_summary_regimen_episodes_empty": "No regimen episodes in this range.",
   "clinician_summary_doses_empty": "No doses logged in this range.",
   "clinician_summary_labs_empty": "No lab results in this range.",
