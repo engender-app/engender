@@ -40,14 +40,19 @@
   ];
 
   const HEALTH_ROWS: HubRow[] = [
-    { key: 'labs', icon: 'flask', title: () => m.lab_results(), subtitle: () => m.lab_results_sub(), href: '/settings/labs' },
-    { key: 'regimen', icon: 'timeline', title: () => m.regimen(), subtitle: () => m.regimen_row_sub(), href: '/settings/regimen' },
-    { key: 'hormone-curve', icon: 'curve', title: () => m.curve_title(), subtitle: () => m.curve_sub(), href: '/settings/hormone-curve' },
-    /* Ticket 09: doses was reachable only from inside regimen and
-       hormone-curve, both settings screens - this row gives it an inbound
-       link from outside the settings subtree, alongside the two it comes
-       from. */
-    { key: 'doses', icon: 'clock', title: () => m.doses(), subtitle: () => m.doses_row_sub(), href: '/doses' },
+    /* Deepening ticket 07. This group was nine rows long and read as an
+       inventory rather than as somewhere to go, and two whole surfaces -
+       the stock projection and the exposure counters - were not in it at
+       all, reachable only from a link buried inside /settings/regimen.
+
+       The four medication surfaces (labs, regimen, hormone-curve, doses)
+       are behind this row now, together with those two. A grouping screen
+       that only links on would have been a heading, so /care is not one: it
+       opens on the regimen, the last dose, the next one the schedule
+       expects, the last lab draw and the run-out day, each a live read of
+       the module that owns it and each a way through to it. That is what
+       earns the tap the four rows used to save. */
+    { key: 'care', icon: 'timeline', title: () => m.care_title(), subtitle: () => m.care_rail_heading(), href: '/care' },
     { key: 'cycle-events', icon: 'calendar', title: () => m.cycle_events(), subtitle: () => m.cycle_events_sub(), href: '/settings/cycle-events' },
     { key: 'side-effects', icon: 'zap', title: () => m.side_effects(), subtitle: () => m.side_effects_sub(), href: '/settings/side-effects' },
     { key: 'surgery', icon: 'flag', title: () => m.surgery_journey_title(), subtitle: () => m.surgery_journey_sub(), href: '/settings/surgery' },

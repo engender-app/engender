@@ -31,21 +31,18 @@
   import { m } from '$lib/paraglide/messages';
   import {
     bootState,
+    submitAccessModeSetup,
     submitPassphraseSetup,
     submitPassphraseUnlock,
-    submitPinSetup,
     submitPinUnlock,
-    submitBiometricSetup,
     submitBiometricUnlock,
-    submitDeviceBoundSetup,
     resetApp
   } from '$lib/stores/boot.svelte';
   import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
-  import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
   import GateScreen, { gateBodyClass } from './GateScreen.svelte';
-  import AccessModeSetup, { accessModeTitle, type AccessSetupMode } from './AccessModeSetup.svelte';
+  import AccessModeSetup, { accessModeSetupErrorMessage, accessModeTitle, type AccessSetupMode } from './AccessModeSetup.svelte';
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
@@ -154,32 +151,19 @@
             : m.pp_unlock_title()
   );
 
-  /** The setup module's answer. Device-bound mode is the one that can be
-      refused by the platform rather than by the person, so it is the one with
-      outcomes to render. */
+  /** The setup module's answer, wired through boot.svelte.ts's own submit
+      path (ticket 54: onboarding's lock step hands a chosen mode to the same
+      function, so the mapping from a mode to a submit call and a failure
+      lives in one place rather than two). Device-bound mode is the one that
+      can be refused by the platform rather than by the person, so it is the
+      one with an outcome besides ok or a throw to render. */
   async function choose(chosen: AccessSetupMode, secret: string) {
     if (busy) return;
     busy = true;
     error = '';
-    try {
-      if (chosen === 'device-bound') {
-        const result = await submitDeviceBoundSetup();
-        if (result === 'ok') return;
-        error = result === 'needs-device-lock' ? m.am_device_no_lock() : m.am_device_unavailable();
-        return;
-      }
-      if (chosen === 'pin') await submitPinSetup(secret);
-      else if (chosen === 'biometric') await submitBiometricSetup();
-      else await submitPassphraseSetup(secret);
-    } catch (e) {
-      console.error('setting up the access mode failed', e);
-      /* A device that will not release a secret has not failed at setup, it
-         has answered that it cannot do this mode - so the sentence sends the
-         person to another row rather than inviting a retry at a wall. */
-      error = e instanceof BiometricUnavailableError ? m.am_biometric_unavailable() : m.am_setup_failed();
-    } finally {
-      busy = false;
-    }
+    const result = await submitAccessModeSetup(chosen, secret);
+    busy = false;
+    if (result !== 'ok') error = accessModeSetupErrorMessage(result);
   }
 
   async function submitPassphrase(event: SubmitEvent) {

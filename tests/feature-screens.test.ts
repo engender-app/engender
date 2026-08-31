@@ -1,10 +1,10 @@
-/* The 26 feature screens, after the rebuild onto the surface kit (phase 5
-   UX ticket 25), at the level a screen's source can be held to - the same
+/* The feature screens, after the rebuild onto the surface kit (phase 5 UX
+   ticket 25), at the level a screen's source can be held to - the same
    shape as home-surfaces.test.ts and more-surfaces.test.ts, which is where
    this kind of test started.
 
    This is the grind ticket, so the thing worth watching is not any one
-   screen but that none of the 26 was quietly left on the old vocabulary.
+   screen but that none of them was quietly left on the old vocabulary.
    The list below is SCREENS.md's own: the 22 hub rows, the three reached
    only from inside a feature screen, and the tryout detail. It is written
    out rather than globbed, because a screen dropped from the glob and a
@@ -46,7 +46,11 @@ const ROUTES = [
   'settings/sizes',
   'settings/hair-progress',
   'settings/hair-removal',
-  // Health
+  /* Health. Four of these stopped being hub rows in phase 5 deepening ticket
+     07 - labs, regimen, hormone-curve and doses sit behind the new /care row
+     now - and they are still feature screens, still redesigned onto the kit,
+     so they stay on this list. What that ticket adds to it is /care itself. */
+  'care',
   'settings/labs',
   'settings/regimen',
   'settings/hormone-curve',
@@ -85,10 +89,13 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 26 of them', () => {
-  it('is the count SCREENS.md gives', () => {
-    expect(ROUTES.length).toBe(26);
-    expect(new Set(ROUTES).size).toBe(26);
+describe('all 27 of them', () => {
+  it('is the count SCREENS.md gives, plus the one added since', () => {
+    /* 26 when this list was written, 27 since deepening ticket 07 added
+       /care. SCREENS.md is a ticket behind either way - see the note above
+       the list - and correcting it is still nobody's ticket. */
+    expect(ROUTES.length).toBe(27);
+    expect(new Set(ROUTES).size).toBe(27);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {

@@ -47,9 +47,11 @@ import {
 } from '../data/journal-passphrase';
 import { addJournalPin, setupJournalPin, unlockJournalPin } from '../data/journal-pin';
 import { addJournalBiometric, setupJournalBiometric, unlockJournalBiometric } from '../data/journal-biometric';
+import { BiometricUnavailableError } from '../data/webauthn-prf';
 import { removeDeviceBindingSecret } from '../data/device-secret';
 import {
   addDeviceBoundJournal,
+  deleteDeviceKeyDatabase,
   DeviceBoundKeyUnavailableError,
   removeDeviceBoundJournal,
   setupDeviceBoundJournal
@@ -168,13 +170,16 @@ export async function resetApp(): Promise<void> {
      it does stay in the platform's own credential list until somebody
      removes it there, which is worth knowing rather than assuming away
      (ticket 55). */
-  /* PIN mode's binding key (data/device-secret.ts). Not covered by the OPFS
-     sweep above - it lives in IndexedDB - and a key left behind after a
-     reset is key material outliving the journal it belonged to. Warned
-     rather than swallowed: the reset carries on either way, and a reset that
-     could not take this is worth seeing in a console. */
-  await removeDeviceBindingSecret().catch((error) => {
-    console.warn('could not remove the PIN binding key during the reset', error);
+  /* The device-bound wrapping key and PIN mode's binding key
+     (data/device-secret.ts) both live here. Not covered by the OPFS sweep
+     above - it's IndexedDB - and a key left behind after a reset is key
+     material outliving the journal it belonged to. Deletes the whole
+     database rather than each slot by name, so the reset does not have to
+     be kept in step with whatever stores a key here next. Warned rather
+     than swallowed: the reset carries on either way, and a reset that could
+     not take this is worth seeing in a console. */
+  await deleteDeviceKeyDatabase().catch((error) => {
+    console.warn('could not remove the browser device keys during the reset', error);
   });
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
@@ -294,6 +299,30 @@ export async function submitDeviceBoundSetup(): Promise<DeviceBoundSetupResult> 
   } catch (error) {
     if (error instanceof DeviceBoundKeyUnavailableError) return 'device-bound-unavailable';
     throw error;
+  }
+}
+
+export type AccessModeSetupResult = DeviceBoundSetupResult | 'biometric-unavailable' | 'setup-failed';
+
+/** The setup module's whole submit path, wherever it is offered. JournalGate
+    and onboarding's own lock step (ticket 54) both hand a chosen mode here
+    rather than each keeping its own copy of which submit call a mode maps
+    to and which failure is which - the four submits above stay what an
+    *unlock* screen calls directly, since only setup branches on the mode at
+    all. */
+export async function submitAccessModeSetup(
+  chosen: NonNullable<JournalAccessMode>,
+  secret: string
+): Promise<AccessModeSetupResult> {
+  if (chosen === 'device-bound') return submitDeviceBoundSetup();
+  try {
+    if (chosen === 'pin') await submitPinSetup(secret);
+    else if (chosen === 'biometric') await submitBiometricSetup();
+    else await submitPassphraseSetup(secret);
+    return 'ok';
+  } catch (error) {
+    console.error('setting up the access mode failed', error);
+    return error instanceof BiometricUnavailableError ? 'biometric-unavailable' : 'setup-failed';
   }
 }
 

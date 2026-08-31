@@ -375,6 +375,23 @@ export function passphraseMode(state: BootState): PassphraseMode | null {
   }
 }
 
+/** A brand new install: no keystore of any kind exists yet, so there is
+    nothing to unlock and nothing chosen (ticket 54). This is the one gate
+    state onboarding's own flow is allowed to render over instead of - every
+    other passphrase state (an unlock, a conversion) still meets the gate
+    first, which is why this checks `passphraseMode` rather than `bootGate`
+    alone.
+
+    `state.conversion` is what excludes the one `needs-setup` this is not
+    true of: a device already holding a plaintext Journal (ticket 10) reports
+    `needs-setup` with a pending conversion attached, and that conversion has
+    to survive the rewrite - it is not a free choice among the four modes the
+    way a truly empty device's setup is, so it keeps meeting the gate
+    directly (JournalGate's own `converting` reads the same field). */
+export function needsOnboardingAccessMode(state: BootState): boolean {
+  return bootGate(state) === 'passphrase' && passphraseMode(state) === 'setup' && state.conversion === null;
+}
+
 export function passphraseScreen(state: BootState): PassphraseScreen {
   switch (state.status) {
     case 'needs-setup':
