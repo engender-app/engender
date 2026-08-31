@@ -494,12 +494,13 @@
             <ListRow
               static
               data-stock={row.entry.id}
-              icon="package"
               title={row.entry.drug}
-              subtitle={stockRemainingLabel(row.projection.remaining, row.entry.unit)}
+              subtitle={[stockRemainingLabel(row.projection.remaining, row.entry.unit), runOut.text]}
             >
-              {#snippet trailing()}
-                <span class="stock-run-out" class:notice-warn={runOut.warn}>{runOut.text}</span>
+              {#snippet leading()}
+                <span class="kit-row-ico" class:is-warn={runOut.warn}>
+                  <Icon name="package" size={22} />
+                </span>
               {/snippet}
             </ListRow>
           {/each}
@@ -1029,18 +1030,12 @@
     font-weight: var(--weight-medium);
   }
 
-  /* The run-out reading, styled exactly as /settings/stock's own row - one
-     presentation of the projection wherever it appears (ADR-0046). */
-  .stock-run-out {
-    text-align: right;
-    max-width: 11rem;
-    line-height: 1.25;
-  }
-
-  .stock-run-out.notice-warn {
-    padding: 2px var(--space-2);
-    border-radius: var(--radius-md);
-    font-weight: var(--weight-medium);
+  /* The warn signal, on the icon disc exactly as /settings/stock's own row -
+     one presentation of the projection wherever it appears (ADR-0046). */
+  .kit-row-ico.is-warn {
+    background: var(--warn-soft);
+    color: var(--on-warn-soft);
+    border-color: transparent;
   }
 
   /* The record's three lines (phase 5 UX ticket 37). Uncontained: the sheet
