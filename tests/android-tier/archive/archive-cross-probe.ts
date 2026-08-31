@@ -200,6 +200,7 @@ function portableWith(marker: string) {
     checkInEnabled: values.checkInEnabled,
     checkInTime: values.checkInTime,
     checkInAffirmationsEnabled: values.checkInAffirmationsEnabled,
+    cycleTrackingEnabled: values.cycleTrackingEnabled,
     preferredLabUnits: {},
     measurementUnit: values.measurementUnit,
     streakGoalHabit: values.streakGoalHabit,

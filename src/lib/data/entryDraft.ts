@@ -12,7 +12,14 @@
 import { bodyRegionIsLogged, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
 import type { BodyRegionFeeling, Entry } from './types';
-import type { EntryInput } from './journal/entries';
+import type {
+  EntryCycleEventInput,
+  EntryDoseLogInput,
+  EntryEffectMarkerInput,
+  EntryInput,
+  EntryProcedureRecoveryInput,
+  EntryTryoutFeltSenseInput
+} from './journal/entries';
 import type { NormalizedPhoto } from './journal/photos';
 import type { EditorPhoto } from '$lib/stores/photoPicking';
 import type { EditorRecording } from '$lib/stores/voiceRecording';
@@ -42,6 +49,11 @@ export interface EntryDraft {
   /** Stored video note ids taken off in this edit, the same removed-on-save
       rule removedPhotoIds follows. */
   removedVideoIds: string[];
+  tryoutFeltSense: EntryTryoutFeltSenseInput | null;
+  doseLog: EntryDoseLogInput | null;
+  procedureRecovery: EntryProcedureRecoveryInput | null;
+  effectMarker: EntryEffectMarkerInput | null;
+  cycleEvent: EntryCycleEventInput | null;
   readonly isEmpty: boolean;
   readonly hasMoodOnlyContent: boolean;
   setMood(mood: number | null): void;
@@ -70,6 +82,11 @@ export interface EntryDraft {
   removeRecording(index: number): void;
   addVideo(bytes: Uint8Array): void;
   removeVideo(index: number): void;
+  setTryoutFeltSense(feltSense: EntryTryoutFeltSenseInput | null): void;
+  setDoseLog(doseLog: EntryDoseLogInput | null): void;
+  setProcedureRecovery(recovery: EntryProcedureRecoveryInput | null): void;
+  setEffectMarker(marker: EntryEffectMarkerInput | null): void;
+  setCycleEvent(cycleEvent: EntryCycleEventInput | null): void;
   /** The exact upsertEntry payload for the draft as it stands, including the
       photo, recording and video-note attach and remove lists. */
   toUpsert(): EntryInput;
@@ -101,6 +118,11 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     removedRecordingIds: [],
     videos: existing ? existing.videos.map((video) => ({ kind: 'stored' as const, video })) : [],
     removedVideoIds: [],
+    tryoutFeltSense: null,
+    doseLog: null,
+    procedureRecovery: null,
+    effectMarker: null,
+    cycleEvent: null,
 
     get isEmpty() {
       return entryIsEmpty({
@@ -189,8 +211,28 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       if (gone.kind === 'stored') this.removedVideoIds.push(gone.video.id);
     },
 
+    setTryoutFeltSense(feltSense) {
+      this.tryoutFeltSense = feltSense;
+    },
+
+    setDoseLog(doseLog) {
+      this.doseLog = doseLog;
+    },
+
+    setProcedureRecovery(recovery) {
+      this.procedureRecovery = recovery;
+    },
+
+    setEffectMarker(marker) {
+      this.effectMarker = marker;
+    },
+
+    setCycleEvent(cycleEvent) {
+      this.cycleEvent = cycleEvent;
+    },
+
     toUpsert() {
-      return {
+      const payload: EntryInput = {
         id: this.id,
         epochDay: this.epochDay,
         timestamp: this.timestamp || undefined,
@@ -208,6 +250,12 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         attachVideos: this.videos.filter((v: EditorVideo) => v.kind === 'recorded').map((v) => v.bytes),
         removeVideoIds: this.removedVideoIds
       };
+      if (this.tryoutFeltSense) payload.tryoutFeltSense = this.tryoutFeltSense;
+      if (this.doseLog) payload.doseLog = this.doseLog;
+      if (this.procedureRecovery) payload.procedureRecovery = this.procedureRecovery;
+      if (this.effectMarker) payload.effectMarker = this.effectMarker;
+      if (this.cycleEvent) payload.cycleEvent = this.cycleEvent;
+      return payload;
     }
   };
 }

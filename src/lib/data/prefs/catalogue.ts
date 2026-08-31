@@ -90,6 +90,16 @@ export interface PreferenceValues {
       `entryNudges` is: a yes/no about one installation's entry screen, not
       anything the journal itself carries. */
   guidedPromptsEnabled: boolean;
+  /** Whether active tryouts show a felt-sense quick prompt in the entry editor. */
+  entryTryoutPromptEnabled: boolean;
+  /** Whether a scheduled dose due today shows a quick-log chip in the entry editor. */
+  entryDoseQuickLogEnabled: boolean;
+  /** Whether post-op procedure recovery shows a status card in the entry editor. */
+  entryProcedureRecoveryEnabled: boolean;
+  /** Whether active HRT regimen shows a physical change marker chip in the entry editor. */
+  entryHrtEffectsEnabled: boolean;
+  /** Explicit opt-in for cycle tracking on non-testosterone regimens (ADR-0043). */
+  cycleTrackingEnabled: boolean;
   /** Whether the wear-timer live tile is ever shown (phase 5 ticket 51).
       A kind-level switch, not a way to hide one running session: the tile
       appears while a session is running and the kind is on, and this never
@@ -255,6 +265,11 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   checkInAffirmationsEnabled: true,
   entryNudges: true,
   guidedPromptsEnabled: true,
+  entryTryoutPromptEnabled: true,
+  entryDoseQuickLogEnabled: true,
+  entryProcedureRecoveryEnabled: true,
+  entryHrtEffectsEnabled: true,
+  cycleTrackingEnabled: false,
   wearTimerEnabled: true,
   dosePanelEnabled: true,
   readyLetterEnabled: true,
@@ -297,6 +312,7 @@ export const PORTABLE_KEYS = [
   'checkInEnabled',
   'checkInTime',
   'checkInAffirmationsEnabled',
+  'cycleTrackingEnabled',
   'preferredLabUnits',
   'measurementUnit',
   'streakGoalHabit',
@@ -320,6 +336,10 @@ export const DEVICE_LOCAL_KEYS = [
   'hideNotificationTitles',
   'entryNudges',
   'guidedPromptsEnabled',
+  'entryTryoutPromptEnabled',
+  'entryDoseQuickLogEnabled',
+  'entryProcedureRecoveryEnabled',
+  'entryHrtEffectsEnabled',
   'wearTimerEnabled',
   'dosePanelEnabled',
   'readyLetterEnabled',
