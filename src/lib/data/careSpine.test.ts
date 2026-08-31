@@ -1,0 +1,217 @@
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
+import {
+  careSpine,
+  lastLoggedDoseDay,
+  nextExpectedSlot,
+  SPINE_BACK_DAYS,
+  SPINE_FORWARD_DAYS,
+  SPINE_MIN_BACK_DAYS,
+  SPINE_MIN_FORWARD_DAYS
+} from './careSpine';
+import { startOfDayTimestamp } from './epochDay';
+import type { DoseEvent, DosePause, DoseSchedule } from './types';
+
+const TODAY = 20000;
+
+const NO_FACTS = {
+  lastDoseEpochDay: null,
+  nextDoseEpochDay: null,
+  labDrawEpochDay: null,
+  runOutEpochDay: null
+};
+
+function dose(epochDay: number, overrides: Partial<DoseEvent> = {}): DoseEvent {
+  return {
+    id: `d-${epochDay}`,
+    timestamp: startOfDayTimestamp(epochDay) + 9 * 3600000,
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'im',
+    injectionSite: null,
+    vehicle: null,
+    status: 'taken',
+    scheduled: null,
+    drug: null,
+    ...overrides
+  } as DoseEvent;
+}
+
+function schedule(overrides: Partial<DoseSchedule> = {}): DoseSchedule {
+  return {
+    id: 's-1',
+    episodeId: 'ep-1',
+    recurrence: { kind: 'everyNDays', everyNDays: 7 },
+    dosesPerDay: 1,
+    doseAmounts: null,
+    ...overrides
+  } as DoseSchedule;
+}
+
+const markOf = (spine: NonNullable<ReturnType<typeof careSpine>>, kind: string) =>
+  spine.marks.find((mark) => mark.kind === kind);
+
+/* The rail exists or it does not */
+
+test('today alone is not a rail', () => {
+  assert.equal(careSpine(NO_FACTS, TODAY), null);
+});
+
+test('one other mark beside today is a rail', () => {
+  const spine = careSpine({ ...NO_FACTS, nextDoseEpochDay: TODAY + 3 }, TODAY);
+  assert.ok(spine);
+  assert.deepEqual(
+    spine.marks.map((mark) => mark.kind),
+    ['today', 'nextDose']
+  );
+});
+
+test('marks read left to right in time order', () => {
+  const spine = careSpine(
+    {
+      lastDoseEpochDay: TODAY - 5,
+      nextDoseEpochDay: TODAY + 2,
+      labDrawEpochDay: TODAY - 20,
+      runOutEpochDay: TODAY + 24
+    },
+    TODAY
+  );
+  assert.ok(spine);
+  assert.deepEqual(
+    spine.marks.map((mark) => mark.kind),
+    ['labDraw', 'lastDose', 'today', 'nextDose', 'runOut']
+  );
+  const positions = spine.marks.map((mark) => mark.position);
+  assert.deepEqual([...positions].sort((a, b) => a - b), positions);
+});
+
+/* What the rail spans */
+
+test('the rail always reaches at least a fortnight either side of today', () => {
+  const spine = careSpine({ ...NO_FACTS, nextDoseEpochDay: TODAY + 1 }, TODAY);
+  assert.ok(spine);
+  assert.equal(spine.fromEpochDay, TODAY - SPINE_MIN_BACK_DAYS);
+  assert.equal(spine.toEpochDay, TODAY + SPINE_MIN_FORWARD_DAYS);
+});
+
+test('a mark past the fortnight stretches the rail to it', () => {
+  const spine = careSpine({ ...NO_FACTS, runOutEpochDay: TODAY + 40, labDrawEpochDay: TODAY - 30 }, TODAY);
+  assert.ok(spine);
+  assert.equal(spine.fromEpochDay, TODAY - 30);
+  assert.equal(spine.toEpochDay, TODAY + 40);
+  assert.equal(markOf(spine, 'labDraw')?.position, 0);
+  assert.equal(markOf(spine, 'runOut')?.position, 1);
+});
+
+test('a mark past the rail sits at the end it was clamped to, and says so', () => {
+  const spine = careSpine(
+    { ...NO_FACTS, labDrawEpochDay: TODAY - 400, runOutEpochDay: TODAY + 900 },
+    TODAY
+  );
+  assert.ok(spine);
+  assert.equal(spine.fromEpochDay, TODAY - SPINE_BACK_DAYS);
+  assert.equal(spine.toEpochDay, TODAY + SPINE_FORWARD_DAYS);
+
+  const lab = markOf(spine, 'labDraw');
+  assert.equal(lab?.position, 0);
+  assert.equal(lab?.beyondSpan, true);
+  assert.equal(lab?.epochDay, TODAY - 400, 'the label still says the day it happened');
+
+  const runOut = markOf(spine, 'runOut');
+  assert.equal(runOut?.position, 1);
+  assert.equal(runOut?.beyondSpan, true);
+});
+
+test('a mark inside the rail is not beyond it', () => {
+  const spine = careSpine({ ...NO_FACTS, runOutEpochDay: TODAY + 10 }, TODAY);
+  assert.ok(spine);
+  assert.equal(markOf(spine, 'runOut')?.beyondSpan, false);
+  assert.equal(markOf(spine, 'today')?.beyondSpan, false);
+});
+
+test("today's position follows the span rather than sitting at a fixed third", () => {
+  const spine = careSpine({ ...NO_FACTS, runOutEpochDay: TODAY + 100 }, TODAY);
+  assert.ok(spine);
+  const expected = SPINE_MIN_BACK_DAYS / (SPINE_MIN_BACK_DAYS + 100);
+  assert.ok(Math.abs((markOf(spine, 'today')?.position ?? -1) - expected) < 1e-9);
+});
+
+/* Labels that would collide take the second lane */
+
+test('marks far apart all sit in the near lane', () => {
+  const spine = careSpine({ lastDoseEpochDay: TODAY - 30, nextDoseEpochDay: TODAY + 30, labDrawEpochDay: null, runOutEpochDay: null }, TODAY);
+  assert.ok(spine);
+  assert.deepEqual(
+    spine.marks.map((mark) => mark.lane),
+    [0, 0, 0]
+  );
+});
+
+test('a mark crowding the one before it drops to the far lane', () => {
+  const spine = careSpine(
+    { lastDoseEpochDay: TODAY - 1, nextDoseEpochDay: TODAY + 1, labDrawEpochDay: null, runOutEpochDay: TODAY + 30 },
+    TODAY
+  );
+  assert.ok(spine);
+  const lanes = new Map(spine.marks.map((mark) => [mark.kind, mark.lane]));
+  assert.notEqual(lanes.get('lastDose'), lanes.get('today'));
+  assert.notEqual(lanes.get('today'), lanes.get('nextDose'));
+});
+
+test('two marks on the same day still get their own lanes', () => {
+  const spine = careSpine(
+    { lastDoseEpochDay: TODAY, nextDoseEpochDay: null, labDrawEpochDay: TODAY, runOutEpochDay: TODAY + 20 },
+    TODAY
+  );
+  assert.ok(spine);
+  const onToday = spine.marks.filter((mark) => mark.epochDay === TODAY);
+  assert.equal(onToday.length, 3);
+  assert.equal(new Set(onToday.map((mark) => mark.lane)).size >= 2, true);
+});
+
+/* The two facts the rail reads off the dose log */
+
+test('the last logged dose is the most recent one that happened', () => {
+  assert.equal(lastLoggedDoseDay([dose(TODAY - 9), dose(TODAY - 2)]), TODAY - 2);
+});
+
+test('a skipped dose is not a dose that happened', () => {
+  assert.equal(lastLoggedDoseDay([dose(TODAY - 9), dose(TODAY - 2, { status: 'skipped' })]), TODAY - 9);
+});
+
+test('no doses is no last dose', () => {
+  assert.equal(lastLoggedDoseDay([]), null);
+});
+
+test('the next expected slot is the first one nothing is logged against', () => {
+  const slot = nextExpectedSlot(schedule(), TODAY - 14, [], [], TODAY);
+  assert.equal(slot?.epochDay, TODAY);
+});
+
+test("today's slot already logged moves the next one on", () => {
+  const slot = nextExpectedSlot(schedule(), TODAY - 14, [dose(TODAY)], [], TODAY);
+  assert.equal(slot?.epochDay, TODAY + 7);
+});
+
+test('a pause covering the next slot skips past it', () => {
+  const pause: DosePause = {
+    id: 'p-1',
+    episodeId: 'ep-1',
+    startEpochDay: TODAY,
+    endEpochDay: TODAY + 1,
+    reason: 'planned'
+  };
+  const slot = nextExpectedSlot(schedule(), TODAY - 14, [], [pause], TODAY);
+  assert.equal(slot?.epochDay, TODAY + 7);
+});
+
+test('a rhythm whose next slot is past the rail has no next slot to show', () => {
+  const slot = nextExpectedSlot(
+    schedule({ recurrence: { kind: 'everyNDays', everyNDays: SPINE_FORWARD_DAYS + 30 } }),
+    TODAY - 1,
+    [],
+    [],
+    TODAY
+  );
+  assert.equal(slot, null);
+});
