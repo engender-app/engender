@@ -34,6 +34,29 @@
      It writes nothing. Editing happens in the editor and in each area's own
      screen, and every row here is a link into one of them.
 
+     Which dates reach this screen, audited when it became worth opening, and
+     the ones that deliberately do not:
+
+       reach it - a calendar cell (HeatMap), the editor's back arrow, and, as
+       of this ticket, each of on-this-day's look-back days, through its
+       heading's own action line.
+
+       do not - an entry anywhere it is drawn, because an entry opens into
+       the entry, and on the counterevidence screen that is stated as a rule
+       (DIRECTION: an entry there is cited rather than opened); a letter card,
+       because the letter is the thing being offered; wrapped, which is ranges
+       and has no per-day point to hang a link on; and this screen's own day
+       bar, which would link to itself.
+
+       left alone on purpose - the timeline's milestones, which are dated and
+       currently open nothing. Nothing on that rail is a control: it is read,
+       not operated, and gaps and "you are here" sit in the same list as the
+       milestones. Giving one kind of item a tap target is that screen's
+       decision to make, not this one's. Home's day bars are the other one,
+       and they are a live question rather than a settled exception: the bar
+       is `--text-xs` with tight padding, so making it a link needs a touch
+       target as well as an href.
+
      `day` still accepts `today` or an epoch-day number, and still reads it as
      a `$derived` rather than a const: a same-route navigation between two
      days reuses this component, and a plain const would keep the first day it
