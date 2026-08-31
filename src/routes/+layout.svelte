@@ -37,7 +37,6 @@
     midSessionLockApplies,
     needsOnboardingAccessMode
   } from '$lib/stores/boot-state';
-  import { onboardingProgress } from '$lib/onboarding/first-run.svelte';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
   import { App as AndroidAppPlugin } from '@capacitor/app';
@@ -112,17 +111,19 @@
      boot state is `needs-setup` - nothing to unlock, nothing chosen yet -
      which used to mean the gate above painted before onboarding's own
      first-run redirect ever got a chance to run, since `prefs.onboarded`
-     lives in the encrypted database this state has no database for. Held
-     off only until onboarding's flow reaches its own access-mode step
-     (`onboardingProgress`, latched by the route itself): before that, every
-     onboarding step holds its answers in local state and touches no
-     database, so there is nothing the gate is protecting yet. From that
-     step on, the gate is the four-mode module itself (ticket 53) - the same
-     component Settings uses, appearing here once rather than a second copy
-     built into onboarding's own template. */
-  let onboardingFirstRun = $derived(
-    needsOnboardingAccessMode(bootState) && !onboardingProgress.reachedAccessMode
-  );
+     lives in the encrypted database this state has no database for.
+
+     Held for the whole of `needs-setup` rather than only up to onboarding's
+     own access-mode step: that step wires the same four-mode module in
+     directly (ticket 53's AccessModeSetup, inside onboarding/+page.svelte)
+     rather than asking this layout to hand the screen to JournalGate and
+     back. Trying the handoff first is what found the reason not to - the
+     `{#if}` chain below unmounts `children()` while a sibling branch
+     renders, so a route given back after a detour through JournalGate
+     remounts from scratch and loses every local answer onboarding was
+     holding, `step` included. One route, one component instance, for the
+     whole flow is what this simpler condition buys. */
+  let onboardingFirstRun = $derived(needsOnboardingAccessMode(bootState));
   let needsPassphrase = $derived(gate === 'passphrase' && !onboardingFirstRun);
 
   /* The same moment on Android, where nothing is typed: Keystore is holding

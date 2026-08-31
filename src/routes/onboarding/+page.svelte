@@ -34,9 +34,9 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { sharedAxisX } from '$lib/motion/navigation';
   import { motionDuration } from '$lib/motion/tokens';
-  import { bootState } from '$lib/stores/boot.svelte';
+  import { bootState, submitAccessModeSetup } from '$lib/stores/boot.svelte';
   import { needsOnboardingAccessMode } from '$lib/stores/boot-state';
-  import { onboardingProgress } from '$lib/onboarding/first-run.svelte';
+  import AccessModeSetup, { accessModeTitle, type AccessSetupMode } from '$lib/components/AccessModeSetup.svelte';
   import {
     isSkippable,
     onboardingDestination,
@@ -99,6 +99,33 @@
   let checkIn = $state(false);
   let checkInTime = $state(prefs.checkInTime);
 
+  /* The access-mode module's own working state (ticket 53's four modes,
+     wired in at this one step by ticket 54). Local to this step rather than
+     read off the gate: on a brand new install this page is what renders
+     while `bootState` is still `needs-setup`, not JournalGate, so there is
+     no other screen's state to share. */
+  let accessChosen = $state<AccessSetupMode | null>(null);
+  let accessBusy = $state(false);
+  let accessError = $state('');
+
+  /** The setup module's answer, the same submit path JournalGate's own
+      unlock screen uses for a returning install's setup (boot.svelte.ts).
+      Device-bound's refusal and a biometric authenticator that will not
+      answer are outcomes to render rather than throws, for the same reason
+      they are there: turning a mode down is not this screen failing. */
+  async function chooseAccessMode(chosen: AccessSetupMode, secret: string) {
+    if (accessBusy) return;
+    accessBusy = true;
+    accessError = '';
+    const result = await submitAccessModeSetup(chosen, secret);
+    accessBusy = false;
+    if (result === 'ok') return;
+    if (result === 'needs-device-lock') accessError = m.am_device_no_lock();
+    else if (result === 'device-bound-unavailable') accessError = m.am_device_unavailable();
+    else if (result === 'biometric-unavailable') accessError = m.am_biometric_unavailable();
+    else accessError = m.am_setup_failed();
+  }
+
   /* The flag is the one choice that applies as it is made, because the point
      of making it here is watching the sun answer. So Skip on that step has
      something to put back, unlike every other step, where skipping is simply
@@ -114,14 +141,13 @@
   let index = $derived(stepIndex(steps, step));
   let growth = $derived(sunGrowth(index, steps.length));
 
-  /* Latches the moment this flow reaches its own access-mode step, for
-     +layout.svelte's first-run exception (ticket 54): before this step
-     nothing here has touched the database, and the layout renders this
-     page over the gate on the strength of that; from this step on, the
-     gate is what has to render instead, and this is what tells it to. */
-  $effect(() => {
-    if (index >= stepIndex(steps, 'lock')) onboardingProgress.reachedAccessMode = true;
-  });
+  /* Whether this step is the forced choice rather than the toggle under it
+     (ticket 54): true from the moment the flow reaches the lock step until
+     a mode is actually set up, which is the one stretch with no Skip, no
+     back arrow and no "leave setup" - the same hard-gate rule JournalGate
+     already holds a returning install to, here because reading `bootState`
+     directly is simpler than a second flag mirroring it. */
+  let awaitingAccessMode = $derived(step === 'lock' && needsOnboardingAccessMode(bootState));
 
   /* The incoming step waits for the outgoing one to finish leaving.
      Svelte starts an `in:` and an `out:` together, and tier 2's own timings
@@ -227,9 +253,12 @@
 
   <div class="setup">
     <div class="setup-head">
-      {#if step !== 'welcome'}
+      {#if step !== 'welcome' && !awaitingAccessMode}
         <!-- NAV-006: onboarding had no way back between steps at all, so a
-             typo in the name could only be finished past. -->
+             typo in the name could only be finished past. Absent while
+             awaitingAccessMode for the same reason Skip and "leave setup"
+             are (ticket 54): a step back from here would be a way past
+             choosing an access mode, and there is none. -->
         <button class="icon-btn press" data-back aria-label={m.back()} onclick={() => go(stepBefore(steps, step))}>
           <Icon name="arrowLeft" />
         </button>
@@ -292,40 +321,51 @@
                  back to. -->
             <ScaleChecklist ticked={tickedScales} onToggle={toggleScale} />
           {:else if step === 'lock'}
-            <h1 class="setup-title">{m.ob_lock_title()}</h1>
-            <p class="setup-body">{m.ob_lock_body()}</p>
-            <!-- The app-lock toggle that used to head this list is gone
-                 with the gate it turned on (ticket 53): how the journal
-                 opens is now one choice made in the security module, and a
-                 PIN is one of its access modes rather than a switch here.
-                 What is left is the one thing this step still decides -
-                 whether leaving the app locks it.
+            {#if awaitingAccessMode}
+              <!-- The app-lock toggle that used to head this list is gone
+                   with the gate it turned on (ticket 53): how the journal
+                   opens is now one choice made in the security module, and
+                   a PIN is one of its access modes rather than a switch
+                   here.
 
-                 On a brand new install the module itself (AccessModeSetup)
-                 is what a person meets on reaching this step, not this
-                 content: +layout.svelte's first-run exception (ticket 54)
-                 stops covering for the gate the instant the flow gets here,
-                 so the gate takes the screen instead, the module creates the
-                 keystore, and only once that is done does this step's own
-                 content - the toggle below - render at all. Nothing to wire
-                 here as a result: the one place this step touches the
-                 database is a step it does not get to render for. -->
-            <ListCard>
-              <ListRow
-                key="lock-on-leave"
-                title={m.lock_on_leave_title()}
-                subtitle={m.lock_on_leave_sub()}
-                chevron={false}
-              >
-                {#snippet trailing()}
-                  <Switch
-                    checked={lockOnLeave}
-                    label={m.lock_on_leave_title()}
-                    onChange={(v) => (lockOnLeave = v)}
-                  />
-                {/snippet}
-              </ListRow>
-            </ListCard>
+                   On a brand new install this module is what a person meets
+                   on reaching this step (ticket 54) - the same
+                   AccessModeSetup component Settings uses, wired in at this
+                   one point in the flow because this is the one step that
+                   actually creates the keystore. Everything before it holds
+                   its answers in local state above and never reaches this
+                   far. -->
+              <h1 class="setup-title">{accessChosen === null ? m.am_setup_title() : accessModeTitle(accessChosen)}</h1>
+              <AccessModeSetup
+                purpose="setup"
+                busy={accessBusy}
+                error={accessError}
+                onChoose={chooseAccessMode}
+                bind:chosen={accessChosen}
+              />
+            {:else}
+              <h1 class="setup-title">{m.ob_lock_title()}</h1>
+              <p class="setup-body">{m.ob_lock_body()}</p>
+              <!-- What is left once the module above has run: the one thing
+                   this step still decides for itself, whether leaving the
+                   app locks it. -->
+              <ListCard>
+                <ListRow
+                  key="lock-on-leave"
+                  title={m.lock_on_leave_title()}
+                  subtitle={m.lock_on_leave_sub()}
+                  chevron={false}
+                >
+                  {#snippet trailing()}
+                    <Switch
+                      checked={lockOnLeave}
+                      label={m.lock_on_leave_title()}
+                      onChange={(v) => (lockOnLeave = v)}
+                    />
+                  {/snippet}
+                </ListRow>
+              </ListCard>
+            {/if}
           {:else if step === 'checkin'}
             <h1 class="setup-title">{m.ob_checkin_title()}</h1>
             <p class="setup-body">{m.ob_checkin_body()}</p>
@@ -370,7 +410,11 @@
         <i style={`transform: scaleX(${(index + 1) / steps.length})`}></i>
       </div>
 
-      {#if step === 'done'}
+      {#if awaitingAccessMode}
+        <!-- The module above carries its own submit action, and there is no
+             other way past it (ticket 54, matching AccessModeSetup's own
+             "no Skip anywhere" rule). -->
+      {:else if step === 'done'}
         <button class="btn btn-primary" data-finish onclick={complete}><span>{m.start_journey()}</span></button>
       {:else if step === 'welcome'}
         <button class="btn btn-primary" data-next onclick={() => go(stepAfter(steps, step))}>
@@ -386,16 +430,18 @@
         </button>
       {/if}
 
-      <div class="setup-outs">
-        {#if isSkippable(step)}
-          <button class="btn btn-ghost" data-skip-step onclick={skip}>
-            <span>{m.skip()}</span>
-          </button>
-        {/if}
-        {#if step !== 'done'}
-          <button class="btn btn-ghost" data-leave-setup onclick={leave}><span>{m.ob_leave()}</span></button>
-        {/if}
-      </div>
+      {#if !awaitingAccessMode}
+        <div class="setup-outs">
+          {#if isSkippable(step)}
+            <button class="btn btn-ghost" data-skip-step onclick={skip}>
+              <span>{m.skip()}</span>
+            </button>
+          {/if}
+          {#if step !== 'done'}
+            <button class="btn btn-ghost" data-leave-setup onclick={leave}><span>{m.ob_leave()}</span></button>
+          {/if}
+        </div>
+      {/if}
     </div>
   </div>
 </div>
