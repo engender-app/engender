@@ -1,4 +1,4 @@
-/* Entry Editor Unified Logging Hub structural and integration verification (Phase 5 Deepening Ticket 04, ADR-0040). */
+/* Entry Editor Unified Logging Hub structural and integration verification (Phase 5 Deepening Ticket 04, ADR-0044). */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
