@@ -32,12 +32,17 @@ public class AutoExportDerivationTest {
         );
     }
 
-    /** G-04: {@code deriveArchiveKey} has no parameter list a caller's
-        absurd cost - a gigabyte of memory, or one iteration at a mebibyte -
-        could occupy. It always runs the archive profile (ADR-0013), which
-        this pins down against the raw primitive so a future change that
-        reintroduces caller-controlled cost breaks a byte comparison rather
-        than passing silently. */
+    /** G-04: {@code deriveKey} no longer reads a cost off the bridge call at
+        all, so there is no "absurd parameters" case left to send it - the
+        elimination is structural, not something this test can exercise
+        through a {@code PluginCall} without the WebView-backed
+        {@code MessageHandler} that constructing one for real would need,
+        which this test tier (no Robolectric) cannot provide. What this
+        pins down instead: {@code deriveArchiveKey}, the method {@code
+        deriveKey} actually calls, always produces the archive profile's
+        bytes (ADR-0013) against the raw primitive, so a future change that
+        reintroduces a caller-controlled cost parameter here breaks a byte
+        comparison rather than passing silently. */
     @Test
     public void deriveArchiveKeyAlwaysRunsTheArchiveProfile() {
         byte[] salt = new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
