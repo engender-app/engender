@@ -40,6 +40,20 @@ export type JournalSecretSource = 'passphrase' | 'pin' | 'biometric';
 
 const SECRET_SOURCES: readonly JournalSecretSource[] = ['passphrase', 'pin', 'biometric'];
 
+/** Which key the PIN was bound to when this keystore was wrapped (ADR-0041,
+    ticket sec-02-06). `browser` is a non-extractable HMAC key in the
+    WebView's own store, which is what every build before that ticket wrote
+    and what the web still writes; `keystore` is an Android Keystore alias,
+    which a copy of the app's directory does not contain.
+
+    Recorded rather than inferred from the platform, because the wrap on disk
+    and the platform can disagree: an Android journal made by an older build
+    is bound to the browser key until something rewraps it, and guessing
+    would derive the secret from the wrong key and read as a wrong PIN. */
+export type PinBinding = 'browser' | 'keystore';
+
+const PIN_BINDINGS: readonly PinBinding[] = ['browser', 'keystore'];
+
 /** What biometric mode needs before it has a secret at all (ticket 55): the
     credential to ask, and the salt to ask it about. A PRF output is a
     function of both, so neither can be re-derived and both have to be kept.
@@ -95,6 +109,12 @@ export interface KeystoreMetadata {
       secret. Attached by the caller that minted the credential rather than
       by `wrap`, which stays blind to where a secret came from. */
   biometric?: BiometricHandle;
+  /** Present exactly when `secretSource` is `'pin'`, and enforced on the way
+      out for the same reason the handle above is: a PIN keystore that does
+      not say which key its secret was bound to is one a later boot has to
+      guess about, and the wrong guess is a journal that will not open.
+      Attached by data/journal-pin.ts, which owns both bindings. */
+  pinBinding?: PinBinding;
 }
 
 /** Mints a fresh random data key and wraps it under the secret. The
@@ -180,6 +200,9 @@ export function serializeKeystore(metadata: KeystoreMetadata): string {
   if (metadata.secretSource === 'biometric' && !metadata.biometric) {
     throw new KeystoreUnreadableError('a biometric keystore needs its credential id and PRF salt to be openable');
   }
+  if (metadata.secretSource === 'pin' && !metadata.pinBinding) {
+    throw new KeystoreUnreadableError('a PIN keystore has to name the key its PIN was bound to');
+  }
   return JSON.stringify({
     version: metadata.version,
     kdf: metadata.kdf,
@@ -193,7 +216,8 @@ export function serializeKeystore(metadata: KeystoreMetadata): string {
           credentialId: toBase64(metadata.biometric.credentialId),
           prfSalt: toBase64(metadata.biometric.prfSalt)
         }
-      : {})
+      : {}),
+    ...(metadata.pinBinding ? { pinBinding: metadata.pinBinding } : {})
   });
 }
 
@@ -252,6 +276,20 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
     biometric = { credentialId: fromBase64(raw.credentialId), prfSalt: fromBase64(raw.prfSalt) };
   }
 
+  /* Absent means the browser key, which is the only binding that existed
+     before ticket sec-02-06 and still the only one the web has. A value
+     this build does not know fails by name rather than falling back to
+     that default: the fallback would derive the secret from a key that did
+     not wrap this file, which arrives at the gate as a wrong PIN. */
+  let pinBinding: PinBinding | undefined;
+  if (secretSource === 'pin') {
+    const named = raw.pinBinding ?? 'browser';
+    if (typeof named !== 'string' || !PIN_BINDINGS.includes(named as PinBinding)) {
+      throw new KeystoreUnreadableError(`keystore names a PIN binding this build does not have: ${String(named)}`);
+    }
+    pinBinding = named as PinBinding;
+  }
+
   return {
     version: KEYSTORE_VERSION,
     kdf: 'argon2id',
@@ -260,6 +298,7 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
     salt: fromBase64(raw.salt),
     nonce: fromBase64(raw.nonce),
     wrappedKey: fromBase64(raw.wrappedKey),
-    ...(biometric ? { biometric } : {})
+    ...(biometric ? { biometric } : {}),
+    ...(pinBinding ? { pinBinding } : {})
   };
 }

@@ -13,6 +13,7 @@ import java.util.Set;
 import dev.barankiewicz.genderdiary.backup.AutoExportPlugin;
 import dev.barankiewicz.genderdiary.disguise.DisguisePlugin;
 import dev.barankiewicz.genderdiary.keystore.KeystorePlugin;
+import dev.barankiewicz.genderdiary.keystore.PinBindingPlugin;
 import dev.barankiewicz.genderdiary.photos.PhotosPlugin;
 import dev.barankiewicz.genderdiary.print.PrintPlugin;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
@@ -31,6 +32,7 @@ public final class AndroidPluginRegistry {
     private static final List<PluginEntry> REQUIRED = Arrays.asList(
         new PluginEntry("Sqlite", SqlitePlugin.class),
         new PluginEntry("Keystore", KeystorePlugin.class),
+        new PluginEntry("PinBinding", PinBindingPlugin.class),
         new PluginEntry("Photos", PhotosPlugin.class),
         new PluginEntry("Reminders", RemindersPlugin.class),
         new PluginEntry("AutoExport", AutoExportPlugin.class),
