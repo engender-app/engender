@@ -10,8 +10,10 @@
 
      The biometric row stays Android-only and keeps its old job: whether the
      mandatory Keystore prompt fires by itself or waits behind a button. It is
-     not a fourth access mode, and its copy says what device-bound mode
-     already does rather than offering a second mechanism. */
+     not an access mode there, and its copy says what device-bound mode
+     already does rather than offering a second mechanism. The web's
+     biometric access mode (ticket 55) is a different thing entirely and
+     appears where every mode does, in the row above. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
@@ -34,9 +36,11 @@
       ? m.am_mode_passphrase()
       : bootState.accessMode === 'pin'
         ? m.am_mode_pin({ digits: '4' })
-        : android
-          ? m.am_mode_device_android()
-          : m.am_mode_device_web()
+        : bootState.accessMode === 'biometric'
+          ? m.am_mode_biometric()
+          : android
+            ? m.am_mode_device_android()
+            : m.am_mode_device_web()
   );
 
   /* The prompt this toggle affects only exists where device-bound mode is the

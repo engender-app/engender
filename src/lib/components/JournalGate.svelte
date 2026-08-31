@@ -8,16 +8,18 @@
 
      Four screens live here. Setup is the module (AccessModeSetup) with no
      "Skip" in it, because device-bound mode is one of its rows now rather
-     than the way past a wall. Unlock is a passphrase field or a PIN pad,
-     chosen by the mode the keystore itself recorded. The other two are the
-     conversion screens, unchanged.
+     than the way past a wall. Unlock is a passphrase field, a PIN pad or a
+     single button that asks the device (ticket 55), chosen by the mode the
+     keystore itself recorded. The other two are the conversion screens,
+     unchanged.
 
      Copy rules: setup's per-mode consequences belong to the module, which
      states each before it is chosen. Unlock keeps the rule it always had -
      a wrong secret and a damaged keystore are one indistinguishable failure
      (aesGcm.ts), so the error names only the likely cause and never
-     diagnoses. The one failure that is not that: a PIN whose device key has
-     gone gets its own sentence, because no amount of retyping fixes it.
+     diagnoses. The failures that are not that get their own sentences,
+     because no amount of retyping fixes them: a PIN whose device key has
+     gone, and an authenticator that will not release the biometric secret.
 
      Ticket 10's case still applies. Where the device already holds a Journal
      that is not encrypted, the copy has to say what is about to happen to
@@ -33,12 +35,15 @@
     submitPassphraseUnlock,
     submitPinSetup,
     submitPinUnlock,
+    submitBiometricSetup,
+    submitBiometricUnlock,
     submitDeviceBoundSetup,
     resetApp
   } from '$lib/stores/boot.svelte';
   import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
+  import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
   import GateScreen, { gateBodyClass } from './GateScreen.svelte';
   import AccessModeSetup, { accessModeTitle, type AccessSetupMode } from './AccessModeSetup.svelte';
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
@@ -63,6 +68,9 @@
   /** Which secret an unlock is asking for, read off the keystore rather than
       guessed: boot recorded it during the survey. */
   let unlockingPin = $derived(mode === 'unlock' && bootState.accessMode === 'pin');
+  /** The one unlock with nothing to type: the platform's own prompt is the
+      secret, and this screen is a button and a sentence around it. */
+  let unlockingBiometric = $derived(mode === 'unlock' && bootState.accessMode === 'biometric');
   /** A first run offers the module. A conversion does not - it needs a
       passphrase specifically, and says why above the field. */
   let choosingMode = $derived(mode === 'setup' && !converting);
@@ -85,7 +93,9 @@
         ? m.pp_convert_resume_body()
         : unlockingPin
           ? m.su_pin_body()
-          : m.pp_unlock_body()
+          : unlockingBiometric
+            ? m.bm_unlock_body()
+            : m.pp_unlock_body()
   );
 
   let refusalBody = $derived(
@@ -120,6 +130,10 @@
           : m.pp_converting_retire()
   );
 
+  /* The way-out sheet says which secret is missing, and biometric mode has
+     none to have forgotten - what it has is a device that will not answer. */
+  let resetTitle = $derived(unlockingBiometric ? m.bm_no_way_in() : m.pp_forgot());
+
   let gateTitle = $derived(
     converting && mode === 'setup'
       ? m.pp_convert_setup_title()
@@ -149,10 +163,14 @@
         return;
       }
       if (chosen === 'pin') await submitPinSetup(secret);
+      else if (chosen === 'biometric') await submitBiometricSetup();
       else await submitPassphraseSetup(secret);
     } catch (e) {
       console.error('setting up the access mode failed', e);
-      error = m.am_setup_failed();
+      /* A device that will not release a secret has not failed at setup, it
+         has answered that it cannot do this mode - so the sentence sends the
+         person to another row rather than inviting a retry at a wall. */
+      error = e instanceof BiometricUnavailableError ? m.am_biometric_unavailable() : m.am_setup_failed();
     } finally {
       busy = false;
     }
@@ -193,6 +211,22 @@
       return 'ok';
     } catch (e) {
       return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
+    }
+  }
+
+  /* No throttle and no attempt count: the authenticator does its own, and
+     there is nothing here a person could get wrong twice. */
+  async function useBiometric() {
+    if (busy) return;
+    busy = true;
+    error = '';
+    try {
+      await submitBiometricUnlock();
+    } catch (e) {
+      console.error('the biometric unlock failed', e);
+      error = m.bm_unlock_failed();
+    } finally {
+      busy = false;
     }
   }
 
@@ -250,6 +284,13 @@
 
       {#if unlockingPin}
         <PinEntry onVerify={submitPin} />
+      {:else if unlockingBiometric}
+        <div class="gate-actions">
+          <button class="btn btn-primary" data-biometric-submit disabled={busy} onclick={useBiometric}>
+            <span>{busy ? m.pp_decrypting() : m.bm_unlock_action()}</span>
+          </button>
+        </div>
+        <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
       {:else}
         <form class="gate-form" onsubmit={submitPassphrase}>
           <div>
@@ -282,7 +323,7 @@
       {#if mode === 'unlock'}
         <div class="gate-foot">
           <button class="btn btn-ghost" data-forgot-passphrase onclick={() => (resetOpen = true)}>
-            <span>{unlockingPin ? m.pin_forgot() : m.pp_forgot()}</span>
+            <span>{unlockingPin ? m.pin_forgot() : unlockingBiometric ? m.bm_no_way_in() : m.pp_forgot()}</span>
           </button>
         </div>
       {/if}
@@ -290,13 +331,13 @@
   </GateScreen>
 {/if}
 
-<Sheet bind:open={resetOpen} title={m.pp_forgot()}>
-  <h3>{m.pp_forgot()}</h3>
+<Sheet bind:open={resetOpen} title={resetTitle}>
+  <h3>{resetTitle}</h3>
   <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
     <Icon name="alert" size={20} />
     <div class="notice-body">
       <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
-      {m.pp_forgot_key_note()}
+      {unlockingBiometric ? m.bm_forgot_key_note() : m.pp_forgot_key_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
