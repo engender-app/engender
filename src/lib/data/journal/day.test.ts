@@ -209,11 +209,13 @@ test('a maximal day costs one pass per area, not one per row', async () => {
     sparse,
     `a busy day cost ${busy} queries against a sparse day's ${sparse}: something reads per row`
   );
-  /* Entries hydrate their dimension values, tags, photos, recordings and
-     video notes, so the entries section alone is several. The number is
-     recorded rather than derived so that a section quietly gaining a second
-     query has to come back here and say so. */
-  assert.ok(busy <= DAY_SECTIONS.length + 8, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
+  /* 25 for 17 sections as this lands: entries hydrate their dimension
+     values, tags, body regions, photos, recordings and video notes,
+     milestones read their photos, and procedures asks for consults and
+     recovery photos separately. Held as a number rather than derived so
+     that a section quietly gaining a query has to come back here and say
+     so. */
+  assert.equal(busy, 25, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
 });
 
 test('a test may register a section of its own and read it back through the same path', async () => {
