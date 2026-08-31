@@ -365,7 +365,11 @@ describe('loading states, since all six read entry data', () => {
      Each screen names which read it is waiting on either way, so that a gate
      over some other list on the same screen cannot stand in for this one. */
   it.each([
-    ['day', SCREENS.day, /<ReadGate\s+read=\{dayEntries\}/],
+    /* `everythingLogged` rather than `dayEntries` since deepening ticket 21:
+       the day screen waits on everything the day holds, not on its entries
+       alone, and the gate's emptiness test moved with it. The rule the name
+       is here for is unchanged. */
+    ['day', SCREENS.day, /<ReadGate\s+read=\{everythingLogged\}/],
     ['search', SCREENS.search, /<Skeleton/],
     ['starred', SCREENS.starred, /<Skeleton/]
   ])('%s waits with a skeleton', (_name, path, waits) => {
