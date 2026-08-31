@@ -65,20 +65,20 @@ export interface PinPorts {
   writeKeystore(metadata: KeystoreMetadata): Promise<void>;
 }
 
+const keystoreFile = { readKeystore: readKeystoreFile, writeKeystore: writeKeystoreFile };
+
 const platformPorts = (): PinPorts =>
   isAndroid()
     ? {
         binding: keystoreDeviceBinding(androidPinBinding),
         bindingKind: 'keystore',
         legacyBinding: browserDeviceBinding(browserKeySlot(PIN_BINDING_SLOT)),
-        readKeystore: readKeystoreFile,
-        writeKeystore: writeKeystoreFile
+        ...keystoreFile
       }
     : {
         binding: browserDeviceBinding(browserKeySlot(PIN_BINDING_SLOT)),
         bindingKind: 'browser',
-        readKeystore: readKeystoreFile,
-        writeKeystore: writeKeystoreFile
+        ...keystoreFile
       };
 
 /** Exactly four digits (crypto/params.ts states why four). A floor and a
@@ -107,7 +107,7 @@ function requireValidPin(pin: string): string {
 export async function setupJournalPin(pin: string, ports: PinPorts = platformPorts()): Promise<Uint8Array<ArrayBuffer>> {
   const secret = combinePinWithDevice(requireValidPin(pin), await ports.binding.create());
   const { metadata, dataKey } = await createKeystore(secret, undefined, 'pin');
-  await ports.writeKeystore(named(metadata, ports));
+  await ports.writeKeystore(bindingNamed(metadata, ports));
   return dataKey;
 }
 
@@ -133,7 +133,7 @@ export async function addJournalPin(
     throw new KeystoreUnreadableError('this journal is already in PIN mode - use changeJournalPin to change the PIN');
   }
   const secret = combinePinWithDevice(pin, await ports.binding.create());
-  await ports.writeKeystore(named(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
+  await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
 }
 
 /** Every later run. Throws DecryptionFailedError on a wrong PIN and
@@ -172,9 +172,9 @@ async function rebindOnUnlock(
   /* Unwrapped under the old binding first, so a wrong PIN throws with the
      keystore on disk exactly as it was and the old key still the one that
      opens it. */
-  const dataKey = await unlockKeystore(metadata, combinePinWithDevice(pin, await legacyBinding(metadata, ports).read()));
+  const dataKey = await unlockKeystore(metadata, combinePinWithDevice(pin, await requireLegacyBinding(metadata, ports).read()));
   const secret = combinePinWithDevice(pin, await ports.binding.create());
-  await ports.writeKeystore(named(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
+  await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
   await forgetLegacyBinding(ports);
   return dataKey;
 }
@@ -193,7 +193,7 @@ export async function changeJournalPin(
   const rebinding = (metadata.pinBinding ?? 'browser') !== ports.bindingKind;
 
   const currentDevice = rebinding
-    ? await legacyBinding(metadata, ports).read()
+    ? await requireLegacyBinding(metadata, ports).read()
     : await ports.binding.read();
   /* Minting before the current PIN has been checked, on the rebinding path
      only. The keystore on disk still names the old binding, so the new key
@@ -203,7 +203,7 @@ export async function changeJournalPin(
   const nextDevice = rebinding ? await ports.binding.create() : currentDevice;
 
   await ports.writeKeystore(
-    named(
+    bindingNamed(
       await rewrapKeystore(
         metadata,
         combinePinWithDevice(current, currentDevice),
@@ -224,8 +224,9 @@ export async function changeJournalPin(
 
     Every binding is tried even when an earlier one throws, for the reason
     `DeviceStores.wipe` states on the native side: the first failure used to
-    be the last thing that ran. The first failure is what is raised, with any
-    later one attached to it. */
+    be the last thing that ran. The first failure is the one raised, since it
+    is the one a caller can say something about; a second is logged, because
+    an Error here has nowhere to carry it. */
 export async function removeEveryPinBinding(ports: PinPorts = platformPorts()): Promise<void> {
   let failure: unknown = null;
   for (const binding of [ports.binding, ports.legacyBinding]) {
@@ -243,7 +244,7 @@ export async function removeEveryPinBinding(ports: PinPorts = platformPorts()): 
 /** The keystore, with the binding it was wrapped under named in it.
     Attached here rather than by `wrap`, which stays blind to where a secret
     came from the same way it is for biometric mode's handle. */
-function named(metadata: KeystoreMetadata, ports: PinPorts): KeystoreMetadata {
+function bindingNamed(metadata: KeystoreMetadata, ports: PinPorts): KeystoreMetadata {
   return { ...metadata, pinBinding: ports.bindingKind };
 }
 
@@ -251,7 +252,7 @@ function named(metadata: KeystoreMetadata, ports: PinPorts): KeystoreMetadata {
     Absent means a keystore from a platform this one is not: openable by
     neither key here, and said so by name rather than derived from the wrong
     one and reported as a wrong PIN. */
-function legacyBinding(metadata: KeystoreMetadata, ports: PinPorts): DeviceBinding {
+function requireLegacyBinding(metadata: KeystoreMetadata, ports: PinPorts): DeviceBinding {
   if (ports.legacyBinding === undefined) {
     throw new DeviceBindingUnavailableError(
       `this journal's PIN is bound to a key store this platform does not have (${metadata.pinBinding ?? 'browser'})`

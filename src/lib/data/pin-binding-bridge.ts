@@ -6,6 +6,9 @@
    Node tier against a fake, with no @capacitor/core anywhere near it. This
    file is the one line that cannot be. */
 
+/* Relative rather than `$lib/...` like the other bridges: journal-pin.ts
+   imports this file for its default ports, and the Node tier has no $lib
+   alias - the whole test file fails to load on one. */
 import { androidPluginOwners, registerAndroidPlugin } from '../android/plugin-registry';
 import type { PinBindingBridge } from './device-secret.ts';
 

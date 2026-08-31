@@ -70,7 +70,9 @@ public final class PinBindingKeystore {
      *
      * <p>Replaces whatever was under the alias, which is correct - the caller
      * is about to write a keystore wrapped under the new secret, and a key
-     * left by an abandoned attempt must not outlive it.
+     * left by an abandoned attempt must not outlive it. Deleted rather than
+     * left to the generator to overwrite: the replacement is the security
+     * property here, not a convenience, so it is this method that performs it.
      */
     public static String create(String label) throws Exception {
         erase();

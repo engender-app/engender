@@ -27,11 +27,8 @@ public class PinBindingPlugin extends Plugin {
     /** First run of PIN mode: mints the key and signs the label with it. */
     @PluginMethod
     public void create(PluginCall call) {
-        String label = call.getString("label");
-        if (label == null || label.isEmpty()) {
-            call.reject("a PIN binding needs a label to sign");
-            return;
-        }
+        String label = labelOrReject(call);
+        if (label == null) return;
         try {
             call.resolve(secret(PinBindingKeystore.create(label)));
         } catch (Exception e) {
@@ -42,11 +39,8 @@ public class PinBindingPlugin extends Plugin {
     /** Every later unlock. No secret in the answer when the alias is gone. */
     @PluginMethod
     public void read(PluginCall call) {
-        String label = call.getString("label");
-        if (label == null || label.isEmpty()) {
-            call.reject("a PIN binding needs a label to sign");
-            return;
-        }
+        String label = labelOrReject(call);
+        if (label == null) return;
         try {
             call.resolve(secret(PinBindingKeystore.read(label)));
         } catch (Exception e) {
@@ -63,6 +57,18 @@ public class PinBindingPlugin extends Plugin {
         } catch (Exception e) {
             call.reject(message(e), e);
         }
+    }
+
+    /** Rejected rather than defaulted: a signature over the empty string is a
+        secret every install would share, and this call is the one place that
+        could produce one. */
+    private static String labelOrReject(PluginCall call) {
+        String label = call.getString("label");
+        if (label == null || label.isEmpty()) {
+            call.reject("a PIN binding needs a label to sign");
+            return null;
+        }
+        return label;
     }
 
     private static JSObject secret(String signature) {

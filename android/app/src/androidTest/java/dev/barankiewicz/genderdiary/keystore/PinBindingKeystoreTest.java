@@ -176,6 +176,6 @@ public class PinBindingKeystoreTest {
         String secret = PinBindingKeystore.create(LABEL);
 
         assertFalse("the secret carries a line break", secret.contains("\n"));
-        assertTrue("an HMAC-SHA256 signature is 32 bytes, 44 base64 characters", secret.length() == 44);
+        assertEquals("an HMAC-SHA256 signature is 32 bytes, 44 base64 characters", 44, secret.length());
     }
 }
