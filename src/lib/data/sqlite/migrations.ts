@@ -1470,7 +1470,7 @@ HAVING count(gd.key) > 0;
 DELETE FROM pref WHERE key = 'activePreset';
 `;
 
-/* v43: link milestones to surgical procedures (phase 5 ticket 12, ADR-0042).
+/* v43: link milestones to surgical procedures (phase 5 ticket 12, ADR-0045).
    A procedure's surgery day can record a milestone linking back to the
    procedure by its uuid. */
 const SCHEMA_V43 = `

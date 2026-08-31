@@ -77,7 +77,7 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
       expect(preOpRec.days).toBe(30);
     }
 
-    // 3. Surgery Day phase (prompting milestone creation ADR-0042)
+    // 3. Surgery Day phase (prompting milestone creation ADR-0045)
     expect(procedurePhase(proc.surgeryEpochDay, 20030)).toBe('surgery_day');
     expect(await journal.procedures.getMilestone(procId)).toBeNull();
 
