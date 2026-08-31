@@ -340,6 +340,23 @@ export function bootGate(state: BootState): BootGate {
   }
 }
 
+/** Whether the mid-session lock may render at all.
+
+    "Mid-session" is literally "the journal is open", and saying so here is
+    load-bearing rather than pedantic. `bootGate` returns 'none' while a boot
+    is still in flight, so nothing above the lock in the layout's chain claims
+    the screen during `booting` - and the moment the survey records an access
+    mode, that mode has a secret and the session has not been marked unlocked
+    yet, so the lock would render *over a boot that was about to finish on its
+    own*. Ticket 53 shipped exactly that for a moment: the old check read
+    `prefs.pinHash`, which is null until the real preferences load, so the
+    window existed and was never entered. Reading the access mode instead
+    opened it, and a cold start flashed the re-entry screen. The walkthrough
+    caught it as a draft lost across a reload. */
+export function midSessionLockApplies(state: BootState): boolean {
+  return state.status === 'ready';
+}
+
 export function passphraseMode(state: BootState): PassphraseMode | null {
   switch (state.status) {
     case 'needs-setup':
