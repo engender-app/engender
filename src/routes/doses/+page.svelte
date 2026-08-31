@@ -56,6 +56,7 @@
     statusLabel,
     vehicleLabel
   } from '$lib/data/vocabulary/doseLabels';
+  import { stockRemainingLabel, stockRunOutLabel } from '$lib/data/vocabulary/stockLabel';
   import type { ApplicationSiteKey, InjectionSiteKey } from '$lib/data/doseSchedule';
   import type { DoseEvent, DoseRoute, DoseStatus, InjectionVehicle } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -89,6 +90,11 @@
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let dosesQuery = liveList((j) => j.doses.getDoses(from, today));
+  /** Every drug with a stock entry, read where its doses are logged (phase
+      5 deepening ticket 06) - the same getProjections /settings/stock reads,
+      not a new query. A drug with no stock entry adds no row here. */
+  let stockQuery = liveList((j) => j.stock.getProjections(today));
+  let stockRows = $derived(stockQuery.rows);
   /** The whole schedule view in one question (phase 5 audit-deepening
       ticket 17): which episode is in effect, its schedule, its pauses, and
       the comparison over the doses attributed to it - or the reason there
@@ -475,6 +481,32 @@
   {#if loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if view === 'log'}
+    {#if stockRows.length}
+      <!-- What the log is spending (phase 5 deepening ticket 06): every
+           drug with a stock entry, read and worded the same way
+           /settings/stock does (vocabulary/stockLabel.ts, ADR-0046). A
+           reading, not a control - editing a count still happens on
+           /settings/stock, so this row is static. -->
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
+          {#each stockRows as row (row.entry.id)}
+            {@const runOut = stockRunOutLabel(row.projection, today)}
+            <ListRow
+              static
+              data-stock={row.entry.id}
+              title={row.entry.drug}
+              subtitle={[stockRemainingLabel(row.projection.remaining, row.entry.unit), runOut.text]}
+            >
+              {#snippet leading()}
+                <span class="kit-row-ico" class:is-warn={runOut.warn}>
+                  <Icon name="package" size={22} />
+                </span>
+              {/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+      </div>
+    {/if}
     {#if doses.length}
       <div class="screen-part">
         <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: WINDOW_DAYS })}</p>
@@ -996,6 +1028,14 @@
     color: var(--text-2);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
+  }
+
+  /* The warn signal, on the icon disc exactly as /settings/stock's own row -
+     one presentation of the projection wherever it appears (ADR-0046). */
+  .kit-row-ico.is-warn {
+    background: var(--warn-soft);
+    color: var(--on-warn-soft);
+    border-color: transparent;
   }
 
   /* The record's three lines (phase 5 UX ticket 37). Uncontained: the sheet

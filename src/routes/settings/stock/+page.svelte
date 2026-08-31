@@ -9,7 +9,7 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { RUN_OUT_LEAD_DAYS } from '$lib/data/stockProjection';
+  import { stockRemainingLabel, stockRunOutLabel } from '$lib/data/vocabulary/stockLabel';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -32,19 +32,6 @@
      drug and made the row three lines deep. One statement, under the list,
      summing what was left out. */
   let excludedDoses = $derived(projections.reduce((total, row) => total + row.projection.excludedDoses, 0));
-
-  function runOutText(row: StockProjectionRow): string {
-    const { remaining, runOutEpochDay } = row.projection;
-    if (runOutEpochDay === null) return m.stock_run_out_unknown();
-    if (remaining <= 0) return m.stock_run_out_now();
-    const date = fmtDay(runOutEpochDay, { day: 'numeric', month: 'short', year: 'numeric' });
-    return runOutEpochDay - todayEpochDay() <= RUN_OUT_LEAD_DAYS ? m.stock_run_out_soon({ date }) : m.stock_run_out({ date });
-  }
-
-  function isApproaching(row: StockProjectionRow): boolean {
-    const { runOutEpochDay } = row.projection;
-    return runOutEpochDay !== null && runOutEpochDay - todayEpochDay() <= RUN_OUT_LEAD_DAYS;
-  }
 
   let editor = $state<{
     id?: string;
@@ -103,26 +90,28 @@
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, 0)}>
           {#each projections as row (row.entry.id)}
+            {@const runOut = stockRunOutLabel(row.projection, todayEpochDay())}
             <ListRow
               key={row.entry.id}
               data-stock={row.entry.id}
-              icon="package"
               title={row.entry.drug}
-              subtitle={`${m.stock_remaining({ count: row.projection.remaining, unit: row.entry.unit })} · ${m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}`}
-              chevron={false}
+              subtitle={[
+                stockRemainingLabel(row.projection.remaining, row.entry.unit),
+                m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) }),
+                runOut.text
+              ]}
               onclick={() => openEditor(row)}
             >
-              {#snippet trailing()}
-                <!-- The projection is the reason to be on this screen, so it
-                     sits at the end of the row where a count or a date does
-                     rather than as a pill wedged into the title. It takes the
-                     warning colour only where there is something to be warned
-                     about; otherwise it is a reading like any other. -->
-                <span
-                  class="stock-run-out"
-                  class:notice-warn={isApproaching(row) || row.projection.remaining <= 0}
-                >
-                  {runOutText(row)}
+              {#snippet leading()}
+                <!-- The run-out reading is a full-width second line now
+                     (below), not a pill squeezed into a narrow trailing
+                     column - "Already out, based on what you've logged"
+                     was wrapping three deep there. The warning colour
+                     moves to the icon disc instead: a glance at the left
+                     edge says which drugs need attention, and the reading
+                     itself stays plain text either way. -->
+                <span class="kit-row-ico" class:is-warn={runOut.warn}>
+                  <Icon name="package" size={22} />
                 </span>
               {/snippet}
             </ListRow>
@@ -196,22 +185,14 @@
 </div>
 
 <style>
-  /* The row's trailing reading. It wraps rather than truncating, because
-     the run-out is a sentence and a sentence cut off mid-word says less
-     than no sentence at all; the row grows to fit it. */
-  .stock-run-out {
-    text-align: right;
-    max-width: 11rem;
-    line-height: 1.25;
-  }
-
-  /* Where there is something to be warned about it takes the app's own
-     warn pair, which palette-contrast.test.ts already holds to 4.5:1 across
-     all 8 palettes and both themes. Everywhere else it is a reading in the
-     row's own colour, because most of the time it is not a warning. */
-  .stock-run-out.notice-warn {
-    padding: 2px var(--space-2);
-    border-radius: var(--radius-md);
-    font-weight: var(--weight-medium);
+  /* The warn signal moved from a trailing pill to the icon disc (ADR-0046's
+     surfaces): the app's own warn pair, which palette-contrast.test.ts
+     already holds to 4.5:1 across all 8 palettes and both themes, same as
+     Notice's .notice-warn. Everywhere else the disc takes its ordinary
+     role colour, because most drugs are not running low. */
+  .kit-row-ico.is-warn {
+    background: var(--warn-soft);
+    color: var(--on-warn-soft);
+    border-color: transparent;
   }
 </style>

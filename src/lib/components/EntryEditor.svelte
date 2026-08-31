@@ -10,6 +10,7 @@
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
+  import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
@@ -202,6 +203,16 @@
   });
 
   let scheduleDose = $derived(dueScheduledDoses[0] ?? null);
+
+  /** Stock as of this entry's own day (phase 5 deepening ticket 06), not
+      today's - an entry backdated to a day before a re-count would otherwise
+      state a remaining figure the count hadn't reached yet. Read here only
+      to say what a quick-logged dose leaves; nothing writes to it
+      (ADR-0046). */
+  let stockQuery = liveQuery((j) => j.stock.getProjections(day));
+  let stockRows = $derived(stockQuery.value ?? []);
+  /** Exact trimmed match, the same rule drugsMatch (stockProjection.ts) uses. */
+  const stockFor = (drug: string) => stockRows.find((row) => row.entry.drug.trim() === drug.trim()) ?? null;
 
   let proceduresQuery = liveQuery((j) => j.procedures.getProcedures());
   let recoveringProcedure = $derived.by(() => {
@@ -609,6 +620,7 @@
   {#if prefs.entryDoseQuickLogEnabled && scheduleDose}
     <div class="contextual-row" data-contextual="dose-quick-log">
       {#each dueScheduledDoses as doseItem (doseItem.drug)}
+        {@const stockRow = stockFor(doseItem.drug)}
         <button
           type="button"
           class="contextual-chip dose-chip press"
@@ -628,7 +640,20 @@
           }}
         >
           <Icon name={entryDraft.doseLog?.drug === doseItem.drug ? 'check' : 'plus'} size={16} />
-          <span>{m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}</span>
+          <!-- Two lines rather than one run-on sentence: a fully-rounded
+               pill's ends stop reading as a pill once its text wraps, so a
+               chip carrying a second fact gets a plainer rounded rect
+               instead (phase 5 deepening ticket 06). -->
+          <span class="dose-chip-text">
+            <span class="dose-chip-main">
+              {m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}
+            </span>
+            {#if stockRow}
+              <span class="dose-chip-sub">
+                {stockRemainingLabel(stockRow.projection.remaining - 1, stockRow.entry.unit)}
+              </span>
+            {/if}
+          </span>
         </button>
       {/each}
     </div>
@@ -1032,6 +1057,28 @@
     background: var(--accent-soft, var(--accent));
     color: var(--on-accent-soft, var(--accent-fg));
     border-color: var(--accent);
+  }
+
+  /* The dose chip earns two lines when a stock entry adds what it leaves,
+     so it drops the pill radius for a rounded rect (--radius-md, the same
+     one a list row or a button uses) - a true pill's fully-rounded ends
+     stop reading as a pill the moment its content wraps past one line. */
+  .dose-chip {
+    border-radius: var(--radius-md);
+    text-align: left;
+  }
+  .dose-chip-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .dose-chip-sub {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-regular);
+    /* Inherits the chip's own colour (plain, or on-accent-soft when
+       active) rather than --text-2, which is wrong the moment the chip
+       is active - opacity keeps it secondary either way. */
+    opacity: 0.75;
   }
   .contextual-input {
     width: 100%;
