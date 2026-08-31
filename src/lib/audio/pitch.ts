@@ -170,14 +170,7 @@ function percentile(sorted: number[], fraction: number): number {
 }
 
 export function trackPitch(samples: Float32Array, sampleRate: number): PitchTrack {
-  const maxTau = Math.floor(sampleRate / MIN_F0_HZ);
-  const minTau = Math.max(2, Math.floor(sampleRate / MAX_F0_HZ));
-  // The window YIN compares is one full lowest-pitch period, and it needs
-  // another maxTau samples after it to shift against.
-  const windowLength = maxTau;
-  const hop = Math.max(1, Math.round(sampleRate * HOP_SECONDS));
-  const hopSeconds = hop / sampleRate;
-
+  const { windowLength, maxTau, minTau, hop, hopSeconds } = frameGeometry(sampleRate);
   const frames: PitchFrame[] = [];
   for (let from = 0; from + windowLength + maxTau <= samples.length; from += hop) {
     frames.push({
@@ -185,8 +178,47 @@ export function trackPitch(samples: Float32Array, sampleRate: number): PitchTrac
       hz: frameF0(samples, from, windowLength, minTau, maxTau, sampleRate)
     });
   }
+  return summarizeFrames(frames, hopSeconds);
+}
 
-  const voiced = frames.filter((frame) => frame.hz !== null).map((frame) => frame.hz as number);
+/** One frame's F0 at a given offset, for a caller holding its own frame grid
+    (live.ts). The geometry comes from `frameGeometry`, which is what keeps
+    that caller's frames on the same grid as this module's own. */
+export function pitchAt(samples: Float32Array, from: number, sampleRate: number): number | null {
+  const { windowLength, maxTau, minTau } = frameGeometry(sampleRate);
+  if (from + windowLength + maxTau > samples.length) return null;
+  return frameF0(samples, from, windowLength, minTau, maxTau, sampleRate);
+}
+
+/** How the frame grid is laid out at a given rate. Exported for the live
+    gauge (live.ts), which feeds this module a take in pieces and needs to
+    know how much of each piece is still waiting for the samples that come
+    after it. */
+export function frameGeometry(sampleRate: number): {
+  windowLength: number;
+  maxTau: number;
+  minTau: number;
+  hop: number;
+  hopSeconds: number;
+} {
+  const maxTau = Math.floor(sampleRate / MIN_F0_HZ);
+  return {
+    maxTau,
+    minTau: Math.max(2, Math.floor(sampleRate / MAX_F0_HZ)),
+    // The window YIN compares is one full lowest-pitch period, and it needs
+    // another maxTau samples after it to shift against.
+    windowLength: maxTau,
+    hop: Math.max(1, Math.round(sampleRate * HOP_SECONDS)),
+    hopSeconds: Math.max(1, Math.round(sampleRate * HOP_SECONDS)) / sampleRate
+  };
+}
+
+/** The aggregates and the stats a list of frames adds up to. Separate from
+    trackPitch because the live gauge assembles its frames a chunk at a time
+    and still has to end up with the same track shape the whole-buffer path
+    produces - two ways of summing the same frames would drift. */
+export function summarizeFrames(frames: readonly PitchFrame[], hopSeconds: number): PitchTrack {
+  const voicedHz = frames.filter((frame) => frame.hz !== null).map((frame) => frame.hz as number);
 
   let longestRun = 0;
   let run = 0;
@@ -204,18 +236,18 @@ export function trackPitch(samples: Float32Array, sampleRate: number): PitchTrac
   }
 
   const track: PitchTrack = {
-    frames,
-    voicedSeconds: voiced.length * hopSeconds,
+    frames: [...frames],
+    voicedSeconds: voicedHz.length * hopSeconds,
     longestVoicedSeconds: longestRun * hopSeconds,
     spokenSeconds: firstVoiced < 0 ? 0 : (lastVoiced - firstVoiced + 1) * hopSeconds,
     stats: null
   };
-  if (voiced.length === 0) return track;
+  if (voicedHz.length === 0) return track;
 
-  const sorted = [...voiced].sort((a, b) => a - b);
+  const sorted = [...voicedHz].sort((a, b) => a - b);
   const medianHz = percentile(sorted, 0.5);
   let squared = 0;
-  for (const hz of voiced) {
+  for (const hz of voicedHz) {
     const semitones = 12 * Math.log2(hz / medianHz);
     squared += semitones * semitones;
   }
@@ -226,7 +258,7 @@ export function trackPitch(samples: Float32Array, sampleRate: number): PitchTrac
       medianHz,
       p10Hz: percentile(sorted, 0.1),
       p90Hz: percentile(sorted, 0.9),
-      semitoneSd: Math.sqrt(squared / voiced.length),
+      semitoneSd: Math.sqrt(squared / voicedHz.length),
       note: noteName(medianHz)
     }
   };

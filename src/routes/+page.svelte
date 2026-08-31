@@ -208,10 +208,10 @@
   let showPatchScheduleTile = $derived(!!patchScheduleQualifying);
 
   /* 3. Voice benchmark nudge */
-  let voiceRecordingsQuery = liveList((j) => j.voice.inJournal());
+  let voiceBenchmarksQuery = liveList((j) => j.voiceBenchmarks.getBenchmarks());
   let voiceBenchmarkQualifying = $derived(
     shouldShowVoiceBenchmarkNudge({
-      recordings: voiceRecordingsQuery.rows,
+      benchmarks: voiceBenchmarksQuery.rows,
       todayEpochDay: today,
       enabled: prefs.voiceBenchmarkNudgeEnabled,
       snoozed: isTileSnoozed('voice-benchmark-nudge', nowTick)

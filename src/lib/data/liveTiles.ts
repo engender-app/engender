@@ -12,7 +12,6 @@ import type {
   RegimenEpisode,
   Tryout
 } from './types';
-import type { DatedRecording } from './journal/voiceRecordings';
 import type { JournalingPauseRange } from './journalingPause';
 import { pauseCoversDay as isJournalingPauseOn } from './journalingPause';
 import { adherence, expectedAmountOn, expectedSlots, pauseCoversDay as isDosePauseOn } from './doseSchedule';
@@ -125,21 +124,28 @@ export interface VoiceBenchmarkNudgeResult {
   daysElapsed: number | null;
 }
 
+/* Benchmarks, not an entry's voice memos (phase 5 deepening ticket 15). The
+   tile was written against `voice.inJournal()` while voice_benchmark did not
+   exist yet, which made it measure the age of the last memo somebody attached
+   to an entry - a different record with a different cadence, and the one
+   thing a benchmark reminder must not be counting. The empty case still
+   nudges, because "no baseline recorded yet" is what the tile's own copy
+   says and is the only route to the flow before the first one exists. */
 export function shouldShowVoiceBenchmarkNudge(params: {
-  recordings: readonly DatedRecording[];
+  benchmarks: readonly { epochDay: number }[];
   todayEpochDay: number;
   enabled: boolean;
   snoozed: boolean;
 }): VoiceBenchmarkNudgeResult | null {
   if (!params.enabled || params.snoozed) return null;
 
-  if (params.recordings.length === 0) {
+  if (params.benchmarks.length === 0) {
     return { daysElapsed: null };
   }
 
-  let latestDay = params.recordings[0].epochDay;
-  for (const r of params.recordings) {
-    if (r.epochDay > latestDay) latestDay = r.epochDay;
+  let latestDay = params.benchmarks[0].epochDay;
+  for (const benchmark of params.benchmarks) {
+    if (benchmark.epochDay > latestDay) latestDay = benchmark.epochDay;
   }
 
   const daysElapsed = params.todayEpochDay - latestDay;
