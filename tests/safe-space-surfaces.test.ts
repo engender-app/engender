@@ -37,11 +37,14 @@ describe('what Safe Space is built from', () => {
     expect(markup).toContain('<BreathingExercise');
   });
 
-  it('renders a statistics TileGrid with streak and good moments', () => {
+  it('renders a statistics TileGrid with streak and good moments, opted into the tight two-up variant', () => {
     expect(markup).toContain('<TileGrid');
     expect(markup).toContain('key="streak"');
     expect(markup).toContain('key="evidence"');
     expect(doubt).toContain('j.stats.streak');
+    // Alicja's review: these two tiles' notes are short enough that the
+    // 390px floor's default single-column stack is overcautious for them.
+    expect(markup).toMatch(/<TileGrid[^>]*data-tight[^>]*>/);
   });
 
   it('preserves the counterevidence pool and snapshot save/delete actions', () => {
@@ -99,10 +102,13 @@ describe('the three more sources ticket 14 adds', () => {
   });
 });
 
-describe('the link to the support directory', () => {
-  it('points the calming-tool heading at the existing /settings/resources directory, not new content', () => {
-    expect(markup).toContain('href="/settings/resources"');
-    expect(markup).toContain('{m.resources_title()}');
+describe('the support directory panel', () => {
+  it('renders as its own ListCard/ListRow panel, not a heading action link, pointing at the existing directory', () => {
+    expect(doubt).toContain("from '$lib/components/kit/ListRow.svelte'");
+    expect(markup).not.toContain('kit-heading-action');
+    expect(markup).toMatch(/<ListCard[^>]*>\s*<ListRow[\s\S]*?href="\/settings\/resources"/);
+    expect(markup).toContain('title={m.resources_title()}');
+    expect(markup).toContain('subtitle={m.resources_row_sub()}');
   });
 });
 

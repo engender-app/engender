@@ -7,11 +7,12 @@
      - Counterevidence pool: euphoria-tagged, high-euphoria body region, and starred entries,
        plus (ticket 14) an unlocked letter and starred photos drawn alongside it
      - Snapshots: frozen captures of past counterevidence pools
-     - A link to the bundled support directory (/settings/resources), added
-       to the calming-tool heading at Alicja's request during this ticket's
-       review - the ticket text itself excludes new crisis-resource
-       *content*, and this adds none: it points at the directory that
-       already ships, not a new one.
+     - A panel pointing at the bundled support directory
+       (/settings/resources), added at Alicja's request during this
+       ticket's review, then reworked from a heading-action link into its
+       own panel in the same round - the ticket text itself excludes new
+       crisis-resource *content*, and this adds none: same href, same copy
+       as the /more hub's own row, just given its own reading here too.
 
      Purely a read: opening the screen writes nothing (ADR-0037,
      src/lib/data/journal/safeSpaceReads.test.ts pins it at the driver).
@@ -49,6 +50,7 @@
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
   import LookBackLetterCard from '$lib/components/LookBackLetterCard.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -145,18 +147,30 @@
 <div class="screen">
   <ScreenHeader title={m.safe_space_title()} back={() => smartBack('/more')} />
 
-  <SectionHeading text={m.safe_space_calm_title()}>
-    {#snippet action()}
-      <a class="kit-heading-action" href="/settings/resources">{m.resources_title()}</a>
-    {/snippet}
-  </SectionHeading>
+  <SectionHeading text={m.safe_space_calm_title()} />
   <BreathingExercise role={roleAt(activeFlag.roles, 0)} />
+
+  <!-- Support directory, its own panel rather than a heading-action link
+       (Alicja's review): a link this small was easy to miss above a
+       screen someone opens mid-crisis, and a panel of its own matches the
+       weight every other reading on this screen already gets. Still no new
+       content - same href, same copy, as the /more hub's own row. -->
+  <ListCard role={roleAt(activeFlag.roles, 1)}>
+    <ListRow
+      key="resources"
+      icon="globe"
+      title={m.resources_title()}
+      subtitle={m.resources_row_sub()}
+      href="/settings/resources"
+    />
+  </ListCard>
 
   <SectionHeading text={m.safe_space_stats_title()} />
   <TileGrid
     role={roleAt(activeFlag.roles, 1)}
     flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
     data-safe-space-stats
+    data-tight
   >
     <Tile
       key="streak"
