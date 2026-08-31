@@ -162,6 +162,12 @@ for (const theme of THEMES) {
     await page.locator('[data-vb-record]').click();
     await page.waitForTimeout(600);
     await shoot(page, `vb-9-mic-denied-trans-${theme}`);
+
+    // Asking a second time and being refused again: the button retires,
+    // because Android stops offering the dialog at that point.
+    await page.locator('[data-notice-action]').click();
+    await page.waitForTimeout(600);
+    await shoot(page, `vb-10-mic-denied-again-trans-${theme}`);
     await page.close();
   }
 }
