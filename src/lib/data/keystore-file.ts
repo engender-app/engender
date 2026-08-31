@@ -38,6 +38,14 @@ export async function writeKeystoreFile(metadata: KeystoreMetadata): Promise<voi
   const root = await navigator.storage.getDirectory();
   const handle = await root.getFileHandle(KEYSTORE_FILE, { create: true });
   const writable = await handle.createWritable();
+  /* One write, and the swap file behind it is what makes every rewrap in the
+     app crash-safe rather than merely ordered: without `keepExistingData` the
+     writable is a swap file that only replaces the real one on close(), so a
+     process that dies mid-write leaves the previous keystore intact. The
+     access-mode changes and PIN mode's rebinding (data/journal-pin.ts) both
+     state that an interruption leaves a journal openable under one secret or
+     the other, and this is the half of that claim which is not about
+     ordering. */
   try {
     await writable.write(serialized);
   } finally {

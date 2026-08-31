@@ -28,7 +28,7 @@ import type { DeviceKeySlot } from './device-bound-journal.ts';
    same WebView slot, because that is what the migration is: a journal an
    older Android build wrote through `web` below, opened later through
    `phone`. */
-function world() {
+function bothPlatforms() {
   let keystore: KeystoreMetadata | null = null;
   let held: CryptoKey | null = null;
   let aliasKey: string | null = null;
@@ -98,7 +98,7 @@ function world() {
 /** Most of the file is about one platform at a time, and for those the web's
     ports are the shape every test had before the phone gained a binding. */
 function ports() {
-  const shared = world();
+  const shared = bothPlatforms();
   return Object.assign(shared.web, {
     forgetDevice: shared.forgetDevice,
     stored: shared.stored
@@ -223,7 +223,7 @@ test('a PIN that is not four digits never reaches the wrap', async () => {
    is in the platform keystore, so a copy of the app's directory - which is
    where the WebView's key store lives - contains neither half of the secret. */
 test('a PIN set up on a phone binds to the Keystore and puts nothing in the WebView', async () => {
-  const w = world();
+  const w = bothPlatforms();
   const dataKey = await setupJournalPin('1234', w.phone);
 
   expect(w.stored()?.pinBinding).toBe('keystore');
@@ -233,7 +233,7 @@ test('a PIN set up on a phone binds to the Keystore and puts nothing in the WebV
 });
 
 test('a phone journal is not openable by the WebView key alone: unlocking without the alias fails as a missing device key', async () => {
-  const w = world();
+  const w = bothPlatforms();
   await setupJournalPin('1234', w.phone);
   await w.phone.binding.remove();
 
@@ -241,7 +241,7 @@ test('a phone journal is not openable by the WebView key alone: unlocking withou
 });
 
 test('a PIN journal from before this ticket opens on this build and comes out bound to the Keystore', async () => {
-  const w = world();
+  const w = bothPlatforms();
   // What the older Android build wrote: bound to the WebView's key store.
   const dataKey = await setupJournalPin('1234', w.web);
   expect(w.stored()?.pinBinding).toBe('browser');
@@ -255,7 +255,7 @@ test('a PIN journal from before this ticket opens on this build and comes out bo
 });
 
 test('a wrong PIN against a journal from before this ticket writes nothing and leaves the old key opening it', async () => {
-  const w = world();
+  const w = bothPlatforms();
   const dataKey = await setupJournalPin('1234', w.web);
   const before = w.stored();
 
@@ -271,7 +271,7 @@ test('a wrong PIN against a journal from before this ticket writes nothing and l
    one that has to leave a journal somebody can open - under the old binding,
    because that is the one the file on disk still names. */
 test('a process death between minting the new key and writing the keystore leaves the journal opening under the old one', async () => {
-  const w = world();
+  const w = bothPlatforms();
   const dataKey = await setupJournalPin('1234', w.web);
   const before = w.stored();
 
@@ -292,7 +292,7 @@ test('a process death between minting the new key and writing the keystore leave
    their journal - and the key still sitting in the WebView is swept by the
    next unlock, so a phone does not keep one indefinitely. */
 test('a WebView key left behind by an interrupted migration is cleared by the next unlock', async () => {
-  const w = world();
+  const w = bothPlatforms();
   const dataKey = await setupJournalPin('1234', w.web);
   const interrupted: PinPorts = {
     ...w.phone,
@@ -313,7 +313,7 @@ test('a WebView key left behind by an interrupted migration is cleared by the ne
 });
 
 test('changing a PIN on a phone journal reuses the alias rather than minting a second key', async () => {
-  const w = world();
+  const w = bothPlatforms();
   const dataKey = await setupJournalPin('1234', w.phone);
   await changeJournalPin('1234', '5678', w.phone);
 
@@ -324,7 +324,7 @@ test('changing a PIN on a phone journal reuses the alias rather than minting a s
 });
 
 test('changing the PIN of a journal from before this ticket rebinds it to the Keystore on the way', async () => {
-  const w = world();
+  const w = bothPlatforms();
   const dataKey = await setupJournalPin('1234', w.web);
   await changeJournalPin('1234', '5678', w.phone);
 
@@ -334,7 +334,7 @@ test('changing the PIN of a journal from before this ticket rebinds it to the Ke
 });
 
 test('a wrong current PIN writes nothing and rebinds nothing', async () => {
-  const w = world();
+  const w = bothPlatforms();
   await setupJournalPin('1234', w.web);
   const before = w.stored();
 
@@ -347,7 +347,7 @@ test('a wrong current PIN writes nothing and rebinds nothing', async () => {
    key material outliving the journal it belonged to, and on a phone there
    are two places it could be. */
 test('clearing the bindings takes both places a phone could be holding one', async () => {
-  const w = world();
+  const w = bothPlatforms();
   await setupJournalPin('1234', w.web);
   await w.phone.binding.create();
 
@@ -358,7 +358,7 @@ test('clearing the bindings takes both places a phone could be holding one', asy
 });
 
 test('one binding that will not clear does not keep the other, and the failure is still raised', async () => {
-  const w = world();
+  const w = bothPlatforms();
   await setupJournalPin('1234', w.web);
   await w.phone.binding.create();
   const stubborn: PinPorts = {
@@ -374,7 +374,7 @@ test('one binding that will not clear does not keep the other, and the failure i
    that names the phone's alias there is a wiring mistake, not a wrong PIN,
    and it has to say so rather than deriving from a key it does not have. */
 test('a keystore bound to a Keystore alias fails by name on a platform with no alias', async () => {
-  const w = world();
+  const w = bothPlatforms();
   await setupJournalPin('1234', w.web);
   await w.web.writeKeystore({ ...w.stored()!, pinBinding: 'keystore' });
 
