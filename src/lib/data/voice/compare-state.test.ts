@@ -58,3 +58,15 @@ test('stepCompareAnchor moves only inside bounds and never crosses sides', () =>
 test('toComparePair returns ordered indices for a full selection', () => {
   assert.deepEqual(toComparePair(['r4', 'r1'], recordings()), { left: 0, right: 3 });
 });
+
+test('the same functions compare benchmarks, the surface\'s second kind of anchor', () => {
+  // A benchmark carries far more than id/epochDay, but that is all this
+  // module ever reads - the generic bound, exercised against a shape that
+  // is not DatedRecording at all.
+  const benchmarks = [
+    { id: 'b1', epochDay: 20000, passageKey: 'builtin-en', f0MedianHz: 180 },
+    { id: 'b2', epochDay: 20200, passageKey: 'builtin-en', f0MedianHz: 175 }
+  ];
+  assert.deepEqual(orderAnchorsByJourney(['b2', 'b1'], benchmarks), ['b1', 'b2']);
+  assert.deepEqual(toComparePair(['b2', 'b1'], benchmarks), { left: 0, right: 1 });
+});
