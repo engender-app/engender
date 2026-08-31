@@ -59,10 +59,12 @@
       Bounded so a large starred collection stays a glance rather than a
       second gallery grafted onto a crisis screen - the shelf itself
       (/search/starred, this section's own overflow) is already unbounded.
-      Decrypting a thumbnail measures at ~0.02ms of AES-256-GCM per file at
-      typical thumbnail size (10-40KB) - the crypto is not the cost; six
-      thumbnails decoding and painting at once is a bound worth keeping for
-      its own sake, not because decryption is expensive. */
+      Measured (Node's WebCrypto, AES-256-GCM, 50 decrypts averaged per
+      size): 10KB, 20KB and 40KB ciphertexts - the range a 320px thumbnail
+      at THUMB_QUALITY normalizes to - each decrypt in ~0.02ms. The crypto
+      is not the cost; six thumbnails decoding and painting at once is a
+      bound worth keeping for its own sake, not because decryption is
+      expensive. */
   const PHOTO_LIMIT = 6;
 
   let today = $derived(todayEpochDay());
@@ -200,6 +202,11 @@
   {#if letter}
     <p class="muted small" style="margin-bottom:var(--space-2)">{m.safe_space_letter_intro()}</p>
     <ListCard role={roleAt(activeFlag.roles, 1)}>
+      <!-- LookBackLetterCard's `kind` is normally the retrospective's own
+           finding - written that day, or opened that day. There is no
+           candidate day here, only the letter itself, and Safe Space wants
+           one framing regardless: this is what your past self wrote you,
+           deliberately, so `written` is hardcoded rather than derived. -->
       <LookBackLetterCard {letter} kind="written" />
     </ListCard>
     <div style="margin-bottom:var(--space-3)"></div>
