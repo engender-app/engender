@@ -69,7 +69,13 @@ test('every live-tile kind is switchable and defaults to on (ticket 51)', () => 
     'readyLetterEnabled',
     'surgeryCountdownEnabled',
     'safeSpaceNudgeEnabled',
-    'stockNoticeEnabled'
+    'stockNoticeEnabled',
+    'activeTryoutTileEnabled',
+    'patchScheduleTileEnabled',
+    'voiceBenchmarkNudgeEnabled',
+    'pauseActiveBannerEnabled',
+    'hairRemovalRecoveryEnabled',
+    'measurementsNudgeEnabled'
   ]) {
     expect(PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe(true);
     expect(DEVICE_LOCAL_KEYS).toContain(key);
