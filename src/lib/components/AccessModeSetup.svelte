@@ -1,3 +1,21 @@
+<script module lang="ts">
+  /* The chosen mode's name, exported so a gate or a settings screen can put
+     it in its own heading rather than leaving a question over a screen that
+     has already answered it. Reads the platform itself, because device-bound
+     is the one whose name differs. */
+  import { m as messages } from '$lib/paraglide/messages';
+  import { isAndroid as onAndroid } from '$lib/platform';
+  import { PIN_LENGTH as PIN_DIGITS } from '$lib/crypto/params';
+
+  export type AccessSetupMode = 'device-bound' | 'pin' | 'passphrase';
+
+  export function accessModeTitle(mode: AccessSetupMode): string {
+    if (mode === 'passphrase') return messages.am_mode_passphrase();
+    if (mode === 'pin') return messages.am_mode_pin({ digits: String(PIN_DIGITS) });
+    return onAndroid() ? messages.am_mode_device_android() : messages.am_mode_device_web();
+  }
+</script>
+
 <script lang="ts">
   /* One security module, three named choices (ticket 53, ADR-0041).
 
@@ -37,7 +55,7 @@
   import PinPad from './PinPad.svelte';
   import Icon from './Icon.svelte';
 
-  type Mode = 'device-bound' | 'pin' | 'passphrase';
+  type Mode = AccessSetupMode;
 
   let {
     /** `setup` is a first run with no journal yet; `change` already has one
@@ -50,7 +68,8 @@
     current = null,
     busy = false,
     error = '',
-    onChoose
+    onChoose,
+    chosen = $bindable(null)
   }: {
     purpose?: 'setup' | 'change';
     current?: Mode | null;
@@ -58,10 +77,12 @@
     error?: string;
     /** The secret is empty for device-bound mode, which has none. */
     onChoose: (mode: Mode, secret: string) => void;
+    /** Which row is open, readable by whoever mounted this so their own
+        heading can name it. */
+    chosen?: Mode | null;
   } = $props();
 
   let android = $derived(isAndroid());
-  let chosen = $state<Mode | null>(null);
 
   let passphrase = $state('');
   let confirmation = $state('');
@@ -84,11 +105,7 @@
     })
   );
 
-  function title(mode: Mode): string {
-    if (mode === 'passphrase') return m.am_mode_passphrase();
-    if (mode === 'pin') return m.am_mode_pin({ digits: String(PIN_LENGTH) });
-    return android ? m.am_mode_device_android() : m.am_mode_device_web();
-  }
+  const title = accessModeTitle;
 
   function subtitle(mode: Mode): string {
     if (mode === 'passphrase') return m.am_mode_passphrase_sub();
@@ -96,10 +113,15 @@
     return android ? m.am_mode_device_sub_android() : m.am_mode_device_sub_web();
   }
 
+  /* Three modes, three glyphs, on both platforms. Device-bound was drawn
+     with the same padlock as the PIN at first, which made two of the three
+     rows indistinguishable at a glance - the one thing a list of choices
+     cannot afford. A key is also the truer picture of it: something held for
+     you rather than something you know. */
   function icon(mode: Mode): string {
     if (mode === 'passphrase') return 'shield';
     if (mode === 'pin') return 'lock';
-    return android ? 'fingerprint' : 'lock';
+    return android ? 'fingerprint' : 'key';
   }
 
   /** The whole consequence, stated before the mode is chosen. */
@@ -191,17 +213,28 @@
 {:else}
   <div class="am-chosen" data-access-chosen={chosen}>
     <!-- The consequence, on the screen where the choice is actually made and
-         above the field that makes it. -->
-    <div class="notice" class:notice-danger={tiedToDevice(chosen)}>
-      <Icon name={tiedToDevice(chosen) ? 'alert' : 'shield'} size={20} />
-      <div class="notice-body">
-        <span class="notice-title">{title(chosen)}</span>
-        {consequence(chosen)}
-      </div>
+         above the control that makes it. Left-aligned, for the reason
+         .gate-body.is-long exists: this is four or five lines of prose whose
+         whole job is being read once and understood, and centred prose goes
+         ragged at both edges. It was centred in the first build of this
+         screen, which is what the render caught.
+
+         Neutral rather than the danger surface. Every mode here has a
+         consequence, this is the one the person just chose, and dressing a
+         chosen option in the colour of an error says they got it wrong. The
+         words carry the weight - docs/ui-copy.md's rule for the risk screens
+         is that the sentence is as final as the behaviour, not that the box
+         is red. -->
+    <div class="am-notice">
+      <span class="am-notice-ico"><Icon name={tiedToDevice(chosen) ? 'alert' : 'shield'} size={20} /></span>
+      <p>{consequence(chosen)}</p>
     </div>
 
     {#if tiedToDevice(chosen)}
-      <p class="gate-note" data-access-export-note>{m.am_export_note()}</p>
+      <!-- Said once, next to both modes it is true of, because it is the
+           one sentence that turns "tied to this device" into something a
+           person can act on. -->
+      <p class="am-export-note gate-body is-long is-small" data-access-export-note>{m.am_export_note()}</p>
     {/if}
 
     {#if chosen === 'passphrase'}
@@ -236,8 +269,11 @@
         </button>
       </form>
     {:else if chosen === 'pin'}
+      <!-- Only which of the two entries this is. What a PIN costs and buys is
+           above, said once; repeating pin_setup_body here put the same three
+           facts on the screen twice and pushed the pad below the fold. -->
       <p class="gate-body" data-access-pin-step>
-        {confirmingPin ? m.pin_confirm_body() : m.pin_setup_body()}
+        {confirmingPin ? m.pin_confirm_body() : m.am_pin_choose()}
       </p>
       <PinPad bind:value={pin} disabled={busy} {refusals} onComplete={completePin} />
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
@@ -257,3 +293,48 @@
     </div>
   </div>
 {/if}
+
+<style>
+  /* The module's own notice surface: one outline, an icon, and as many lines
+     as the consequence being stated actually needs. Local rather than in
+     screens.css because this is its only consumer
+     (scripts/check-screens-classes.mjs enforces that), and named for the
+     module rather than the gate frame because it appears inside a settings
+     card too.
+
+     It replaces .gate-modes, the passphrase gate's old "here are your
+     options" block. The options are rows now; what this carries is one
+     mode's consequence.
+
+     Left-aligned, for the same reason .gate-body.is-long is: four or five
+     lines of prose that has to be read once and understood does not go in a
+     centred column, and the gate frame centres everything by default. The
+     first build of this screen inherited that centring, which is what
+     looking at the render caught. */
+  .am-notice {
+    display: flex;
+    gap: var(--space-3);
+    text-align: left;
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--outline-strong);
+    border-radius: var(--r-card);
+  }
+
+  .am-notice-ico {
+    color: var(--accent-ink);
+    flex: none;
+  }
+
+  .am-notice p {
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    margin: 0;
+  }
+
+  /* The notice carries its own top margin and this line followed it with
+     none, so the two ran together into one block of text. */
+  .am-export-note {
+    margin-top: var(--space-3);
+  }
+</style>

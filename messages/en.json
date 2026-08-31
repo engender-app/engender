@@ -2304,7 +2304,7 @@
   "am_device_no_lock": "Skip mode needs a device screen lock before Android can bind the journal key to this phone. Set one first, or choose a journal passphrase now.",
   "am_device_unavailable": "This browser could not keep a device-bound journal key. Choose a journal passphrase instead.",
   "am_setup_title": "How should your journal open?",
-  "am_setup_body": "Everything you write is encrypted. This is the one choice about what unlocks it, and you can change it later in Settings without re-encrypting anything.",
+  "am_setup_body": "Everything you write is encrypted. This chooses what unlocks it, and you can change it later in Settings.",
   "am_change_title": "How your journal opens",
   "am_change_body": "Changing this rewraps the same key, so it takes effect at once and nothing is re-encrypted whatever the size of your journal.",
   "am_current": "Now: {mode}",
@@ -2319,7 +2319,7 @@
   "am_mode_passphrase_sub": "the strongest, and the only one that travels",
   "am_device_detail_web": "No passphrase to type and none to forget: the key stays in this browser profile. That cuts both ways. Anyone who copies this browser profile opens the journal without typing anything, and if the profile goes, so does the journal. Nothing you know can bring it back.",
   "am_device_detail_android": "Android keeps the key and hands it over once your screen lock says it is you, so there is nothing extra to type or remember. Removing the device screen lock destroys the key for good, and so does losing the phone. Nothing you know can bring it back.",
-  "am_pin_detail": "Four digits, and this time they are the encryption key: the journal is wrapped under your PIN together with a key that never leaves this device. Without that key a stolen copy of the journal file cannot be guessed at at all. With it, all 10,000 possible {digits}-digit PINs fall in about five seconds on a fast graphics card, so a PIN stops someone who picks your phone up, not someone who takes it apart. Choose a passphrase if that is who you are hiding from.",
+  "am_pin_detail": "Four digits, and this time they are the encryption key: the journal is wrapped under your PIN together with a key that never leaves this device. Without that key, a stolen copy of the journal file cannot be attacked at all. With it, all 10,000 possible {digits}-digit PINs fall in about five seconds on a fast graphics card, so a PIN stops someone who picks your phone up, not someone who takes it apart. Choose a passphrase if that is who you are hiding from.",
   "am_passphrase_detail": "The strongest of the three, and the only one that opens this journal on another device. At least {min} characters, and enGender has no account behind it: nobody, including this app, can recover a lost passphrase or the journal under it. Save it in a password manager now.",
   "am_export_note": "This mode ties the journal to this device, so an encrypted export is the only copy that would survive losing it.",
   "am_confirm_passphrase": "Use this passphrase",
@@ -2337,5 +2337,6 @@
   "pin_change_title": "Change your PIN",
   "pin_change_sub": "the current one first, then the new one twice",
   "pin_change_current": "Your current PIN.",
-  "pin_changed_toast": "PIN changed."
+  "pin_changed_toast": "PIN changed.",
+  "am_pin_choose": "Choose four digits."
 }

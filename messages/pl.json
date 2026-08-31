@@ -2350,7 +2350,7 @@
   "am_device_no_lock": "Tryb bez hasła wymaga blokady ekranu, żeby Android mógł przypiąć klucz dziennika do tego telefonu. Najpierw ją ustaw albo wybierz teraz hasło do dziennika.",
   "am_device_unavailable": "Ta przeglądarka nie zdołała zachować lokalnego klucza dla dziennika. Wybierz zamiast tego hasło do dziennika.",
   "am_setup_title": "Jak ma się otwierać dziennik?",
-  "am_setup_body": "Wszystko, co zapisujesz, jest zaszyfrowane. To jedyny wybór dotyczący tego, co je otwiera, i możesz go później zmienić w Ustawieniach bez ponownego szyfrowania.",
+  "am_setup_body": "Wszystko, co zapisujesz, jest zaszyfrowane. Tu wybierasz, co to otwiera, i możesz to później zmienić w Ustawieniach.",
   "am_change_title": "Jak otwiera się dziennik",
   "am_change_body": "Zmiana opakowuje ten sam klucz na nowo, więc działa od razu i nic nie jest szyfrowane ponownie, niezależnie od rozmiaru dziennika.",
   "am_current": "Teraz: {mode}",
@@ -2365,7 +2365,7 @@
   "am_mode_passphrase_sub": "najmocniejsze i jedyne, które podróżuje",
   "am_device_detail_web": "Nie ma hasła do wpisywania ani do zapomnienia: klucz zostaje w profilu tej przeglądarki. To działa w dwie strony. Kto skopiuje ten profil, otworzy dziennik bez wpisywania czegokolwiek, a jeśli profil przepadnie, przepadnie z nim dziennik. Nic, co wiesz, go nie przywróci.",
   "am_device_detail_android": "Android trzyma klucz i wydaje go, kiedy blokada ekranu potwierdzi, że to ty, więc nie ma nic dodatkowego do wpisywania ani do pamiętania. Usunięcie blokady ekranu niszczy klucz na dobre, tak samo jak utrata telefonu. Nic, co wiesz, go nie przywróci.",
-  "am_pin_detail": "Cztery cyfry, i tym razem to one są kluczem szyfrowania: dziennik jest opakowany twoim PIN-em razem z kluczem, który nigdy nie opuszcza tego urządzenia. Bez tego klucza skradzionej kopii pliku nie da się w ogóle zgadywać. Z nim wszystkie 10 000 możliwych PIN-ów z {digits} cyfr pada w około pięć sekund na szybkiej karcie graficznej, więc PIN zatrzyma kogoś, kto weźmie telefon do ręki, a nie kogoś, kto go rozłoży. Jeśli ukrywasz dziennik przed kimś takim, wybierz hasło.",
+  "am_pin_detail": "Cztery cyfry, i tym razem to one są kluczem szyfrowania: dziennik jest opakowany twoim PIN-em razem z kluczem, który nigdy nie opuszcza tego urządzenia. Bez tego klucza skradzionej kopii pliku nie da się w ogóle atakować. Z nim wszystkie 10 000 możliwych PIN-ów z {digits} cyfr pada w około pięć sekund na szybkiej karcie graficznej, więc PIN zatrzyma kogoś, kto weźmie telefon do ręki, a nie kogoś, kto go rozłoży. Jeśli ukrywasz dziennik przed kimś takim, wybierz hasło.",
   "am_passphrase_detail": "Najmocniejszy z trzech sposobów i jedyny, który otworzy ten dziennik na innym urządzeniu. Co najmniej {min} znaków, a za enGender nie stoi żadne konto: nikt, ta aplikacja też nie, nie odzyska zgubionego hasła ani dziennika pod nim. Zapisz je teraz w menedżerze haseł.",
   "am_export_note": "Ten sposób przypina dziennik do tego urządzenia, więc zaszyfrowany eksport to jedyna kopia, która przetrwa jego utratę.",
   "am_confirm_passphrase": "Użyj tego hasła",
@@ -2383,5 +2383,6 @@
   "pin_change_title": "Zmień PIN",
   "pin_change_sub": "najpierw obecny, potem nowy dwa razy",
   "pin_change_current": "Twój obecny PIN.",
-  "pin_changed_toast": "PIN zmieniony."
+  "pin_changed_toast": "PIN zmieniony.",
+  "am_pin_choose": "Wybierz cztery cyfry."
 }

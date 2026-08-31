@@ -31,19 +31,13 @@
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
   import JournalGate from '$lib/components/JournalGate.svelte';
   import AccessModeSetup from '$lib/components/AccessModeSetup.svelte';
-  import GateScreen from '$lib/components/GateScreen.svelte';
   import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
-  import { m } from '$lib/paraglide/messages';
   import { PALETTES } from '../palettes.mjs';
 
   const SCENES = [
     /* The module, which is the one screen this ticket is really about: the
        list of modes, then the screen each mode leads to. */
     'access-choice',
-    'access-device',
-    'access-pin',
-    'access-pin-confirm',
-    'access-passphrase',
     'access-change',
     /* The gates a cold start lands on, one per mode that asks for something. */
     'unlock-pin',
@@ -73,12 +67,16 @@
     document.documentElement.dataset.theme = theme;
   });
 
-  /* Set before the stage renders, and the stage is keyed on `platform` so
-     every component below reads the stub that is current. */
-  $effect(() => {
+  /* Set synchronously on the way in, not from an $effect. `isAndroid()` is
+     read during render, and an effect runs after it - so the keyed remount
+     read the *previous* stub and every Android shot came out showing the web
+     labels. Assigning the global before the state it depends on is what
+     makes the next render see it. */
+  function setPlatform(next: string) {
     (window as { Capacitor?: { getPlatform: () => string } }).Capacitor =
-      platform === 'android' ? { getPlatform: () => 'android' } : undefined;
-  });
+      next === 'android' ? { getPlatform: () => 'android' } : undefined;
+    platform = next;
+  }
 
   /* Rebuilt from `booting` on every change rather than mutated in place:
      the transitions refuse an illegal move, which is what keeps this page
@@ -129,36 +127,11 @@
     }
   });
 
-  /* The module's own internal step is component state rather than boot state,
-     so the scenes that show one drive it through the same prop the real
-     screens use and then reach for the row. Done here rather than in the
-     screenshot script so the fixture is self-contained. */
-  let seeded = $state(0);
-  $effect(() => {
-    const step = scene;
-    seeded++;
-    if (!step.startsWith('access-')) return;
-    queueMicrotask(() => {
-      const stage = document.querySelector('[data-gallery-stage]');
-      if (!stage) return;
-      const row =
-        step === 'access-device'
-          ? '[data-list-row="device-bound"]'
-          : step === 'access-pin' || step === 'access-pin-confirm'
-            ? '[data-list-row="pin"]'
-            : step === 'access-passphrase'
-              ? '[data-list-row="passphrase"]'
-              : null;
-      if (row) (stage.querySelector(row) as HTMLElement | null)?.click();
-      if (step === 'access-pin-confirm') {
-        queueMicrotask(() => {
-          for (const key of ['1', '2', '3', '4']) {
-            (stage.querySelector(`[data-key="${key}"]`) as HTMLElement | null)?.click();
-          }
-        });
-      }
-    });
-  });
+  /* Which row of the module to open, if any. The screenshot script clicks
+     it - the same way it clicks pad keys - rather than an effect here doing
+     it: an effect that both drove the step and depended on it would re-run
+     itself until Svelte gave up, which is a mistake this codebase has
+     already made twice (boot.svelte.ts, and once in this file). */
 </script>
 
 <div class="gallery-controls" data-gallery-controls>
@@ -183,7 +156,11 @@
   </label>
   <label>
     Platform
-    <select aria-label="Platform" bind:value={platform}>
+    <select
+      aria-label="Platform"
+      value={platform}
+      onchange={(event) => setPlatform((event.currentTarget as HTMLSelectElement).value)}
+    >
       <option value="web">web</option>
       <option value="android">android</option>
     </select>
@@ -196,7 +173,7 @@
 <div class="app-viewport">
   <div class="app is-chromeless" data-app-root>
     <main class="app-main" data-gallery-stage>
-      {#key `${platform}:${scene}:${seeded}`}
+      {#key `${platform}:${scene}`}
         {#if scene === 'access-change'}
           <!-- Settings' framing rather than a gate's: the same module, on a
                screen that has a journal open behind it. -->
@@ -205,10 +182,12 @@
               <AccessModeSetup purpose="change" current="passphrase" onChoose={() => {}} />
             </div>
           </div>
-        {:else if scene.startsWith('access-')}
-          <GateScreen icon="shield" title={m.am_setup_title()}>
-            <AccessModeSetup purpose="setup" onChoose={() => {}} />
-          </GateScreen>
+        {:else if scene === 'access-choice'}
+          <!-- The real gate, not a GateScreen composed here: the gate owns the
+               title, and the title changes once a mode is picked. Composing a
+               frame around the module meant the gallery kept showing "How
+               should your journal open?" over a screen that had answered it. -->
+          <JournalGate />
         {:else if scene === 'session-pin'}
           <SessionUnlock mode="pin" />
         {:else if scene === 'session-passphrase'}

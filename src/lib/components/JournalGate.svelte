@@ -40,7 +40,7 @@
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import GateScreen, { gateBodyClass } from './GateScreen.svelte';
-  import AccessModeSetup from './AccessModeSetup.svelte';
+  import AccessModeSetup, { accessModeTitle, type AccessSetupMode } from './AccessModeSetup.svelte';
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
@@ -50,6 +50,10 @@
   let busy = $state(false);
   let resetOpen = $state(false);
   let resetting = $state(false);
+  /* Which row of the module is open, so this gate's own title can name it
+     rather than leaving "How should your journal open?" over a screen where
+     that has already been answered. */
+  let chosenMode = $state<AccessSetupMode | null>(null);
 
   let mode = $derived(passphraseMode(bootState));
   let screen = $derived(passphraseScreen(bootState));
@@ -122,7 +126,9 @@
       : converting
         ? m.pp_convert_resume_title()
         : choosingMode
-          ? m.am_setup_title()
+          ? chosenMode === null
+            ? m.am_setup_title()
+            : accessModeTitle(chosenMode)
           : unlockingPin
             ? m.pin_greeting()
             : m.pp_unlock_title()
@@ -131,7 +137,7 @@
   /** The setup module's answer. Device-bound mode is the one that can be
       refused by the platform rather than by the person, so it is the one with
       outcomes to render. */
-  async function choose(chosen: 'device-bound' | 'pin' | 'passphrase', secret: string) {
+  async function choose(chosen: AccessSetupMode, secret: string) {
     if (busy) return;
     busy = true;
     error = '';
@@ -238,7 +244,7 @@
        the encrypted journal, and this screen renders before it can be read. -->
   <GateScreen icon={choosingMode ? 'shield' : 'lock'} title={gateTitle}>
     {#if choosingMode}
-      <AccessModeSetup purpose="setup" {busy} {error} onChoose={choose} />
+      <AccessModeSetup purpose="setup" {busy} {error} onChoose={choose} bind:chosen={chosenMode} />
     {:else}
       <p class={gateBodyClass(formBody)}>{formBody}</p>
 
