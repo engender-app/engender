@@ -169,7 +169,7 @@
   }
 
   .inclusion-row + .inclusion-row {
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--hairline);
   }
 
   .dossier-output {
