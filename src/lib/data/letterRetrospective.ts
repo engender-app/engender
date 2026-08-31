@@ -59,6 +59,33 @@ export function wrappedLetters(
 /** The unlocked letters with something to say about `candidateEpochDay`:
     written that day, or unlocked that day. Written wins when both are the
     same day. */
+/** The single strongest letter to show on Safe Space (phase 5 deepening
+    ticket 14, CONTEXT: "Safe space"): the most recently unlocked one, ties
+    broken by whichever was written most recently, and a final tie broken
+    by id for a deterministic pick between two letters unlocked and written
+    the same day.
+
+    Unlike the retrospectives above, there is no candidate day and no
+    range: Safe Space is not looking back at a particular day, it is
+    reaching for whichever letter has the most to say to someone right now,
+    which is the one their past self most recently finished waiting on.
+    Returns null rather than undefined so a caller's `{#if}` reads the same
+    way ReadGate's empty branches do elsewhere on the screen. */
+export function featuredLetter(letters: Letter[], todayEpochDay: number): Letter | null {
+  const unlocked = letters.filter((l) => !isLetterSealed(l, todayEpochDay));
+  if (unlocked.length === 0) return null;
+
+  return unlocked.reduce((newest, candidate) => {
+    if (candidate.unlockEpochDay !== newest.unlockEpochDay) {
+      return candidate.unlockEpochDay > newest.unlockEpochDay ? candidate : newest;
+    }
+    if (candidate.epochDay !== newest.epochDay) {
+      return candidate.epochDay > newest.epochDay ? candidate : newest;
+    }
+    return candidate.id > newest.id ? candidate : newest;
+  });
+}
+
 export function onThisDayLetters(
   letters: Letter[],
   candidateEpochDay: number,

@@ -1875,6 +1875,8 @@
   "safe_space_stat_evidence_note": "In your history",
   "safe_space_counterevidence_title": "From your own history",
   "safe_space_counterevidence_sub": "Entries you tagged as euphoria, with high-euphoria body regions, or starred.",
+  "safe_space_letter_intro": "A letter you sealed for yourself, now open.",
+  "safe_space_photos_intro": "Photos you starred.",
   "safe_space_chart_timeline_title": "Past 30 days",
   "safe_space_chart_themes_title": "Affirming themes",
   "safe_space_no_themes": "No tagged moments in the pool yet.",
