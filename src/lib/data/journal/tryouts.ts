@@ -54,6 +54,13 @@ export interface AdoptTryoutResult {
   milestoneId?: string;
 }
 
+/** A tryout photo read without knowing whose it is, so it can say which
+    tryout it was taken for (phase 5 deepening ticket 21) - the same reason
+    feltSense.ts's own day read carries its owner. */
+export interface TryoutPhotoOnDay extends TryoutPhoto {
+  tryoutLabel: string;
+}
+
 export interface TryoutsArea {
   /** Most recently started first: several tryouts can be open at once, and
       the one someone just started is what they came here to check on. */
@@ -64,6 +71,14 @@ export interface TryoutsArea {
   deleteTryout(id: string): Promise<void>;
   /** A tryout's photos, oldest first. */
   getPhotos(tryoutId: string): Promise<TryoutPhoto[]>;
+  /** The tryout photos taken on one day, whichever tryout they belong to
+      (phase 5 deepening ticket 21), each carrying that tryout's label.
+
+      The photos and not the tryout: a tryout runs across a stretch of days
+      and a day view says what happened on one, so what reaches it from here
+      is the dated record, and how the tryout itself felt that day reaches it
+      through `feltSense.onDay`. */
+  getPhotosOnDay(epochDay: number): Promise<TryoutPhotoOnDay[]>;
   /** Normalizes nothing itself - `photo` must already be through
       normalizePhoto (photoPicking.ts), same as photos.ts's attach. Returns
       the new photo's id. Throws if the tryout is unknown. */
@@ -156,6 +171,23 @@ export function makeTryoutsArea(
         [tryoutId]
       );
       return rows.map((row) => ({ id: row.uuid, tryoutId, epochDay: row.epoch_day, fileName: row.file_path }));
+    },
+
+    async getPhotosOnDay(epochDay) {
+      const rows = await driver.query<{ uuid: string; file_path: string; tryout_uuid: string; tryout_label: string }>(
+        `SELECT p.uuid AS uuid, p.file_path AS file_path, t.uuid AS tryout_uuid, t.label AS tryout_label
+           FROM tryout_photo p JOIN tryout t ON t.id = p.tryout_id
+          WHERE p.epoch_day = ?
+          ORDER BY p.id`,
+        [epochDay]
+      );
+      return rows.map((row) => ({
+        id: row.uuid,
+        tryoutId: row.tryout_uuid,
+        tryoutLabel: row.tryout_label,
+        epochDay,
+        fileName: row.file_path
+      }));
     },
 
     async addPhoto(tryoutId, epochDay, photo) {

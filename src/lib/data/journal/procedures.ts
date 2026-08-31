@@ -71,6 +71,15 @@ export interface ProcedurePhoto {
   fileName: string;
 }
 
+/** One dated thing a procedure holds, with the procedure named on it
+    (phase 5 deepening ticket 21). Two arms rather than a photo list hanging
+    off a consult, because a consult and a recovery photo are two unrelated
+    records that happen to share an owner. */
+export type ProcedureDayRecord = {
+  procedureId: string;
+  procedureName: string;
+} & ({ kind: 'consult'; id: string } | { kind: 'recovery-photo'; id: string; fileName: string });
+
 export interface ProceduresArea {
   /** Every procedure, the ones with a surgery date first and oldest first,
       then the undated ones - which have nowhere to sort to but the end. */
@@ -90,6 +99,16 @@ export interface ProceduresArea {
   deleteConsult(id: string): Promise<void>;
   /** A procedure's recovery photos, oldest first. */
   getPhotos(procedureId: string): Promise<ProcedurePhoto[]>;
+  /** What a procedure put on one day (phase 5 deepening ticket 21):
+      consults booked for it and recovery photos taken on it, each carrying
+      the procedure it belongs to.
+
+      Not the procedure itself. A procedure is a journey that runs for
+      months, and a day view says what happened on a day rather than what
+      was in progress across it - which is why a surgery reaches the day
+      view as the milestone it already mints (ADR-0045) rather than as a
+      second row here. */
+  getDayRecords(epochDay: number): Promise<ProcedureDayRecord[]>;
   /** Normalizes nothing itself - `photo` must already be through
       normalizePhoto (photoPicking.ts), same as photos.ts's attach. Returns
       the new photo's id. Throws if the procedure is unknown. */
@@ -232,6 +251,48 @@ export function makeProceduresArea(
         [procedureId]
       );
       return rows.map((row) => ({ id: row.uuid, procedureId, epochDay: row.epoch_day, fileName: row.file_path }));
+    },
+
+    /* Two queries, one per record kind, rather than one per procedure: a
+       day view that walked the procedures and asked each for its photos
+       would cost a round trip per journey being tracked, on a day where
+       almost always none of them has anything. */
+    async getDayRecords(epochDay) {
+      const [consults, photos] = await Promise.all([
+        driver.query<{ uuid: string; procedure_uuid: string; procedure_name: string }>(
+          `SELECT c.uuid AS uuid, r.uuid AS procedure_uuid, r.name AS procedure_name
+             FROM procedure_consult c JOIN procedure r ON r.id = c.procedure_id
+            WHERE c.epoch_day = ?
+            ORDER BY c.id`,
+          [epochDay]
+        ),
+        driver.query<{ uuid: string; file_path: string; procedure_uuid: string; procedure_name: string }>(
+          `SELECT p.uuid AS uuid, p.file_path AS file_path, r.uuid AS procedure_uuid, r.name AS procedure_name
+             FROM procedure_photo p JOIN procedure r ON r.id = p.procedure_id
+            WHERE p.epoch_day = ?
+            ORDER BY p.id`,
+          [epochDay]
+        )
+      ]);
+      return [
+        ...consults.map(
+          (row): ProcedureDayRecord => ({
+            kind: 'consult',
+            id: row.uuid,
+            procedureId: row.procedure_uuid,
+            procedureName: row.procedure_name
+          })
+        ),
+        ...photos.map(
+          (row): ProcedureDayRecord => ({
+            kind: 'recovery-photo',
+            id: row.uuid,
+            fileName: row.file_path,
+            procedureId: row.procedure_uuid,
+            procedureName: row.procedure_name
+          })
+        )
+      ];
     },
 
     async addPhoto(procedureId, epochDay, photo) {

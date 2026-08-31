@@ -297,7 +297,11 @@ describe('the handles the walkthrough grips', () => {
        which carries `data-entry-card` - the app's own name for the concept
        (ADR-0029) - so the walkthrough grips one handle on both screens
        rather than whichever of two the screen happened to use. */
-    expect(markupOf(read(SCREENS.day))).toContain('<DayEntry');
+    /* The day screen draws it one component deep since deepening ticket 21,
+       the same shape search and the starred shelf already had: the route owns
+       the read and the gate, DayRecords.svelte owns the composition. */
+    expect(markupOf(read(SCREENS.day))).toContain('<DayRecordsView');
+    expect(markupOf(read('src/lib/components/DayRecords.svelte'))).toContain('<DayEntry');
     /* Search and the starred shelf draw the same run of days through one
        journal-connected caller rather than eighteen identical lines each. */
     for (const path of [SCREENS.search, SCREENS.starred]) {
@@ -365,7 +369,11 @@ describe('loading states, since all six read entry data', () => {
      Each screen names which read it is waiting on either way, so that a gate
      over some other list on the same screen cannot stand in for this one. */
   it.each([
-    ['day', SCREENS.day, /<ReadGate\s+read=\{dayEntries\}/],
+    /* `everythingLogged` rather than `dayEntries` since deepening ticket 21:
+       the day screen waits on everything the day holds, not on its entries
+       alone, and the gate's emptiness test moved with it. The rule the name
+       is here for is unchanged. */
+    ['day', SCREENS.day, /<ReadGate\s+read=\{everythingLogged\}/],
     ['search', SCREENS.search, /<Skeleton/],
     ['starred', SCREENS.starred, /<Skeleton/]
   ])('%s waits with a skeleton', (_name, path, waits) => {

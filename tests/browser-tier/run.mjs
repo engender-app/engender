@@ -1323,6 +1323,95 @@ await block('phase 5 audit deepening ticket 10 field association', 5, async () =
   else fail('a hidden field still gives its control a real for/id pair, just off screen', JSON.stringify(hiddenField));
 });
 
+/* Phase 5 deepening ticket 21. "A section with no rows renders no DOM" is
+   an acceptance criterion, and it is a DOM fact about the real component
+   rather than anything the node tier can see - dayRows.ts imports paraglide
+   and $lib, neither of which resolves under vitest.config.ts. The gallery
+   fixture already mounts DayRecords.svelte against the real cascade, so
+   this drives it. */
+await block('phase 5 deepening ticket 21 day composition', 8, async () => {
+  await page.goto(`http://localhost:${port}/day.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-day-ready]', { state: 'attached' });
+
+  const shape = async (name) => {
+    await page.selectOption('select[aria-label="Day"]', name);
+    await page.waitForTimeout(120);
+    return page.evaluate(() => {
+      /* The overflow sheet holds a second copy of the list and is in the DOM
+         whether or not it is open, so everything here counts inside the card
+         rather than across the document. */
+      const card = document.querySelector('[data-list-card]');
+      const rowsIn = (root) => (root ? [...root.querySelectorAll('[data-day-row]')] : []);
+      return {
+        dayCards: document.querySelectorAll('[data-day-card]').length,
+        listCards: document.querySelectorAll('[data-list-card]').length,
+        headings: document.querySelectorAll('[data-section-heading]').length,
+        rows: rowsIn(card).length,
+        keys: rowsIn(card).map((r) => r.getAttribute('data-day-row')),
+        more: document.querySelectorAll('[data-day-more]').length,
+        moreLabel: document.querySelector('[data-day-more] .kit-row-title')?.textContent ?? null,
+        sheetOpen: document.querySelectorAll('[data-sheet]').length
+      };
+    });
+  };
+
+  const sparse = await shape('sparse');
+  if (sparse.dayCards === 1 && sparse.listCards === 0 && sparse.headings === 0 && sparse.rows === 0)
+    ok('a day with only an entry draws the day card and nothing else at all');
+  else fail('a day with only an entry draws the day card and nothing else at all', JSON.stringify(sparse));
+
+  const typical = await shape('typical');
+  if (typical.dayCards === 1 && typical.listCards === 1 && typical.headings === 1)
+    ok('a day with other records adds exactly one heading and one card, however many kinds it holds');
+  else
+    fail(
+      'a day with other records adds exactly one heading and one card, however many kinds it holds',
+      JSON.stringify(typical)
+    );
+
+  /* Four rows on the typical day, which is under the cap, so it is not
+     truncated and offers nothing to expand. */
+  if (typical.rows === 4 && typical.more === 0)
+    ok('a day inside the cap shows every row it has and offers no overflow');
+  else fail('a day inside the cap shows every row it has and offers no overflow', JSON.stringify(typical));
+
+  const maximal = await shape('maximal');
+  if (maximal.listCards === 1 && maximal.headings === 1)
+    ok('a maximal day is still one heading and one card, not a section per area');
+  else fail('a maximal day is still one heading and one card, not a section per area', JSON.stringify(maximal));
+
+  if (maximal.rows === 5 && maximal.more === 1)
+    ok('a day past the cap shows five rows and one way to the rest');
+  else fail('a day past the cap shows five rows and one way to the rest', JSON.stringify(maximal));
+
+  /* The count on that row is what is hidden, not what exists: 23 rows, 5
+     shown, so 18 more. */
+  if (maximal.moreLabel && maximal.moreLabel.includes('18'))
+    ok('the overflow row counts what is hidden rather than what the day holds');
+  else fail('the overflow row counts what is hidden rather than what the day holds', String(maximal.moreLabel));
+
+  await page.click('[data-day-more]');
+  await page.waitForTimeout(320);
+  const opened = await page.evaluate(() => {
+    const sheet = document.querySelector('[data-sheet]');
+    return {
+      open: !!sheet,
+      rows: sheet ? sheet.querySelectorAll('[data-day-row]').length : 0,
+      keys: sheet ? [...sheet.querySelectorAll('[data-day-row]')].map((r) => r.getAttribute('data-day-row')) : []
+    };
+  });
+  if (opened.open && opened.rows === 23) ok('the overflow opens a sheet holding the whole list, all 23 rows');
+  else fail('the overflow opens a sheet holding the whole list, all 23 rows', JSON.stringify(opened));
+
+  /* Photographs collapse and records do not, checked on the full list now
+     that the card only carries the first five: three hair photos are one row,
+     two doses are two rows. */
+  const hairRows = opened.keys.filter((k) => k.startsWith('hair-photos')).length;
+  const doseRows = opened.keys.filter((k) => k.startsWith('dose-')).length;
+  if (hairRows === 1 && doseRows === 2) ok('three hair photos are one row and two doses are two rows');
+  else fail('three hair photos are one row and two doses are two rows', `${hairRows} photo rows, ${doseRows} dose rows`);
+});
+
 // --- Phase 5 deepening ticket 15: the voice benchmark engine ---------------
 await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () => {
   const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');

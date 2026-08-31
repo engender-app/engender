@@ -26,6 +26,7 @@
 
 import { markJournalBusy } from '../journal-busy';
 import type { Journal } from '../journal/journal';
+import { DAY_TABLES } from '../journal/day';
 import { RECONCILE_TABLES } from '../journal/reconcile';
 
 /** Every table there is, in one place: what an import rewrites, and what
@@ -276,7 +277,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     },
     // A milestone is read back with its photos on it, the same way an entry
     // is.
-    reads: { getMilestones: ['milestone', 'photo'] }
+    reads: { getMilestones: ['milestone', 'photo'], getMilestonesOnDay: ['milestone', 'photo'] }
   }),
   photos: classify<Journal['photos']>()({
     /* An entry and a milestone both carry their photos on the shape they are
@@ -306,7 +307,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   // through the entry editor, so the save announces its own table.
   voiceBenchmarks: classify<Journal['voiceBenchmarks']>()({
     writes: { saveBenchmark: ['voiceBenchmark'], deleteBenchmark: ['voiceBenchmark'] },
-    reads: { getBenchmarks: ['voiceBenchmark'] }
+    reads: { getBenchmarks: ['voiceBenchmark'], getBenchmarksOnDay: ['voiceBenchmark'] }
   }),
   // Read-only for the same reason `voice` is: a video note's row is owned by
   // upsertEntry/deleteEntry, which already announce 'videoNote'.
@@ -316,7 +317,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   labs: classify<Journal['labs']>()({
     writes: { upsertResult: ['lab'], deleteResult: ['lab'] },
-    /* All six read `lab_result` and nothing else. `dose_event` is read on
+    /* All seven read `lab_result` and nothing else. `dose_event` is read on
        the write path only - a result's dosing context is derived when it is
        saved and frozen there (labs.ts), so a later dose edit cannot change
        what any of these answers. */
@@ -326,6 +327,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getMostRecentAnalyte: ['lab'],
       getLatestResult: ['lab'],
       getResults: ['lab'],
+      getResultsOnDay: ['lab'],
       getSeries: ['lab']
     }
   }),
@@ -345,7 +347,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   sizeRecords: classify<Journal['sizeRecords']>()({
     writes: { upsertRecord: ['sizeRecord'], deleteRecord: ['sizeRecord'] },
-    reads: { getRecords: ['sizeRecord'], getRecordsByCategory: ['sizeRecord'] }
+    reads: { getRecords: ['sizeRecord'], getRecordsByCategory: ['sizeRecord'], getRecordsOnDay: ['sizeRecord'] }
   }),
   sideEffects: classify<Journal['sideEffects']>()({
     writes: { upsertSideEffect: ['sideEffect'], deleteSideEffect: ['sideEffect'] },
@@ -358,7 +360,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       addCustomEffectType: ['personalEffectType'],
       setEffectTypeHidden: ['personalEffectType']
     },
-    reads: { getMarkers: ['personalEffect'], getEffectTypes: ['personalEffectType'] }
+    reads: {
+      getMarkers: ['personalEffect'],
+      getMarkersFirstNoticedOn: ['personalEffect'],
+      getEffectTypes: ['personalEffectType']
+    }
   }),
   effectCategories: classify<Journal['effectCategories']>()({
     writes: { setCategoryEnabled: ['effectCategory'] },
@@ -389,7 +395,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       addPhoto: ['hairProgress'],
       deletePhoto: ['hairProgress']
     },
-    reads: { getStages: ['hairProgress'], getPhotos: ['hairProgress'] }
+    reads: {
+      getStages: ['hairProgress'],
+      getStagesOnDay: ['hairProgress'],
+      getPhotos: ['hairProgress'],
+      getPhotosOnDay: ['hairProgress']
+    }
   }),
   hairRemoval: classify<Journal['hairRemoval']>()({
     writes: {
@@ -398,7 +409,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       addPhoto: ['hairRemoval'],
       deletePhoto: ['hairRemoval']
     },
-    reads: { getSessions: ['hairRemoval'], getPhotos: ['hairRemoval'] }
+    reads: { getSessions: ['hairRemoval'], getSessionsOnDay: ['hairRemoval'], getPhotos: ['hairRemoval'] }
   }),
   /* deleteProcedure and addChecklistItem write 'checklist' as well as
      'procedure': the recovery checklist is an ordinary checklist row, so a
@@ -421,6 +432,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getProcedures: ['procedure'],
       getPhotos: ['procedure'],
+      getDayRecords: ['procedure'],
       getChecklist: ['checklist'],
       getMilestone: ['milestone']
     }
@@ -445,7 +457,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deletePhoto: ['tryout'],
       adoptTryout: ['tryout', 'milestone', 'feltSense']
     },
-    reads: { getTryouts: ['tryout'], getPhotos: ['tryout'] }
+    reads: { getTryouts: ['tryout'], getPhotos: ['tryout'], getPhotosOnDay: ['tryout'] }
   }),
   feltSense: classify<Journal['feltSense']>()({
     /* Which owner a felt-sense write belongs to is a property of the call,
@@ -457,7 +469,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     },
     // A read knows its owner, unlike a write: the history is joined to the
     // one record it hangs off.
-    reads: { forTryout: ['feltSense', 'tryout'], forMilestone: ['feltSense', 'milestone'] }
+    reads: {
+      forTryout: ['feltSense', 'tryout'],
+      forMilestone: ['feltSense', 'milestone'],
+      // Both owners' names travel on a day's rows, so both tables are read.
+      onDay: ['feltSense', 'tryout', 'milestone']
+    }
   }),
   letters: classify<Journal['letters']>()({
     writes: { addLetter: ['letter'], deleteLetter: ['letter'] },
@@ -492,7 +509,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   tally: classify<Journal['tally']>()({
     writes: { log: ['tally'], deleteEvent: ['tally'] },
-    reads: { getEvents: ['tally'] }
+    reads: { getEvents: ['tally'], getEventsOnDay: ['tally'] }
   }),
   regimen: classify<Journal['regimen']>()({
     writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'] },
@@ -552,6 +569,14 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // doses, results, exposure's two, side effects, procedures and the
     // appointment prep checklist.
     reads: { getSummary: ['regimen', 'dose', 'lab', 'sideEffect', 'procedure', 'checklist'] }
+  }),
+  /* Read-only for the same reason, and its table list is the registry's own
+     rather than a copy taken from it (day.ts's DAY_TABLES): a section added
+     there brings its tables with it, so a day cannot go stale on a write to
+     an area registered after this line was written. */
+  day: classify<Journal['day']>()({
+    writes: {},
+    reads: { getDay: DAY_TABLES }
   }),
   // Read-only, the same reason clinicianSummary is: a book is assembled
   // from entries, milestones, side effects and a recap on every read and

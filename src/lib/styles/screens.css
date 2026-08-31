@@ -3,13 +3,18 @@
    components/components.css; colour comes only from tokens.
    ============================================================ */
 
-/* A milestone's photo stands in for the icon disc, so it takes the disc's
+/* A photograph standing in for a row's icon disc, so it takes the disc's
    size and the disc's shape. PhotoThumb draws a rounded square, which is
    right where photos are a grid of photos and wrong here: in a column of
    circles it was the one row that did not match, and a photo standing in
    for an icon has to stand in for its shape too. Clipped rather than
-   restyled, so nothing changes for the screens that show photos as photos. */
-.milestone-face {
+   restyled, so nothing changes for the screens that show photos as photos.
+
+   `.milestone-face` until deepening ticket 21 met ticket 10 at the merge and
+   the two had written the same rule twice - a milestone's own face, and the
+   day view's hair, recovery and tryout photographs. One rule, and a name
+   that is true of all four. */
+.row-face {
   flex: 0 0 auto;
   display: flex;
   border-radius: 50%;
@@ -338,6 +343,15 @@
    what draws a day's shape. */
 .day-add { margin-top: var(--space-5); }
 .day-add .btn { width: 100%; }
+
+/* How many the row stands for, at the trailing edge before the chevron.
+   Tabular figures so a run of counts lines up, and the role's own ink rather
+   than grey - it is a number this area owns, not a disabled one. */
+.day-count {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--role-ink);
+}
 
 /* ---------- Search ---------- */
 .search-box {

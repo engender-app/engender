@@ -59,6 +59,10 @@ export interface NewVoiceBenchmark {
 export interface VoiceBenchmarksArea {
   /** Every benchmark, oldest first. */
   getBenchmarks(): Promise<VoiceBenchmark[]>;
+  /** The benchmarks recorded on one day (phase 5 deepening ticket 21). Its
+      own query rather than a filter over that one, so the day view pays for
+      the day it is showing. */
+  getBenchmarksOnDay(epochDay: number): Promise<VoiceBenchmark[]>;
   /** Writes both takes, then the row. Returns the benchmark's uuid. */
   saveBenchmark(input: NewVoiceBenchmark): Promise<string>;
   /** Removes the row, then both audio files (ticket 16) - the row-then-files
@@ -112,6 +116,14 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
     async getBenchmarks() {
       const rows = await driver.query<BenchmarkRow>(
         `SELECT ${BENCHMARK_COLUMNS} FROM voice_benchmark ORDER BY epoch_day, id`
+      );
+      return rows.map(toBenchmark);
+    },
+
+    async getBenchmarksOnDay(epochDay) {
+      const rows = await driver.query<BenchmarkRow>(
+        `SELECT ${BENCHMARK_COLUMNS} FROM voice_benchmark WHERE epoch_day = ? ORDER BY id`,
+        [epochDay]
       );
       return rows.map(toBenchmark);
     },

@@ -128,10 +128,26 @@ export async function photosByEntry(
 /** Every milestone's photo, by milestone rowid - one query for the whole
     list, so rendering the milestones screen does not cost a round trip per
     row. A milestone shows one photo; a second row for the same milestone
-    would be a bug elsewhere, and the earliest wins rather than throwing. */
-export async function photosByMilestone(driver: SqliteDriver): Promise<Map<number, Photo>> {
+    would be a bug elsewhere, and the earliest wins rather than throwing.
+
+    `milestoneIds` narrows it to the rows a caller actually holds, the same
+    shape `photosByEntry` above already takes and for a reason that only
+    appeared with a second caller (phase 5 deepening ticket 21): the day view
+    reads the milestones dated to one day, and the whole-table read would
+    grow with the journal on every day anyone opened. Omitted, it is every
+    milestone, which is what the milestones screen wants. */
+export async function photosByMilestone(
+  driver: SqliteDriver,
+  milestoneIds?: number[]
+): Promise<Map<number, Photo>> {
+  if (milestoneIds?.length === 0) return new Map();
   const rows = await driver.query<PhotoRow & { milestone_id: number }>(
-    'SELECT milestone_id, uuid, file_path, starred FROM photo WHERE milestone_id IS NOT NULL ORDER BY order_index, id'
+    milestoneIds
+      ? `SELECT milestone_id, uuid, file_path, starred FROM photo
+         WHERE milestone_id IN (${milestoneIds.map(() => '?').join(', ')})
+         ORDER BY order_index, id`
+      : 'SELECT milestone_id, uuid, file_path, starred FROM photo WHERE milestone_id IS NOT NULL ORDER BY order_index, id',
+    milestoneIds
   );
   const byMilestone = new Map<number, Photo>();
   for (const row of rows) if (!byMilestone.has(row.milestone_id)) byMilestone.set(row.milestone_id, toPhoto(row));

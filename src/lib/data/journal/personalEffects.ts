@@ -31,6 +31,11 @@ export interface PersonalEffectsArea {
   /** Whatever effects have been marked so far, one row per effect. No row
       for an effect means it has not been marked yet. */
   getMarkers(): Promise<PersonalEffect[]>;
+  /** The markers whose "first noticed" day is this one (phase 5 deepening
+      ticket 21). A marker is one row per effect that a fresh date replaces
+      in place, so this reads as "what someone said they first noticed
+      today", never as a log of sightings. */
+  getMarkersFirstNoticedOn(epochDay: number): Promise<PersonalEffect[]>;
   /** One row per effect (migrations.ts v12): a second call for an effect
       already marked replaces its date rather than adding a row. Returns
       the row's id. */
@@ -89,6 +94,14 @@ export function makePersonalEffectsArea(driver: SqliteDriver): PersonalEffectsAr
     async getMarkers() {
       const rows = await driver.query<PersonalEffectRow>(
         'SELECT uuid, effect, first_noticed_epoch_day FROM personal_effect ORDER BY effect'
+      );
+      return rows.map(toPersonalEffect);
+    },
+
+    async getMarkersFirstNoticedOn(epochDay) {
+      const rows = await driver.query<PersonalEffectRow>(
+        'SELECT uuid, effect, first_noticed_epoch_day FROM personal_effect WHERE first_noticed_epoch_day = ? ORDER BY effect',
+        [epochDay]
       );
       return rows.map(toPersonalEffect);
     },
