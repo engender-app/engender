@@ -1,5 +1,6 @@
 <script lang="ts">
-  /* One letter, read-only (phase 5 deepening ticket 13).
+  /* One letter, read-only (phase 5 deepening ticket 13; the read-tracking
+     effect below is ticket 01's ready-letter tile).
 
      The deep link the retrospective surfaces take: a look-back card in
      wrapped or on-this-day names this route, so a letter resurfaced from
@@ -8,13 +9,18 @@
      this page answers one question, "what did I write?", and a sealed
      letter answers it the way the letters screen already does: with the
      day it opens, and not a word of the text (spec: sealed contents are
-     out of scope under any circumstance). */
+     out of scope under any circumstance).
+
+     Opening this route is also how the ready-letter live tile resolves
+     (ticket 01): once the letter's actual text has been shown - never for
+     the sealed or gone branches, which never showed it - it is marked
+     read, which clears the tile on the next Home visit. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
-  import { isLetterSealed } from '$lib/data/letterStatus';
+  import { isLetterSealed, markLetterRead } from '$lib/data/letterStatus';
   import { smartBack } from '$lib/navigation/smart-back';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -28,6 +34,10 @@
   let letter = $derived(letterQuery.value);
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
+
+  $effect(() => {
+    if (letter && !isLetterSealed(letter, today)) markLetterRead(id);
+  });
 </script>
 
 <div class="screen">
