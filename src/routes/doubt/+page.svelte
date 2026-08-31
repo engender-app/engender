@@ -4,10 +4,18 @@
      - Calming tool: guided box breathing exercise with concentric ambient halo
      - Grounding statistics: streak and good moments from the journal
      - Visual charts: 30-day timeline and affirming themes breakdown
-     - Counterevidence pool: euphoria-tagged, high-euphoria body region, and starred entries
+     - Counterevidence pool: euphoria-tagged, high-euphoria body region, and starred entries,
+       plus (ticket 14) an unlocked letter and starred photos drawn alongside it
      - Snapshots: frozen captures of past counterevidence pools
 
-     Purely a read: opening the screen writes nothing (ADR-0037). */
+     Purely a read: opening the screen writes nothing (ADR-0037,
+     src/lib/data/journal/safeSpaceReads.test.ts pins it at the driver).
+
+     A voice-benchmark delta was ticket 14's third source, gated on ticket
+     15's `voice_benchmark` table. That table does not exist yet - there is
+     nothing to query, not merely nothing to show - so per the ticket's own
+     fallback ("land 1 and 2 and leave 3 for a follow-up") it is left for
+     whichever of 15/16 lands the table. */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -16,6 +24,7 @@
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { featuredLetter } from '$lib/data/letterRetrospective';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -33,6 +42,9 @@
   import { atGrain } from '$lib/charts/grain';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
+  import LookBackLetterCard from '$lib/components/LookBackLetterCard.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -40,6 +52,18 @@
   const COUNTEREVIDENCE_LIMIT = 20;
   const HISTORY_LIMIT = 50;
   const TIMELINE_DAYS = 30;
+  /** How far back the featured letter looks - letterRetrospective.ts's own
+      bound, reused rather than re-guessed (LETTER_RETROSPECTIVE_LIMIT). */
+  const LETTER_LOOKBACK = 200;
+  /** Starred photos shown on open, most recently starred-shelf-worthy first.
+      Bounded so a large starred collection stays a glance rather than a
+      second gallery grafted onto a crisis screen - the shelf itself
+      (/search/starred, this section's own overflow) is already unbounded.
+      Decrypting a thumbnail measures at ~0.02ms of AES-256-GCM per file at
+      typical thumbnail size (10-40KB) - the crypto is not the cost; six
+      thumbnails decoding and painting at once is a bound worth keeping for
+      its own sake, not because decryption is expensive. */
+  const PHOTO_LIMIT = 6;
 
   let today = $derived(todayEpochDay());
   let from = $derived(today - TIMELINE_DAYS + 1);
@@ -79,6 +103,15 @@
 
   let snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
   let snapshots = $derived(snapshotsQuery.rows);
+
+  let lettersQuery = liveList((j) => j.letters.getLetters(LETTER_LOOKBACK));
+  let letter = $derived(featuredLetter(lettersQuery.rows, today));
+
+  let starredPhotosQuery = liveList((j) => j.photos.starredPhotos());
+  // Most recently starred-shelf-worthy first: starredPhotos() itself reads
+  // oldest first (CONTEXT: "Starred", the shelf's own order), and a crisis
+  // screen's glance at them wants the newest, not the earliest.
+  let recentStarredPhotos = $derived([...starredPhotosQuery.rows].reverse().slice(0, PHOTO_LIMIT));
 
   async function saveSnapshot() {
     if (counterevidence.length === 0) return;
@@ -163,6 +196,24 @@
 
   <SectionHeading text={m.safe_space_counterevidence_title()} />
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.safe_space_counterevidence_sub()}</p>
+
+  {#if letter}
+    <p class="muted small" style="margin-bottom:var(--space-2)">{m.safe_space_letter_intro()}</p>
+    <ListCard role={roleAt(activeFlag.roles, 1)}>
+      <LookBackLetterCard {letter} kind="written" />
+    </ListCard>
+    <div style="margin-bottom:var(--space-3)"></div>
+  {/if}
+
+  {#if recentStarredPhotos.length}
+    <p class="muted small" style="margin-bottom:var(--space-2)">{m.safe_space_photos_intro()}</p>
+    <div class="photo-grid" data-safe-space-photos style="margin-bottom:var(--space-3)">
+      {#each recentStarredPhotos as p (p.id)}
+        <PhotoThumb photo={p} size={104} />
+      {/each}
+    </div>
+  {/if}
+
   <ReadGate read={counterevidenceQuery} variant="card" count={2}>
     {#snippet rows()}
       {#each counterevidence as e (e.id)}
