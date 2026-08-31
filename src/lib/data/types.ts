@@ -34,6 +34,38 @@ export interface VoiceRecording {
   fileName: string;
 }
 
+/** A standardized voice take (phase 5 deepening ticket 15, CONTEXT: "Voice
+    benchmark"). Not a VoiceRecording: that is a memo on one entry, this
+    belongs to a day and carries the acoustic figures the engine
+    (lib/audio/) measured from it under fixed conditions.
+
+    Every figure is descriptive (PRODUCT.md:109) - a frequency, a span, a
+    spread, a rate, two resonances. None of them is a score and none of them
+    has a good end.
+
+    The vowel half is nullable as a group: a session that skipped the
+    sustained vowel, or whose vowel never cleared the gate, is a benchmark
+    with a passage and no resonance. `note` is the person's own words about
+    the take, not the musical note of the median, which follows from
+    `f0MedianHz` (ADR-0010). */
+export interface VoiceBenchmark {
+  id: string;
+  epochDay: number;
+  timestamp: number;
+  passageKey: string;
+  passageFileName: string;
+  vowelFileName: string | null;
+  f0MedianHz: number;
+  f0P10Hz: number;
+  f0P90Hz: number;
+  semitoneSd: number;
+  wordsPerMinute: number;
+  f1Hz: number | null;
+  f2Hz: number | null;
+  snrDb: number | null;
+  note: string | null;
+}
+
 /** A short in-app video recording belonging to exactly one entry (phase 5
     ticket 22, CONTEXT: "Video note"). VoiceRecording's shape, and its own
     interface rather than a shared one for the reason journal/videoNotes.ts

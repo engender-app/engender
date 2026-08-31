@@ -565,6 +565,38 @@ const SECTIONS = [
     identity: 'uuid',
     orderBy: 'start_timestamp, id',
     columns: { uuid: 'id', start_timestamp: 'startTimestamp', duration_ms: 'durationMs', note: 'note' }
+  }),
+  /* Voice benchmarks (phase 5 deepening ticket 15). Flat: one row per take,
+     no children, no rowid resolved against another section. Its two audio
+     files travel in the body the way a recording's does - archive.ts's
+     manifest reads their names off this table - and the file names in these
+     columns are what pairs a row back up with the bytes on the way in.
+
+     `passage_key` has a `whenAbsent`: no archive written before this ticket
+     carries the field at all, and there are none to migrate, but the flat
+     writer binds undefined as a raw driver error rather than as a null. */
+  flat({
+    name: 'voiceBenchmarks',
+    table: 'voice_benchmark',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: {
+      uuid: 'id',
+      epoch_day: 'epochDay',
+      timestamp: 'timestamp',
+      passage_key: { field: 'passageKey', whenAbsent: 'builtin' },
+      passage_file_path: 'passageFileName',
+      vowel_file_path: 'vowelFileName',
+      f0_median_hz: 'f0MedianHz',
+      f0_p10_hz: 'f0P10Hz',
+      f0_p90_hz: 'f0P90Hz',
+      semitone_sd: 'semitoneSd',
+      words_per_minute: 'wordsPerMinute',
+      f1_hz: 'f1Hz',
+      f2_hz: 'f2Hz',
+      snr_db: 'snrDb',
+      note: 'note'
+    }
   })
 ] as const;
 

@@ -652,6 +652,29 @@ export interface ArchiveJournal {
   feltSenseEntries: ArchiveFeltSenseEntry[];
   checklists: ArchiveChecklist[];
   wearSessions: ArchiveWearSession[];
+  voiceBenchmarks: ArchiveVoiceBenchmark[];
+}
+
+/** A standardized voice take (phase 5 deepening ticket 15, CONTEXT: "Voice
+    benchmark"). Its two audio files travel in the body like a recording's,
+    named by the same opaque `<uuid>.webm`; the vowel half is absent on a
+    take that skipped or failed that step, and its three figures with it. */
+export interface ArchiveVoiceBenchmark {
+  id: string;
+  epochDay: number;
+  timestamp: number;
+  passageKey: string;
+  passageFileName: string;
+  vowelFileName: string | null;
+  f0MedianHz: number;
+  f0P10Hz: number;
+  f0P90Hz: number;
+  semitoneSd: number;
+  wordsPerMinute: number;
+  f1Hz: number | null;
+  f2Hz: number | null;
+  snrDb: number | null;
+  note: string | null;
 }
 
 /** A photo file travelling in the body, and how many bytes of it there
