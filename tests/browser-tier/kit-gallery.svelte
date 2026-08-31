@@ -27,6 +27,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
+  import { annotationsInRange, type ChartAnnotationSource } from '$lib/charts/annotations';
   import { readFlagFill, readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
   import { PALETTES } from '../palettes.mjs';
 
@@ -58,6 +59,30 @@
       x: i,
       y: 50 + 26 * Math.sin(i / 23 + shift) + 12 * Math.sin(i / 3.1 + shift)
     }));
+
+  /* What the annotation layer has to survive (phase 5 deepening ticket 23):
+     a stretch that started before the chart did, one that has not ended, two
+     that overlap, and a moment inside both. The year fixture also carries the
+     dense case the ticket sets a floor for - three moments on adjacent days -
+     which at the year grain land in one weekly bucket and so have to gather
+     into one doubled mark rather than three ticks drawn on top of each
+     other. */
+  const ANNOTATION_SOURCES: ChartAnnotationSource[] = [
+    { id: 'e', kind: 'regimen', name: 'estradiol valerate', startEpochDay: -40, endEpochDay: 250 },
+    { id: 's', kind: 'regimen', name: 'spironolactone', startEpochDay: 280, endEpochDay: null },
+    { id: 'p', kind: 'journalingPause', name: null, startEpochDay: 96, endEpochDay: 110 },
+    { id: 'q', kind: 'journalingPause', name: null, startEpochDay: 2, endEpochDay: 4 },
+    { id: 'm', kind: 'milestone', name: 'first shot', startEpochDay: 3, endEpochDay: null },
+    { id: 'n', kind: 'milestone', name: 'name change filed', startEpochDay: 4, endEpochDay: null },
+    { id: 'v', kind: 'milestone', name: 'voice therapy', startEpochDay: 5, endEpochDay: null },
+    { id: 'g', kind: 'surgery', name: 'top surgery', startEpochDay: 300, endEpochDay: null },
+    { id: 'g-recovery', kind: 'recovery', name: 'top surgery', startEpochDay: 301, endEpochDay: 390 }
+  ];
+  let annotations = $derived(
+    range === 'week'
+      ? annotationsInRange(ANNOTATION_SOURCES, { from: 0, to: 6, today: 6 })
+      : annotationsInRange(ANNOTATION_SOURCES, { from: 0, to: 364, today: 364 })
+  );
 
   function readRoles() {
     roles = readFlagRoles();
@@ -266,6 +291,7 @@
     {/snippet}
     <AreaChart
       points={range === 'week' ? WEEK(SHIFT[metric]) : YEAR(SHIFT[metric])}
+      {annotations}
       ariaLabel="Dysphoria ↔ euphoria, day by day"
       from={range === 'week' ? '18 Aug' : '25 Aug 2025'}
       to="24 Aug"
