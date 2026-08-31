@@ -51,12 +51,16 @@ export interface HairPhoto {
 export interface HairProgressArea {
   /** Every staging, oldest first. */
   getStages(): Promise<HairStage[]>;
+  /** The stagings recorded on one day (phase 5 deepening ticket 21). */
+  getStagesOnDay(epochDay: number): Promise<HairStage[]>;
   /** Returns the staging's id. Updating an unknown id throws. */
   upsertStage(input: HairStageInput): Promise<string>;
   /** Idempotent, like the journal's other deletes. */
   deleteStage(id: string): Promise<void>;
   /** Every hair photo, oldest first. */
   getPhotos(): Promise<HairPhoto[]>;
+  /** The hair photos taken on one day (phase 5 deepening ticket 21). */
+  getPhotosOnDay(epochDay: number): Promise<HairPhoto[]>;
   /** Normalizes nothing itself - `photo` must already be through
       normalizePhoto (photoPicking.ts), same as photos.ts's attach. Returns
       the new photo's id. */
@@ -103,6 +107,14 @@ export function makeHairProgressArea(driver: SqliteDriver, files: PhotoFileStore
       return rows.map(toHairStage);
     },
 
+    async getStagesOnDay(epochDay) {
+      const rows = await driver.query<HairStageRow>(
+        'SELECT uuid, epoch_day, scale, stage, description FROM hair_stage WHERE epoch_day = ? ORDER BY id',
+        [epochDay]
+      );
+      return rows.map(toHairStage);
+    },
+
     async upsertStage(input) {
       const staging = checkedStaging(input);
 
@@ -130,6 +142,14 @@ export function makeHairProgressArea(driver: SqliteDriver, files: PhotoFileStore
     async getPhotos() {
       const rows = await driver.query<HairPhotoRow>(
         'SELECT uuid, epoch_day, file_path FROM hair_photo ORDER BY epoch_day, id'
+      );
+      return rows.map(toHairPhoto);
+    },
+
+    async getPhotosOnDay(epochDay) {
+      const rows = await driver.query<HairPhotoRow>(
+        'SELECT uuid, epoch_day, file_path FROM hair_photo WHERE epoch_day = ? ORDER BY id',
+        [epochDay]
       );
       return rows.map(toHairPhoto);
     },
