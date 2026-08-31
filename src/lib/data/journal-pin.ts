@@ -172,7 +172,8 @@ async function rebindOnUnlock(
   /* Unwrapped under the old binding first, so a wrong PIN throws with the
      keystore on disk exactly as it was and the old key still the one that
      opens it. */
-  const dataKey = await unlockKeystore(metadata, combinePinWithDevice(pin, await requireLegacyBinding(metadata, ports).read()));
+  const legacySecret = combinePinWithDevice(pin, await requireLegacyBinding(metadata, ports).read());
+  const dataKey = await unlockKeystore(metadata, legacySecret);
   const secret = combinePinWithDevice(pin, await ports.binding.create());
   await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
   await forgetLegacyBinding(ports);
@@ -182,7 +183,9 @@ async function rebindOnUnlock(
 /** Rewraps the same data key under a new PIN (the journal is never
     re-encrypted). Throws before anything is written when the current PIN is
     wrong. The binding key is deliberately kept rather than re-minted: this
-    is a change of PIN, not a change of device. */
+    is a change of PIN, not a change of device. The one exception is a journal
+    still on an older build's binding, where changing the key is the point and
+    this does what `rebindOnUnlock` does. */
 export async function changeJournalPin(
   current: string,
   next: string,
