@@ -50,6 +50,8 @@ export interface HairRemovalPhoto {
 export interface HairRemovalArea {
   /** Every session, oldest first. */
   getSessions(): Promise<HairRemovalSession[]>;
+  /** The sessions on one day (phase 5 deepening ticket 21). */
+  getSessionsOnDay(epochDay: number): Promise<HairRemovalSession[]>;
   /** Returns the session's id. Updating an unknown id throws; an
       out-of-range pain rating or an area outside the closed vocabulary
       throws before anything is written. */
@@ -107,6 +109,14 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
     async getSessions() {
       const rows = await driver.query<HairRemovalSessionRow>(
         'SELECT uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session ORDER BY epoch_day, id'
+      );
+      return rows.map(toHairRemovalSession);
+    },
+
+    async getSessionsOnDay(epochDay) {
+      const rows = await driver.query<HairRemovalSessionRow>(
+        'SELECT uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session WHERE epoch_day = ? ORDER BY id',
+        [epochDay]
       );
       return rows.map(toHairRemovalSession);
     },
