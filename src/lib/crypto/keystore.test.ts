@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { createKeystore, unlockKeystore, rewrapKeystore, parseKeystore, serializeKeystore, wrapDataKeyWithPassphrase } from './keystore.ts';
+import { createKeystore, unlockKeystore, rewrapKeystore, parseKeystore, serializeKeystore, wrapDataKeyWithSecret, KeystoreUnreadableError } from './keystore.ts';
 import { DecryptionFailedError } from './aesGcm.ts';
 import { JOURNAL_ARGON2_PARAMS, type Argon2Params } from './params.ts';
 
@@ -47,7 +47,7 @@ test('rewrapping changes the passphrase without changing the data key', async ()
 
 test('wrapping an existing data key under a passphrase unlocks back to the same bytes', async () => {
   const dataKey = crypto.getRandomValues(new Uint8Array(32));
-  const metadata = await wrapDataKeyWithPassphrase(dataKey, 'portable secret');
+  const metadata = await wrapDataKeyWithSecret(dataKey, 'portable secret');
 
   expect(await unlockKeystore(metadata, 'portable secret')).toEqual(dataKey);
 });
@@ -82,7 +82,9 @@ test('unlock derives with the parameters the metadata carries, not the constants
 
 test('parsing a keystore from a newer format version refuses rather than misreads', async () => {
   const { metadata } = await createKeystore('passphrase');
-  const newer = serializeKeystore(metadata).replace('"version":1', '"version":2');
+  // One past what this build writes. Version 1 is a readable format now
+  // (ticket 53), so the refusal has to be tested above the current one.
+  const newer = serializeKeystore(metadata).replace('"version":2', '"version":3');
   expect(() => parseKeystore(newer)).toThrow(/version/);
 });
 
@@ -91,4 +93,73 @@ test('a mangled KDF parameter block is refused by name, not surfaced as a wrong 
   const parsed = JSON.parse(serializeKeystore(metadata)) as { params: unknown };
   parsed.params = { memorySize: 'lots' };
   expect(() => parseKeystore(JSON.stringify(parsed))).toThrow(/parameters/);
+});
+
+/* --- the secret source (ticket 53, ADR-0041) --------------------------- */
+
+/* Cheap params where the test is about the record rather than about the
+   cost: the real pin-encryption profile is 64 MiB over 4 passes, and
+   proving that a field round-trips does not need 150ms of it. */
+const CHEAP: Argon2Params = { memorySize: 1024, iterations: 1, parallelism: 1, hashLength: 32 };
+
+test('a keystore records which kind of secret wrapped it', async () => {
+  const passphrase = await createKeystore('a typed passphrase', CHEAP);
+  const pin = await createKeystore('1234', CHEAP, 'pin');
+
+  expect(passphrase.metadata.secretSource).toBe('passphrase');
+  expect(pin.metadata.secretSource).toBe('pin');
+});
+
+test('the secret source survives serialization, so boot can pick a gate before unlocking', async () => {
+  const { metadata } = await createKeystore('1234', CHEAP, 'pin');
+  const reparsed = parseKeystore(serializeKeystore(metadata));
+
+  expect(reparsed.secretSource).toBe('pin');
+  expect(reparsed.params).toEqual(CHEAP);
+});
+
+test('a keystore written before the source existed reads as a passphrase one', async () => {
+  /* Exactly what a shipped build wrote: version 1, no secretSource field.
+     Rejecting it would lock every existing installation out of its journal,
+     so the absent field means the only thing it could have meant. */
+  const { metadata, dataKey } = await createKeystore('the original passphrase', CHEAP);
+  const v1 = JSON.parse(serializeKeystore(metadata)) as Record<string, unknown>;
+  v1.version = 1;
+  delete v1.secretSource;
+
+  const reparsed = parseKeystore(JSON.stringify(v1));
+  expect(reparsed.secretSource).toBe('passphrase');
+  expect(await unlockKeystore(reparsed, 'the original passphrase')).toEqual(dataKey);
+});
+
+test('a keystore from a format this build does not read fails by name, not as a wrong secret', async () => {
+  const { metadata } = await createKeystore('passphrase', CHEAP);
+  const future = JSON.parse(serializeKeystore(metadata)) as Record<string, unknown>;
+  future.version = 99;
+
+  expect(() => parseKeystore(JSON.stringify(future))).toThrow(KeystoreUnreadableError);
+});
+
+test('an unrecognised secret source fails by name rather than unlocking under the wrong profile', async () => {
+  const { metadata } = await createKeystore('passphrase', CHEAP);
+  const odd = JSON.parse(serializeKeystore(metadata)) as Record<string, unknown>;
+  odd.secretSource = 'retina';
+
+  expect(() => parseKeystore(JSON.stringify(odd))).toThrow(KeystoreUnreadableError);
+});
+
+test('changing access mode rewraps the same data key under a different kind of secret', async () => {
+  const { metadata, dataKey } = await createKeystore('a typed passphrase', CHEAP);
+  const toPin = await rewrapKeystore(metadata, 'a typed passphrase', '1234', CHEAP, 'pin');
+
+  expect(toPin.secretSource).toBe('pin');
+  expect(await unlockKeystore(toPin, '1234')).toEqual(dataKey);
+  await expect(unlockKeystore(toPin, 'a typed passphrase')).rejects.toThrow(DecryptionFailedError);
+});
+
+test('rewrapping without naming a source keeps the one it already had', async () => {
+  const { metadata } = await createKeystore('1234', CHEAP, 'pin');
+  const rewrapped = await rewrapKeystore(metadata, '1234', '5678', CHEAP);
+
+  expect(rewrapped.secretSource).toBe('pin');
 });

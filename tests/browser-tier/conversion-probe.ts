@@ -46,7 +46,7 @@ import {
   webConversionPrecheckPorts,
   JOURNAL_DATABASE
 } from '../../src/lib/data/conversion/web-ports.ts';
-import { journalKeystoreExists } from '../../src/lib/data/journal-passphrase.ts';
+import { readKeystoreSource } from '../../src/lib/data/keystore-file.ts';
 import { scanOpfs, scanLocalStorage, textSentinel, type Sentinel } from './opfs-scan.ts';
 import { freshOrigin } from './fresh-origin.ts';
 import { publish as publishResult } from '../probe-handshake.mjs';
@@ -63,7 +63,7 @@ const REMINDER = 'sentinel-converted-reminder-progynova-7715';
 const MILESTONE = 'sentinel-converted-milestone-first-day-2260';
 const PREFERENCE = 'sentinel-converted-preference-alicja-9014';
 const PHOTO_BODY = 'sentinel-converted-photo-body-3378';
-const PIN_HASH = 'sentinel-converted-pinhash-6801';
+const DEVICE_LOCAL_VALUE = 'sentinel-converted-device-local-6801';
 
 const SENTINELS: Sentinel[] = [
   textSentinel('entry note', NOTE),
@@ -71,7 +71,7 @@ const SENTINELS: Sentinel[] = [
   textSentinel('reminder title', REMINDER),
   textSentinel('milestone name', MILESTONE),
   textSentinel('preference name', PREFERENCE),
-  textSentinel('pin hash', PIN_HASH),
+  textSentinel('device-local preference', DEVICE_LOCAL_VALUE),
   textSentinel('photo body', PHOTO_BODY),
   { label: 'JPEG signature', bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), atStartOnly: true }
 ];
@@ -109,7 +109,7 @@ const dirty = (scan: { path: string; found: string[] }[]) =>
   scan.filter((file) => file.found.length > 0).map((file) => `${file.path}: ${file.found.join(', ')}`);
 
 const survey = async () => ({
-  keystoreExists: await journalKeystoreExists(),
+  keystoreExists: (await readKeystoreSource()) !== null,
   plaintextJournalPresent: await plaintextJournalPresent(),
   marker: await opfsConversionMarker().read()
 });
@@ -152,7 +152,7 @@ async function buildPlaintextEraJournal(): Promise<{ entryId: number; photoName:
   // Device-local, and deliberately not carried by the archive format
   // (ADR-0003) - so it only survives if the conversion moves the whole
   // database rather than exporting and importing one.
-  await preferences.set('pinHash', PIN_HASH);
+  await preferences.set('lastWrappedNotifiedPeriodKey', DEVICE_LOCAL_VALUE);
 
   // The pre-migration copy an ordinary schema migration would have left
   // behind, in plaintext: a remnant the conversion has to retire.
@@ -267,7 +267,7 @@ async function run() {
   const cache = localStorageCache();
   const preferences = await openPreferences(driver, cache);
   result.preferenceName = preferences.get('name');
-  result.pinHashInDatabase = preferences.get('pinHash');
+  result.deviceLocalInDatabase = preferences.get('lastWrappedNotifiedPeriodKey');
   result.bootMirror = JSON.parse(localStorage.getItem(BOOT_CACHE_KEY) ?? 'null');
 
   // Search survived the copy: the FTS index went across with the rest of

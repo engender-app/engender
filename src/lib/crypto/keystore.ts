@@ -21,74 +21,118 @@ import { deriveKey, randomSalt } from './argon2id.ts';
 import { resolveCredentialProfile } from './credential-consumers.ts';
 import type { Argon2Params } from './params.ts';
 
-const KEYSTORE_VERSION = 1;
+/* What this build writes. Version 1 is still read: it is what every
+   installation before ticket 53 has on disk, and it predates the source
+   field below (see parseKeystore). */
+const KEYSTORE_VERSION = 2;
+const READABLE_VERSIONS: readonly number[] = [1, 2];
 const DATA_KEY_LENGTH = 32;
+
+/** Where the wrapping secret came from (ADR-0041). The wrap is identical
+    either way - this is what tells boot which gate to draw before anything
+    has been typed, and which KDF profile the secret was priced under. A
+    PIN's secret is not the four digits alone: data/journal-pin.ts binds
+    them to a device secret first, which is what makes four digits
+    defensible at all. */
+export type JournalSecretSource = 'passphrase' | 'pin';
+
+const SECRET_SOURCES: readonly JournalSecretSource[] = ['passphrase', 'pin'];
+
+/* Two consumers per source per operation (ADR-0013). The unlock rows both
+   select persisted parameters, so which one is used changes no bytes - it
+   keeps the registry honest about who derives what, and it is what makes
+   re-tuning one profile without touching the other possible. */
+const CONSUMERS = {
+  passphrase: {
+    setup: 'journal-passphrase-setup',
+    add: 'journal-passphrase-add',
+    unlock: 'journal-passphrase-unlock',
+    change: 'journal-passphrase-change'
+  },
+  pin: {
+    setup: 'journal-pin-setup',
+    add: 'journal-pin-add',
+    unlock: 'journal-pin-unlock',
+    change: 'journal-pin-change'
+  }
+} as const satisfies Record<JournalSecretSource, Record<string, string>>;
 
 export interface KeystoreMetadata {
   version: typeof KEYSTORE_VERSION;
   kdf: 'argon2id';
+  secretSource: JournalSecretSource;
   params: Argon2Params;
   salt: Uint8Array<ArrayBuffer>;
   nonce: Uint8Array<ArrayBuffer>;
   wrappedKey: Uint8Array<ArrayBuffer>;
 }
 
-/** Mints a fresh random data key and wraps it under the passphrase.
-    The returned data key goes to the database and the file stores, and
-    only ever lives in memory; the metadata is what may be persisted. */
+/** Mints a fresh random data key and wraps it under the secret. The
+    returned data key goes to the database and the file stores, and only
+    ever lives in memory; the metadata is what may be persisted. */
 export async function createKeystore(
-  passphrase: string,
-  params: Argon2Params = resolveCredentialProfile('journal-passphrase-setup')
+  secret: string,
+  params?: Argon2Params,
+  secretSource: JournalSecretSource = 'passphrase'
 ): Promise<{ metadata: KeystoreMetadata; dataKey: Uint8Array<ArrayBuffer> }> {
   const dataKey = crypto.getRandomValues(new Uint8Array(DATA_KEY_LENGTH));
-  return { metadata: await wrap(dataKey, passphrase, params), dataKey };
+  const chosen = params ?? resolveCredentialProfile(CONSUMERS[secretSource].setup);
+  return { metadata: await wrap(dataKey, secret, chosen, secretSource), dataKey };
 }
 
-export async function wrapDataKeyWithPassphrase(
+export async function wrapDataKeyWithSecret(
   dataKey: Uint8Array<ArrayBuffer>,
-  passphrase: string,
-  params: Argon2Params = resolveCredentialProfile('journal-passphrase-add')
+  secret: string,
+  params?: Argon2Params,
+  secretSource: JournalSecretSource = 'passphrase'
 ): Promise<KeystoreMetadata> {
-  return wrap(dataKey, passphrase, params);
+  return wrap(dataKey, secret, params ?? resolveCredentialProfile(CONSUMERS[secretSource].add), secretSource);
 }
 
-/** Recovers the data key, or throws DecryptionFailedError - a wrong
-    passphrase and a corrupted keystore are deliberately the same failure
-    (aesGcm.ts), and callers show only "wrong passphrase". */
+/** Recovers the data key, or throws DecryptionFailedError - a wrong secret
+    and a corrupted keystore are deliberately the same failure (aesGcm.ts),
+    and callers show only "that was not right". */
 export async function unlockKeystore(
   metadata: KeystoreMetadata,
-  passphrase: string
+  secret: string
 ): Promise<Uint8Array<ArrayBuffer>> {
   const wrappingKey = await deriveKey(
-    passphrase,
+    secret,
     metadata.salt,
-    resolveCredentialProfile('journal-passphrase-unlock', { persistedParams: metadata.params })
+    resolveCredentialProfile(CONSUMERS[metadata.secretSource].unlock, { persistedParams: metadata.params })
   );
   return decrypt(wrappingKey, metadata.nonce, metadata.wrappedKey);
 }
 
-/** Changes the passphrase by rewrapping the same data key: fresh salt,
-    fresh nonce, current parameter constants. Throws without side effects
-    when the current passphrase is wrong. */
+/** Changes the secret by rewrapping the same data key: fresh salt, fresh
+    nonce, current parameter constants. Throws without side effects when the
+    current secret is wrong.
+
+    Also how the access mode changes (ticket 53): naming a different
+    `newSource` rewraps under that source's profile, and the Journal itself
+    is never re-encrypted either way. Omitting it keeps the source the
+    keystore already had, which is the plain change-my-secret case. */
 export async function rewrapKeystore(
   metadata: KeystoreMetadata,
-  currentPassphrase: string,
-  newPassphrase: string,
-  params: Argon2Params = resolveCredentialProfile('journal-passphrase-change')
+  currentSecret: string,
+  newSecret: string,
+  params?: Argon2Params,
+  newSource: JournalSecretSource = metadata.secretSource
 ): Promise<KeystoreMetadata> {
-  const dataKey = await unlockKeystore(metadata, currentPassphrase);
-  return wrap(dataKey, newPassphrase, params);
+  const dataKey = await unlockKeystore(metadata, currentSecret);
+  return wrap(dataKey, newSecret, params ?? resolveCredentialProfile(CONSUMERS[newSource].change), newSource);
 }
 
 async function wrap(
   dataKey: Uint8Array<ArrayBuffer>,
-  passphrase: string,
-  params: Argon2Params
+  secret: string,
+  params: Argon2Params,
+  secretSource: JournalSecretSource
 ): Promise<KeystoreMetadata> {
   const salt = randomSalt();
-  const wrappingKey = await deriveKey(passphrase, salt, params);
+  const wrappingKey = await deriveKey(secret, salt, params);
   const { nonce, ciphertext } = await encrypt(wrappingKey, dataKey);
-  return { version: KEYSTORE_VERSION, kdf: 'argon2id', params, salt, nonce, wrappedKey: ciphertext };
+  return { version: KEYSTORE_VERSION, kdf: 'argon2id', secretSource, params, salt, nonce, wrappedKey: ciphertext };
 }
 
 /* --- the persisted form: JSON with base64 byte fields ------------------- */
@@ -101,6 +145,7 @@ export function serializeKeystore(metadata: KeystoreMetadata): string {
   return JSON.stringify({
     version: metadata.version,
     kdf: metadata.kdf,
+    secretSource: metadata.secretSource,
     params: metadata.params,
     salt: toBase64(metadata.salt),
     nonce: toBase64(metadata.nonce),
@@ -126,10 +171,19 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
   } catch {
     throw new KeystoreUnreadableError('keystore file is not JSON');
   }
-  if (raw.version !== KEYSTORE_VERSION) {
+  if (typeof raw.version !== 'number' || !READABLE_VERSIONS.includes(raw.version)) {
     throw new KeystoreUnreadableError(
-      `keystore format version ${String(raw.version)} is not the ${KEYSTORE_VERSION} this build reads`
+      `keystore format version ${String(raw.version)} is not one this build reads (${READABLE_VERSIONS.join(', ')})`
     );
+  }
+  /* Version 1 predates the field and could only ever have been a
+     passphrase: device-bound keys have never lived in this file
+     (data/device-bound-journal.ts keeps its own). Absent means passphrase;
+     present means it has to be a source this build knows, because guessing
+     would price the KDF under the wrong profile. */
+  const secretSource = raw.secretSource ?? 'passphrase';
+  if (typeof secretSource !== 'string' || !SECRET_SOURCES.includes(secretSource as JournalSecretSource)) {
+    throw new KeystoreUnreadableError(`keystore names a secret source this build does not have: ${String(secretSource)}`);
   }
   if (raw.kdf !== 'argon2id' || typeof raw.salt !== 'string' || typeof raw.nonce !== 'string' || typeof raw.wrappedKey !== 'string') {
     throw new KeystoreUnreadableError('keystore file is missing fields');
@@ -145,6 +199,7 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
   return {
     version: KEYSTORE_VERSION,
     kdf: 'argon2id',
+    secretSource: secretSource as JournalSecretSource,
     params: params as Argon2Params,
     salt: fromBase64(raw.salt),
     nonce: fromBase64(raw.nonce),

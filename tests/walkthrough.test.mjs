@@ -80,6 +80,13 @@ async function typePin(digits) {
   for (const digit of digits) await page.locator(`[data-key="${digit}"]`).click();
 }
 
+/** Mid-session re-entry in passphrase mode, which is what the demo journal
+    is on: SessionUnlock re-derives with the same passphrase boot used. */
+async function sessionPassphrase() {
+  await page.locator('#session-passphrase').fill('demo');
+  await page.locator('[data-session-submit]').click();
+}
+
 async function expectNoHorizontalOverflow(selector) {
   const overflow = await page.locator(selector).evaluate((node) => ({
     scrollWidth: node.scrollWidth,
@@ -1066,34 +1073,47 @@ try {
     throw new Error('a biometrics toggle rendered on a build with no Android platform behind it');
   }
 
-  await page.getByRole('switch', { name: 'App lock' }).click();
-  await page.waitForSelector('[data-pin-pad]');
-
-  // Second thoughts on a chromeless screen: there has to be a way back.
-  await page.locator('[data-cancel-setup]').click();
-  await page.waitForSelector('[data-security-list]');
-  if ((await page.getByRole('switch', { name: 'App lock' }).getAttribute('aria-checked')) === 'true') {
-    throw new Error('app lock switched itself on without a PIN');
+  /* Changing access mode (ticket 53). The demo journal opens under a
+     passphrase, so the module offers the other two and marks this one as
+     current - which is also the assertion that it reads the mode off the
+     keystore rather than tracking it separately. */
+  await page.locator('a[href="/settings/access-mode"]').click();
+  await page.waitForSelector('[data-access-modes]');
+  if (await page.locator('[data-list-row="passphrase"]').count()) {
+    throw new Error('the module offered the mode the journal is already on');
   }
+  const currentLine = await page.locator('[data-access-current]').innerText();
+  if (!/passphrase|hasło/i.test(currentLine)) throw new Error('the module names the wrong current mode: ' + currentLine);
 
-  await page.getByRole('switch', { name: 'App lock' }).click();
-  await page.waitForSelector('[data-pin-pad]');
+  await page.locator('[data-list-row="pin"]').click();
+  await page.waitForSelector('[data-access-chosen="pin"]');
+
+  /* The consequence, before the PIN is typed rather than after. This is the
+     honesty ADR-0041 made the condition of allowing four digits at all, so
+     the walkthrough checks the sentence is actually on the screen. */
+  const pinConsequence = await page.locator('[data-access-chosen="pin"]').innerText();
+  if (!/5 ?000|10[ ,.]?000/.test(pinConsequence)) {
+    throw new Error('the PIN screen does not state its brute-force figure: ' + pinConsequence);
+  }
+  await page.waitForSelector('[data-access-export-note]');
+
   await typePin('1234');
   await typePin('1234');
   await page.waitForSelector('[data-security-list]');
 
-  /* With app lock ON, the localStorage mirror must not hold the hash: a
-     4-digit hash in plaintext beside the encrypted journal would be an
-     offline-guessable secret (ticket 09 moved it into the pref table). */
+  /* The retired gate's preference is gone rather than merely unread: a
+     4-digit hash in plaintext beside the encrypted journal was an
+     offline-guessable secret, and ticket 53 deletes the row (migration v43). */
   const bootMirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
-  if ('pinHash' in bootMirror) throw new Error('the PIN hash is in the plaintext boot mirror');
+  if ('pinHash' in bootMirror) throw new Error('the retired PIN hash is in the plaintext boot mirror');
 
-  /* A cold start, not a navigation: the gate has to be what renders once
-     boot lands the real preferences - the demo build unlocks the journal
-     passphrase itself, so the PIN gate is the first thing asked for. */
+  /* A cold start, not a navigation: the PIN gate has to be what renders once
+     boot surveys the keystore and finds it says `pin`. The demo build's own
+     passphrase must not open it any more - that is the rewrap having
+     happened rather than a second keystore appearing beside the first. */
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
-  if (!(await page.locator('[data-applock]').count())) throw new Error('no gate after a reload');
+  if (!(await page.locator('[data-pin-pad]').count())) throw new Error('no PIN gate after a reload in PIN mode');
   if (await page.locator('[data-home-hello]').count()) throw new Error('Home rendered behind the gate');
 
   await typePin('9999');
@@ -1558,10 +1578,11 @@ try {
    then the forgotten-PIN reset.
    Last, because the reset is the one flow that destroys the journal. */
 try {
-  await fresh('/settings/lock?setup=1');
-  await typePin('1234');
-  await typePin('1234');
-  await page.waitForSelector('[data-settings-list]');
+  /* No PIN to set up first any more (ticket 53): mid-session locking now
+     re-asks whatever opens the journal, and in the demo build that is the
+     passphrase. So this flow drives the passphrase shape of the same screen,
+     and the PIN shape is covered where the mode is changed, above. */
+  await fresh('/settings');
   await page.getByRole('button', { name: /Disguise/i }).click();
 
   /* Disguise owns the whole tab, icon included: the title alone still leaves
@@ -1587,7 +1608,7 @@ try {
      event the listener waits for locks the app. */
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await page.waitForSelector('[data-applock]');
-  await typePin('1234');
+  await sessionPassphrase();
   await page.waitForSelector('[data-settings-list]');
 
   /* Two fingers, dispatched rather than driven: page.touchscreen only has
@@ -1608,7 +1629,7 @@ try {
   /* Disguised, the same gesture shows the decoy notes screen instead of the
      blank (ticket 30), and the tab title matches what the page claims to be.
      Left on afterwards: the reset below wipes preferences, disguise included. */
-  await typePin('1234');
+  await sessionPassphrase();
   await page.waitForSelector('[data-settings-list]');
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
@@ -1640,13 +1661,13 @@ try {
   await booted();
   if (await page.locator('[data-applock]').count()) throw new Error('still locked after the reset');
   const mirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
-  if (mirror.pinHash) throw new Error('the PIN survived the reset');
+  if (Object.keys(mirror).length) throw new Error('the boot mirror survived the reset: ' + JSON.stringify(mirror));
   /* Home rather than onboarding, because this is the demo build: an empty
      preference table is what makes it seed the persona, and the wipe left
      one. In a production build the first-run gate (flow 13) is what a
      wiped device meets instead. */
   await page.waitForSelector('[data-home-hello]');
-  ok('lock on leave, quick exit blanks and locks, disguised quick exit shows the decoy, forgotten-PIN reset clears the lock');
+  ok('lock on leave, quick exit blanks and locks, disguised quick exit shows the decoy, the reset clears the gate');
 } catch (e) { fail('lock on leave, quick exit and reset', e); }
 
 /* 19. the About screen shows the version the build was given (ticket 01).

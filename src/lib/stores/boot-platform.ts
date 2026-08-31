@@ -15,7 +15,8 @@
 
 import { androidJournalIsPlaintext } from '../data/sqlite/android-driver';
 import { markJournalBusy } from '../data/journal-busy';
-import { journalKeystoreExists, setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
+import { setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
+import { readKeystoreSource } from '../data/keystore-file';
 import {
   deviceBoundJournalExists,
   DeviceBoundKeyUnavailableError,
@@ -59,11 +60,11 @@ export type PlatformEffect = Extract<
 export async function performPlatformEffect(effect: PlatformEffect, dispatch: BootDispatch): Promise<void> {
   switch (effect.type) {
     case 'survey-web': {
-      const passphraseKeystoreExists = await journalKeystoreExists();
+      const keystoreSecretSource = await readKeystoreSource();
       const deviceBoundKeystoreExists = await deviceBoundJournalExists();
       dispatch({
         type: 'web-surveyed',
-        passphraseKeystoreExists,
+        keystoreSecretSource,
         deviceBoundKeystoreExists,
         plaintextJournalPresent: await plaintextJournalPresent(),
         marker: await opfsConversionMarker().read()
@@ -75,11 +76,11 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
        conversion marker are about a web install that predated the keystore,
        and a phone has neither - this is the first build that runs on one. */
     case 'survey-android': {
-      const passphraseKeystoreExists = await journalKeystoreExists();
+      const keystoreSecretSource = await readKeystoreSource();
       const { hasKey } = await androidKeystore.status();
       dispatch({
         type: 'android-surveyed',
-        passphraseKeystoreExists,
+        keystoreSecretSource,
         nativeDeviceKeyExists: hasKey,
         plaintextJournalPresent: await androidJournalIsPlaintext(JOURNAL_DATABASE)
       });

@@ -21,7 +21,7 @@ export type OnboardingStep = 'welcome' | 'name' | 'flag' | 'scales' | 'lock' | '
      flag     the app's whole visual identity, and the one choice that
               shows its own result while it is being made
      scales   which sliders appear when logging, i.e. what the journal is
-     lock     whether the app opens to anyone holding the phone
+     lock     whether leaving the app locks it
      checkin  the daily prompt, which is the difference between a journal
               kept and a journal installed
 
@@ -92,14 +92,16 @@ export function isSkippable(step: OnboardingStep): boolean {
 /** Where the flow hands over.
 
     Home, not Settings: a new person has just been told what the app is for
-    and the next thing they should see is the thing itself (F16). The one
-    exception is a PIN that was asked for and not yet typed - app lock is a
-    choice made here and a pair of four-digit entries made on the lock
-    screen, and that screen brings them Home itself once the two match. It
-    also carries its own Not now, so asking for a PIN and changing your mind
-    costs one tap rather than stranding anyone. */
-export function onboardingDestination(appLock: boolean): string {
-  return appLock ? '/settings/lock?setup=1&next=/' : '/';
+    and the next thing they should see is the thing itself (F16).
+
+    It used to have an exception. App lock was a choice made here and a pair
+    of four-digit entries made on a separate screen, so a toggle left on sent
+    the new user there instead of Home. Ticket 53 retired that gate - a PIN is
+    an access mode now, chosen in the security module - so there is nothing
+    left for this to route around, and ticket 54 puts the module itself into
+    the flow rather than after it. */
+export function onboardingDestination(): string {
+  return '/';
 }
 
 /** How small the sun starts. Large enough to be plainly the flag from the

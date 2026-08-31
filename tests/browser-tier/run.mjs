@@ -578,10 +578,11 @@ await block('ticket 10 (phase 2) browser tier', 14, async () => {
   else fail('the whole journal comes back through the passphrase', JSON.stringify(r));
 
   // Whole-database, not export/import: restore.ts never touches the pref
-  // table, so a PIN that survives proves the mechanism (ADR-0003/0020).
-  if (r.pinHashInDatabase === 'sentinel-converted-pinhash-6801')
-    ok('the PIN hash travels too - a device-local preference an archive would have dropped');
-  else fail('the PIN hash travels with the database', JSON.stringify(r.pinHashInDatabase));
+  // table, so a device-local preference that survives proves the mechanism
+  // (ADR-0003/0020).
+  if (r.deviceLocalInDatabase === 'sentinel-converted-device-local-6801')
+    ok('a device-local preference travels too - one an archive would have dropped');
+  else fail('a device-local preference travels with the database', JSON.stringify(r.deviceLocalInDatabase));
 
   if (r.searchHits >= 1) ok(`the FTS5 index came across with the pages rather than being rebuilt (${r.searchHits} hits)`);
   else fail('the FTS5 index came across with the pages', `got ${r.searchHits} hits`);

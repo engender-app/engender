@@ -7,7 +7,7 @@ import {
   credentialConsumer,
   resolveCredentialProfile,
 } from './credential-consumers.ts';
-import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ARGON2_PARAMS } from './params.ts';
+import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS } from './params.ts';
 
 test('the registry declares every supported credential consumer and its selection rule', () => {
   expect(CREDENTIAL_CONSUMERS).toEqual([
@@ -48,16 +48,28 @@ test('the registry declares every supported credential consumer and its selectio
       purpose: 'Derive the password for an archive header\'s recorded profile.'
     },
     {
-      consumer: 'pin-hash',
-      profile: 'app-lock-pin',
+      consumer: 'journal-pin-setup',
+      profile: 'pin-encryption',
       selectionRule: 'current',
-      purpose: 'Stamp a freshly chosen PIN with the current PIN profile.'
+      purpose: 'Mint a new keystore for first-run PIN unlock.'
     },
     {
-      consumer: 'pin-verify',
-      profile: 'app-lock-pin',
+      consumer: 'journal-pin-add',
+      profile: 'pin-encryption',
+      selectionRule: 'current',
+      purpose: 'Wrap an existing Journal data key under a PIN.'
+    },
+    {
+      consumer: 'journal-pin-unlock',
+      profile: 'pin-encryption',
       selectionRule: 'persisted',
-      purpose: 'Verify a PIN against the parameter set stored in its record.'
+      purpose: 'Unlock a PIN keystore with the parameter set it was written under.'
+    },
+    {
+      consumer: 'journal-pin-change',
+      profile: 'pin-encryption',
+      selectionRule: 'current',
+      purpose: 'Rewrap the Journal data key under the current PIN profile.'
     }
   ]);
 });
@@ -72,9 +84,9 @@ test('each profile keeps its current purpose and parameter set', () => {
       purpose: 'Wraps the Journal data key for portable cold-start unlock.',
       params: JOURNAL_ARGON2_PARAMS
     },
-    'app-lock-pin': {
-      purpose: 'Gates casual access during an unlocked session.',
-      params: PIN_ARGON2_PARAMS
+    'pin-encryption': {
+      purpose: 'Wraps the Journal data key under a short PIN, sealed to this device.',
+      params: PIN_ENCRYPTION_ARGON2_PARAMS
     }
   });
 });
@@ -82,7 +94,7 @@ test('each profile keeps its current purpose and parameter set', () => {
 test('current-profile consumers resolve the current params for their profile', () => {
   expect(resolveCredentialProfile('journal-passphrase-setup')).toBe(JOURNAL_ARGON2_PARAMS);
   expect(resolveCredentialProfile('archive-export')).toBe(ARCHIVE_ARGON2_PARAMS);
-  expect(resolveCredentialProfile('pin-hash')).toBe(PIN_ARGON2_PARAMS);
+  expect(resolveCredentialProfile('journal-pin-setup')).toBe(PIN_ENCRYPTION_ARGON2_PARAMS);
 });
 
 test('persisted-profile consumers resolve the params they are handed', () => {
@@ -90,7 +102,7 @@ test('persisted-profile consumers resolve the params they are handed', () => {
   const persistedPin = { memorySize: 2048, iterations: 3, parallelism: 1, hashLength: 32 };
 
   expect(resolveCredentialProfile('archive-import', { persistedParams: persistedArchive })).toBe(persistedArchive);
-  expect(resolveCredentialProfile('pin-verify', { persistedParams: persistedPin })).toBe(persistedPin);
+  expect(resolveCredentialProfile('journal-pin-unlock', { persistedParams: persistedPin })).toBe(persistedPin);
 });
 
 test('unknown consumers fail explicitly', () => {
@@ -99,9 +111,9 @@ test('unknown consumers fail explicitly', () => {
 });
 
 test('mismatched profile requests fail explicitly', () => {
-  expect(() => resolveCredentialProfile('pin-hash', { profile: 'archive-password' })).toThrow(CredentialConsumerMismatchError);
-  expect(() => resolveCredentialProfile('pin-hash', { profile: 'archive-password' })).toThrow(
-    'pin-hash uses the app-lock-pin profile, not archive-password'
+  expect(() => resolveCredentialProfile('journal-pin-setup', { profile: 'archive-password' })).toThrow(CredentialConsumerMismatchError);
+  expect(() => resolveCredentialProfile('journal-pin-setup', { profile: 'archive-password' })).toThrow(
+    'journal-pin-setup uses the pin-encryption profile, not archive-password'
   );
 });
 

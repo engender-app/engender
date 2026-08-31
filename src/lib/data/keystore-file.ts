@@ -10,7 +10,7 @@
    storage instead (ticket 13); the functions stay this small so that
    difference stays a storage difference. */
 
-import { parseKeystore, serializeKeystore, type KeystoreMetadata } from '../crypto/keystore';
+import { parseKeystore, serializeKeystore, type JournalSecretSource, type KeystoreMetadata } from '../crypto/keystore';
 
 export const KEYSTORE_FILE = 'keystore.json';
 
@@ -37,5 +37,24 @@ export async function writeKeystoreFile(metadata: KeystoreMetadata): Promise<voi
     await writable.write(serializeKeystore(metadata));
   } finally {
     await writable.close();
+  }
+}
+
+/** Which kind of secret opens this journal, or null on a first run. What
+    boot's survey asks (ticket 53): the mode is a property of the keystore
+    rather than something tracked beside it, so there is nothing to drift. */
+export async function readKeystoreSource(): Promise<JournalSecretSource | null> {
+  return (await readKeystoreFile())?.secretSource ?? null;
+}
+
+/** Removes the keystore, for a move to device-bound mode where there is no
+    secret to wrap under any more. Tolerates an absent file: the caller's
+    goal is that it is gone. */
+export async function removeKeystoreFile(): Promise<void> {
+  const root = await navigator.storage.getDirectory();
+  try {
+    await root.removeEntry(KEYSTORE_FILE);
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
   }
 }

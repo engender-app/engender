@@ -8,7 +8,7 @@ const payload = (name: string): ArchivePayload =>
   ({ journal: { entries: [] }, preferences: { name } }) as unknown as ArchivePayload;
 
 test('portable preferences are exactly the allowlist, whatever else is set', () => {
-  const portable = portablePreferences({ ...PREFERENCE_DEFAULTS, name: 'Alicja', pinHash: 'secret' });
+  const portable = portablePreferences({ ...PREFERENCE_DEFAULTS, name: 'Alicja', lastWrappedNotifiedPeriodKey: 'secret' });
 
   assert.deepEqual(Object.keys(portable).sort(), [...PORTABLE_KEYS].sort());
   assert.equal(portable.name, 'Alicja');

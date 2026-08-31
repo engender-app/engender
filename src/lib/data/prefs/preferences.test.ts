@@ -62,7 +62,7 @@ test('round-trips every value shape a preference can hold', async () => {
   await written.set('metricDimension', 'g-voice');
   await written.set('metricKind', 'dimension');
   await written.set('lastBackupAt', null);
-  await written.set('pinHash', null);
+  await written.set('backupNoticeDismissed', true);
   await written.set('a11yTextSizeBoost', true);
   await written.set('a11yLegibilityBoost', true);
   await written.set('a11yMotionReduce', true);
@@ -74,7 +74,7 @@ test('round-trips every value shape a preference can hold', async () => {
   expect(reread.get('metricDimension')).toBe('g-voice');
   expect(reread.get('metricKind')).toBe('dimension');
   expect(reread.get('lastBackupAt')).toBe(null);
-  expect(reread.get('pinHash')).toBe(null);
+  expect(reread.get('backupNoticeDismissed')).toBe(true);
   expect(reread.get('a11yTextSizeBoost')).toBe(true);
   expect(reread.get('a11yLegibilityBoost')).toBe(true);
   expect(reread.get('a11yMotionReduce')).toBe(true);

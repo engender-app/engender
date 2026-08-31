@@ -33,13 +33,21 @@ const stripStyle = (source: string) => source.replace(/<style[\s\S]*?<\/style>/g
 const stripComments = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
 
+/* Ticket 53 split LockScreen and PassphraseGate into three: the boot gate,
+   the mid-session one, and the setup module the first of them renders. The
+   module is not in this list because it is not a gate - it draws inside one,
+   and its frame is whichever gate or settings card mounted it. */
 const GATES = [
-  'src/lib/components/LockScreen.svelte',
-  'src/lib/components/PassphraseGate.svelte',
+  'src/lib/components/SessionUnlock.svelte',
+  'src/lib/components/JournalGate.svelte',
   'src/lib/components/AndroidKeyGate.svelte',
   'src/lib/components/DeviceBoundRecovery.svelte',
   'src/lib/components/SchemaTooNew.svelte'
 ];
+
+/** Held to the gates' content rules but not to their frame rule, for the
+    reason above. */
+const GATE_CONTENT = [...GATES, 'src/lib/components/AccessModeSetup.svelte', 'src/lib/components/PinPad.svelte'];
 
 const onboarding = read('src/routes/onboarding/+page.svelte');
 const onboardingMarkup = stripScript(onboarding);
@@ -138,7 +146,7 @@ describe('the first run', () => {
        was chosen, mark the first run done, go. */
     expect(onboardingMarkup.match(/onclick=\{complete\}/g) ?? []).toHaveLength(2);
     expect(onboarding).toContain('prefs.onboarded = true;');
-    expect(onboarding).toContain('goto(onboardingDestination(appLock));');
+    expect(onboarding).toContain('goto(onboardingDestination());');
   });
 
   it('never turns app lock on by itself', () => {

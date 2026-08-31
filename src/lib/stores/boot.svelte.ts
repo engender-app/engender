@@ -45,11 +45,16 @@ import {
   setupJournalPassphrase,
   unlockJournalPassphrase
 } from '../data/journal-passphrase';
+import { addJournalPin, setupJournalPin, unlockJournalPin } from '../data/journal-pin';
+import { removeDeviceBindingSecret } from '../data/device-secret';
 import {
+  addDeviceBoundJournal,
   DeviceBoundKeyUnavailableError,
   removeDeviceBoundJournal,
   setupDeviceBoundJournal
 } from '../data/device-bound-journal';
+import { removeKeystoreFile } from '../data/keystore-file';
+import type { JournalAccessMode } from '../data/journal-access-mode';
 import { JOURNAL_DATABASE } from '../data/conversion/web-ports';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles } from './videoFiles';
@@ -69,13 +74,13 @@ import type { BootState } from './boot-state';
 import { performPlatformEffect } from './boot-platform';
 import {
   describeError,
+  deviceBoundSetupOutcome,
   initialBoot,
   reduce,
-  skipSetupOutcome,
   type BootEffect,
   type BootEvent,
   type BootMachine,
-  type SkipSetupResult
+  type DeviceBoundSetupResult
 } from './boot-machine';
 
 let machine: BootMachine = initialBoot();
@@ -155,6 +160,10 @@ export async function resetApp(): Promise<void> {
     clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
     clearBootCache: () => bootCache.clear()
   });
+  /* PIN mode's binding key (data/device-secret.ts). Not covered by the OPFS
+     sweep above - it lives in IndexedDB - and a key left behind after a
+     reset is key material outliving the journal it belonged to. */
+  await removeDeviceBindingSecret().catch(() => {});
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
   location.replace('/');
@@ -209,10 +218,30 @@ export async function submitPassphraseUnlock(passphrase: string): Promise<void> 
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
 }
 
-/** The setup screen's "skip the passphrase" (ADR-0018). Whether the platform
-    would mint a device-bound key is the screen's answer to render, not a boot
-    transition - a refusal leaves the setup gate exactly where it was. */
-export async function submitSkipSetup(): Promise<SkipSetupResult> {
+/** The setup module's PIN choice (ticket 53). The PIN just chosen also opens
+    this session, the same way a chosen passphrase does. */
+export async function submitPinSetup(pin: string): Promise<void> {
+  const dataKey = await setupJournalPin(pin);
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
+}
+
+/** The PIN gate's submit. Throws DecryptionFailedError on a wrong PIN and
+    DeviceBindingUnavailableError when this browser has lost the key the PIN
+    was bound to; the gate owns both sentences, and they are different
+    sentences because only one of them is worth retyping for. */
+export async function submitPinUnlock(pin: string): Promise<void> {
+  const dataKey = await unlockJournalPin(pin);
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
+}
+
+/** The setup module's device-bound choice (ADR-0018, ADR-0041). Whether the
+    platform would mint the key is the screen's answer to render, not a boot
+    transition - a refusal leaves the module exactly where it was.
+
+    This was `submitSkipSetup` until ticket 53. Device-bound is one of the
+    module's equal choices now rather than the way past a wall, and the name
+    was the last place the old framing survived. */
+export async function submitDeviceBoundSetup(): Promise<DeviceBoundSetupResult> {
   if (isAndroid()) {
     const result = await openAndroidDataKey(androidKeystore, {
       title: '',
@@ -220,10 +249,10 @@ export async function submitSkipSetup(): Promise<SkipSetupResult> {
       cancel: '',
       deviceCredential: false
     });
-    const outcome = skipSetupOutcome(result);
-    /* The one place a refusal is not dispatched: skipping is an offer on the
-       setup gate, and turning it down leaves that gate exactly where it was
-       with an answer for the screen. */
+    const outcome = deviceBoundSetupOutcome(result);
+    /* The one place a refusal is not dispatched: this is an offer on the
+       setup module, and turning it down leaves the module exactly where it
+       was with an answer for the screen. */
     if (result.kind !== 'key') return outcome;
     dispatch({ type: 'android-key-answered', result });
     return outcome;
@@ -239,18 +268,48 @@ export async function submitSkipSetup(): Promise<SkipSetupResult> {
   }
 }
 
-export async function upgradeJournalToPassphrase(passphrase: string): Promise<void> {
+/** Changing access mode with the journal already open (ticket 53's Settings
+    screen). The data key is in memory, so every direction is a rewrap of the
+    same key: the journal is never re-encrypted and the change is instant
+    whatever the journal's size.
+
+    Write-then-clear, in that order, because the order is the crash safety.
+    A new keystore lands before the old material goes, and
+    chooseJournalAccessMode prefers a secret keystore over leftover
+    device-bound material - so an interruption anywhere in here leaves a
+    journal that still opens, under one mode or the other, never neither. */
+export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
-  await addJournalPassphrase(sessionDataKey, passphrase);
-  dispatch({ type: 'passphrase-added' });
+
+  if (target === 'device-bound') {
+    /* Android's Keystore bridge mints its own data key and cannot be asked
+       to wrap this one, so this direction is web-only and the settings
+       screen does not offer it on a phone. */
+    if (isAndroid()) throw new Error('changing to device-bound mode is not available on Android');
+    await addDeviceBoundJournal(sessionDataKey);
+    dispatch({ type: 'access-mode-changed', accessMode: 'device-bound' });
+    await removeKeystoreFile().catch((error) => {
+      console.warn('could not remove the keystore file after moving to device-bound mode', error);
+    });
+    await removeDeviceBindingSecret().catch(() => {});
+    return;
+  }
+
+  if (target === 'pin') await addJournalPin(sessionDataKey, secret);
+  else await addJournalPassphrase(sessionDataKey, secret);
+  dispatch({ type: 'access-mode-changed', accessMode: target });
+
+  /* PIN mode keeps its own binding key, so only a move *away* from it clears
+     one. Everything else here is the previous mode's leftovers. */
+  if (target !== 'pin') await removeDeviceBindingSecret().catch(() => {});
   if (isAndroid()) {
     await androidKeystore.erase().catch((error) => {
-      console.warn('could not erase the Android device-bound key after adding a passphrase', error);
+      console.warn('could not erase the Android device-bound key after changing access mode', error);
     });
     return;
   }
   await removeDeviceBoundJournal().catch((error) => {
-    console.warn('could not remove the browser device-bound key after adding a passphrase', error);
+    console.warn('could not remove the browser device-bound key after changing access mode', error);
   });
 }
 
