@@ -59,6 +59,19 @@ export interface LabsArea {
       have to remember to reset on a fresh device. */
   getMostRecentAnalyte(): Promise<string | null>;
   getResults(analyte: string): Promise<LabResult[]>;
+  /** The most recently drawn result of any analyte, or null with no results
+      at all. What the care overview marks its draw at (phase 5 deepening
+      ticket 07): the rail asks "when was blood last taken", which is a
+      question about draw days across every analyte at once, where
+      getMostRecentAnalyte above asks the unrelated question of what was
+      last typed in.
+
+      By draw day, ties broken by which was saved last. A single draw
+      normally yields several analytes on one day and there is no stored
+      panel to group them by, so the tie has to be broken by something: the
+      last one saved off one slip is the one a person was most recently
+      looking at. */
+  getLatestResult(): Promise<LabResult | null>;
   /** The analyte's results split into one series per unit, oldest series
       first. A result logged in ng/dL and one logged in nmol/L differ by a
       factor of about 29, so drawing them as one line invents a change that
@@ -175,6 +188,13 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
     },
 
     getResults: resultsFor,
+
+    async getLatestResult() {
+      const rows = await driver.query<LabRow>(
+        `SELECT ${LAB_COLUMNS} FROM lab_result ORDER BY epoch_day DESC, updated_at DESC, id DESC LIMIT 1`
+      );
+      return rows[0] ? toLabResult(rows[0]) : null;
+    },
 
     /* Grouped in the app rather than by SQL, because the key is the app's
        rule and the stored text is left alone (no migration, nothing

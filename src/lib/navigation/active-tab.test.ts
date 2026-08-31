@@ -48,6 +48,10 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/on-this-day')).toBe('stats');
   });
 
+  it('lights settings for the care overview, the health group\'s own row', () => {
+    expect(activeTabKey('/care')).toBe('settings');
+  });
+
   it('lights settings for doses, even though its route sits outside /settings', () => {
     expect(activeTabKey('/doses')).toBe('settings');
   });

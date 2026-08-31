@@ -52,29 +52,25 @@ describe('what the More hub is built from', () => {
     /* The row stays written in the list below so its icon, href and group
        are held like any other row's; what changed with ADR-0043 is that a
        filter decides whether it renders. Default and transfemme profiles
-       pass through a Health group of 8 rows, not 9. The decision lives in
+       pass through a Health group of 5 rows, not 6. The decision lives in
        cycleTracking.ts, not inline here - the hub only reads its answer. */
     expect(more).toContain("from '$lib/data/cycleTracking'");
     expect(more).toContain('cycleTrackingVisible');
     expect(more).toMatch(/filter\(\(row\) => row\.key !== 'cycle-events'\)/);
   });
 
-  it('keeps every one of the 23 rows, with an unchanged icon, href and group', () => {
-    /* The spec (and its own acceptance box) says "22 rows in four groups";
-       the four groups actually sum to 23 (5 + 9 + 4 + 5), doubt included.
-       Pre-existing on main - row content and count are out of this
-       ticket's scope - so this test holds the real count rather than the
-       spec's, and says so instead of quietly matching the wrong number. */
+  it('keeps every row, with an unchanged icon, href and group', () => {
+    /* 20 rows in four groups (5 + 6 + 4 + 5), doubt included. It was 23 in
+       5 + 9 + 4 + 5 until deepening ticket 07 put labs, regimen,
+       hormone-curve and doses behind the care row - the four surfaces /care
+       opens on. Nothing else moved, and no row changed its icon or href. */
     const EXPECTED: [string, string, string][] = [
       ['photos', 'image', '/settings/photos'],
       ['measurements', 'ruler', '/settings/measurements'],
       ['sizes', 'package', '/settings/sizes'],
       ['hair-progress', 'comb', '/settings/hair-progress'],
       ['hair-removal', 'shuffle', '/settings/hair-removal'],
-      ['labs', 'flask', '/settings/labs'],
-      ['regimen', 'timeline', '/settings/regimen'],
-      ['hormone-curve', 'curve', '/settings/hormone-curve'],
-      ['doses', 'clock', '/doses'],
+      ['care', 'timeline', '/care'],
       ['cycle-events', 'calendar', '/settings/cycle-events'],
       ['side-effects', 'zap', '/settings/side-effects'],
       ['surgery', 'flag', '/settings/surgery'],
