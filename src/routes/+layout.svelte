@@ -30,7 +30,14 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
-  import { bootGate, isErrorState, isReadyState, midSessionLockApplies } from '$lib/stores/boot-state';
+  import {
+    bootGate,
+    isErrorState,
+    isReadyState,
+    midSessionLockApplies,
+    needsOnboardingAccessMode
+  } from '$lib/stores/boot-state';
+  import { onboardingProgress } from '$lib/onboarding/first-run.svelte';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
   import { App as AndroidAppPlugin } from '@capacitor/app';
@@ -98,7 +105,25 @@
      that could not start - because both are the same "there is no journal
      open yet, and here is why". */
   let gate = $derived(bootGate(bootState));
-  let needsPassphrase = $derived(gate === 'passphrase');
+
+  let path = $derived(page.url.pathname);
+
+  /* The first-run exception (ticket 54): a brand new install's very first
+     boot state is `needs-setup` - nothing to unlock, nothing chosen yet -
+     which used to mean the gate above painted before onboarding's own
+     first-run redirect ever got a chance to run, since `prefs.onboarded`
+     lives in the encrypted database this state has no database for. Held
+     off only until onboarding's flow reaches its own access-mode step
+     (`onboardingProgress`, latched by the route itself): before that, every
+     onboarding step holds its answers in local state and touches no
+     database, so there is nothing the gate is protecting yet. From that
+     step on, the gate is the four-mode module itself (ticket 53) - the same
+     component Settings uses, appearing here once rather than a second copy
+     built into onboarding's own template. */
+  let onboardingFirstRun = $derived(
+    needsOnboardingAccessMode(bootState) && !onboardingProgress.reachedAccessMode
+  );
+  let needsPassphrase = $derived(gate === 'passphrase' && !onboardingFirstRun);
 
   /* The same moment on Android, where nothing is typed: Keystore is holding
      the data key and wants the platform's word for who is here first
@@ -112,7 +137,6 @@
      is something the person can do. */
   let schemaTooNew = $derived(gate === 'schema-too-new');
 
-  let path = $derived(page.url.pathname);
   /* The routes that render without chrome whoever is looking at them
      (navigation/chromeless.ts) folded together with the gate states, which
      depend on how boot went and are this file's own. */
@@ -122,8 +146,20 @@
       needsAuthentication ||
       needsDeviceRecovery ||
       schemaTooNew ||
+      onboardingFirstRun ||
       chromelessPath(path)
   );
+
+  /* The other half of the exception above: onboarding is a route like any
+     other, so getting there needs the same redirect the returning-user
+     first-run gate below uses - except this one cannot wait for
+     `isReadyState`, since a state with no database is exactly what it is
+     for. Guarded in the template as well (`main`'s own onboardingFirstRun
+     branch) so the route underneath never paints for the frame this takes
+     to run. */
+  $effect(() => {
+    if (onboardingFirstRun && !path.startsWith('/onboarding')) goto('/onboarding');
+  });
 
   /* Tier 2 (phase 5 ticket 18): one screen becoming another.
 
@@ -469,6 +505,10 @@
         <!-- Instead of the route, not over it: nothing below this renders,
              so no screen mounts and no query runs while the app is locked. -->
         <SessionUnlock mode={bootState.accessMode} />
+      {:else if onboardingFirstRun && !path.startsWith('/onboarding')}
+        <!-- The effect above is already navigating here; nothing renders
+             for the frame that takes, so a brand new install's first paint
+             is never whatever route the URL happened to be (ticket 54). -->
       {:else}
         {@render children()}
       {/if}

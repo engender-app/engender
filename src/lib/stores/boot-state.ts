@@ -375,6 +375,16 @@ export function passphraseMode(state: BootState): PassphraseMode | null {
   }
 }
 
+/** A brand new install: no keystore of any kind exists yet, so there is
+    nothing to unlock and nothing chosen (ticket 54). This is the one gate
+    state onboarding's own flow is allowed to render over instead of - every
+    other passphrase state (an unlock, a conversion) still meets the gate
+    first, which is why this checks `passphraseMode` rather than `bootGate`
+    alone. */
+export function needsOnboardingAccessMode(state: BootState): boolean {
+  return bootGate(state) === 'passphrase' && passphraseMode(state) === 'setup';
+}
+
 export function passphraseScreen(state: BootState): PassphraseScreen {
   switch (state.status) {
     case 'needs-setup':
