@@ -87,12 +87,15 @@
 
   /* Only two benchmarks have a delta at all - comparing two recordings, or
      comparing across different passages, has nothing to compute (the
-     passage gate lives in benchmarkDelta.ts itself, not here). */
-  let delta = $derived(
-    kind === 'benchmarks' && pair
-      ? acousticDelta(anchors[pair.left] as VoiceBenchmark, anchors[pair.right] as VoiceBenchmark)
-      : undefined
-  );
+     passage gate lives in benchmarkDelta.ts itself, not here). Narrowed
+     rather than cast: `kind` and `anchors` agreeing is an invariant this
+     function should verify, not assume. */
+  let delta = $derived.by(() => {
+    if (!pair) return undefined;
+    const left = anchors[pair.left];
+    const right = anchors[pair.right];
+    return isBenchmark(left) && isBenchmark(right) ? acousticDelta(left, right) : undefined;
+  });
 
   /* F0 median over every benchmark, oldest first - independent of which two
      are picked to compare. The trend and the pair compare are two
@@ -120,8 +123,12 @@
     comparing = false;
   }
 
+  function isBenchmark(anchor: Anchor): anchor is VoiceBenchmark {
+    return 'passageFileName' in anchor;
+  }
+
   function fileNameOf(anchor: Anchor): string {
-    return 'passageFileName' in anchor ? anchor.passageFileName : anchor.fileName;
+    return isBenchmark(anchor) ? anchor.passageFileName : anchor.fileName;
   }
 
   function cellAria(anchor: Anchor): string {
