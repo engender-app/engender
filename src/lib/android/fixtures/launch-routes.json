@@ -3,6 +3,8 @@
   { "route": "/settings/reminders/r-1", "accepted": true },
   { "route": "/settings/reminders/", "accepted": false },
   { "route": "/settings/reminders/r-1/extra", "accepted": false },
+  { "route": "/settings/reminders/r-1?evil=1", "accepted": false },
+  { "route": "/settings/reminders/new", "accepted": true },
 
   { "route": "/entry/new/20313", "accepted": true },
   { "route": "/entry/new/0", "accepted": true },
