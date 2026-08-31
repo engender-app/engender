@@ -19,8 +19,10 @@
      the left side of that band is where the chart starts and not where
      anything happened.
 
-     A moment is a tick off the baseline, a fifth of the plot's height. Not
-     floor to ceiling: a full-height line is the loudest thing on a chart, it
+     A moment is a mark off the baseline, a fifth of the plot's height. Two
+     registers, and they never meet: what began is written along the top,
+     what happened is written along the bottom, and the readings run between
+     them untouched. Not floor to ceiling: a full-height line is the loudest thing on a chart, it
      crosses the data it is supposed to be context for, and three of them on
      adjacent days is a thicket. It is also already spoken for - the scrub
      draws a dotted full-height line, and a second full-height line in the
@@ -57,7 +59,7 @@
   {#each placed.bands as band (band.key)}
     <rect class="kit-annotation-band" x={band.x1} y="0" width={Math.max(band.x2 - band.x1, 1)} {height} />
     {#each band.edges as edge, i (i)}
-      <line class="kit-annotation-edge" x1={edge} x2={edge} y1="0" y2={height} />
+      <line class="kit-annotation-edge" x1={edge} x2={edge} y1="0" y2={height * MARK_HEIGHT} />
     {/each}
   {/each}
 
