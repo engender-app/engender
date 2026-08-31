@@ -159,7 +159,13 @@ public final class ReminderScheduler {
             if (suffix.isEmpty()) return route;
             if (!suffix.startsWith("/")) return null;
             String reminderId = suffix.substring(1);
-            return reminderId.isBlank() || reminderId.contains("/") ? null : route;
+            if (reminderId.isBlank()) return null;
+            for (int i = 0; i < reminderId.length(); i++) {
+                char c = reminderId.charAt(i);
+                boolean ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-';
+                if (!ok) return null;
+            }
+            return route;
         }
         // Phase 4 features ticket 04: wrapped and on-this-day notifications
         // deep-link through this same allowlist, not a route-specific one of
