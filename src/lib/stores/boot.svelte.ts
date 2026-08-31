@@ -127,6 +127,15 @@ let started = false;
    data/live/, and bootState.journal is the handle for everything else. */
 let openDriver: SqliteDriver | null = null;
 let sessionDataKey: Uint8Array<ArrayBuffer> | null = null;
+
+/** The key the open journal is encrypted under, for the one thing outside
+    this module that has to encrypt something itself: the entry-draft mirror
+    (data/entryDraftStore.ts), which is journal content living in
+    localStorage rather than in the database. Null until a journal is open,
+    and the mirror writes nothing while it is. */
+export function journalDataKey(): Uint8Array<ArrayBuffer> | null {
+  return sessionDataKey;
+}
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
     it needs the file ops of the driver that failed (ticket 04). */
