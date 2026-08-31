@@ -9,7 +9,7 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { RUN_OUT_LEAD_DAYS } from '$lib/data/stockProjection';
+  import { stockRemainingLabel, stockRunOutLabel } from '$lib/data/vocabulary/stockLabel';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -32,19 +32,6 @@
      drug and made the row three lines deep. One statement, under the list,
      summing what was left out. */
   let excludedDoses = $derived(projections.reduce((total, row) => total + row.projection.excludedDoses, 0));
-
-  function runOutText(row: StockProjectionRow): string {
-    const { remaining, runOutEpochDay } = row.projection;
-    if (runOutEpochDay === null) return m.stock_run_out_unknown();
-    if (remaining <= 0) return m.stock_run_out_now();
-    const date = fmtDay(runOutEpochDay, { day: 'numeric', month: 'short', year: 'numeric' });
-    return runOutEpochDay - todayEpochDay() <= RUN_OUT_LEAD_DAYS ? m.stock_run_out_soon({ date }) : m.stock_run_out({ date });
-  }
-
-  function isApproaching(row: StockProjectionRow): boolean {
-    const { runOutEpochDay } = row.projection;
-    return runOutEpochDay !== null && runOutEpochDay - todayEpochDay() <= RUN_OUT_LEAD_DAYS;
-  }
 
   let editor = $state<{
     id?: string;
@@ -103,12 +90,13 @@
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, 0)}>
           {#each projections as row (row.entry.id)}
+            {@const runOut = stockRunOutLabel(row.projection, todayEpochDay())}
             <ListRow
               key={row.entry.id}
               data-stock={row.entry.id}
               icon="package"
               title={row.entry.drug}
-              subtitle={`${m.stock_remaining({ count: row.projection.remaining, unit: row.entry.unit })} · ${m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}`}
+              subtitle={`${stockRemainingLabel(row.projection.remaining, row.entry.unit)} · ${m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}`}
               chevron={false}
               onclick={() => openEditor(row)}
             >
@@ -118,11 +106,8 @@
                      rather than as a pill wedged into the title. It takes the
                      warning colour only where there is something to be warned
                      about; otherwise it is a reading like any other. -->
-                <span
-                  class="stock-run-out"
-                  class:notice-warn={isApproaching(row) || row.projection.remaining <= 0}
-                >
-                  {runOutText(row)}
+                <span class="stock-run-out" class:notice-warn={runOut.warn}>
+                  {runOut.text}
                 </span>
               {/snippet}
             </ListRow>

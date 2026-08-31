@@ -1,6 +1,7 @@
-/* The medication stock area (phase 4 ticket 04, CONTEXT: pending). One row
-   per drug (migrations.ts v7, stockProjection.ts): remaining stock and its
-   run-out projection are both derived on read, never stored (ADR-0010).
+/* The medication stock area (phase 4 ticket 04, CONTEXT: "Medication stock",
+   "Run-out projection"). One row per drug (migrations.ts v7,
+   stockProjection.ts): remaining stock and its run-out projection are both
+   derived on read, never stored (ADR-0046).
 
    Reads doses through DosesArea and episodes through RegimenArea, and
    writes the run-out reminder through RemindersArea, rather than
@@ -48,7 +49,7 @@ export interface StockArea {
       unknown id throws. */
   deleteEntry(id: string): Promise<void>;
   /** Every drug's projection as of `asOfEpochDay` - a read-only aggregate
-      over the dose log (ADR-0012): nothing here is stored. */
+      over the dose log (ADR-0046): nothing here is stored. */
   getProjections(asOfEpochDay: number): Promise<StockProjectionRow[]>;
   /** Recomputes every drug's projection and reconciles its auto-managed
       run-out Reminder against it (box 4, stockReminder.ts) - created,
