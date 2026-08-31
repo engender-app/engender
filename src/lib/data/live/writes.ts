@@ -553,6 +553,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       dayAverages: ['entry', 'dimension'],
       bodyRegionTrend: ['entry'],
+      bodyRegionBreakdown: ['entry', 'measurement', 'photo', 'hairRemoval', 'hairProgress'],
       wearTimeTrend: ['wearSession'],
       tallyTrend: ['tally'],
       entryCountsByDay: ['entry'],
