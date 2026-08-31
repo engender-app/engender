@@ -35,6 +35,19 @@ export const MAX_F0_CV = 0.08;
     here rather than running to Infinity. */
 const MAX_SNR_DB = 60;
 
+/** How much unvoiced audio it takes before it counts as a measurement of the
+    room: 100 ms at the tracker's frame. Below that the only unvoiced frames
+    are the two or three straddling the moment the voice started, which carry
+    half a voice each and would be read as a very loud room - the browser
+    tier caught exactly that, reporting a clean synthesized take as noisy
+    because its file began three frames before the tone did. */
+const MIN_ROOM_FRAMES = 10;
+
+/** The quiet quarter of the room's frames. A percentile rather than the
+    median for the same reason: what is wanted is the room, and the loud end
+    of the unvoiced frames is usually breath, a chair, or the edge of a word. */
+const ROOM_PERCENTILE = 0.25;
+
 export type QualityCheck = 'clipping' | 'noise' | 'tooShort' | 'unsteady';
 
 /** The passage is read aloud, so its pitch moves. Everything else applies. */
@@ -74,10 +87,10 @@ function median(values: number[]): number {
 
     Two ends of the scale, both stated rather than left implicit. A take with
     no voiced frame has no signal to measure and scores zero, which the length
-    check is failing it for anyway. A take with no unvoiced frame has no room
-    to measure, and it got that way by being periodic from end to end - which
-    is what a clean take with the microphone already running sounds like - so
-    it scores the ceiling. */
+    check is failing it for anyway. A take with too little unvoiced audio to
+    call a room has none to measure, and it got that way by being periodic
+    from end to end - which is what a clean take with the microphone already
+    running sounds like - so it scores the ceiling. */
 function signalToNoiseDb(samples: Float32Array, sampleRate: number, track: PitchTrack): number {
   const hop = track.frames.length > 1
     ? Math.round((track.frames[1].atSeconds - track.frames[0].atSeconds) * sampleRate)
@@ -96,8 +109,9 @@ function signalToNoiseDb(samples: Float32Array, sampleRate: number, track: Pitch
   }
 
   if (voiced.length === 0) return 0;
-  if (room.length === 0) return MAX_SNR_DB;
-  const floor = median(room);
+  if (room.length < MIN_ROOM_FRAMES) return MAX_SNR_DB;
+  const sorted = [...room].sort((a, b) => a - b);
+  const floor = sorted[Math.floor(ROOM_PERCENTILE * (sorted.length - 1))];
   if (floor === 0) return MAX_SNR_DB;
   return Math.min(MAX_SNR_DB, 20 * Math.log10(median(voiced) / floor));
 }

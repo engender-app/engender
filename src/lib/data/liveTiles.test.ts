@@ -7,7 +7,6 @@ import type {
   RegimenEpisode,
   Tryout
 } from './types';
-import type { DatedRecording } from './journal/voiceRecordings';
 import type { JournalingPauseRange } from './journalingPause';
 import {
   shouldShowActiveTryoutTile,
@@ -243,9 +242,9 @@ describe('liveTiles trigger predicates', () => {
   });
 
   describe('shouldShowVoiceBenchmarkNudge', () => {
-    it('triggers when no recordings exist', () => {
+    it('triggers when no benchmarks exist', () => {
       const result = shouldShowVoiceBenchmarkNudge({
-        recordings: [],
+        benchmarks: [],
         todayEpochDay: today,
         enabled: true,
         snoozed: false
@@ -254,10 +253,10 @@ describe('liveTiles trigger predicates', () => {
       expect(result?.daysElapsed).toBeNull();
     });
 
-    it('triggers when last recording was > 14 days ago', () => {
-      const recordings: DatedRecording[] = [{ id: 'rec-1', fileName: 'voice-1.webm', epochDay: today - 15 }];
+    it('triggers when the last benchmark was > 14 days ago', () => {
+      const benchmarks = [{ epochDay: today - 15 }];
       const result = shouldShowVoiceBenchmarkNudge({
-        recordings,
+        benchmarks,
         todayEpochDay: today,
         enabled: true,
         snoozed: false
@@ -266,11 +265,11 @@ describe('liveTiles trigger predicates', () => {
       expect(result?.daysElapsed).toBe(15);
     });
 
-    it('suppresses when last recording was <= 14 days ago', () => {
-      const recordings: DatedRecording[] = [{ id: 'rec-1', fileName: 'voice-1.webm', epochDay: today - 14 }];
+    it('suppresses when the last benchmark was <= 14 days ago', () => {
+      const benchmarks = [{ epochDay: today - 14 }];
       expect(
         shouldShowVoiceBenchmarkNudge({
-          recordings,
+          benchmarks,
           todayEpochDay: today,
           enabled: true,
           snoozed: false
