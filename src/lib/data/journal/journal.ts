@@ -19,6 +19,7 @@ import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinician
 import { makeJournalBookArea, type JournalBookArea } from './journalBook';
 import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
 import { makeCycleEventsArea, type CycleEventsArea } from './cycleEvents';
+import { makeDayArea, type DayArea } from './day';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDoubtJournalArea, type DoubtJournalArea } from './doubtJournal';
 import { makeDosesArea, type DosesArea } from './doses';
@@ -164,6 +165,14 @@ export interface Journal {
       not a sixth owner for any of them - every figure on it already comes
       from one of those areas' own read paths. */
   clinicianSummary: ClinicianSummaryArea;
+  /** Everything one calendar day holds, drawn from every area that records
+      something dated (phase 5 deepening ticket 21, ADR-0001). A view over
+      rows sixteen areas own, like clinicianSummary above and for the same
+      reason - each section reads through the area's own path and computes
+      nothing (ADR-0010). Which areas show, and which are written down as
+      deliberately not showing, is day.ts's registry rather than a list of
+      imports on the screen. Reads only: opening a day writes nothing. */
+  day: DayArea;
   /** A keepsake print of a chosen range, carrying only the record types the
       person picked (phase 5 ticket 17). A view over rows entries,
       milestones and side effects own, like clinicianSummary above and for
@@ -294,6 +303,15 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const doubtJournal = makeDoubtJournalArea(driver);
   const feltSense = makeFeltSenseArea(driver);
   const tags = makeTagsArea(driver);
+  const measurements = makeMeasurementsArea(driver);
+  const sizeRecords = makeSizeRecordsArea(driver);
+  const personalEffects = makePersonalEffectsArea(driver);
+  const cycleEvents = makeCycleEventsArea(driver);
+  const tally = makeTallyArea(driver);
+  const wearSessions = makeWearSessionsArea(driver, reminders);
+  const hairProgress = makeHairProgressArea(driver, files);
+  const hairRemoval = makeHairRemovalArea(driver, files);
+  const tryouts = makeTryoutsArea(driver, files, milestones, feltSense);
 
   return {
     entries,
@@ -306,29 +324,47 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     voice: makeVoiceArea(driver),
     videos: makeVideoArea(driver),
     labs,
-    measurements: makeMeasurementsArea(driver),
-    sizeRecords: makeSizeRecordsArea(driver),
+    measurements,
+    sizeRecords,
     reminders,
-    tally: makeTallyArea(driver),
+    tally,
     regimen,
     doses,
     stock: makeStockArea(driver, doses, regimen, reminders),
     exposure,
     hormoneCurve: makeHormoneCurveArea(doses, regimen, labs),
     sideEffects,
-    cycleEvents: makeCycleEventsArea(driver),
+    cycleEvents,
     journalingPauses: makeJournalingPausesArea(driver),
-    wearSessions: makeWearSessionsArea(driver, reminders),
+    wearSessions,
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
+    day: makeDayArea({
+      entries,
+      milestones,
+      doses,
+      labs,
+      measurements,
+      sizeRecords,
+      sideEffects,
+      personalEffects,
+      cycleEvents,
+      tally,
+      wearSessions,
+      feltSense,
+      hairProgress,
+      hairRemoval,
+      procedures,
+      tryouts
+    }),
     journalBook: makeJournalBookArea({ entries, milestones, sideEffects, stats, tags }),
-    personalEffects: makePersonalEffectsArea(driver),
+    personalEffects,
     effectCategories: makeEffectCategoriesArea(driver),
-    hairProgress: makeHairProgressArea(driver, files),
-    hairRemoval: makeHairRemovalArea(driver, files),
+    hairProgress,
+    hairRemoval,
     procedures,
     doubtJournal,
     feltSense,
-    tryouts: makeTryoutsArea(driver, files, milestones, feltSense),
+    tryouts,
     letters: makeLettersArea(driver),
     roadmap: makeRoadmapArea(driver),
     checklists,
