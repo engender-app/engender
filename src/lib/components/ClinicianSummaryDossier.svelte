@@ -83,7 +83,7 @@
           </span>
         </div>
         <div class="dossier-profile-item">
-          <span class="dossier-profile-label">{m.clinician_summary_generated({ date: '' }).replace('{date}', '').trim() || 'Generated'}</span>
+          <span class="dossier-profile-label">{m.clinician_summary_generated_label()}</span>
           <span class="dossier-profile-value num">
             {dayShort(dossier.generatedAtEpochDay)}
           </span>
