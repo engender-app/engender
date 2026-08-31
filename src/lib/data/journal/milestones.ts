@@ -32,6 +32,7 @@ export interface MilestoneInput {
   name: string;
   epochDay: number;
   templateKey?: string | null;
+  procedureId?: string | null;
   /** The final photo intent for this save. Omitted means preserve, which
       keeps existing callers and non-photo edits from touching photo rows. */
   photo?: MilestonePhotoChange;
@@ -54,7 +55,8 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         name: string;
         epoch_day: number;
         template_key: string | null;
-      }>('SELECT id, uuid, name, epoch_day, template_key FROM milestone ORDER BY epoch_day, id');
+        procedure_id: string | null;
+      }>('SELECT id, uuid, name, epoch_day, template_key, procedure_id FROM milestone ORDER BY epoch_day, id');
       // One query for every milestone's photo rather than one per row: the
       // milestones screen renders the whole list at once.
       const photos = await photosByMilestone(driver);
@@ -63,6 +65,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         name: r.name,
         epochDay: r.epoch_day,
         templateKey: r.template_key,
+        procedureId: r.procedure_id ?? null,
         photo: photos.get(r.id) ?? null
       }));
     },
@@ -84,20 +87,22 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
           : [];
       const staged = photoChange.action === 'replace' ? await stagePhoto(files, photoChange.photo) : null;
 
+      const hasProc = input.procedureId !== undefined;
+      const updateSql = hasProc
+        ? 'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, procedure_id = ?, updated_at = ? WHERE uuid = ?'
+        : 'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, updated_at = ? WHERE uuid = ?';
+      const updateParams = hasProc
+        ? [input.name, input.epochDay, input.templateKey ?? null, input.procedureId ?? null, now(), input.id]
+        : [input.name, input.epochDay, input.templateKey ?? null, now(), input.id];
+
       if (input.id) {
         if (photoChange.action === 'preserve') {
-          const result = await driver.run(
-            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, updated_at = ? WHERE uuid = ?',
-            [input.name, input.epochDay, input.templateKey ?? null, now(), input.id]
-          );
+          const result = await driver.run(updateSql, updateParams);
           assertChanged(result, `milestone: ${input.id}`);
           return input.id;
         }
         await driver.transaction(async () => {
-          const result = await driver.run(
-            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, updated_at = ? WHERE uuid = ?',
-            [input.name, input.epochDay, input.templateKey ?? null, now(), input.id]
-          );
+          const result = await driver.run(updateSql, updateParams);
           assertChanged(result, `milestone: ${input.id}`);
           await driver.run('DELETE FROM photo WHERE milestone_id = ?', [milestoneRowid]);
           if (staged) {
@@ -110,15 +115,15 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       const uuid = mintUuid();
       if (!staged) {
         await driver.run(
-          'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
-          [uuid, input.name, input.epochDay, input.templateKey ?? null, now()]
+          'INSERT INTO milestone (uuid, name, epoch_day, template_key, procedure_id, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+          [uuid, input.name, input.epochDay, input.templateKey ?? null, input.procedureId ?? null, now()]
         );
         return uuid;
       }
       await driver.transaction(async () => {
         await driver.run(
-          'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
-          [uuid, input.name, input.epochDay, input.templateKey ?? null, now()]
+          'INSERT INTO milestone (uuid, name, epoch_day, template_key, procedure_id, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+          [uuid, input.name, input.epochDay, input.templateKey ?? null, input.procedureId ?? null, now()]
         );
         if (staged) {
           const rowid = await rowidByUuid(driver, 'milestone', uuid);
