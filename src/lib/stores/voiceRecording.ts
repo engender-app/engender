@@ -43,14 +43,40 @@ export interface ActiveRecording {
     the OS; `unavailable` is a device with no microphone this app can reach. */
 export type MicRefusal = 'unsupported' | 'denied' | 'unavailable';
 
+/** The capture a measurement needs: the microphone as it is, with the
+    browser's voice-call processing turned off.
+
+    Chromium enables automatic gain control, noise suppression and echo
+    cancellation on `{ audio: true }`, and all three are wrong for a voice
+    benchmark - which is the one thing in this app whose numbers are supposed
+    to be comparable across months. Gain control moves the level between
+    takes, which is what the peak and the signal-to-noise checks read; noise
+    suppression reshapes the spectrum, which is where the formants are. A
+    memo is different and keeps them: for a recording somebody plays back,
+    the processed version is the better one.
+
+    Found on the Pixel, 2026-08-31: with the defaults, a tone played out of
+    the phone's own speaker never reached its own microphone at all, which
+    is echo cancellation doing exactly what it is for. */
+const UNPROCESSED_AUDIO: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false
+};
+
 /** Opens the microphone, or says why it stayed shut. Refusal is an ordinary
     outcome here rather than an error, the same treatment pickPhotos gives a
     cancelled picker (photoPicking.ts) - and nothing is said to the person
-    from in here, because what to say depends on the screen that asked. */
-export async function openMicrophone(): Promise<MediaStream | MicRefusal> {
+    from in here, because what to say depends on the screen that asked.
+
+    `unprocessed` asks for the raw capture; see UNPROCESSED_AUDIO. It is a
+    request rather than a guarantee - a device that only offers the processed
+    path still opens, because a benchmark under processing beats no
+    benchmark. */
+export async function openMicrophone(unprocessed = false): Promise<MediaStream | MicRefusal> {
   if (!MediaRecorder.isTypeSupported(RECORDING_MIME_TYPE)) return 'unsupported';
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: true });
+    return await navigator.mediaDevices.getUserMedia({ audio: unprocessed ? UNPROCESSED_AUDIO : true });
   } catch (error) {
     console.error('the microphone could not be opened', error);
     // Capacitor's WebChromeClient turns an Android permission refusal into
