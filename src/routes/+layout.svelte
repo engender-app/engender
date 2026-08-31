@@ -30,7 +30,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { ui } from '$lib/stores/ui.svelte';
   import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
-  import { bootGate, isErrorState, isReadyState } from '$lib/stores/boot-state';
+  import { bootGate, isErrorState, isReadyState, midSessionLockApplies } from '$lib/stores/boot-state';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
   import { App as AndroidAppPlugin } from '@capacitor/app';
@@ -81,7 +81,7 @@
      a guard runs after navigation: `locked` has to decide what renders,
      not where the app navigates to, or the first paint of a cold start
      shows the journal for as long as the redirect takes. */
-  let locked = $derived(isLocked(bootState.accessMode));
+  let locked = $derived(midSessionLockApplies(bootState) && isLocked(bootState.accessMode));
   $effect(() => watchLock());
 
   /* A side effect with nothing above it to order against, unlike startBoot():
