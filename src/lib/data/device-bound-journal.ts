@@ -143,14 +143,9 @@ export async function removeDeviceBoundJournal(): Promise<void> {
     PIN mode's binding key (data/device-secret.ts) - in one call. A reset
     needing to leave no key behind should not have to keep a list of slot
     names in step with whatever stores a key here next. */
-export function deleteDeviceKeyDatabase(): Promise<void> {
-  if (!('indexedDB' in globalThis)) return Promise.resolve();
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.deleteDatabase(DEVICE_BOUND_DB);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error ?? new Error('could not delete the device-key database'));
-  });
+export async function deleteDeviceKeyDatabase(): Promise<void> {
+  if (!('indexedDB' in globalThis)) return;
+  await runRequest(indexedDB.deleteDatabase(DEVICE_BOUND_DB));
 }
 
 export async function createDeviceBoundMetadata(
