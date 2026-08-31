@@ -70,6 +70,24 @@ test('the registry declares every supported credential consumer and its selectio
       profile: 'pin-encryption',
       selectionRule: 'current',
       purpose: 'Rewrap the Journal data key under the current PIN profile.'
+    },
+    {
+      consumer: 'journal-biometric-setup',
+      profile: 'biometric-prf',
+      selectionRule: 'current',
+      purpose: 'Mint a new keystore for first-run biometric unlock.'
+    },
+    {
+      consumer: 'journal-biometric-add',
+      profile: 'biometric-prf',
+      selectionRule: 'current',
+      purpose: 'Wrap an existing Journal data key under a platform authenticator.'
+    },
+    {
+      consumer: 'journal-biometric-unlock',
+      profile: 'biometric-prf',
+      selectionRule: 'persisted',
+      purpose: 'Unlock a biometric keystore with the parameter set it was written under.'
     }
   ]);
 });
@@ -87,8 +105,20 @@ test('each profile keeps its current purpose and parameter set', () => {
     'pin-encryption': {
       purpose: 'Wraps the Journal data key under a short PIN, sealed to this device.',
       params: PIN_ENCRYPTION_ARGON2_PARAMS
+    },
+    'biometric-prf': {
+      purpose: 'Wraps the Journal data key under a secret only a platform authenticator releases.',
+      params: JOURNAL_ARGON2_PARAMS
     }
   });
+});
+
+/* Deliberate, and stated as a test so that re-tuning one and not the other
+   is a decision somebody makes rather than a drift: a PRF output has no
+   small input space for KDF cost to defend, so biometric mode buys the same
+   cold-start budget a passphrase does. */
+test('biometric mode derives at the journal cold-start cost, the same budget a passphrase has', () => {
+  expect(resolveCredentialProfile('journal-biometric-setup')).toBe(JOURNAL_ARGON2_PARAMS);
 });
 
 test('current-profile consumers resolve the current params for their profile', () => {

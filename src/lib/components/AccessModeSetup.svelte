@@ -7,11 +7,12 @@
   import { isAndroid as onAndroid } from '$lib/platform';
   import { PIN_LENGTH as PIN_DIGITS } from '$lib/crypto/params';
 
-  export type AccessSetupMode = 'device-bound' | 'pin' | 'passphrase';
+  export type AccessSetupMode = 'device-bound' | 'pin' | 'passphrase' | 'biometric';
 
   export function accessModeTitle(mode: AccessSetupMode): string {
     if (mode === 'passphrase') return messages.am_mode_passphrase();
     if (mode === 'pin') return messages.am_mode_pin({ digits: String(PIN_DIGITS) });
+    if (mode === 'biometric') return messages.am_mode_biometric();
     return onAndroid() ? messages.am_mode_device_android() : messages.am_mode_device_web();
   }
 </script>
@@ -31,10 +32,13 @@
      trade written next to it rather than behind an acknowledgement
      checkbox.
 
-     Three rows, not four. ADR-0041's fourth mode is the web's WebAuthn PRF
-     biometric, which ticket 55 owns; on Android the biometric is not a
-     fourth thing at all but what device-bound mode already does, so the row
-     says so instead of offering a second mechanism (its Keystore key is not
+     Four rows, or three, and which one is not a guess. ADR-0041's fourth
+     mode is the web's WebAuthn PRF biometric (ticket 55), and it appears
+     only where the browser answers that it can actually do PRF - a mode
+     that is unavailable is one that is never offered, never one that is
+     offered and fails. On Android the biometric is not a fourth thing at
+     all but what device-bound mode already does, so that row says so
+     instead of offering a second mechanism (its Keystore key is not
      released until the platform confirms who is present, whatever
      `bioOptIn` says).
 
@@ -45,9 +49,11 @@
      it - so that sentence sits under the choice rather than in a help page
      nobody opens. */
 
+  import { onMount } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import { PIN_LENGTH } from '$lib/crypto/params';
+  import { prfAvailable } from '$lib/data/webauthn-prf';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
@@ -92,14 +98,29 @@
 
   let confirmingPin = $derived(chosenPin !== '');
 
+  /* Asked of the browser once, when the module mounts, because the answer
+     needs an await and a row cannot wait for one. False until it comes back,
+     so the list never flashes a mode the device turns out not to have; the
+     other three are there from the first frame either way.
+
+     Android is excluded here rather than inside prfAvailable(): the phone's
+     biometric is device-bound mode's Keystore gate (ADR-0041), so a second
+     row would be two names for one mechanism even on a WebView that happens
+     to answer yes. */
+  let biometricOffered = $state(false);
+  onMount(async () => {
+    biometricOffered = !isAndroid() && (await prfAvailable());
+  });
+
   /* Android's Keystore bridge mints its own data key and cannot be asked to
      wrap one that already exists, so moving an open journal to device-bound
      mode there would mean re-encrypting the whole thing. Out of scope, and
      named rather than silently missing: the row is absent on a change, and
      ticket 53's notes carry it as the follow-up. */
   let modes = $derived(
-    (['device-bound', 'pin', 'passphrase'] as Mode[]).filter((mode) => {
+    (['device-bound', 'biometric', 'pin', 'passphrase'] as Mode[]).filter((mode) => {
       if (mode === current) return false;
+      if (mode === 'biometric' && !biometricOffered) return false;
       return !(mode === 'device-bound' && purpose === 'change' && android);
     })
   );
@@ -109,6 +130,7 @@
   function subtitle(mode: Mode): string {
     if (mode === 'passphrase') return m.am_mode_passphrase_sub();
     if (mode === 'pin') return m.am_mode_pin_sub();
+    if (mode === 'biometric') return m.am_mode_biometric_sub();
     return android ? m.am_mode_device_sub_android() : m.am_mode_device_sub_web();
   }
 
@@ -120,6 +142,10 @@
   function icon(mode: Mode): string {
     if (mode === 'passphrase') return 'shield';
     if (mode === 'pin') return 'lock';
+    /* The fingerprint belongs to whichever mode is actually gated by the
+       platform's own check, and only one of them ever is on a given
+       platform: device-bound on Android, biometric on the web. */
+    if (mode === 'biometric') return 'fingerprint';
     return android ? 'fingerprint' : 'key';
   }
 
@@ -132,6 +158,7 @@
        device half as well - a far cheaper act than taking a phone apart, and
        the first draft of this copy did not say so. */
     if (mode === 'pin') return android ? m.am_pin_detail_android() : m.am_pin_detail_web();
+    if (mode === 'biometric') return m.am_biometric_detail();
     return android ? m.am_device_detail_android() : m.am_device_detail_web();
   }
 
@@ -275,6 +302,17 @@
         {confirmingPin ? m.pin_confirm_body() : m.am_pin_choose()}
       </p>
       <PinPad bind:value={pin} disabled={busy} {refusals} onComplete={completePin} />
+      <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
+    {:else if chosen === 'biometric'}
+      <!-- No field, because there is nothing to choose: the secret is
+           whatever the authenticator releases, and the button is the whole
+           of the interaction. The prompt the platform draws next is the
+           part a person recognises. -->
+      <div class="gate-actions">
+        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('biometric', '')}>
+          <span>{busy ? m.pp_encrypting() : m.am_confirm_biometric()}</span>
+        </button>
+      </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
     {:else}
       <div class="gate-actions">

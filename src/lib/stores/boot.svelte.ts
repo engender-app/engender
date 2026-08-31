@@ -46,6 +46,7 @@ import {
   unlockJournalPassphrase
 } from '../data/journal-passphrase';
 import { addJournalPin, setupJournalPin, unlockJournalPin } from '../data/journal-pin';
+import { addJournalBiometric, setupJournalBiometric, unlockJournalBiometric } from '../data/journal-biometric';
 import { removeDeviceBindingSecret } from '../data/device-secret';
 import {
   addDeviceBoundJournal,
@@ -160,6 +161,13 @@ export async function resetApp(): Promise<void> {
     clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
     clearBootCache: () => bootCache.clear()
   });
+  /* Biometric mode's credential is the one piece of key material a reset
+     cannot take with it: WebAuthn has no delete, and the credential lives on
+     the authenticator rather than in anything this app can reach. It is
+     harmless once the keystore is gone - its PRF output opens nothing - but
+     it does stay in the platform's own credential list until somebody
+     removes it there, which is worth knowing rather than assuming away
+     (ticket 55). */
   /* PIN mode's binding key (data/device-secret.ts). Not covered by the OPFS
      sweep above - it lives in IndexedDB - and a key left behind after a
      reset is key material outliving the journal it belonged to. Warned
@@ -238,6 +246,23 @@ export async function submitPinUnlock(pin: string): Promise<void> {
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
 }
 
+/** The setup module's biometric choice (ticket 55). The prompt the platform
+    draws is the whole of the interaction, and the secret it releases opens
+    this session as well as every later one. Throws BiometricUnavailableError
+    at the screen when the authenticator will not answer, which is a
+    different sentence from a failed setup. */
+export async function submitBiometricSetup(): Promise<void> {
+  const dataKey = await setupJournalBiometric();
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
+}
+
+/** The biometric gate's submit. There is nothing to retype, so every failure
+    is the same one: the authenticator did not release the secret. */
+export async function submitBiometricUnlock(): Promise<void> {
+  const dataKey = await unlockJournalBiometric();
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
+}
+
 /** The setup module's device-bound choice (ADR-0018, ADR-0041). Whether the
     platform would mint the key is the screen's answer to render, not a boot
     transition - a refusal leaves the module exactly where it was.
@@ -306,6 +331,7 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
   }
 
   if (target === 'pin') await addJournalPin(sessionDataKey, secret);
+  else if (target === 'biometric') await addJournalBiometric(sessionDataKey);
   else await addJournalPassphrase(sessionDataKey, secret);
   dispatch({ type: 'access-mode-changed', accessMode: target });
 

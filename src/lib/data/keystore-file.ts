@@ -30,11 +30,16 @@ export async function readKeystoreFile(): Promise<KeystoreMetadata | null> {
 }
 
 export async function writeKeystoreFile(metadata: KeystoreMetadata): Promise<void> {
+  /* Serialized before the file is opened, because createWritable() truncates
+     and serializeKeystore can refuse metadata (a biometric keystore with no
+     credential id). Building the text first means a refusal leaves the old
+     keystore where it was rather than emptying it. */
+  const serialized = serializeKeystore(metadata);
   const root = await navigator.storage.getDirectory();
   const handle = await root.getFileHandle(KEYSTORE_FILE, { create: true });
   const writable = await handle.createWritable();
   try {
-    await writable.write(serializeKeystore(metadata));
+    await writable.write(serialized);
   } finally {
     await writable.close();
   }

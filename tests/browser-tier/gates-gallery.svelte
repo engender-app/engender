@@ -15,14 +15,20 @@
      app. tests/gates-gallery.mjs drives the selectors below across palettes
      and themes for the screenshot grid.
 
-     Ticket 53 adds the platform selector. The security module presents three
-     modes on the web and three different ones on Android - device-bound is
-     labelled as the screen lock there, and cannot be moved *to* on a change -
-     and both have to be looked at. `isAndroid()` reads
-     `window.Capacitor.getPlatform()`, so the fixture stubs exactly that
-     rather than adding a prop the app would carry for the gallery's benefit.
-     The stage is keyed on the answer, because the components read it in
-     `$derived` and a stub swapped underneath them would not re-run. */
+     Ticket 53 adds the platform selector. The security module presents a
+     different list of modes on each of the three platforms it can be on -
+     device-bound is labelled as the screen lock on Android and cannot be
+     moved *to* there, and the web's biometric row (ticket 55) is there only
+     where the browser can actually do WebAuthn PRF - and all three have to
+     be looked at. `isAndroid()` reads `window.Capacitor.getPlatform()` and
+     the PRF check reads `PublicKeyCredential`, so the fixture stubs exactly
+     those two rather than adding props the app would carry for the gallery's
+     benefit. The stage is keyed on the answer, because the components read it
+     during render and a stub swapped underneath them would not re-run.
+
+     Headless Chromium has no platform authenticator, so `web` here is the
+     stub saying it does and `web-no-prf` is the honest browser: those are
+     the two lists a person can meet, and both are worth a picture. */
 
   import { bootState } from '$lib/stores/boot.svelte';
   import { bootStates, bootTransitions } from '$lib/stores/boot-state';
@@ -42,9 +48,11 @@
     /* The gates a cold start lands on, one per mode that asks for something. */
     'unlock-pin',
     'unlock-passphrase',
+    'unlock-biometric',
     /* Mid-session, which asks for the same secrets in a different frame. */
     'session-pin',
     'session-passphrase',
+    'session-biometric',
     'session-device',
     /* Unchanged by this ticket, kept so a regression in the shared shell
        shows up here rather than in the app. */
@@ -62,6 +70,11 @@
   let theme = $state('dark');
   let platform = $state('web');
 
+  /* The web stub has to be in place before the module's first mount, not
+     after the first change of the selector: the default scene is the module
+     itself. */
+  setPlatform('web');
+
   $effect(() => {
     document.documentElement.dataset.palette = palette;
     document.documentElement.dataset.theme = theme;
@@ -75,6 +88,17 @@
   function setPlatform(next: string) {
     (window as { Capacitor?: { getPlatform: () => string } }).Capacitor =
       next === 'android' ? { getPlatform: () => 'android' } : undefined;
+    /* What data/webauthn-prf.ts asks before the module offers the row. The
+       answers are the ones a browser with a platform authenticator gives;
+       nothing here mints a credential, because these pictures are of the
+       list, not of the prompt. */
+    (window as { PublicKeyCredential?: unknown }).PublicKeyCredential =
+      next === 'web'
+        ? {
+            getClientCapabilities: async () => ({ 'extension:prf': true }),
+            isUserVerifyingPlatformAuthenticatorAvailable: async () => true
+          }
+        : undefined;
     platform = next;
   }
 
@@ -87,6 +111,8 @@
       Object.assign(bootState, bootTransitions.toNeedsUnlock(bootTransitions.setAccessMode(from, 'pin')));
     } else if (scene === 'unlock-passphrase') {
       Object.assign(bootState, bootTransitions.toNeedsUnlock(bootTransitions.setAccessMode(from, 'passphrase')));
+    } else if (scene === 'unlock-biometric') {
+      Object.assign(bootState, bootTransitions.toNeedsUnlock(bootTransitions.setAccessMode(from, 'biometric')));
     } else if (scene === 'converting') {
       const setup = bootTransitions.toNeedsSetup(from, { conversionRequired: true });
       const converting = bootTransitions.toConverting(setup);
@@ -162,6 +188,7 @@
       onchange={(event) => setPlatform((event.currentTarget as HTMLSelectElement).value)}
     >
       <option value="web">web</option>
+      <option value="web-no-prf">web-no-prf</option>
       <option value="android">android</option>
     </select>
   </label>
@@ -192,6 +219,8 @@
           <SessionUnlock mode="pin" />
         {:else if scene === 'session-passphrase'}
           <SessionUnlock mode="passphrase" />
+        {:else if scene === 'session-biometric'}
+          <SessionUnlock mode="biometric" />
         {:else if scene === 'session-device'}
           <SessionUnlock mode="device-bound" />
         {:else if scene.startsWith('unlock-') || scene === 'converting' || scene === 'conversion-refused'}

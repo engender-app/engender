@@ -34,8 +34,10 @@ const SCENES = [
   'access-change',
   'unlock-pin',
   'unlock-passphrase',
+  'unlock-biometric',
   'session-pin',
   'session-passphrase',
+  'session-biometric',
   'session-device',
   'converting',
   'conversion-refused',
@@ -48,16 +50,18 @@ const SCENES = [
 
 /* The security module is the one surface whose *content* differs by
    platform, not just its frame (ticket 53): device-bound is labelled as the
-   screen lock on Android and cannot be moved to there at all. Both lists
-   have to be looked at, so these are shot twice. */
+   screen lock on Android and cannot be moved to there at all, and the web's
+   biometric row is there only where the browser can do PRF (ticket 55).
+   Three lists, so these scenes are shot on each of the other two as well. */
 const PLATFORM_SCENES = ['access-choice', 'access-change'];
+const OTHER_PLATFORMS = ['android', 'web-no-prf'];
 
 /* Each mode's own screen, which is where its consequence is stated - the
    thing ADR-0041 made the condition of allowing a 4-digit PIN to encrypt at
    all. Reached by clicking the row, from the script rather than from the
    fixture, so the fixture stays a state selector and nothing there has to
    drive a step it also renders. */
-const MODE_ROWS = ['device-bound', 'pin', 'passphrase'];
+const MODE_ROWS = ['device-bound', 'biometric', 'pin', 'passphrase'];
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
@@ -120,6 +124,10 @@ await fixture.listen();
         await select('Scene', 'access-choice');
         await select('Theme', theme);
         const target = page.locator(`[data-list-row="${row}"]`);
+        /* The biometric row arrives one await later than the other three -
+           the browser is asked whether it can do PRF - so a bare count()
+           here would race it and quietly skip the row on every run. */
+        await target.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
         if (!(await target.count())) continue;
         await target.click();
         await page.waitForSelector(`[data-access-chosen="${row}"]`);
@@ -130,12 +138,14 @@ await fixture.listen();
   }
   await select('Platform', 'web');
 
-  await select('Platform', 'android');
-  for (const scene of PLATFORM_SCENES) {
-    await select('Scene', scene);
-    for (const theme of THEMES) {
-      await select('Theme', theme);
-      await shoot(page, `gate-${scene}-android-${theme}`);
+  for (const platform of OTHER_PLATFORMS) {
+    await select('Platform', platform);
+    for (const scene of PLATFORM_SCENES) {
+      await select('Scene', scene);
+      for (const theme of THEMES) {
+        await select('Theme', theme);
+        await shoot(page, `gate-${scene}-${platform}-${theme}`);
+      }
     }
   }
   await select('Platform', 'web');

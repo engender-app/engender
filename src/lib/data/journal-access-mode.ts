@@ -1,27 +1,28 @@
 import { describeJournalState } from './conversion/conversion.ts';
 import type { JournalSecretSource } from '../crypto/keystore.ts';
 
-/* How this journal opens (ADR-0041, ticket 53).
+/* How this journal opens (ADR-0041, tickets 53 and 55).
 
-   Three of the four modes ADR-0041 names are here. `'biometric'` - the web's
-   WebAuthn PRF mode - is deliberately absent rather than declared and
-   unreachable: ticket 55 owns it, and a mode with no mechanism behind it
-   would put a dead arm in every branch that narrows over this union.
-
-   The two secret-derived modes are one wrap system with two secret sources
-   (crypto/keystore.ts): a keystore's own `secretSource` says which, so the
-   mode is read off the keystore rather than tracked beside it. Android's
-   device-bound mode is the one that is biometric-gated already - Keystore
-   will not release the key until the platform confirms who is present - so
-   the module names it as such rather than offering a second mechanism. */
-export type JournalAccessMode = 'passphrase' | 'pin' | 'device-bound' | null;
+   All four of ADR-0041's modes are here. The three secret-derived ones are
+   one wrap system with three secret sources (crypto/keystore.ts): a
+   keystore's own `secretSource` says which, so the mode is read off the
+   keystore rather than tracked beside it. Android's device-bound mode is the
+   one that is biometric-gated already - Keystore will not release the key
+   until the platform confirms who is present - so the module names it as
+   such rather than offering a second mechanism, and `'biometric'` here means
+   the web's WebAuthn PRF mode only (ticket 55, data/journal-biometric.ts).
+   It is offered on a device that turns out to have it and nowhere else, so
+   nothing may assume a build that compiles this arm can reach it. */
+export type JournalAccessMode = 'passphrase' | 'pin' | 'biometric' | 'device-bound' | null;
 
 /** Whether this mode has a secret to ask for again mid-session. Device-bound
     on Android does: the Keystore prompt is one. Device-bound on the web does
     not - there is nothing to ask - which is the one combination where
-    lock-on-leave can only blank the screen, and the settings copy says so. */
+    lock-on-leave can only blank the screen, and the settings copy says so.
+    Biometric mode does: the prompt is the secret, the same way Android's
+    Keystore one is. */
 export function accessModeHasSecret(mode: JournalAccessMode, android: boolean): boolean {
-  if (mode === 'passphrase' || mode === 'pin') return true;
+  if (mode === 'passphrase' || mode === 'pin' || mode === 'biometric') return true;
   return mode === 'device-bound' && android;
 }
 
