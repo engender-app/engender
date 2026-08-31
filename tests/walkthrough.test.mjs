@@ -1546,7 +1546,13 @@ try {
   await booted();
   if (await page.locator('[data-applock]').count()) throw new Error('still locked after the reset');
   const mirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
-  if (Object.keys(mirror).length) throw new Error('the boot mirror survived the reset: ' + JSON.stringify(mirror));
+  /* Not "the mirror is empty": the reload that finishes a reset boots, and
+     boot writes the defaults back, so empty is never the resting state. What
+     has to be gone is what was set before - and this flow left disguise on
+     three lines up, which makes it the honest witness. */
+  if (mirror.disguise !== false) {
+    throw new Error('the pre-reset preferences survived the reset: ' + JSON.stringify(mirror));
+  }
   /* Home rather than onboarding, because this is the demo build: an empty
      preference table is what makes it seed the persona, and the wipe left
      one. In a production build the first-run gate (flow 13) is what a
@@ -3059,7 +3065,7 @@ try {
     throw new Error('PIN mode offers no way to change the PIN');
   }
 
-  ok('the access mode changes, PIN gates a cold start, throttles wrong PINs and opens on the right one, PIN gates a cold start, throttles wrong PINs and opens on the right one');
+  ok('the access mode changes, PIN gates a cold start, throttles wrong PINs and opens on the right one');
 } catch (e) { fail('access mode', e); }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
