@@ -16,7 +16,6 @@ import java.time.ZonedDateTime;
 public final class ReminderScheduler {
 
     public static final String PREFS = "gender-diary-reminders";
-    private static final String KEY_PAYLOAD = "payload-v1";
     private static final String KEY_LAUNCH_ROUTE = "launch-route";
 
     static final String EXTRA_KIND = "kind";
@@ -33,16 +32,18 @@ public final class ReminderScheduler {
 
     private ReminderScheduler() {}
 
-    static void saveAndSchedule(Context context, JSONObject payload) {
+    /**
+     * The store is written before the old alarms are cancelled, so a wrap
+     * that fails (phase 5 security ticket 02) leaves the phone on the rules
+     * it already had rather than on none. {@code RemindersPlugin.sync}
+     * rejects, which {@code platform-sync.ts} logs and nothing shows the
+     * person; what recovers it is the next sync, on the next focus.
+     */
+    static void saveAndSchedule(Context context, JSONObject payload) throws Exception {
         JSONObject previous = loadPayload(context);
+        ReminderPayloadStore.write(context, payload);
+
         cancelAll(context, previous);
-
-        context
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_PAYLOAD, payload.toString())
-            .apply();
-
         scheduleAll(context, payload, ZonedDateTime.now());
     }
 
@@ -78,19 +79,18 @@ public final class ReminderScheduler {
      * limit: it is cancelled by its fixed request code whatever the payload
      * says.
      */
-    public static void wipe(Context context) {
+    public static void wipe(Context context) throws Exception {
         cancelAll(context, loadPayload(context));
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
+        /* After the file, and for the same reason AutoExportPlugin deletes
+           its own alias: the ciphertext is only gone because the file went
+           with it, and a key left behind is a key that opens a copy of that
+           file taken before the reset. */
+        ReminderPayloadStore.deleteKey();
     }
 
     static JSONObject loadPayload(Context context) {
-        String raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_PAYLOAD, null);
-        if (raw == null || raw.isBlank()) return null;
-        try {
-            return new JSONObject(raw);
-        } catch (Exception ignored) {
-            return null;
-        }
+        return ReminderPayloadStore.read(context);
     }
 
     static void scheduleOneReminder(Context context, JSONObject reminder, ZonedDateTime now) {

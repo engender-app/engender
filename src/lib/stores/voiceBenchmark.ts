@@ -83,7 +83,9 @@ export async function decodeTake(bytes: Uint8Array): Promise<Float32Array> {
     refusal is returned rather than announced: the recording screen holds a
     state for it, which is what the ticket's denied-permission case asks for. */
 export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSession | MicRefusal> {
-  const stream = await openMicrophone();
+  // Unprocessed: a benchmark measures the microphone's own answer, not the
+  // browser's cleaned-up version of it (voiceRecording.ts's UNPROCESSED_AUDIO).
+  const stream = await openMicrophone(true);
   if (typeof stream === 'string') return stream;
 
   const recording = recordStream(stream);
