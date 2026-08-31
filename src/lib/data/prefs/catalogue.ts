@@ -133,6 +133,12 @@ export interface PreferenceValues {
   patchScheduleTileEnabled: boolean;
   /** Whether the voice-benchmark nudge live tile is ever shown (phase 5 deepening ticket 03). */
   voiceBenchmarkNudgeEnabled: boolean;
+  /** A passage of somebody's own to read for a voice benchmark, empty for the
+      one the app ships (phase 5 deepening ticket 15, CONTEXT: "Benchmark
+      passage"). Kept because the next benchmark has to be read from the same
+      words as the last one, which is the only thing that makes two of them
+      comparable. */
+  voiceBenchmarkPassage: string;
   /** Whether the pause-active banner live tile is ever shown (phase 5 deepening ticket 03). */
   pauseActiveBannerEnabled: boolean;
   /** Whether the hair-removal recovery live tile is ever shown (phase 5 deepening ticket 03). */
@@ -298,6 +304,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   activeTryoutTileEnabled: true,
   patchScheduleTileEnabled: true,
   voiceBenchmarkNudgeEnabled: true,
+  voiceBenchmarkPassage: '',
   pauseActiveBannerEnabled: true,
   hairRemovalRecoveryEnabled: true,
   measurementsNudgeEnabled: true,
@@ -374,6 +381,7 @@ export const DEVICE_LOCAL_KEYS = [
   'activeTryoutTileEnabled',
   'patchScheduleTileEnabled',
   'voiceBenchmarkNudgeEnabled',
+  'voiceBenchmarkPassage',
   'pauseActiveBannerEnabled',
   'hairRemovalRecoveryEnabled',
   'measurementsNudgeEnabled',

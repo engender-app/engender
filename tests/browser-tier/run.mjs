@@ -459,7 +459,8 @@ await block('ticket 09 (phase 2) browser tier', 10, async () => {
      SAHPool pool files (database, side files, the pre-migration copy),
      encrypted photos, the keystore - and every localStorage value, scanned
      for seeded entry text, lab strings, a reminder title, a milestone
-     name, a preference value, photo body text and the JPEG signature. */
+     name, a preference value, a half-written draft's note, photo body text
+     and the JPEG signature. */
   const dirtyFiles = r.scan.filter((f) => f.found.length > 0);
   if (r.scan.length >= 3 && dirtyFiles.length === 0)
     ok(`closed-app scan: no protected content readable in any of ${r.scan.length} OPFS files (pre-migration copy included)`);
@@ -469,13 +470,26 @@ await block('ticket 09 (phase 2) browser tier', 10, async () => {
       dirtyFiles.map((f) => `${f.path}: ${f.found.join(', ')}`).join('; ') || `only ${r.scan.length} files scanned`
     );
 
+  /* Both mirrors have to be on the scan's plate for a clean scan to mean
+     anything: the boot cache, and the entry-draft mirror an editor leaves
+     behind mid-edit (sec-audit 02, finding G-01) - the one writer that puts
+     journal text in localStorage at all. */
   const dirtyKeys = r.localStorageScan.filter((k) => k.found.length > 0);
-  if (r.bootCachePresent && dirtyKeys.length === 0)
-    ok('closed-app scan: the localStorage boot mirror exists and holds none of the protected content');
+  if (r.bootCachePresent && r.draftMirrorPresent && dirtyKeys.length === 0)
+    ok('closed-app scan: the localStorage boot mirror and the entry-draft mirror hold none of the protected content');
   else
     fail(
       'closed-app scan: localStorage holds none of the protected content',
-      dirtyKeys.map((k) => `${k.key}: ${k.found.join(', ')}`).join('; ') || 'boot cache was never written'
+      dirtyKeys.map((k) => `${k.key}: ${k.found.join(', ')}`).join('; ') ||
+        `mirrors written: boot cache ${r.bootCachePresent}, entry draft ${r.draftMirrorPresent}`
+    );
+
+  if (r.draftMirrorRestored === 'sentinel-draft-note-half-written-5583' && r.draftMirrorUnderWrongKey === null)
+    ok('the encrypted entry-draft mirror restores under the journal key and reads as no draft under any other');
+  else
+    fail(
+      'the encrypted entry-draft mirror restores under the journal key only',
+      JSON.stringify({ restored: r.draftMirrorRestored, wrongKey: r.draftMirrorUnderWrongKey })
     );
 
   if (r.wrongPassphrase?.name === 'DecryptionFailedError' && r.wrongPassphrase.message === 'wrong password')
@@ -1396,6 +1410,47 @@ await block('phase 5 deepening ticket 21 day composition', 8, async () => {
   const doseRows = opened.keys.filter((k) => k.startsWith('dose-')).length;
   if (hairRows === 1 && doseRows === 2) ok('three hair photos are one row and two doses are two rows');
   else fail('three hair photos are one row and two doses are two rows', `${hairRows} photo rows, ${doseRows} dose rows`);
+});
+
+// --- Phase 5 deepening ticket 15: the voice benchmark engine ---------------
+await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () => {
+  const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
+  if (r.error) throw new Error(r.error);
+
+  /* The claim the node tier cannot make: opus, a webm container and a
+     resample down to the analysis rate leave the measurement alone. The
+     oscillator is at 185 Hz, so anything outside a hertz or two of that is
+     the round trip having changed the answer. */
+  if (r.medianHz !== null && Math.abs(r.medianHz - 185) <= 2)
+    ok(`a recorded, stored and decoded take still measures its own pitch (${r.medianHz.toFixed(2)} Hz against 185)`);
+  else fail('a stored and decoded take still measures its own pitch', `${r.medianHz} Hz`);
+
+  if (r.sampleRate === 16000 && Math.abs(r.decodedSeconds - 4) < 0.6)
+    ok(`decodeTake resamples to 16 kHz and keeps the take's length (${r.decodedSeconds.toFixed(2)}s)`);
+  else fail("decodeTake resamples to 16 kHz and keeps the take's length", `${r.sampleRate} Hz, ${r.decodedSeconds}s`);
+
+  if (r.storedBytes > 0)
+    ok(`what gets stored is a real file rather than an empty one (${(r.storedBytes / 1024).toFixed(1)}KB)`);
+  else fail('what gets stored is a real file', `${r.storedBytes} bytes`);
+
+  if (r.passageFailed.length === 0 && r.semitoneSd !== null && r.semitoneSd < 0.6)
+    ok('a steady take clears the gate after the round trip, and reads as steady');
+  else fail('a steady take clears the gate after the round trip', `${JSON.stringify(r.passageFailed)}, sd ${r.semitoneSd}`);
+
+  /* The gauge is the other half of the flow: it has to have seen the take
+     arrive in pieces and agree with the gate about it, or the screen would
+     be encouraging a take the save then rejects. */
+  if (r.liveFrames > 100 && r.liveVoicedSeconds > 1.5 && r.liveFailedWhileSteady.length === 0)
+    ok(`the live gauge tracked the same take frame by frame and agreed (${r.liveVoicedSeconds.toFixed(2)}s held)`);
+  else
+    fail(
+      'the live gauge tracked the same take and agreed',
+      `${r.liveFrames} frames, ${r.liveVoicedSeconds}s, ${JSON.stringify(r.liveFailedWhileSteady)}`
+    );
+
+  if (r.loudPeak >= 0.98 && r.loudFailed.includes('clipping'))
+    ok(`a take pushed into the rails is caught while it is happening (peak ${r.loudPeak.toFixed(3)})`);
+  else fail('a take pushed into the rails is caught while it is happening', `peak ${r.loudPeak}, ${JSON.stringify(r.loudFailed)}`);
 });
 
 await browser.close();

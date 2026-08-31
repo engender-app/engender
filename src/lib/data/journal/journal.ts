@@ -51,6 +51,7 @@ import { makeTallyArea, type TallyArea } from './tally';
 import { makeTryoutsArea, type TryoutsArea } from './tryouts';
 import { makeVideoArea, type VideoArea } from './videoNotes';
 import { makeVoiceArea, type VoiceArea } from './voiceRecordings';
+import { makeVoiceBenchmarksArea, type VoiceBenchmarksArea } from './voiceBenchmarks';
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
 import { reconcileBuiltIns } from './reconcile';
 import { discardJournalRows } from './restore';
@@ -105,6 +106,10 @@ export interface Journal {
       this owns no attach/remove of its own; those stay on upsertEntry's
       attachRecordings/removeRecordingIds (voiceRecordings.ts). */
   voice: VoiceArea;
+  /** Standardized voice takes (phase 5 deepening ticket 15, CONTEXT: "Voice
+      benchmark") - a different kind of record from `voice`, on its own
+      table, so a memo and a benchmark can never be mistaken for each other. */
+  voiceBenchmarks: VoiceBenchmarksArea;
 
   /** Every video note (phase 5 ticket 22), read back dated and oldest first
       - entry-only, so like `voice` it has no attach/remove of its own:
@@ -312,6 +317,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const hairProgress = makeHairProgressArea(driver, files);
   const hairRemoval = makeHairRemovalArea(driver, files);
   const tryouts = makeTryoutsArea(driver, files, milestones, feltSense);
+  const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
 
   return {
     entries,
@@ -322,6 +328,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     milestones,
     photos: makePhotosArea(driver, files),
     voice: makeVoiceArea(driver),
+    voiceBenchmarks,
     videos: makeVideoArea(driver),
     labs,
     measurements,
@@ -343,6 +350,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       milestones,
       doses,
       labs,
+      voiceBenchmarks,
       measurements,
       sizeRecords,
       sideEffects,

@@ -268,6 +268,25 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     reminderTitle: 'binder check-in'
   });
 
+  // Two takes' worth of audio and a full set of figures: a benchmark that
+  // skipped its vowel would leave the nullable half of the row untested by
+  // the round trip (phase 5 deepening ticket 15).
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20060,
+    passageKey: 'builtin',
+    passageAudio: bytes('passage'),
+    vowelAudio: bytes('vowel'),
+    f0MedianHz: 178.5,
+    f0P10Hz: 164.2,
+    f0P90Hz: 199.1,
+    semitoneSd: 2.1,
+    wordsPerMinute: 138.4,
+    f1Hz: 705,
+    f2Hz: 1265,
+    snrDb: 26.3,
+    note: 'quiet room, morning'
+  });
+
   return { driver, journal };
 }
 

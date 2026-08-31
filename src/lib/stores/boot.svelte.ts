@@ -51,6 +51,7 @@ import { BiometricUnavailableError } from '../data/webauthn-prf';
 import { removeDeviceBindingSecret } from '../data/device-secret';
 import {
   addDeviceBoundJournal,
+  deleteDeviceKeyDatabase,
   DeviceBoundKeyUnavailableError,
   removeDeviceBoundJournal,
   setupDeviceBoundJournal
@@ -126,6 +127,25 @@ let started = false;
    data/live/, and bootState.journal is the handle for everything else. */
 let openDriver: SqliteDriver | null = null;
 let sessionDataKey: Uint8Array<ArrayBuffer> | null = null;
+let announceDataKey: (key: Uint8Array<ArrayBuffer>) => void;
+const dataKeyOpened = new Promise<Uint8Array<ArrayBuffer>>((resolve) => {
+  announceDataKey = resolve;
+});
+
+/** The key the open journal is encrypted under, for the one thing outside
+    this module that has to encrypt something itself: the entry-draft mirror
+    (data/entryDraftStore.ts), which is journal content living in
+    localStorage rather than in the database.
+
+    Awaited rather than read, the way data/live/journal.svelte.ts queues on
+    its own `opened`: a screen renders during boot - the entry editor is one
+    route away at first paint, and it mounts a good 70ms before the key
+    exists - so a caller reading this synchronously would find nothing and
+    conclude there was no draft to restore. Resolved once per page, which is
+    all a reset needs, since a reset reloads. */
+export function journalDataKey(): Promise<Uint8Array<ArrayBuffer>> {
+  return sessionDataKey ? Promise.resolve(sessionDataKey) : dataKeyOpened;
+}
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
     it needs the file ops of the driver that failed (ticket 04). */
@@ -169,13 +189,16 @@ export async function resetApp(): Promise<void> {
      it does stay in the platform's own credential list until somebody
      removes it there, which is worth knowing rather than assuming away
      (ticket 55). */
-  /* PIN mode's binding key (data/device-secret.ts). Not covered by the OPFS
-     sweep above - it lives in IndexedDB - and a key left behind after a
-     reset is key material outliving the journal it belonged to. Warned
-     rather than swallowed: the reset carries on either way, and a reset that
-     could not take this is worth seeing in a console. */
-  await removeDeviceBindingSecret().catch((error) => {
-    console.warn('could not remove the PIN binding key during the reset', error);
+  /* The device-bound wrapping key and PIN mode's binding key
+     (data/device-secret.ts) both live here. Not covered by the OPFS sweep
+     above - it's IndexedDB - and a key left behind after a reset is key
+     material outliving the journal it belonged to. Deletes the whole
+     database rather than each slot by name, so the reset does not have to
+     be kept in step with whatever stores a key here next. Warned rather
+     than swallowed: the reset carries on either way, and a reset that could
+     not take this is worth seeing in a console. */
+  await deleteDeviceKeyDatabase().catch((error) => {
+    console.warn('could not remove the browser device keys during the reset', error);
   });
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
@@ -476,6 +499,7 @@ function journalPorts(dataKey: Uint8Array<ArrayBuffer>): { sqlite: WebSqlite; ph
     back to the reducer as an event. */
 async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   sessionDataKey = dataKey;
+  announceDataKey(dataKey);
   const { sqlite, photoFiles } = journalPorts(dataKey);
 
   // The PRD asks for navigator.storage.persist() on first save, not on

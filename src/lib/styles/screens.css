@@ -3,13 +3,18 @@
    components/components.css; colour comes only from tokens.
    ============================================================ */
 
-/* A milestone's photo stands in for the icon disc, so it takes the disc's
+/* A photograph standing in for a row's icon disc, so it takes the disc's
    size and the disc's shape. PhotoThumb draws a rounded square, which is
    right where photos are a grid of photos and wrong here: in a column of
    circles it was the one row that did not match, and a photo standing in
    for an icon has to stand in for its shape too. Clipped rather than
-   restyled, so nothing changes for the screens that show photos as photos. */
-.milestone-face {
+   restyled, so nothing changes for the screens that show photos as photos.
+
+   `.milestone-face` until deepening ticket 21 met ticket 10 at the merge and
+   the two had written the same rule twice - a milestone's own face, and the
+   day view's hair, recovery and tryout photographs. One rule, and a name
+   that is true of all four. */
+.row-face {
   flex: 0 0 auto;
   display: flex;
   border-radius: 50%;
@@ -338,21 +343,6 @@
    what draws a day's shape. */
 .day-add { margin-top: var(--space-5); }
 .day-add .btn { width: 100%; }
-
-/* A photograph where the icon disc would be, on the rows that stand for one
-   (deepening ticket 21): the milestone's own face, the first of a set of
-   recovery or hair photos. Same 36px circle the milestones screen draws, so
-   a milestone looks like itself wherever it is listed. */
-.day-face {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-  border: var(--role-hairline);
-}
 
 /* How many the row stands for, at the trailing edge before the chevron.
    Tabular figures so a run of counts lines up, and the role's own ink rather
@@ -832,6 +822,18 @@
    lands on height instead and collapses the player to 0px tall - the same
    reason .compare-side overrides .photo-thumb's sizing above. */
 .compare-side .voice-player { flex: none; width: 100%; }
+
+/* ---------- Voice benchmark delta (ticket 16) ---------- */
+/* Same dt/dd-row shape as record/+page.svelte's own .vb-figures, which is
+   scoped to that component and out of reach here - two screens wanting the
+   same small layout is not yet a third one worth lifting into a shared
+   class. */
+.vc-delta h3 { margin: 0 0 var(--space-3); font-size: var(--text-base); }
+.vc-delta-figures { display: grid; gap: var(--space-3); margin: 0; }
+.vc-delta-figures > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.vc-delta-figures dt { color: var(--muted); font-size: var(--text-sm); }
+.vc-delta-figures dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--weight-semibold); text-align: right; }
+.vc-aside { color: var(--muted); font-weight: 400; }
 
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {

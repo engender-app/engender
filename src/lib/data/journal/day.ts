@@ -68,6 +68,7 @@ import type {
   SideEffect,
   SizeRecord,
   TallyEvent,
+  VoiceBenchmark,
   WearSession
 } from '../types';
 import type { ArchiveSectionName } from './archiveSections';
@@ -86,6 +87,7 @@ import type { SideEffectsArea } from './sideEffects';
 import type { SizeRecordsArea } from './sizeRecords';
 import type { TallyArea } from './tally';
 import type { TryoutsArea, TryoutPhotoOnDay } from './tryouts';
+import type { VoiceBenchmarksArea } from './voiceBenchmarks';
 import type { WearSessionsArea } from './wearSessions';
 
 /** Everything one day holds, one key per registered section.
@@ -98,6 +100,7 @@ export interface DayRecords {
   milestones: Milestone[];
   doses: DoseEvent[];
   labResults: LabResult[];
+  voiceBenchmarks: VoiceBenchmark[];
   measurements: Measurement[];
   sizeRecords: SizeRecord[];
   sideEffects: SideEffect[];
@@ -124,6 +127,7 @@ export interface DayAreas {
   milestones: MilestonesArea;
   doses: DosesArea;
   labs: LabsArea;
+  voiceBenchmarks: VoiceBenchmarksArea;
   measurements: MeasurementsArea;
   sizeRecords: SizeRecordsArea;
   sideEffects: SideEffectsArea;
@@ -197,6 +201,16 @@ const SECTIONS = [
     covers: ['labResults'],
     tables: ['lab'],
     read: ({ labs, epochDay }) => labs.getResultsOnDay(epochDay)
+  }),
+  /* A standardized take, recorded on a day the way a lab draw is (phase 5
+     deepening ticket 15). Next to the lab results because it is the same
+     kind of record: a number measured under controlled conditions, reported
+     and not read. */
+  section({
+    key: 'voiceBenchmarks',
+    covers: ['voiceBenchmarks'],
+    tables: ['voiceBenchmark'],
+    read: ({ voiceBenchmarks, epochDay }) => voiceBenchmarks.getBenchmarksOnDay(epochDay)
   }),
   section({
     key: 'measurements',

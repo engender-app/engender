@@ -65,8 +65,11 @@ export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string 
 export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
 export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string };
 export type TryoutPhotoRow = { uuid: string; tryout_id: number; epoch_day: number; file_path: string };
+/** A benchmark names two files, and the second one is absent on a take that
+    skipped the vowel (phase 5 deepening ticket 15). */
+export type BenchmarkFileRow = { passage_file_path: string; vowel_file_path: string | null };
 
-/** What every section reader is given: the connection, and the seven
+/** What every section reader is given: the connection, and the eight
     file-owning tables read once up front. */
 export interface SectionRead {
   driver: SqliteDriver;
@@ -77,6 +80,7 @@ export interface SectionRead {
   hairRemovalPhotos: HairRemovalPhotoRow[];
   procedurePhotos: ProcedurePhotoRow[];
   tryoutPhotos: TryoutPhotoRow[];
+  benchmarkFiles: BenchmarkFileRow[];
 }
 
 /** The shared reads, in one place so the manifest and the sections that name
@@ -111,6 +115,9 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
        JOIN entry e ON e.id = v.entry_id
        WHERE e.trashed_at IS NULL
        ORDER BY v.order_index, v.id`
+    ),
+    benchmarkFiles: await driver.query<BenchmarkFileRow>(
+      'SELECT passage_file_path, vowel_file_path FROM voice_benchmark ORDER BY epoch_day, id'
     ),
     videos: await driver.query<VideoRow>(
       `SELECT n.uuid, n.file_path, n.entry_id FROM video_note n
