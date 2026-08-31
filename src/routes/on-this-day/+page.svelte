@@ -154,7 +154,16 @@
            which is what this screen is about, and which day it actually was,
            which is the day card's own bar. -->
       <section id="on-this-day-{d.key}" data-lookback={d.key}>
-        <SectionHeading text={d.title} />
+        <!-- The whole day, not just what this screen chose to resurface
+             (deepening ticket 21). This screen shows a look-back day's
+             entries and its letters; the day itself now has somewhere to be
+             read whole, and the heading's own action line is where a link
+             out of an area goes. -->
+        <SectionHeading text={d.title}>
+          {#snippet action()}
+            <a class="kit-heading-action" data-lookback-open={d.key} href={`/day/${d.epochDay}`}>{m.day_open_whole()}</a>
+          {/snippet}
+        </SectionHeading>
         <!-- No count on the bar. Spec 05 is explicit that "an entry count
              above a list of that many entries is noise", and it is the same
              argument that took the three stat tiles off this screen - the

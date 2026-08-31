@@ -59,6 +59,13 @@ export interface LabsArea {
       have to remember to reset on a fresh device. */
   getMostRecentAnalyte(): Promise<string | null>;
   getResults(analyte: string): Promise<LabResult[]>;
+  /** Every analyte's results drawn on one day (phase 5 deepening ticket
+      21), oldest-saved first. Across analytes, because a single draw
+      normally yields several and a day view asks about the draw rather than
+      about one hormone - which is also why this is one query where the
+      clinician summary, having no per-day read to reach for, walks
+      `getUsedAnalytes` and filters. */
+  getResultsOnDay(epochDay: number): Promise<LabResult[]>;
   /** The most recently drawn result of any analyte, or null with no results
       at all. What the care overview marks its draw at (phase 5 deepening
       ticket 07): the rail asks "when was blood last taken", which is a
@@ -188,6 +195,13 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
     },
 
     getResults: resultsFor,
+
+    async getResultsOnDay(epochDay) {
+      const rows = await driver.query<LabRow>(`SELECT ${LAB_COLUMNS} FROM lab_result WHERE epoch_day = ? ORDER BY id`, [
+        epochDay
+      ]);
+      return rows.map(toLabResult);
+    },
 
     async getLatestResult() {
       const rows = await driver.query<LabRow>(
