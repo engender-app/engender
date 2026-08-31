@@ -5,7 +5,8 @@
    Three parts, in this order: the band (injectable estradiol esters), the
    shapes (everything else this app draws, per hormone), and the arithmetic
    the screen used to hold - the axes, the unit and the ester matching rule
-   (phase 5 deepening ticket 17). The shape tests moved here with their area.
+   (phase 5 audit-deepening ticket 17). The shape tests moved here with
+   their area.
 
    The caching tests (ticket 04, phase 5 performance audit finding 06) spy on
    esterCurves and qualitativeCurves rather than counting anything the caches
@@ -849,9 +850,10 @@ test('a lab result write changes a shape’s fit without re-modelling the popula
 });
 
 // --- the axes, the unit and the ester matching rule -----------------------
-// What the screen used to hold, untested, in markup (phase 5 deepening ticket
-// 17): which chart a result belongs on, how high the axis reaches, and
-// whether a unit may be printed beside a shape at all.
+// What the screen used to hold, untested, in markup (phase 5
+// audit-deepening ticket 17): which chart a result belongs on, how high
+// the axis reaches, and whether a unit may be printed beside a shape at
+// all.
 
 test('a result the dose log cannot attribute to an ester goes on every ester’s chart', async () => {
   /* Two esters drawn, and three results: one under each episode, and one
@@ -935,7 +937,7 @@ test('unfitted shapes get their own scale and no unit; a fit gives them one axis
 
 test('the whole screen reads the dose log once, and each analyte once', async () => {
   /* The three queries this replaced read the dose log three times and asked
-     for the used analytes three times (phase 5 deepening ticket 17). */
+     for the used analytes three times (phase 5 audit-deepening ticket 17). */
   const { journal } = await journalWithBuiltIns();
   await episode(journal, FROM - 30);
   await injectWeekly(journal, 12);

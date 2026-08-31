@@ -14,7 +14,7 @@
    the assembly around them - which episode is in effect, its schedule, its
    pauses, and which doses are attributed to it - because that assembly is
    what the dose log screen and the long-journal benchmark each used to do
-   their own way (phase 5 deepening ticket 17). */
+   their own way (phase 5 audit-deepening ticket 17). */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
@@ -84,7 +84,7 @@ export type DosePauseInput = Omit<DosePause, 'id'> & { id?: string };
 /** How the dose log sits against what the schedule expected over a range,
     or why there is nothing to compare - one value for what the dose log
     screen used to decide across five reads and four branches of markup
-    (phase 5 deepening ticket 17).
+    (phase 5 audit-deepening ticket 17).
 
     A union rather than a record of nullable fields, so each answer carries
     exactly the rows that answer has: the "no schedule" notice names the
