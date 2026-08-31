@@ -2544,12 +2544,12 @@
   "am_pin_detail_android": "Cztery cyfry, i tym razem to one są kluczem szyfrowania: dziennik jest opakowany twoim PIN-em razem z kluczem, który nigdy nie opuszcza tego telefonu. Samej skradzionej kopii pliku nie da się w ogóle atakować. Kto potrafi rozłożyć telefon, dostaje obie połowy, a wtedy wszystkie 10 000 możliwych PIN-ów pada w około pięć sekund na szybkiej karcie graficznej. PIN zatrzyma więc zerknięcie i zgubiony plik, a nie narzędzie kryminalistyczne. Jeśli ukrywasz dziennik przed kimś takim, wybierz hasło.",
   "am_mode_biometric": "Odblokowanie urządzeniem",
   "am_mode_biometric_sub": "odcisk albo twarz, o które to urządzenie i tak pyta",
-  "am_biometric_detail": "Klucz jest opakowany sekretem, który to urządzenie wydaje dopiero po sprawdzeniu, że to ty, więc nie ma nic do wpisywania ani do pamiętania. Sekret nie opuszcza urządzenia i nie da się go wyliczyć z niczego, co wiesz, więc jeśli urządzenie przepadnie albo zniknie z niego odcisk lub twarz, z którymi zostało ustawione, dziennik przepada razem z nim. Klucz siedzi też w profilu tej przeglądarki, więc wyczyszczenie profilu kończy tak samo.",
+  "am_biometric_detail": "Klucz jest opakowany sekretem, który to urządzenie wydaje dopiero po sprawdzeniu, że to ty, więc nie ma nic do wpisywania ani do pamiętania. Sekret nie opuszcza urządzenia i nie da się go wyliczyć z niczego, co wiesz. Jeśli urządzenie przepadnie albo zniknie z niego odcisk lub twarz, dziennik przepada razem z nim, a wyczyszczenie profilu tej przeglądarki kończy go tak samo.",
   "am_confirm_biometric": "Użyj odblokowania urządzeniem",
   "am_biometric_unavailable": "To urządzenie nie wydało sekretu dla dziennika. Wybierz zamiast tego PIN albo hasło.",
   "bm_unlock_body": "Potwierdź, że to ty, żeby otworzyć dziennik.",
   "bm_unlock_action": "Odblokuj tym urządzeniem",
-  "bm_unlock_failed": "To urządzenie nie potwierdziło, że to ty, więc dziennik został zamknięty.",
+  "bm_unlock_failed": "To urządzenie nie potwierdziło, że to ty, więc dziennik pozostaje zamknięty.",
   "bm_no_way_in": "To urządzenie nie potwierdza, że to ty?",
-  "bm_forgot_key_note": "Dziennik jest zaszyfrowany kluczem, który odpakowuje tylko to urządzenie. Bez niego nikt tego nie odczyta, ta aplikacja też nie."
+  "bm_forgot_key_note": "Dziennik jest zaszyfrowany kluczem, który odpakowuje tylko to urządzenie. Bez tego urządzenia nikt tego nie odczyta, ta aplikacja też nie."
 }

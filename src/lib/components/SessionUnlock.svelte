@@ -146,7 +146,9 @@
       ? m.su_pin_body()
       : mode === 'passphrase'
         ? m.su_passphrase_body()
-        : m.su_device_body()
+        : mode === 'biometric'
+          ? m.bm_unlock_body()
+          : m.su_device_body()
   );
 
   /** Which sentence the way out gets. Only passphrase and PIN can be

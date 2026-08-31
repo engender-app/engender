@@ -26,6 +26,7 @@ import {
   unlockKeystore,
   wrapDataKeyWithSecret,
   KeystoreUnreadableError,
+  type BiometricHandle,
   type KeystoreMetadata
 } from '../crypto/keystore';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
@@ -84,7 +85,7 @@ export async function unlockJournalBiometric(
   ports: BiometricPorts = browserPorts()
 ): Promise<Uint8Array<ArrayBuffer>> {
   const metadata = await requireBiometricKeystore(ports);
-  const { credentialId, prfSalt } = metadata.biometric!;
+  const { credentialId, prfSalt } = metadata.biometric;
   return unlockKeystore(metadata, await ports.authenticator.evaluate(credentialId, prfSalt));
 }
 
@@ -93,7 +94,9 @@ export async function unlockJournalBiometric(
    failed prompt. Named as one, for the reason journal-pin.ts states: the
    wrong profile would fail as a secret that does not work, at a screen with
    nothing to retype. */
-async function requireBiometricKeystore(ports: BiometricPorts): Promise<KeystoreMetadata> {
+async function requireBiometricKeystore(
+  ports: BiometricPorts
+): Promise<KeystoreMetadata & { biometric: BiometricHandle }> {
   const metadata = await ports.readKeystore();
   if (metadata === null) {
     throw new KeystoreUnreadableError('there is no keystore to unlock - boot decides setup vs unlock before calling this');
@@ -108,5 +111,5 @@ async function requireBiometricKeystore(ports: BiometricPorts): Promise<Keystore
   if (!metadata.biometric) {
     throw new KeystoreUnreadableError('this biometric keystore has no credential to ask');
   }
-  return metadata;
+  return metadata as KeystoreMetadata & { biometric: BiometricHandle };
 }

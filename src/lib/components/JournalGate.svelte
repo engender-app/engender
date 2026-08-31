@@ -131,8 +131,14 @@
   );
 
   /* The way-out sheet says which secret is missing, and biometric mode has
-     none to have forgotten - what it has is a device that will not answer. */
-  let resetTitle = $derived(unlockingBiometric ? m.bm_no_way_in() : m.pp_forgot());
+     none to have forgotten - what it has is a device that will not answer.
+     One derived value rather than the same conditional in three places: the
+     sheet's title, its heading and the button that opens it have to agree,
+     and the button already said "Forgotten your PIN?" over a sheet that said
+     passphrase. */
+  let wayOut = $derived(
+    unlockingPin ? m.pin_forgot() : unlockingBiometric ? m.bm_no_way_in() : m.pp_forgot()
+  );
 
   let gateTitle = $derived(
     converting && mode === 'setup'
@@ -323,7 +329,7 @@
       {#if mode === 'unlock'}
         <div class="gate-foot">
           <button class="btn btn-ghost" data-forgot-passphrase onclick={() => (resetOpen = true)}>
-            <span>{unlockingPin ? m.pin_forgot() : unlockingBiometric ? m.bm_no_way_in() : m.pp_forgot()}</span>
+            <span>{wayOut}</span>
           </button>
         </div>
       {/if}
@@ -331,8 +337,8 @@
   </GateScreen>
 {/if}
 
-<Sheet bind:open={resetOpen} title={resetTitle}>
-  <h3>{resetTitle}</h3>
+<Sheet bind:open={resetOpen} title={wayOut}>
+  <h3>{wayOut}</h3>
   <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
     <Icon name="alert" size={20} />
     <div class="notice-body">
