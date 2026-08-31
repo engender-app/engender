@@ -17,7 +17,7 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
-  import { POLISH_PACK, ROADMAP_TRACKS, goalsInTrack, type RoadmapTrack } from '$lib/data/roadmap';
+  import { POLISH_PACK, ROADMAP_TRACKS, goalsInTrack, type RoadmapGoalKey, type RoadmapTrack } from '$lib/data/roadmap';
   import { rankByLean } from '$lib/data/lean';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { RoadmapGoalStatus } from '$lib/data/types';
@@ -31,6 +31,9 @@
     roadmapPackSources,
     roadmapTrackName
   } from '$lib/data/vocabulary/roadmapLabels';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import RoadmapMilestonePromptSheet from '$lib/components/RoadmapMilestonePromptSheet.svelte';
+  import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -80,11 +83,40 @@
     return 'unchecked';
   }
 
-  const toggleBuiltIn = (goalKey: string) =>
-    journal.roadmap.setGoalStatus(pack.key, goalKey, nextStatus(statuses[goalKey] ?? 'unchecked'));
+  let promptGoal = $state<{ key: string; title: string } | null>(null);
 
-  const toggleCustom = (goal: { id: string; status: RoadmapGoalStatus }) =>
-    journal.roadmap.setCustomGoalStatus(goal.id, nextStatus(goal.status));
+  const toggleBuiltIn = (goalKey: RoadmapGoalKey) => {
+    const current = statuses[goalKey] ?? 'unchecked';
+    const next = nextStatus(current);
+    journal.roadmap.setGoalStatus(pack.key, goalKey, next);
+    if (current === 'unchecked' && next === 'checked' && prefs.roadmapMilestoneSyncEnabled) {
+      promptGoal = { key: goalKey, title: roadmapGoalTitle(goalKey) };
+    }
+  };
+
+  const toggleCustom = (goal: { id: string; status: RoadmapGoalStatus; text: string }) => {
+    const current = goal.status;
+    const next = nextStatus(current);
+    journal.roadmap.setCustomGoalStatus(goal.id, next);
+    if (current === 'unchecked' && next === 'checked' && prefs.roadmapMilestoneSyncEnabled) {
+      promptGoal = { key: goal.id, title: goal.text };
+    }
+  };
+
+  async function handleMilestoneConfirm(data: {
+    title: string;
+    epochDay: number;
+    photo: NormalizedPhoto | null;
+    goalKey: string | null;
+  }) {
+    await journal.milestones.upsertMilestone({
+      name: data.title,
+      epochDay: data.epochDay,
+      roadmapGoalKey: data.goalKey,
+      photo: data.photo ? { action: 'replace', photo: data.photo } : { action: 'preserve' }
+    });
+    promptGoal = null;
+  }
 
   function stateLabel(status: RoadmapGoalStatus): string {
     if (status === 'checked') return m.roadmap_state_checked();
@@ -224,6 +256,14 @@
     >
   {/if}
 </Sheet>
+
+<RoadmapMilestonePromptSheet
+  open={promptGoal !== null}
+  goalKey={promptGoal?.key ?? null}
+  goalTitle={promptGoal?.title ?? ''}
+  onConfirm={handleMilestoneConfirm}
+  onDismiss={() => (promptGoal = null)}
+/>
 
 <style>
   .roadmap-provenance {

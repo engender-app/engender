@@ -369,6 +369,21 @@
           />
         </span>
       </div>
+      <div class="kit-row" data-roadmap-milestone-sync>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.roadmap_milestone_sync_title()}</span>
+          <span class="kit-row-sub">{m.roadmap_milestone_sync_sub()}</span>
+        </span>
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs.roadmapMilestoneSyncEnabled}
+            label={m.roadmap_milestone_sync_title()}
+            onChange={(v) => {
+              prefs.roadmapMilestoneSyncEnabled = v;
+            }}
+          />
+        </span>
+      </div>
       <!-- Wrapped's and on-this-day's toggles were here too until ticket 51
            moved them, with their notification sub-toggles and the permission
            notice, behind the Live tiles and notices row above. -->
