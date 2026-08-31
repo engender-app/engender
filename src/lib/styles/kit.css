@@ -759,9 +759,26 @@ a.kit-entry:active {
   grid-column: 1 / -1;
 }
 
+/* `data-tight`: opt-in for a pair whose notes are short enough - one or two
+   words each, like Safe Space's "Consecutive days" / "In your history"
+   (ticket 14, Alicja's review) - that the 390px floor's protection is
+   overcautious for. The 200% zoom danger above is still honoured: it stacks
+   at 300px rather than never, which still covers the ~195px effective
+   viewport that zoom produces on a 390px-floor phone. Opt in per instance;
+   the default above stays the floor for any pair that has not confirmed its
+   notes are this short. */
+@media (max-width: 300px) {
+  .kit-tiles[data-tight] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 390px) {
-  .kit-tiles,
-  .kit-tiles[data-live-tile-grid] {
+  .kit-tiles:not([data-tight]),
+  /* Same guard as the plain kit-tiles selector above - a live-tile grid
+     that also opts into data-tight (none does yet) must not be stacked
+     here just because this selector forgot to check for it too. */
+  .kit-tiles[data-live-tile-grid]:not([data-tight]) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -1563,10 +1580,16 @@ a.kit-entry:active {
    a line above it, rather than sitting in a right-hand column behind a
    label gutter. Single-hue: the leader is the stripe at full strength and
    every other bar is one diluted step of that same colour, which is the
-   whole of the ramp. */
+   whole of the ramp.
+
+   Row gap tightened from --space-3 to --space-2 (Alicja's review, ticket
+   14): a set of bars with no note line was reading as more air than
+   reading, five thin tracks adrift in their card rather than one dense
+   list - "3. Tighter, not airier" (DIRECTION.md), applied here the same
+   way it already was to card padding. */
 .kit-bars {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 /* A bar row that opens what is behind it (the Stats hub's tag insights).

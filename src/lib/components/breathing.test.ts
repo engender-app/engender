@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BOX_BREATHING_PHASES,
   initialBreathingState,
+  phaseProgress,
   tickBreathing,
   type BreathingState
 } from './breathing';
@@ -60,5 +61,25 @@ describe('breathing state machine', () => {
     expect(s.phase).toBe('inhale');
     expect(s.phaseIndex).toBe(0);
     expect(s.secondsRemaining).toBe(4);
+  });
+});
+
+describe('phaseProgress', () => {
+  it('is 1/duration at the first second of a phase, aiming for the end of that second', () => {
+    expect(phaseProgress(4, 4)).toBeCloseTo(0.25);
+  });
+
+  it('reaches 1 (full) on the phase\'s last second', () => {
+    expect(phaseProgress(4, 1)).toBe(1);
+  });
+
+  it('climbs one step per second in between', () => {
+    expect(phaseProgress(4, 3)).toBeCloseTo(0.5);
+    expect(phaseProgress(4, 2)).toBeCloseTo(0.75);
+  });
+
+  it('scales to whatever duration a phase carries', () => {
+    expect(phaseProgress(8, 8)).toBeCloseTo(0.125);
+    expect(phaseProgress(8, 1)).toBe(1);
   });
 });
