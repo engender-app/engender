@@ -1906,11 +1906,13 @@ try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="4"]').click();
   await page.locator('#ed-note').fill('Killed mid-edit by Playwright.');
+  /* The mirror is ciphertext under the session data key now (sec-audit 02),
+     so what can be read from outside the app is that it was written and that
+     the note is not sitting in it. That it still carries this draft is what
+     the reload below proves, which was always the point of the flow. */
   await page.waitForFunction(() => {
     const raw = localStorage.getItem('gender-diary-entry-draft');
-    if (!raw) return false;
-    const draft = JSON.parse(raw);
-    return draft.mood === 4 && draft.note === 'Killed mid-edit by Playwright.';
+    return !!raw && !raw.includes('Killed mid-edit');
   });
 
   await page.reload({ waitUntil: 'networkidle' });
