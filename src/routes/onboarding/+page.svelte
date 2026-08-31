@@ -34,6 +34,9 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { sharedAxisX } from '$lib/motion/navigation';
   import { motionDuration } from '$lib/motion/tokens';
+  import { bootState } from '$lib/stores/boot.svelte';
+  import { needsOnboardingAccessMode } from '$lib/stores/boot-state';
+  import { onboardingProgress } from '$lib/onboarding/first-run.svelte';
   import {
     isSkippable,
     onboardingDestination,
@@ -111,6 +114,15 @@
   let index = $derived(stepIndex(steps, step));
   let growth = $derived(sunGrowth(index, steps.length));
 
+  /* Latches the moment this flow reaches its own access-mode step, for
+     +layout.svelte's first-run exception (ticket 54): before this step
+     nothing here has touched the database, and the layout renders this
+     page over the gate on the strength of that; from this step on, the
+     gate is what has to render instead, and this is what tells it to. */
+  $effect(() => {
+    if (index >= stepIndex(steps, 'lock')) onboardingProgress.reachedAccessMode = true;
+  });
+
   /* The incoming step waits for the outgoing one to finish leaving.
      Svelte starts an `in:` and an `out:` together, and tier 2's own timings
      make the exit shorter than the entrance - so for the length of the exit
@@ -147,17 +159,17 @@
   }
 
   /* One way out, whichever control was pressed. "Straight to the app" from
-     step two and "Start writing" from the finish are the same act - keep
-     what has been chosen so far, mark the first run done, go - and writing
-     them as one function is what stops the two drifting apart the way a
-     second copy of this would.
+     an early step and "Start writing" from the finish are the same act -
+     keep what has been chosen so far, mark the first run done, go - and
+     writing them as one function is what stops the two drifting apart the
+     way a second copy of this would.
 
-     The toggle on the lock step is a choice to set a PIN, not a PIN:
-     nothing turns app lock on until one has been typed twice on the setup
-     screen, which then brings the new user Home itself. Leaving early with
-     that toggle on therefore still routes through it, because the
-     alternative is a switch that was turned on and did nothing. That screen
-     carries its own Not now, so changing your mind there costs one tap. */
+     Reachable only once the access mode is settled (ticket 54): that step
+     is what creates the keystore this function's writes need, so an early
+     "leave setup" cannot call this directly - leave() below routes it
+     through the lock step first, the same way the old app-lock toggle used
+     to route an early leave through its own PIN screen before that was one
+     choice made in the security module rather than two. */
   function complete() {
     /* Guarded like the other four, and for the same reason: skipping a step
        leaves the stored value alone rather than overwriting it with
@@ -175,6 +187,20 @@
     }
     prefs.onboarded = true;
     goto(onboardingDestination());
+  }
+
+  /* "Leave setup", from any step before the finish. Detours through the
+     lock step first when the access mode has not been chosen yet (ticket
+     54): complete()'s writes need the keystore that step is the only place
+     that creates, so there is nowhere else for an early leave to go. Once a
+     mode is chosen boot leaves this state on its own, and a second "leave
+     setup" from the lock step reaches complete() directly. */
+  function leave() {
+    if (needsOnboardingAccessMode(bootState)) {
+      go('lock');
+      return;
+    }
+    complete();
   }
 </script>
 
@@ -273,8 +299,17 @@
                  opens is now one choice made in the security module, and a
                  PIN is one of its access modes rather than a switch here.
                  What is left is the one thing this step still decides -
-                 whether leaving the app locks it. Ticket 54 brings the
-                 module itself into the flow. -->
+                 whether leaving the app locks it.
+
+                 On a brand new install the module itself (AccessModeSetup)
+                 is what a person meets on reaching this step, not this
+                 content: +layout.svelte's first-run exception (ticket 54)
+                 stops covering for the gate the instant the flow gets here,
+                 so the gate takes the screen instead, the module creates the
+                 keystore, and only once that is done does this step's own
+                 content - the toggle below - render at all. Nothing to wire
+                 here as a result: the one place this step touches the
+                 database is a step it does not get to render for. -->
             <ListCard>
               <ListRow
                 key="lock-on-leave"
@@ -358,7 +393,7 @@
           </button>
         {/if}
         {#if step !== 'done'}
-          <button class="btn btn-ghost" data-leave-setup onclick={complete}><span>{m.ob_leave()}</span></button>
+          <button class="btn btn-ghost" data-leave-setup onclick={leave}><span>{m.ob_leave()}</span></button>
         {/if}
       </div>
     </div>
