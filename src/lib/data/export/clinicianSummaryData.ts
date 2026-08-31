@@ -112,23 +112,14 @@ export async function assembleClinicianDossier(
   // Base summary reads through the ADR-0031 registered clinicianSummary area
   const summary = await journal.clinicianSummary.getSummary(fromEpochDay, toEpochDay);
 
-  // Demographics resolution: infer pronouns from active pronoun tryout if not passed
+  // Demographics: only committed values. An active pronoun tryout is by
+  // definition not yet adopted, so it never fills this field - a clinical
+  // document is not the place for an in-progress experiment.
   let demographics: PatientDemographics | null = null;
   if (inclusion.demographics) {
-    let resolvedPronouns = params.demographics?.pronouns ?? null;
-    if (!resolvedPronouns) {
-      const tryouts = await journal.tryouts.getTryouts();
-      const activePronounTryout = tryouts.find(
-        (t) => t.kind === 'pronouns' && t.endEpochDay === null
-      );
-      if (activePronounTryout) {
-        resolvedPronouns = activePronounTryout.label;
-      }
-    }
-
     demographics = {
       name: params.demographics?.name ?? '',
-      pronouns: resolvedPronouns,
+      pronouns: params.demographics?.pronouns ?? null,
       dob: params.demographics?.dob ?? null
     };
   }

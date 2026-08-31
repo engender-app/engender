@@ -141,7 +141,7 @@ describe('assembleClinicianDossier', () => {
     expect(dossier.labs).not.toBeNull();
   });
 
-  it('resolves pronouns from active pronoun tryout if unset in demographics', async () => {
+  it('never infers pronouns from an active tryout - only a committed value is printed', async () => {
     await journal.tryouts.upsertTryout({
       kind: 'pronouns',
       label: 'she/her',
@@ -157,6 +157,6 @@ describe('assembleClinicianDossier', () => {
       }
     });
 
-    expect(dossier.demographics?.pronouns).toBe('she/her');
+    expect(dossier.demographics?.pronouns).toBeNull();
   });
 });
