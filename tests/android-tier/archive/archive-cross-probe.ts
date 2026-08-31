@@ -206,7 +206,8 @@ function portableWith(marker: string) {
     streakGoalHabit: values.streakGoalHabit,
     streakGoalTargetDays: values.streakGoalTargetDays,
     journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
-    hairAnchorEpochDay: values.hairAnchorEpochDay
+    hairAnchorEpochDay: values.hairAnchorEpochDay,
+    cycleTrackingEnabled: values.cycleTrackingEnabled
   };
 }
 

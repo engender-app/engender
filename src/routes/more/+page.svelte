@@ -25,6 +25,9 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { liveList } from '$lib/data/live/journal.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
 
   type HubRow = { key: string; icon: string; title: () => string; subtitle: () => string; href: string };
 
@@ -79,12 +82,24 @@
     { key: 'resources', icon: 'globe', title: () => m.resources_title(), subtitle: () => m.resources_row_sub(), href: '/settings/resources' },
   ];
 
-  const GROUPS: { title: () => string; rows: HubRow[] }[] = [
-    { title: () => m.hub_group_body(), rows: BODY_ROWS },
-    { title: () => m.hub_group_health(), rows: HEALTH_ROWS },
-    { title: () => m.hub_group_transition(), rows: TRANSITION_ROWS },
-    { title: () => m.hub_group_practice(), rows: PRACTICE_ROWS },
+  const GROUPS: { title: () => string; rows: () => HubRow[] }[] = [
+    { title: () => m.hub_group_body(), rows: () => BODY_ROWS },
+    { title: () => m.hub_group_health(), rows: () => healthRows },
+    { title: () => m.hub_group_transition(), rows: () => TRANSITION_ROWS },
+    { title: () => m.hub_group_practice(), rows: () => PRACTICE_ROWS },
   ];
+
+  /* ADR-0043: the cycle row is the one row here that has to be able to not
+     exist - read cold, a permanent cycle prompt tells a transfemme reader
+     this hub was not drawn for them. It stays written in HEALTH_ROWS above
+     so its shape is held like any other row's, and one filter - fed by the
+     one visibility rule in cycleTracking.ts, an active testosterone
+     regimen or the explicit opt-in - takes it out of the card otherwise.
+     Hiding the row is all it does: the screen behind it and its records
+     are untouched, and its direct URL still answers. */
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingEnabled));
+  let healthRows = $derived(cycleShown ? HEALTH_ROWS : HEALTH_ROWS.filter((row) => row.key !== 'cycle-events'));
 </script>
 
 <div class="screen">
@@ -98,7 +113,7 @@
   {#each GROUPS as group, i (group.title())}
     <SectionHeading text={group.title()} />
     <ListCard role={roleAt(activeFlag.roles, i)}>
-      {#each group.rows as row (row.key)}
+      {#each group.rows() as row (row.key)}
         <ListRow key={row.key} icon={row.icon} title={row.title()} href={row.href} />
       {/each}
     </ListCard>
