@@ -39,12 +39,13 @@
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import type { Role } from '$lib/theme/roles';
   import PhotoThumb from './PhotoThumb.svelte';
+  import Sheet from './Sheet.svelte';
   import DayCard from './kit/DayCard.svelte';
   import DayEntry from './kit/DayEntry.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
   import SectionHeading from './kit/SectionHeading.svelte';
-  import { dayRows } from './dayRows';
+  import { dayRows, type DayRow } from './dayRows';
 
   let {
     epochDay,
@@ -62,6 +63,25 @@
 
   let entries = $derived(records.entries);
   let alsoRows = $derived(dayRows(records));
+
+  /* A day's context list is capped, and the rest is one tap away (Alicja,
+     2026-08-31, against the maximal day's twenty-one rows). Five is what the
+     card shows: enough that a typical day - four rows - is never truncated
+     at all, and short enough that a busy one stops being a wall.
+
+     The overflow is a sheet rather than an in-place expand. The list can be
+     three times the height of the screen on a maximal day, and DIRECTION
+     caps `disclose()` at "a group rather than a screen - a disclosure that
+     opens half the document is a navigation and belongs to tier 2". A sheet
+     is tier 2's own answer and it already has its motion, so nothing new is
+     invented here.
+
+     Cheap by construction: the sheet's rows are the same `alsoRows` the card
+     sliced, so opening it costs no read. */
+  const SHOWN = 5;
+  let shown = $derived(alsoRows.length > SHOWN ? alsoRows.slice(0, SHOWN) : alsoRows);
+  let hidden = $derived(alsoRows.length - shown.length);
+  let allOpen = $state(false);
 </script>
 
 <!-- How many records the row stands for, where it stands for more than
@@ -91,43 +111,67 @@
   </DayCard>
 {/if}
 
+{#snippet listRow(row: DayRow)}
+  <!-- Two spellings of one row rather than a `leading` snippet that re-draws
+       the kit's own icon disc in its else branch: `leading` replaces the disc
+       outright, so a row with no photograph has to not pass one at all. -->
+  {#if row.photo}
+    <ListRow
+      key={row.key}
+      icon={row.icon}
+      title={row.title}
+      subtitle={row.subtitle}
+      href={row.href}
+      data-day-row={row.key}
+    >
+      {#snippet leading()}
+        <!-- `row.photo!` because the {#if} above guards it and a snippet
+             boundary drops the narrowing - svelte-check catches this and no
+             test does. -->
+        <span class="day-face"><PhotoThumb photo={row.photo!} size={36} /></span>
+      {/snippet}
+      {#snippet trailing()}{@render count(row.count)}{/snippet}
+    </ListRow>
+  {:else}
+    <ListRow
+      key={row.key}
+      icon={row.icon}
+      title={row.title}
+      subtitle={row.subtitle}
+      href={row.href}
+      data-day-row={row.key}
+    >
+      {#snippet trailing()}{@render count(row.count)}{/snippet}
+    </ListRow>
+  {/if}
+{/snippet}
+
 {#if alsoRows.length > 0}
   <SectionHeading text={m.day_also_heading()} />
   <ListCard role={alsoRole}>
-    {#each alsoRows as row (row.key)}
-      <!-- Two spellings of one row rather than a `leading` snippet that
-           re-draws the kit's own icon disc in its else branch: `leading`
-           replaces the disc outright, so a row with no photograph has to
-           not pass one at all. -->
-      {#if row.photo}
-        <ListRow
-          key={row.key}
-          icon={row.icon}
-          title={row.title}
-          subtitle={row.subtitle}
-          href={row.href}
-          data-day-row={row.key}
-        >
-          {#snippet leading()}
-            <!-- `row.photo!` because the {#if} above guards it and a snippet
-                 boundary drops the narrowing - svelte-check catches this and
-                 no test does. -->
-            <span class="day-face"><PhotoThumb photo={row.photo!} size={36} /></span>
-          {/snippet}
-          {#snippet trailing()}{@render count(row.count)}{/snippet}
-        </ListRow>
-      {:else}
-        <ListRow
-          key={row.key}
-          icon={row.icon}
-          title={row.title}
-          subtitle={row.subtitle}
-          href={row.href}
-          data-day-row={row.key}
-        >
-          {#snippet trailing()}{@render count(row.count)}{/snippet}
-        </ListRow>
-      {/if}
-    {/each}
+    {#each shown as row (row.key)}{@render listRow(row)}{/each}
+    {#if hidden > 0}
+      <!-- A row of the same list rather than a control under it: what it
+           opens is more of this list, so it belongs inside the card the list
+           is in. It acts rather than navigating, so it is a button - which is
+           what passing `onclick` instead of `href` makes it. -->
+      <ListRow
+        key="also-more"
+        icon="dots"
+        title={m.day_also_more({ count: hidden })}
+        onclick={() => (allOpen = true)}
+        data-day-more
+      />
+    {/if}
   </ListCard>
 {/if}
+
+<!-- The same heading the card carries, because this is that list rather than
+     a second thing: `Sheet`'s own `title` is its aria-label and nothing more,
+     so the visible one is the caller's to draw. -->
+<Sheet bind:open={allOpen} title={m.day_also_heading()}>
+  <SectionHeading text={m.day_also_heading()} />
+  <ListCard role={alsoRole}>
+    {#each alsoRows as row (row.key)}{@render listRow(row)}{/each}
+  </ListCard>
+</Sheet>

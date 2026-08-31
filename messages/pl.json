@@ -171,6 +171,7 @@
   "nothing_logged": "Nic nie zapisano tego dnia",
   "nothing_logged_body": "Nadal możesz dodać wpis. Pamięć też się liczy.",
   "day_also_heading": "Poza tym",
+  "day_also_more": "i jeszcze {count}",
   "day_open_whole": "Cały dzień",
   "day_first_noticed": "Zauważone po raz pierwszy",
   "day_wear_running": "Wciąż trwa",
