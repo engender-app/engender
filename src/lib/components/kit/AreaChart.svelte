@@ -170,9 +170,13 @@
      calendar: the chart draws its buckets evenly spaced whatever the days
      behind them are, so an annotation has to be placed the same way or it
      lands beside the reading it belongs to. */
-  let placed = $derived(placeAnnotations(annotations, points, Math.max(plotWidth - PAD * 2, 1)));
-  let atAnnotations = $derived(scrub === null ? [] : annotationsAtPoint(annotations, points, scrub));
-  let caption = $derived(annotationCaption(annotations));
+  /* Nothing is annotated on a chart with one reading on it: there is no
+     distance for a band to have and no position for a mark to be at, so the
+     caption would name things the plot never drew. */
+  let shownAnnotations = $derived(points.length >= 2 ? annotations : []);
+  let placed = $derived(placeAnnotations(shownAnnotations, points, Math.max(plotWidth - PAD * 2, 1)));
+  let atAnnotations = $derived(scrub === null ? [] : annotationsAtPoint(shownAnnotations, points, scrub));
+  let caption = $derived(annotationCaption(shownAnnotations));
 
   /* Named rather than written inline. An arrow in an attribute is also an
      arrow to anything reading this markup with a regex, and
@@ -297,7 +301,7 @@
     </div>
   {/if}
 
-  {#if annotations.length}
+  {#if shownAnnotations.length}
     <!-- What the marks are, once, under the plot. Names only: the dates are
          where the marks are, and a caption that repeated them would be a
          second axis written in words. -->
@@ -307,7 +311,7 @@
          chart's own numbers are already offered as a list by the screens
          that draw one. -->
     <ul class="visually-hidden">
-      {#each annotations as annotation (annotation.id)}
+      {#each shownAnnotations as annotation (annotation.id)}
         <li>{annotationLine(annotation)}</li>
       {/each}
     </ul>

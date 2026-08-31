@@ -226,6 +226,7 @@
   "chart_annotation_surgery": "surgery",
   "chart_annotation_regimen": "regimen",
   "chart_annotation_recovery": "recovery",
+  "chart_annotation_recovery_of": "{name} recovery",
   "chart_annotation_dose_pause": "dose pause",
   "chart_annotation_journaling_pause": "journaling pause",
   "chart_annotation_tryout": "tryout",

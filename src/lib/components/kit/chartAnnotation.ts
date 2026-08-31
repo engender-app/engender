@@ -29,9 +29,17 @@ function kindWord(kind: ChartAnnotationKind): string {
 
 /** The short form, for the caption under a plot where two of these have to
     fit across 390px: what the record calls itself, and the kind of thing it
-    is only where it calls itself nothing. */
+    is only where it calls itself nothing.
+
+    Recovery is the one kind that cannot go by its name alone. It takes the
+    name of the procedure it follows, and the procedure's own surgery day is
+    an annotation too, so a caption listing both wrote "top surgery, top
+    surgery" and looked like a bug in the query rather than two marks that
+    mean different things. */
 export function annotationName(annotation: ChartAnnotation): string {
-  return annotation.name?.trim() || kindWord(annotation.kind);
+  const name = annotation.name?.trim();
+  if (!name) return kindWord(annotation.kind);
+  return annotation.kind === 'recovery' ? m.chart_annotation_recovery_of({ name }) : name;
 }
 
 /** The long form, for the readout and for the list a screen reader takes.
