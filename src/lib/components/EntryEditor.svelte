@@ -640,10 +640,18 @@
           }}
         >
           <Icon name={entryDraft.doseLog?.drug === doseItem.drug ? 'check' : 'plus'} size={16} />
-          <span>
-            {m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}
+          <!-- Two lines rather than one run-on sentence: a fully-rounded
+               pill's ends stop reading as a pill once its text wraps, so a
+               chip carrying a second fact gets a plainer rounded rect
+               instead (phase 5 deepening ticket 06). -->
+          <span class="dose-chip-text">
+            <span class="dose-chip-main">
+              {m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}
+            </span>
             {#if stockRow}
-              · {stockRemainingLabel(stockRow.projection.remaining - 1, stockRow.entry.unit)}
+              <span class="dose-chip-sub">
+                {stockRemainingLabel(stockRow.projection.remaining - 1, stockRow.entry.unit)}
+              </span>
             {/if}
           </span>
         </button>
@@ -1049,6 +1057,29 @@
     background: var(--accent-soft, var(--accent));
     color: var(--on-accent-soft, var(--accent-fg));
     border-color: var(--accent);
+  }
+
+  /* The dose chip earns two lines when a stock entry adds what it leaves,
+     so it drops the pill radius for a rounded rect (--radius-md, the same
+     one a list row or a button uses) - a true pill's fully-rounded ends
+     stop reading as a pill the moment its content wraps past one line. */
+  .dose-chip {
+    align-items: flex-start;
+    border-radius: var(--radius-md);
+    text-align: left;
+  }
+  .dose-chip-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .dose-chip-sub {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-regular);
+    /* Inherits the chip's own colour (plain, or on-accent-soft when
+       active) rather than --text-2, which is wrong the moment the chip
+       is active - opacity keeps it secondary either way. */
+    opacity: 0.75;
   }
   .contextual-input {
     width: 100%;
