@@ -1,5 +1,6 @@
 package dev.barankiewicz.genderdiary.backup;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
@@ -29,5 +30,19 @@ public class AutoExportDerivationTest {
             "fa081e0706300855bf325249b26a5dd959bdeec8644a96a1ecd90f9e76df6398",
             bytesToHex(key2)
         );
+    }
+
+    /** G-04: {@code deriveArchiveKey} has no parameter list a caller's
+        absurd cost - a gigabyte of memory, or one iteration at a mebibyte -
+        could occupy. It always runs the archive profile (ADR-0013), which
+        this pins down against the raw primitive so a future change that
+        reintroduces caller-controlled cost breaks a byte comparison rather
+        than passing silently. */
+    @Test
+    public void deriveArchiveKeyAlwaysRunsTheArchiveProfile() {
+        byte[] salt = new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+        byte[] expected = AutoExportPlugin.deriveArgon2id("correct horse", salt, 65536, 3, 1, 32);
+        byte[] actual = AutoExportPlugin.deriveArchiveKey("correct horse", salt);
+        assertArrayEquals(expected, actual);
     }
 }
