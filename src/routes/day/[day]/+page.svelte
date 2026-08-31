@@ -14,22 +14,11 @@
      nowhere is a compile error there rather than a screen quietly short of
      one. The screen names no area.
 
-     Two areas, so two roles, in reading order. The day card keeps role 0 and
-     everything around it takes role 1.
-
-     The composition is the ticket's own problem, and the answer is one list
-     rather than a section per area. The entry is the day's centre and the day
-     card draws it as it always did; everything else is one card of rows in
-     the registry's order, so a day with one dose gains one row and a day with
-     eleven kinds of record gains eleven rows instead of eleven headings. A
-     section with nothing in it produces no row and therefore no DOM, the way
-     ticket 04's contextual sections already do, and a day with only an entry
-     renders exactly what it rendered before this ticket.
-
-     No motion is added. Arriving here is the shared axis
-     (screen-transition.ts) and a row answers a press the way every row does;
-     there is no state on this screen that changes, so tier 4 is where all of
-     it belongs.
+     What a day looks like is DayRecords.svelte, and its reasoning lives
+     there: this route owns the epoch day, the read and the gate, and that
+     component owns the composition. Split so the composition can be looked
+     at against the real tokens without a journal behind it
+     (tests/browser-tier/day-gallery.svelte).
 
      It writes nothing. Editing happens in the editor and in each area's own
      screen, and every row here is a link into one of them.
@@ -66,24 +55,16 @@
   import { m } from '$lib/paraglide/messages';
   import { smartBack } from '$lib/navigation/smart-back';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { fmtDay } from '$lib/data/dates';
   import { DAY_SECTION_KEYS } from '$lib/data/journal/day';
   import { liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
-  import { entryMarks } from '$lib/data/recentEntries';
-  import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import Icon from '$lib/components/Icon.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import DayRecordsView from '$lib/components/DayRecords.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import DayCard from '$lib/components/kit/DayCard.svelte';
-  import DayEntry from '$lib/components/kit/DayEntry.svelte';
-  import ListCard from '$lib/components/kit/ListCard.svelte';
-  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
-  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { dayRows } from './dayRows';
 
   let epochDay = $derived(page.params.day === 'today' ? todayEpochDay() : Number(page.params.day));
   let isToday = $derived(epochDay === todayEpochDay());
@@ -108,12 +89,9 @@
     DAY_SECTION_KEYS.flatMap((key) => records[key] as unknown[])
   );
 
-  let entries = $derived(day?.entries ?? []);
-  let alsoRows = $derived(day ? dayRows(day) : []);
-
-  /* Role 0 for the entries, which is the only index guaranteed to be a colour
-     on all 8 palettes, and role 1 for everything around them - areas in
-     reading order (DIRECTION, "Colour that carries a value takes role 0"). */
+  /* Two areas, so two roles in reading order. Role 0 for the entries, which
+     is the only index guaranteed to be a colour on all 8 palettes, and role 1
+     for everything around them. */
   let entriesRole = $derived(roleAt(activeFlag.roles, 0));
   let alsoRole = $derived(roleAt(activeFlag.roles, 1));
 </script>
@@ -127,53 +105,10 @@
 
   <ReadGate read={everythingLogged} variant="card" count={2}>
     {#snippet rows()}
-      {#if entries.length > 0}
-        <DayCard
-          key={String(epochDay)}
-          role={entriesRole}
-          date={fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-          aside={m.entries_this_day({ count: entries.length })}
-        >
-          {#each entries as e (e.id)}
-            <DayEntry
-              key={String(e.id)}
-              href={`/entry/${e.id}`}
-              time={fmtTime(e.timestamp)}
-              mood={e.mood}
-              note={e.note ?? undefined}
-              tags={entryTags(e)}
-              marks={entryMarks(e)}
-            />
-          {/each}
-        </DayCard>
-      {/if}
-
-      {#if alsoRows.length > 0}
-        <SectionHeading text={m.day_also_heading()} />
-        <ListCard role={alsoRole}>
-          {#each alsoRows as row (row.key)}
-            <ListRow
-              key={row.key}
-              icon={row.icon}
-              title={row.title}
-              subtitle={row.subtitle}
-              href={row.href}
-              data-day-row={row.key}
-            >
-              {#snippet leading()}
-                {#if row.photo}
-                  <span class="day-face"><PhotoThumb photo={row.photo} size={36} /></span>
-                {:else}
-                  <span class="kit-row-ico"><Icon name={row.icon} size={22} /></span>
-                {/if}
-              {/snippet}
-              {#snippet trailing()}
-                {#if row.count !== undefined && row.count > 1}<span class="day-count">{row.count}</span>{/if}
-              {/snippet}
-            </ListRow>
-          {/each}
-        </ListCard>
-      {/if}
+      <!-- `day!` because the gate renders this snippet only once the read
+           has landed with something, which the compiler cannot see across a
+           snippet boundary. -->
+      <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} />
     {/snippet}
     {#snippet empty()}
       <Notice
