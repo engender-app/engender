@@ -153,17 +153,6 @@ test('garbage in the mirror reads as no draft, not as an exception', async () =>
   vi.unstubAllGlobals();
 });
 
-test('with no journal key there is nothing to mirror under, so nothing is written', async () => {
-  const values = fakeLocalStorage();
-  const store = localStorageEntryDraft(async () => null);
-
-  await store.write(persisted(NOTE));
-
-  assert.equal(values.has(ENTRY_DRAFT_STORE_KEY), false);
-  assert.equal(await store.read(), null);
-  vi.unstubAllGlobals();
-});
-
 test('the last edit is what stays, even when an earlier write finishes after it', async () => {
   const values = fakeLocalStorage();
   const store = localStorageEntryDraft(async () => KEY);
@@ -200,11 +189,33 @@ test('a read that starts before the journal is open still gets its draft once th
   vi.unstubAllGlobals();
 });
 
-test('clear takes the mirror without needing a key', () => {
+test('clearing on unmount beats a write that was already in flight', async () => {
+  const values = fakeLocalStorage();
+  let handOver: (key: Uint8Array<ArrayBuffer>) => void = () => {};
+  const opening = new Promise<Uint8Array<ArrayBuffer>>((resolve) => {
+    handOver = resolve;
+  });
+  const store = localStorageEntryDraft(() => opening);
+
+  /* The last keystroke's write and the editor's unmount, in that order.
+     Without this the write lands after the clear and the mirror survives an
+     unmount that was supposed to end it - which is the whole reason the
+     window this thing is readable in is short. */
+  const writing = store.write(persisted(NOTE));
+  store.clear();
+  handOver(KEY);
+  await writing;
+
+  assert.equal(values.has(ENTRY_DRAFT_STORE_KEY), false);
+  vi.unstubAllGlobals();
+});
+
+test('clear takes the mirror without waiting for a key', () => {
   const values = fakeLocalStorage();
   values.set(ENTRY_DRAFT_STORE_KEY, 'whatever was there');
 
-  localStorageEntryDraft(async () => null).clear();
+  // A journal that never opens: clearing is a removeItem and owes it nothing.
+  localStorageEntryDraft(() => new Promise<Uint8Array<ArrayBuffer>>(() => {})).clear();
 
   assert.equal(values.has(ENTRY_DRAFT_STORE_KEY), false);
   vi.unstubAllGlobals();
