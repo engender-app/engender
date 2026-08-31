@@ -1470,6 +1470,19 @@ HAVING count(gd.key) > 0;
 DELETE FROM pref WHERE key = 'activePreset';
 `;
 
+/* v43: roadmap-to-milestone sync bridge (phase 5 deepening ticket 10,
+   ADR-0042). A milestone created from checking off a transition roadmap
+   goal records the goal's key, so the app knows which roadmap item it
+   originated from.
+
+   Nullable, and unconstrained by a foreign key or CHECK: a goal key can
+   name a built-in goal from a country pack or a custom roadmap goal UUID.
+   If the milestone is deleted later, the roadmap checkmark remains checked
+   (graceful unlink). */
+const SCHEMA_V43 = `
+ALTER TABLE milestone ADD COLUMN roadmap_goal_key TEXT;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1512,5 +1525,6 @@ export const migrations: Migration[] = [
   { version: 39, sql: SCHEMA_V39 },
   { version: 40, sql: SCHEMA_V40 },
   { version: 41, sql: SCHEMA_V41 },
-  { version: 42, sql: SCHEMA_V42 }
+  { version: 42, sql: SCHEMA_V42 },
+  { version: 43, sql: SCHEMA_V43 }
 ];

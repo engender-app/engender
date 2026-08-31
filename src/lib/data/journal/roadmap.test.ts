@@ -130,3 +130,38 @@ test('setting a custom goal that does not exist fails loudly rather than doing n
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(() => journal.roadmap.setCustomGoalStatus('not-a-real-uuid', 'checked'));
 });
+
+test('minting a milestone with a roadmapGoalKey links the goal key (ticket 10, ADR-0042)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-id-card', 'checked');
+
+  const milestoneId = await journal.milestones.upsertMilestone({
+    name: 'New ID card received',
+    epochDay: 20500,
+    roadmapGoalKey: 'pl-legal-id-card'
+  });
+
+  const milestones = await journal.milestones.getMilestones();
+  const found = milestones.find((m) => m.id === milestoneId);
+  assert.ok(found);
+  assert.equal(found.roadmapGoalKey, 'pl-legal-id-card');
+});
+
+test('deleting a linked milestone leaves the roadmap goal checked (graceful unlink, ticket 10)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-name-usc', 'checked');
+
+  const milestoneId = await journal.milestones.upsertMilestone({
+    name: 'Name changed at USC',
+    epochDay: 20400,
+    roadmapGoalKey: 'pl-legal-name-usc'
+  });
+
+  await journal.milestones.deleteMilestone(milestoneId);
+
+  const milestones = await journal.milestones.getMilestones();
+  assert.equal(milestones.some((m) => m.id === milestoneId), false);
+
+  const statuses = await journal.roadmap.getGoalStatuses('pl');
+  assert.equal(statuses['pl-legal-name-usc'], 'checked');
+});

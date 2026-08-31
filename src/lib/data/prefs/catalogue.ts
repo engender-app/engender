@@ -257,6 +257,9 @@ export interface PreferenceValues {
       milliseconds, like `lastBackupAt`, and just as device-local: it
       describes what this installation has checked, not the journal. */
   lastVerifiedAt: number | null;
+  /** Whether ticking a roadmap goal prompts to record it as a milestone
+      on the timeline (phase 5 deepening ticket 10, ADR-0042). */
+  roadmapMilestoneSyncEnabled: boolean;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -323,7 +326,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
   backupNoticeDismissed: false,
-  lastVerifiedAt: null
+  lastVerifiedAt: null,
+  roadmapMilestoneSyncEnabled: true
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -391,6 +395,7 @@ export const DEVICE_LOCAL_KEYS = [
   'lastBackupAt',
   'backupNoticeDismissed',
   'lastVerifiedAt',
+  'roadmapMilestoneSyncEnabled',
   'measurementProtocolDismissed',
   'hairPhotoProtocolDismissed',
   'hormoneCurveFitToOwnLabs'
