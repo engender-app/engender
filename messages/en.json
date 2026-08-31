@@ -1702,7 +1702,7 @@
   "entry_tryout_sentiment_uncomfortable": "Uncomfortable",
   "entry_tryout_sentiment_dysphoric": "Dysphoric",
   "entry_tryout_reflection_placeholder": "Short reflection (optional)",
-  "entry_dose_quick_log": "+ Log {dose}{unit} {drug} taken",
+  "entry_dose_quick_log": "Log {dose}{unit} {drug} taken",
   "entry_procedure_recovery_title": "Post-Op Day {day}: {name}",
   "entry_procedure_recovery_notes_placeholder": "How is healing going today?",
   "entry_procedure_recovery_add_photo": "Add healing photo",
