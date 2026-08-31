@@ -1,5 +1,6 @@
 package dev.barankiewicz.genderdiary.backup;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
@@ -29,5 +30,24 @@ public class AutoExportDerivationTest {
             "fa081e0706300855bf325249b26a5dd959bdeec8644a96a1ecd90f9e76df6398",
             bytesToHex(key2)
         );
+    }
+
+    /** G-04: {@code deriveKey} no longer reads a cost off the bridge call at
+        all, so there is no "absurd parameters" case left to send it - the
+        elimination is structural, not something this test can exercise
+        through a {@code PluginCall} without the WebView-backed
+        {@code MessageHandler} that constructing one for real would need,
+        which this test tier (no Robolectric) cannot provide. What this
+        pins down instead: {@code deriveArchiveKey}, the method {@code
+        deriveKey} actually calls, always produces the archive profile's
+        bytes (ADR-0013) against the raw primitive, so a future change that
+        reintroduces a caller-controlled cost parameter here breaks a byte
+        comparison rather than passing silently. */
+    @Test
+    public void deriveArchiveKeyAlwaysRunsTheArchiveProfile() {
+        byte[] salt = new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+        byte[] expected = AutoExportPlugin.deriveArgon2id("correct horse", salt, 65536, 3, 1, 32);
+        byte[] actual = AutoExportPlugin.deriveArchiveKey("correct horse", salt);
+        assertArrayEquals(expected, actual);
     }
 }
