@@ -1471,7 +1471,7 @@ DELETE FROM pref WHERE key = 'activePreset';
 `;
 
 /* v43: roadmap-to-milestone sync bridge (phase 5 deepening ticket 10,
-   ADR-0042). A milestone created from checking off a transition roadmap
+   ADR-0045). A milestone created from checking off a transition roadmap
    goal records the goal's key, so the app knows which roadmap item it
    originated from.
 

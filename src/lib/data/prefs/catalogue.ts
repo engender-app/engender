@@ -227,7 +227,7 @@ export interface PreferenceValues {
       describes what this installation has checked, not the journal. */
   lastVerifiedAt: number | null;
   /** Whether ticking a roadmap goal prompts to record it as a milestone
-      on the timeline (phase 5 deepening ticket 10, ADR-0042). */
+      on the timeline (phase 5 deepening ticket 10, ADR-0045). */
   roadmapMilestoneSyncEnabled: boolean;
 }
 

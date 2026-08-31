@@ -8,7 +8,7 @@ import { PREFERENCE_DEFAULTS, DEVICE_LOCAL_KEYS } from '../src/lib/data/prefs/ca
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
-describe('roadmap to milestone sync (ticket 10, ADR-0042)', () => {
+describe('roadmap to milestone sync (ticket 10, ADR-0045)', () => {
   it('defaults prefs.roadmapMilestoneSyncEnabled to true and is device-local', () => {
     expect(PREFERENCE_DEFAULTS.roadmapMilestoneSyncEnabled).toBe(true);
     expect(DEVICE_LOCAL_KEYS).toContain('roadmapMilestoneSyncEnabled');
@@ -54,7 +54,7 @@ describe('roadmap to milestone sync (ticket 10, ADR-0042)', () => {
     expect(found.roadmapGoalKey).toBe('pl-legal-birth-certificate');
   });
 
-  it('gracefully unlinks: deleting milestone leaves roadmap goal checked (ADR-0042)', async () => {
+  it('gracefully unlinks: deleting milestone leaves roadmap goal checked (ADR-0045)', async () => {
     const { journal } = await journalWithBuiltIns();
     await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-fee', 'checked');
 
