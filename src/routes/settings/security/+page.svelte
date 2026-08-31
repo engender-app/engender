@@ -1,28 +1,49 @@
 <script lang="ts">
-  /* The three ways the app answers "is this you", together (ticket 18).
-     Previously the passphrase lived under Privacy and the PIN lived behind
-     a switch on the same page with no shared home; biometrics had no
-     settings surface at all, because nobody was ever asked about it. This
-     screen is that shared home - the ask itself happens where each method
-     first becomes relevant (AndroidKeyGate, LockScreen), not here; here is
-     only for seeing what is on and changing it. */
-  import { goto } from '$app/navigation';
+  /* How the app answers "is this you", in one place (ticket 18, rebuilt by
+     ticket 53).
+
+     There used to be three rows here for three disconnected mechanisms: a
+     passphrase, an app-lock PIN that encrypted nothing, and a biometric
+     toggle with no surface to apply to. ADR-0041 collapses the first two into
+     one access mode, so this screen now has one row that matters - which mode
+     the journal is on - plus the mid-session switches that mode enables.
+
+     The biometric row stays Android-only and keeps its old job: whether the
+     mandatory Keystore prompt fires by itself or waits behind a button. It is
+     not a fourth access mode, and its copy says what device-bound mode
+     already does rather than offering a second mechanism. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
+  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { isAndroid } from '$lib/platform';
-  import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Switch from '$lib/components/Switch.svelte';
 
-  /* Neither surface biometrics could apply to (ADR-0014: the boot gate for
-     device-bound mode, the PIN pad's own key) exists yet, so the toggle
-     would have nothing to affect. Not disabled - Switch has no such prop,
-     and the answer is still worth recording early - just named, the same
-     way `lock_needs_app_lock` already names an inapplicable state. */
-  let bioApplies = $derived(bootState.accessMode === 'device-bound' || prefs.appLock);
+  let android = $derived(isAndroid());
+  /** Whether there is a secret to ask for again mid-session. False for
+      device-bound mode on the web, which is the one combination where
+      lock-on-leave cannot challenge anyone - named here rather than left for
+      somebody to discover. */
+  let hasSecret = $derived(accessModeHasSecret(bootState.accessMode, android));
+
+  let modeName = $derived(
+    bootState.accessMode === 'passphrase'
+      ? m.am_mode_passphrase()
+      : bootState.accessMode === 'pin'
+        ? m.am_mode_pin({ digits: '4' })
+        : android
+          ? m.am_mode_device_android()
+          : m.am_mode_device_web()
+  );
+
+  /* The prompt this toggle affects only exists where device-bound mode is the
+     one in use: it is Keystore's, and Keystore is what device-bound mode
+     unlocks through. Not disabled - Switch has no such prop, and the answer
+     is still worth recording early - just named. */
+  let bioApplies = $derived(bootState.accessMode === 'device-bound');
 </script>
 
 <div class="screen">
@@ -35,48 +56,30 @@
   <div data-security-list>
     <ListCard>
       <ListRow
-        key="passphrase"
+        key="access-mode"
         icon="shield"
-        title={m.settings_passphrase_row()}
-        subtitle={bootState.accessMode === 'device-bound' ? m.settings_passphrase_sub_device() : m.settings_passphrase_sub_portable()}
-        href="/settings/passphrase"
+        title={m.settings_access_mode_row()}
+        subtitle={modeName}
+        href="/settings/access-mode"
       />
       <ListRow
         static
-        key="app-lock"
+        key="lock-on-leave"
         icon="lock"
-        title={m.app_lock()}
-        subtitle={prefs.appLock
-          ? `${m.on()} · ${isAndroid() ? m.settings_lock_on_pin_bio() : m.settings_lock_on_pin()}`
-          : m.off()}
+        title={m.lock_on_leave_title()}
+        subtitle={hasSecret ? m.lock_on_leave_sub() : `${m.lock_on_leave_sub()} · ${m.lock_needs_secret()}`}
       >
         {#snippet trailing()}
-          {#if prefs.appLock}
-            <!-- SH-104: this used to be the only route to the lock screen, a
-                 plain-text link inside 14px subtitle copy. It is now a proper
-                 row action next to the switch it does not overlap with in
-                 purpose: the switch turns the lock off, this opens it. -->
-            <a class="icon-btn" href="/settings/lock" aria-label={m.try_it()}><Icon name="chevronRight" size={20} /></a>
-          {/if}
           <Switch
-            checked={prefs.appLock}
-            label={m.app_lock()}
+            checked={prefs.lockOnLeave}
+            label={m.lock_on_leave_title()}
             onChange={(v) => {
-              /* Turning it on is the setup screen's job to finish: it writes
-                 both the hash and the flag once a PIN has been typed twice, so
-                 the flag is never on without a PIN behind it. Turning it off
-                 drops the hash, because the hash is what the gate reads. */
-              if (v) {
-                goto('/settings/lock?setup=1&next=/settings/security');
-                return;
-              }
-              prefs.appLock = false;
-              prefs.pinHash = null;
+              prefs.lockOnLeave = v;
             }}
           />
         {/snippet}
       </ListRow>
-      {#if isAndroid()}
+      {#if android}
         <ListRow
           static
           key="biometrics"

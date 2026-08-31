@@ -15,7 +15,8 @@
 
 import { androidJournalIsPlaintext } from '../data/sqlite/android-driver';
 import { markJournalBusy } from '../data/journal-busy';
-import { journalKeystoreExists, setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
+import { setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
+import { readKeystoreSource } from '../data/keystore-file';
 import {
   deviceBoundJournalExists,
   DeviceBoundKeyUnavailableError,
@@ -59,11 +60,11 @@ export type PlatformEffect = Extract<
 export async function performPlatformEffect(effect: PlatformEffect, dispatch: BootDispatch): Promise<void> {
   switch (effect.type) {
     case 'survey-web': {
-      const passphraseKeystoreExists = await journalKeystoreExists();
+      const keystoreSecretSource = await readKeystoreSource();
       const deviceBoundKeystoreExists = await deviceBoundJournalExists();
       dispatch({
         type: 'web-surveyed',
-        passphraseKeystoreExists,
+        keystoreSecretSource,
         deviceBoundKeystoreExists,
         plaintextJournalPresent: await plaintextJournalPresent(),
         marker: await opfsConversionMarker().read()
@@ -75,11 +76,11 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
        conversion marker are about a web install that predated the keystore,
        and a phone has neither - this is the first build that runs on one. */
     case 'survey-android': {
-      const passphraseKeystoreExists = await journalKeystoreExists();
+      const keystoreSecretSource = await readKeystoreSource();
       const { hasKey } = await androidKeystore.status();
       dispatch({
         type: 'android-surveyed',
-        passphraseKeystoreExists,
+        keystoreSecretSource,
         nativeDeviceKeyExists: hasKey,
         plaintextJournalPresent: await androidJournalIsPlaintext(JOURNAL_DATABASE)
       });
@@ -169,12 +170,19 @@ async function performDemoEffect(
       dispatch({ type: 'demo-journal-wiped' });
       return;
 
+    /* `unlocked: true`, unlike the two real setup paths, because nobody
+       typed anything and nobody should have to. Until ticket 53 the casual-
+       access gate read `prefs.pinHash`, which a demo journal never has, so
+       `false` here reached no gate. It reads the access mode now - and a
+       demo journal is in passphrase mode - so `false` would land every demo
+       boot on a lock screen asking for a passphrase the reviewer was never
+       given. */
     case 'demo-setup':
       dispatch({
         type: 'key-obtained',
         dataKey: await setupJournalPassphrase(DEMO_PASSPHRASE),
         accessMode: 'passphrase',
-        unlocked: false
+        unlocked: true
       });
       return;
 
@@ -188,7 +196,7 @@ async function performDemoEffect(
         dispatch({ type: 'demo-unlock-failed' });
         return;
       }
-      dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: false });
+      dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
       return;
     }
   }

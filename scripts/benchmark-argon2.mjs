@@ -1,5 +1,5 @@
 /* Reports real derivation time for both Argon2id parameter sets (ticket
-   12's acceptance), so ARCHIVE_ARGON2_PARAMS/PIN_ARGON2_PARAMS in
+   12's acceptance), so ARCHIVE_ARGON2_PARAMS/PIN_ENCRYPTION_ARGON2_PARAMS in
    src/lib/crypto/params.ts can be re-tuned against real hardware rather
    than guessed - ADR-0013 explicitly defers the exact numbers to this.
    Run with `npm run benchmark:argon2`.
@@ -9,7 +9,7 @@
    shape of the numbers, then re-run on real hardware before trusting them
    for a release. */
 import { deriveKey, randomSalt } from '../src/lib/crypto/argon2id.ts';
-import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ARGON2_PARAMS } from '../src/lib/crypto/params.ts';
+import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS } from '../src/lib/crypto/params.ts';
 
 async function timeDerivation(label, params) {
   const salt = randomSalt();
@@ -21,14 +21,19 @@ async function timeDerivation(label, params) {
 }
 
 const archiveMs = await timeDerivation('archive path (target ~1000ms)', ARCHIVE_ARGON2_PARAMS);
-const pinMs = await timeDerivation('PIN path (target ~50-100ms)', PIN_ARGON2_PARAMS);
+const pinMs = await timeDerivation('PIN encryption (target ~150ms here, ~1.3s on the reference device)', PIN_ENCRYPTION_ARGON2_PARAMS);
 const journalMs = await timeDerivation('journal passphrase (target ~half the archive path)', JOURNAL_ARGON2_PARAMS);
 
 if (archiveMs < 500 || archiveMs > 2000) {
   console.log(`  note: archive path is ${archiveMs < 500 ? 'well under' : 'well over'} the ~1s target - consider re-tuning memorySize/iterations`);
 }
-if (pinMs < 25 || pinMs > 200) {
-  console.log(`  note: PIN path is ${pinMs < 25 ? 'well under' : 'well over'} the ~50-100ms target - consider re-tuning memorySize/iterations`);
+/* The PIN profile is the one whose cost is a security figure rather than
+   only a comfort one (ticket 53): four digits is 10,000 candidates, so the
+   per-guess cost is most of what an on-device attacker pays. Under the band
+   the quoted brute-force figure in the setup copy stops being true; over
+   it, a cold start starts to feel broken. */
+if (pinMs < 100 || pinMs > 300) {
+  console.log(`  note: PIN encryption is ${pinMs < 100 ? 'well under' : 'well over'} the ~150ms target - re-tune, and re-do the arithmetic in params.ts and the setup copy`);
 }
 if (journalMs < archiveMs * 0.25 || journalMs > archiveMs) {
   console.log(`  note: journal passphrase is out of its band (between a quarter of and the whole archive cost) - consider re-tuning memorySize/iterations`);

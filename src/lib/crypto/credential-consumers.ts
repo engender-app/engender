@@ -1,6 +1,6 @@
-import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ARGON2_PARAMS, type Argon2Params } from './params.ts';
+import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS, type Argon2Params } from './params.ts';
 
-export type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'app-lock-pin';
+export type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'pin-encryption';
 
 export type CredentialConsumer =
   | 'journal-passphrase-setup'
@@ -9,8 +9,10 @@ export type CredentialConsumer =
   | 'journal-passphrase-change'
   | 'archive-export'
   | 'archive-import'
-  | 'pin-hash'
-  | 'pin-verify';
+  | 'journal-pin-setup'
+  | 'journal-pin-add'
+  | 'journal-pin-unlock'
+  | 'journal-pin-change';
 
 type SelectionRule = 'current' | 'persisted';
 
@@ -35,9 +37,9 @@ export const CREDENTIAL_PROFILES = {
     purpose: 'Wraps the Journal data key for portable cold-start unlock.',
     params: JOURNAL_ARGON2_PARAMS
   },
-  'app-lock-pin': {
-    purpose: 'Gates casual access during an unlocked session.',
-    params: PIN_ARGON2_PARAMS
+  'pin-encryption': {
+    purpose: 'Wraps the Journal data key under a short PIN, sealed to this device.',
+    params: PIN_ENCRYPTION_ARGON2_PARAMS
   }
 } as const satisfies Record<CredentialProfile, CredentialProfileRegistration>;
 
@@ -79,16 +81,28 @@ export const CREDENTIAL_CONSUMERS = [
     purpose: 'Derive the password for an archive header\'s recorded profile.'
   },
   {
-    consumer: 'pin-hash',
-    profile: 'app-lock-pin',
+    consumer: 'journal-pin-setup',
+    profile: 'pin-encryption',
     selectionRule: 'current',
-    purpose: 'Stamp a freshly chosen PIN with the current PIN profile.'
+    purpose: 'Mint a new keystore for first-run PIN unlock.'
   },
   {
-    consumer: 'pin-verify',
-    profile: 'app-lock-pin',
+    consumer: 'journal-pin-add',
+    profile: 'pin-encryption',
+    selectionRule: 'current',
+    purpose: 'Wrap an existing Journal data key under a PIN.'
+  },
+  {
+    consumer: 'journal-pin-unlock',
+    profile: 'pin-encryption',
     selectionRule: 'persisted',
-    purpose: 'Verify a PIN against the parameter set stored in its record.'
+    purpose: 'Unlock a PIN keystore with the parameter set it was written under.'
+  },
+  {
+    consumer: 'journal-pin-change',
+    profile: 'pin-encryption',
+    selectionRule: 'current',
+    purpose: 'Rewrap the Journal data key under the current PIN profile.'
   }
 ] as const satisfies readonly CredentialConsumerRegistration[];
 

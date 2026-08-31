@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { bootStates, bootTransitions } from './boot-state.ts';
+import { bootStates, bootTransitions, midSessionLockApplies } from './boot-state.ts';
 
 test('starts in booting with no payload state', () => {
   expect(bootStates.booting()).toMatchObject({
@@ -109,4 +109,21 @@ test('rejects invalid transitions', () => {
   expect(() => bootTransitions.toConverting(base)).toThrow(/invalid transition/i);
   expect(() => bootTransitions.updateConversionProgress(unlock as never, { stage: 'database' })).toThrow(/invalid transition/i);
   expect(() => bootTransitions.toReady(unlock, { journal: {} as never, persistDenied: false })).toThrow(/invalid transition/i);
+});
+
+/* The window ticket 53 opened and then closed. Mid-session locking reads the
+   access mode now, and a mode with a secret is recorded by the survey long
+   before the key is in hand - so without this rule the re-entry screen
+   renders over a boot that is about to finish by itself, and a cold start
+   flashes a lock nobody asked for. */
+test('the mid-session lock waits for the journal to be open', () => {
+  const booting = bootStates.booting();
+  expect(midSessionLockApplies(booting)).toBe(false);
+  expect(midSessionLockApplies(bootTransitions.toNeedsUnlock(booting))).toBe(false);
+  expect(midSessionLockApplies(bootTransitions.toNeedsSetup(booting))).toBe(false);
+  expect(midSessionLockApplies(bootTransitions.toNeedsAuthentication(booting))).toBe(false);
+  expect(midSessionLockApplies(bootTransitions.toConverting(bootTransitions.toNeedsSetup(booting, { conversionRequired: true })))).toBe(false);
+  expect(
+    midSessionLockApplies(bootTransitions.toReady(booting, { journal: {} as never, persistDenied: false }))
+  ).toBe(true);
 });

@@ -34,14 +34,33 @@ test('the allowlists name only real preferences', () => {
   expect(named.filter((key) => !isPreferenceKey(key))).toEqual([]);
 });
 
-test('the boot set is exactly the pre-database preferences, and never the PIN hash', () => {
+test('the boot set is exactly the pre-database preferences', () => {
+  /* The boot mirror is plaintext localStorage, read before the database is
+     open (ADR-0009). What may live there is what a first paint needs -
+     theme, palette, text size - and nothing that would be a secret sitting
+     beside the encrypted journal.
+
+     Until ticket 53 this test named `pinHash` as the thing that must never
+     be here. That preference is gone with the gate it served, so the rule is
+     stated as the rule instead: every boot key is a presentation
+     preference. */
+  for (const key of BOOT_KEYS) {
+    expect(typeof PREFERENCE_DEFAULTS[key], key).not.toBe('undefined');
+  }
   expect([...BOOT_KEYS].sort()).toEqual(
-    ['disguise', 'language', 'lockOnLeave', 'palette', 'moodPreset', 'theme', 'a11yTextSizeBoost', 'a11yLegibilityBoost', 'a11yMotionReduce', 'bioOptIn'].sort()
+    [
+      'theme',
+      'palette',
+      'moodPreset',
+      'language',
+      'a11yTextSizeBoost',
+      'a11yLegibilityBoost',
+      'a11yMotionReduce',
+      'lockOnLeave',
+      'disguise',
+      'bioOptIn'
+    ].sort()
   );
-  // The mirror is plaintext localStorage. The hash of a 4-digit PIN in it
-  // would be an offline-guessable secret sitting beside the encrypted
-  // journal (ticket 09) - it lives only in the pref table now.
-  expect([...BOOT_KEYS]).not.toContain('pinHash');
 });
 
 test('the boot set cuts across the portable split rather than following it', () => {

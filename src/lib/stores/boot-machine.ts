@@ -30,6 +30,7 @@ import {
   describeWebBootPlan,
   type JournalAccessMode
 } from '../data/journal-access-mode.ts';
+import type { JournalSecretSource } from '../crypto/keystore.ts';
 import type { Journal } from '../data/journal/journal.ts';
 import { InterruptedRestoreError, SchemaTooNewError } from '../data/sqlite/migration-runner.ts';
 import type { AndroidKeyResult } from '../lock/android-key.ts';
@@ -45,11 +46,12 @@ type DataKey = Uint8Array<ArrayBuffer>;
 export type BootEvent =
   /** The app came up. Platform and demo build are facts, not branches. */
   | { type: 'started'; platform: BootPlatform; demo: boolean }
-  /** What the web found: two keystores, a possible plaintext journal, and the
-      marker an interrupted conversion leaves behind. */
+  /** What the web found: which kind of secret the keystore names (null for
+      none), a device-bound key, a possible plaintext journal, and the marker
+      an interrupted conversion leaves behind. */
   | {
       type: 'web-surveyed';
-      passphraseKeystoreExists: boolean;
+      keystoreSecretSource: JournalSecretSource | null;
       deviceBoundKeystoreExists: boolean;
       plaintextJournalPresent: boolean;
       marker: ConversionStage | null;
@@ -58,7 +60,7 @@ export type BootEvent =
       runs on a phone, so there is nothing from before encryption to convert. */
   | {
       type: 'android-surveyed';
-      passphraseKeystoreExists: boolean;
+      keystoreSecretSource: JournalSecretSource | null;
       nativeDeviceKeyExists: boolean;
       plaintextJournalPresent: boolean;
     }
@@ -81,8 +83,9 @@ export type BootEvent =
   | { type: 'journal-open-failed'; error: unknown }
   | { type: 'pre-migration-copy-checked'; usable: boolean }
   | { type: 'boot-failed'; message: string }
-  /** Settings, not boot: a device-bound journal grew a passphrase. */
-  | { type: 'passphrase-added' };
+  /** Settings, not boot: the access mode was changed while the journal was
+      open, so the same data key is now wrapped under a different secret. */
+  | { type: 'access-mode-changed'; accessMode: JournalAccessMode };
 
 export type BootEffect =
   | { type: 'apply-cached-preferences' }
@@ -178,13 +181,13 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
       ]);
 
     case 'web-surveyed': {
-      const { passphraseKeystoreExists, deviceBoundKeystoreExists, plaintextJournalPresent, marker } = event;
+      const { keystoreSecretSource, deviceBoundKeystoreExists, plaintextJournalPresent, marker } = event;
       const surveyed = bootTransitions.setAccessMode(
         machine.boot,
-        chooseJournalAccessMode({ passphraseKeystoreExists, deviceBoundKeystoreExists })
+        chooseJournalAccessMode({ keystoreSecretSource, deviceBoundKeystoreExists })
       );
       const journal = describeJournalState({
-        keystoreExists: passphraseKeystoreExists || deviceBoundKeystoreExists,
+        keystoreExists: keystoreSecretSource !== null || deviceBoundKeystoreExists,
         plaintextJournalPresent,
         marker
       });
@@ -208,7 +211,7 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
          choose a passphrase and write it down: a refusal leaves the plaintext
          journal exactly as it was. */
       if (journal === 'convert') {
-        return step({ ...machine, conversionResumable: passphraseKeystoreExists }, surveyed, [
+        return step({ ...machine, conversionResumable: keystoreSecretSource !== null }, surveyed, [
           { type: 'precheck-conversion' }
         ]);
       }
@@ -217,7 +220,7 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
          dealt with by now: the plan left to make is the one the keystores
          describe on their own. */
       const plan = describeWebBootPlan({
-        passphraseKeystoreExists,
+        keystoreSecretSource,
         deviceBoundKeystoreExists,
         plaintextJournalPresent: false,
         marker: null
@@ -233,16 +236,16 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
     }
 
     case 'android-surveyed': {
-      const { passphraseKeystoreExists, nativeDeviceKeyExists, plaintextJournalPresent } = event;
+      const { keystoreSecretSource, nativeDeviceKeyExists, plaintextJournalPresent } = event;
       const surveyed = bootTransitions.setAccessMode(
         machine.boot,
         chooseJournalAccessMode({
-          passphraseKeystoreExists,
+          keystoreSecretSource,
           deviceBoundKeystoreExists: nativeDeviceKeyExists
         })
       );
       const plan = describeAndroidBootPlan({
-        passphraseKeystoreExists,
+        keystoreSecretSource,
         nativeDeviceKeyExists,
         plaintextJournalPresent
       });
@@ -341,8 +344,8 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
     case 'boot-failed':
       return step(machine, bootTransitions.toError(machine.boot, event.message));
 
-    case 'passphrase-added':
-      return step(machine, bootTransitions.setAccessMode(machine.boot, 'passphrase'));
+    case 'access-mode-changed':
+      return step(machine, bootTransitions.setAccessMode(machine.boot, event.accessMode));
   }
 }
 
@@ -351,12 +354,15 @@ export function describeError(error: unknown): string {
   return String((error as Error)?.message ?? error);
 }
 
-export type SkipSetupResult = 'ok' | 'needs-device-lock' | 'device-bound-unavailable';
+export type DeviceBoundSetupResult = 'ok' | 'needs-device-lock' | 'device-bound-unavailable';
 
-/** What the "skip the passphrase" button has to say when the platform will not
-    mint a device-bound key. A device with no lock screen is the one refusal
-    with something to fix; everything else is the same dead end. */
-export function skipSetupOutcome(result: AndroidKeyResult): SkipSetupResult {
+/** What choosing device-bound mode has to say when the platform will not mint
+    the key. A device with no lock screen is the one refusal with something to
+    fix; everything else is the same dead end.
+
+    Named for the mode rather than for a "skip" (ticket 53): device-bound is
+    one of the module's equal choices now, not the way past a wall. */
+export function deviceBoundSetupOutcome(result: AndroidKeyResult): DeviceBoundSetupResult {
   if (result.kind === 'key') return 'ok';
   return result.kind === 'refused' && result.authentication.wayForward === 'setDeviceLock'
     ? 'needs-device-lock'

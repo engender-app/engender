@@ -94,12 +94,11 @@ describe('skipping', () => {
 });
 
 describe('where the flow lands', () => {
+  /* One destination now. The PIN detour this used to have belonged to the
+     app-lock gate ticket 53 retired: how the journal opens is chosen in the
+     security module, not by a toggle here. */
   it('sends a new person Home, not into Settings', () => {
-    expect(onboardingDestination(false)).toBe('/');
-  });
-
-  it('sends someone who asked for a PIN to set one, and Home after that', () => {
-    expect(onboardingDestination(true)).toBe('/settings/lock?setup=1&next=/');
+    expect(onboardingDestination()).toBe('/');
   });
 });
 

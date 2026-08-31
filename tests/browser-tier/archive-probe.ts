@@ -73,8 +73,8 @@ async function run() {
     ...PREFERENCE_DEFAULTS,
     name: 'Alicja',
     theme: 'dark',
-    // Device-local, and the one whose presence in a file would matter most.
-    pinHash: 'DEVICE-LOCAL-PIN-HASH'
+    // Device-local, so its presence in a portable file would be the bug.
+    lastWrappedNotifiedPeriodKey: 'DEVICE-LOCAL-VALUE'
   });
 
   const snapshot = await journal.archive.snapshot();

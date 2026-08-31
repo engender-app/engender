@@ -75,8 +75,7 @@ function everyPreferenceSet(): PreferenceValues {
     theme: 'dark',
     palette: 'lesbian',
     language: 'pl',
-    appLock: true,
-    pinHash: 'DEVICE-LOCAL-PIN-HASH',
+    lastWrappedNotifiedPeriodKey: 'DEVICE-LOCAL-ENTRY-ID',
     lockOnLeave: true,
     disguise: true,
     quickExit: true,
@@ -213,9 +212,12 @@ test('no device-local preference travels, in the archive or in its plaintext', a
     assert.ok(!plaintext.includes(`"${key}"`), `${key} is in the archive`);
   }
 
-  const pinHash = everyPreferenceSet().pinHash!;
-  assert.ok(!plaintext.includes(pinHash), 'the PIN hash is in the archive');
-  assert.ok(!new TextDecoder('latin1').decode(archive).includes(pinHash), "the PIN hash is in the archive's bytes");
+  const deviceLocal = everyPreferenceSet().lastWrappedNotifiedPeriodKey!;
+  assert.ok(!plaintext.includes(deviceLocal), 'a device-local value is in the archive');
+  assert.ok(
+    !new TextDecoder('latin1').decode(archive).includes(deviceLocal),
+    "a device-local value is in the archive's bytes"
+  );
 });
 
 /** The decrypted body, read the way openArchive reads it. */
