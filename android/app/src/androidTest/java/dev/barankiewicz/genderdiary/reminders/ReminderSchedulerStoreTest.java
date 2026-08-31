@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -23,6 +24,13 @@ import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 public class ReminderSchedulerStoreTest {
+
+    /* The reminder alarm in dailyReminderPayload, as ReminderScheduler
+       builds it: read by the tests that ask whether it is scheduled and by
+       the one that clears it. */
+    private static final int REMINDER_REQUEST_CODE = 41;
+    private static final String REMINDER_ACTION = "dev.barankiewicz.genderdiary.REMINDER";
+    private static final String REMINDER_DATA = "genderdiary://reminder/r-1";
 
     private Context context;
 
@@ -100,7 +108,7 @@ public class ReminderSchedulerStoreTest {
     }
 
     @Test
-    public void wipingAPhoneWithNoRemindersOnItIsNotAnError() {
+    public void wipingAPhoneWithNoRemindersOnItIsNotAnError() throws Exception {
         // The reset is also reachable straight after onboarding.
         ReminderScheduler.wipe(context);
         ReminderScheduler.wipe(context);
@@ -137,7 +145,7 @@ public class ReminderSchedulerStoreTest {
        what keeps this honest - a shape that drifted out of step would
        report "no alarm" for a phone full of them. */
     private boolean reminderAlarmExists() {
-        return alarmExists(41, "dev.barankiewicz.genderdiary.REMINDER", "genderdiary://reminder/r-1");
+        return alarmExists(REMINDER_REQUEST_CODE, REMINDER_ACTION, REMINDER_DATA);
     }
 
     private boolean checkInAlarmExists() {
@@ -145,12 +153,13 @@ public class ReminderSchedulerStoreTest {
     }
 
     private boolean alarmExists(int requestCode, String action, String data) {
-        Intent intent = new Intent(context, ReminderAlarmReceiver.class)
-            .setAction(action)
-            .setData(Uri.parse(data));
         PendingIntent pending = PendingIntent.getBroadcast(
-            context, requestCode, intent, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+            context, requestCode, alarmIntent(action, data), PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
         return pending != null;
+    }
+
+    private Intent alarmIntent(String action, String data) {
+        return new Intent(context, ReminderAlarmReceiver.class).setAction(action).setData(Uri.parse(data));
     }
 
     @Test
@@ -199,6 +208,46 @@ public class ReminderSchedulerStoreTest {
         new ReminderRescheduleReceiver().onReceive(context, new Intent(Intent.ACTION_MY_PACKAGE_REPLACED));
 
         assertNotNull(ReminderScheduler.loadPayload(context));
+    }
+
+    @Test
+    public void alarmsComeBackAfterEveryRescheduleEventWithTheJournalNeverOpened() throws Exception {
+        /* Phase 5 security ticket 02 (G-02). Each of these three events
+           takes the alarms with it, and the payload the receiver reads back
+           afterwards is now wrapped - so this is the path that would break
+           if reading it needed the data key. Nothing in this process has
+           opened the journal; there is no database here at all. The events
+           themselves are the part a test cannot stage, and cancelling the
+           PendingIntent by hand leaves the same starting state: rules on
+           disk, nothing scheduled.
+
+           The pre-existing rescheduleReceiver tests below assert that the
+           payload survives all three; this one asserts an alarm comes back
+           from it, which is the half that was inferred. */
+        ReminderScheduler.saveAndSchedule(context, dailyReminderPayload());
+
+        for (String action : new String[] {
+            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_MY_PACKAGE_REPLACED
+        }) {
+            cancelReminderAlarm();
+            assertFalse("the alarm was still scheduled before " + action, reminderAlarmExists());
+
+            new ReminderRescheduleReceiver().onReceive(context, new Intent(action));
+
+            assertTrue("no alarm came back after " + action, reminderAlarmExists());
+        }
+    }
+
+    private void cancelReminderAlarm() {
+        PendingIntent pending = PendingIntent.getBroadcast(
+            context,
+            REMINDER_REQUEST_CODE,
+            alarmIntent(REMINDER_ACTION, REMINDER_DATA),
+            PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+        if (pending == null) return;
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) alarmManager.cancel(pending);
+        pending.cancel();
     }
 
     @Test
