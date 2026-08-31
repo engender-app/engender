@@ -138,6 +138,16 @@ test('needsOnboardingAccessMode is true only for a first run with no keystore', 
 
   expect(needsOnboardingAccessMode(bootTransitions.toNeedsSetup(booting))).toBe(true);
 
+  /* The one `needs-setup` this is still false for (ticket 10): a device
+     already holding a plaintext Journal reports needs-setup too, with a
+     pending conversion attached before the machine ever reaches
+     'converting'. That conversion has to survive the rewrite, so it is not
+     a free choice among the four modes and must not route through
+     onboarding. */
+  expect(
+    needsOnboardingAccessMode(bootTransitions.toNeedsSetup(booting, { conversionRequired: true }))
+  ).toBe(false);
+
   expect(needsOnboardingAccessMode(booting)).toBe(false);
   expect(needsOnboardingAccessMode(bootTransitions.toNeedsUnlock(booting))).toBe(false);
   expect(needsOnboardingAccessMode(bootTransitions.toNeedsAuthentication(booting))).toBe(false);
