@@ -34,6 +34,10 @@
   let misgenderedQuery = liveList((j) => j.stats.tallyTrend('misgendered', from, today));
   let misgendered = $derived(misgenderedQuery.rows);
   let correctlyGenderedQuery = liveList((j) => j.stats.tallyTrend('correctly_gendered', from, today));
+  /* Both counters take the same annotations: they are two readings of the
+     same days, and a thing that happened happened to both of them (ticket
+     23). */
+  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, today, today));
   let correctlyGendered = $derived(correctlyGenderedQuery.rows);
 
   let maxCount = $derived(
@@ -85,6 +89,7 @@
         from={rangeEnds.from}
         to={rangeEnds.to}
         formatValue={whole}
+        annotations={annotationsQuery.rows}
         ariaLabel={m.tally_misgendered()}
       />
     </ChartCard>
@@ -102,6 +107,7 @@
         from={rangeEnds.from}
         to={rangeEnds.to}
         formatValue={whole}
+        annotations={annotationsQuery.rows}
         ariaLabel={m.tally_correctly_gendered()}
       />
     </ChartCard>

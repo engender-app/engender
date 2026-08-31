@@ -185,6 +185,35 @@ export function annotationsInRange(
   return found.sort((a, b) => a.fromEpochDay - b.fromEpochDay || a.id.localeCompare(b.id));
 }
 
+/** The same annotations, cut down to a narrower range.
+
+    For a screen that draws several charts over different ranges off one
+    query: the lab results screen has a chart per unit and each one covers
+    however long that analyte has been drawn for, so one range does not fit
+    them all. Asking the journal once and narrowing here beats a query per
+    chart, and narrowing has to be its own step rather than a second
+    `annotationsInRange` pass because a clipped annotation no longer knows
+    which day it really started on - only that the day was outside. So an
+    edge that was already lost stays lost. */
+export function narrowAnnotations(
+  annotations: readonly ChartAnnotation[],
+  from: number,
+  to: number
+): ChartAnnotation[] {
+  const out: ChartAnnotation[] = [];
+  for (const annotation of annotations) {
+    if (annotation.fromEpochDay > to || annotation.toEpochDay < from) continue;
+    out.push({
+      ...annotation,
+      fromEpochDay: Math.max(annotation.fromEpochDay, from),
+      toEpochDay: Math.min(annotation.toEpochDay, to),
+      startsInRange: annotation.startsInRange && annotation.fromEpochDay >= from,
+      endsInRange: annotation.endsInRange && annotation.toEpochDay <= to
+    });
+  }
+  return out;
+}
+
 /** A stretch, as a rectangle behind the plot. */
 export interface AnnotationBand {
   key: string;

@@ -57,6 +57,9 @@
 
   let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today));
   let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today));
+  /* Both axes of one region over one range, so both take the same
+     annotations (ticket 23). */
+  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, today, today));
   let dysphoria = $derived(dysphoriaQuery.rows);
   let euphoria = $derived(euphoriaQuery.rows);
 
@@ -187,6 +190,7 @@
           max={BODY_REGION_INTENSITY_MAX}
           from={rangeEnds.from}
           to={rangeEnds.to}
+          annotations={annotationsQuery.rows}
           ariaLabel={m.body_map_chart_aria({
             region: regionName,
             first: m.body_region_axis_dysphoria(),
@@ -203,6 +207,7 @@
           max={BODY_REGION_INTENSITY_MAX}
           from={rangeEnds.from}
           to={rangeEnds.to}
+          annotations={annotationsQuery.rows}
           ariaLabel={m.body_map_chart_aria({
             region: regionName,
             first: m.body_region_axis_euphoria(),

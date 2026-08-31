@@ -45,11 +45,11 @@
     height: number;
   } = $props();
 
-  /** How far a tick rises off the baseline. A fifth of the plot: tall enough
-      to be a mark rather than a speck, short enough that the line's own shape
-      is never what it is drawn over. */
-  const TICK = 0.2;
-  /** How far the second line of a doubled tick sits from the first. */
+  /** How far a mark rises off the baseline, as a share of the plot's height.
+      A fifth: tall enough to be a mark rather than a speck, short enough that
+      the line's own shape is never what it is drawn over. */
+  const MARK_HEIGHT = 0.2;
+  /** How far the second line of a doubled mark sits from the first. */
   const DOUBLE_GAP = 3;
 </script>
 
@@ -63,19 +63,19 @@
 
   {#each placed.marks as mark (mark.key)}
     <line
-      class="kit-annotation-tick"
+      class="kit-annotation-mark"
       x1={mark.x}
       x2={mark.x}
       y1={height}
-      y2={height - height * TICK}
+      y2={height - height * MARK_HEIGHT}
     />
     {#if mark.annotations.length > 1}
       <line
-        class="kit-annotation-tick"
+        class="kit-annotation-mark"
         x1={mark.x + DOUBLE_GAP}
         x2={mark.x + DOUBLE_GAP}
         y1={height}
-        y2={height - height * TICK + DOUBLE_GAP}
+        y2={height - height * MARK_HEIGHT + DOUBLE_GAP}
       />
     {/if}
   {/each}

@@ -4,6 +4,7 @@ import {
   MIN_MARK_GAP,
   annotationsAtPoint,
   annotationsInRange,
+  narrowAnnotations,
   placeAnnotations,
   type ChartAnnotationSource
 } from './annotations';
@@ -258,5 +259,38 @@ describe('what sits under the finger', () => {
     const weekly = [{ x: 40 }, { x: 47 }, { x: 54 }];
     const late = annotationsInRange([milestone('late', 59)], { from: 40, to: 60, today: 60 });
     expect(annotationsAtPoint(late, weekly, 2).map((a) => a.id)).toEqual(['late']);
+  });
+});
+
+describe('cutting one query down to a narrower chart', () => {
+  const wide = annotationsInRange([regimen('estradiol', 10, 80), milestone('shot', 50)], {
+    from: 20,
+    to: 90,
+    today: 90
+  });
+
+  it('clips a span to the narrower range', () => {
+    const [span] = narrowAnnotations(wide, 40, 60);
+
+    expect(span.fromEpochDay).toBe(40);
+    expect(span.toEpochDay).toBe(60);
+  });
+
+  it('drops what the narrower range does not reach', () => {
+    expect(narrowAnnotations(wide, 70, 90).map((a) => a.id)).toEqual(['estradiol']);
+  });
+
+  /* A start that the wide range already cut off is gone: the annotation no
+     longer carries the day it really began, only that the day was outside. */
+  it('never gives back an edge the wider range had already lost', () => {
+    const cut = annotationsInRange([regimen('estradiol', 10, 80)], { from: 20, to: 90, today: 90 });
+    expect(cut[0].startsInRange).toBe(false);
+    expect(narrowAnnotations(cut, 20, 90)[0].startsInRange).toBe(false);
+  });
+
+  it('keeps an edge that is still inside the narrower range', () => {
+    const inside = annotationsInRange([regimen('estradiol', 30, 80)], { from: 20, to: 90, today: 90 });
+    expect(narrowAnnotations(inside, 25, 60)[0].startsInRange).toBe(true);
+    expect(narrowAnnotations(inside, 35, 60)[0].startsInRange).toBe(false);
   });
 });

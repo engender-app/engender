@@ -1606,7 +1606,7 @@ a.kit-entry:active {
 /* A moment, off the baseline. Solid where the scrub is dotted: the dotted
    line means "under your finger, right now" and this one means "this
    happened", and two marks that mean different things may not look alike. */
-.kit-annotation-tick {
+.kit-annotation-mark {
   stroke: color-mix(in oklab, var(--text) 52%, transparent);
   stroke-width: 1.5;
   stroke-linecap: round;
