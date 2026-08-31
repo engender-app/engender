@@ -1309,6 +1309,66 @@ await block('phase 5 audit deepening ticket 10 field association', 5, async () =
   else fail('a hidden field still gives its control a real for/id pair, just off screen', JSON.stringify(hiddenField));
 });
 
+/* Phase 5 deepening ticket 21. "A section with no rows renders no DOM" is
+   an acceptance criterion, and it is a DOM fact about the real component
+   rather than anything the node tier can see - dayRows.ts imports paraglide
+   and $lib, neither of which resolves under vitest.config.ts. The gallery
+   fixture already mounts DayRecords.svelte against the real cascade, so
+   this drives it. */
+await block('phase 5 deepening ticket 21 day composition', 6, async () => {
+  await page.goto(`http://localhost:${port}/day.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-day-ready]', { state: 'attached' });
+
+  const shape = async (name) => {
+    await page.selectOption('select[aria-label="Day"]', name);
+    await page.waitForTimeout(120);
+    return page.evaluate(() => ({
+      dayCards: document.querySelectorAll('[data-day-card]').length,
+      listCards: document.querySelectorAll('[data-list-card]').length,
+      headings: document.querySelectorAll('[data-section-heading]').length,
+      rows: document.querySelectorAll('[data-day-row]').length,
+      keys: [...document.querySelectorAll('[data-day-row]')].map((r) => r.getAttribute('data-day-row'))
+    }));
+  };
+
+  const sparse = await shape('sparse');
+  if (sparse.dayCards === 1 && sparse.listCards === 0 && sparse.headings === 0 && sparse.rows === 0)
+    ok('a day with only an entry draws the day card and nothing else at all');
+  else fail('a day with only an entry draws the day card and nothing else at all', JSON.stringify(sparse));
+
+  const typical = await shape('typical');
+  if (typical.dayCards === 1 && typical.listCards === 1 && typical.headings === 1)
+    ok('a day with other records adds exactly one heading and one card, however many kinds it holds');
+  else
+    fail(
+      'a day with other records adds exactly one heading and one card, however many kinds it holds',
+      JSON.stringify(typical)
+    );
+
+  const maximal = await shape('maximal');
+  if (maximal.listCards === 1 && maximal.headings === 1)
+    ok('a maximal day is still one heading and one card, not a section per area');
+  else fail('a maximal day is still one heading and one card, not a section per area', JSON.stringify(maximal));
+
+  if (maximal.rows > typical.rows && typical.rows > sparse.rows)
+    ok('a day that holds more draws more rows rather than more surfaces');
+  else
+    fail(
+      'a day that holds more draws more rows rather than more surfaces',
+      `${sparse.rows} / ${typical.rows} / ${maximal.rows}`
+    );
+
+  /* Photographs collapse and records do not: three hair photos are one row,
+     two doses are two rows. */
+  const hairRows = maximal.keys.filter((k) => k.startsWith('hair-photos')).length;
+  const doseRows = maximal.keys.filter((k) => k.startsWith('dose-')).length;
+  if (hairRows === 1 && doseRows === 2) ok('three hair photos are one row and two doses are two rows');
+  else fail('three hair photos are one row and two doses are two rows', `${hairRows} photo rows, ${doseRows} dose rows`);
+
+  if (maximal.keys.length === new Set(maximal.keys).size) ok('every row on a maximal day carries its own handle');
+  else fail('every row on a maximal day carries its own handle', JSON.stringify(maximal.keys));
+});
+
 await browser.close();
 await server.close();
 

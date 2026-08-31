@@ -87,14 +87,18 @@ test('nothing is both registered and opted out, and no opt-out names an area tha
   }
 });
 
-test('a section covering an area nothing else covers is what makes the check pass', () => {
-  /* The check above is only worth having if removing a section fails it, so
-     this drives the same rule over a registry with one section taken out. */
-  const withoutEntries = DAY_SECTIONS.filter((s) => !s.covers.includes('entries'));
-  const covered = new Set(withoutEntries.flatMap((s) => s.covers));
+test('a registry short of a section fails the coverage rule the real one passes', () => {
+  /* The check above is only worth having if it can fail, and over the real
+     registry it never does. So it is driven again over a registry with one
+     section taken out: the same rule, the same opt-out list, and the area
+     that section covered is now accounted for nowhere. */
+  const withoutDoses = DAY_SECTIONS.filter((s) => !s.covers.includes('doseEvents'));
+  const covered = new Set(withoutDoses.flatMap((s) => s.covers));
+  const optedOut = new Set(Object.keys(DAY_OPT_OUTS));
 
-  assert.ok(!covered.has('entries'));
-  assert.ok(!Object.keys(DAY_OPT_OUTS).includes('entries'));
+  const unaccounted = ARCHIVE_SECTION_NAMES.filter((name) => !covered.has(name) && !optedOut.has(name));
+
+  assert.deepEqual(unaccounted, ['doseEvents']);
 });
 
 test("the live layer's dependency list is every registered section's tables", () => {

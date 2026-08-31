@@ -66,11 +66,15 @@ const MILESTONE_COLUMNS = 'id, uuid, name, epoch_day, template_key, roadmap_goal
 
 export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore): MilestonesArea {
   /* One query for every milestone's photo rather than one per row: both
-     readers below render whole lists at once. `photosByMilestone` reads the
-     photo table for all milestones either way - a day's handful of rows is
-     not worth a narrower join. */
-  const withPhotos = async (rows: MilestoneRow[]): Promise<Milestone[]> => {
-    const photos = await photosByMilestone(driver);
+     readers below render whole lists at once.
+
+     `scoped` is which query that is. Reading a day's milestones (phase 5
+     deepening ticket 21) narrows to the rows in hand, or opening any day
+     would pay for every milestone photo in the journal; reading all of them
+     does not, because an IN clause naming every rowid is the worse half of
+     that trade. */
+  const withPhotos = async (rows: MilestoneRow[], scoped = false): Promise<Milestone[]> => {
+    const photos = await photosByMilestone(driver, scoped ? rows.map((r) => r.id) : undefined);
     return rows.map((r) => ({
       id: r.uuid,
       name: r.name,
@@ -93,7 +97,8 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       return withPhotos(
         await driver.query<MilestoneRow>(`SELECT ${MILESTONE_COLUMNS} FROM milestone WHERE epoch_day = ? ORDER BY id`, [
           epochDay
-        ])
+        ]),
+        true
       );
     },
 

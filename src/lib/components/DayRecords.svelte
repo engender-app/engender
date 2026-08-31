@@ -38,7 +38,6 @@
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import type { Role } from '$lib/theme/roles';
-  import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
   import DayCard from './kit/DayCard.svelte';
   import DayEntry from './kit/DayEntry.svelte';
@@ -65,6 +64,12 @@
   let alsoRows = $derived(dayRows(records));
 </script>
 
+<!-- How many records the row stands for, where it stands for more than
+     one. One is not a count worth drawing. -->
+{#snippet count(n: number | undefined)}
+  {#if n !== undefined && n > 1}<span class="day-count">{n}</span>{/if}
+{/snippet}
+
 {#if entries.length > 0}
   <DayCard
     key={String(epochDay)}
@@ -90,25 +95,39 @@
   <SectionHeading text={m.day_also_heading()} />
   <ListCard role={alsoRole}>
     {#each alsoRows as row (row.key)}
-      <ListRow
-        key={row.key}
-        icon={row.icon}
-        title={row.title}
-        subtitle={row.subtitle}
-        href={row.href}
-        data-day-row={row.key}
-      >
-        {#snippet leading()}
-          {#if row.photo}
-            <span class="day-face"><PhotoThumb photo={row.photo} size={36} /></span>
-          {:else}
-            <span class="kit-row-ico"><Icon name={row.icon} size={22} /></span>
-          {/if}
-        {/snippet}
-        {#snippet trailing()}
-          {#if row.count !== undefined && row.count > 1}<span class="day-count">{row.count}</span>{/if}
-        {/snippet}
-      </ListRow>
+      <!-- Two spellings of one row rather than a `leading` snippet that
+           re-draws the kit's own icon disc in its else branch: `leading`
+           replaces the disc outright, so a row with no photograph has to
+           not pass one at all. -->
+      {#if row.photo}
+        <ListRow
+          key={row.key}
+          icon={row.icon}
+          title={row.title}
+          subtitle={row.subtitle}
+          href={row.href}
+          data-day-row={row.key}
+        >
+          {#snippet leading()}
+            <!-- `row.photo!` because the {#if} above guards it and a snippet
+                 boundary drops the narrowing - svelte-check catches this and
+                 no test does. -->
+            <span class="day-face"><PhotoThumb photo={row.photo!} size={36} /></span>
+          {/snippet}
+          {#snippet trailing()}{@render count(row.count)}{/snippet}
+        </ListRow>
+      {:else}
+        <ListRow
+          key={row.key}
+          icon={row.icon}
+          title={row.title}
+          subtitle={row.subtitle}
+          href={row.href}
+          data-day-row={row.key}
+        >
+          {#snippet trailing()}{@render count(row.count)}{/snippet}
+        </ListRow>
+      {/if}
     {/each}
   </ListCard>
 {/if}
