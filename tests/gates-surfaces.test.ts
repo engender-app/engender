@@ -143,8 +143,14 @@ describe('the first run', () => {
 
   it('leaves and finishes through one function, so the two cannot drift', () => {
     /* "Straight to the app" and "Start writing" are the same act: keep what
-       was chosen, mark the first run done, go. */
-    expect(onboardingMarkup.match(/onclick=\{complete\}/g) ?? []).toHaveLength(2);
+       was chosen, mark the first run done, go. Leaving early routes through
+       one more function first (ticket 54): before an access mode is chosen
+       there is no keystore for complete()'s writes to land in, so leave()
+       detours through the lock step instead of writing straight to prefs -
+       but it is still the one place either control's write can come from. */
+    expect(onboardingMarkup.match(/onclick=\{complete\}/g) ?? []).toHaveLength(1);
+    expect(onboardingMarkup).toContain('onclick={leave}');
+    expect(onboarding).toMatch(/function leave\(\)[\s\S]*?complete\(\);/);
     expect(onboarding).toContain('prefs.onboarded = true;');
     expect(onboarding).toContain('goto(onboardingDestination());');
   });

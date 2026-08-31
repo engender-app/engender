@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { bootStates, bootTransitions, midSessionLockApplies } from './boot-state.ts';
+import { bootStates, bootTransitions, midSessionLockApplies, needsOnboardingAccessMode } from './boot-state.ts';
 
 test('starts in booting with no payload state', () => {
   expect(bootStates.booting()).toMatchObject({
@@ -126,4 +126,44 @@ test('the mid-session lock waits for the journal to be open', () => {
   expect(
     midSessionLockApplies(bootTransitions.toReady(booting, { journal: {} as never, persistDenied: false }))
   ).toBe(true);
+});
+
+/* The first-run exception's own condition (ticket 54): true only for the
+   one state a brand new install starts in, `needs-setup`. Every other
+   passphrase state - an unlock on a returning cold start, a conversion
+   either running or refused - still meets the gate first, which is the
+   regression this pins. */
+test('needsOnboardingAccessMode is true only for a first run with no keystore', () => {
+  const booting = bootStates.booting();
+
+  expect(needsOnboardingAccessMode(bootTransitions.toNeedsSetup(booting))).toBe(true);
+
+  /* The one `needs-setup` this is still false for (ticket 10): a device
+     already holding a plaintext Journal reports needs-setup too, with a
+     pending conversion attached before the machine ever reaches
+     'converting'. That conversion has to survive the rewrite, so it is not
+     a free choice among the four modes and must not route through
+     onboarding. */
+  expect(
+    needsOnboardingAccessMode(bootTransitions.toNeedsSetup(booting, { conversionRequired: true }))
+  ).toBe(false);
+
+  expect(needsOnboardingAccessMode(booting)).toBe(false);
+  expect(needsOnboardingAccessMode(bootTransitions.toNeedsUnlock(booting))).toBe(false);
+  expect(needsOnboardingAccessMode(bootTransitions.toNeedsAuthentication(booting))).toBe(false);
+  expect(needsOnboardingAccessMode(bootTransitions.toNeedsDeviceRecovery(booting))).toBe(false);
+  expect(needsOnboardingAccessMode(bootTransitions.toSchemaTooNew(booting))).toBe(false);
+  expect(
+    needsOnboardingAccessMode(
+      bootTransitions.toConverting(bootTransitions.toNeedsSetup(booting, { conversionRequired: true }))
+    )
+  ).toBe(false);
+  expect(
+    needsOnboardingAccessMode(
+      bootTransitions.toConversionRefused(booting, { reason: 'not-enough-space', needBytes: 500, freeBytes: 120 })
+    )
+  ).toBe(false);
+  expect(
+    needsOnboardingAccessMode(bootTransitions.toReady(booting, { journal: {} as never, persistDenied: false }))
+  ).toBe(false);
 });

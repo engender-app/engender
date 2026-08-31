@@ -150,18 +150,62 @@ page.on('request', (req) => {
 const { ok, fail, finish } = createReporter();
 
 try {
+  const PASSPHRASE = 'verify-build passphrase';
+
+  /* Onboarding is truly first now (ticket 54): a brand new install used to
+     stop at the passphrase gate before the database even existed, ahead of
+     onboarding's own welcome screen ever getting a chance to paint - only
+     the demo build invented a passphrase for itself and never met this.
+     Proven the way 32.1 proved its own ordering bug, by timing the real
+     race rather than reading the code: a MutationObserver started before
+     navigation even begins, watching for whichever of the two screens the
+     layout could show first - onboarding's own welcome, or the gate -
+     actually reaches the DOM first. A selector that merely resolves fast
+     afterwards would prove nothing about which one arrived first. */
+  await page.addInitScript(() => {
+    window.__firstPaintRace = [];
+    const seen = new Set();
+    const record = () => {
+      if (!seen.has('onboarding') && document.querySelector('[data-next]')) {
+        seen.add('onboarding');
+        window.__firstPaintRace.push('onboarding-welcome');
+      }
+      if (!seen.has('gate') && document.querySelector('[data-access-modes], #journal-passphrase')) {
+        seen.add('gate');
+        window.__firstPaintRace.push('access-gate');
+      }
+    };
+    // `document`, not `document.documentElement`: an init script runs before
+    // the parser has created <html>, and observing null throws - silently,
+    // since nothing here was awaited - which recorded an empty race every
+    // time rather than the ordering it was written to catch.
+    new MutationObserver(record).observe(document, { childList: true, subtree: true });
+    record();
+  });
+
   await page.goto(origin, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-next]', { timeout: 10000 });
+  const race = await page.evaluate(() => window.__firstPaintRace);
+  if (race[0] === 'onboarding-welcome') ok("a production first run paints onboarding's welcome screen before any security gate");
+  else fail("a production first run paints onboarding's welcome screen before any security gate", JSON.stringify(race));
 
-  /* A production first run stops at the passphrase gate before the
-     database exists (ticket 09) - only the demo build invents a passphrase
-     for itself. Meeting the gate here is itself an assertion: a production
-     journal is never created without one. */
-  await page.waitForSelector('#journal-passphrase', { timeout: 10000 });
-  ok('a production first run asks for a journal passphrase before anything else');
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.locator('[data-next]').click(); // name -> flag
+  await page.locator('[data-next]').click(); // flag -> scales
+  await page.locator('[data-next]').click(); // scales -> lock
 
-  await page.fill('#journal-passphrase', 'verify-build passphrase');
-  await page.fill('#journal-passphrase-confirm', 'verify-build passphrase');
-  await page.click('[data-passphrase-submit]');
+  /* Reaching the lock step is where the access-mode module (ticket 53)
+     appears - not before, which the race above already pinned, and not a
+     second copy built for onboarding: this is the same AccessModeSetup
+     component Settings uses, on screen because the gate itself is
+     rendering now that the flow has reached the one step that needs it. */
+  await page.waitForSelector('[data-access-modes]', { timeout: 10000 });
+  ok('the access-mode module appears at the one onboarding step that needs it, and only there');
+
+  await page.locator('[data-list-row="passphrase"]').click();
+  await page.fill('#am-passphrase', PASSPHRASE);
+  await page.fill('#am-passphrase-confirm', PASSPHRASE);
+  await page.click('[data-access-submit]');
 
   // Give boot() time to open the database and load the sqlite3mc
   // worker/wasm - the whole point of this check.
@@ -174,15 +218,41 @@ try {
   if (allRequests.some((u) => u.includes('.wasm'))) ok("boot() loads the sqlite3mc wasm build from the app's own origin");
   else fail("boot() loads the sqlite3mc wasm build from the app's own origin", `no .wasm request seen; requests were: ${allRequests.join(', ')}`);
 
+  /* The gate steps aside once the mode is set up, and onboarding picks up
+     exactly where it left off - its own lock-step content (the
+     lock-on-leave toggle), not a jump back to the welcome screen and not a
+     stall on the gate's own screen. */
+  await page.waitForSelector('[data-next]', { timeout: 10000 });
+  ok('onboarding continues on its own lock step once the access mode is set up');
+
+  await page.locator('[data-next]').click(); // lock -> checkin
+  await page.locator('[data-next]').click(); // checkin -> done
+  await page.locator('[data-finish]').click();
+  await page.waitForSelector('[data-home-hello]');
+  ok('finishing onboarding lands on Home');
+
+  /* 32.1's own race, on the real flow rather than the demo build's
+     simulated one this time: a late navigation landing after the walk must
+     not undo where it actually finished. */
+  await page.waitForTimeout(2500);
+  if (page.url() === `${origin}/`) ok('Home stays put - no late navigation undid finishing onboarding');
+  else fail('Home stays put after finishing onboarding', page.url());
+
   /* The session rule (ADR-0018), on the production build - the walkthrough
      can't test this because the demo build unlocks itself: a reload ends
      the unlocked session, the unwrapped key dies with it, and the journal
-     opens again only for the passphrase. */
+     opens again only for the passphrase.
+
+     This doubles as ticket 54's other half: a returning user, with a
+     keystore already on the device, still meets the gate first - the
+     first-run exception above only ever applied to needs-setup, and a
+     reload here is needs-unlock. Nothing onboarding does is reachable from
+     this screen; there is no [data-next] to find. */
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('#journal-passphrase', { timeout: 10000 });
   const confirmField = await page.locator('#journal-passphrase-confirm').count();
-  if (confirmField === 0) ok('a production reload asks for the passphrase again (unlock, not a second setup)');
-  else fail('a production reload asks for the passphrase again', 'the setup form rendered instead of the unlock form');
+  if (confirmField === 0) ok('a returning user meets the unlock gate first, exactly as before (unlock, not onboarding)');
+  else fail('a returning user meets the unlock gate first', 'the setup form rendered instead of the unlock form');
 
   await page.fill('#journal-passphrase', 'not the passphrase');
   await page.click('[data-passphrase-submit]');
@@ -244,14 +314,11 @@ try {
   const cold = installed.pages()[0] ?? (await installed.newPage());
   await cold.goto(origin, { waitUntil: 'networkidle' });
 
-  /* A fresh profile is a first run, and a production first run creates its
-     journal only behind a passphrase (ticket 09) - walk the setup the way
-     a person would before anything below can boot. */
-  await cold.waitForSelector('#journal-passphrase', { timeout: 10000 });
-  await cold.fill('#journal-passphrase', 'verify-build passphrase');
-  await cold.fill('#journal-passphrase-confirm', 'verify-build passphrase');
-  await cold.click('[data-passphrase-submit]');
-  await cold.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+  /* A fresh profile is a first run, and a production first run's own first
+     screen is onboarding's welcome now (ticket 54) - walk it the way a
+     person would, meeting the gate only once it reaches the one step that
+     actually needs a database. */
+  await cold.waitForSelector('[data-next]', { timeout: 10000 });
 
   /* Gripped by handle rather than by class (ADR-0029). These were
      `.home-hello`, `.quicklog .mood-btn` and `.entry-card`, and phase 5
@@ -261,16 +328,31 @@ try {
      suite that drives a real screen; only walkthrough-locators.test.ts was
      watching, and it watches one file.
 
-     A production build has no persona in it, so a cold start is the first-run
-     gate. Walking it is what puts a journal on the device, and the quick log
-     after it is the entry the offline start has to read back. Five steps then
-     finish, the same six screens walkthrough.test.mjs flow 13 walks. */
+     Walking it is what puts a journal on the device, and the quick log
+     after it is the entry the offline start has to read back. */
   /* Walked to the end rather than counted out. It was five clicks and a
      finish, which stopped being the flow when 7d11edfd made the first run
      seven steps, and failed here as an anonymous 30s wait for [data-finish] -
      the same shape ADR-0029 is about. The bound is a runaway guard, not the
      step count: onboarding-steps has seven today and the flow is one shorter
-     under disguise. */
+     under disguise.
+
+     This loop naturally stops at the lock step: reaching it is what turns
+     the gate back on (ticket 54), so [data-next] - onboarding's own control -
+     is briefly gone from the page while the access-mode module has it. */
+  for (let step = 0; step < 12 && (await cold.locator('[data-next]').count()); step++) {
+    await cold.locator('[data-next]').click();
+  }
+
+  await cold.waitForSelector('[data-access-modes]', { timeout: 10000 });
+  await cold.locator('[data-list-row="passphrase"]').click();
+  await cold.fill('#am-passphrase', 'verify-build passphrase');
+  await cold.fill('#am-passphrase-confirm', 'verify-build passphrase');
+  await cold.click('[data-access-submit]');
+  await cold.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+
+  // Onboarding picks back up on its own lock step once the mode is set up,
+  // the same second half the throwaway context above already walked.
   for (let step = 0; step < 12 && (await cold.locator('[data-next]').count()); step++) {
     await cold.locator('[data-next]').click();
   }

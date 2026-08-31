@@ -47,6 +47,7 @@ import {
 } from '../data/journal-passphrase';
 import { addJournalPin, setupJournalPin, unlockJournalPin } from '../data/journal-pin';
 import { addJournalBiometric, setupJournalBiometric, unlockJournalBiometric } from '../data/journal-biometric';
+import { BiometricUnavailableError } from '../data/webauthn-prf';
 import { removeDeviceBindingSecret } from '../data/device-secret';
 import {
   addDeviceBoundJournal,
@@ -294,6 +295,30 @@ export async function submitDeviceBoundSetup(): Promise<DeviceBoundSetupResult> 
   } catch (error) {
     if (error instanceof DeviceBoundKeyUnavailableError) return 'device-bound-unavailable';
     throw error;
+  }
+}
+
+export type AccessModeSetupResult = DeviceBoundSetupResult | 'biometric-unavailable' | 'setup-failed';
+
+/** The setup module's whole submit path, wherever it is offered. JournalGate
+    and onboarding's own lock step (ticket 54) both hand a chosen mode here
+    rather than each keeping its own copy of which submit call a mode maps
+    to and which failure is which - the four submits above stay what an
+    *unlock* screen calls directly, since only setup branches on the mode at
+    all. */
+export async function submitAccessModeSetup(
+  chosen: NonNullable<JournalAccessMode>,
+  secret: string
+): Promise<AccessModeSetupResult> {
+  if (chosen === 'device-bound') return submitDeviceBoundSetup();
+  try {
+    if (chosen === 'pin') await submitPinSetup(secret);
+    else if (chosen === 'biometric') await submitBiometricSetup();
+    else await submitPassphraseSetup(secret);
+    return 'ok';
+  } catch (error) {
+    console.error('setting up the access mode failed', error);
+    return error instanceof BiometricUnavailableError ? 'biometric-unavailable' : 'setup-failed';
   }
 }
 
