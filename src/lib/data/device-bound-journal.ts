@@ -139,6 +139,15 @@ export async function removeDeviceBoundJournal(): Promise<void> {
   await removeDeviceBoundMetadata().catch(() => {});
 }
 
+/** Takes every slot this database holds - the device-bound wrapping key and
+    PIN mode's binding key (data/device-secret.ts) - in one call. A reset
+    needing to leave no key behind should not have to keep a list of slot
+    names in step with whatever stores a key here next. */
+export async function deleteDeviceKeyDatabase(): Promise<void> {
+  if (!('indexedDB' in globalThis)) return;
+  await runRequest(indexedDB.deleteDatabase(DEVICE_BOUND_DB));
+}
+
 export async function createDeviceBoundMetadata(
   slot: DeviceKeySlot
 ): Promise<{ dataKey: Uint8Array<ArrayBuffer>; metadata: DeviceBoundMetadata }> {

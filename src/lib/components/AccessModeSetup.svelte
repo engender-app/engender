@@ -6,6 +6,7 @@
   import { m as messages } from '$lib/paraglide/messages';
   import { isAndroid as onAndroid } from '$lib/platform';
   import { PIN_LENGTH as PIN_DIGITS } from '$lib/crypto/params';
+  import type { AccessModeSetupResult } from '$lib/stores/boot.svelte';
 
   export type AccessSetupMode = 'device-bound' | 'pin' | 'passphrase' | 'biometric';
 
@@ -14,6 +15,22 @@
     if (mode === 'pin') return messages.am_mode_pin({ digits: String(PIN_DIGITS) });
     if (mode === 'biometric') return messages.am_mode_biometric();
     return onAndroid() ? messages.am_mode_device_android() : messages.am_mode_device_web();
+  }
+
+  /** The sentence for every outcome of submitAccessModeSetup() besides 'ok'
+      (boot.svelte.ts), exported for the same reason accessModeTitle is:
+      onboarding's lock step and JournalGate both hand the module a chosen
+      mode and both need the same answer for what came back, so the mapping
+      lives here once rather than as a matching if/else chain in each. */
+  export function accessModeSetupErrorMessage(result: Exclude<AccessModeSetupResult, 'ok'>): string {
+    if (result === 'needs-device-lock') return messages.am_device_no_lock();
+    if (result === 'device-bound-unavailable') return messages.am_device_unavailable();
+    /* A device that will not release a biometric secret has not failed at
+       setup, it has answered that it cannot do this mode - so the sentence
+       sends the person to another row rather than inviting a retry at a
+       wall. */
+    if (result === 'biometric-unavailable') return messages.am_biometric_unavailable();
+    return messages.am_setup_failed();
   }
 </script>
 

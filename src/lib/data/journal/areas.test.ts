@@ -170,6 +170,36 @@ test('the most recent analyte is whichever result was last saved or edited, or n
   assert.equal(await journal.labs.getMostRecentAnalyte(), 'estradiol', 'the deleted result stops counting');
 });
 
+test('the latest result is the one drawn most recently, whatever analyte it is', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.labs.getLatestResult(), null);
+
+  await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 120, unit: 'pmol/L' });
+  const earlier = await journal.labs.getLatestResult();
+  assert.equal(earlier?.analyte, 'estradiol');
+  assert.equal(earlier?.epochDay, 100);
+
+  await journal.labs.upsertResult({ epochDay: 50, analyte: 'testosterone', value: 480 });
+  assert.equal(
+    (await journal.labs.getLatestResult())?.analyte,
+    'estradiol',
+    'saved later but drawn earlier, so it is not the latest draw'
+  );
+
+  await journal.labs.upsertResult({ epochDay: 120, analyte: 'shbg', value: 60 });
+  assert.equal((await journal.labs.getLatestResult())?.analyte, 'shbg');
+
+  /* One slip, two analytes: the tie goes to whichever was saved last, which
+     is the reading a person was looking at when they typed it in. */
+  await journal.labs.upsertResult({ epochDay: 120, analyte: 'prolactin', value: 300 });
+  assert.equal((await journal.labs.getLatestResult())?.analyte, 'prolactin');
+
+  const id = await journal.labs.upsertResult({ epochDay: 200, analyte: 'estradiol', value: 400 });
+  assert.equal((await journal.labs.getLatestResult())?.epochDay, 200);
+  await journal.labs.deleteResult(id);
+  assert.equal((await journal.labs.getLatestResult())?.epochDay, 120, 'the deleted result stops counting');
+});
+
 test('a lab result without a unit stays blank rather than acquiring a placeholder', async () => {
   const { journal } = await journalWithBuiltIns();
 

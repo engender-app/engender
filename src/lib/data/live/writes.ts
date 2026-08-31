@@ -316,7 +316,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   labs: classify<Journal['labs']>()({
     writes: { upsertResult: ['lab'], deleteResult: ['lab'] },
-    /* All five read `lab_result` and nothing else. `dose_event` is read on
+    /* All six read `lab_result` and nothing else. `dose_event` is read on
        the write path only - a result's dosing context is derived when it is
        saved and frozen there (labs.ts), so a later dose edit cannot change
        what any of these answers. */
@@ -324,6 +324,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getAnalytes: ['lab'],
       getUsedAnalytes: ['lab'],
       getMostRecentAnalyte: ['lab'],
+      getLatestResult: ['lab'],
       getResults: ['lab'],
       getSeries: ['lab']
     }

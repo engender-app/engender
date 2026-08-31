@@ -34,6 +34,13 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { sharedAxisX } from '$lib/motion/navigation';
   import { motionDuration } from '$lib/motion/tokens';
+  import { bootState, submitAccessModeSetup } from '$lib/stores/boot.svelte';
+  import { needsOnboardingAccessMode } from '$lib/stores/boot-state';
+  import AccessModeSetup, {
+    accessModeSetupErrorMessage,
+    accessModeTitle,
+    type AccessSetupMode
+  } from '$lib/components/AccessModeSetup.svelte';
   import {
     isSkippable,
     onboardingDestination,
@@ -96,6 +103,29 @@
   let checkIn = $state(false);
   let checkInTime = $state(prefs.checkInTime);
 
+  /* The access-mode module's own working state (ticket 53's four modes,
+     wired in at this one step by ticket 54). Local to this step rather than
+     read off the gate: on a brand new install this page is what renders
+     while `bootState` is still `needs-setup`, not JournalGate, so there is
+     no other screen's state to share. */
+  let accessChosen = $state<AccessSetupMode | null>(null);
+  let accessBusy = $state(false);
+  let accessError = $state('');
+
+  /** The setup module's answer, the same submit path JournalGate's own
+      unlock screen uses for a returning install's setup (boot.svelte.ts).
+      Device-bound's refusal and a biometric authenticator that will not
+      answer are outcomes to render rather than throws, for the same reason
+      they are there: turning a mode down is not this screen failing. */
+  async function chooseAccessMode(chosen: AccessSetupMode, secret: string) {
+    if (accessBusy) return;
+    accessBusy = true;
+    accessError = '';
+    const result = await submitAccessModeSetup(chosen, secret);
+    accessBusy = false;
+    if (result !== 'ok') accessError = accessModeSetupErrorMessage(result);
+  }
+
   /* The flag is the one choice that applies as it is made, because the point
      of making it here is watching the sun answer. So Skip on that step has
      something to put back, unlike every other step, where skipping is simply
@@ -110,6 +140,14 @@
   let steps = $derived(onboardingSteps(prefs.disguise));
   let index = $derived(stepIndex(steps, step));
   let growth = $derived(sunGrowth(index, steps.length));
+
+  /* Whether this step is the forced choice rather than the toggle under it
+     (ticket 54): true from the moment the flow reaches the lock step until
+     a mode is actually set up, which is the one stretch with no Skip, no
+     back arrow and no "leave setup" - the same hard-gate rule JournalGate
+     already holds a returning install to, here because reading `bootState`
+     directly is simpler than a second flag mirroring it. */
+  let awaitingAccessMode = $derived(step === 'lock' && needsOnboardingAccessMode(bootState));
 
   /* The incoming step waits for the outgoing one to finish leaving.
      Svelte starts an `in:` and an `out:` together, and tier 2's own timings
@@ -147,17 +185,17 @@
   }
 
   /* One way out, whichever control was pressed. "Straight to the app" from
-     step two and "Start writing" from the finish are the same act - keep
-     what has been chosen so far, mark the first run done, go - and writing
-     them as one function is what stops the two drifting apart the way a
-     second copy of this would.
+     an early step and "Start writing" from the finish are the same act -
+     keep what has been chosen so far, mark the first run done, go - and
+     writing them as one function is what stops the two drifting apart the
+     way a second copy of this would.
 
-     The toggle on the lock step is a choice to set a PIN, not a PIN:
-     nothing turns app lock on until one has been typed twice on the setup
-     screen, which then brings the new user Home itself. Leaving early with
-     that toggle on therefore still routes through it, because the
-     alternative is a switch that was turned on and did nothing. That screen
-     carries its own Not now, so changing your mind there costs one tap. */
+     Reachable only once the access mode is settled (ticket 54): that step
+     is what creates the keystore this function's writes need, so an early
+     "leave setup" cannot call this directly - leave() below routes it
+     through the lock step first, the same way the old app-lock toggle used
+     to route an early leave through its own PIN screen before that was one
+     choice made in the security module rather than two. */
   function complete() {
     /* Guarded like the other four, and for the same reason: skipping a step
        leaves the stored value alone rather than overwriting it with
@@ -175,6 +213,20 @@
     }
     prefs.onboarded = true;
     goto(onboardingDestination());
+  }
+
+  /* "Leave setup", from any step before the finish. Detours through the
+     lock step first when the access mode has not been chosen yet (ticket
+     54): complete()'s writes need the keystore that step is the only place
+     that creates, so there is nowhere else for an early leave to go. Once a
+     mode is chosen boot leaves this state on its own, and a second "leave
+     setup" from the lock step reaches complete() directly. */
+  function leave() {
+    if (needsOnboardingAccessMode(bootState)) {
+      go('lock');
+      return;
+    }
+    complete();
   }
 </script>
 
@@ -201,9 +253,12 @@
 
   <div class="setup">
     <div class="setup-head">
-      {#if step !== 'welcome'}
+      {#if step !== 'welcome' && !awaitingAccessMode}
         <!-- NAV-006: onboarding had no way back between steps at all, so a
-             typo in the name could only be finished past. -->
+             typo in the name could only be finished past. Absent while
+             awaitingAccessMode for the same reason Skip and "leave setup"
+             are (ticket 54): a step back from here would be a way past
+             choosing an access mode, and there is none. -->
         <button class="icon-btn press" data-back aria-label={m.back()} onclick={() => go(stepBefore(steps, step))}>
           <Icon name="arrowLeft" />
         </button>
@@ -266,31 +321,51 @@
                  back to. -->
             <ScaleChecklist ticked={tickedScales} onToggle={toggleScale} />
           {:else if step === 'lock'}
-            <h1 class="setup-title">{m.ob_lock_title()}</h1>
-            <p class="setup-body">{m.ob_lock_body()}</p>
-            <!-- The app-lock toggle that used to head this list is gone
-                 with the gate it turned on (ticket 53): how the journal
-                 opens is now one choice made in the security module, and a
-                 PIN is one of its access modes rather than a switch here.
-                 What is left is the one thing this step still decides -
-                 whether leaving the app locks it. Ticket 54 brings the
-                 module itself into the flow. -->
-            <ListCard>
-              <ListRow
-                key="lock-on-leave"
-                title={m.lock_on_leave_title()}
-                subtitle={m.lock_on_leave_sub()}
-                chevron={false}
-              >
-                {#snippet trailing()}
-                  <Switch
-                    checked={lockOnLeave}
-                    label={m.lock_on_leave_title()}
-                    onChange={(v) => (lockOnLeave = v)}
-                  />
-                {/snippet}
-              </ListRow>
-            </ListCard>
+            {#if awaitingAccessMode}
+              <!-- The app-lock toggle that used to head this list is gone
+                   with the gate it turned on (ticket 53): how the journal
+                   opens is now one choice made in the security module, and
+                   a PIN is one of its access modes rather than a switch
+                   here.
+
+                   On a brand new install this module is what a person meets
+                   on reaching this step (ticket 54) - the same
+                   AccessModeSetup component Settings uses, wired in at this
+                   one point in the flow because this is the one step that
+                   actually creates the keystore. Everything before it holds
+                   its answers in local state above and never reaches this
+                   far. -->
+              <h1 class="setup-title">{accessChosen === null ? m.am_setup_title() : accessModeTitle(accessChosen)}</h1>
+              <AccessModeSetup
+                purpose="setup"
+                busy={accessBusy}
+                error={accessError}
+                onChoose={chooseAccessMode}
+                bind:chosen={accessChosen}
+              />
+            {:else}
+              <h1 class="setup-title">{m.ob_lock_title()}</h1>
+              <p class="setup-body">{m.ob_lock_body()}</p>
+              <!-- What is left once the module above has run: the one thing
+                   this step still decides for itself, whether leaving the
+                   app locks it. -->
+              <ListCard>
+                <ListRow
+                  key="lock-on-leave"
+                  title={m.lock_on_leave_title()}
+                  subtitle={m.lock_on_leave_sub()}
+                  chevron={false}
+                >
+                  {#snippet trailing()}
+                    <Switch
+                      checked={lockOnLeave}
+                      label={m.lock_on_leave_title()}
+                      onChange={(v) => (lockOnLeave = v)}
+                    />
+                  {/snippet}
+                </ListRow>
+              </ListCard>
+            {/if}
           {:else if step === 'checkin'}
             <h1 class="setup-title">{m.ob_checkin_title()}</h1>
             <p class="setup-body">{m.ob_checkin_body()}</p>
@@ -335,7 +410,11 @@
         <i style={`transform: scaleX(${(index + 1) / steps.length})`}></i>
       </div>
 
-      {#if step === 'done'}
+      {#if awaitingAccessMode}
+        <!-- The module above carries its own submit action, and there is no
+             other way past it (ticket 54, matching AccessModeSetup's own
+             "no Skip anywhere" rule). -->
+      {:else if step === 'done'}
         <button class="btn btn-primary" data-finish onclick={complete}><span>{m.start_journey()}</span></button>
       {:else if step === 'welcome'}
         <button class="btn btn-primary" data-next onclick={() => go(stepAfter(steps, step))}>
@@ -351,16 +430,18 @@
         </button>
       {/if}
 
-      <div class="setup-outs">
-        {#if isSkippable(step)}
-          <button class="btn btn-ghost" data-skip-step onclick={skip}>
-            <span>{m.skip()}</span>
-          </button>
-        {/if}
-        {#if step !== 'done'}
-          <button class="btn btn-ghost" data-leave-setup onclick={complete}><span>{m.ob_leave()}</span></button>
-        {/if}
-      </div>
+      {#if !awaitingAccessMode}
+        <div class="setup-outs">
+          {#if isSkippable(step)}
+            <button class="btn btn-ghost" data-skip-step onclick={skip}>
+              <span>{m.skip()}</span>
+            </button>
+          {/if}
+          {#if step !== 'done'}
+            <button class="btn btn-ghost" data-leave-setup onclick={leave}><span>{m.ob_leave()}</span></button>
+          {/if}
+        </div>
+      {/if}
     </div>
   </div>
 </div>
