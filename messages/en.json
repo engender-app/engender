@@ -170,22 +170,8 @@
   "day_open_whole": "The whole day",
   "day_first_noticed": "First noticed",
   "day_wear_running": "Still running",
-  "day_wear_duration": [
-    {
-      "declarations": [
-        "input hours",
-        "input minutes",
-        "local hoursPlural = hours: plural"
-      ],
-      "selectors": [
-        "hoursPlural"
-      ],
-      "match": {
-        "hoursPlural=0": "{minutes} m",
-        "hoursPlural=other": "{hours} h {minutes} m"
-      }
-    }
-  ],
+  "day_wear_duration": "{hours} h {minutes} m",
+  "day_wear_minutes": "{minutes} m",
   "day_hair_photos": "Hair photos",
   "day_consult": "Consult",
   "day_recovery_photos": "Recovery photos",

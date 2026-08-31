@@ -3,9 +3,9 @@
 
    day.ts holds the keys and the reads and speaks no paraglide (ADR-0016);
    this is where they get their words, the same split
-   clinicianSummaryLabels.ts keeps. It sits beside the screen rather than in
-   vocabulary/ because none of it is vocabulary: it is one screen's reading
-   of rows other screens own.
+   clinicianSummaryLabels.ts keeps. It sits beside DayRecords.svelte rather
+   than in vocabulary/ because none of it is vocabulary: it is one screen's
+   reading of rows other screens own.
 
    Every row states the record in the record's own terms and goes to the
    screen that owns it. Nothing here computes a figure that screen does not
@@ -26,6 +26,7 @@
 
 import { m } from '$lib/paraglide/messages';
 import type { DayRecords } from '$lib/data/journal/day';
+import { isGradedScale } from '$lib/data/hairStageScales';
 import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
 import type { Photo } from '$lib/data/types';
 import {
@@ -33,6 +34,7 @@ import {
   garmentCategoryName,
   hairRemovalAreaName,
   hairRemovalMethodName,
+  hairScaleName,
   hairStageName,
   moodName,
   severityName
@@ -182,8 +184,20 @@ export function dayRows(day: DayRecords): DayRow[] {
     rows.push({
       key: `wear-${session.id}`,
       icon: 'clock',
-      title: session.durationMs === null ? m.day_wear_running() : m.day_wear_duration({ hours, minutes }),
-      subtitle: session.note || undefined,
+      // Three cases rather than a plural rule: a session still running has
+      // no duration to state, and one under an hour would otherwise read
+      // "0 h 40 m".
+      title:
+        session.durationMs === null
+          ? m.day_wear_running()
+          : hours === 0
+            ? m.day_wear_minutes({ minutes })
+            : m.day_wear_duration({ hours, minutes }),
+      /* Earned, and the one row where it is load-bearing: a duration under
+         a clock says nothing about what was worn for it, and this is the
+         only record on a day whose title is a bare number. What the person
+         wrote comes first where they wrote anything. */
+      subtitle: session.note || m.wear_log(),
       href: '/settings/wear'
     });
   }
@@ -201,12 +215,19 @@ export function dayRows(day: DayRecords): DayRow[] {
   }
 
   for (const stage of day.hairStages) {
+    /* The scale as well as the grade. On the hair-progress screen the scale
+       is the group heading above the row, and there is no grouping here - a
+       row reading "3" would say nothing, since '3' is a grade on both
+       published scales and means something different on each. 'other'
+       publishes no grades at all, so what someone wrote is the record, and
+       the screen's own wording covers writing nothing. */
+    const graded = isGradedScale(stage.scale);
     rows.push({
       key: `hair-stage-${stage.id}`,
       icon: 'comb',
-      // 'other' publishes no grades, so what someone wrote is the record
-      // (hairStageScales.ts).
-      title: stage.description || hairStageName(stage.scale, stage.stage),
+      title: graded
+        ? `${hairScaleName(stage.scale)} ${hairStageName(stage.scale, stage.stage)}`
+        : stage.description || m.hair_other_unwritten(),
       href: HAIR_PROGRESS
     });
   }
