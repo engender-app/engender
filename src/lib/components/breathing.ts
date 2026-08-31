@@ -27,6 +27,17 @@ export function initialBreathingState(): BreathingState {
   };
 }
 
+/** How full the countdown ring should be aiming for, on the second the
+    count reads `secondsRemaining`. Not `elapsed/duration` at the second
+    that just started - that draws a ring already a quarter behind - but
+    where the ring should be heading for by the end of *this* second, so a
+    1s-linear transition applied every tick reads as one continuous sweep
+    rather than a ring perpetually catching up. Reaches exactly 1 on the
+    phase's last second, the same moment the count is about to roll over. */
+export function phaseProgress(duration: number, secondsRemaining: number): number {
+  return (duration - secondsRemaining + 1) / duration;
+}
+
 export function tickBreathing(state: BreathingState): BreathingState {
   if (!state.running) return state;
   if (state.secondsRemaining > 1) {
