@@ -261,11 +261,33 @@ test('adoptTryout closes the tryout and optionally creates a timeline milestone 
   assert.ok(created);
   assert.equal(created?.name, 'Adopted Alicja');
   assert.equal(created?.epochDay, 130);
+  assert.equal(created?.tryoutId, id);
+  assert.equal(created?.tryoutLabel, 'Alicja');
 
   // Felt-sense summary attached to the milestone (majority mood was 5)
   const milestoneFeltSense = await journal.feltSense.forMilestone(res.milestoneId!);
   assert.equal(milestoneFeltSense.length, 1);
   assert.equal(milestoneFeltSense[0].mood, 5);
+});
+
+test('deleting an adopted tryout unlinks its milestone rather than orphaning the reference', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alicja', startEpochDay: 100, endEpochDay: null });
+
+  const res = await journal.tryouts.adoptTryout(id, {
+    endEpochDay: 130,
+    createMilestone: true,
+    milestoneTitle: 'Adopted Alicja',
+    milestoneEpochDay: 130
+  });
+
+  await journal.tryouts.deleteTryout(id);
+
+  const milestones = await journal.milestones.getMilestones();
+  const preserved = milestones.find((m) => m.id === res.milestoneId);
+  assert.ok(preserved, 'milestone is preserved on the timeline');
+  assert.equal(preserved.tryoutId, null, 'the tryout link is cleared');
+  assert.equal(preserved.tryoutLabel, null);
 });
 
 test('adoptTryout without creating a milestone closes the tryout only', async () => {

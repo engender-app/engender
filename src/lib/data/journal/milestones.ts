@@ -34,6 +34,7 @@ export interface MilestoneInput {
   templateKey?: string | null;
   roadmapGoalKey?: string | null;
   procedureId?: string | null;
+  tryoutId?: string | null;
   /** The final photo intent for this save. Omitted means preserve, which
       keeps existing callers and non-photo edits from touching photo rows. */
   photo?: MilestonePhotoChange;
@@ -60,9 +61,27 @@ type MilestoneRow = {
   template_key: string | null;
   roadmap_goal_key: string | null;
   procedure_id: string | null;
+  tryout_id: string | null;
+  procedure_name: string | null;
+  tryout_label: string | null;
+  custom_goal_text: string | null;
 };
 
-const MILESTONE_COLUMNS = 'id, uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id';
+/* The three joins resolve a linked procedure's or tryout's own name, and a
+   custom roadmap goal's own text, in the same query rather than a lookup
+   per row on every screen a milestone renders on (phase 5 deepening ticket
+   22): the provenance line these feed (provenance.ts) needs a name to show,
+   not just the id the milestone already carried. A built-in roadmap goal's
+   title isn't joined - it's a compiled string, resolved by key in code
+   instead, so roadmap_goal only ever matches a custom one. */
+const MILESTONE_SELECT = `
+  SELECT ms.id, ms.uuid, ms.name, ms.epoch_day, ms.template_key, ms.roadmap_goal_key, ms.procedure_id, ms.tryout_id,
+         p.name AS procedure_name, t.label AS tryout_label, rg.text AS custom_goal_text
+    FROM milestone ms
+    LEFT JOIN procedure p ON p.uuid = ms.procedure_id
+    LEFT JOIN tryout t ON t.uuid = ms.tryout_id
+    LEFT JOIN roadmap_goal rg ON rg.uuid = ms.roadmap_goal_key
+`;
 
 export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore): MilestonesArea {
   /* One query for every milestone's photo rather than one per row: both
@@ -82,22 +101,22 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       templateKey: r.template_key,
       roadmapGoalKey: r.roadmap_goal_key,
       procedureId: r.procedure_id ?? null,
+      tryoutId: r.tryout_id ?? null,
+      procedureName: r.procedure_name ?? null,
+      tryoutLabel: r.tryout_label ?? null,
+      customRoadmapGoalText: r.custom_goal_text ?? null,
       photo: photos.get(r.id) ?? null
     }));
   };
 
   return {
     async getMilestones() {
-      return withPhotos(
-        await driver.query<MilestoneRow>(`SELECT ${MILESTONE_COLUMNS} FROM milestone ORDER BY epoch_day, id`)
-      );
+      return withPhotos(await driver.query<MilestoneRow>(`${MILESTONE_SELECT} ORDER BY ms.epoch_day, ms.id`));
     },
 
     async getMilestonesOnDay(epochDay) {
       return withPhotos(
-        await driver.query<MilestoneRow>(`SELECT ${MILESTONE_COLUMNS} FROM milestone WHERE epoch_day = ? ORDER BY id`, [
-          epochDay
-        ]),
+        await driver.query<MilestoneRow>(`${MILESTONE_SELECT} WHERE ms.epoch_day = ? ORDER BY ms.id`, [epochDay]),
         true
       );
     },
@@ -119,19 +138,23 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
           : [];
       const staged = photoChange.action === 'replace' ? await stagePhoto(files, photoChange.photo) : null;
 
-      // roadmapGoalKey and procedureId are each set by a different caller
-      // (roadmap sync, the procedure hub) and each must survive an edit made
-      // by a caller that doesn't know about it - a plain rename from the
-      // milestones screen passes neither and must not clear either link.
+      // roadmapGoalKey, procedureId and tryoutId are each set by a different
+      // caller (roadmap sync, the procedure hub, tryout adoption) and each
+      // must survive an edit made by a caller that doesn't know about it - a
+      // plain rename from the milestones screen passes none of them and
+      // must not clear any link.
       const hasRoadmap = input.roadmapGoalKey !== undefined;
       const hasProc = input.procedureId !== undefined;
+      const hasTryout = input.tryoutId !== undefined;
       const extraColumns = [
         ...(hasRoadmap ? ['roadmap_goal_key'] : []),
-        ...(hasProc ? ['procedure_id'] : [])
+        ...(hasProc ? ['procedure_id'] : []),
+        ...(hasTryout ? ['tryout_id'] : [])
       ];
       const extraValues = [
         ...(hasRoadmap ? [input.roadmapGoalKey ?? null] : []),
-        ...(hasProc ? [input.procedureId ?? null] : [])
+        ...(hasProc ? [input.procedureId ?? null] : []),
+        ...(hasTryout ? [input.tryoutId ?? null] : [])
       ];
       const updateSql = `UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?${extraColumns.map((c) => `, ${c} = ?`).join('')}, updated_at = ? WHERE uuid = ?`;
       const updateParams = [input.name, input.epochDay, input.templateKey ?? null, ...extraValues, now(), input.id];
@@ -154,7 +177,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         return input.id;
       }
       const uuid = mintUuid();
-      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id, tryout_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
       const insertParams = [
         uuid,
         input.name,
@@ -162,6 +185,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         input.templateKey ?? null,
         input.roadmapGoalKey ?? null,
         input.procedureId ?? null,
+        input.tryoutId ?? null,
         now()
       ];
       if (!staged) {

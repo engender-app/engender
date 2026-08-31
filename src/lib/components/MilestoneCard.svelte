@@ -17,6 +17,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
   import FeltSenseOfferSheet from './FeltSenseOfferSheet.svelte';
@@ -35,6 +36,7 @@
     return `${base} · ${m.ms_status_next_in({ days: m.n_days({ n: s.inDays ?? 0 }) })}`;
   });
   let badge = $derived(s.type === 'today' ? m.ms_status_today() : s.isAnnivToday ? m.ms_status_anniversary() : null);
+  let origin = $derived(resolveMilestoneOrigin(milestone));
 
   let offering = $state(false);
   async function saveOffer(input: { mood: number; note: string | null }) {
@@ -48,7 +50,7 @@
   data-milestone-card={milestone.id}
   chevron={false}
   title={milestone.name}
-  subtitle={`${fmtDay(milestone.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${status}`}
+  subtitle={[`${fmtDay(milestone.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${status}`, origin?.text]}
 >
   {#snippet leading()}
     {#if milestone.photo}

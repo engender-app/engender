@@ -172,6 +172,7 @@ export interface ArchiveMilestone {
   templateKey: string | null;
   roadmapGoalKey: string | null;
   procedureId: string | null;
+  tryoutId: string | null;
   photo: ArchivePhoto | null;
 }
 
