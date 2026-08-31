@@ -1740,7 +1740,7 @@
   "entry_tryout_sentiment_uncomfortable": "Niewygodnie",
   "entry_tryout_sentiment_dysphoric": "Dysforycznie",
   "entry_tryout_reflection_placeholder": "Krótka refleksja (opcjonalnie)",
-  "entry_dose_quick_log": "+ Zapisz przyjęcie {dose}{unit} {drug}",
+  "entry_dose_quick_log": "Zapisz przyjęcie {dose}{unit} {drug}",
   "entry_procedure_recovery_title": "{day}. dzień po operacji: {name}",
   "entry_procedure_recovery_notes_placeholder": "Jak przebiega gojenie?",
   "entry_procedure_recovery_add_photo": "Dodaj zdjęcie gojenia",

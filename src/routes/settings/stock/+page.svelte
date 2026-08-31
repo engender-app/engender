@@ -96,7 +96,8 @@
               data-stock={row.entry.id}
               title={row.entry.drug}
               subtitle={[
-                `${stockRemainingLabel(row.projection.remaining, row.entry.unit)} · ${m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}`,
+                stockRemainingLabel(row.projection.remaining, row.entry.unit),
+                m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) }),
                 runOut.text
               ]}
               onclick={() => openEditor(row)}

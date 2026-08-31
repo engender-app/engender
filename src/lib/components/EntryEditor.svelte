@@ -1064,7 +1064,6 @@
      one a list row or a button uses) - a true pill's fully-rounded ends
      stop reading as a pill the moment its content wraps past one line. */
   .dose-chip {
-    align-items: flex-start;
     border-radius: var(--radius-md);
     text-align: left;
   }
