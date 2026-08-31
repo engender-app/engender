@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -100,7 +101,7 @@ public class ReminderSchedulerStoreTest {
     }
 
     @Test
-    public void wipingAPhoneWithNoRemindersOnItIsNotAnError() {
+    public void wipingAPhoneWithNoRemindersOnItIsNotAnError() throws Exception {
         // The reset is also reachable straight after onboarding.
         ReminderScheduler.wipe(context);
         ReminderScheduler.wipe(context);
@@ -199,6 +200,36 @@ public class ReminderSchedulerStoreTest {
         new ReminderRescheduleReceiver().onReceive(context, new Intent(Intent.ACTION_MY_PACKAGE_REPLACED));
 
         assertNotNull(ReminderScheduler.loadPayload(context));
+    }
+
+    @Test
+    public void alarmsComeBackAfterARebootWithTheJournalNeverOpened() throws Exception {
+        /* Phase 5 security ticket 02 (G-02). A reboot takes every alarm with
+           it, and the payload the boot receiver reads back is now wrapped -
+           so this is the path that would break if reading it needed the data
+           key. Nothing in this process has opened the journal; there is no
+           database here at all. The reboot itself is the part a test cannot
+           stage, and cancelling the PendingIntent by hand leaves the same
+           starting state: rules on disk, nothing scheduled. */
+        ReminderScheduler.saveAndSchedule(context, dailyReminderPayload());
+        cancelReminderAlarm();
+        assertFalse("the alarm was still scheduled before the reboot", reminderAlarmExists());
+
+        new ReminderRescheduleReceiver().onReceive(context, new Intent(Intent.ACTION_BOOT_COMPLETED));
+
+        assertTrue("no alarm came back after the reboot", reminderAlarmExists());
+    }
+
+    private void cancelReminderAlarm() {
+        Intent intent = new Intent(context, ReminderAlarmReceiver.class)
+            .setAction("dev.barankiewicz.genderdiary.REMINDER")
+            .setData(Uri.parse("genderdiary://reminder/r-1"));
+        PendingIntent pending = PendingIntent.getBroadcast(
+            context, 41, intent, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+        if (pending == null) return;
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) alarmManager.cancel(pending);
+        pending.cancel();
     }
 
     @Test
