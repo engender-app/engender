@@ -36,7 +36,11 @@
   import { motionDuration } from '$lib/motion/tokens';
   import { bootState, submitAccessModeSetup } from '$lib/stores/boot.svelte';
   import { needsOnboardingAccessMode } from '$lib/stores/boot-state';
-  import AccessModeSetup, { accessModeTitle, type AccessSetupMode } from '$lib/components/AccessModeSetup.svelte';
+  import AccessModeSetup, {
+    accessModeSetupErrorMessage,
+    accessModeTitle,
+    type AccessSetupMode
+  } from '$lib/components/AccessModeSetup.svelte';
   import {
     isSkippable,
     onboardingDestination,
@@ -119,11 +123,7 @@
     accessError = '';
     const result = await submitAccessModeSetup(chosen, secret);
     accessBusy = false;
-    if (result === 'ok') return;
-    if (result === 'needs-device-lock') accessError = m.am_device_no_lock();
-    else if (result === 'device-bound-unavailable') accessError = m.am_device_unavailable();
-    else if (result === 'biometric-unavailable') accessError = m.am_biometric_unavailable();
-    else accessError = m.am_setup_failed();
+    if (result !== 'ok') accessError = accessModeSetupErrorMessage(result);
   }
 
   /* The flag is the one choice that applies as it is made, because the point

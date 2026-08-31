@@ -155,11 +155,10 @@
      other, so getting there needs the same redirect the returning-user
      first-run gate below uses - except this one cannot wait for
      `isReadyState`, since a state with no database is exactly what it is
-     for. Guarded in the template as well (`main`'s own onboardingFirstRun
-     branch) so the route underneath never paints for the frame this takes
-     to run. */
+     for. */
+  let redirectingToOnboarding = $derived(onboardingFirstRun && !path.startsWith('/onboarding'));
   $effect(() => {
-    if (onboardingFirstRun && !path.startsWith('/onboarding')) goto('/onboarding');
+    if (redirectingToOnboarding) goto('/onboarding');
   });
 
   /* Tier 2 (phase 5 ticket 18): one screen becoming another.
@@ -506,7 +505,7 @@
         <!-- Instead of the route, not over it: nothing below this renders,
              so no screen mounts and no query runs while the app is locked. -->
         <SessionUnlock mode={bootState.accessMode} />
-      {:else if onboardingFirstRun && !path.startsWith('/onboarding')}
+      {:else if redirectingToOnboarding}
         <!-- The effect above is already navigating here; nothing renders
              for the frame that takes, so a brand new install's first paint
              is never whatever route the URL happened to be (ticket 54). -->
