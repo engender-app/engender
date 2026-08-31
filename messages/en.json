@@ -166,6 +166,30 @@
   "add_another_entry": "Add another entry for this day",
   "nothing_logged": "Nothing logged this day",
   "nothing_logged_body": "You can still add an entry for it. Memory counts.",
+  "day_also_heading": "Also this day",
+  "day_first_noticed": "First noticed",
+  "day_wear_running": "Still running",
+  "day_wear_duration": [
+    {
+      "declarations": [
+        "input hours",
+        "input minutes",
+        "local hoursPlural = hours: plural"
+      ],
+      "selectors": [
+        "hoursPlural"
+      ],
+      "match": {
+        "hoursPlural=0": "{minutes} m",
+        "hoursPlural=other": "{hours} h {minutes} m"
+      }
+    }
+  ],
+  "day_hair_photos": "Hair photos",
+  "day_consult": "Consult",
+  "day_recovery_photos": "Recovery photos",
+  "day_tryout_photos": "Photos",
+  "day_nothing_body": "Nothing was recorded on this day. You can still add an entry for it. Memory counts.",
   "search": "Search",
   "search_placeholder": "Search notes and tags…",
   "search_hint": "Notes and tags, with or without diacritics. “lozko” finds “łóżko”.",
