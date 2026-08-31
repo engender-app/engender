@@ -98,8 +98,6 @@ export interface PreferenceValues {
   entryProcedureRecoveryEnabled: boolean;
   /** Whether active HRT regimen shows a physical change marker chip in the entry editor. */
   entryHrtEffectsEnabled: boolean;
-  /** Explicit opt-in for cycle tracking on non-testosterone regimens (ADR-0043). */
-  cycleTrackingEnabled: boolean;
   /** Whether the wear-timer live tile is ever shown (phase 5 ticket 51).
       A kind-level switch, not a way to hide one running session: the tile
       appears while a session is running and the kind is on, and this never
@@ -292,7 +290,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   entryDoseQuickLogEnabled: true,
   entryProcedureRecoveryEnabled: true,
   entryHrtEffectsEnabled: true,
-  cycleTrackingEnabled: false,
   wearTimerEnabled: true,
   dosePanelEnabled: true,
   readyLetterEnabled: true,
@@ -342,7 +339,6 @@ export const PORTABLE_KEYS = [
   'checkInEnabled',
   'checkInTime',
   'checkInAffirmationsEnabled',
-  'cycleTrackingEnabled',
   'preferredLabUnits',
   'measurementUnit',
   'streakGoalHabit',

@@ -94,6 +94,8 @@ dependencies {
     // (ticket 19) - lets bytes cross into native as a structured clone
     // instead of a JSON string.
     implementation "androidx.webkit:webkit:$androidxWebkitVersion"
+    // Argon2id KDF for archive key derivation behind the bridge (phase 5 security ticket 06).
+    implementation "org.bouncycastle:bcprov-jdk18on:$bouncycastleVersion"
     testImplementation "junit:junit:$junitVersion"
     // Host-side unit tests run against the Android SDK's stub jar, whose
     // org.json throws on every call. This puts the real implementation

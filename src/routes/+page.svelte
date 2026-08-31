@@ -85,6 +85,13 @@
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { activeSurgeryProcedure, recoveryDay } from '$lib/data/recoveryDay';
   import { shouldShowSafeSpaceNudge } from '$lib/data/safeSpaceNudge';
+  import { isLetterSnoozed, snoozeLetterTile, unreadUnlockedLetters } from '$lib/data/letterStatus';
+  import {
+    depletingStocks,
+    isStockNoticeSnoozed,
+    snoozeStockNotice
+  } from '$lib/data/stockProjection';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { isTileSnoozed, snoozeTile } from '$lib/data/liveTilesSnooze';
@@ -99,8 +106,9 @@
   import { hairRemovalAreaName } from '$lib/data/vocabulary/labels';
 
   const today = todayEpochDay();
+  const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
-  /* Live tiles data & condition (phase 5 tickets 45, 47, 50, and deepening 03). */
+  /* Live tiles data & condition (phase 5 tickets 45, 47, 50, deepening 01, 03). */
   let runningWearQuery = liveQuery((j) => j.wearSessions.getRunningSession());
   let runningWear = $derived(runningWearQuery.value ?? null);
   let nowTick = $state(Date.now());
@@ -118,6 +126,17 @@
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let activeSurgery = $derived(activeSurgeryProcedure(proceduresQuery.rows, today));
   let showSurgeryTile = $derived(prefs.surgeryCountdownEnabled && !!activeSurgery);
+
+  let lettersQuery = liveList((j) => j.letters.getLetters(100));
+  let isLetterSnoozedState = $state(false);
+  $effect(() => {
+    isLetterSnoozedState = isLetterSnoozed();
+  });
+  let unreadLetters = $derived(unreadUnlockedLetters(lettersQuery.rows, today));
+  let readyLetter = $derived(unreadLetters[0] ?? null);
+  let otherReadyLettersCount = $derived(Math.max(0, unreadLetters.length - 1));
+  let showLetterTile = $derived(prefs.readyLetterEnabled && !!readyLetter && !isLetterSnoozedState);
+  let letterDismissSheetOpen = $state(false);
 
   function procedureRecoveryText(procedure: { surgeryEpochDay: number | null }): string {
     const day = recoveryDay(procedure.surgeryEpochDay, today);
@@ -265,6 +284,7 @@
       (showDoseTile ? 1 : 0) +
       (showSurgeryTile && activeSurgery ? 1 : 0) +
       (showSafeSpaceTile ? 1 : 0) +
+      (showLetterTile && readyLetter ? 1 : 0) +
       (showTryoutTile && activeTryoutQualifying ? 1 : 0) +
       (showPatchScheduleTile && patchScheduleQualifying ? 1 : 0) +
       (showVoiceBenchmarkTile && voiceBenchmarkQualifying ? 1 : 0) +
@@ -291,6 +311,15 @@
 
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt, today));
   let showBackupNotice = $derived(backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed);
+
+  let stockProjectionsQuery = liveList((j) => j.stock.getProjections(today));
+  let isStockNoticeSnoozedState = $state(false);
+  $effect(() => {
+    isStockNoticeSnoozedState = isStockNoticeSnoozed();
+  });
+  let urgentDepletingStock = $derived(depletingStocks(stockProjectionsQuery.rows, today)[0] ?? null);
+  let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);
+  let stockDismissSheetOpen = $state(false);
 
   /* Five days, not five entries, is what the read asks for: the day cards
      head each day with how many entries it holds, and a query row limit
@@ -497,6 +526,29 @@
     />
   {/if}
 
+  {#if showStockNotice && urgentDepletingStock}
+    <Notice
+      icon="alert"
+      key="stock-low"
+      title={m.notice_stock_low_title()}
+      text={urgentDepletingStock.daysRemaining <= 0
+        ? m.notice_stock_out_body({ drug: urgentDepletingStock.entry.drug })
+        : m.notice_stock_low_body({
+            drug: urgentDepletingStock.entry.drug,
+            days: String(urgentDepletingStock.daysRemaining)
+          })}
+      action={{ label: m.notice_stock_manage(), href: '/settings/stock' }}
+      dismiss={{
+        label: m.notice_stock_dismiss_action(),
+        onclick: () => {
+          stockDismissSheetOpen = true;
+        }
+      }}
+      aria-live="polite"
+      data-stock-notice=""
+    />
+  {/if}
+
   <SectionHeading text={m.how_feeling()} />
   <MoodChips onPick={onQuickLog} />
 
@@ -513,7 +565,7 @@
         data-live-tile-grid
       >
         {#if showWearTile && runningWear && runningWearElapsed}
-          <div transition:tileSlide={{ enabled: showDoseTile || showSurgeryTile || showSafeSpaceTile }}>
+          <div transition:tileSlide={{ enabled: showDoseTile || showSurgeryTile || showSafeSpaceTile || showLetterTile }}>
             <Tile
               key="wear-timer"
               data-wear-running-tile
@@ -549,7 +601,7 @@
         {#if showDoseTile}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSurgeryTile || showSafeSpaceTile
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSurgeryTile || showSafeSpaceTile || showLetterTile
             }}
           >
             <Tile
@@ -574,7 +626,7 @@
         {#if showSurgeryTile && activeSurgery}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSafeSpaceTile
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSafeSpaceTile || showLetterTile
             }}
           >
             <Tile
@@ -595,33 +647,58 @@
               enabled: liveTilesCount > 1
             }}
           >
-            <div
-              class="kit-tile home-safe-space-tile"
-              data-tile="safe-space-nudge"
+            <Tile
+              key="safe-space-nudge"
               data-safe-space-nudge-tile
               data-live-tile="safe-space-nudge"
-            >
-              <div class="home-safe-space-main">
-                <p class="home-safe-space-text">{m.tile_safe_space_nudge_sub()}</p>
-                <a
-                  class="btn btn-soft kit-tile-act press"
-                  href="/doubt"
-                  data-safe-space-nudge-open
-                  onclick={dismissSafeSpaceNudge}
-                >
-                  <span>{m.safe_space_title()}</span>
-                </a>
-              </div>
-              <button
-                type="button"
-                class="home-safe-space-dismiss press"
-                data-safe-space-nudge-dismiss
-                aria-label={m.tile_safe_space_nudge_dismiss()}
-                onclick={dismissSafeSpaceNudge}
-              >
-                <Icon name="x" size={16} />
-              </button>
-            </div>
+              title={m.safe_space_title()}
+              note={m.tile_safe_space_nudge_sub()}
+              href="/doubt"
+              action={{
+                icon: 'x',
+                label: m.tile_safe_space_nudge_dismiss(),
+                attrs: { 'data-safe-space-nudge-dismiss': '' },
+                onclick: (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  dismissSafeSpaceNudge(e);
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showLetterTile && readyLetter}
+          <div
+            transition:tileSlide={{
+              enabled:
+                !!(showWearTile && runningWear && runningWearElapsed) ||
+                showDoseTile ||
+                showSurgeryTile ||
+                showSafeSpaceTile
+            }}
+          >
+            <Tile
+              key="ready-letter"
+              data-letter-tile
+              data-live-tile="ready-letter"
+              title={m.tile_letter_title()}
+              value={dayLabel(readyLetter.epochDay)}
+              note={otherReadyLettersCount > 0
+                ? m.tile_letter_more({ count: String(otherReadyLettersCount) })
+                : m.tile_letter_single_note()}
+              href={`/settings/letters?read=${readyLetter.id}`}
+              action={{
+                icon: 'x',
+                label: m.tile_letter_dismiss_action(),
+                attrs: { 'data-letter-dismiss': '' },
+                onclick: (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  letterDismissSheetOpen = true;
+                }
+              }}
+            />
           </div>
         {/if}
 
@@ -937,6 +1014,76 @@
       </div>
     {/if}
   </Sheet>
+
+  <Sheet
+    open={letterDismissSheetOpen}
+    title={m.tile_letter_dismiss_title()}
+    onClose={() => (letterDismissSheetOpen = false)}
+  >
+    <div data-letter-dismiss-sheet>
+      <SectionHeading text={m.tile_letter_dismiss_title()} />
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.tile_letter_dismiss_hint()}</p>
+      <div class="stack-3">
+        <button
+          class="btn btn-primary btn-block"
+          data-letter-snooze
+          onclick={() => {
+            snoozeLetterTile();
+            isLetterSnoozedState = true;
+            letterDismissSheetOpen = false;
+            toast(m.tile_letter_snoozed_toast());
+          }}
+        >
+          <span>{m.tile_letter_snooze_btn()}</span>
+        </button>
+        <button
+          class="btn btn-ghost btn-block"
+          data-letter-dont-show
+          onclick={() => {
+            prefs.readyLetterEnabled = false;
+            letterDismissSheetOpen = false;
+          }}
+        >
+          <span>{m.tile_letter_dont_show_btn()}</span>
+        </button>
+      </div>
+    </div>
+  </Sheet>
+
+  <Sheet
+    open={stockDismissSheetOpen}
+    title={m.notice_stock_dismiss_title()}
+    onClose={() => (stockDismissSheetOpen = false)}
+  >
+    <div data-stock-dismiss-sheet>
+      <SectionHeading text={m.notice_stock_dismiss_title()} />
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.notice_stock_dismiss_hint()}</p>
+      <div class="stack-3">
+        <button
+          class="btn btn-primary btn-block"
+          data-stock-snooze
+          onclick={() => {
+            snoozeStockNotice();
+            isStockNoticeSnoozedState = true;
+            stockDismissSheetOpen = false;
+            toast(m.notice_stock_snoozed_toast());
+          }}
+        >
+          <span>{m.notice_stock_snooze_btn()}</span>
+        </button>
+        <button
+          class="btn btn-ghost btn-block"
+          data-stock-dont-show
+          onclick={() => {
+            prefs.stockNoticeEnabled = false;
+            stockDismissSheetOpen = false;
+          }}
+        >
+          <span>{m.notice_stock_dont_show_btn()}</span>
+        </button>
+      </div>
+    </div>
+  </Sheet>
 </div>
 
 <style>
@@ -1211,65 +1358,4 @@
   .home-swap { display: grid; }
   .home-swap > * { grid-area: 1 / 1; }
   .home-days { display: grid; gap: var(--space-3); align-content: start; }
-
-  .home-safe-space-tile {
-    position: relative;
-    display: block;
-    min-height: 0;
-    padding: var(--space-4);
-  }
-  .home-safe-space-main {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding-right: var(--space-6);
-  }
-  .home-safe-space-text {
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--text);
-    line-height: 1.35;
-    font-weight: var(--weight-medium);
-    flex: 1 1 auto;
-  }
-  .home-safe-space-main .btn {
-    flex: 0 0 auto;
-    min-height: 36px;
-    padding: 0 var(--space-3.5);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    border-radius: var(--radius-pill);
-    background: color-mix(in oklab, var(--role-mark) 25%, transparent);
-    color: var(--text);
-    border: 1px solid color-mix(in oklab, var(--role-mark) 45%, transparent);
-    white-space: nowrap;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-  }
-  .home-safe-space-main .btn:active {
-    background: color-mix(in oklab, var(--role-mark) 38%, transparent);
-  }
-  .home-safe-space-dismiss {
-    position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 0;
-    color: var(--text-2);
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-  }
-  .home-safe-space-dismiss:hover,
-  .home-safe-space-dismiss:active {
-    color: var(--text);
-    background: color-mix(in oklab, var(--role-mark) 14%, transparent);
-  }
 </style>

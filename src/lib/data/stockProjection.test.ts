@@ -1,6 +1,15 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { projectStock, TRAILING_WINDOW_DAYS } from './stockProjection';
+import {
+  clearStockNoticeSnooze,
+  depletingStocks,
+  isStockDepletingSoon,
+  isStockNoticeSnoozed,
+  projectStock,
+  snoozeStockNotice,
+  STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS,
+  TRAILING_WINDOW_DAYS
+} from './stockProjection';
 import { startOfDayTimestamp } from './epochDay';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -190,3 +199,140 @@ test('a stock entry younger than the trailing window is not padded with days bef
 
   assert.equal(projection.dailyRate, 1);
 });
+
+class MockStorage implements Storage {
+  private data = new Map<string, string>();
+  get length() {
+    return this.data.size;
+  }
+  clear() {
+    this.data.clear();
+  }
+  getItem(key: string) {
+    return this.data.get(key) ?? null;
+  }
+  key(index: number) {
+    return Array.from(this.data.keys())[index] ?? null;
+  }
+  removeItem(key: string) {
+    this.data.delete(key);
+  }
+  setItem(key: string, value: string) {
+    this.data.set(key, value);
+  }
+}
+
+test('isStockDepletingSoon returns true when runOutEpochDay is within threshold (<= 7 days)', () => {
+  const asOf = DAY_0 + 10;
+  // 5 days remaining at 1/day -> run out in 5 days (<= 7 days)
+  const projectionWithin = {
+    remaining: 5,
+    dailyRate: 1,
+    runOutEpochDay: asOf + 5,
+    excludedDoses: 0
+  };
+  assert.equal(isStockDepletingSoon(projectionWithin, asOf), true);
+
+  // Exactly 7 days
+  const projectionExact = {
+    remaining: 7,
+    dailyRate: 1,
+    runOutEpochDay: asOf + 7,
+    excludedDoses: 0
+  };
+  assert.equal(isStockDepletingSoon(projectionExact, asOf), true);
+
+  // 8 days -> false
+  const projectionBeyond = {
+    remaining: 8,
+    dailyRate: 1,
+    runOutEpochDay: asOf + 8,
+    excludedDoses: 0
+  };
+  assert.equal(isStockDepletingSoon(projectionBeyond, asOf), false);
+
+  // 0 remaining -> true (runOut is asOf)
+  const projectionZero = {
+    remaining: 0,
+    dailyRate: 1,
+    runOutEpochDay: asOf,
+    excludedDoses: 0
+  };
+  assert.equal(isStockDepletingSoon(projectionZero, asOf), true);
+
+  // Negative remaining -> true
+  const projectionNegative = {
+    remaining: -2,
+    dailyRate: 1,
+    runOutEpochDay: asOf,
+    excludedDoses: 0
+  };
+  assert.equal(isStockDepletingSoon(projectionNegative, asOf), true);
+
+  // Null runOutEpochDay (zero consumption) -> false
+  const projectionNull = {
+    remaining: 10,
+    dailyRate: 0,
+    runOutEpochDay: null,
+    excludedDoses: 0
+  };
+  assert.equal(isStockDepletingSoon(projectionNull, asOf), false);
+});
+
+test('isStockDepletingSoon works with raw stock, doses, and episodes', () => {
+  const stock = { drug: 'estradiol valerate', quantity: 7, unit: 'pills', recordedEpochDay: DAY_0 };
+  const doses = Array.from({ length: 5 }, (_, i) => dose(DAY_0 + i));
+  const ep = [episode({ route: 'oral' })];
+  // 5 doses consumed, 2 remaining at 1/day -> runs out in 2 days from DAY_0 + 4
+  assert.equal(isStockDepletingSoon(stock, doses, ep, DAY_0 + 4), true);
+
+  const ampleStock = { drug: 'estradiol valerate', quantity: 50, unit: 'pills', recordedEpochDay: DAY_0 };
+  assert.equal(isStockDepletingSoon(ampleStock, doses, ep, DAY_0 + 4), false);
+});
+
+test('depletingStocks filters and sorts by urgency', () => {
+  const asOf = DAY_0 + 10;
+  const items = [
+    {
+      entry: { id: 's-ample', drug: 'spironolactone', quantity: 100, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
+      projection: { remaining: 50, dailyRate: 1, runOutEpochDay: asOf + 50, excludedDoses: 0 }
+    },
+    {
+      entry: { id: 's-urgent', drug: 'estradiol valerate', quantity: 10, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
+      projection: { remaining: 2, dailyRate: 1, runOutEpochDay: asOf + 2, excludedDoses: 0 }
+    },
+    {
+      entry: { id: 's-medium', drug: 'progesterone', quantity: 20, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
+      projection: { remaining: 5, dailyRate: 1, runOutEpochDay: asOf + 5, excludedDoses: 0 }
+    }
+  ];
+
+  const depleting = depletingStocks(items, asOf);
+  assert.equal(depleting.length, 2);
+  assert.equal(depleting[0].entry.drug, 'estradiol valerate');
+  assert.equal(depleting[0].daysRemaining, 2);
+  assert.equal(depleting[1].entry.drug, 'progesterone');
+  assert.equal(depleting[1].daysRemaining, 5);
+});
+
+test('snoozeStockNotice suppresses notice for 24 hours and expires afterwards', () => {
+  const storage = new MockStorage();
+  const now = 1700000000000;
+
+  assert.equal(isStockNoticeSnoozed(now, storage), false);
+
+  snoozeStockNotice(now, storage);
+  assert.equal(isStockNoticeSnoozed(now, storage), true);
+  assert.equal(isStockNoticeSnoozed(now + 12 * 3600_000, storage), true);
+  assert.equal(isStockNoticeSnoozed(now + 24 * 3600_000 - 100, storage), true);
+
+  // 24 hours elapsed -> un-snoozed
+  assert.equal(isStockNoticeSnoozed(now + 24 * 3600_000 + 1, storage), false);
+
+  // Clear snooze
+  snoozeStockNotice(now, storage);
+  assert.equal(isStockNoticeSnoozed(now, storage), true);
+  clearStockNoticeSnooze(storage);
+  assert.equal(isStockNoticeSnoozed(now, storage), false);
+});
+
