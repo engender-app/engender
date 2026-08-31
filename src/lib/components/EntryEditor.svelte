@@ -173,7 +173,7 @@
   });
   let isToday = $derived(day === todayEpochDay());
 
-  /* Contextual Inline Cards (ticket 04, ADR-0040) */
+  /* Contextual Inline Cards (ticket 04, ADR-0044) */
   let tryoutsQuery = liveQuery((j) => j.tryouts.getTryouts());
   let activeTryout = $derived(
     (tryoutsQuery.value ?? []).find((t) => t.endEpochDay == null && (t.kind === 'name' || t.kind === 'pronouns'))
@@ -550,7 +550,7 @@
     bind:value={entryDraft.note}
   ></textarea>
 
-  <!-- Contextual Inline Cards (ticket 04, ADR-0040) -->
+  <!-- Contextual Inline Cards (ticket 04, ADR-0044) -->
   {#if prefs.entryTryoutPromptEnabled && activeTryout}
     <div class="contextual-panel" data-contextual="tryout-felt-sense">
       <div class="contextual-header">
@@ -930,8 +930,16 @@
   /* The container transform's own layer - a plain fill behind the real
      screen, carrying no text, the same fix as .entry-card-bg/.kit-entry-bg
      in components.css/kit.css. Those two sit inside a grid container, where
-     the screen can take the viewport; this is the screen itself, so it fills
-     the root element's padding box. */
+     an absolutely positioned sibling and the plain grid items around it
+     share one paint layer and fall back to DOM order - bg first, content on
+     top, no z-index needed. `.screen` here is plain block layout, so its
+     static children never leave the layer below a positioned box; without
+     help this fill painted over every heading, slider and pill in the
+     screen instead of behind them. `isolation: isolate` scopes the fix to
+     this screen alone rather than reordering anything outside it. */
+  .screen.editor {
+    isolation: isolate;
+  }
   .editor-bg {
     position: absolute;
     inset: 0;
@@ -959,7 +967,7 @@
     font-family: var(--font-body);
   }
 
-  /* Contextual Inline Cards (ticket 04, ADR-0040) */
+  /* Contextual Inline Cards (ticket 04, ADR-0044) */
   .contextual-panel {
     background: var(--surface);
     border: 1px solid var(--outline);
@@ -1044,6 +1052,7 @@
     padding: var(--space-2) var(--space-3);
   }
   .icon-btn-inline {
+    position: relative;
     border: none;
     background: none;
     cursor: pointer;
@@ -1055,6 +1064,11 @@
     min-height: 24px;
     padding: 0;
     margin-left: var(--space-1);
+  }
+  .icon-btn-inline::after {
+    content: '';
+    position: absolute;
+    inset: -12px;
   }
   .procedure-photo-row {
     display: flex;
