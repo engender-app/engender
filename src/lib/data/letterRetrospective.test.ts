@@ -8,7 +8,7 @@
    like on-this-day.test.ts. */
 import { test, expect } from 'vitest';
 import type { Letter } from './types.ts';
-import { wrappedLetters, onThisDayLetters, type RetrospectiveLetter } from './letterRetrospective.ts';
+import { wrappedLetters, onThisDayLetters, featuredLetter, type RetrospectiveLetter } from './letterRetrospective.ts';
 
 const letter = (over: Partial<Letter> & Pick<Letter, 'id' | 'epochDay' | 'unlockEpochDay'>): Letter => ({
   text: `letter ${over.id}`,
@@ -78,4 +78,26 @@ test('a letter written and unlocked on the same candidate day reads as written',
 test('no matches is an empty list, the shape the screens already branch on', () => {
   expect(wrappedLetters([], 300, 400, 500)).toEqual<RetrospectiveLetter[]>([]);
   expect(onThisDayLetters([UNLOCKED], 999, 1_000)).toEqual<RetrospectiveLetter[]>([]);
+});
+
+test('featuredLetter is null with no letters, or when every letter is still sealed', () => {
+  expect(featuredLetter([], 500)).toBeNull();
+  expect(featuredLetter([SEALED], 500)).toBeNull();
+});
+
+test('featuredLetter picks the most recently unlocked letter', () => {
+  const older = letter({ id: 'older', epochDay: 100, unlockEpochDay: 150 });
+  const newer = letter({ id: 'newer', epochDay: 100, unlockEpochDay: 400 });
+  expect(featuredLetter([older, newer, SEALED], 500)).toBe(newer);
+});
+
+test('featuredLetter breaks an unlock-day tie by whichever was written more recently', () => {
+  const earlyWrite = letter({ id: 'early-write', epochDay: 100, unlockEpochDay: 300 });
+  const lateWrite = letter({ id: 'late-write', epochDay: 200, unlockEpochDay: 300 });
+  expect(featuredLetter([earlyWrite, lateWrite], 500)).toBe(lateWrite);
+});
+
+test('featuredLetter never returns a still-sealed letter, however recent', () => {
+  const justSealed = letter({ id: 'just-sealed', epochDay: 490, unlockEpochDay: 501 });
+  expect(featuredLetter([justSealed, UNLOCKED], 500)).toBe(UNLOCKED);
 });
