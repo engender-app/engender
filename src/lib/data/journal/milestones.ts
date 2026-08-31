@@ -41,38 +41,60 @@ export interface MilestoneInput {
 
 export interface MilestonesArea {
   getMilestones(): Promise<Milestone[]>;
+  /** The milestones dated to one day, in the same shape and order
+      `getMilestones` reads them (phase 5 ticket 21). Its own query rather
+      than a filter over that one, so the day view pays for the day it is
+      showing and not for every milestone ever recorded. */
+  getMilestonesOnDay(epochDay: number): Promise<Milestone[]>;
   /** Returns the milestone's id. Updating an unknown id throws. */
   upsertMilestone(input: MilestoneInput): Promise<string>;
   /** Idempotent. Takes the milestone's photo rows and files with it. */
   deleteMilestone(id: string): Promise<void>;
 }
 
+type MilestoneRow = {
+  id: number;
+  uuid: string;
+  name: string;
+  epoch_day: number;
+  template_key: string | null;
+  roadmap_goal_key: string | null;
+  procedure_id: string | null;
+};
+
+const MILESTONE_COLUMNS = 'id, uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id';
+
 export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore): MilestonesArea {
+  /* One query for every milestone's photo rather than one per row: both
+     readers below render whole lists at once. `photosByMilestone` reads the
+     photo table for all milestones either way - a day's handful of rows is
+     not worth a narrower join. */
+  const withPhotos = async (rows: MilestoneRow[]): Promise<Milestone[]> => {
+    const photos = await photosByMilestone(driver);
+    return rows.map((r) => ({
+      id: r.uuid,
+      name: r.name,
+      epochDay: r.epoch_day,
+      templateKey: r.template_key,
+      roadmapGoalKey: r.roadmap_goal_key,
+      procedureId: r.procedure_id ?? null,
+      photo: photos.get(r.id) ?? null
+    }));
+  };
+
   return {
     async getMilestones() {
-      const rows = await driver.query<{
-        id: number;
-        uuid: string;
-        name: string;
-        epoch_day: number;
-        template_key: string | null;
-        roadmap_goal_key: string | null;
-        procedure_id: string | null;
-      }>(
-        'SELECT id, uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id FROM milestone ORDER BY epoch_day, id'
+      return withPhotos(
+        await driver.query<MilestoneRow>(`SELECT ${MILESTONE_COLUMNS} FROM milestone ORDER BY epoch_day, id`)
       );
-      // One query for every milestone's photo rather than one per row: the
-      // milestones screen renders the whole list at once.
-      const photos = await photosByMilestone(driver);
-      return rows.map((r) => ({
-        id: r.uuid,
-        name: r.name,
-        epochDay: r.epoch_day,
-        templateKey: r.template_key,
-        roadmapGoalKey: r.roadmap_goal_key,
-        procedureId: r.procedure_id ?? null,
-        photo: photos.get(r.id) ?? null
-      }));
+    },
+
+    async getMilestonesOnDay(epochDay) {
+      return withPhotos(
+        await driver.query<MilestoneRow>(`SELECT ${MILESTONE_COLUMNS} FROM milestone WHERE epoch_day = ? ORDER BY id`, [
+          epochDay
+        ])
+      );
     },
 
     async upsertMilestone(input) {

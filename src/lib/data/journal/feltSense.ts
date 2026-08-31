@@ -23,12 +23,28 @@ export interface FeltSenseInput {
   note?: string | null;
 }
 
+/** A felt-sense entry read without knowing whose it is (phase 5 deepening
+    ticket 21), which is the one caller the type's own note does not cover:
+    the day view asks a day what it holds and is handed entries from both
+    arms at once, so the owner has to travel with the row for it to say
+    "how the name felt" rather than a mood with nothing attached.
+
+    The owner's name, not just its id: a row that reads "Robin" is what the
+    screen shows, and resolving it here is one join where the screen would
+    otherwise read every tryout and every milestone to look one up. */
+export interface FeltSenseOnDay extends FeltSenseEntry {
+  owner: { kind: 'tryout'; id: string; name: string } | { kind: 'milestone'; id: string; name: string };
+}
+
 export interface FeltSenseArea {
   /** Newest first, the same order the tryout screen already read in before
       this module existed. */
   forTryout(tryoutId: string): Promise<FeltSenseEntry[]>;
   /** Newest first, like forTryout. */
   forMilestone(milestoneId: string): Promise<FeltSenseEntry[]>;
+  /** Both owners' entries dated to one day, tryouts before milestones and
+      oldest-logged first inside each. */
+  onDay(epochDay: number): Promise<FeltSenseOnDay[]>;
   /** Returns the entry's id. Throws on an unknown owner or a mood outside
       the five-level scale. */
   add(owner: FeltSenseOwner, input: FeltSenseInput): Promise<string>;
@@ -80,6 +96,33 @@ export function makeFeltSenseArea(driver: SqliteDriver): FeltSenseArea {
         [milestoneId]
       );
       return rows.map(toFeltSenseEntry);
+    },
+
+    /* One query over both arms rather than one per arm: the table's CHECK
+       already guarantees exactly one owner column is set, so the two LEFT
+       JOINs cannot both land and the arm follows from which name came
+       back. */
+    async onDay(epochDay) {
+      const rows = await driver.query<
+        FeltSenseRow & { tryout_uuid: string | null; tryout_label: string | null; milestone_uuid: string | null; milestone_name: string | null }
+      >(
+        `SELECT f.uuid, f.epoch_day, f.mood, f.note,
+                t.uuid AS tryout_uuid, t.label AS tryout_label,
+                ms.uuid AS milestone_uuid, ms.name AS milestone_name
+           FROM felt_sense f
+           LEFT JOIN tryout t ON t.id = f.tryout_id
+           LEFT JOIN milestone ms ON ms.id = f.milestone_id
+          WHERE f.epoch_day = ?
+          ORDER BY f.tryout_id IS NULL, f.id`,
+        [epochDay]
+      );
+      return rows.map((row) => ({
+        ...toFeltSenseEntry(row),
+        owner:
+          row.tryout_uuid != null
+            ? ({ kind: 'tryout', id: row.tryout_uuid, name: row.tryout_label ?? '' } as const)
+            : ({ kind: 'milestone', id: row.milestone_uuid ?? '', name: row.milestone_name ?? '' } as const)
+      }));
     },
 
     async add(owner, input) {

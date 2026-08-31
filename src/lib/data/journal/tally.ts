@@ -21,6 +21,10 @@ export interface TallyArea {
   log(input: TallyEventInput): Promise<string>;
   /** One kind's events, oldest first. */
   getEvents(kind: TallyKind): Promise<TallyEvent[]>;
+  /** One day's events, both kinds, in the order they were logged (phase 5
+      deepening ticket 21). Both kinds together because the day view asks
+      what happened, not how one counter moved. */
+  getEventsOnDay(epochDay: number): Promise<TallyEvent[]>;
   /** Idempotent. */
   deleteEvent(id: string): Promise<void>;
 }
@@ -42,6 +46,14 @@ export function makeTallyArea(driver: SqliteDriver): TallyArea {
       const rows = await driver.query<{ uuid: string; epoch_day: number; kind: TallyKind }>(
         'SELECT uuid, epoch_day, kind FROM tally_event WHERE kind = ? ORDER BY epoch_day, id',
         [kind]
+      );
+      return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, kind: r.kind }));
+    },
+
+    async getEventsOnDay(epochDay) {
+      const rows = await driver.query<{ uuid: string; epoch_day: number; kind: TallyKind }>(
+        'SELECT uuid, epoch_day, kind FROM tally_event WHERE epoch_day = ? ORDER BY id',
+        [epochDay]
       );
       return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, kind: r.kind }));
     },

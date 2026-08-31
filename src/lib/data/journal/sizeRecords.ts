@@ -29,6 +29,8 @@ export interface SizeRecordsArea {
   getRecords(): Promise<SizeRecord[]>;
   /** This category's records, oldest first - the trend view's own grouping. */
   getRecordsByCategory(category: string): Promise<SizeRecord[]>;
+  /** One day's records, across categories (phase 5 deepening ticket 21). */
+  getRecordsOnDay(epochDay: number): Promise<SizeRecord[]>;
   /** Returns the record's id. Updating an unknown id throws; a category
       outside the closed vocabulary throws before anything is written. */
   upsertRecord(input: SizeRecordInput): Promise<string>;
@@ -68,6 +70,14 @@ export function makeSizeRecordsArea(driver: SqliteDriver): SizeRecordsArea {
     async getRecords() {
       const rows = await driver.query<SizeRecordRow>(
         'SELECT uuid, epoch_day, category, size, brand, fit_note FROM size_record ORDER BY epoch_day, id'
+      );
+      return rows.map(toSizeRecord);
+    },
+
+    async getRecordsOnDay(epochDay) {
+      const rows = await driver.query<SizeRecordRow>(
+        'SELECT uuid, epoch_day, category, size, brand, fit_note FROM size_record WHERE epoch_day = ? ORDER BY id',
+        [epochDay]
       );
       return rows.map(toSizeRecord);
     },
