@@ -31,8 +31,10 @@ const TAB_ROUTES: TabRoute[] = [
   },
   /* Doses sits outside /settings, but it is reached from More's health
      group (regimen, hormone-curve) and joins that group's tab too
-     (ticket 09). */
-  { key: 'settings', prefixes: ['/settings', '/more', '/doses'] }
+     (ticket 09). The care overview is the same case one step on: it is the
+     health group's own row now (deepening ticket 07), and /doses is reached
+     through it. */
+  { key: 'settings', prefixes: ['/settings', '/more', '/doses', '/care'] }
 ];
 
 export function activeTabKey(path: string): string {

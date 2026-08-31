@@ -57,7 +57,7 @@ export const SPINE_MIN_FORWARD_DAYS = 14;
     rail. A date label is around 48px wide and a mark owes a 48px target
     (PRODUCT.md's floor), so at the 330px of rail a 390px screen leaves,
     0.17 is about the 56px two adjacent labels need to stay apart. */
-const MIN_LABEL_GAP = 0.17;
+export const MIN_LABEL_GAP = 0.17;
 
 export type SpineMarkKind = 'labDraw' | 'lastDose' | 'today' | 'nextDose' | 'runOut';
 
@@ -75,7 +75,10 @@ export interface SpineMark {
   /** True where `epochDay` fell outside the rail's reach, so the mark is
       drawn at the end it was pulled in to and the screen can say so. */
   beyondSpan: boolean;
-  /** Which label lane: 0 nearest the line, 1 the one further from it. */
+  /** Which label lane. Lane 0 sits nearest the line and every lane after it
+      one row further out, alternating sides so lane 1 stands above the line
+      rather than forming a second row below it (the screen reads the
+      parity). A caption takes the lowest lane with room for it. */
   lane: number;
 }
 
@@ -84,6 +87,37 @@ export interface CareSpine {
   toEpochDay: number;
   /** Left to right. */
   marks: SpineMark[];
+}
+
+/** Where a day sits along the rail, 0 at its left end and 1 at its right,
+    with today always at 0.5.
+
+    The scale is the square root of the distance from today rather than the
+    distance itself, and that is a design decision rather than a convenience.
+    A rail linear in days is unreadable for the arrangement almost everyone
+    actually has: a dose today, the next one tomorrow and a run-out three
+    weeks out puts three marks inside the last few percent of the line with
+    their captions over each other, while nineteen twentieths of the rail
+    carries nothing. Under a root scale the near days get the room they need
+    and the far ones compress toward the ends, which is the shape of the
+    question - what is happening around now, and roughly how far off is the
+    rest.
+
+    What it costs is that a length along the rail is not a number of days, so
+    nothing here may be read off as a measurement. That is why every caption
+    prints its own date and the rail carries no axis, no ticks between the
+    marks and no scale: it says order and rough nearness, and the days are
+    written down beside it. The transform is monotonic, so two marks are
+    never drawn out of sequence. */
+function positionOf(epochDay: number, todayEpochDay: number, fromEpochDay: number, toEpochDay: number): number {
+  const day = Math.min(Math.max(epochDay, fromEpochDay), toEpochDay);
+  if (day === todayEpochDay) return 0.5;
+  if (day < todayEpochDay) {
+    const back = todayEpochDay - fromEpochDay;
+    return back === 0 ? 0.5 : 0.5 - 0.5 * Math.sqrt((todayEpochDay - day) / back);
+  }
+  const forward = toEpochDay - todayEpochDay;
+  return forward === 0 ? 0.5 : 0.5 + 0.5 * Math.sqrt((day - todayEpochDay) / forward);
 }
 
 /** The four readings, each as the day it belongs to or null where there is
@@ -154,20 +188,22 @@ export function careSpine(facts: SpineFacts, todayEpochDay: number): CareSpine |
   const latest = Math.max(...days.map(([, day]) => day));
   const fromEpochDay = Math.max(todayEpochDay - SPINE_BACK_DAYS, Math.min(todayEpochDay - SPINE_MIN_BACK_DAYS, earliest));
   const toEpochDay = Math.min(todayEpochDay + SPINE_FORWARD_DAYS, Math.max(todayEpochDay + SPINE_MIN_FORWARD_DAYS, latest));
-  const span = toEpochDay - fromEpochDay;
 
-  /* Two lanes, filled left to right: a label goes in the near lane unless
-     the last label already there is closer than a label is wide, and in the
-     far one on the same test. Where neither lane has room - three marks
-     inside a couple of days, which a daily rhythm around a draw produces -
-     it takes whichever lane it is furthest from, because a small overlap in
-     the roomier lane reads better than a total one in the tighter. */
-  const lastInLane: (number | null)[] = [null, null];
+  /* Lanes, filled left to right: a caption goes in the lowest lane whose
+     last caption is at least a label's width behind it, and opens a new lane
+     when none is. A fixed pair of lanes was the first attempt and it was
+     wrong - three marks at one point, dosed and drawn on the same day, has
+     no two-lane arrangement, and what it produced was two captions printed
+     exactly over each other rather than a rail one row taller.
+
+     So the count follows the arrangement, up to one lane per mark, and the
+     screen grows the rail to fit. Lanes fill from 0 up, so a journal whose
+     marks are spread out still gets a one-lane rail. */
+  const lastInLane: number[] = [];
   const marks: SpineMark[] = days.map(([kind, epochDay]) => {
-    const clamped = Math.min(Math.max(epochDay, fromEpochDay), toEpochDay);
-    const position = span === 0 ? 0.5 : (clamped - fromEpochDay) / span;
-    const room = lastInLane.map((last) => (last === null ? Infinity : position - last));
-    const lane = room[0] >= MIN_LABEL_GAP ? 0 : room[1] >= MIN_LABEL_GAP ? 1 : room[0] >= room[1] ? 0 : 1;
+    const position = positionOf(epochDay, todayEpochDay, fromEpochDay, toEpochDay);
+    let lane = lastInLane.findIndex((last) => position - last >= MIN_LABEL_GAP);
+    if (lane === -1) lane = lastInLane.length;
     lastInLane[lane] = position;
     return { kind, epochDay, position, beyondSpan: epochDay < fromEpochDay || epochDay > toEpochDay, lane };
   });
