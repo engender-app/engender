@@ -775,7 +775,10 @@ a.kit-entry:active {
 
 @media (max-width: 390px) {
   .kit-tiles:not([data-tight]),
-  .kit-tiles[data-live-tile-grid] {
+  /* Same guard as the plain kit-tiles selector above - a live-tile grid
+     that also opts into data-tight (none does yet) must not be stacked
+     here just because this selector forgot to check for it too. */
+  .kit-tiles[data-live-tile-grid]:not([data-tight]) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
