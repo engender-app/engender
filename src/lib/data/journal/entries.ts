@@ -141,15 +141,15 @@ export interface EntryInput {
   /** Stored video notes removed in this edit, committed with the rest of the
       save. */
   removeVideoIds?: string[];
-  /** Contextual tryout felt-sense reflection (ADR-0040). */
+  /** Contextual tryout felt-sense reflection (ADR-0044). */
   tryoutFeltSense?: EntryTryoutFeltSenseInput;
-  /** Contextual scheduled dose quick-log (ADR-0040). */
+  /** Contextual scheduled dose quick-log (ADR-0044). */
   doseLog?: EntryDoseLogInput;
-  /** Contextual post-op procedure recovery note and wound photo (ADR-0040). */
+  /** Contextual post-op procedure recovery note and wound photo (ADR-0044). */
   procedureRecovery?: EntryProcedureRecoveryInput;
-  /** Contextual HRT physical effect noticed milestone (ADR-0040). */
+  /** Contextual HRT physical effect noticed milestone (ADR-0044). */
   effectMarker?: EntryEffectMarkerInput;
-  /** Contextual cycle event (ADR-0040). */
+  /** Contextual cycle event (ADR-0044). */
   cycleEvent?: EntryCycleEventInput;
 }
 
