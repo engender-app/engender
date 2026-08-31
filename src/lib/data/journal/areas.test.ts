@@ -78,6 +78,10 @@ test('a milestone round-trips without a kind column and updates by id', async ()
       templateKey: 'hrt_start',
       roadmapGoalKey: null,
       procedureId: null,
+      tryoutId: null,
+      procedureName: null,
+      tryoutLabel: null,
+      customRoadmapGoalText: null,
       photo: null
     }
   ]);
@@ -91,6 +95,10 @@ test('a milestone round-trips without a kind column and updates by id', async ()
       templateKey: null,
       roadmapGoalKey: null,
       procedureId: null,
+      tryoutId: null,
+      procedureName: null,
+      tryoutLabel: null,
+      customRoadmapGoalText: null,
       photo: null
     }
   ]);

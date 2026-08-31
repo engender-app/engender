@@ -341,8 +341,9 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
     template_key: string | null;
     roadmap_goal_key: string | null;
     procedure_id: string | null;
+    tryout_id: string | null;
   }>(
-    'SELECT id, uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id FROM milestone ORDER BY epoch_day, id'
+    'SELECT id, uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id, tryout_id FROM milestone ORDER BY epoch_day, id'
   );
   const byMilestone = groupBy(photos.filter((p) => p.milestone_id !== null), (p) => p.milestone_id!, toArchivePhoto);
   return rows.map((r) => ({
@@ -352,6 +353,7 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
     templateKey: r.template_key,
     roadmapGoalKey: r.roadmap_goal_key,
     procedureId: r.procedure_id,
+    tryoutId: r.tryout_id,
     // A milestone shows one photo; a second row for the same one would
     // be a bug elsewhere, and the earliest wins rather than throwing -
     // the same rule the milestones area reads by.

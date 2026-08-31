@@ -154,6 +154,13 @@ export function makeTryoutsArea(
         [id]
       );
       await driver.transaction(async () => {
+        // Unlinked before the tryout row goes, the same order procedures.ts
+        // keeps for procedure_id: milestone.tryout_id references tryout(uuid)
+        // with no ON DELETE clause, so the FK would refuse the delete
+        // otherwise, and a milestone this adoption minted is preserved on
+        // the timeline rather than taken down with the tryout it came from
+        // (ADR-0045).
+        await driver.run('UPDATE milestone SET tryout_id = NULL WHERE tryout_id = ?', [id]);
         await driver.run('DELETE FROM felt_sense WHERE tryout_id IN (SELECT id FROM tryout WHERE uuid = ?)', [id]);
         await driver.run('DELETE FROM tryout_photo WHERE tryout_id IN (SELECT id FROM tryout WHERE uuid = ?)', [id]);
         await driver.run('DELETE FROM tryout WHERE uuid = ?', [id]);
@@ -235,13 +242,14 @@ export function makeTryoutsArea(
         if (milestones) {
           milestoneId = await milestones.upsertMilestone({
             name: milestoneTitle,
-            epochDay: milestoneEpochDay
+            epochDay: milestoneEpochDay,
+            tryoutId: id
           });
         } else {
           milestoneId = mintUuid();
           await driver.run(
-            'INSERT INTO milestone (uuid, name, epoch_day, template_key, updated_at) VALUES (?, ?, ?, ?, ?)',
-            [milestoneId, milestoneTitle, milestoneEpochDay, null, now()]
+            'INSERT INTO milestone (uuid, name, epoch_day, template_key, tryout_id, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [milestoneId, milestoneTitle, milestoneEpochDay, null, id, now()]
           );
         }
 
