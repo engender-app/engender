@@ -227,8 +227,8 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3);
-    background: var(--bg-surface-1);
-    border: 1px solid var(--border-subtle);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     margin-bottom: var(--space-3);
   }
@@ -244,8 +244,8 @@
   .body-map-silhouette {
     width: 100%;
     height: 100%;
-    fill: var(--bg-surface-2);
-    stroke: var(--border-subtle);
+    fill: var(--surface-2);
+    stroke: var(--border);
     stroke-width: 1.5;
   }
 
@@ -273,7 +273,7 @@
     height: 14px;
     border-radius: 50%;
     border: 2px solid var(--accent);
-    background: var(--bg-surface-1);
+    background: var(--surface);
     transition:
       background var(--dur-fast) var(--ease-out),
       transform var(--dur-fast) var(--ease-out);
@@ -281,7 +281,7 @@
 
   .body-map-hotspot:hover::after {
     transform: scale(1.2);
-    background: var(--accent-subtle, var(--bg-surface-2));
+    background: var(--accent-soft);
   }
 
   .body-map-hotspot.is-active::after {
