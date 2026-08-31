@@ -18,15 +18,18 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 
 const svelteFiles = globSync('src/**/*.svelte', { cwd: root });
 
-/* The four screens that deliberately do not take this header, each with a
-   header of its own that another ticket owns. Listed rather than inferred,
-   so adding a headerless screen is a decision someone writes down. */
+/* The screens that deliberately do not take this header, each with a header
+   of its own that another ticket owns. Listed rather than inferred, so
+   adding a headerless screen is a decision someone writes down.
+
+   /settings/lock left this list with ticket 53: the app-lock gate it framed
+   is retired, and its replacement is a chromeless gate the layout renders
+   rather than a route. */
 const WITHOUT = new Map([
   ['src/routes/+page.svelte', 'Home wears the flag sun as its header (ticket 19)'],
   ['src/routes/entry/[id]/+page.svelte', 'renders EntryEditor, which carries the header'],
   ['src/routes/entry/new/[day]/+page.svelte', 'renders EntryEditor, which carries the header'],
-  ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow'],
-  ['src/routes/settings/lock/+page.svelte', 'chromeless gate']
+  ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow']
 ]);
 
 describe('every screen gets its header from one component', () => {

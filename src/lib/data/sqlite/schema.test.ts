@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 42);
+  assert.equal(db.getUserVersion(), 43);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -787,4 +787,53 @@ test('the hand-written latest version and the migration list agree', async () =>
     Array.from({ length: LATEST_SCHEMA_VERSION }, (_, index) => index + 1),
     'the list is contiguous from 1, in order, with no version applied twice'
   );
+});
+
+/* Ticket 53 retires the app-lock PIN gate. The acceptance criterion is about
+   what an upgrading installation keeps rather than about what goes: the PIN
+   was never the encryption credential (ADR-0014), so dropping it must leave
+   the journal's real protection exactly where it was. */
+
+async function migratedToV42() {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 42)
+  );
+  return db;
+}
+
+const pref = (db: Awaited<ReturnType<typeof migratedDb>>, key: string): string | undefined =>
+  (db.raw.prepare('SELECT value FROM pref WHERE key = ?').get(key) as { value: string } | undefined)?.value;
+
+test('v43 takes the retired PIN gate\'s preferences and leaves everything else alone', async () => {
+  const db = await migratedToV42();
+  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('pinHash', '"v1$8192$1$1$32$c2FsdA==$aGFzaA=="')`);
+  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('appLock', 'true')`);
+  /* The two mid-session triggers outlive the gate: they now re-ask whatever
+     secret the access mode has (ADR-0041), so they are not the PIN's. */
+  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('lockOnLeave', 'true')`);
+  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('quickExit', 'true')`);
+  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('name', '"Alicja"')`);
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  // A PIN hash is credential material, and it does not outlive its gate.
+  assert.equal(pref(db, 'pinHash'), undefined);
+  assert.equal(pref(db, 'appLock'), undefined);
+  assert.equal(pref(db, 'lockOnLeave'), 'true');
+  assert.equal(pref(db, 'quickExit'), 'true');
+  assert.equal(pref(db, 'name'), '"Alicja"');
+});
+
+test('v43 is a no-op for an installation that never set a PIN', async () => {
+  const db = await migratedToV42();
+  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('name', '"Alicja"')`);
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  assert.equal(pref(db, 'pinHash'), undefined);
+  assert.equal(pref(db, 'name'), '"Alicja"');
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 });

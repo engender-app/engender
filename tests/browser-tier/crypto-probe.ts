@@ -6,14 +6,14 @@
    means no request, not just no *external* request). */
 import { deriveKey, randomSalt } from '../../src/lib/crypto/argon2id.ts';
 import { encrypt, decrypt } from '../../src/lib/crypto/aesGcm.ts';
-import { ARCHIVE_ARGON2_PARAMS, PIN_ARGON2_PARAMS } from '../../src/lib/crypto/params.ts';
+import { ARCHIVE_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS } from '../../src/lib/crypto/params.ts';
 import { publish } from '../probe-handshake.mjs';
 
 const NAME = 'crypto-probe';
 
 async function run() {
   const archiveKey = await deriveKey('archive password', randomSalt(), ARCHIVE_ARGON2_PARAMS);
-  const pinKey = await deriveKey('1234', randomSalt(), PIN_ARGON2_PARAMS);
+  const pinKey = await deriveKey('1234', randomSalt(), PIN_ENCRYPTION_ARGON2_PARAMS);
 
   const plaintext = new TextEncoder().encode('folded and tagged, then packed');
   const { nonce, ciphertext } = await encrypt(archiveKey, plaintext);

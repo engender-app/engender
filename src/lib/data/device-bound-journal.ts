@@ -38,22 +38,29 @@ const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
 
 const isNotFound = (error: unknown): boolean => (error as DOMException)?.name === 'NotFoundError';
 
-function browserDeviceKeySlot(): DeviceKeySlot {
+/** One named slot in the browser's key store. Two things keep keys here now
+    (ticket 53): this journal's device-bound wrapping key, and PIN mode's
+    binding key (data/device-secret.ts). Same database and store, different
+    slot names - a second database would be a second thing a reset has to
+    remember. */
+export function browserKeySlot(slot: string): DeviceKeySlot {
   return {
     async load() {
       const db = await openDeviceKeyDatabase();
-      return runRequest<CryptoKey | null>(db.transaction(DEVICE_BOUND_STORE, 'readonly').objectStore(DEVICE_BOUND_STORE).get(DEVICE_BOUND_SLOT));
+      return runRequest<CryptoKey | null>(db.transaction(DEVICE_BOUND_STORE, 'readonly').objectStore(DEVICE_BOUND_STORE).get(slot));
     },
     async save(key) {
       const db = await openDeviceKeyDatabase();
-      await runRequest(db.transaction(DEVICE_BOUND_STORE, 'readwrite').objectStore(DEVICE_BOUND_STORE).put(key, DEVICE_BOUND_SLOT));
+      await runRequest(db.transaction(DEVICE_BOUND_STORE, 'readwrite').objectStore(DEVICE_BOUND_STORE).put(key, slot));
     },
     async remove() {
       const db = await openDeviceKeyDatabase();
-      await runRequest(db.transaction(DEVICE_BOUND_STORE, 'readwrite').objectStore(DEVICE_BOUND_STORE).delete(DEVICE_BOUND_SLOT));
+      await runRequest(db.transaction(DEVICE_BOUND_STORE, 'readwrite').objectStore(DEVICE_BOUND_STORE).delete(slot));
     }
   };
 }
+
+const browserDeviceKeySlot = (): DeviceKeySlot => browserKeySlot(DEVICE_BOUND_SLOT);
 
 function openDeviceKeyDatabase(): Promise<IDBDatabase> {
   if (!('indexedDB' in globalThis)) {
@@ -87,6 +94,22 @@ export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>
   const { dataKey, metadata } = await createDeviceBoundMetadata(slot);
   await writeDeviceBoundMetadata(metadata);
   return dataKey;
+}
+
+/** Moves an already-open journal to device-bound mode from Settings: the
+    same data key, a fresh wrapping key, so nothing is re-encrypted.
+
+    Web only. Android's device-bound key lives in Keystore behind a bridge
+    that mints its own data key (`create()`) and cannot be asked to wrap
+    one - so on a phone this direction would mean re-encrypting the whole
+    journal, and the module does not offer it there. Ticket 53's notes carry
+    that as the follow-up it is. */
+export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+  const slot = browserDeviceKeySlot();
+  const wrappingKey = await generateWrappingKey();
+  const metadata = await wrapDeviceBoundDataKey(dataKey, wrappingKey);
+  await slot.save(wrappingKey);
+  await writeDeviceBoundMetadata(metadata);
 }
 
 export async function deviceBoundJournalExists(): Promise<boolean> {

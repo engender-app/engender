@@ -19,6 +19,8 @@
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { bootState } from '$lib/stores/boot.svelte';
+  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -88,6 +90,8 @@
   function pickMoodPreset(key: string) {
     prefs.moodPreset = key;
   }
+
+  let hasAccessSecret = $derived(accessModeHasSecret(bootState.accessMode, isAndroid()));
 </script>
 
 <div class="screen">
@@ -479,7 +483,7 @@
         <span class="kit-row-text">
           <span class="kit-row-title">{m.lock_on_leave_title()}</span>
           <span class="kit-row-sub">
-            {m.lock_on_leave_sub()}{prefs.appLock ? '' : ` · ${m.lock_needs_app_lock()}`}
+            {m.lock_on_leave_sub()}{hasAccessSecret ? '' : ` · ${m.lock_needs_secret()}`}
           </span>
         </span>
         <Switch
@@ -494,7 +498,7 @@
         <span class="kit-row-text">
           <span class="kit-row-title">{m.quick_exit_title()}</span>
           <span class="kit-row-sub">
-            {isAndroid() ? m.quick_exit_sub_android() : m.quick_exit_sub_web()}{prefs.appLock
+            {isAndroid() ? m.quick_exit_sub_android() : m.quick_exit_sub_web()}{hasAccessSecret
               ? ''
               : ` · ${m.quick_exit_no_lock()}`}
           </span>

@@ -1,42 +1,45 @@
-/* Whether the app is showing its journal or its lock screen (ticket 17).
+/* Whether the app is showing its journal or asking for its secret again
+   (ticket 17, rebuilt by ticket 53).
 
-   The question is asked as "is there a PIN, and has it been entered since
-   this page loaded", not as a stored "locked" flag. A stored flag would
-   have to be written on the way out, and the ways out are a killed tab, a
-   crash and a swipe from the app switcher - none of which run code. This
-   way the safe answer is the default: `unlocked` starts false, so a cold
-   start with a PIN set is locked before anything else decides anything.
+   The question used to be "is there a PIN, and has it been entered since this
+   page loaded", against a PIN that gated the UI and encrypted nothing
+   (ADR-0014). That gate is retired: a PIN is an access mode now, and there is
+   no second secret sitting on top of the one that opens the journal.
 
-   `pinHash` rather than `appLock` is what the gate reads. The two are kept
-   in step where a PIN is set and cleared, so a hash is present exactly
-   when app lock is on. The hash arrives with the real preferences from
-   SQLite (it left the plaintext boot mirror with ticket 09), and boot
-   lands those before it unparks the journal's queries, so the hash is in
-   place before an entry could be read, let alone rendered. What renders
-   until then is the passphrase gate, then a skeleton.
+   So the question is "does this journal's access mode have a secret, and has
+   it been given since this page loaded". A stored "locked" flag would still
+   be wrong for the reason it always was - the ways out are a killed tab, a
+   crash and a swipe from the app switcher, none of which run code - so
+   `unlocked` still starts false and a cold start is still locked before
+   anything decides anything. Boot sets it the moment a secret is typed.
 
-   On a cold start the passphrase gate stands in front of this one, and a
-   passphrase the person just typed satisfies both (boot marks the session
-   unlocked). This gate earns its keep mid-session: lock-on-leave and quick
-   exit lock the app while the unlocked key is still in memory, and the PIN
-   is the quicker way back in (ADR-0018: a casual-access layer, never an
-   encryption credential).
+   What this earns mid-session is unchanged: lock-on-leave and quick exit lock
+   the app while the unlocked key is still in memory, and the access mode's
+   own secret is the way back in (SessionUnlock.svelte). Re-entry costs one
+   Argon2id derivation, which is the honest price of not keeping a second,
+   weaker secret around to make it cheaper.
 
-   Biometrics (Android) will unlock by calling markUnlocked() after its own
-   prompt succeeds; nothing about the PIN path has to change for it. */
+   One combination has no way back and it is named rather than papered over:
+   device-bound mode on the web has no secret to ask for, so lock-on-leave
+   there can only blank the screen. Android's device-bound mode does have one
+   - the Keystore prompt - because Keystore will not release the key until the
+   platform confirms who is present. */
 
 import { prefs } from '../data/prefs/store.svelte';
+import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { isAndroid } from '../platform';
 
 export const lockState = $state({
-  /** Set once the PIN has been accepted, cleared on every lock. */
+  /** Set once the access mode's secret has been given, cleared on every lock. */
   unlocked: false,
   /** Quick exit's neutral page, over the top of everything (web only). */
   blanked: false
 });
 
-export function isLocked(): boolean {
-  return prefs.pinHash !== null && !lockState.unlocked;
+/** Takes the mode rather than reading it, so this stays importable by the
+    boot store it would otherwise have to import back. */
+export function isLocked(mode: JournalAccessMode): boolean {
+  return accessModeHasSecret(mode, isAndroid()) && !lockState.unlocked;
 }
 
 export function markUnlocked() {

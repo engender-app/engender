@@ -1470,6 +1470,26 @@ HAVING count(gd.key) > 0;
 DELETE FROM pref WHERE key = 'activePreset';
 `;
 
+/* v43: the app-lock PIN gate is retired (ticket 53, ADR-0041). Its two
+   preferences go with it - `pinHash`, an Argon2id record that only ever
+   protected a comparison, and `appLock`, a flag whose entire meaning was
+   "a PIN gate stands in front of the app".
+
+   Deleting rather than leaving them: openPreferences already skips a key
+   this build has no catalogue entry for, so nothing would break either way,
+   but a PIN hash left in the table is credential material outliving the
+   thing it was for. Nothing is converted into the new PIN access mode - an
+   Argon2id hash cannot be turned back into a secret, so becoming a real PIN
+   mode means typing the PIN again through the setup module, exactly as
+   adding a passphrase always has.
+
+   What an upgrading installation loses is the quick-relock shortcut. What it
+   keeps is its actual protection: device-bound or passphrase underneath,
+   untouched, same keystore, same key. */
+const SCHEMA_V43 = `
+DELETE FROM pref WHERE key IN ('pinHash', 'appLock');
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1512,5 +1532,6 @@ export const migrations: Migration[] = [
   { version: 39, sql: SCHEMA_V39 },
   { version: 40, sql: SCHEMA_V40 },
   { version: 41, sql: SCHEMA_V41 },
-  { version: 42, sql: SCHEMA_V42 }
+  { version: 42, sql: SCHEMA_V42 },
+  { version: 43, sql: SCHEMA_V43 }
 ];

@@ -54,8 +54,8 @@
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import DecoyNotes from '$lib/components/DecoyNotes.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import LockScreen from '$lib/components/LockScreen.svelte';
-  import PassphraseGate from '$lib/components/PassphraseGate.svelte';
+  import SessionUnlock from '$lib/components/SessionUnlock.svelte';
+  import JournalGate from '$lib/components/JournalGate.svelte';
   import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
   import UpdateNotice from '$lib/components/UpdateNotice.svelte';
@@ -81,7 +81,7 @@
      a guard runs after navigation: `locked` has to decide what renders,
      not where the app navigates to, or the first paint of a cold start
      shows the journal for as long as the redirect takes. */
-  let locked = $derived(isLocked());
+  let locked = $derived(isLocked(bootState.accessMode));
   $effect(() => watchLock());
 
   /* A side effect with nothing above it to order against, unlike startBoot():
@@ -460,7 +460,7 @@
       {#if schemaTooNew}
         <SchemaTooNew />
       {:else if needsPassphrase}
-        <PassphraseGate />
+        <JournalGate />
       {:else if needsAuthentication}
         <AndroidKeyGate />
       {:else if needsDeviceRecovery}
@@ -468,7 +468,7 @@
       {:else if locked}
         <!-- Instead of the route, not over it: nothing below this renders,
              so no screen mounts and no query runs while the app is locked. -->
-        <LockScreen />
+        <SessionUnlock mode={bootState.accessMode} />
       {:else}
         {@render children()}
       {/if}
